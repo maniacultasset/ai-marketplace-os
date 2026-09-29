@@ -10,7 +10,7 @@ THE CANON is the single authoritative register for AI Marketplace OS. Where any 
 ## Amendments by ADR (win over the rows below and over the Addendum)
 
 Accepted by the user (Tech Lead) in chat on 2026-09-27. Each amendment overrides only the rows it
-names. See `docs/adr/`.
+names. See `docs/adr/`. **ADR-0012 (2026-09-29): this repo is backend-only.** It amends rows :41, :46 and :84 and the 12 checks (now 10); read the ADR.
 
 | Area | Canon / Addendum said | Now | ADR |
 |---|---|---|---|

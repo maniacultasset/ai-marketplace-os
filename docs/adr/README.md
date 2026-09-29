@@ -18,3 +18,4 @@ change.
 | 0009 | Environments, release flow, zero-traffic deploy with auto-rollback | ⚑ proposed, team decides (user's chat decision) | 2026-09-27 |
 | 0010 | Automated test strategy: 4 gates, quality bars, toolset | ⚑ proposed, team decides (user's chat decision); **departs from site UAT gate (T8)** | 2026-09-27 |
 | 0011 | Team loop: agents, conductor, approvals | ⚑ proposed, team decides (user's chat decision) | 2026-09-27 |
+| 0012 | This repository holds the backend only; contracts published; AI pipeline pinned from its own repo | accepted (user in chat); provisional against the site (T103); pipeline home pending AI team (T104) | 2026-09-29 |

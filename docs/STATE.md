@@ -1,7 +1,7 @@
 # STATE — read first, update last
 
 _Last updated: 2026-09-29 (Tue) by Claude Code. Either Codex or Claude Code can pick up from here. Docs map: `docs/README.md`. Plan: `docs/EXECUTION-PLAN.md`._
-**Active:** claude-code · no-git · since 2026-09-29 19:30 · setup: docs restructure done; GCP/GitHub bootstrap pending (billing, user decisions)
+**Active:** claude-code · main · since 2026-09-29 20:41 · drive S1 (planning; build waits for Docker Desktop)
 **Branch:** main
 **Git repo:** yes. Private `maniacultasset/ai-marketplace-os` (https://github.com/maniacultasset/ai-marketplace-os); first commit `be02277` on 2026-09-29. From here on, every change goes branch → PR → squash merge, and the user approves each merge.
 **Hosting ADR:** accepted ADR-0001 (GCP asia-south1, bootstrapped profile; 2026-09-27)
@@ -112,8 +112,9 @@ _Last updated: 2026-09-29 (Tue) by Claude Code. Either Codex or Claude Code can 
     - Cloud SQL PG17 `aimos-db` (`db-custom-1-3840`, asia-south1, PITR) with database `aimos` and user
       `app`, plus `CREATE EXTENSION vector`;
     - an Artifact Registry repo `aimos`.
-  - Dev connects through `cloud-sql-proxy` on port 5433. The API can go live with
-    `gcloud run deploy aimos-api`.
+  - **Superseded 2026-09-29:** development and tests use a **local PostgreSQL 17 in Docker** on this
+    Mac; Cloud SQL is for **staging and prod** only (user). `cloud-sql-proxy` is for admin access to
+    staging.
   - This departs from AGENTS.md §4 ("only reviewed OpenTofu"). At **S4, `tofu import` these resources**
     (never create duplicates), then change them only through code.
   - Automated tests still use local Docker Postgres.
@@ -141,6 +142,22 @@ _Last updated: 2026-09-29 (Tue) by Claude Code. Either Codex or Claude Code can 
     approval before S2.
   - Recommended defaults applied: trunk-based branching (decision 3); no `gcloud`-created `app`
     database user (decision 6); generated `.docx` files not in git (decision 19, `.gitignore`).
+- **Repository scope (user, 2026-09-29; ADR-0012):**
+  - **Backend-only repo.** No `apps/web`; the frontend team has its own repository.
+  - Required checks drop from 12 to 10: `web-lint` and `web-typecheck` leave.
+  - Contracts are published: `@mkos/schemas` goes to GitHub Packages (npm, user's choice); Python
+    consumers pin `mkos-schemas` by git tag.
+  - **AI pipeline in the AI team's own repo, pinned by git tag, with a stub in our CI.** This is the
+    recommended default, which the user asked for; the AI team confirms in T104. T103 records the
+    departure from the site's monorepo.
+  - Role: our team owns the backend and database end to end (schema, APIs, workers, adapters, rules,
+    security, cloud), and designs the APIs.
+- **Client repo carries no AI branding (user, 2026-09-29):** PR #1 was merged as `4b75388`.
+  - `.claude/`, `AGENTS.md`, `CLAUDE.md` and `.codex/` stay local through `.git/info/exclude`.
+  - No AI co-author lines in commits or PRs.
+  - README and description rewritten.
+  - The first two commits (`be02277`, `ef0f3be`) still contain the tooling files in history. Rewriting
+    them needs a force-push, which the tool's safety guard blocked; the user decides whether to do it.
 - **Hosting research done:** `docs/research/hosting-2026-09.md`.
   - Recommended: **AWS Mumbai + Activate credits**, plus Microsoft credits for Azure OpenAI tokens.
   - **Conditional on** the client being incorporated and pursuing DPIIT, and on team AWS skills.
