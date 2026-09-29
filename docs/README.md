@@ -1,11 +1,10 @@
-# docs/: map of every document
+# Documentation index
 
-All project documents live in this folder and nowhere else (AGENTS.md §1). Agents: never read the big
-files whole. Run `grep -n '^#' <file>` for the section index, then read only the section you need
-(AGENTS.md §8).
+All project documents are kept in this folder. For large files, run `grep -n '^#' <file>` to list the
+sections, then read only the one you need.
 
-**When sources disagree** (AGENTS.md §2), the winner is the first of:
-1. the user's latest instruction
+**When sources disagree**, the first in this list wins:
+1. the Tech Lead's latest decision, recorded in `STATE.md`
 2. the client spec site (`source/`)
 3. team-confirmed answers in `review/TEAM-QUESTIONS.md`
 4. accepted ADRs (`adr/`)
@@ -34,7 +33,7 @@ files whole. Run `grep -n '^#' <file>` for the section index, then read only the
 | `trace/` | Data behind REQUIREMENTS-TRACE | `cNN.json` (every spec line → R-id, 23 chunks, 100% of lines) and `cNN.map.json` (a verdict per statement), `_chunks.json`. Query with python or jq; never read whole (3.9 MB) | When a verdict changes; then run `../scripts/trace/check_mapping.py` and `compile_trace.py` |
 | `drafts/` | 4: pre-Canon, intent only | `BUILD-SEQUENCE.md` (45 KB, build steps S1–S14; `grep '^## S<n>'`), `CONTRACTS.md` (53 KB), `CHECKLISTS.md` (183 KB, grep only), `ARCHITECTURE.md`, `DECISIONS.md`, `BLOCKERS.md`, `DELEGATE-GATE.md`. Never copy a value without checking tiers 1–3 | For a step's scope and "Done when"; for intent behind a rule |
 | `research/` | Background | `stack-2026-09.md`, `hosting-2026-09.md`, `catalogus.md` (competitor) | When revisiting a stack or hosting choice |
-| `plans/` | Loop state | `README.md` (loop rules and file formats); per step `docs/plans/<id>/` holds CONTEXT, PLAN, CODE-PLAN, LOOP, REPORT | During the team loop (`/drive`) |
+| `plans/` | Loop state | `README.md` (loop rules and file formats); per step `docs/plans/<id>/` holds CONTEXT, PLAN, CODE-PLAN, LOOP, REPORT | During each build step |
 | `archive/` | None | Retired files (`CLAUDE-v0.md`), frozen. Do not follow | Never, unless asked |
 
 **Outside `docs/`:**
