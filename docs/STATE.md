@@ -2,8 +2,8 @@
 
 _Last updated: 2026-09-29 (Tue) by Claude Code. Either Codex or Claude Code can pick up from here. Docs map: `docs/README.md`. Plan: `docs/EXECUTION-PLAN.md`._
 **Active:** claude-code · no-git · since 2026-09-29 19:30 · setup: docs restructure done; GCP/GitHub bootstrap pending (billing, user decisions)
-**Branch:** no-git
-**Git repo:** no (a `git init` happens at the start of S1, and only the user may run it)
+**Branch:** main
+**Git repo:** yes. Private `maniacultasset/ai-marketplace-os` (https://github.com/maniacultasset/ai-marketplace-os); first commit `be02277` on 2026-09-29. From here on, every change goes branch → PR → squash merge, and the user approves each merge.
 **Hosting ADR:** accepted ADR-0001 (GCP asia-south1, bootstrapped profile; 2026-09-27)
 **Tech Lead:** the user (to be confirmed)
 
@@ -129,6 +129,18 @@ _Last updated: 2026-09-29 (Tue) by Claude Code. Either Codex or Claude Code can 
     environments**. The plan recommends GitHub Team (EXECUTION-PLAN decision 1).
   - The `gh` token on this Mac is `codekid69`'s OAuth token. The plan recommends a bot account for
     agents (decision 2).
+- **Setup decisions (user, 2026-09-29; EXECUTION-PLAN §2):**
+  - **GitHub stays on Free for now**, so nothing is enforced: PR checks run as discipline only.
+    Upgrade to Team before the first prod release.
+  - **Agents push as `codekid69` for now**; move to a bot account before any prod credential exists.
+  - **Claude ran `git init`, the first commit, `gh repo create` (private) and the first push**, a
+    one-time exception to AGENTS.md §7 authorised by the user.
+  - Repo settings: squash-only, delete branch on merge, wiki/projects off, dependency vulnerability
+    alerts on, Dependabot auto-fix PRs off (Renovate per decision 17).
+  - **Two build tracks: yes.** Claude drafts the ADR-0011 + AGENTS.md §7 amendment for the user's
+    approval before S2.
+  - Recommended defaults applied: trunk-based branching (decision 3); no `gcloud`-created `app`
+    database user (decision 6); generated `.docx` files not in git (decision 19, `.gitignore`).
 - **Hosting research done:** `docs/research/hosting-2026-09.md`.
   - Recommended: **AWS Mumbai + Activate credits**, plus Microsoft credits for Azure OpenAI tokens.
   - **Conditional on** the client being incorporated and pursuing DPIIT, and on team AWS skills.
