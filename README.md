@@ -17,18 +17,25 @@ AI never publishes. Every listing passes deterministic validation and human appr
 
 ## Repository
 
-One repository serves all three teams. The application paths are created in build step S1. Today the
-repository holds the design, the decisions and the tooling.
+This repository holds the backend and database. The application paths are created in build step S1;
+today the repository holds the design, the decisions and the tooling.
 
-| Path | Owner | Contents |
+| Path | Contents |
+|---|---|
+| `apps/api` | FastAPI service, background workers, marketplace adapters, rules engine |
+| `packages/schemas` | API and event contracts: Python `mkos_schemas`, TypeScript `@mkos/schemas` |
+| `infra` | OpenTofu for Google Cloud |
+| `docs` | Architecture, decisions, specification snapshot, requirements trace |
+| `scripts` | Spec sync, document build, trace checks |
+
+### Related repositories
+
+| Repository | Owner | How it connects |
 |---|---|---|
-| `apps/api` | Backend | FastAPI service, background workers, marketplace adapters, rules engine |
-| `packages/schemas` | Backend | Shared contracts: Python `mkos_schemas`, TypeScript `@mkos/schemas` |
-| `infra` | Backend | OpenTofu for Google Cloud |
-| `apps/web` | Frontend | Next.js dashboard |
-| `packages/pipeline` | AI | Listing generation pipeline (LangGraph) |
-| `docs` | Backend | Architecture, decisions, specification snapshot, requirements trace |
-| `scripts` | Backend | Spec sync, document build, trace checks |
+| Frontend (Next.js dashboard) | Frontend team | Calls this API. Installs `@mkos/schemas` from GitHub Packages at a pinned version. |
+| AI pipeline (`mkos-pipeline`) | AI team | Runs inside the backend worker through `run_listing_pipeline`. Pinned by git tag; CI uses a stub. |
+
+Contract changes are released as versions (ADR-0012), so each repository upgrades on purpose.
 
 ## Stack
 
@@ -67,7 +74,8 @@ committed.
 - Branch from `main` as `feat|fix|chore|docs|refactor|test|perf/<short-name>`.
 - Use conventional commit titles: `type(scope): summary`.
 - Open a pull request. All checks must pass, and it is squash-merged after review.
-- Changes to `packages/schemas` affect the AI and frontend teams and need their leads' approval.
+- Changes to `packages/schemas` affect the AI and frontend teams: they need both leads' approval and ship
+  as a contract release.
 - Never commit secrets. Configuration comes from environment variables, listed in
   [`docs/canon/ENV.md`](docs/canon/ENV.md).
 

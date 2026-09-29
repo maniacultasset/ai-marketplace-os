@@ -798,3 +798,10 @@ accepted as written and is applied above.** "Checked" means verified in the repo
 ## 10. Plan changes
 
 - 2026-09-29: created (proposed).
+
+- **2026-09-29, the user decided the repository is backend-only (ADR-0012).** Throughout this plan:
+  - Read `apps/web`, `web-lint`, `web-typecheck` and `ci-web.yml` as belonging to the frontend team's
+    repository.
+  - The required checks here are 10, not 12.
+  - `@mkos/schemas` is published to GitHub Packages rather than consumed as a pnpm workspace package.
+  - The AI pipeline is pinned from the AI team's repository (T104), and CI uses a stub.
