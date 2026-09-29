@@ -1,0 +1,13 @@
+# Team handles only, one pattern per line, last match wins (CANON.md:80; EXECUTION-PLAN.md §4.1).
+# Inert on GitHub Free: reviews are routed by hand until the org moves to Team (ADR-0013 §5).
+*                      @maniacultasset/tech-lead
+/apps/api/             @maniacultasset/backend @maniacultasset/tech-lead
+/packages/schemas/     @maniacultasset/tech-lead @maniacultasset/backend @maniacultasset/ai-eng @maniacultasset/frontend
+/infra/                @maniacultasset/devops-qa @maniacultasset/tech-lead
+/apps/api/alembic/     @maniacultasset/tech-lead
+/scripts/db/           @maniacultasset/tech-lead
+/.github/              @maniacultasset/tech-lead
+/.gitleaks.toml        @maniacultasset/tech-lead
+/.importlinter         @maniacultasset/tech-lead
+/pyproject.toml        @maniacultasset/tech-lead
+/docs/adr/             @maniacultasset/tech-lead

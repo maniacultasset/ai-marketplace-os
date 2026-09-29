@@ -28,3 +28,12 @@ scripts/docgen/.cache/
 
 # Generated Word docs (39 MB of binaries): rebuild with scripts/docgen/build.sh; share through the client's channel (EXECUTION-PLAN decision 19)
 deliverables/*.docx
+
+# Python tooling output (S1)
+.coverage
+htmlcov/
+.hypothesis/
+.import_linter_cache/
+.tools/
+*.egg-info/
+mutants/

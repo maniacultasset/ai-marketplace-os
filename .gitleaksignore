@@ -1,0 +1,6 @@
+# Known false positives in the pre-S1 docs commit be02277: a trace row describing a listing
+# parent/child key field matches the generic-api-key rule. Exact finding fingerprints
+# (commit:file:rule:line) only, so the full-history fallback scan in scripts/ci/gitleaks.sh stays
+# meaningful. Never add paths or values.
+be02277054e319009eee09390040f8ca0da8d940:docs/trace/c02.json:generic-api-key:2253
+be02277054e319009eee09390040f8ca0da8d940:docs/review/REQUIREMENTS-TRACE.md:generic-api-key:520

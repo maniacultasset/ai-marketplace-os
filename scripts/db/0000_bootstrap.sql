@@ -1,0 +1,14 @@
+-- scripts/db/0000_bootstrap.sql — superuser, idempotent, NOT an Alembic revision.
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'migrator')
+  THEN CREATE ROLE migrator LOGIN; END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_rw')
+  THEN CREATE ROLE app_rw LOGIN; END IF; END $$;
+ALTER SCHEMA public OWNER TO migrator;
+GRANT USAGE ON SCHEMA public TO migrator, app_rw;
+ALTER DEFAULT PRIVILEGES FOR ROLE migrator IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_rw;
+ALTER DEFAULT PRIVILEGES FOR ROLE migrator IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO app_rw;

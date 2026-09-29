@@ -1,0 +1,49 @@
+# Import contracts (CANON-ADDENDUM.md §12, adapted by ADR-0013 §4: only packages that exist).
+# Run: uv run lint-imports --config .importlinter
+[importlinter]
+root_packages =
+    app
+    mkos_schemas
+include_external_packages = True
+
+[importlinter:contract:schemas-never-imports-app]
+name = mkos_schemas never imports app
+type = forbidden
+source_modules =
+    mkos_schemas
+forbidden_modules =
+    app
+
+# Routers never import sqlalchemy or app.db (BACKEND-ARCHITECTURE.md:1273). Indirect chains are
+# allowed: routers -> services -> app.db is the sanctioned route (BACKEND-ARCHITECTURE.md:1236).
+[importlinter:contract:routers-never-import-the-db]
+name = app.api never imports sqlalchemy or app.db directly
+type = forbidden
+source_modules =
+    app.api
+forbidden_modules =
+    sqlalchemy
+    app.db
+allow_indirect_imports = True
+
+# Engine-level SQL from a service would bypass the tenant guard; services reach the database
+# through repositories. The readiness check is the one exemption. sqlalchemy.ext.asyncio is
+# repo rule R3 in scripts/ci/check_repo_rules.py (import-linter forbids only package roots).
+[importlinter:contract:services-never-import-the-engine]
+name = app.services never imports app.db.session (except app.services.health)
+type = forbidden
+source_modules =
+    app.services
+forbidden_modules =
+    app.db.session
+ignore_imports =
+    app.services.health -> app.db.session
+allow_indirect_imports = True
+
+[importlinter:contract:layers]
+name = routers -> services -> repositories
+type = layers
+layers =
+    app.api
+    app.services
+    app.repositories

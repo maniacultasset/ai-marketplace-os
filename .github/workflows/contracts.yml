@@ -1,0 +1,40 @@
+# Required checks: contracts, schemas-drift (reduced forms until S2/S3, ADR-0013 §4).
+name: contracts
+on:
+  pull_request:
+    branches: [main]
+permissions: {}
+concurrency:
+  group: contracts-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    env:
+      APP_ENV: local
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/mos_test
+      JWT_SECRET: ci_only_not_a_real_secret_at_least_32_chars
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/py-setup
+      - run: make contracts
+  schemas-drift:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    env:
+      APP_ENV: local
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/mos_test
+      JWT_SECRET: ci_only_not_a_real_secret_at_least_32_chars
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/py-setup
+      - run: make schemas-drift

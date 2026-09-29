@@ -1,0 +1,24 @@
+# Local stack for `make dev` and the `bootstrap` check. No Redis (ADR-0004), no `version:` key.
+# Every image is pinned by its multi-arch index digest (arm64 laptops, amd64 CI; ADR-0003), and
+# every published port binds 127.0.0.1 only, so nothing listens on the LAN.
+# MinIO (minio + the minio-init bucket one-shot) is added once its image source is decided:
+# minio/minio and minio/mc are no longer published on Docker Hub or quay.io.
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.5-pg17@sha256:d2ef61f42ef767baa5a1475393303cc235bcd92febd9d7014eddb48b41f3bad0
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: marketplace_os
+    ports: ["127.0.0.1:5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/db/0000_bootstrap.sql:/docker-entrypoint-initdb.d/0000_bootstrap.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d marketplace_os"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

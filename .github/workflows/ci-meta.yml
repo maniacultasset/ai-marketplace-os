@@ -1,0 +1,39 @@
+# Required checks: commit-lint, gitleaks. `edited` re-runs commit-lint when the title changes.
+# The PR title and branch reach the shell only through env, never inline (EXECUTION-PLAN.md:245).
+name: ci-meta
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+permissions: {}
+concurrency:
+  group: ci-meta-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  commit-lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: make commit-lint
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          HEAD_REF: ${{ github.head_ref }}
+  gitleaks:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - run: make gitleaks
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}

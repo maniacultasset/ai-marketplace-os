@@ -1,0 +1,129 @@
+# Required checks: api-lint, api-typecheck, api-tests, tenant-isolation, lint-imports, bootstrap.
+# A job id is its check name: no job name, matrix, if or needs, because a skipped required job
+# reports success (EXECUTION-PLAN.md:245-248). No paths filter (CANON.md:77). No secrets.
+name: ci-api
+on:
+  pull_request:
+    branches: [main]
+permissions: {}
+concurrency:
+  group: ci-api-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  api-lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    env:
+      APP_ENV: local
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/mos_test
+      JWT_SECRET: ci_only_not_a_real_secret_at_least_32_chars
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/py-setup
+      - run: make api-lint
+  api-typecheck:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    env:
+      APP_ENV: local
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/mos_test
+      JWT_SECRET: ci_only_not_a_real_secret_at_least_32_chars
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/py-setup
+      - run: make api-typecheck
+  api-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    env:
+      APP_ENV: local
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/mos_test
+      JWT_SECRET: ci_only_not_a_real_secret_at_least_32_chars
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.5-pg17@sha256:d2ef61f42ef767baa5a1475393303cc235bcd92febd9d7014eddb48b41f3bad0
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mos_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mos_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/py-setup
+      - name: bootstrap extensions and roles
+        run: |
+          psql "postgresql://postgres:postgres@localhost:5432/mos_test" \
+            -v ON_ERROR_STOP=1 -f scripts/db/0000_bootstrap.sql
+      - run: make api-tests
+  tenant-isolation:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    env:
+      APP_ENV: local
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/mos_iso
+      JWT_SECRET: ci_only_not_a_real_secret_at_least_32_chars
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.5-pg17@sha256:d2ef61f42ef767baa5a1475393303cc235bcd92febd9d7014eddb48b41f3bad0
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mos_iso
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mos_iso"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/py-setup
+      - name: bootstrap extensions and roles
+        run: |
+          psql "postgresql://postgres:postgres@localhost:5432/mos_iso" \
+            -v ON_ERROR_STOP=1 -f scripts/db/0000_bootstrap.sql
+      - run: make tenant-isolation
+  lint-imports:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/py-setup
+      - run: make lint-imports
+  bootstrap:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    env:
+      APP_ENV: local
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/marketplace_os
+      JWT_SECRET: ci_only_not_a_real_secret_at_least_32_chars
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/py-setup
+      - run: cp .env.example .env
+      - run: make bootstrap
