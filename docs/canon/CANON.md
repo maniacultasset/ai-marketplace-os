@@ -10,7 +10,7 @@ THE CANON is the single authoritative register for AI Marketplace OS. Where any 
 ## Amendments by ADR (win over the rows below and over the Addendum)
 
 Accepted by the user (Tech Lead) in chat on 2026-09-27. Each amendment overrides only the rows it
-names. See `docs/adr/`. **ADR-0012 (2026-09-29): this repo is backend-only.** It amends rows :41, :46 and :84 and the 12 checks (now 10); read the ADR.
+names. See `docs/adr/`. **ADR-0012 (2026-09-29): this repo is backend-only.** It amends rows :41, :46 and :84 and the 12 checks (now 10); read the ADR. **ADR-0013 (2026-09-29): S1 toolchain, boot settings and CI on GitHub Free.** It amends :134 (ruff adds `TID`; `scripts/docgen` and `scripts/trace` leave lint scope), :136 (api-tests runs `pytest -q -m "not tenant_isolation"` until S9), A§2:54-61 (`bootstrap-db` runs `psql` inside the compose container), A§7:175-182 (no alembic or seed until S5/S9; the image imports `app, mkos_schemas`), A§8:196 and :213-225 (`APP_ROLE` sets the boot requirements; no FE keys), A§12:276 (contracts over packages that exist) and ADR-0005:42 (no auto-merge); read the ADR.
 
 | Area | Canon / Addendum said | Now | ADR |
 |---|---|---|---|

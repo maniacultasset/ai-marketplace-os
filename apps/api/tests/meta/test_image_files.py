@@ -1,4 +1,4 @@
-"""AC11: the API image files (ADR-0002, ADR-0005, CANON-ADDENDUM.md §15, KNOWN-ISSUES.md:53)."""
+"""AC11: the API image files (ADR-0002, ADR-0005, CANON-ADDENDUM.md §15; nested secret globs)."""
 
 from __future__ import annotations
 

@@ -96,15 +96,29 @@ the root `pyproject.toml`, `docker-compose.yml`, `.github/workflows/*.yml` and
 |---|---|---|
 | `scripts/seed.py`, `uv run python scripts/seed.py`, profile `costs`, `SKU-001`, numpy vectors (BUILD S9, C seed row, CHECKLISTS, scaffold) | `python -m app.cli seed --profile demo\|isolation` (flag required); tenants `acme`/`bharat`; shared SKUs `KURTA-001, KURTA-002, DECOR-001`; plus `ACME-900` and `BH-900` in `demo` | A§5 |
 
+## S1 scaffold (2026-09-29; ADR-0012, ADR-0013)
+
+| Stale value (where) | Canonical | Source |
+|---|---|---|
+| BUILD S1: Python `3.11`, `pgvector/pgvector:pg16`, `redis:7-alpine`, an `arq` worker, `apps/web`, `packages/pipeline`, `apps/api/app/agents`, and "4 checks" green on a dummy PR (BUILD-SEQUENCE.md:6-20) | Python `==3.13.*`; `pgvector/pgvector:0.8.5-pg17` pinned by digest; no Redis and no worker in S1; a backend-only tree (`apps/api`, `packages/schemas`); all **10** required checks on every PR | ADR-0002, ADR-0003, ADR-0004, ADR-0012, ADR-0013 §4 |
+| BUILD S1 "A force-push to main is rejected for an org admin" (BUILD-SEQUENCE.md:20) | moves to "when GitHub Team lands": GitHub Free has no rulesets on private repos, so the 10 checks are advisory and the user merges only when all are green | EXECUTION-PLAN.md:54, §4.3; ADR-0013 §5 |
+| ENV.md `DATABASE_URL` local value `postgresql+asyncpg://…` | `postgresql+psycopg://postgres:postgres@localhost:5432/marketplace_os` (the root `.env.example`) | C (psycopg 3, ADR-0004) |
+| ENV.md `GCP_PROJECT_ID` local value `aimos-dev` (no such project) | blank locally and optional until S4; the projects are `aimos-staging` and `aimos-prod` | C (hosting row), ADR-0001 |
+| ENV.md `GIT_SHA` "Injected by Cloud Build" | set by the deploy pipeline (S4/S12); `dev` locally | ADR-0001 |
+| A§7 `bootstrap` job: `alembic upgrade head`, `app.cli seed`, and the image import `import app, mkos_schemas, mkos_pipeline` | S1 runs the job without alembic (S5) or seed (S9), and the image import is `import app, mkos_schemas` until S14 | ADR-0013 §4 |
+| A§11 CI env block with four variables (`postgresql+asyncpg` URL and `REDIS_URL`) | three variables: `APP_ENV`, `DATABASE_URL` (`postgresql+psycopg`), `JWT_SECRET` | C (ADR-0004 row) |
+| A§1 compose `ports: ["5432:5432"]`; site L7004, L7020 `"9000:9000"`, L7021 `"9001:9001"` (every interface) | every published port binds loopback: `"127.0.0.1:<port>:<port>"`; `make dev` keeps uvicorn on its `127.0.0.1` default | ADR-0013; AGENTS.md §1 |
+| EXECUTION-PLAN decision 19: the agent-tooling folder listed as "Yes" for git (EXECUTION-PLAN.md:77) | agent tooling stays local through `.git/info/exclude` and is never pushed | STATE.md:188 |
+
 ## Pending edits to `scaffold/` (apply before moving the files in during S1)
 
 | File | Edit | Source |
 |---|---|---|
 | `scaffold/README.md` | **Do NOT move it**, and never run `cp -R scaffold/.` here: it would overwrite the root README. Its "copy into the real repo" note is void, because this folder is the repo. Move the other files one by one, after their edits. | STATE, A§5 |
 | `apps/api/app/db/session.py` | docstring allowlist → `app.admin.*`, `app.cli`, `scripts.*`; "the seed script" → `app.cli seed`; and fix the `SET LOCAL` bug (KNOWN-ISSUES C) | A§5, A§6 |
-| `apps/api/app/core/config.py` | `extra="forbid"`; add the 10 fields and 3 FE keys; admin-secret deploy guard; `arq_job_timeout_seconds=1800`, `otel_service_name="marketplace-os-api"`, new `kms_local_dev_key`, `port=8000` | A§8, A§9 |
-| `apps/api/Dockerfile` | `ENV UV_PROJECT_ENVIRONMENT=/opt/venv` in the builder stage | A§15 |
-| `apps/api/docker-entrypoint.sh` | seed role → `python -m app.cli seed --profile "${SEED_PROFILE:-demo}"`; shell role → `exec python "$@"` | A§5, A§15 |
+| `apps/api/app/core/config.py` | **Applied in S1**, as amended by ADR-0013 §1-2: `extra="forbid"`; the 10 fields; `otel_service_name="marketplace-os-api"`, the new `kms_local_dev_key`, `port=8000`. Not applied: the 3 FE keys (ADR-0013 §2), the admin-secret deploy guard (S14, ADR-0013 §1) and `arq_job_timeout_seconds` (no ARQ, ADR-0004). | A§8, A§9 |
+| `apps/api/Dockerfile` | **Applied in S1**: `ENV UV_PROJECT_ENVIRONMENT=/opt/venv` in the builder stage | A§15 |
+| `apps/api/docker-entrypoint.sh` | shell role → `exec python "$@"`: **applied in S1**. The seed role → `python -m app.cli seed --profile "${SEED_PROFILE:-demo}"` stays with S9 (the S1 entrypoint has only `api` and `shell`). | A§5, A§15 |
 | `scripts/seed.py` | move the body into `apps/api/app/cli.py`; delete this file | A§5 |
 | `packages/schemas/src/mkos_schemas/rules.py` | replace the RuleSet docstring (no `load_rules` port) and the Rule docstring (uniqueness is the A§4 COALESCE expression index) | A§4, A§17 |
 | `packages/pipeline/src/mkos_pipeline/state.py` | `PipelineStage.LOADING_CONTEXT` → `LOAD_CONTEXT` | A§18 |

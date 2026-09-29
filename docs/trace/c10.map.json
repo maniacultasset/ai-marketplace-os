@@ -2894,10 +2894,10 @@
   },
   {
    "id": "R06981",
-   "status": "gap",
-   "owner": "shared",
+   "status": "other-team",
+   "owner": "fe-team",
    "ref": "BACKEND-ARCHITECTURE.md:2304",
-   "note": "Web container and hosting not in ADR-0001; FE owns the Dockerfile."
+   "note": "apps/web and its Dockerfile live in the FE team's repository (ADR-0012; T103)"
   },
   {
    "id": "R06982",

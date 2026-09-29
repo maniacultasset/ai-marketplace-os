@@ -1,4 +1,4 @@
-"""AC5: ruff `TID` enforces the banned APIs (ADR-0013 §3; KNOWN-ISSUES.md:35; CANON.md:126)."""
+"""AC5: ruff `TID` enforces the banned APIs (ADR-0013 §3; CANON.md:126)."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""AC3: Settings (A§8-A§10 as amended by ADR-0013 §1-2; KNOWN-ISSUES.md:46)."""
+"""AC3: Settings (A§8-A§10 as amended by ADR-0013 §1-2), with the scaffold config.py defects fixed."""
 
 from __future__ import annotations
 

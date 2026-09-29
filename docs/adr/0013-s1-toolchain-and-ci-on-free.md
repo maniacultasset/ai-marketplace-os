@@ -47,6 +47,8 @@
 4. **Required checks are staged.** All 10 run on every PR from S1 onwards. Until the step that gives a
    check its content, it runs a reduced form, and each reduction is removed by that step:
    - `api-tests`: the psql bootstrap step and pytest. The Alembic round trip and squawk join in S5.
+   - `api-tests`: `pytest -q -m "not tenant_isolation"`, because the sentinel asserts `mos_iso`; S9
+     removes the filter with the sentinel.
    - `tenant-isolation`: one sentinel test proving the marker, the job and the `mos_iso` database.
      The real tests land in S9.
    - `contracts`: a bare-venv install and `import mkos_schemas`. Fixtures come in S2, oasdiff in S3.
@@ -56,7 +58,7 @@
      `mkos_pipeline` until S14.
    - `lint-imports`: contracts only over packages that exist.
    - An empty test selection (pytest exit 5) is always a failure.
-   - Amends CANON-ADDENDUM.md:175-182 and :276 for the interim.
+   - Amends CANON.md:136 and CANON-ADDENDUM.md:175-182 and :276 for the interim.
 5. **Free-plan operating mode** (EXECUTION-PLAN.md §4.3):
    - Checks are advisory. The user merges only when all 10 are green.
    - No GitHub secrets. This does not withdraw ADR-0012:48-49 (CI read access to the AI repository).

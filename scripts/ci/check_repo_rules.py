@@ -1,4 +1,4 @@
-"""Repo rules that ruff cannot express (ADR-0013 §3; KNOWN-ISSUES.md:35). Part of `api-lint`.
+"""Repo rules that ruff cannot express (ADR-0013 §3). Part of `api-lint`.
 
 - R0: a file in scope that does not parse fails closed.
 - R1: no environment access (`os.environ`, `os.getenv`, ...) through any alias of `os`, and no

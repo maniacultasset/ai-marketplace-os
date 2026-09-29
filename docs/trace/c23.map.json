@@ -440,7 +440,7 @@
    "status": "gap",
    "owner": "backend-db",
    "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2204",
-   "note": "Parameterised SQL only a site ask; no SQLi verification (test/lint/audit) planned"
+   "note": "SQL injection prevention is verified with the repository layer (S9) and the API routes (S10): parameterised queries and tests; ruff S608 (S1) is only the lint half"
   },
   {
    "id": "R13651",

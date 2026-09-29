@@ -73,7 +73,12 @@ seed_type_error() { append apps/api/app/main.py $'\n\ndef _seeded() -> int:\n   
 seed_failing_test() { new_file apps/api/tests/unit/test_seeded.py $'def test_seeded() -> None:\n    assert False'; }
 seed_no_marker() { replace apps/api/tests/tenant_isolation/test_sentinel.py $'@pytest.mark.tenant_isolation\n' ''; }
 seed_schemas_import_error() { append packages/schemas/src/mkos_schemas/__init__.py 'raise ImportError("seeded")'; }
-seed_bad_build_hash() { replace build-constraints.txt '--hash=sha256:6b48ad40' '--hash=sha256:7b48ad40'; }
+# One hex digit in each hatchling hash. Either artifact (wheel or sdist) satisfies
+# --require-hashes on its own, so both must stop matching for the pins to be broken.
+seed_bad_build_hash() {
+  replace build-constraints.txt '--hash=sha256:aac80bec' '--hash=sha256:bac80bec'
+  replace build-constraints.txt '--hash=sha256:6b48ad40' '--hash=sha256:7b48ad40'
+}
 seed_drift_byte() { printf 'x' >>packages/schemas/jsonschema/.gitkeep; }
 seed_drift_untracked() { new_file packages/schemas/ts/src/seeded.d.ts 'export type Seeded = 1;'; }
 seed_leak() { commit_seeded_leak; }

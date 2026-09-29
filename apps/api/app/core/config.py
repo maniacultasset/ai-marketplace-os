@@ -141,7 +141,7 @@ class Settings(BaseSettings):
     @field_validator("embedding_dimensions", mode="before")
     @classmethod
     def _pin_embedding_dimensions(cls, value: object) -> int:
-        # The env string "1536" must load, and nothing else may (KNOWN-ISSUES.md:46).
+        # The env string "1536" must load (the scaffold's Literal[1536] refused it), and nothing else may.
         if isinstance(value, int) and not isinstance(value, bool) and value == EMBEDDING_DIMENSIONS:
             return EMBEDDING_DIMENSIONS
         if isinstance(value, str) and value.strip() == str(EMBEDDING_DIMENSIONS):

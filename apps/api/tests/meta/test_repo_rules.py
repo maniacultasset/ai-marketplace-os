@@ -1,5 +1,5 @@
 """AC5, AC17: scripts/ci/check_repo_rules.py (R1 env access, R2 error_code literals,
-R3 async-engine imports in services; ADR-0013 §3; KNOWN-ISSUES.md:35)."""
+R3 async-engine imports in services; ADR-0013 §3)."""
 
 from __future__ import annotations
 
