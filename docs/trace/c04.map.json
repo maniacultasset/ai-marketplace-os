@@ -1,0 +1,2665 @@
+{
+ "chunk": "c04",
+ "items": [
+  {
+   "id": "R02148",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1118-1134",
+   "note": "brand_profiles 1:1 per tenant, entered once; GET/PUT /api/v1/brand-profile."
+  },
+  {
+   "id": "R02148a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1114; docs/architecture/DATABASE.md:1190",
+   "note": "ProductFacts resolver inherits brand defaults: variant, colourway, style, then brand."
+  },
+  {
+   "id": "R02149",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1197; docs/architecture/DATABASE.md:1176",
+   "note": "POST /api/v1/products form/API body; FE renders forms from category_attributes."
+  },
+  {
+   "id": "R02149a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1334; docs/architecture/DATABASE.md:954-976",
+   "note": "POST /api/v1/products/bulk CSV with BRD master headers, per-row isolation, failed rows re-runnable."
+  },
+  {
+   "id": "R02150",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:316; docs/architecture/DATABASE.md:426-453; T17",
+   "note": "Style row, product_colourways, variant_matrix_cells with sellable child SKUs (T17 follows site)."
+  },
+  {
+   "id": "R02151",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1082-1086",
+   "note": "Fact envelope per attribute: source seller|document|pim|marketplace|derived|ai."
+  },
+  {
+   "id": "R02151a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1088",
+   "note": "Fact.confidence 0..1, required for derived/ai sources or ai normalization."
+  },
+  {
+   "id": "R02152",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:529-542; T68",
+   "note": "category_templates specs per marketplace+category; adapters apply value_map; mapping per internal category (T68)."
+  },
+  {
+   "id": "R02153",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541",
+   "note": "AttributeSpec.requirement = required|conditional|optional|unsupported."
+  },
+  {
+   "id": "R02154",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193; docs/architecture/DATABASE.md:523",
+   "note": "AI team generates; backend pushes PromptProductFacts and fact_backed_attribute rule flags FACT_MISMATCH."
+  },
+  {
+   "id": "R02154a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193; docs/architecture/DATABASE.md:523",
+   "note": "AI team generates; backend pushes PromptProductFacts and fact_backed_attribute rule flags FACT_MISMATCH."
+  },
+  {
+   "id": "R02154b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193; docs/architecture/DATABASE.md:523",
+   "note": "AI team generates; backend pushes PromptProductFacts and fact_backed_attribute rule flags FACT_MISMATCH."
+  },
+  {
+   "id": "R02154c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193; docs/architecture/DATABASE.md:523",
+   "note": "AI team generates; backend pushes PromptProductFacts and fact_backed_attribute rule flags FACT_MISMATCH."
+  },
+  {
+   "id": "R02155",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:823",
+   "note": "Approve/publish need a passed rules_engine run at current rules, template and facts digest."
+  },
+  {
+   "id": "R02155a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1304-1321; docs/architecture/DATABASE.md:809-816",
+   "note": "Blocking reasons in validation_runs ErrorReport and listing_issues rows; FE displays them."
+  },
+  {
+   "id": "R02156",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:517; docs/architecture/DATABASE.md:522",
+   "note": "required/conditional_required and fact_source (CRITICAL_FACT_MISSING) rules detect missing data."
+  },
+  {
+   "id": "R02156a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1338-1355",
+   "note": "human_tasks: one question per fact with reason, expected_answer, suggestions."
+  },
+  {
+   "id": "R02157",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1642-1670",
+   "note": "Adapter publishes approved version on publish queue; 202 with a job per item."
+  },
+  {
+   "id": "R02157a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:850-869",
+   "note": "listing_submissions write-ahead row per attempt: exact version, payload hash, ref, outcome."
+  },
+  {
+   "id": "R02158",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:770; docs/architecture/DATABASE.md:890",
+   "note": "Bounded listing_status_sync via read-only get_listing; errors synced into listing_issues."
+  },
+  {
+   "id": "R02159",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:552-557; docs/architecture/DATABASE.md:1692; docs/architecture/DATABASE.md:1708; T41",
+   "note": "marketplace_error_map auto_fixable + fix_action; auto-resubmit without re-approval only for adapter remaps (T41)."
+  },
+  {
+   "id": "R02160",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:862; docs/architecture/DATABASE.md:871-878",
+   "note": "Write-ahead, read-before-retry, per-attempt idempotency key, one open submission, max 3, anti-loop reasons."
+  },
+  {
+   "id": "R02161",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:557; docs/architecture/DATABASE.md:1334-1336",
+   "note": "Unresolved user_action issues open human_tasks; unknown errors open marketplace_error_review task."
+  },
+  {
+   "id": "R02162",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:756; docs/architecture/DATABASE.md:763; T13",
+   "note": "LIVE only from confirmed marketplace_state (ck_live_minimum); published = accepted (T13 default follows BRD)."
+  },
+  {
+   "id": "R02163",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1500",
+   "note": "listing_status_display per listing and marketplace: display_status, marketplace_state."
+  },
+  {
+   "id": "R02163a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:754-755; docs/architecture/DATABASE.md:842; docs/architecture/DATABASE.md:1500",
+   "note": "external_id and marketplace_sku per listing; per-SKU external_id in listing_items."
+  },
+  {
+   "id": "R02163b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1309; docs/architecture/DATABASE.md:1327",
+   "note": "listing_issues carry marketplace; GET /api/v1/issues filters by marketplace."
+  },
+  {
+   "id": "R02163c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:749; docs/architecture/DATABASE.md:1500",
+   "note": "last_event/last_event_at = BRD last activity, per listing and marketplace."
+  },
+  {
+   "id": "R02164",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:285-300; docs/architecture/DATABASE.md:772-789; docs/architecture/DATABASE.md:850",
+   "note": "Immutable listing_versions, audit_log before/after with reason, submission ledger."
+  },
+  {
+   "id": "R02172",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1353",
+   "note": "Metric not defined anywhere; v1 /analytics covers volume, approval, validation pass, publish success only."
+  },
+  {
+   "id": "R02176",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1353",
+   "note": "LIVE-without-manual-intervention rate not computed; raw data in marketplace_state and account tasks."
+  },
+  {
+   "id": "R02180",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1353; T19",
+   "note": "Attempt data in listing_submissions (T19) but no first-pass metric view or endpoint."
+  },
+  {
+   "id": "R02184",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1336",
+   "note": "listing_issues.resolution captured; no auto-resolution metric view or endpoint planned."
+  },
+  {
+   "id": "R02188",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1336",
+   "note": "human_tasks captured; no question-rate metric view or endpoint planned."
+  },
+  {
+   "id": "R02192",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1336",
+   "note": "human_tasks captured; no questions-per-SKU metric view or endpoint planned."
+  },
+  {
+   "id": "R02196",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1336",
+   "note": "recurrence_of_id captured; no recurrence-rate metric view or endpoint planned."
+  },
+  {
+   "id": "R02200",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:873-878; T19",
+   "note": "Duplicates blocked by ls_guard; incident rate not computed or exposed."
+  },
+  {
+   "id": "R02204",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:522",
+   "note": "Required/critical-fact rules exist; completeness percentage not computed or exposed."
+  },
+  {
+   "id": "R02208",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:770",
+   "note": "Daily reconciliation poll exists; live-confirmation accuracy metric not defined."
+  },
+  {
+   "id": "R02212",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1078-1370",
+   "note": "All §24 points modelled in DATABASE.md rev 3; ADR-0012 and lifecycle ADR still to write."
+  },
+  {
+   "id": "R02214",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:316; docs/architecture/DATABASE.md:403",
+   "note": "products hold marketplace-neutral seller facts: the canonical source."
+  },
+  {
+   "id": "R02214a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:741-746; docs/architecture/DATABASE.md:772-778",
+   "note": "listings per (style or standalone, marketplace); content in listing_versions."
+  },
+  {
+   "id": "R02215",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:535",
+   "note": "category_templates version + is_current; runs and versions pin the template used."
+  },
+  {
+   "id": "R02215a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:543; T53",
+   "note": "app.cli templates refresh weekly/on demand creates new versions; staff promote after diff."
+  },
+  {
+   "id": "R02216",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1099-1100; docs/architecture/DATABASE.md:1115",
+   "note": "Fact envelope on attributes, provenance per typed column; ck_products_typed_facts_sourced."
+  },
+  {
+   "id": "R02216a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1088-1090",
+   "note": "confidence, evidence_ref and evidence_snapshot kept for product life."
+  },
+  {
+   "id": "R02217",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:517; docs/architecture/DATABASE.md:541",
+   "note": "Specs per (marketplace, category); conditional_required reads product and account context."
+  },
+  {
+   "id": "R02218",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:415-453",
+   "note": "parent_product_id, variation_theme, colourways and matrix cells with DB guards."
+  },
+  {
+   "id": "R02219",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:746; docs/architecture/DATABASE.md:756",
+   "note": "One listing per (product, marketplace) with own status and marketplace_state."
+  },
+  {
+   "id": "R02219a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:834-845; T45",
+   "note": "listing_items per sellable SKU with marketplace_state (family grain default, T45)."
+  },
+  {
+   "id": "R02220",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1304-1305; T50",
+   "note": "listing_issues rows plus immutable ErrorReport JSON evidence."
+  },
+  {
+   "id": "R02220a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1314-1315",
+   "note": "error_class (11 BRD classes) and retry_class on every issue."
+  },
+  {
+   "id": "R02220b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1316",
+   "note": "severity error|warning on every issue."
+  },
+  {
+   "id": "R02220c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1321-1322",
+   "note": "status open|auto_fixed|resolved|dismissed plus resolution, resolved_at, resolver."
+  },
+  {
+   "id": "R02221",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1338-1355",
+   "note": "human_tasks table: kinds, lifecycle, answer, resume; not support tickets."
+  },
+  {
+   "id": "R02222",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:850-881",
+   "note": "listing_submissions ledger, payload snapshot, actor, immutable once terminal."
+  },
+  {
+   "id": "R02222a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:866; docs/architecture/DATABASE.md:781-782; docs/architecture/DATABASE.md:1321",
+   "note": "corrections_json per attempt; version origin/changed_paths; issue resolution recorded."
+  },
+  {
+   "id": "R02223",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1357-1361; docs/architecture/DATABASE.md:1028",
+   "note": "Task answer resumes generate/validate/publish; reaper requeues jobs of dead workers."
+  },
+  {
+   "id": "R02223a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1360-1363; ADR-0008; T51",
+   "note": "Resumes from blocked step via partial regeneration, but the new version needs re-approval."
+  },
+  {
+   "id": "R02224",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:91; docs/architecture/DATABASE.md:841; docs/architecture/DATABASE.md:862",
+   "note": "Invariant 10; unique seller_sku per marketplace; idempotency keys for HTTP, jobs, submissions."
+  },
+  {
+   "id": "R02224a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:890",
+   "note": "Status sync may call only read-only get_listing (MarketplaceReader Protocol)."
+  },
+  {
+   "id": "R02224b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:871-872",
+   "note": "Read-before-retry resolves pending before a new attempt; one open submission per listing."
+  },
+  {
+   "id": "R02225",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541; docs/architecture/DATABASE.md:1012; docs/architecture/DATABASE.md:2199",
+   "note": "Marketplace data kept in templates, account settings, listing_items and payload snapshots."
+  },
+  {
+   "id": "R02225a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82; docs/architecture/DATABASE.md:2199",
+   "note": "Invariant 4; marketplace colour/size values live only in adapter value maps."
+  },
+  {
+   "id": "R02227",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "docs/review/TEAM-QUESTIONS.md T9; T10; T34",
+   "note": "§25 decisions mapped below; marketplaces (T9), autonomy (T10), inference policy (T34) still open."
+  },
+  {
+   "id": "R02233",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:157; T9",
+   "note": "Amazon.in + Flipkart in v1: two of the BRD's 2-3; T9 open."
+  },
+  {
+   "id": "R02235",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:179; docs/architecture/DATABASE.md:888; T22",
+   "note": "New marketplace = adapter + CHECK widen; publish_mode api|file_export; marketplace table at third."
+  },
+  {
+   "id": "R02237",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1197; docs/architecture/DATABASE.md:1176",
+   "note": "Form/API product create; FE form driven by category_attributes."
+  },
+  {
+   "id": "R02239",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:954-976",
+   "note": "CSV/spreadsheet import with BRD master headers."
+  },
+  {
+   "id": "R02239a",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "docs/review/VISION-ALIGNMENT.md:357",
+   "note": "BRD itself defers PIM/ERP until core is stable; plan lists PIM/ERP intake as later."
+  },
+  {
+   "id": "R02241",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0008; AGENTS.md:81; T10",
+   "note": "v1 requires human maker-checker approval; autonomous submission is not the default."
+  },
+  {
+   "id": "R02243",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0008; T10",
+   "note": "tenants.auto_publish reserved with CHECK false; approval mandatory for every seller in v1."
+  },
+  {
+   "id": "R02245",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1129; docs/architecture/DATABASE.md:783",
+   "note": "brand content_locale and listing_versions.locale default en-IN."
+  },
+  {
+   "id": "R02247",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:783; docs/architecture/DATABASE.md:1195",
+   "note": "locale column on versions; Locale enum widening is a MINOR change."
+  },
+  {
+   "id": "R02249",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:54; docs/review/VISION-ALIGNMENT.md:85",
+   "note": "No image-generation node or dependency; images are seller-supplied and checked."
+  },
+  {
+   "id": "R02253",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:499-500; docs/architecture/DATABASE.md:535",
+   "note": "rules version/revision and category_templates version; runs pin both."
+  },
+  {
+   "id": "R02255",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:543; T53",
+   "note": "Migrator templates refresh, weekly and on demand; staff promotion after diff report."
+  },
+  {
+   "id": "R02257",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1314; docs/architecture/DATABASE.md:1366",
+   "note": "ErrorClass (11 BRD classes), RetryClass, FixAction enums; marketplace_error_map."
+  },
+  {
+   "id": "R02259",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:547; docs/architecture/DATABASE.md:1327",
+   "note": "li_unknown_codes harvests unmapped codes to grow the versioned error map."
+  },
+  {
+   "id": "R02261",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T34",
+   "note": "Default critical vs AI-inferable list seeded in attribute_definitions; client or adviser must sign."
+  },
+  {
+   "id": "R02263",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T34",
+   "note": "Default: critical facts need seller evidence or confirmation of agent captures; client must sign."
+  },
+  {
+   "id": "R02265",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:832; T42",
+   "note": "Single action is a batch of one; items 1..200 run through one workflow."
+  },
+  {
+   "id": "R02271",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82",
+   "note": "Canonical product and listing are marketplace-neutral; adapters hold marketplace logic."
+  },
+  {
+   "id": "R02271a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:504; docs/architecture/DATABASE.md:510",
+   "note": "Platform rules carry policy_ref naming Amazon, Flipkart or Legal Metrology sources."
+  },
+  {
+   "id": "R02271b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:316; docs/architecture/DATABASE.md:508",
+   "note": "Rules, templates and error map are versioned data changed without code deploys."
+  },
+  {
+   "id": "R02273",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:537; T53",
+   "note": "category_templates source ptd, fetched with platform SP-API authorization."
+  },
+  {
+   "id": "R02274",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:890",
+   "note": "Amazon adapter publish_listing/update_listing/get_listing with idempotency key."
+  },
+  {
+   "id": "R02275",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:525",
+   "note": "Image rule seed: Amazon main ≥1000 px, pure white, fill 0.85, no text."
+  },
+  {
+   "id": "R02276",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:537; docs/architecture/DATABASE.md:890; T53",
+   "note": "Flipkart adapter planned; fk_vertical templates manual until API access confirmed (Q16)."
+  },
+  {
+   "id": "R02277",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:537; docs/architecture/DATABASE.md:890; T53",
+   "note": "Flipkart adapter planned; API access still unconfirmed (Q16)."
+  },
+  {
+   "id": "R02278",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1080; docs/architecture/DATABASE.md:504; T36",
+   "note": "legal_metrology rule pack and typed declaration columns; blocking set per T36."
+  },
+  {
+   "id": "R02279",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:122; T9",
+   "note": "Nykaa is outside v1 (Amazon + Flipkart only)."
+  },
+  {
+   "id": "R02283",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54; docs/review/VISION-ALIGNMENT.md:420",
+   "note": "No understand node in the 12 PipelineStage values (AI-team ask); backend stores sourced facts."
+  },
+  {
+   "id": "R02283a",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:530; docs/architecture/DATABASE.md:1498; T68",
+   "note": "Marketplace category follows internal category; no classify node or per-product mapping confidence."
+  },
+  {
+   "id": "R02283b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:54; docs/architecture/DATABASE.md:1091; docs/architecture/DATABASE.md:1205",
+   "note": "attribute_agent node; agent-captured facts carry agent_run_id; critical keys never ai."
+  },
+  {
+   "id": "R02283c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1188-1190",
+   "note": "ProductFacts resolver builds the canonical record from product, colourway, style, brand."
+  },
+  {
+   "id": "R02283d",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:541-542; T49",
+   "note": "Adapter applies template value_map at publish; AI sees a canonical-only template."
+  },
+  {
+   "id": "R02283e",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193",
+   "note": "AI content/keyword agents get PromptProductFacts pushed by the backend."
+  },
+  {
+   "id": "R02283f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:510-526; docs/architecture/DATABASE.md:823",
+   "note": "Deterministic Rules Engine: rules, template checks, fact rules, image rules."
+  },
+  {
+   "id": "R02283g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1334; T33",
+   "note": "Issue sync applies the BRD missing-data ladder before asking (T33 search order)."
+  },
+  {
+   "id": "R02283h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1334; docs/architecture/DATABASE.md:1338",
+   "note": "Human task only for user_action items surviving ladder and do-not-ask list."
+  },
+  {
+   "id": "R02283i",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1642-1644; ADR-0008; T10",
+   "note": "Human maker-checker approval sits between validation/questions and submit in v1."
+  },
+  {
+   "id": "R02283j",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:770; T18",
+   "note": "Bounded status sync after each accepted submission."
+  },
+  {
+   "id": "R02283k",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1680-1708; T41",
+   "note": "Error loop fixes deterministically; content fixes become a new version needing approval (T41)."
+  },
+  {
+   "id": "R02283l",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1708; ADR-0008; T41",
+   "note": "Auto-resubmit only for adapter remaps of approved content; content changes need re-approval."
+  },
+  {
+   "id": "R02283m",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:763; docs/architecture/DATABASE.md:1677; T13",
+   "note": "LIVE only when the marketplace confirms; per-SKU and listing checks."
+  },
+  {
+   "id": "R02283n",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1500-1501",
+   "note": "listing_status_display and product_status_display views feed the FE dashboard."
+  },
+  {
+   "id": "R02290",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/VISION-ALIGNMENT.md:96",
+   "note": "Split page repeats Complete BRD §1-4; treated as v1 scope, verdicted per statement."
+  },
+  {
+   "id": "R02292",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:137-142",
+   "note": "Product definition restated in the plan's system overview."
+  },
+  {
+   "id": "R02292b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:122; docs/review/VISION-ALIGNMENT.md:348",
+   "note": "Non-goals align with BRD §3; VISION recommends adding BRD items to AGENTS §4."
+  },
+  {
+   "id": "R02292c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82",
+   "note": "Common canonical model plus per-marketplace adapters (invariant 4)."
+  },
+  {
+   "id": "R02294",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/VISION-ALIGNMENT.md:60-89",
+   "note": "BRD recorded as the client's V1 product requirements."
+  },
+  {
+   "id": "R02294a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:544; ADR-0007",
+   "note": "Apparel scope: apparel templates seeded, variant families modelled."
+  },
+  {
+   "id": "R02298",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:544; ADR-0007",
+   "note": "Apparel/fashion sellers are the v1 target; apparel seeds and families."
+  },
+  {
+   "id": "R02302",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:535; docs/architecture/DATABASE.md:543",
+   "note": "Versioned, refreshable category_templates."
+  },
+  {
+   "id": "R02302a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541; docs/architecture/DATABASE.md:543",
+   "note": "Required/conditional specs versioned per template; refresh creates new version."
+  },
+  {
+   "id": "R02302b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541; docs/architecture/DATABASE.md:543",
+   "note": "allowed_values per AttributeSpec, versioned and refreshed."
+  },
+  {
+   "id": "R02302c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:490-508",
+   "note": "Validation rules are versioned data loaded via rules pack, no deploy."
+  },
+  {
+   "id": "R02302d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:316; docs/architecture/DATABASE.md:541",
+   "note": "Templates, rules and error map are data; no universal hard-coded field list."
+  },
+  {
+   "id": "R02302e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:537; T53",
+   "note": "Amazon PTD fetched as template source (ptd)."
+  },
+  {
+   "id": "R02302f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:543; T53",
+   "note": "Changed PTD digest creates a new template version."
+  },
+  {
+   "id": "R02302g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:537; docs/architecture/DATABASE.md:543; T53",
+   "note": "Flipkart vertical templates versioned; manual source until API access confirmed."
+  },
+  {
+   "id": "R02306",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1118; docs/architecture/DATABASE.md:1104; docs/architecture/DATABASE.md:954",
+   "note": "brand_profiles, parties, product fact columns and CSV headers define what is collected."
+  },
+  {
+   "id": "R02306a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54; docs/review/VISION-ALIGNMENT.md:420",
+   "note": "Understanding is an AI-team node (not yet in the graph); backend part is the fact store."
+  },
+  {
+   "id": "R02306b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:772-778",
+   "note": "Generated CanonicalListing versions per marketplace."
+  },
+  {
+   "id": "R02306c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:809-823",
+   "note": "validation_runs per stage with ErrorReport; approve/publish precondition."
+  },
+  {
+   "id": "R02306d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:850-881",
+   "note": "listing_submissions ledger and adapter publish."
+  },
+  {
+   "id": "R02306e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:770",
+   "note": "Bounded status sync plus daily reconciliation for live listings."
+  },
+  {
+   "id": "R02306f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1680-1708",
+   "note": "Error resolution loop with deterministic fixes and bounded retries."
+  },
+  {
+   "id": "R02306g",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1489-1501",
+   "note": "Display projection, product rollup, issues and submissions for reporting."
+  },
+  {
+   "id": "R02306h",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:137-139",
+   "note": "Brand lists on Amazon.in and Flipkart from one dashboard."
+  },
+  {
+   "id": "R02312",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1118; docs/architecture/DATABASE.md:1197",
+   "note": "Brand profile once; product facts once via form or CSV."
+  },
+  {
+   "id": "R02314",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:137-142",
+   "note": "AI drafts per-marketplace listings, rules validate, adapters publish."
+  },
+  {
+   "id": "R02314a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:628; ADR-0008; T10",
+   "note": "Lifecycle runs to LIVE, but every listing needs human approval in v1."
+  },
+  {
+   "id": "R02316",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:544; ADR-0007",
+   "note": "Apparel is the v1 niche."
+  },
+  {
+   "id": "R02320",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:137-138",
+   "note": "Indian D2C brands are the stated users."
+  },
+  {
+   "id": "R02322",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1124",
+   "note": "brand_owner_type includes manufacturer."
+  },
+  {
+   "id": "R02322a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1124",
+   "note": "brand_owner_type includes trader."
+  },
+  {
+   "id": "R02322b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0008; T15",
+   "note": "Maker-checker needs two members; a one-person seller cannot self-approve."
+  },
+  {
+   "id": "R02322c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:426; ADR-0006",
+   "note": "Global users with memberships: one login across several brands."
+  },
+  {
+   "id": "R02324",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:403; docs/architecture/DATABASE.md:1188",
+   "note": "products (+ family) are the single product source of truth."
+  },
+  {
+   "id": "R02326",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:741",
+   "note": "One listing per product and marketplace with versioned content."
+  },
+  {
+   "id": "R02326a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:809-823",
+   "note": "Validation runs gate approval and publish."
+  },
+  {
+   "id": "R02326b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:850-881",
+   "note": "Submission ledger via adapters."
+  },
+  {
+   "id": "R02326c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1680-1708",
+   "note": "Error resolution loop."
+  },
+  {
+   "id": "R02326d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:763",
+   "note": "LIVE only after marketplace confirmation."
+  },
+  {
+   "id": "R02328",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1114; docs/architecture/DATABASE.md:1334",
+   "note": "Brand defaults inherited; ladder and do-not-ask list run before any question."
+  },
+  {
+   "id": "R02330",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1334",
+   "note": "Only non-auto-fixable user_action items surviving the ladder open tasks."
+  },
+  {
+   "id": "R02334",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:628",
+   "note": "Lifecycle runs to marketplace-confirmed LIVE, not just content."
+  },
+  {
+   "id": "R02334a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:474; docs/architecture/DATABASE.md:1197",
+   "note": "Product facts and images taken via form, API and CSV."
+  },
+  {
+   "id": "R02334b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1188",
+   "note": "ProductFacts canonical record."
+  },
+  {
+   "id": "R02334c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:530-541; T68",
+   "note": "Per-marketplace category and field specs via category_templates."
+  },
+  {
+   "id": "R02334d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193",
+   "note": "AI team generates; backend pushes facts, rules and template."
+  },
+  {
+   "id": "R02334e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:522; docs/architecture/DATABASE.md:526",
+   "note": "Required/conditional template checks and critical-fact rules."
+  },
+  {
+   "id": "R02334f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:504; docs/architecture/DATABASE.md:1080; T36",
+   "note": "legal_metrology pack and marketplace rules."
+  },
+  {
+   "id": "R02334g",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:79; ADR-0008; T10",
+   "note": "AI never submits; adapters submit only after human approval."
+  },
+  {
+   "id": "R02334h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:770; docs/architecture/DATABASE.md:1669-1670",
+   "note": "ListingResult and status snapshots recorded."
+  },
+  {
+   "id": "R02334i",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1680-1708; T41",
+   "note": "Deterministic fixes and AI correction; only adapter remaps resubmit without re-approval (T41)."
+  },
+  {
+   "id": "R02334j",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1334",
+   "note": "Questions only for unresolved user_action items."
+  },
+  {
+   "id": "R02334k",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1708; T41",
+   "note": "Resubmit without re-approval only for adapter remaps of unchanged approved content."
+  },
+  {
+   "id": "R02334l",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:763",
+   "note": "LIVE confirmed from marketplace state."
+  },
+  {
+   "id": "R02338",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/review/VISION-ALIGNMENT.md:68-78; ADR-0008; T10",
+   "note": "19 stages mapped; approval added before submit; understand stage lacks a node."
+  },
+  {
+   "id": "R02340",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1118-1127",
+   "note": "brand_profiles plus legal-entity party captured once per tenant."
+  },
+  {
+   "id": "R02344",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1126; docs/architecture/DATABASE.md:1142-1143",
+   "note": "Legal name and registered address on the legal-entity party."
+  },
+  {
+   "id": "R02344a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1123-1125",
+   "note": "brand_names, description, logo on brand_profiles."
+  },
+  {
+   "id": "R02344b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1144",
+   "note": "GSTIN on the legal-entity party."
+  },
+  {
+   "id": "R02346",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:452-536; docs/architecture/DATABASE.md:1005-1008",
+   "note": "OAuth connect; tokens KMS-encrypted per tenant; refresh once then needs_reconnect."
+  },
+  {
+   "id": "R02350",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1005",
+   "note": "marketplace and seller_id stored per account."
+  },
+  {
+   "id": "R02350a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1012-1013; T37",
+   "note": "settings.commercial_defaults (HSN, GST rate, handling days); only ever a suggestion."
+  },
+  {
+   "id": "R02352",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1197",
+   "note": "Form/API product create."
+  },
+  {
+   "id": "R02356",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:954-976",
+   "note": "CSV import with BRD master headers."
+  },
+  {
+   "id": "R02356a",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "docs/review/VISION-ALIGNMENT.md:357",
+   "note": "BRD L2239 adds ERP/PIM after core workflow is stable; plan defers it."
+  },
+  {
+   "id": "R02356b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:474-488",
+   "note": "images table with slots, colour keys, compliance status."
+  },
+  {
+   "id": "R02356c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:481; docs/architecture/DATABASE.md:1169",
+   "note": "size_chart image slot and size_measurements fact."
+  },
+  {
+   "id": "R02358",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54; docs/architecture/DATABASE.md:413; docs/architecture/DATABASE.md:1082",
+   "note": "AI step; backend keeps seller description untrusted and facts with source/evidence."
+  },
+  {
+   "id": "R02364",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:411; docs/architecture/DATABASE.md:530; T68",
+   "note": "gender stored; marketplace taxonomy from category_templates per internal category, no per-product mapping."
+  },
+  {
+   "id": "R02368",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:411; docs/architecture/DATABASE.md:530; T68",
+   "note": "category/product_type mapped via current template; no per-product mapping or confidence."
+  },
+  {
+   "id": "R02370",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1169; docs/architecture/DATABASE.md:1087",
+   "note": "fabric_type and fiber_composition keys; normalized value plus normalized_by."
+  },
+  {
+   "id": "R02374",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1170; docs/architecture/DATABASE.md:1087",
+   "note": "fit key with vocabulary; normalized_by vocabulary|rule|ai|human."
+  },
+  {
+   "id": "R02374a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1170; docs/architecture/DATABASE.md:1087",
+   "note": "pattern key with vocabulary normalization."
+  },
+  {
+   "id": "R02374b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:432; docs/architecture/DATABASE.md:2189",
+   "note": "Colour fact keeps seller value and normalized family (Jet Black to black)."
+  },
+  {
+   "id": "R02374c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "weave_finish key."
+  },
+  {
+   "id": "R02374d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1169",
+   "note": "wash_care and iron_care keys (critical, never ai)."
+  },
+  {
+   "id": "R02376",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:403; docs/architecture/DATABASE.md:1188",
+   "note": "products plus ProductFacts resolver are the single source of truth."
+  },
+  {
+   "id": "R02380",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "docs/architecture/DATABASE.md:1102; docs/architecture/DATABASE.md:1222; T73",
+   "note": "Products change per key with audited before/after and approval digest; rows are not immutable."
+  },
+  {
+   "id": "R02382",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541-542; T49",
+   "note": "Adapters transform canonical facts using template specs and value_map."
+  },
+  {
+   "id": "R02388",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2194; docs/architecture/DATABASE.md:1193",
+   "note": "CanonicalListing title generated by AI team from pushed facts."
+  },
+  {
+   "id": "R02392",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2194; docs/architecture/DATABASE.md:1193",
+   "note": "CanonicalListing bullets generated by AI team."
+  },
+  {
+   "id": "R02392a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2194; docs/architecture/DATABASE.md:1193",
+   "note": "CanonicalListing description generated by AI team."
+  },
+  {
+   "id": "R02392b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2194; T26",
+   "note": "keywords.search_terms + hidden_terms (T26 rename of backend_keywords)."
+  },
+  {
+   "id": "R02394",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:520; docs/architecture/DATABASE.md:1169",
+   "note": "image_requirement rules for size_chart slot; size_measurements critical fact."
+  },
+  {
+   "id": "R02398",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:59",
+   "note": "Canon ImageSlot forbids swatch; swatch shots unsupported (client Q23 default no)."
+  },
+  {
+   "id": "R02398a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:423; docs/architecture/DATABASE.md:452; docs/architecture/DATABASE.md:1369",
+   "note": "Variant and matrix guards; VARIATION_INVALID with rebuild_variation."
+  },
+  {
+   "id": "R02400",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1080; docs/architecture/DATABASE.md:504; T36",
+   "note": "legal_metrology rule pack over typed declarations; blocking split per T36."
+  },
+  {
+   "id": "R02404",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:490-526",
+   "note": "Marketplace rules plus template checks per marketplace and category."
+  },
+  {
+   "id": "R02406",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1338-1347",
+   "note": "One targeted question per missing fact, with reason and expected answer."
+  },
+  {
+   "id": "R02412",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1642-1670; docs/architecture/DATABASE.md:873; ADR-0008; T10",
+   "note": "Publish job dispatches only the validated and human-approved version (ls_guard)."
+  },
+  {
+   "id": "R02418",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:770; T18",
+   "note": "Async polling: 9 polls over 72 h, then blocked."
+  },
+  {
+   "id": "R02422",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:770; T18",
+   "note": "v1 polls only (9 polls over 72 h); webhook listeners deferred by T18 default (SP-API notifications need SQS)."
+  },
+  {
+   "id": "R02424",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:554; docs/architecture/DATABASE.md:557; docs/architecture/DATABASE.md:1318-1319; T54",
+   "note": "marketplace_error_map plain_text templates; issues keep raw and plain messages."
+  },
+  {
+   "id": "R02430",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1316; docs/architecture/DATABASE.md:1692; docs/architecture/DATABASE.md:1708; T41",
+   "note": "fix_action remap_value; auto_resubmit only while the approval is still current (T41)."
+  },
+  {
+   "id": "R02434",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1316; docs/architecture/DATABASE.md:1692; docs/architecture/DATABASE.md:1708; T41",
+   "note": "fix_action reformat; adapter-side auto-resubmits, a content reformat is a new version needing approval."
+  },
+  {
+   "id": "R02434a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1708; T41",
+   "note": "Size remap (BRD §21) is an adapter-side fix; auto_resubmit only if approval current."
+  },
+  {
+   "id": "R02436",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:858; docs/architecture/DATABASE.md:873-878; T19",
+   "note": "At most 3 submissions per approved version with anti-loop justification."
+  },
+  {
+   "id": "R02440",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:874",
+   "note": "changed_input needs a different payload hash and a corrected failed field."
+  },
+  {
+   "id": "R02440a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:858",
+   "note": "attempt 1..3 per (listing, version), UNIQUE."
+  },
+  {
+   "id": "R02442",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:757; docs/architecture/DATABASE.md:842",
+   "note": "live_url on listing and per SKU."
+  },
+  {
+   "id": "R02446",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:755; docs/architecture/DATABASE.md:841",
+   "note": "marketplace_sku and per-SKU seller_sku."
+  },
+  {
+   "id": "R02446a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:754; docs/architecture/DATABASE.md:842",
+   "note": "external_id holds ASIN/FSN per listing and per SKU."
+  },
+  {
+   "id": "R02446b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:756; docs/architecture/DATABASE.md:843",
+   "note": "marketplace_state per listing and per SKU."
+  },
+  {
+   "id": "R02448",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1500-1501",
+   "note": "Unified per-marketplace and per-product status views for the dashboard."
+  },
+  {
+   "id": "R02452",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:285-304; docs/architecture/BACKEND-ARCHITECTURE.md:1318",
+   "note": "audit_log stores actor, before/after, reason; no audit-history read endpoint for the dashboard."
+  },
+  {
+   "id": "R02458",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:628; docs/architecture/DATABASE.md:756; T13",
+   "note": "published = accepted, shown as Submitted; not live."
+  },
+  {
+   "id": "R02458a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:763; T13",
+   "note": "LIVE only from marketplace-confirmed state (ck_live_minimum)."
+  },
+  {
+   "id": "R02458b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1500",
+   "note": "external_id and marketplace_sku in listing_status_display."
+  },
+  {
+   "id": "R02458c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1500",
+   "note": "display_status and marketplace_state in listing_status_display."
+  },
+  {
+   "id": "R02458d",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1500; docs/architecture/DATABASE.md:822",
+   "note": "listing_status_display omits the latest validation_runs result; only status_reason validation_errors exposed."
+  },
+  {
+   "id": "R02464",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:544; ADR-0007",
+   "note": "Apparel listing is the v1 scope."
+  },
+  {
+   "id": "R02466",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/VISION-ALIGNMENT.md:84-85",
+   "note": "BRD non-goal; no order management planned."
+  },
+  {
+   "id": "R02468",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:138; docs/architecture/BACKEND-ARCHITECTURE.md:157",
+   "note": "Amazon.in and Flipkart from one dashboard."
+  },
+  {
+   "id": "R02470",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/VISION-ALIGNMENT.md:84-85",
+   "note": "BRD non-goal; products.stock_ref is a reference only (DATABASE.md:412)."
+  },
+  {
+   "id": "R02472",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1152-1176",
+   "note": "Attribute dictionary, category_attributes and classification facts."
+  },
+  {
+   "id": "R02474",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/VISION-ALIGNMENT.md:84-85",
+   "note": "BRD non-goal; no advertising optimization planned."
+  },
+  {
+   "id": "R02476",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2194",
+   "note": "CanonicalListing title."
+  },
+  {
+   "id": "R02476a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2194",
+   "note": "CanonicalListing bullets."
+  },
+  {
+   "id": "R02476b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2194",
+   "note": "CanonicalListing description."
+  },
+  {
+   "id": "R02476c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2194",
+   "note": "CanonicalListing keywords."
+  },
+  {
+   "id": "R02476d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2189; docs/architecture/DATABASE.md:1169-1170",
+   "note": "Structured attributes as dictionary facts."
+  },
+  {
+   "id": "R02478",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/VISION-ALIGNMENT.md:84-85",
+   "note": "BRD non-goal; one selling price per variant, no pricing agent (T37)."
+  },
+  {
+   "id": "R02480",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:415-453",
+   "note": "Variant families with colour level and matrix."
+  },
+  {
+   "id": "R02480a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:474-488",
+   "note": "images table with slots and compliance."
+  },
+  {
+   "id": "R02482",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/VISION-ALIGNMENT.md:84-85",
+   "note": "BRD non-goal; no returns/reconciliation workflow planned."
+  },
+  {
+   "id": "R02484",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:809-823",
+   "note": "Validation runs and Rules Engine."
+  },
+  {
+   "id": "R02484a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:546-557",
+   "note": "marketplace_error_map classifies raw errors."
+  },
+  {
+   "id": "R02484b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1680-1708",
+   "note": "Error resolution loop."
+  },
+  {
+   "id": "R02486",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/VISION-ALIGNMENT.md:84-85",
+   "note": "BRD non-goal; no customer service automation planned."
+  },
+  {
+   "id": "R02488",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:741-770",
+   "note": "listings status, marketplace_state, display projection."
+  },
+  {
+   "id": "R02488a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:772; docs/architecture/DATABASE.md:850; docs/architecture/DATABASE.md:285",
+   "note": "Versions, submissions and audit log keep history."
+  },
+  {
+   "id": "R02490",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/VISION-ALIGNMENT.md:84-85",
+   "note": "BRD non-goal; scope is the listing lifecycle only."
+  },
+  {
+   "id": "R02494",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:316; docs/architecture/DATABASE.md:403",
+   "note": "Common apparel product model."
+  },
+  {
+   "id": "R02494a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82",
+   "note": "Marketplace-specific adapters (invariant 4)."
+  },
+  {
+   "id": "R02494b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:316",
+   "note": "Products are the source of truth."
+  },
+  {
+   "id": "R02494c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541",
+   "note": "Per-marketplace spec requirement; marketplace fields adapter-only."
+  },
+  {
+   "id": "R02494d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541-542",
+   "note": "allowed_values and value_map per marketplace template."
+  },
+  {
+   "id": "R02494e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:514; docs/architecture/DATABASE.md:541",
+   "note": "max_length rules and spec max_length/unit per marketplace."
+  },
+  {
+   "id": "R02494f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:416; docs/architecture/DATABASE.md:539",
+   "note": "variation_themes per template; adapters map neutral variation_theme."
+  },
+  {
+   "id": "R02494g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:888-890",
+   "note": "Adapter publish_mode and get_listing own submission/status behaviour."
+  },
+  {
+   "id": "R02496",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:157",
+   "note": "Amazon.in in v1."
+  },
+  {
+   "id": "R02496a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:157",
+   "note": "Flipkart in v1."
+  },
+  {
+   "id": "R02496b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:122; T9",
+   "note": "Myntra outside v1; later via an adapter (publish_mode, docs/architecture/DATABASE.md:888)."
+  },
+  {
+   "id": "R02496c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:122; T9",
+   "note": "AJIO outside v1; later via an adapter (publish_mode, docs/architecture/DATABASE.md:888)."
+  },
+  {
+   "id": "R02496d",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:122; T9",
+   "note": "Meesho outside v1; later via an adapter (publish_mode, docs/architecture/DATABASE.md:888)."
+  },
+  {
+   "id": "R02496e",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:122; T9",
+   "note": "Nykaa Fashion outside v1; later via an adapter (publish_mode, docs/architecture/DATABASE.md:888)."
+  },
+  {
+   "id": "R02496f",
+   "status": "covered",
+   "owner": "client",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2965; docs/architecture/BACKEND-ARCHITECTURE.md:2968",
+   "note": "Filings (Q12) and Flipkart API/sandbox access (Q16) tracked as client items."
+  },
+  {
+   "id": "R02497",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:530",
+   "note": "Separate template per (marketplace, category); no shared meaning assumed."
+  },
+  {
+   "id": "R02498",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541",
+   "note": "Requirements per (marketplace, category) template, never one universal list."
+  },
+  {
+   "id": "R02499",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:535",
+   "note": "Current template per (marketplace, category) via is_current."
+  },
+  {
+   "id": "R02499a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541-542",
+   "note": "Canonical keys mapped per template spec."
+  },
+  {
+   "id": "R02500",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:537; docs/architecture/DATABASE.md:541; T53",
+   "note": "PTD-sourced templates with required/conditional specs."
+  },
+  {
+   "id": "R02501",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:316; docs/architecture/DATABASE.md:834",
+   "note": "Product facts separate from listings and listing_items."
+  },
+  {
+   "id": "R02501a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:543; T53",
+   "note": "Refreshable versioned templates."
+  },
+  {
+   "id": "R02501b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:546-557; docs/architecture/DATABASE.md:1304",
+   "note": "Error map and issue rows handle errors explicitly."
+  },
+  {
+   "id": "R02505",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:537",
+   "note": "Amazon adapter with PTD-sourced templates."
+  },
+  {
+   "id": "R02506",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:537",
+   "note": "Flipkart adapter with fk_vertical templates."
+  },
+  {
+   "id": "R02507",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:122; T9",
+   "note": "No Myntra adapter in v1; Amazon + Flipkart only."
+  },
+  {
+   "id": "R02508",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:122; T9",
+   "note": "No AJIO adapter in v1; Amazon + Flipkart only."
+  },
+  {
+   "id": "R02509",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:122; T9",
+   "note": "No Meesho adapter in v1; Amazon + Flipkart only."
+  },
+  {
+   "id": "R02510",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:122; T9",
+   "note": "No Nykaa Fashion adapter in v1; Amazon + Flipkart only."
+  },
+  {
+   "id": "R02523",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/VISION-ALIGNMENT.md:96",
+   "note": "Split page repeats Complete BRD §5; brand profile is v1."
+  },
+  {
+   "id": "R02525",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1118-1134",
+   "note": "brand_profiles collected once per tenant."
+  },
+  {
+   "id": "R02525a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:452; docs/architecture/DATABASE.md:1006",
+   "note": "OAuth tokens stored once per account, KMS-encrypted; site body lists no credential fields."
+  },
+  {
+   "id": "R02525b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1102; T33",
+   "note": "FactWriter merges inputs per key under the §11.1 trust order."
+  },
+  {
+   "id": "R02529",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1118; docs/architecture/DATABASE.md:1127",
+   "note": "Stable brand facts and party defaults entered once."
+  },
+  {
+   "id": "R02529a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1114; docs/architecture/DATABASE.md:1190",
+   "note": "Resolver inherits brand defaults into every product."
+  },
+  {
+   "id": "R02529b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1193",
+   "note": "Same resolved facts feed both marketplaces' adapters."
+  },
+  {
+   "id": "R02539",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1126; docs/architecture/DATABASE.md:1142",
+   "note": "legal_name on the legal-entity business party."
+  },
+  {
+   "id": "R02545",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1123",
+   "note": "brand_names text[] (up to 20)."
+  },
+  {
+   "id": "R02551",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1124",
+   "note": "brand_owner_type brand_owner|manufacturer|reseller|distributor|trader."
+  },
+  {
+   "id": "R02555",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1124",
+   "note": "brand_owner_type stored; no rule or proof requirement keyed on owner type."
+  },
+  {
+   "id": "R02557",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "docs/architecture/DATABASE.md:1125; docs/architecture/DATABASE.md:2199; T74",
+   "note": "website_url stored only; its use as a product-fact source is deferred (SSRF), no url evidence kind."
+  },
+  {
+   "id": "R02563",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1125; docs/architecture/DATABASE.md:231",
+   "note": "brand_description stored but not among GenerationContext.brand_profile prompt fields."
+  },
+  {
+   "id": "R02569",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1125",
+   "note": "logo_storage_key stored; branding/media use not defined."
+  },
+  {
+   "id": "R02575",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1012; T57",
+   "note": "settings.listing_permissions.brand_registry.status per marketplace account."
+  },
+  {
+   "id": "R02577",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1012",
+   "note": "brand_registry.proof_storage_keys."
+  },
+  {
+   "id": "R02581",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1127; docs/architecture/DATABASE.md:1144",
+   "note": "consumer_care party email."
+  },
+  {
+   "id": "R02583",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1127; docs/architecture/DATABASE.md:1144",
+   "note": "consumer_care party phone."
+  },
+  {
+   "id": "R02583a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1127; docs/architecture/DATABASE.md:1141-1144",
+   "note": "consumer_care party with name, address, email, phone."
+  },
+  {
+   "id": "R02587",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1126; docs/architecture/DATABASE.md:1143",
+   "note": "Registered address on the legal-entity party."
+  },
+  {
+   "id": "R02593",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1127; docs/architecture/DATABASE.md:1142",
+   "note": "default_manufacturer_party_id legal_name."
+  },
+  {
+   "id": "R02595",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1127; docs/architecture/DATABASE.md:1143",
+   "note": "Manufacturer party address."
+  },
+  {
+   "id": "R02599",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1127",
+   "note": "default_packer_party_id."
+  },
+  {
+   "id": "R02599a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1127",
+   "note": "default_importer_party_id."
+  },
+  {
+   "id": "R02605",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1128; T35",
+   "note": "default_country_of_origin; inherited only when seller set it explicitly (T35)."
+  },
+  {
+   "id": "R02611",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1126; docs/architecture/DATABASE.md:1144",
+   "note": "GSTIN on the legal-entity party."
+  },
+  {
+   "id": "R02613",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1144",
+   "note": "One gstin per party; other applicable tax registrations not modelled."
+  },
+  {
+   "id": "R02623",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1005",
+   "note": "marketplace column per account."
+  },
+  {
+   "id": "R02627",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1005",
+   "note": "seller_id per account."
+  },
+  {
+   "id": "R02631",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1012",
+   "note": "settings.seller_display_name."
+  },
+  {
+   "id": "R02635",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1012",
+   "note": "settings.locations (code, name, pincode, is_default)."
+  },
+  {
+   "id": "R02639",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1012",
+   "note": "settings.fulfilment: channel, handling_days, procurement_type, shipping_template."
+  },
+  {
+   "id": "R02643",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1012; T57",
+   "note": "settings.listing_permissions: brand_registry and category_approvals."
+  },
+  {
+   "id": "R02647",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1012; docs/architecture/DATABASE.md:1116; T39",
+   "note": "settings.identifier_status on the account; per-variant status on products."
+  },
+  {
+   "id": "R02651",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1012-1013; T37",
+   "note": "No account default MRP; MRP per variant, seller-declared, never filled from defaults (T37)."
+  },
+  {
+   "id": "R02653",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1012-1013; T37",
+   "note": "No account default selling price; one selling_price per variant for all marketplaces (T37)."
+  },
+  {
+   "id": "R02653a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1012-1013; T37",
+   "note": "commercial_defaults default_hsn, gst_rate_pct; suggestions only."
+  },
+  {
+   "id": "R02653b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1012",
+   "note": "fulfilment.handling_days and commercial_defaults.default_handling_days."
+  },
+  {
+   "id": "R02657",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1197; docs/architecture/DATABASE.md:954",
+   "note": "Form, API, CSV and images; PIM, URL and catalog-export intake deferred."
+  },
+  {
+   "id": "R02659",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1197",
+   "note": "Single product create via form/API."
+  },
+  {
+   "id": "R02660",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:954-976",
+   "note": "Bulk CSV template upload."
+  },
+  {
+   "id": "R02661",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1197; docs/architecture/DATABASE.md:474",
+   "note": "Product create takes images and attributes; images stored in slots."
+  },
+  {
+   "id": "R02662",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "docs/architecture/DATABASE.md:970; Q20; T75",
+   "note": "CSV accepts BRD headers plus aliases only; Q20 default defers catalog import."
+  },
+  {
+   "id": "R02663",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "docs/review/VISION-ALIGNMENT.md:357",
+   "note": "BRD L2239 adds PIM/ERP after core is stable; plan defers."
+  },
+  {
+   "id": "R02664",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "docs/architecture/DATABASE.md:1089; docs/architecture/DATABASE.md:2199; T74",
+   "note": "Plan defers URL intake (SSRF) with no T-row; no url evidence kind."
+  },
+  {
+   "id": "R02665",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1102; T33",
+   "note": "FactWriter merges form, CSV, task and agent inputs per key."
+  },
+  {
+   "id": "R02669",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1102; T33",
+   "note": "Per-key merge; seller-vs-document conflict opens an issue, never overwrites."
+  },
+  {
+   "id": "R02676",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/VISION-ALIGNMENT.md:96",
+   "note": "Split page repeats Complete BRD §6-7; modelled for v1."
+  },
+  {
+   "id": "R02678",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:407-411; docs/architecture/DATABASE.md:2187",
+   "note": "Identity columns on products (sku, title, brand_name, style_number, type)."
+  },
+  {
+   "id": "R02678a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1166-1170",
+   "note": "attribute_definitions seeded from BRD §6."
+  },
+  {
+   "id": "R02678b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1175-1176",
+   "note": "category_attributes per sub-category (12 BRD groups)."
+  },
+  {
+   "id": "R02678c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:316; docs/architecture/DATABASE.md:426-453; T17",
+   "note": "Style, colourway, size cells."
+  },
+  {
+   "id": "R02682",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1152-1153",
+   "note": "attribute_definitions is the master dictionary."
+  },
+  {
+   "id": "R02682a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1153; docs/architecture/DATABASE.md:1176",
+   "note": "Platform dictionary; marketplace requirements stay in category_templates."
+  },
+  {
+   "id": "R02682b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:403; docs/architecture/DATABASE.md:1152",
+   "note": "Products plus dictionary are the internal source of truth."
+  },
+  {
+   "id": "R02682c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:542; docs/architecture/DATABASE.md:2199",
+   "note": "Adapters derive marketplace fields via value_map."
+  },
+  {
+   "id": "R02692",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:407",
+   "note": "products.sku UNIQUE (tenant_id, sku), stable."
+  },
+  {
+   "id": "R02698",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:415; docs/architecture/DATABASE.md:2187",
+   "note": "parent_product_id; CSV parent_style_id (alias parent_sku)."
+  },
+  {
+   "id": "R02704",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:408",
+   "note": "products.title NOT NULL = BRD product_name."
+  },
+  {
+   "id": "R02710",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:411",
+   "note": "brand_name on style, must be in brand_names (Identity gate)."
+  },
+  {
+   "id": "R02716",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1110; docs/architecture/DATABASE.md:1127",
+   "note": "manufacturer_party_id, falls back to brand default."
+  },
+  {
+   "id": "R02722",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:411",
+   "note": "style_number (≤ 64)."
+  },
+  {
+   "id": "R02728",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:411",
+   "note": "product_type slug."
+  },
+  {
+   "id": "R02734",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:410; docs/architecture/DATABASE.md:2188",
+   "note": "category internal slug (e.g. tshirts) with gender and sub_category separate."
+  },
+  {
+   "id": "R02740",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:411",
+   "note": "sub_category slug."
+  },
+  {
+   "id": "R02746",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1111; docs/architecture/DATABASE.md:1116; T39",
+   "note": "identifier_type/value or identifier_status exempt|not_applicable, GS1 check digit."
+  },
+  {
+   "id": "R02752",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2198",
+   "note": "Internal product ID = products.id."
+  },
+  {
+   "id": "R02764",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:411",
+   "note": "gender men|women|unisex|boys|girls."
+  },
+  {
+   "id": "R02766",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:411",
+   "note": "gender column on the style."
+  },
+  {
+   "id": "R02766a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "age_group attribute."
+  },
+  {
+   "id": "R02768",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:432; docs/architecture/DATABASE.md:2189",
+   "note": "color fact on colourway: seller name plus normalized family."
+  },
+  {
+   "id": "R02770",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "secondary_color attribute (colour level)."
+  },
+  {
+   "id": "R02770a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2189",
+   "note": "color_name to attributes.color.value."
+  },
+  {
+   "id": "R02770b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2189",
+   "note": "normalized_color to attributes.color.normalized."
+  },
+  {
+   "id": "R02770c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2199; AGENTS.md:82",
+   "note": "Marketplace colour value lives in adapter value maps, not the canonical product (invariant 4)."
+  },
+  {
+   "id": "R02772",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2189",
+   "note": "size_name to attributes.size.value."
+  },
+  {
+   "id": "R02774",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2189; docs/architecture/DATABASE.md:446",
+   "note": "normalized_size = size.normalized = matrix size_key."
+  },
+  {
+   "id": "R02774a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2199; AGENTS.md:82",
+   "note": "Marketplace size lives in adapter value maps (invariant 4)."
+  },
+  {
+   "id": "R02774b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170; docs/architecture/DATABASE.md:2189",
+   "note": "size_system attribute on the style."
+  },
+  {
+   "id": "R02774c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "body_type attribute."
+  },
+  {
+   "id": "R02776",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1166; docs/architecture/DATABASE.md:1170",
+   "note": "fit key with vocabulary; BRD values not enumerated in the plan."
+  },
+  {
+   "id": "R02780",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1166; docs/architecture/DATABASE.md:1170",
+   "note": "pattern key with vocabulary; BRD values not enumerated in the plan."
+  },
+  {
+   "id": "R02784",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1169; T32",
+   "note": "fabric_type (input alias material) is the primary material."
+  },
+  {
+   "id": "R02786",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1169",
+   "note": "fiber_composition [{fibre, percent}]."
+  },
+  {
+   "id": "R02786a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1169",
+   "note": "Percent per fibre, summing to 100 by rule."
+  },
+  {
+   "id": "R02786b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1169",
+   "note": "fabric_type key."
+  },
+  {
+   "id": "R02786c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "weave_finish key."
+  },
+  {
+   "id": "R02788",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "construction key (knitted/woven)."
+  },
+  {
+   "id": "R02790",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1169",
+   "note": "lining {lined, material}, critical."
+  },
+  {
+   "id": "R02790a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1169-1170",
+   "note": "No inner_layer key in the dictionary seed."
+  },
+  {
+   "id": "R02790b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "transparency key."
+  },
+  {
+   "id": "R02790c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "stretch key."
+  },
+  {
+   "id": "R02790d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1169",
+   "note": "gsm key, critical."
+  },
+  {
+   "id": "R02792",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "silhouette key."
+  },
+  {
+   "id": "R02796",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "neckline and collar_type keys."
+  },
+  {
+   "id": "R02800",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "sleeve_type key."
+  },
+  {
+   "id": "R02802",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "sleeve_length key."
+  },
+  {
+   "id": "R02802a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "cuff_type key."
+  },
+  {
+   "id": "R02804",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "garment_length key."
+  },
+  {
+   "id": "R02808",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "rise key."
+  },
+  {
+   "id": "R02810",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "waist_style key."
+  },
+  {
+   "id": "R02810a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1166; docs/architecture/DATABASE.md:1170",
+   "note": "No own key; held as a waist_style value (vocabulary values not enumerated)."
+  },
+  {
+   "id": "R02812",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "closure key."
+  },
+  {
+   "id": "R02816",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "pocket_type.present."
+  },
+  {
+   "id": "R02818",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "pocket_type.type."
+  },
+  {
+   "id": "R02818a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "pocket_type.count."
+  },
+  {
+   "id": "R02820",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "occasion key."
+  },
+  {
+   "id": "R02824",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1170",
+   "note": "season key."
+  },
+  {
+   "id": "R02828",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1169",
+   "note": "wash_care key, critical."
+  },
+  {
+   "id": "R02830",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1169; docs/architecture/DATABASE.md:2190",
+   "note": "No own dry-clean key; held as a wash_care value (A.6 maps wash_care, iron_care)."
+  },
+  {
+   "id": "R02830a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1169",
+   "note": "iron_care key, critical."
+  },
+  {
+   "id": "R02832",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1109",
+   "note": "country_of_origin column, ISO alpha-2, never derived."
+  }
+ ]
+}

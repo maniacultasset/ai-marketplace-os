@@ -1,0 +1,4614 @@
+{
+ "chunk": "c13",
+ "start": 8081,
+ "end": 8619,
+ "items": [
+  {
+   "id": "R08081",
+   "lines": [
+    8081,
+    8081
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "info",
+   "text": "# [12] Human Approval Flow",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08083",
+   "lines": [
+    8083,
+    8083
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "info",
+   "text": "Section: User & Product Flow",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08084",
+   "lines": [
+    8084,
+    8084
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "scope",
+   "text": "Page [12] Human Approval Flow Scope: MVP."
+  },
+  {
+   "id": "R08085",
+   "lines": [
+    8085,
+    8085
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "info",
+   "text": "Page URL .../page/human-approval-flow",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08086",
+   "lines": [
+    8086,
+    8086
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "requirement",
+   "text": "Listing approval is human-in-the-loop."
+  },
+  {
+   "id": "R08086a",
+   "lines": [
+    8086,
+    8086
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "info",
+   "text": "Description: approve/reject/edit/regenerate options.",
+   "why_not": "restatement",
+   "dup_of": "R08101"
+  },
+  {
+   "id": "R08086b",
+   "lines": [
+    8086,
+    8086
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "info",
+   "text": "Description: feedback loop for AI improvement.",
+   "why_not": "restatement",
+   "dup_of": "R08127c"
+  },
+  {
+   "id": "R08087",
+   "lines": [
+    8087,
+    8087
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "info",
+   "text": "Keywords: human approval, approve, reject, edit, regenerate, feedback, maker checker",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08089",
+   "lines": [
+    8089,
+    8089
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "info",
+   "text": "## Approval UI",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08091",
+   "lines": [
+    8091,
+    8091
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "requirement",
+   "text": "Approval screen shows generated content: title."
+  },
+  {
+   "id": "R08091a",
+   "lines": [
+    8091,
+    8091
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "requirement",
+   "text": "Approval screen shows generated content: bullets."
+  },
+  {
+   "id": "R08091b",
+   "lines": [
+    8091,
+    8091
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "requirement",
+   "text": "Approval screen shows generated content: description."
+  },
+  {
+   "id": "R08091c",
+   "lines": [
+    8091,
+    8091
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "requirement",
+   "text": "Approval screen shows validation results."
+  },
+  {
+   "id": "R08091d",
+   "lines": [
+    8091,
+    8091
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "requirement",
+   "text": "Approval screen shows warnings."
+  },
+  {
+   "id": "R08091e",
+   "lines": [
+    8091,
+    8091
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "requirement",
+   "text": "Approval screen shows errors."
+  },
+  {
+   "id": "R08091f",
+   "lines": [
+    8091,
+    8091
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "requirement",
+   "text": "Approval screen shows confidence score."
+  },
+  {
+   "id": "R08091g",
+   "lines": [
+    8091,
+    8091
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "requirement",
+   "text": "Approval screen shows marketplace-specific differences."
+  },
+  {
+   "id": "R08091h",
+   "lines": [
+    8091,
+    8091
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "requirement",
+   "text": "The reviewer sees exactly what will be published to each marketplace."
+  },
+  {
+   "id": "R08093",
+   "lines": [
+    8093,
+    8093
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "info",
+   "text": "## Available Actions",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08095",
+   "lines": [
+    8095,
+    8099
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "info",
+   "text": "Table header: Action | Effect | Data Stored",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08101",
+   "lines": [
+    8101,
+    8103
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "flow",
+   "text": "Approve action: listing proceeds to publishing."
+  },
+  {
+   "id": "R08105",
+   "lines": [
+    8105,
+    8105
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "data",
+   "text": "Approve stores: approval timestamp."
+  },
+  {
+   "id": "R08105a",
+   "lines": [
+    8105,
+    8105
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "data",
+   "text": "Approve stores: approver."
+  },
+  {
+   "id": "R08105b",
+   "lines": [
+    8105,
+    8105
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "data",
+   "text": "Approve stores: version."
+  },
+  {
+   "id": "R08107",
+   "lines": [
+    8107,
+    8109
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "flow",
+   "text": "Reject action: listing returned with feedback."
+  },
+  {
+   "id": "R08111",
+   "lines": [
+    8111,
+    8111
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "data",
+   "text": "Reject stores: rejection reason."
+  },
+  {
+   "id": "R08111a",
+   "lines": [
+    8111,
+    8111
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "data",
+   "text": "Reject stores: feedback text."
+  },
+  {
+   "id": "R08113",
+   "lines": [
+    8113,
+    8115
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "requirement",
+   "text": "Edit action: inline editing of specific fields."
+  },
+  {
+   "id": "R08117",
+   "lines": [
+    8117,
+    8117
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "data",
+   "text": "Edit stores: edited fields."
+  },
+  {
+   "id": "R08117a",
+   "lines": [
+    8117,
+    8117
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "data",
+   "text": "Edit stores: editor."
+  },
+  {
+   "id": "R08117b",
+   "lines": [
+    8117,
+    8117
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "requirement",
+   "text": "Edit: new version created."
+  },
+  {
+   "id": "R08119",
+   "lines": [
+    8119,
+    8121
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "flow",
+   "text": "Regenerate action: re-trigger AI generation."
+  },
+  {
+   "id": "R08121",
+   "lines": [
+    8121,
+    8121
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "requirement",
+   "text": "Regenerate accepts optional instructions."
+  },
+  {
+   "id": "R08123",
+   "lines": [
+    8123,
+    8123
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "data",
+   "text": "Regenerate stores: regeneration trigger."
+  },
+  {
+   "id": "R08123a",
+   "lines": [
+    8123,
+    8123
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "data",
+   "text": "Regenerate stores: user instructions."
+  },
+  {
+   "id": "R08125",
+   "lines": [
+    8125,
+    8125
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "info",
+   "text": "## Feedback Loop",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08127",
+   "lines": [
+    8127,
+    8127
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "requirement",
+   "text": "Rejection feedback is stored."
+  },
+  {
+   "id": "R08127a",
+   "lines": [
+    8127,
+    8127
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "requirement",
+   "text": "Rejection feedback can be used as future context for the Content Agent."
+  },
+  {
+   "id": "R08127b",
+   "lines": [
+    8127,
+    8127
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "requirement",
+   "text": "Over time, the system learns what the brand approves and rejects."
+  },
+  {
+   "id": "R08127c",
+   "lines": [
+    8127,
+    8127
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "requirement",
+   "text": "Learning from approvals/rejections creates a natural feedback loop that improves generation quality."
+  },
+  {
+   "id": "R08129",
+   "lines": [
+    8129,
+    8129
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "info",
+   "text": "Maker-Checker (callout title)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08131",
+   "lines": [
+    8131,
+    8131
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "requirement",
+   "text": "The person or process that triggered listing generation cannot approve the same listing."
+  },
+  {
+   "id": "R08131a",
+   "lines": [
+    8131,
+    8131
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "quality",
+   "text": "Maker-checker is enforced at the API level."
+  },
+  {
+   "id": "R08133",
+   "lines": [
+    8133,
+    8133
+   ],
+   "page": "[12] Human Approval Flow",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08135",
+   "lines": [
+    8135,
+    8135
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "info",
+   "text": "# [13] Publishing Flow",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08137",
+   "lines": [
+    8137,
+    8137
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "info",
+   "text": "Section: User & Product Flow",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08138",
+   "lines": [
+    8138,
+    8138
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "scope",
+   "text": "Page [13] Publishing Flow Scope: MVP."
+  },
+  {
+   "id": "R08139",
+   "lines": [
+    8139,
+    8139
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "info",
+   "text": "Page URL .../page/publishing-flow",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08140",
+   "lines": [
+    8140,
+    8140
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "flow",
+   "text": "Approved listings are published to marketplaces via adapters."
+  },
+  {
+   "id": "R08140a",
+   "lines": [
+    8140,
+    8140
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "info",
+   "text": "Description: per-field result reporting.",
+   "why_not": "restatement",
+   "dup_of": "R08167"
+  },
+  {
+   "id": "R08141",
+   "lines": [
+    8141,
+    8141
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "info",
+   "text": "Keywords: publishing, publish, marketplace adapter, per-field result, Amazon, Flipkart",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08143",
+   "lines": [
+    8143,
+    8143
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "info",
+   "text": "## Publishing Flow",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08145",
+   "lines": [
+    8145,
+    8146
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "info",
+   "text": "mermaid sequenceDiagram fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08147",
+   "lines": [
+    8147,
+    8147
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "data",
+   "text": "Publishing sequence participant BE: Backend."
+  },
+  {
+   "id": "R08148",
+   "lines": [
+    8148,
+    8148
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "decision",
+   "text": "Publishing sequence participant Q: Redis Queue."
+  },
+  {
+   "id": "R08149",
+   "lines": [
+    8149,
+    8149
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "data",
+   "text": "Publishing sequence participant W: Worker."
+  },
+  {
+   "id": "R08150",
+   "lines": [
+    8150,
+    8150
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "data",
+   "text": "Publishing sequence participant A: Marketplace Adapter."
+  },
+  {
+   "id": "R08151",
+   "lines": [
+    8151,
+    8151
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "data",
+   "text": "Publishing sequence participant M: Marketplace API."
+  },
+  {
+   "id": "R08153",
+   "lines": [
+    8153,
+    8153
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "flow",
+   "text": "Backend enqueues publish job to Redis Queue."
+  },
+  {
+   "id": "R08154",
+   "lines": [
+    8154,
+    8154
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "flow",
+   "text": "Worker dequeues the publish job from the queue."
+  },
+  {
+   "id": "R08155",
+   "lines": [
+    8155,
+    8155
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "interface",
+   "text": "Worker calls adapter.publish_listing(listing)."
+  },
+  {
+   "id": "R08156",
+   "lines": [
+    8156,
+    8156
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "requirement",
+   "text": "Adapter maps canonical → marketplace format."
+  },
+  {
+   "id": "R08157",
+   "lines": [
+    8157,
+    8157
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "requirement",
+   "text": "Adapter makes the marketplace API call with an idempotency key."
+  },
+  {
+   "id": "R08158",
+   "lines": [
+    8158,
+    8158
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "interface",
+   "text": "Marketplace API returns a per-field response to the adapter."
+  },
+  {
+   "id": "R08159",
+   "lines": [
+    8159,
+    8159
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "requirement",
+   "text": "Adapter maps the marketplace response to ListingResult."
+  },
+  {
+   "id": "R08160",
+   "lines": [
+    8160,
+    8160
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "interface",
+   "text": "Adapter returns ListingResult with per-field success/failure to the Worker."
+  },
+  {
+   "id": "R08161",
+   "lines": [
+    8161,
+    8161
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "flow",
+   "text": "Worker updates listing status (Backend)."
+  },
+  {
+   "id": "R08162",
+   "lines": [
+    8162,
+    8162
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "flow",
+   "text": "Worker stores the result in the database."
+  },
+  {
+   "id": "R08163",
+   "lines": [
+    8163,
+    8163
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "info",
+   "text": "``` end of mermaid block",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08165",
+   "lines": [
+    8165,
+    8165
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "info",
+   "text": "## Per-field Results",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08167",
+   "lines": [
+    8167,
+    8167
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "interface",
+   "text": "Every adapter method returns a ListingResult with per-field success/failure."
+  },
+  {
+   "id": "R08167a",
+   "lines": [
+    8167,
+    8167
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "interface",
+   "text": "Adapter methods return per-field success/failure — not a boolean."
+  },
+  {
+   "id": "R08167b",
+   "lines": [
+    8167,
+    8167
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "requirement",
+   "text": "On partial success, the system knows exactly which fields failed."
+  },
+  {
+   "id": "R08167c",
+   "lines": [
+    8167,
+    8167
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "data",
+   "text": "On partial success, the system knows the marketplace's raw error string."
+  },
+  {
+   "id": "R08167d",
+   "lines": [
+    8167,
+    8167
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "requirement",
+   "text": "Per-field results enable field-level retry without re-pushing the entire listing."
+  },
+  {
+   "id": "R08169",
+   "lines": [
+    8169,
+    8169
+   ],
+   "page": "[13] Publishing Flow",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08171",
+   "lines": [
+    8171,
+    8171
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "info",
+   "text": "# [14] Performance Feedback Loop",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08173",
+   "lines": [
+    8173,
+    8173
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "info",
+   "text": "Section: User & Product Flow",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08174",
+   "lines": [
+    8174,
+    8174
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "scope",
+   "text": "Page [14] Performance Feedback Loop Scope: PHASE3."
+  },
+  {
+   "id": "R08175",
+   "lines": [
+    8175,
+    8175
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "info",
+   "text": "Page URL .../page/performance-feedback-loop",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08176",
+   "lines": [
+    8176,
+    8176
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "flow",
+   "text": "Marketplace performance data feeds back into the AI optimization loop."
+  },
+  {
+   "id": "R08176a",
+   "lines": [
+    8176,
+    8176
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "info",
+   "text": "Description: Phase 3 scope.",
+   "why_not": "restatement",
+   "dup_of": "R08174"
+  },
+  {
+   "id": "R08177",
+   "lines": [
+    8177,
+    8177
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "info",
+   "text": "Keywords: performance, feedback, optimization, CTR, conversion, ranking, loop",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08179",
+   "lines": [
+    8179,
+    8179
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "info",
+   "text": "## Performance Data",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08181",
+   "lines": [
+    8181,
+    8181
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "data",
+   "text": "Performance model captures: impressions."
+  },
+  {
+   "id": "R08181a",
+   "lines": [
+    8181,
+    8181
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "data",
+   "text": "Performance model captures: clicks."
+  },
+  {
+   "id": "R08181b",
+   "lines": [
+    8181,
+    8181
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "data",
+   "text": "Performance model captures: orders."
+  },
+  {
+   "id": "R08181c",
+   "lines": [
+    8181,
+    8181
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "data",
+   "text": "Performance model captures: returns."
+  },
+  {
+   "id": "R08181d",
+   "lines": [
+    8181,
+    8181
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "data",
+   "text": "Performance model captures: ranking position."
+  },
+  {
+   "id": "R08181e",
+   "lines": [
+    8181,
+    8181
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "data",
+   "text": "Performance model captures: date."
+  },
+  {
+   "id": "R08181f",
+   "lines": [
+    8181,
+    8181
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "data",
+   "text": "Performance data is per listing."
+  },
+  {
+   "id": "R08181g",
+   "lines": [
+    8181,
+    8181
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "data",
+   "text": "Performance data is per marketplace."
+  },
+  {
+   "id": "R08181h",
+   "lines": [
+    8181,
+    8181
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "requirement",
+   "text": "Performance data is collected via marketplace APIs."
+  },
+  {
+   "id": "R08181i",
+   "lines": [
+    8181,
+    8181
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "requirement",
+   "text": "Performance data is collected on a scheduled basis."
+  },
+  {
+   "id": "R08183",
+   "lines": [
+    8183,
+    8183
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "info",
+   "text": "## Optimization Loop",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08185",
+   "lines": [
+    8185,
+    8185
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "scope",
+   "text": "The Optimization Agent is Phase 3."
+  },
+  {
+   "id": "R08185a",
+   "lines": [
+    8185,
+    8185
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "requirement",
+   "text": "Optimization Agent consumes performance data."
+  },
+  {
+   "id": "R08185b",
+   "lines": [
+    8185,
+    8185
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "requirement",
+   "text": "Optimization Agent proposes changes to existing listings."
+  },
+  {
+   "id": "R08185c",
+   "lines": [
+    8185,
+    8185
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "requirement",
+   "text": "Optimization Agent identifies underperforming listings."
+  },
+  {
+   "id": "R08185d",
+   "lines": [
+    8185,
+    8185
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "requirement",
+   "text": "Optimization Agent analyzes what high-performing listings have in common."
+  },
+  {
+   "id": "R08185e",
+   "lines": [
+    8185,
+    8185
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "requirement",
+   "text": "Optimization Agent suggests specific field-level improvements."
+  },
+  {
+   "id": "R08187",
+   "lines": [
+    8187,
+    8187
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "info",
+   "text": "Callout title: Phase 3 Scope (optimization loop)",
+   "why_not": "restatement",
+   "dup_of": "R08185"
+  },
+  {
+   "id": "R08189",
+   "lines": [
+    8189,
+    8189
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "scope",
+   "text": "The optimization loop is not part of MVP."
+  },
+  {
+   "id": "R08189a",
+   "lines": [
+    8189,
+    8189
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "scope",
+   "text": "In MVP, performance data is collected."
+  },
+  {
+   "id": "R08189b",
+   "lines": [
+    8189,
+    8189
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "scope",
+   "text": "In MVP, performance data is displayed in analytics."
+  },
+  {
+   "id": "R08189c",
+   "lines": [
+    8189,
+    8189
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "scope",
+   "text": "Automated optimization suggestions require Phase 3 implementation."
+  },
+  {
+   "id": "R08191",
+   "lines": [
+    8191,
+    8191
+   ],
+   "page": "[14] Performance Feedback Loop",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08193",
+   "lines": [
+    8193,
+    8193
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "# [15] AI Listing Agent Overview",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08195",
+   "lines": [
+    8195,
+    8195
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "Section: AI Listing Agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08196",
+   "lines": [
+    8196,
+    8196
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "scope",
+   "text": "Page [15] AI Listing Agent Overview Scope: MVP."
+  },
+  {
+   "id": "R08197",
+   "lines": [
+    8197,
+    8197
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "Page URL .../page/listing-agent-overview",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08198",
+   "lines": [
+    8198,
+    8198
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "requirement",
+   "text": "The AI Listing Agent is the core AI system that generates marketplace-optimized product listings."
+  },
+  {
+   "id": "R08198a",
+   "lines": [
+    8198,
+    8198
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "Description: covers agent input, context assembly, orchestration, output merging, validation, and correction (itemised below).",
+   "why_not": "context-prose"
+  },
+  {
+   "id": "R08199",
+   "lines": [
+    8199,
+    8199
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "Keywords: listing agent, AI agent, orchestration, LangGraph, context, generation, correction",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08201",
+   "lines": [
+    8201,
+    8201
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "## Purpose",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08203",
+   "lines": [
+    8203,
+    8203
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "requirement",
+   "text": "The AI Listing Agent is the core intelligence system that transforms raw product data into marketplace-optimized product listings."
+  },
+  {
+   "id": "R08203a",
+   "lines": [
+    8203,
+    8203
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "requirement",
+   "text": "Generated listings are brand-voice-consistent."
+  },
+  {
+   "id": "R08203b",
+   "lines": [
+    8203,
+    8203
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "requirement",
+   "text": "Generated listings are compliance-validated."
+  },
+  {
+   "id": "R08203c",
+   "lines": [
+    8203,
+    8203
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "requirement",
+   "text": "The AI Listing Agent orchestrates multiple specialized sub-agents."
+  },
+  {
+   "id": "R08203d",
+   "lines": [
+    8203,
+    8203
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "requirement",
+   "text": "The AI Listing Agent manages context assembly."
+  },
+  {
+   "id": "R08203e",
+   "lines": [
+    8203,
+    8203
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "requirement",
+   "text": "The AI Listing Agent handles structured output validation."
+  },
+  {
+   "id": "R08203f",
+   "lines": [
+    8203,
+    8203
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "requirement",
+   "text": "The AI Listing Agent implements bounded correction loops."
+  },
+  {
+   "id": "R08205",
+   "lines": [
+    8205,
+    8205
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "## Agent Inputs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08207",
+   "lines": [
+    8207,
+    8207
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "The Listing Agent receives a rich context object assembled from multiple data sources."
+  },
+  {
+   "id": "R08209",
+   "lines": [
+    8209,
+    8211
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Agent input Product Data: SKU."
+  },
+  {
+   "id": "R08209a",
+   "lines": [
+    8209,
+    8211
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Agent input Product Data: title."
+  },
+  {
+   "id": "R08209b",
+   "lines": [
+    8209,
+    8211
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Agent input Product Data: images."
+  },
+  {
+   "id": "R08209c",
+   "lines": [
+    8209,
+    8211
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Agent input Product Data: attributes."
+  },
+  {
+   "id": "R08213",
+   "lines": [
+    8213,
+    8213
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Product Data is raw product information from import."
+  },
+  {
+   "id": "R08215",
+   "lines": [
+    8215,
+    8217
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Agent input Brand Context: voice chunks from pgvector."
+  },
+  {
+   "id": "R08219",
+   "lines": [
+    8219,
+    8219
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Brand Context: tone."
+  },
+  {
+   "id": "R08219a",
+   "lines": [
+    8219,
+    8219
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Brand Context: style."
+  },
+  {
+   "id": "R08219b",
+   "lines": [
+    8219,
+    8219
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Brand Context: glossary."
+  },
+  {
+   "id": "R08219c",
+   "lines": [
+    8219,
+    8219
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Brand Context: compliance rules."
+  },
+  {
+   "id": "R08221",
+   "lines": [
+    8221,
+    8223
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Agent input Marketplace Context: Amazon rules."
+  },
+  {
+   "id": "R08221a",
+   "lines": [
+    8221,
+    8223
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Agent input Marketplace Context: Flipkart rules."
+  },
+  {
+   "id": "R08225",
+   "lines": [
+    8225,
+    8225
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Marketplace Context: character limits."
+  },
+  {
+   "id": "R08225a",
+   "lines": [
+    8225,
+    8225
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Marketplace Context: banned terms."
+  },
+  {
+   "id": "R08225b",
+   "lines": [
+    8225,
+    8225
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Marketplace Context: category schemas."
+  },
+  {
+   "id": "R08227",
+   "lines": [
+    8227,
+    8229
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Agent input Category Context: category template."
+  },
+  {
+   "id": "R08231",
+   "lines": [
+    8231,
+    8231
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Category Context: required attributes per category."
+  },
+  {
+   "id": "R08231a",
+   "lines": [
+    8231,
+    8231
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Category Context: optional attributes per category."
+  },
+  {
+   "id": "R08233",
+   "lines": [
+    8233,
+    8235
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Agent input Previous Versions: history if exists."
+  },
+  {
+   "id": "R08237",
+   "lines": [
+    8237,
+    8237
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Previous Versions: prior listing versions."
+  },
+  {
+   "id": "R08237a",
+   "lines": [
+    8237,
+    8237
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Previous Versions: performance data."
+  },
+  {
+   "id": "R08239",
+   "lines": [
+    8239,
+    8241
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Agent input User Instructions: optional guidance."
+  },
+  {
+   "id": "R08243",
+   "lines": [
+    8243,
+    8243
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "User Instructions: specific instructions from the user."
+  },
+  {
+   "id": "R08245",
+   "lines": [
+    8245,
+    8245
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "## Generation Pipeline",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08247",
+   "lines": [
+    8247,
+    8247
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "Architecture Diagram: AI Listing Agent Internal Pipeline",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08249",
+   "lines": [
+    8249,
+    8250
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "mermaid graph TD fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08251",
+   "lines": [
+    8251,
+    8251
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Pipeline node INPUT: Agent Input: Product + Brand + Rules + Category."
+  },
+  {
+   "id": "R08252",
+   "lines": [
+    8252,
+    8252
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Pipeline node CTX: Context Builder."
+  },
+  {
+   "id": "R08253",
+   "lines": [
+    8253,
+    8253
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "decision",
+   "text": "Pipeline node RET: Brand Voice Retriever - pgvector."
+  },
+  {
+   "id": "R08254",
+   "lines": [
+    8254,
+    8254
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Pipeline node PB: Prompt Builder."
+  },
+  {
+   "id": "R08255",
+   "lines": [
+    8255,
+    8255
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "decision",
+   "text": "Pipeline node ORCH: Agent Orchestrator - LangGraph."
+  },
+  {
+   "id": "R08257",
+   "lines": [
+    8257,
+    8257
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "flow",
+   "text": "Subgraph PARALLEL: Parallel Agent Execution."
+  },
+  {
+   "id": "R08258",
+   "lines": [
+    8258,
+    8258
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Parallel Agent Execution includes CA: Content Agent."
+  },
+  {
+   "id": "R08259",
+   "lines": [
+    8259,
+    8259
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Parallel Agent Execution includes KA: Keyword Agent."
+  },
+  {
+   "id": "R08260",
+   "lines": [
+    8260,
+    8260
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Parallel Agent Execution includes AA: Attribute Agent."
+  },
+  {
+   "id": "R08261",
+   "lines": [
+    8261,
+    8261
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Parallel Agent Execution includes IA: Image Agent."
+  },
+  {
+   "id": "R08262",
+   "lines": [
+    8262,
+    8262
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "end",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08264",
+   "lines": [
+    8264,
+    8264
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Pipeline node MERGE: Output Merger."
+  },
+  {
+   "id": "R08265",
+   "lines": [
+    8265,
+    8265
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Pipeline node JSON: Canonical Listing JSON."
+  },
+  {
+   "id": "R08266",
+   "lines": [
+    8266,
+    8266
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Pipeline node VAL: Validation Pipeline."
+  },
+  {
+   "id": "R08267",
+   "lines": [
+    8267,
+    8267
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "constraint",
+   "text": "Pipeline node CORR: Correction Loop - max 3."
+  },
+  {
+   "id": "R08268",
+   "lines": [
+    8268,
+    8268
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Pipeline node APPROVE: Human Approval."
+  },
+  {
+   "id": "R08269",
+   "lines": [
+    8269,
+    8269
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Pipeline node EXEC: Marketplace Execution."
+  },
+  {
+   "id": "R08271",
+   "lines": [
+    8271,
+    8271
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "flow",
+   "text": "INPUT --> CTX (Agent Input to Context Builder)."
+  },
+  {
+   "id": "R08272",
+   "lines": [
+    8272,
+    8272
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "flow",
+   "text": "CTX --> RET (Context Builder to Brand Voice Retriever)."
+  },
+  {
+   "id": "R08273",
+   "lines": [
+    8273,
+    8273
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "flow",
+   "text": "RET --> PB (Brand Voice Retriever to Prompt Builder)."
+  },
+  {
+   "id": "R08274",
+   "lines": [
+    8274,
+    8274
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "flow",
+   "text": "PB --> ORCH (Prompt Builder to Agent Orchestrator)."
+  },
+  {
+   "id": "R08275",
+   "lines": [
+    8275,
+    8275
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "flow",
+   "text": "ORCH --> PARALLEL (Orchestrator to Parallel Agent Execution)."
+  },
+  {
+   "id": "R08276",
+   "lines": [
+    8276,
+    8276
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "flow",
+   "text": "PARALLEL --> MERGE (parallel agents to Output Merger)."
+  },
+  {
+   "id": "R08277",
+   "lines": [
+    8277,
+    8277
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "flow",
+   "text": "MERGE --> JSON (Output Merger to Canonical Listing JSON)."
+  },
+  {
+   "id": "R08278",
+   "lines": [
+    8278,
+    8278
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "flow",
+   "text": "JSON --> VAL (Canonical Listing JSON to Validation Pipeline)."
+  },
+  {
+   "id": "R08279",
+   "lines": [
+    8279,
+    8279
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "flow",
+   "text": "VAL -->|PASS| APPROVE (validation pass goes to Human Approval)."
+  },
+  {
+   "id": "R08280",
+   "lines": [
+    8280,
+    8280
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "flow",
+   "text": "VAL -->|FAIL| CORR (validation fail goes to Correction Loop)."
+  },
+  {
+   "id": "R08281",
+   "lines": [
+    8281,
+    8281
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "flow",
+   "text": "CORR --> VAL (Correction Loop returns to Validation Pipeline)."
+  },
+  {
+   "id": "R08282",
+   "lines": [
+    8282,
+    8282
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "flow",
+   "text": "APPROVE --> EXEC (Human Approval to Marketplace Execution)."
+  },
+  {
+   "id": "R08283",
+   "lines": [
+    8283,
+    8283
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "``` end of mermaid block",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08285",
+   "lines": [
+    8285,
+    8285
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "## Agent Outputs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08287",
+   "lines": [
+    8287,
+    8287
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "The Listing Agent produces a canonical listing JSON."
+  },
+  {
+   "id": "R08289",
+   "lines": [
+    8289,
+    8289
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Canonical listing output: Title — Marketplace-optimized product title."
+  },
+  {
+   "id": "R08290",
+   "lines": [
+    8290,
+    8290
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Canonical listing output: Bullets — Key feature bullet points."
+  },
+  {
+   "id": "R08290a",
+   "lines": [
+    8290,
+    8290
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "constraint",
+   "text": "Bullets: typically 5."
+  },
+  {
+   "id": "R08291",
+   "lines": [
+    8291,
+    8291
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Canonical listing output: Description — Rich product description."
+  },
+  {
+   "id": "R08292",
+   "lines": [
+    8292,
+    8292
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Canonical listing output: Keywords — search terms."
+  },
+  {
+   "id": "R08292a",
+   "lines": [
+    8292,
+    8292
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Canonical listing output: Keywords — backend keywords."
+  },
+  {
+   "id": "R08293",
+   "lines": [
+    8293,
+    8293
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Canonical listing output: Attributes — structured attributes matching category schema."
+  },
+  {
+   "id": "R08294",
+   "lines": [
+    8294,
+    8294
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Canonical listing output: ImageReports — compliance status per image per slot."
+  },
+  {
+   "id": "R08295",
+   "lines": [
+    8295,
+    8295
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Canonical listing output Metadata: model used."
+  },
+  {
+   "id": "R08295a",
+   "lines": [
+    8295,
+    8295
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Canonical listing output Metadata: tokens."
+  },
+  {
+   "id": "R08295b",
+   "lines": [
+    8295,
+    8295
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Canonical listing output Metadata: cost."
+  },
+  {
+   "id": "R08295c",
+   "lines": [
+    8295,
+    8295
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Canonical listing output Metadata: duration."
+  },
+  {
+   "id": "R08295d",
+   "lines": [
+    8295,
+    8295
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Canonical listing output Metadata: confidence."
+  },
+  {
+   "id": "R08297",
+   "lines": [
+    8297,
+    8297
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "## Engineering Implementation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08299",
+   "lines": [
+    8299,
+    8299
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "Conceptual Agent Architecture (code block title)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08301",
+   "lines": [
+    8301,
+    8301
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "```python fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08302",
+   "lines": [
+    8302,
+    8302
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Conceptual class ListingAgent."
+  },
+  {
+   "id": "R08303",
+   "lines": [
+    8303,
+    8303
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "requirement",
+   "text": "ListingAgent orchestrates the complete listing generation pipeline."
+  },
+  {
+   "id": "R08305",
+   "lines": [
+    8305,
+    8305
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "interface",
+   "text": "ListingAgent.__init__(self, context_builder, retriever, prompt_builder, orchestrator)."
+  },
+  {
+   "id": "R08306",
+   "lines": [
+    8306,
+    8308
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "self.context_builder / self.retriever / self.prompt_builder assignments",
+   "why_not": "restatement",
+   "dup_of": "R08305"
+  },
+  {
+   "id": "R08309",
+   "lines": [
+    8309,
+    8309
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "decision",
+   "text": "ListingAgent.orchestrator is a LangGraph instance."
+  },
+  {
+   "id": "R08311",
+   "lines": [
+    8311,
+    8311
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "interface",
+   "text": "async def generate(self, product_id: str, marketplace: str) -> ListingResult."
+  },
+  {
+   "id": "R08312",
+   "lines": [
+    8312,
+    8313
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "flow",
+   "text": "Step 1: build context via await self.context_builder.build(product_id, marketplace)."
+  },
+  {
+   "id": "R08315",
+   "lines": [
+    8315,
+    8316
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "flow",
+   "text": "Step 2: retrieve brand voice chunks via brand_chunks = await self.retriever.retrieve(...)."
+  },
+  {
+   "id": "R08317",
+   "lines": [
+    8317,
+    8317
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "interface",
+   "text": "retriever.retrieve argument brand_id=context.brand_id."
+  },
+  {
+   "id": "R08318",
+   "lines": [
+    8318,
+    8318
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "interface",
+   "text": "retriever.retrieve argument query=context.retrieval_query."
+  },
+  {
+   "id": "R08319",
+   "lines": [
+    8319,
+    8320
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "constraint",
+   "text": "Brand voice retrieval top_k=8."
+  },
+  {
+   "id": "R08321",
+   "lines": [
+    8321,
+    8321
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Retrieved chunks are set on context.brand_chunks."
+  },
+  {
+   "id": "R08323",
+   "lines": [
+    8323,
+    8324
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "flow",
+   "text": "Step 3: build prompts for each sub-agent via self.prompt_builder.build(context)."
+  },
+  {
+   "id": "R08326",
+   "lines": [
+    8326,
+    8327
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "flow",
+   "text": "Step 4: execute agent graph (parallel agents + validation + correction) via result = await self.orchestrator.execute(context, prompts)."
+  },
+  {
+   "id": "R08329",
+   "lines": [
+    8329,
+    8329
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "flow",
+   "text": "generate returns result, the output of self.orchestrator.execute(context, prompts), as its ListingResult."
+  },
+  {
+   "id": "R08330",
+   "lines": [
+    8330,
+    8330
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "``` end of code block",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08332",
+   "lines": [
+    8332,
+    8332
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "## AI Implementation Context",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08334",
+   "lines": [
+    8334,
+    8334
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "AI Implementation Context (callout title)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08336",
+   "lines": [
+    8336,
+    8336
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "Inputs: Product",
+   "why_not": "restatement",
+   "dup_of": "R08209"
+  },
+  {
+   "id": "R08336a",
+   "lines": [
+    8336,
+    8336
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "Inputs: Brand",
+   "why_not": "restatement",
+   "dup_of": "R08215"
+  },
+  {
+   "id": "R08336b",
+   "lines": [
+    8336,
+    8336
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "Inputs: Marketplace",
+   "why_not": "restatement",
+   "dup_of": "R08221"
+  },
+  {
+   "id": "R08336c",
+   "lines": [
+    8336,
+    8336
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "Inputs: Category",
+   "why_not": "restatement",
+   "dup_of": "R08227"
+  },
+  {
+   "id": "R08336d",
+   "lines": [
+    8336,
+    8336
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Listing Agent input: Rules."
+  },
+  {
+   "id": "R08336e",
+   "lines": [
+    8336,
+    8336
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "Inputs: Previous versions",
+   "why_not": "restatement",
+   "dup_of": "R08233"
+  },
+  {
+   "id": "R08336f",
+   "lines": [
+    8336,
+    8336
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "Inputs: User instructions",
+   "why_not": "restatement",
+   "dup_of": "R08239"
+  },
+  {
+   "id": "R08338",
+   "lines": [
+    8338,
+    8338
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "data",
+   "text": "Listing Agent outputs: Canonical Listing JSON with metadata."
+  },
+  {
+   "id": "R08340",
+   "lines": [
+    8340,
+    8340
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "decision",
+   "text": "Dependency: pgvector (brand retrieval)."
+  },
+  {
+   "id": "R08340a",
+   "lines": [
+    8340,
+    8340
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "decision",
+   "text": "Dependency: LangGraph (orchestration)."
+  },
+  {
+   "id": "R08340b",
+   "lines": [
+    8340,
+    8340
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "decision",
+   "text": "Dependency: ModelRouter (model selection)."
+  },
+  {
+   "id": "R08342",
+   "lines": [
+    8342,
+    8342
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "requirement",
+   "text": "Invariant: All output passes through Rules Engine."
+  },
+  {
+   "id": "R08342a",
+   "lines": [
+    8342,
+    8342
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "constraint",
+   "text": "Invariant: Max 3 correction retries."
+  },
+  {
+   "id": "R08342b",
+   "lines": [
+    8342,
+    8342
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "decision",
+   "text": "Invariant: Brand voice retrieval uses cosine similarity."
+  },
+  {
+   "id": "R08342c",
+   "lines": [
+    8342,
+    8342
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "constraint",
+   "text": "Invariant: brand voice retrieval top-k=8."
+  },
+  {
+   "id": "R08344",
+   "lines": [
+    8344,
+    8344
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "requirement",
+   "text": "Listing Agent must never bypass validation."
+  },
+  {
+   "id": "R08344a",
+   "lines": [
+    8344,
+    8344
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "requirement",
+   "text": "Listing Agent must never publish directly."
+  },
+  {
+   "id": "R08344b",
+   "lines": [
+    8344,
+    8344
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "requirement",
+   "text": "Listing Agent must never use hardcoded model names."
+  },
+  {
+   "id": "R08344c",
+   "lines": [
+    8344,
+    8344
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "requirement",
+   "text": "Listing Agent must never ignore brand context."
+  },
+  {
+   "id": "R08344d",
+   "lines": [
+    8344,
+    8344
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "requirement",
+   "text": "Listing Agent must never generate without marketplace rules loaded."
+  },
+  {
+   "id": "R08346",
+   "lines": [
+    8346,
+    8346
+   ],
+   "page": "[15] AI Listing Agent Overview",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08348",
+   "lines": [
+    8348,
+    8348
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "# [16] Agent Orchestration",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08350",
+   "lines": [
+    8350,
+    8350
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "Section: AI Listing Agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08351",
+   "lines": [
+    8351,
+    8351
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "scope",
+   "text": "Page [16] Agent Orchestration Scope: MVP."
+  },
+  {
+   "id": "R08352",
+   "lines": [
+    8352,
+    8352
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "Page URL .../page/agent-orchestration",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08353",
+   "lines": [
+    8353,
+    8353
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "Description: LangGraph orchestrates agent execution.",
+   "why_not": "restatement",
+   "dup_of": "R08358"
+  },
+  {
+   "id": "R08353a",
+   "lines": [
+    8353,
+    8353
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "Description: covers graph state, nodes, edges, conditional routing, retry nodes, and human approval interrupt (itemised below).",
+   "why_not": "context-prose"
+  },
+  {
+   "id": "R08354",
+   "lines": [
+    8354,
+    8354
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "Keywords: orchestration, LangGraph, graph, nodes, edges, state, parallel, conditional",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08356",
+   "lines": [
+    8356,
+    8356
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "## LangGraph Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08358",
+   "lines": [
+    8358,
+    8358
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "decision",
+   "text": "LangGraph provides the orchestration framework for the AI Listing Agent."
+  },
+  {
+   "id": "R08358a",
+   "lines": [
+    8358,
+    8358
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "requirement",
+   "text": "The generation pipeline is modelled as a directed graph."
+  },
+  {
+   "id": "R08358b",
+   "lines": [
+    8358,
+    8358
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "The graph has typed state."
+  },
+  {
+   "id": "R08358c",
+   "lines": [
+    8358,
+    8358
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "requirement",
+   "text": "The graph uses conditional edges."
+  },
+  {
+   "id": "R08358d",
+   "lines": [
+    8358,
+    8358
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "requirement",
+   "text": "Built-in support for retries."
+  },
+  {
+   "id": "R08358e",
+   "lines": [
+    8358,
+    8358
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "requirement",
+   "text": "Built-in support for human-in-the-loop interrupts."
+  },
+  {
+   "id": "R08358f",
+   "lines": [
+    8358,
+    8358
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "requirement",
+   "text": "Built-in support for state persistence."
+  },
+  {
+   "id": "R08360",
+   "lines": [
+    8360,
+    8360
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "### Why LangGraph",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08362",
+   "lines": [
+    8362,
+    8362
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "decision",
+   "text": "Graph-based orchestration: complex agent workflows modelled as nodes and edges."
+  },
+  {
+   "id": "R08363",
+   "lines": [
+    8363,
+    8363
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "Typed state: AgentState is a structured object that flows through the graph."
+  },
+  {
+   "id": "R08364",
+   "lines": [
+    8364,
+    8364
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Conditional routing: branch based on validation results."
+  },
+  {
+   "id": "R08364a",
+   "lines": [
+    8364,
+    8364
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Conditional routing: branch based on retry counts."
+  },
+  {
+   "id": "R08364b",
+   "lines": [
+    8364,
+    8364
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Conditional routing: branch based on error types."
+  },
+  {
+   "id": "R08365",
+   "lines": [
+    8365,
+    8365
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Human-in-the-loop: interrupt the graph at the approval node."
+  },
+  {
+   "id": "R08365a",
+   "lines": [
+    8365,
+    8365
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Human-in-the-loop: resume the graph after human decision."
+  },
+  {
+   "id": "R08366",
+   "lines": [
+    8366,
+    8366
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "requirement",
+   "text": "Persistence: state can be checkpointed."
+  },
+  {
+   "id": "R08366a",
+   "lines": [
+    8366,
+    8366
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "requirement",
+   "text": "Persistence: state can be resumed after interrupts."
+  },
+  {
+   "id": "R08366b",
+   "lines": [
+    8366,
+    8366
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "requirement",
+   "text": "Persistence: state can be resumed after failures."
+  },
+  {
+   "id": "R08367",
+   "lines": [
+    8367,
+    8367
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "requirement",
+   "text": "Parallel execution: multiple nodes can execute concurrently via branching edges."
+  },
+  {
+   "id": "R08369",
+   "lines": [
+    8369,
+    8369
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "## AgentState Object",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08371",
+   "lines": [
+    8371,
+    8371
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "AgentState (code block title)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08373",
+   "lines": [
+    8373,
+    8374
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "```json fence and opening brace",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08375",
+   "lines": [
+    8375,
+    8375
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field tenant_id (example \"tenant_abc\")."
+  },
+  {
+   "id": "R08376",
+   "lines": [
+    8376,
+    8376
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field brand_id (example \"brand_123\")."
+  },
+  {
+   "id": "R08377",
+   "lines": [
+    8377,
+    8377
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field product_id (example \"prod_456\")."
+  },
+  {
+   "id": "R08378",
+   "lines": [
+    8378,
+    8378
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field listing_id (example \"list_789\")."
+  },
+  {
+   "id": "R08379",
+   "lines": [
+    8379,
+    8379
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field marketplace (example \"amazon\")."
+  },
+  {
+   "id": "R08380",
+   "lines": [
+    8380,
+    8380
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field category (example \"ethnic_wear_kurta_sets\")."
+  },
+  {
+   "id": "R08381",
+   "lines": [
+    8381,
+    8381
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field brand_context (object)."
+  },
+  {
+   "id": "R08382",
+   "lines": [
+    8382,
+    8384
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "brand_context.retrieved_chunks (array)."
+  },
+  {
+   "id": "R08385",
+   "lines": [
+    8385,
+    8385
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "decision",
+   "text": "brand_context.embedding_model: \"text-embedding-3-small\"."
+  },
+  {
+   "id": "R08386",
+   "lines": [
+    8386,
+    8386
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "constraint",
+   "text": "brand_context.top_k: 8."
+  },
+  {
+   "id": "R08387",
+   "lines": [
+    8387,
+    8387
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "}, closing brand_context",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08388",
+   "lines": [
+    8388,
+    8388
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field product_context (object)."
+  },
+  {
+   "id": "R08389",
+   "lines": [
+    8389,
+    8389
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "product_context.sku (example \"KS-001\")."
+  },
+  {
+   "id": "R08390",
+   "lines": [
+    8390,
+    8390
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "product_context.title (example \"Organic Cotton Kurta Set\")."
+  },
+  {
+   "id": "R08391",
+   "lines": [
+    8391,
+    8393
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "product_context.images (array, example \"s3://...\")."
+  },
+  {
+   "id": "R08394",
+   "lines": [
+    8394,
+    8394
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "product_context.attributes (object)."
+  },
+  {
+   "id": "R08395",
+   "lines": [
+    8395,
+    8395
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "}, closing product_context",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08396",
+   "lines": [
+    8396,
+    8396
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field marketplace_rules (object)."
+  },
+  {
+   "id": "R08397",
+   "lines": [
+    8397,
+    8397
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "constraint",
+   "text": "marketplace_rules.max_title_length: 200 (example)."
+  },
+  {
+   "id": "R08398",
+   "lines": [
+    8398,
+    8398
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "marketplace_rules.banned_terms (array)."
+  },
+  {
+   "id": "R08399",
+   "lines": [
+    8399,
+    8399
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "banned_terms example value: \"best\"."
+  },
+  {
+   "id": "R08400",
+   "lines": [
+    8400,
+    8400
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "banned_terms example value: \"guaranteed\"."
+  },
+  {
+   "id": "R08401",
+   "lines": [
+    8401,
+    8401
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "], closing banned_terms",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08402",
+   "lines": [
+    8402,
+    8402
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "marketplace_rules.required_attributes (array)."
+  },
+  {
+   "id": "R08403",
+   "lines": [
+    8403,
+    8403
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "required_attributes example value: \"color\"."
+  },
+  {
+   "id": "R08404",
+   "lines": [
+    8404,
+    8404
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "required_attributes example value: \"material\"."
+  },
+  {
+   "id": "R08405",
+   "lines": [
+    8405,
+    8406
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "] and }, closing required_attributes and marketplace_rules",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08407",
+   "lines": [
+    8407,
+    8407
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field generated_content (object)."
+  },
+  {
+   "id": "R08408",
+   "lines": [
+    8408,
+    8408
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "generated_content.title (string, initial \"\")."
+  },
+  {
+   "id": "R08409",
+   "lines": [
+    8409,
+    8409
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "generated_content.bullets (array, initial [])."
+  },
+  {
+   "id": "R08410",
+   "lines": [
+    8410,
+    8410
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "generated_content.description (string, initial \"\")."
+  },
+  {
+   "id": "R08411",
+   "lines": [
+    8411,
+    8411
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "}, closing generated_content",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08412",
+   "lines": [
+    8412,
+    8412
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field generated_keywords (object)."
+  },
+  {
+   "id": "R08413",
+   "lines": [
+    8413,
+    8413
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "generated_keywords.search_terms (array)."
+  },
+  {
+   "id": "R08414",
+   "lines": [
+    8414,
+    8414
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "generated_keywords.backend_keywords (array)."
+  },
+  {
+   "id": "R08415",
+   "lines": [
+    8415,
+    8415
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "}, closing generated_keywords",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08416",
+   "lines": [
+    8416,
+    8416
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field generated_attributes (object)."
+  },
+  {
+   "id": "R08417",
+   "lines": [
+    8417,
+    8417
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field image_reports (array)."
+  },
+  {
+   "id": "R08418",
+   "lines": [
+    8418,
+    8418
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field validation_errors (array)."
+  },
+  {
+   "id": "R08419",
+   "lines": [
+    8419,
+    8419
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field retry_count (initial 0)."
+  },
+  {
+   "id": "R08420",
+   "lines": [
+    8420,
+    8420
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "constraint",
+   "text": "AgentState max_retries: 3."
+  },
+  {
+   "id": "R08421",
+   "lines": [
+    8421,
+    8421
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field confidence_score (initial null)."
+  },
+  {
+   "id": "R08422",
+   "lines": [
+    8422,
+    8422
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "decision",
+   "text": "AgentState model_used example: \"gpt-4o-mini\"."
+  },
+  {
+   "id": "R08423",
+   "lines": [
+    8423,
+    8423
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field token_usage (object)."
+  },
+  {
+   "id": "R08424",
+   "lines": [
+    8424,
+    8424
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "token_usage.input (initial 0)."
+  },
+  {
+   "id": "R08425",
+   "lines": [
+    8425,
+    8425
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "token_usage.output (initial 0)."
+  },
+  {
+   "id": "R08426",
+   "lines": [
+    8426,
+    8426
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "}, closing token_usage",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08427",
+   "lines": [
+    8427,
+    8427
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field cost (initial 0)."
+  },
+  {
+   "id": "R08428",
+   "lines": [
+    8428,
+    8428
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "AgentState field status (initial \"CREATED\")."
+  },
+  {
+   "id": "R08429",
+   "lines": [
+    8429,
+    8430
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "} and ``` closing AgentState block",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08432",
+   "lines": [
+    8432,
+    8432
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "Persisted AgentState field: tenant_id."
+  },
+  {
+   "id": "R08432a",
+   "lines": [
+    8432,
+    8432
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "Persisted AgentState field: brand_id."
+  },
+  {
+   "id": "R08432b",
+   "lines": [
+    8432,
+    8432
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "Persisted AgentState field: product_id."
+  },
+  {
+   "id": "R08432c",
+   "lines": [
+    8432,
+    8432
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "Persisted AgentState field: listing_id."
+  },
+  {
+   "id": "R08432d",
+   "lines": [
+    8432,
+    8432
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "Persisted AgentState field: marketplace."
+  },
+  {
+   "id": "R08432e",
+   "lines": [
+    8432,
+    8432
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "Persisted AgentState field: status."
+  },
+  {
+   "id": "R08432f",
+   "lines": [
+    8432,
+    8432
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "Persisted AgentState field: retry_count."
+  },
+  {
+   "id": "R08432g",
+   "lines": [
+    8432,
+    8432
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "Persisted AgentState field: generated content."
+  },
+  {
+   "id": "R08432h",
+   "lines": [
+    8432,
+    8432
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "Persisted AgentState field: validation errors."
+  },
+  {
+   "id": "R08432i",
+   "lines": [
+    8432,
+    8432
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "Persisted AgentState field: model_used."
+  },
+  {
+   "id": "R08432j",
+   "lines": [
+    8432,
+    8432
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "Persisted AgentState field: token_usage."
+  },
+  {
+   "id": "R08432k",
+   "lines": [
+    8432,
+    8432
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "Persisted AgentState field: cost."
+  },
+  {
+   "id": "R08434",
+   "lines": [
+    8434,
+    8434
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "Transient AgentState field: brand_context (re-retrieved on resume)."
+  },
+  {
+   "id": "R08434a",
+   "lines": [
+    8434,
+    8434
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "Transient AgentState field: product_context (re-loaded)."
+  },
+  {
+   "id": "R08434b",
+   "lines": [
+    8434,
+    8434
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "data",
+   "text": "Transient AgentState field: marketplace_rules (re-loaded)."
+  },
+  {
+   "id": "R08436",
+   "lines": [
+    8436,
+    8436
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "## Graph Nodes",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08438",
+   "lines": [
+    8438,
+    8444
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "Table header: Node | Purpose | Input | Output",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08446",
+   "lines": [
+    8446,
+    8448
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node load_context: load product data."
+  },
+  {
+   "id": "R08446a",
+   "lines": [
+    8446,
+    8448
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node load_context: load brand data."
+  },
+  {
+   "id": "R08446b",
+   "lines": [
+    8446,
+    8448
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node load_context: load rules data."
+  },
+  {
+   "id": "R08446c",
+   "lines": [
+    8446,
+    8448
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node load_context: load category data."
+  },
+  {
+   "id": "R08450",
+   "lines": [
+    8450,
+    8450
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "load_context input: product_id."
+  },
+  {
+   "id": "R08450a",
+   "lines": [
+    8450,
+    8450
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "load_context input: marketplace."
+  },
+  {
+   "id": "R08452",
+   "lines": [
+    8452,
+    8452
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "load_context output: Populated AgentState."
+  },
+  {
+   "id": "R08454",
+   "lines": [
+    8454,
+    8456
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node retrieve_brand: pgvector cosine similarity retrieval."
+  },
+  {
+   "id": "R08458",
+   "lines": [
+    8458,
+    8458
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "retrieve_brand input: brand_id."
+  },
+  {
+   "id": "R08458a",
+   "lines": [
+    8458,
+    8458
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "retrieve_brand input: retrieval_query."
+  },
+  {
+   "id": "R08460",
+   "lines": [
+    8460,
+    8460
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "retrieve_brand output: brand_context with chunks."
+  },
+  {
+   "id": "R08462",
+   "lines": [
+    8462,
+    8464
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node content_agent: generate title."
+  },
+  {
+   "id": "R08462a",
+   "lines": [
+    8462,
+    8464
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node content_agent: generate bullets."
+  },
+  {
+   "id": "R08462b",
+   "lines": [
+    8462,
+    8464
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node content_agent: generate description."
+  },
+  {
+   "id": "R08466",
+   "lines": [
+    8466,
+    8466
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "content_agent input: Full context."
+  },
+  {
+   "id": "R08468",
+   "lines": [
+    8468,
+    8468
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "content_agent output: generated_content."
+  },
+  {
+   "id": "R08470",
+   "lines": [
+    8470,
+    8472
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node keyword_agent: generate search terms."
+  },
+  {
+   "id": "R08470a",
+   "lines": [
+    8470,
+    8472
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node keyword_agent: generate backend keywords."
+  },
+  {
+   "id": "R08474",
+   "lines": [
+    8474,
+    8474
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "keyword_agent input: Category."
+  },
+  {
+   "id": "R08474a",
+   "lines": [
+    8474,
+    8474
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "keyword_agent input: product."
+  },
+  {
+   "id": "R08476",
+   "lines": [
+    8476,
+    8476
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "keyword_agent output: generated_keywords."
+  },
+  {
+   "id": "R08478",
+   "lines": [
+    8478,
+    8480
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node attribute_agent: map product to category schema."
+  },
+  {
+   "id": "R08482",
+   "lines": [
+    8482,
+    8482
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "attribute_agent input: Product."
+  },
+  {
+   "id": "R08482a",
+   "lines": [
+    8482,
+    8482
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "attribute_agent input: category template."
+  },
+  {
+   "id": "R08484",
+   "lines": [
+    8484,
+    8484
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "attribute_agent output: generated_attributes."
+  },
+  {
+   "id": "R08486",
+   "lines": [
+    8486,
+    8488
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node image_agent: deterministic compliance checks."
+  },
+  {
+   "id": "R08486a",
+   "lines": [
+    8486,
+    8488
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node image_agent: vision compliance checks."
+  },
+  {
+   "id": "R08490",
+   "lines": [
+    8490,
+    8490
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "image_agent input: Product images."
+  },
+  {
+   "id": "R08492",
+   "lines": [
+    8492,
+    8492
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "image_agent output: image_reports."
+  },
+  {
+   "id": "R08494",
+   "lines": [
+    8494,
+    8496
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node merge_outputs: combine all agent outputs."
+  },
+  {
+   "id": "R08498",
+   "lines": [
+    8498,
+    8498
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "merge_outputs input: All agent outputs."
+  },
+  {
+   "id": "R08500",
+   "lines": [
+    8500,
+    8500
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "merge_outputs output: Canonical listing JSON."
+  },
+  {
+   "id": "R08502",
+   "lines": [
+    8502,
+    8504
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node validate: Rules engine validation."
+  },
+  {
+   "id": "R08502a",
+   "lines": [
+    8502,
+    8504
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node validate: vision validation."
+  },
+  {
+   "id": "R08506",
+   "lines": [
+    8506,
+    8506
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "validate input: Canonical listing."
+  },
+  {
+   "id": "R08508",
+   "lines": [
+    8508,
+    8508
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "validate output: Pass/fail."
+  },
+  {
+   "id": "R08508a",
+   "lines": [
+    8508,
+    8508
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "validate output: ErrorReport."
+  },
+  {
+   "id": "R08510",
+   "lines": [
+    8510,
+    8512
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node correct: fix specific fields based on errors."
+  },
+  {
+   "id": "R08514",
+   "lines": [
+    8514,
+    8514
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "correct input: ErrorReport."
+  },
+  {
+   "id": "R08514a",
+   "lines": [
+    8514,
+    8514
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "correct input: current listing."
+  },
+  {
+   "id": "R08516",
+   "lines": [
+    8516,
+    8516
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "correct output: Corrected listing."
+  },
+  {
+   "id": "R08518",
+   "lines": [
+    8518,
+    8520
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node quality_check: compute confidence score."
+  },
+  {
+   "id": "R08522",
+   "lines": [
+    8522,
+    8522
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "quality_check input: Validated listing."
+  },
+  {
+   "id": "R08524",
+   "lines": [
+    8524,
+    8524
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "quality_check output: confidence_score."
+  },
+  {
+   "id": "R08526",
+   "lines": [
+    8526,
+    8528
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node await_approval: human-in-the-loop interrupt."
+  },
+  {
+   "id": "R08530",
+   "lines": [
+    8530,
+    8530
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "await_approval input: Full state."
+  },
+  {
+   "id": "R08532",
+   "lines": [
+    8532,
+    8532
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "await_approval output: Approval decision."
+  },
+  {
+   "id": "R08534",
+   "lines": [
+    8534,
+    8536
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Node publish: send to marketplace adapter."
+  },
+  {
+   "id": "R08538",
+   "lines": [
+    8538,
+    8538
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "publish input: Approved listing."
+  },
+  {
+   "id": "R08540",
+   "lines": [
+    8540,
+    8540
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "interface",
+   "text": "publish output: ListingResult."
+  },
+  {
+   "id": "R08542",
+   "lines": [
+    8542,
+    8542
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "## Conceptual Graph",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08544",
+   "lines": [
+    8544,
+    8544
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "Architecture Diagram: LangGraph Agent Execution Graph",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08546",
+   "lines": [
+    8546,
+    8547
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "mermaid graph TD fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08548",
+   "lines": [
+    8548,
+    8548
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Start --> load_context."
+  },
+  {
+   "id": "R08549",
+   "lines": [
+    8549,
+    8549
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "load_context --> retrieve_brand."
+  },
+  {
+   "id": "R08550",
+   "lines": [
+    8550,
+    8550
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "retrieve_brand --> Parallel Agents."
+  },
+  {
+   "id": "R08552",
+   "lines": [
+    8552,
+    8552
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Subgraph AGENTS: Parallel Agents."
+  },
+  {
+   "id": "R08553",
+   "lines": [
+    8553,
+    8553
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "content_agent (node CA) runs in Parallel Agents."
+  },
+  {
+   "id": "R08554",
+   "lines": [
+    8554,
+    8554
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "keyword_agent (node KA) runs in Parallel Agents."
+  },
+  {
+   "id": "R08555",
+   "lines": [
+    8555,
+    8555
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "attribute_agent (node AA) runs in Parallel Agents."
+  },
+  {
+   "id": "R08556",
+   "lines": [
+    8556,
+    8556
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "image_agent (node IA) runs in Parallel Agents."
+  },
+  {
+   "id": "R08557",
+   "lines": [
+    8557,
+    8557
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "end",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08559",
+   "lines": [
+    8559,
+    8559
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "Parallel Agents --> merge_outputs."
+  },
+  {
+   "id": "R08560",
+   "lines": [
+    8560,
+    8560
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "merge_outputs --> validate."
+  },
+  {
+   "id": "R08561",
+   "lines": [
+    8561,
+    8561
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "validate --> decision node CHECK \"passed?\"."
+  },
+  {
+   "id": "R08562",
+   "lines": [
+    8562,
+    8562
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "passed? Yes --> quality_check."
+  },
+  {
+   "id": "R08563",
+   "lines": [
+    8563,
+    8563
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "CHECK passed? No --> decision node RETRY_CHECK \"retry_count < 3?\"."
+  },
+  {
+   "id": "R08564",
+   "lines": [
+    8564,
+    8564
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "RETRY_CHECK retry_count < 3? Yes --> correct."
+  },
+  {
+   "id": "R08565",
+   "lines": [
+    8565,
+    8565
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "correct --> validate."
+  },
+  {
+   "id": "R08566",
+   "lines": [
+    8566,
+    8566
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "RETRY_CHECK retry_count < 3? No --> node BLOCKED labelled \"job_blocked\"."
+  },
+  {
+   "id": "R08567",
+   "lines": [
+    8567,
+    8567
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "quality_check --> await_approval."
+  },
+  {
+   "id": "R08568",
+   "lines": [
+    8568,
+    8568
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "await_approval --> publish."
+  },
+  {
+   "id": "R08569",
+   "lines": [
+    8569,
+    8569
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "publish --> END_ (End)."
+  },
+  {
+   "id": "R08570",
+   "lines": [
+    8570,
+    8570
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "``` end of mermaid block",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08572",
+   "lines": [
+    8572,
+    8572
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "## State Persistence",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08574",
+   "lines": [
+    8574,
+    8574
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "decision",
+   "text": "LangGraph supports state checkpointing."
+  },
+  {
+   "id": "R08574a",
+   "lines": [
+    8574,
+    8574
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "When the graph reaches the await_approval node, execution pauses."
+  },
+  {
+   "id": "R08574b",
+   "lines": [
+    8574,
+    8574
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "requirement",
+   "text": "When the graph reaches await_approval, the state is persisted."
+  },
+  {
+   "id": "R08574c",
+   "lines": [
+    8574,
+    8574
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "flow",
+   "text": "When the human approves or rejects, the graph resumes from the checkpoint."
+  },
+  {
+   "id": "R08576",
+   "lines": [
+    8576,
+    8576
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "requirement",
+   "text": "Checkpointing enables long-lived workflows that span hours or days of human review."
+  },
+  {
+   "id": "R08577",
+   "lines": [
+    8577,
+    8577
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "requirement",
+   "text": "Checkpointing enables recovery from server restarts during execution."
+  },
+  {
+   "id": "R08578",
+   "lines": [
+    8578,
+    8578
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "quality",
+   "text": "Checkpointing enables an audit trail of every state transition."
+  },
+  {
+   "id": "R08580",
+   "lines": [
+    8580,
+    8580
+   ],
+   "page": "[16] Agent Orchestration",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08582",
+   "lines": [
+    8582,
+    8582
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "info",
+   "text": "# [17] Agent State Machine",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08584",
+   "lines": [
+    8584,
+    8584
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "info",
+   "text": "Section: AI Listing Agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08585",
+   "lines": [
+    8585,
+    8585
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "scope",
+   "text": "Page [17] Agent State Machine Scope: MVP."
+  },
+  {
+   "id": "R08586",
+   "lines": [
+    8586,
+    8586
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "info",
+   "text": "Page URL .../page/agent-state-machine",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08587",
+   "lines": [
+    8587,
+    8587
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "data",
+   "text": "The state machine governs the listing lifecycle from CREATED through PUBLISHED."
+  },
+  {
+   "id": "R08587a",
+   "lines": [
+    8587,
+    8587
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "data",
+   "text": "The listing state machine includes all failure states."
+  },
+  {
+   "id": "R08588",
+   "lines": [
+    8588,
+    8588
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "info",
+   "text": "Keywords: state machine, lifecycle, status, CREATED, GENERATING, VALIDATING, APPROVED, PUBLISHED",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08590",
+   "lines": [
+    8590,
+    8590
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "info",
+   "text": "## State Diagram",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08592",
+   "lines": [
+    8592,
+    8592
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "info",
+   "text": "Architecture Diagram: Agent State Machine",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08594",
+   "lines": [
+    8594,
+    8595
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "info",
+   "text": "mermaid stateDiagram-v2 fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08596",
+   "lines": [
+    8596,
+    8596
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "[*] --> CREATED (initial state)."
+  },
+  {
+   "id": "R08597",
+   "lines": [
+    8597,
+    8597
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "CREATED --> CONTEXT_LOADED: Context assembly complete."
+  },
+  {
+   "id": "R08598",
+   "lines": [
+    8598,
+    8598
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "CONTEXT_LOADED --> GENERATING: Agents dispatched."
+  },
+  {
+   "id": "R08599",
+   "lines": [
+    8599,
+    8599
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "GENERATING --> GENERATED: All agents complete."
+  },
+  {
+   "id": "R08600",
+   "lines": [
+    8600,
+    8600
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "GENERATED --> VALIDATING: Validation triggered."
+  },
+  {
+   "id": "R08601",
+   "lines": [
+    8601,
+    8601
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "VALIDATING --> VALIDATION_PASSED: All checks pass."
+  },
+  {
+   "id": "R08602",
+   "lines": [
+    8602,
+    8602
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "VALIDATING --> CORRECTION_REQUIRED: Errors detected."
+  },
+  {
+   "id": "R08603",
+   "lines": [
+    8603,
+    8603
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "CORRECTION_REQUIRED --> RETRYING: retry_count < 3."
+  },
+  {
+   "id": "R08604",
+   "lines": [
+    8604,
+    8604
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "RETRYING --> VALIDATING: Corrected output."
+  },
+  {
+   "id": "R08605",
+   "lines": [
+    8605,
+    8605
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "CORRECTION_REQUIRED --> BLOCKED: retry_count >= 3."
+  },
+  {
+   "id": "R08606",
+   "lines": [
+    8606,
+    8606
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "VALIDATION_PASSED --> QUALITY_CHECK: Confidence scoring."
+  },
+  {
+   "id": "R08607",
+   "lines": [
+    8607,
+    8607
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "QUALITY_CHECK --> WAITING_APPROVAL: Human review needed."
+  },
+  {
+   "id": "R08608",
+   "lines": [
+    8608,
+    8608
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "WAITING_APPROVAL --> APPROVED: Human approves."
+  },
+  {
+   "id": "R08609",
+   "lines": [
+    8609,
+    8609
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "WAITING_APPROVAL --> REJECTED: Human rejects."
+  },
+  {
+   "id": "R08610",
+   "lines": [
+    8610,
+    8610
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "REJECTED --> GENERATING: Regenerate requested."
+  },
+  {
+   "id": "R08611",
+   "lines": [
+    8611,
+    8611
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "APPROVED --> PUBLISHING: Adapter executing."
+  },
+  {
+   "id": "R08612",
+   "lines": [
+    8612,
+    8612
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "PUBLISHING --> PUBLISHED: All fields succeed."
+  },
+  {
+   "id": "R08613",
+   "lines": [
+    8613,
+    8613
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "PUBLISHING --> PARTIALLY_PUBLISHED: Some fields failed."
+  },
+  {
+   "id": "R08614",
+   "lines": [
+    8614,
+    8614
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "PARTIALLY_PUBLISHED --> PUBLISHING: Retry failed fields."
+  },
+  {
+   "id": "R08615",
+   "lines": [
+    8615,
+    8615
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "PUBLISHING --> PUBLISH_FAILED: Unrecoverable error."
+  },
+  {
+   "id": "R08616",
+   "lines": [
+    8616,
+    8616
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "BLOCKED --> [*] (terminal)."
+  },
+  {
+   "id": "R08617",
+   "lines": [
+    8617,
+    8617
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "PUBLISHED --> [*] (terminal)."
+  },
+  {
+   "id": "R08618",
+   "lines": [
+    8618,
+    8618
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "info",
+   "text": "``` end of mermaid block",
+   "why_not": "table-scaffold"
+  }
+ ]
+}

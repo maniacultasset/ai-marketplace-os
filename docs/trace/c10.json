@@ -1,0 +1,4678 @@
+{
+ "chunk": "c10",
+ "start": 6335,
+ "end": 6989,
+ "items": [
+  {
+   "id": "R06335",
+   "lines": [
+    6335,
+    6335
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "info",
+   "text": "Prompt Injection Defense Boundary",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06337",
+   "lines": [
+    6337,
+    6337
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "info",
+   "text": "Prompt Injection Guardrail",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06339",
+   "lines": [
+    6339,
+    6339
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "quality",
+   "text": "Product-supplied text (titles, descriptions, manufacturer notes from CSV uploads) is ALWAYS treated as untrusted data, never as system instructions."
+  },
+  {
+   "id": "R06339a",
+   "lines": [
+    6339,
+    6339
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "requirement",
+   "text": "Brand guidelines are injected via dedicated system message structures."
+  },
+  {
+   "id": "R06339b",
+   "lines": [
+    6339,
+    6339
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "requirement",
+   "text": "Marketplace rules are injected via dedicated system message structures."
+  },
+  {
+   "id": "R06339c",
+   "lines": [
+    6339,
+    6339
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "quality",
+   "text": "The dedicated system message structures establish an unbreachable prompt-injection boundary."
+  },
+  {
+   "id": "R06341",
+   "lines": [
+    6341,
+    6341
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "decision",
+   "text": "Brand Voice RAG Pipeline uses pgvector."
+  },
+  {
+   "id": "R06343",
+   "lines": [
+    6343,
+    6343
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "requirement",
+   "text": "Brand voice guidelines are vectorized."
+  },
+  {
+   "id": "R06343a",
+   "lines": [
+    6343,
+    6343
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "requirement",
+   "text": "Brand voice guidelines are retrieved at runtime to condition generation."
+  },
+  {
+   "id": "R06345",
+   "lines": [
+    6345,
+    6345
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "flow",
+   "text": "RAG step 1: Brand User Uploads Tone Guide."
+  },
+  {
+   "id": "R06345a",
+   "lines": [
+    6345,
+    6345
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "flow",
+   "text": "RAG step 1: Brand User Uploads Compliance Rules."
+  },
+  {
+   "id": "R06347",
+   "lines": [
+    6347,
+    6349
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "flow",
+   "text": "RAG step 2: Chunking Pipeline creates atomic chunks."
+  },
+  {
+   "id": "R06349",
+   "lines": [
+    6349,
+    6349
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "constraint",
+   "text": "Brand guide chunks are ~200-word atomic chunks."
+  },
+  {
+   "id": "R06351",
+   "lines": [
+    6351,
+    6353
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "flow",
+   "text": "RAG step 3: Embedding Model generates vectors for the chunks."
+  },
+  {
+   "id": "R06353",
+   "lines": [
+    6353,
+    6353
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "constraint",
+   "text": "Embedding vectors are 1536-dim."
+  },
+  {
+   "id": "R06355",
+   "lines": [
+    6355,
+    6357
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "flow",
+   "text": "RAG step 4: Persist into brand_chunks table."
+  },
+  {
+   "id": "R06357",
+   "lines": [
+    6357,
+    6357
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Table brand_chunks holds the brand guide chunk vectors."
+  },
+  {
+   "id": "R06357a",
+   "lines": [
+    6357,
+    6357
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "decision",
+   "text": "brand_chunks table uses an HNSW index."
+  },
+  {
+   "id": "R06359",
+   "lines": [
+    6359,
+    6361
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "flow",
+   "text": "RAG step 5: Listing Generation: Embed product context + marketplace."
+  },
+  {
+   "id": "R06361",
+   "lines": [
+    6361,
+    6361
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "The retrieval query embedding combines product context + marketplace."
+  },
+  {
+   "id": "R06363",
+   "lines": [
+    6363,
+    6365
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "flow",
+   "text": "RAG step 6: Execute Cosine Similarity search."
+  },
+  {
+   "id": "R06365",
+   "lines": [
+    6365,
+    6365
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "interface",
+   "text": "Similarity search uses the <=> operator."
+  },
+  {
+   "id": "R06365a",
+   "lines": [
+    6365,
+    6365
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "constraint",
+   "text": "Retrieval top-k = 8."
+  },
+  {
+   "id": "R06365b",
+   "lines": [
+    6365,
+    6365
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "decision",
+   "text": "Brand chunk retrieval uses Cosine Similarity."
+  },
+  {
+   "id": "R06367",
+   "lines": [
+    6367,
+    6369
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "flow",
+   "text": "RAG step 7: Inject top-8 chunks into ContextAssemblyService."
+  },
+  {
+   "id": "R06371",
+   "lines": [
+    6371,
+    6371
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "info",
+   "text": "Brand Guide Chunking Taxonomy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06373",
+   "lines": [
+    6373,
+    6377
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "info",
+   "text": "Column headers: Chunk Type | Granularity | Example Guideline Content",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06379",
+   "lines": [
+    6379,
+    6379
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Chunk type `tone_rule`."
+  },
+  {
+   "id": "R06381",
+   "lines": [
+    6381,
+    6381
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "tone_rule granularity: Per tone clause."
+  },
+  {
+   "id": "R06383",
+   "lines": [
+    6383,
+    6383
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "tone_rule example: \"Playful and approachable, not corporate. Address the reader as 'you'.\""
+  },
+  {
+   "id": "R06385",
+   "lines": [
+    6385,
+    6385
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Chunk type `glossary`."
+  },
+  {
+   "id": "R06387",
+   "lines": [
+    6387,
+    6387
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "glossary granularity: Per term pair."
+  },
+  {
+   "id": "R06389",
+   "lines": [
+    6389,
+    6389
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "glossary example: \"Always say 'kurta set', never say 'kurta outfit' or 'ethnic suit'.\""
+  },
+  {
+   "id": "R06391",
+   "lines": [
+    6391,
+    6391
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Chunk type `compliance`."
+  },
+  {
+   "id": "R06393",
+   "lines": [
+    6393,
+    6393
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "compliance granularity: Per regulatory rule."
+  },
+  {
+   "id": "R06395",
+   "lines": [
+    6395,
+    6395
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "compliance example: \"Never claim 'organic' without citing GOTS certification.\""
+  },
+  {
+   "id": "R06397",
+   "lines": [
+    6397,
+    6397
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Chunk type `example`."
+  },
+  {
+   "id": "R06399",
+   "lines": [
+    6399,
+    6399
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "example granularity: Per approved field."
+  },
+  {
+   "id": "R06401",
+   "lines": [
+    6401,
+    6401
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "example chunk content: Past high-converting approved titles and bullet points."
+  },
+  {
+   "id": "R06403",
+   "lines": [
+    6403,
+    6403
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06405",
+   "lines": [
+    6405,
+    6405
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "info",
+   "text": "[09] Image Compliance & Adapters",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06407",
+   "lines": [
+    6407,
+    6407
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "info",
+   "text": "Section: 45-Day MVP Build Plan",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06408",
+   "lines": [
+    6408,
+    6408
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "scope",
+   "text": "Page [09] Image Compliance & Adapters scope: MVP."
+  },
+  {
+   "id": "R06409",
+   "lines": [
+    6409,
+    6409
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/mvp-image-adapters",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06410",
+   "lines": [
+    6410,
+    6410
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Image compliance pipeline splits deterministic vs vision checks."
+  },
+  {
+   "id": "R06410a",
+   "lines": [
+    6410,
+    6410
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "decision",
+   "text": "Marketplace Adapter pattern for Amazon SP-API."
+  },
+  {
+   "id": "R06410b",
+   "lines": [
+    6410,
+    6410
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "risk",
+   "text": "Critical Day 1 developer application warning."
+  },
+  {
+   "id": "R06410c",
+   "lines": [
+    6410,
+    6410
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "decision",
+   "text": "Marketplace Adapter pattern for Flipkart Seller API."
+  },
+  {
+   "id": "R06411",
+   "lines": [
+    6411,
+    6411
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "info",
+   "text": "Keywords: image compliance, vision model, marketplace adapters, amazon sp-api, flipkart seller api, developer application, adapter pattern",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06413",
+   "lines": [
+    6413,
+    6413
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "info",
+   "text": "Image Compliance Pipeline",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06415",
+   "lines": [
+    6415,
+    6415
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "risk",
+   "text": "Marketplaces reject listings silently for image non-compliance."
+  },
+  {
+   "id": "R06415a",
+   "lines": [
+    6415,
+    6415
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "The image pipeline runs in parallel with text generation."
+  },
+  {
+   "id": "R06415b",
+   "lines": [
+    6415,
+    6415
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Image pipeline executes cheap deterministic checks before invoking vision models."
+  },
+  {
+   "id": "R06417",
+   "lines": [
+    6417,
+    6417
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "flow",
+   "text": "Image step 1: Image Upload (raw asset)."
+  },
+  {
+   "id": "R06417a",
+   "lines": [
+    6417,
+    6417
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "decision",
+   "text": "Raw image assets are uploaded to GCS."
+  },
+  {
+   "id": "R06419",
+   "lines": [
+    6419,
+    6421
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "flow",
+   "text": "Image step 2: Deterministic Checks."
+  },
+  {
+   "id": "R06421",
+   "lines": [
+    6421,
+    6421
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "decision",
+   "text": "Deterministic image checks use Pillow."
+  },
+  {
+   "id": "R06421a",
+   "lines": [
+    6421,
+    6421
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Deterministic image check: Format."
+  },
+  {
+   "id": "R06421b",
+   "lines": [
+    6421,
+    6421
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Deterministic image check: Resolution."
+  },
+  {
+   "id": "R06421c",
+   "lines": [
+    6421,
+    6421
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Deterministic image check: Dimensions."
+  },
+  {
+   "id": "R06421d",
+   "lines": [
+    6421,
+    6421
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Deterministic image check: Aspect Ratio."
+  },
+  {
+   "id": "R06421e",
+   "lines": [
+    6421,
+    6421
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "decision",
+   "text": "Deterministic image checks use EXIF."
+  },
+  {
+   "id": "R06423",
+   "lines": [
+    6423,
+    6425
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "flow",
+   "text": "Image step 3, on deterministic Pass: Dispatch Vision Model Checks."
+  },
+  {
+   "id": "R06425",
+   "lines": [
+    6425,
+    6425
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Vision model check: Background RGB."
+  },
+  {
+   "id": "R06425a",
+   "lines": [
+    6425,
+    6425
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Vision model check: Fill Ratio."
+  },
+  {
+   "id": "R06425b",
+   "lines": [
+    6425,
+    6425
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Vision model check: Overlays."
+  },
+  {
+   "id": "R06425c",
+   "lines": [
+    6425,
+    6425
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Vision model check: Watermarks."
+  },
+  {
+   "id": "R06427",
+   "lines": [
+    6427,
+    6429
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "flow",
+   "text": "Image step 3, on deterministic Fail: Immediate rejection without calling expensive vision model."
+  },
+  {
+   "id": "R06431",
+   "lines": [
+    6431,
+    6433
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "flow",
+   "text": "Image step 4: Assemble ImageReport."
+  },
+  {
+   "id": "R06433",
+   "lines": [
+    6433,
+    6433
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "data",
+   "text": "ImageReport carries per-issue status."
+  },
+  {
+   "id": "R06433a",
+   "lines": [
+    6433,
+    6433
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "data",
+   "text": "ImageReport carries suggested fixes."
+  },
+  {
+   "id": "R06435",
+   "lines": [
+    6435,
+    6437
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "flow",
+   "text": "Image step 5: Attach ImageReport to Listing Version for human review."
+  },
+  {
+   "id": "R06439",
+   "lines": [
+    6439,
+    6439
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "info",
+   "text": "Amazon vs Flipkart Image Rules",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06441",
+   "lines": [
+    6441,
+    6447
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "info",
+   "text": "Column headers: Check Item | Amazon Requirement | Flipkart Requirement | Verification Method",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06449",
+   "lines": [
+    6449,
+    6451
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "constraint",
+   "text": "Main Background, Amazon: Pure white RGB(255, 255, 255)."
+  },
+  {
+   "id": "R06453",
+   "lines": [
+    6453,
+    6453
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "constraint",
+   "text": "Main Background, Flipkart: Pure white or light clean background."
+  },
+  {
+   "id": "R06455",
+   "lines": [
+    6455,
+    6455
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "decision",
+   "text": "Main Background verification: Pixel analysis."
+  },
+  {
+   "id": "R06455a",
+   "lines": [
+    6455,
+    6455
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "decision",
+   "text": "Main Background verification: vision confirmation."
+  },
+  {
+   "id": "R06457",
+   "lines": [
+    6457,
+    6459
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "constraint",
+   "text": "Min Resolution, Amazon: 1000 × 1000 px."
+  },
+  {
+   "id": "R06459",
+   "lines": [
+    6459,
+    6459
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "constraint",
+   "text": "Amazon Min Resolution 1000 × 1000 px is annotated \"(zoom enabled)\"."
+  },
+  {
+   "id": "R06461",
+   "lines": [
+    6461,
+    6461
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "constraint",
+   "text": "Min Resolution, Flipkart: 500 × 500 px min."
+  },
+  {
+   "id": "R06461a",
+   "lines": [
+    6461,
+    6461
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "constraint",
+   "text": "Min Resolution, Flipkart: 1000 × 1000 recommended."
+  },
+  {
+   "id": "R06463",
+   "lines": [
+    6463,
+    6463
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "decision",
+   "text": "Min Resolution verification: Deterministic (Pillow)."
+  },
+  {
+   "id": "R06465",
+   "lines": [
+    6465,
+    6467
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "constraint",
+   "text": "Product Fill Ratio, Amazon: ≥ 85% of frame area."
+  },
+  {
+   "id": "R06469",
+   "lines": [
+    6469,
+    6469
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Product Fill Ratio, Flipkart: Centrally aligned."
+  },
+  {
+   "id": "R06469a",
+   "lines": [
+    6469,
+    6469
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Product Fill Ratio, Flipkart: clear framing."
+  },
+  {
+   "id": "R06471",
+   "lines": [
+    6471,
+    6471
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "decision",
+   "text": "Product Fill Ratio verification: Vision model bounding box."
+  },
+  {
+   "id": "R06473",
+   "lines": [
+    6473,
+    6475
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Overlays / Watermarks, Amazon: Strictly prohibited on main slot."
+  },
+  {
+   "id": "R06477",
+   "lines": [
+    6477,
+    6477
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Overlays / Watermarks, Flipkart: Restricted."
+  },
+  {
+   "id": "R06477a",
+   "lines": [
+    6477,
+    6477
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Overlays / Watermarks, Flipkart: no promotional banners."
+  },
+  {
+   "id": "R06479",
+   "lines": [
+    6479,
+    6479
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "decision",
+   "text": "Overlays / Watermarks verification: Vision model text detection."
+  },
+  {
+   "id": "R06481",
+   "lines": [
+    6481,
+    6483
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Brand Logos, Amazon: Only on product itself."
+  },
+  {
+   "id": "R06485",
+   "lines": [
+    6485,
+    6485
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Brand Logos, Flipkart: Only on product itself."
+  },
+  {
+   "id": "R06487",
+   "lines": [
+    6487,
+    6487
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "decision",
+   "text": "Brand Logos verification: Vision model logo detection."
+  },
+  {
+   "id": "R06489",
+   "lines": [
+    6489,
+    6491
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "constraint",
+   "text": "Aspect Ratio, Amazon: 1:1 square for main image."
+  },
+  {
+   "id": "R06493",
+   "lines": [
+    6493,
+    6493
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "constraint",
+   "text": "Aspect Ratio, Flipkart: 1:1 square or 3:4 portrait."
+  },
+  {
+   "id": "R06495",
+   "lines": [
+    6495,
+    6495
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "decision",
+   "text": "Aspect Ratio verification: Deterministic (EXIF dimensions)."
+  },
+  {
+   "id": "R06497",
+   "lines": [
+    6497,
+    6497
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "decision",
+   "text": "MarketplaceAdapter Pattern is a Python ABC."
+  },
+  {
+   "id": "R06499",
+   "lines": [
+    6499,
+    6499
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Every marketplace interaction implements a strict abstract base class."
+  },
+  {
+   "id": "R06499a",
+   "lines": [
+    6499,
+    6499
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "All adapter methods return per-field status, never a bare boolean."
+  },
+  {
+   "id": "R06501",
+   "lines": [
+    6501,
+    6501
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "interface",
+   "text": "Adapter code file: marketplace_adapter.py"
+  },
+  {
+   "id": "R06503",
+   "lines": [
+    6503,
+    6504
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "decision",
+   "text": "marketplace_adapter.py: from abc import ABC, abstractmethod."
+  },
+  {
+   "id": "R06505",
+   "lines": [
+    6505,
+    6505
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "decision",
+   "text": "marketplace_adapter.py: from datetime import date."
+  },
+  {
+   "id": "R06506",
+   "lines": [
+    6506,
+    6506
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "decision",
+   "text": "marketplace_adapter.py: from pydantic import BaseModel."
+  },
+  {
+   "id": "R06507",
+   "lines": [
+    6507,
+    6507
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "decision",
+   "text": "marketplace_adapter.py: from typing import Dict, Any, List."
+  },
+  {
+   "id": "R06509",
+   "lines": [
+    6509,
+    6509
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "data",
+   "text": "class FieldResult(BaseModel)"
+  },
+  {
+   "id": "R06510",
+   "lines": [
+    6510,
+    6510
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "data",
+   "text": "FieldResult.field: str"
+  },
+  {
+   "id": "R06511",
+   "lines": [
+    6511,
+    6511
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "data",
+   "text": "FieldResult.status: str  # 'success' | 'failed'"
+  },
+  {
+   "id": "R06512",
+   "lines": [
+    6512,
+    6512
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "data",
+   "text": "FieldResult.message: str | None = None"
+  },
+  {
+   "id": "R06514",
+   "lines": [
+    6514,
+    6514
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "data",
+   "text": "class ListingResult(BaseModel)"
+  },
+  {
+   "id": "R06515",
+   "lines": [
+    6515,
+    6515
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "data",
+   "text": "ListingResult.marketplace: str"
+  },
+  {
+   "id": "R06516",
+   "lines": [
+    6516,
+    6516
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "data",
+   "text": "ListingResult.overall_status: str  # 'published' | 'partial' | 'failed'"
+  },
+  {
+   "id": "R06517",
+   "lines": [
+    6517,
+    6517
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "data",
+   "text": "ListingResult.external_id: str | None = None"
+  },
+  {
+   "id": "R06518",
+   "lines": [
+    6518,
+    6518
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "data",
+   "text": "ListingResult.field_results: List[FieldResult]"
+  },
+  {
+   "id": "R06519",
+   "lines": [
+    6519,
+    6519
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "data",
+   "text": "ListingResult.raw_error: Dict[str, Any] | None = None"
+  },
+  {
+   "id": "R06521",
+   "lines": [
+    6521,
+    6521
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "interface",
+   "text": "class MarketplaceAdapter(ABC)"
+  },
+  {
+   "id": "R06522",
+   "lines": [
+    6522,
+    6523
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "interface",
+   "text": "@abstractmethod async def get_listing(self, sku: str) -> ListingResult"
+  },
+  {
+   "id": "R06525",
+   "lines": [
+    6525,
+    6526
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "interface",
+   "text": "@abstractmethod async def create_listing(self, listing: Any) -> ListingResult"
+  },
+  {
+   "id": "R06528",
+   "lines": [
+    6528,
+    6529
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "interface",
+   "text": "@abstractmethod async def update_listing(self, listing: Any) -> ListingResult"
+  },
+  {
+   "id": "R06531",
+   "lines": [
+    6531,
+    6532
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "interface",
+   "text": "@abstractmethod async def publish_listing(self, listing: Any) -> ListingResult"
+  },
+  {
+   "id": "R06534",
+   "lines": [
+    6534,
+    6536
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "interface",
+   "text": "@abstractmethod async def get_performance(self, listing_id: str, from_date: date, to_date: date) -> Any"
+  },
+  {
+   "id": "R06538",
+   "lines": [
+    6538,
+    6538
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "Critical Notice: Day 1 Developer Applications."
+  },
+  {
+   "id": "R06540",
+   "lines": [
+    6540,
+    6540
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "risk",
+   "text": "Developer applications are the Longest Lead-Time Risk in the Entire Plan."
+  },
+  {
+   "id": "R06542",
+   "lines": [
+    6542,
+    6542
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "risk",
+   "text": "Amazon SP-API developer registration often takes 2 to 4 weeks for approval."
+  },
+  {
+   "id": "R06542a",
+   "lines": [
+    6542,
+    6542
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "risk",
+   "text": "Flipkart Seller API partner onboarding often takes 2 to 4 weeks for approval."
+  },
+  {
+   "id": "R06542b",
+   "lines": [
+    6542,
+    6542
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "requirement",
+   "text": "You MUST submit both developer applications on Day 1."
+  },
+  {
+   "id": "R06542c",
+   "lines": [
+    6542,
+    6542
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "flow",
+   "text": "The plan builds and tests against sandbox environments from Day 29."
+  },
+  {
+   "id": "R06542d",
+   "lines": [
+    6542,
+    6542
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "risk",
+   "text": "Live production credentials must not become a last-minute launch blocker on Day 43."
+  },
+  {
+   "id": "R06544",
+   "lines": [
+    6544,
+    6544
+   ],
+   "page": "[09] Image Compliance & Adapters",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06546",
+   "lines": [
+    6546,
+    6546
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "info",
+   "text": "[10] Security, Multi-Tenancy & Reliability",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06548",
+   "lines": [
+    6548,
+    6548
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "info",
+   "text": "Section: 45-Day MVP Build Plan",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06549",
+   "lines": [
+    6549,
+    6549
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "scope",
+   "text": "Page [10] Security, Multi-Tenancy & Reliability scope: MVP."
+  },
+  {
+   "id": "R06550",
+   "lines": [
+    6550,
+    6550
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/mvp-security-reliability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06551",
+   "lines": [
+    6551,
+    6551
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "Mandatory tenant-scoped repository pattern."
+  },
+  {
+   "id": "R06551a",
+   "lines": [
+    6551,
+    6551
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "Maker-checker authorization."
+  },
+  {
+   "id": "R06551b",
+   "lines": [
+    6551,
+    6551
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "decision",
+   "text": "Async queue lifecycle uses Redis."
+  },
+  {
+   "id": "R06551c",
+   "lines": [
+    6551,
+    6551
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "quality",
+   "text": "Distributed correlation telemetry."
+  },
+  {
+   "id": "R06551d",
+   "lines": [
+    6551,
+    6551
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "decision",
+   "text": "Async queue lifecycle uses ARQ."
+  },
+  {
+   "id": "R06552",
+   "lines": [
+    6552,
+    6552
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "info",
+   "text": "Keywords: security, multi-tenancy, tenant isolation, maker checker, kms encryption, redis arq, idempotency, telemetry",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06554",
+   "lines": [
+    6554,
+    6554
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "info",
+   "text": "Security & Multi-Tenancy Matrix",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06556",
+   "lines": [
+    6556,
+    6558
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "info",
+   "text": "Column headers: Security Concern | Architecture Implementation",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06560",
+   "lines": [
+    6560,
+    6562
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "decision",
+   "text": "Application Authentication: JWT tokens."
+  },
+  {
+   "id": "R06562",
+   "lines": [
+    6562,
+    6562
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "decision",
+   "text": "Application Authentication uses a NextAuth bridge."
+  },
+  {
+   "id": "R06562a",
+   "lines": [
+    6562,
+    6562
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "JWT tokens validated in FastAPI dependencies."
+  },
+  {
+   "id": "R06564",
+   "lines": [
+    6564,
+    6566
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "decision",
+   "text": "Marketplace Authentication: OAuth 2.0."
+  },
+  {
+   "id": "R06566",
+   "lines": [
+    6566,
+    6566
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "decision",
+   "text": "Amazon marketplace authentication: Amazon LWA."
+  },
+  {
+   "id": "R06566a",
+   "lines": [
+    6566,
+    6566
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "decision",
+   "text": "Flipkart marketplace authentication: Flipkart Seller API OAuth 2.0."
+  },
+  {
+   "id": "R06568",
+   "lines": [
+    6568,
+    6570
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "quality",
+   "text": "Credential Encryption: AES-256 encryption at rest."
+  },
+  {
+   "id": "R06570",
+   "lines": [
+    6570,
+    6570
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "decision",
+   "text": "Credential encryption uses Google Cloud KMS-wrapped keys."
+  },
+  {
+   "id": "R06572",
+   "lines": [
+    6572,
+    6574
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "Multi-Tenancy Isolation: Mandatory `tenant_id` scoping enforced at repository layer."
+  },
+  {
+   "id": "R06576",
+   "lines": [
+    6576,
+    6578
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "constraint",
+   "text": "Role-Based Access Control: 4 Roles."
+  },
+  {
+   "id": "R06578",
+   "lines": [
+    6578,
+    6578
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "data",
+   "text": "RBAC roles: Owner, Operator, Reviewer, Admin."
+  },
+  {
+   "id": "R06578a",
+   "lines": [
+    6578,
+    6578
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "Roles have strict operation limits."
+  },
+  {
+   "id": "R06580",
+   "lines": [
+    6580,
+    6582
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "Approval Integrity: Maker-checker constraint enforced in database DDL."
+  },
+  {
+   "id": "R06582",
+   "lines": [
+    6582,
+    6582
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "Maker-checker constraint enforced in service layer."
+  },
+  {
+   "id": "R06584",
+   "lines": [
+    6584,
+    6586
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "quality",
+   "text": "Transport Security: TLS 1.3 enforced everywhere."
+  },
+  {
+   "id": "R06586",
+   "lines": [
+    6586,
+    6586
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "decision",
+   "text": "TLS via Cloud Run managed certificates."
+  },
+  {
+   "id": "R06588",
+   "lines": [
+    6588,
+    6590
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "decision",
+   "text": "Secrets Management: GCP Secret Manager."
+  },
+  {
+   "id": "R06590",
+   "lines": [
+    6590,
+    6590
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "quality",
+   "text": "Zero secrets in git."
+  },
+  {
+   "id": "R06590a",
+   "lines": [
+    6590,
+    6590
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "quality",
+   "text": "Zero secrets in code."
+  },
+  {
+   "id": "R06590b",
+   "lines": [
+    6590,
+    6590
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "quality",
+   "text": "Zero secrets in container images."
+  },
+  {
+   "id": "R06592",
+   "lines": [
+    6592,
+    6592
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "TenantScopedRepository Pattern is Mandatory."
+  },
+  {
+   "id": "R06594",
+   "lines": [
+    6594,
+    6594
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "To prevent cross-tenant data leaks, all database operations inherit from a base repository."
+  },
+  {
+   "id": "R06594a",
+   "lines": [
+    6594,
+    6594
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "The base repository enforces `tenant_id` scoping automatically."
+  },
+  {
+   "id": "R06596",
+   "lines": [
+    6596,
+    6596
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "interface",
+   "text": "Repository code file: tenant_repository.py"
+  },
+  {
+   "id": "R06598",
+   "lines": [
+    6598,
+    6599
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "interface",
+   "text": "class TenantScopedRepository"
+  },
+  {
+   "id": "R06600",
+   "lines": [
+    6600,
+    6600
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "interface",
+   "text": "TenantScopedRepository.__init__(self, db_session, tenant_id: UUID)"
+  },
+  {
+   "id": "R06601",
+   "lines": [
+    6601,
+    6601
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "interface",
+   "text": "TenantScopedRepository.__init__ sets self.db = db_session"
+  },
+  {
+   "id": "R06602",
+   "lines": [
+    6602,
+    6602
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "interface",
+   "text": "TenantScopedRepository.__init__ sets self.tenant_id = tenant_id"
+  },
+  {
+   "id": "R06604",
+   "lines": [
+    6604,
+    6604
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "interface",
+   "text": "TenantScopedRepository: def filter_tenant(self, query, model)"
+  },
+  {
+   "id": "R06605",
+   "lines": [
+    6605,
+    6605
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "filter_tenant docstring: \"Enforce tenant isolation on every single query.\""
+  },
+  {
+   "id": "R06606",
+   "lines": [
+    6606,
+    6606
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "interface",
+   "text": "filter_tenant returns query.filter(model.tenant_id == self.tenant_id)"
+  },
+  {
+   "id": "R06608",
+   "lines": [
+    6608,
+    6608
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "interface",
+   "text": "TenantScopedRepository: async def get_by_id(self, model, entity_id: UUID)"
+  },
+  {
+   "id": "R06609",
+   "lines": [
+    6609,
+    6612
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "interface",
+   "text": "get_by_id builds stmt = select(model).where(model.id == entity_id, model.tenant_id == self.tenant_id)"
+  },
+  {
+   "id": "R06613",
+   "lines": [
+    6613,
+    6614
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "interface",
+   "text": "get_by_id returns (await self.db.execute(stmt)).scalar_one_or_none()"
+  },
+  {
+   "id": "R06616",
+   "lines": [
+    6616,
+    6616
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "info",
+   "text": "Maker-Checker Integrity",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06618",
+   "lines": [
+    6618,
+    6618
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "info",
+   "text": "Maker-Checker Rule",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06620",
+   "lines": [
+    6620,
+    6620
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "The user who generates a listing CANNOT approve that listing."
+  },
+  {
+   "id": "R06620a",
+   "lines": [
+    6620,
+    6620
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "data",
+   "text": "Maker-checker enforced at the database level via CHECK (approved_by_user_id IS NULL OR approved_by_user_id <> generated_by_user_id) constraint."
+  },
+  {
+   "id": "R06620b",
+   "lines": [
+    6620,
+    6620
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "Maker-checker confirmed in the API router before any publish operation is permitted."
+  },
+  {
+   "id": "R06620c",
+   "lines": [
+    6620,
+    6620
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "The user who edits a listing CANNOT approve that listing."
+  },
+  {
+   "id": "R06620d",
+   "lines": [
+    6620,
+    6620
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "data",
+   "text": "Maker-checker column `approved_by_user_id` (CHECK allows approved_by_user_id IS NULL)."
+  },
+  {
+   "id": "R06620e",
+   "lines": [
+    6620,
+    6620
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "data",
+   "text": "Maker-checker column `generated_by_user_id`."
+  },
+  {
+   "id": "R06622",
+   "lines": [
+    6622,
+    6622
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "decision",
+   "text": "Async Queue & Job Lifecycle uses Redis."
+  },
+  {
+   "id": "R06622a",
+   "lines": [
+    6622,
+    6622
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "decision",
+   "text": "Async Queue & Job Lifecycle uses ARQ."
+  },
+  {
+   "id": "R06624",
+   "lines": [
+    6624,
+    6624
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "All long-running tasks run asynchronously."
+  },
+  {
+   "id": "R06624a",
+   "lines": [
+    6624,
+    6624
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "CSV imports are long-running tasks that run asynchronously."
+  },
+  {
+   "id": "R06624b",
+   "lines": [
+    6624,
+    6624
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "LLM generation is a long-running task that runs asynchronously."
+  },
+  {
+   "id": "R06624c",
+   "lines": [
+    6624,
+    6624
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "Vision analysis is a long-running task that runs asynchronously."
+  },
+  {
+   "id": "R06624d",
+   "lines": [
+    6624,
+    6624
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "Marketplace publishing is a long-running task that runs asynchronously."
+  },
+  {
+   "id": "R06626",
+   "lines": [
+    6626,
+    6626
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "flow",
+   "text": "Job step 1: API receives POST request."
+  },
+  {
+   "id": "R06626a",
+   "lines": [
+    6626,
+    6626
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "flow",
+   "text": "Job step 1: API validates payload."
+  },
+  {
+   "id": "R06628",
+   "lines": [
+    6628,
+    6630
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "flow",
+   "text": "Job step 2: Enqueue task in Redis."
+  },
+  {
+   "id": "R06630",
+   "lines": [
+    6630,
+    6630
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "data",
+   "text": "Enqueued task has unique job_id."
+  },
+  {
+   "id": "R06630a",
+   "lines": [
+    6630,
+    6630
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "Enqueued task has idempotency key."
+  },
+  {
+   "id": "R06632",
+   "lines": [
+    6632,
+    6634
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "interface",
+   "text": "Job step 3: Return 202 Accepted."
+  },
+  {
+   "id": "R06634",
+   "lines": [
+    6634,
+    6634
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "interface",
+   "text": "202 Accepted response includes a job status URL."
+  },
+  {
+   "id": "R06634a",
+   "lines": [
+    6634,
+    6634
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "Return 202 Accepted with job status URL immediately."
+  },
+  {
+   "id": "R06636",
+   "lines": [
+    6636,
+    6638
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "flow",
+   "text": "Job step 4: ARQ Worker executes job."
+  },
+  {
+   "id": "R06638",
+   "lines": [
+    6638,
+    6638
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "Worker uses exponential backoff on failure."
+  },
+  {
+   "id": "R06640",
+   "lines": [
+    6640,
+    6642
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "flow",
+   "text": "Job step 5: Status transition QUEUED → RUNNING."
+  },
+  {
+   "id": "R06642",
+   "lines": [
+    6642,
+    6642
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "flow",
+   "text": "Status transition: RUNNING → SUCCEEDED / FAILED / PARTIAL."
+  },
+  {
+   "id": "R06642a",
+   "lines": [
+    6642,
+    6642
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "data",
+   "text": "Job status values: QUEUED, RUNNING, SUCCEEDED, FAILED, PARTIAL (uppercase as written)."
+  },
+  {
+   "id": "R06644",
+   "lines": [
+    6644,
+    6646
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "flow",
+   "text": "Job step 6: Frontend polls status."
+  },
+  {
+   "id": "R06646",
+   "lines": [
+    6646,
+    6646
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "requirement",
+   "text": "Frontend alternatively receives completion notification."
+  },
+  {
+   "id": "R06648",
+   "lines": [
+    6648,
+    6648
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "info",
+   "text": "Distributed Correlation & Cost Telemetry",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06650",
+   "lines": [
+    6650,
+    6650
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "quality",
+   "text": "Every request generates a UUID `request_id`."
+  },
+  {
+   "id": "R06650a",
+   "lines": [
+    6650,
+    6650
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "quality",
+   "text": "request_id propagated through contextvars."
+  },
+  {
+   "id": "R06650b",
+   "lines": [
+    6650,
+    6650
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "quality",
+   "text": "request_id propagated through HTTP headers."
+  },
+  {
+   "id": "R06650c",
+   "lines": [
+    6650,
+    6650
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "quality",
+   "text": "request_id propagated through worker jobs."
+  },
+  {
+   "id": "R06650d",
+   "lines": [
+    6650,
+    6650
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "quality",
+   "text": "request_id propagated through Cloud Trace spans."
+  },
+  {
+   "id": "R06651",
+   "lines": [
+    6651,
+    6651
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "quality",
+   "text": "AgentRun Cost Telemetry: Every AI call records `tokens_in`."
+  },
+  {
+   "id": "R06651a",
+   "lines": [
+    6651,
+    6651
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "quality",
+   "text": "Every AI call records `tokens_out`."
+  },
+  {
+   "id": "R06651b",
+   "lines": [
+    6651,
+    6651
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "quality",
+   "text": "Every AI call records model identifier."
+  },
+  {
+   "id": "R06651c",
+   "lines": [
+    6651,
+    6651
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "quality",
+   "text": "Every AI call records computed USD cost."
+  },
+  {
+   "id": "R06652",
+   "lines": [
+    6652,
+    6652
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "quality",
+   "text": "Frontend Sentry catches all unhandled exceptions."
+  },
+  {
+   "id": "R06652a",
+   "lines": [
+    6652,
+    6652
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "quality",
+   "text": "Backend Sentry catches all unhandled exceptions."
+  },
+  {
+   "id": "R06652b",
+   "lines": [
+    6652,
+    6652
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "quality",
+   "text": "Sentry error tracking uses release tags."
+  },
+  {
+   "id": "R06654",
+   "lines": [
+    6654,
+    6654
+   ],
+   "page": "[10] Security, Multi-Tenancy & Reliability",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06656",
+   "lines": [
+    6656,
+    6656
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "info",
+   "text": "[11] Testing Strategy, Launch Gate & Risks",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06658",
+   "lines": [
+    6658,
+    6658
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "info",
+   "text": "Section: 45-Day MVP Build Plan",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06659",
+   "lines": [
+    6659,
+    6659
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Page [11] Testing Strategy, Launch Gate & Risks scope: MVP."
+  },
+  {
+   "id": "R06660",
+   "lines": [
+    6660,
+    6660
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/mvp-testing-launch-risks",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06661",
+   "lines": [
+    6661,
+    6661
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Comprehensive testing strategy."
+  },
+  {
+   "id": "R06661a",
+   "lines": [
+    6661,
+    6661
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Day-45 launch gate checklist."
+  },
+  {
+   "id": "R06661b",
+   "lines": [
+    6661,
+    6661
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "10-point risk register with mitigations."
+  },
+  {
+   "id": "R06661c",
+   "lines": [
+    6661,
+    6661
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Post-MVP roadmap preview."
+  },
+  {
+   "id": "R06662",
+   "lines": [
+    6662,
+    6662
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "info",
+   "text": "Keywords: testing strategy, launch gate, risk register, mitigations, post-mvp roadmap, uat, regression",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06664",
+   "lines": [
+    6664,
+    6664
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "info",
+   "text": "Multi-Layer Testing Matrix",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06666",
+   "lines": [
+    6666,
+    6666
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Testing is layered so defects are caught at the earliest possible stage."
+  },
+  {
+   "id": "R06668",
+   "lines": [
+    6668,
+    6674
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "info",
+   "text": "Column headers: Layer | What Is Tested | Cadence & Tooling | Owner",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06676",
+   "lines": [
+    6676,
+    6678
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Unit Tests cover Rules engine."
+  },
+  {
+   "id": "R06678",
+   "lines": [
+    6678,
+    6678
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Unit Tests cover schema validation."
+  },
+  {
+   "id": "R06678a",
+   "lines": [
+    6678,
+    6678
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Unit Tests cover tenant repository isolation."
+  },
+  {
+   "id": "R06678b",
+   "lines": [
+    6678,
+    6678
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Unit Tests cover field mapping."
+  },
+  {
+   "id": "R06680",
+   "lines": [
+    6680,
+    6680
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "constraint",
+   "text": "Unit Tests cadence: Every PR."
+  },
+  {
+   "id": "R06680a",
+   "lines": [
+    6680,
+    6680
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "decision",
+   "text": "Unit test tooling: pytest."
+  },
+  {
+   "id": "R06680b",
+   "lines": [
+    6680,
+    6680
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "decision",
+   "text": "Unit test tooling: vitest."
+  },
+  {
+   "id": "R06682",
+   "lines": [
+    6682,
+    6682
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "flow",
+   "text": "Unit Tests owner: BE / FE."
+  },
+  {
+   "id": "R06684",
+   "lines": [
+    6684,
+    6686
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "AI Contract tests cover Structured JSON shape."
+  },
+  {
+   "id": "R06686",
+   "lines": [
+    6686,
+    6686
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "AI Contract tests cover missing fields."
+  },
+  {
+   "id": "R06686a",
+   "lines": [
+    6686,
+    6686
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "AI Contract tests cover malformed repair."
+  },
+  {
+   "id": "R06686b",
+   "lines": [
+    6686,
+    6686
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "AI Contract tests cover prompt injection."
+  },
+  {
+   "id": "R06688",
+   "lines": [
+    6688,
+    6688
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "constraint",
+   "text": "AI Contract cadence: Nightly CI test run."
+  },
+  {
+   "id": "R06690",
+   "lines": [
+    6690,
+    6690
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "flow",
+   "text": "AI Contract owner: AI."
+  },
+  {
+   "id": "R06692",
+   "lines": [
+    6692,
+    6694
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Image Suite tests Pillow resolution."
+  },
+  {
+   "id": "R06694",
+   "lines": [
+    6694,
+    6694
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Image Suite tests aspect ratio."
+  },
+  {
+   "id": "R06694a",
+   "lines": [
+    6694,
+    6694
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Image Suite tests background RGB."
+  },
+  {
+   "id": "R06694b",
+   "lines": [
+    6694,
+    6694
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "constraint",
+   "text": "Image Suite uses a 50-image fixture library."
+  },
+  {
+   "id": "R06696",
+   "lines": [
+    6696,
+    6696
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "constraint",
+   "text": "Image Suite cadence: Weekly fixture suite."
+  },
+  {
+   "id": "R06698",
+   "lines": [
+    6698,
+    6698
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "flow",
+   "text": "Image Suite owner: AI / OPS."
+  },
+  {
+   "id": "R06700",
+   "lines": [
+    6700,
+    6702
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Integration tests cover CSV → Redis → LangGraph → Rules → DB → Mock Adapter."
+  },
+  {
+   "id": "R06704",
+   "lines": [
+    6704,
+    6704
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "constraint",
+   "text": "Integration cadence: Weekly integration run."
+  },
+  {
+   "id": "R06706",
+   "lines": [
+    6706,
+    6706
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "flow",
+   "text": "Integration owner: BE / OPS."
+  },
+  {
+   "id": "R06708",
+   "lines": [
+    6708,
+    6710
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Failure Injection tests Rate limits."
+  },
+  {
+   "id": "R06710",
+   "lines": [
+    6710,
+    6710
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Failure Injection tests token expiry."
+  },
+  {
+   "id": "R06710a",
+   "lines": [
+    6710,
+    6710
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Failure Injection tests partial publish."
+  },
+  {
+   "id": "R06710b",
+   "lines": [
+    6710,
+    6710
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Failure Injection tests network drop."
+  },
+  {
+   "id": "R06710c",
+   "lines": [
+    6710,
+    6710
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Failure Injection tests duplicate jobs."
+  },
+  {
+   "id": "R06712",
+   "lines": [
+    6712,
+    6712
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "constraint",
+   "text": "Failure Injection cadence: Weeks 5 and 6."
+  },
+  {
+   "id": "R06714",
+   "lines": [
+    6714,
+    6714
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "flow",
+   "text": "Failure Injection owner: OPS."
+  },
+  {
+   "id": "R06716",
+   "lines": [
+    6716,
+    6718
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Security Audit covers RBAC."
+  },
+  {
+   "id": "R06718",
+   "lines": [
+    6718,
+    6718
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Security Audit covers cross-tenant data leaks."
+  },
+  {
+   "id": "R06718a",
+   "lines": [
+    6718,
+    6718
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Security Audit covers maker-checker."
+  },
+  {
+   "id": "R06718b",
+   "lines": [
+    6718,
+    6718
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Security Audit covers KMS secrets."
+  },
+  {
+   "id": "R06718c",
+   "lines": [
+    6718,
+    6718
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Security Audit covers CORS."
+  },
+  {
+   "id": "R06718d",
+   "lines": [
+    6718,
+    6718
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Security Audit covers TLS."
+  },
+  {
+   "id": "R06720",
+   "lines": [
+    6720,
+    6720
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "constraint",
+   "text": "Security Audit cadence: Week 6 (Day 41)."
+  },
+  {
+   "id": "R06722",
+   "lines": [
+    6722,
+    6722
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "flow",
+   "text": "Security Audit owner: TL / OPS."
+  },
+  {
+   "id": "R06724",
+   "lines": [
+    6724,
+    6726
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "E2E: Playwright browser flow (login to publish)."
+  },
+  {
+   "id": "R06726",
+   "lines": [
+    6726,
+    6726
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "constraint",
+   "text": "Load: 1000-row CSV load test."
+  },
+  {
+   "id": "R06726a",
+   "lines": [
+    6726,
+    6726
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "decision",
+   "text": "E2E test tooling: Playwright (browser flow, login to publish)."
+  },
+  {
+   "id": "R06728",
+   "lines": [
+    6728,
+    6728
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "constraint",
+   "text": "E2E / Load cadence: Week 6 (Day 42)."
+  },
+  {
+   "id": "R06730",
+   "lines": [
+    6730,
+    6730
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "flow",
+   "text": "E2E / Load owner: OPS."
+  },
+  {
+   "id": "R06732",
+   "lines": [
+    6732,
+    6734
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "UAT: 3–5 realistic products."
+  },
+  {
+   "id": "R06734",
+   "lines": [
+    6734,
+    6734
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "UAT runs across Amazon & Flipkart."
+  },
+  {
+   "id": "R06734a",
+   "lines": [
+    6734,
+    6734
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "UAT: + 1 deliberately messy product."
+  },
+  {
+   "id": "R06736",
+   "lines": [
+    6736,
+    6736
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "constraint",
+   "text": "UAT cadence: Days 43–44."
+  },
+  {
+   "id": "R06738",
+   "lines": [
+    6738,
+    6738
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "flow",
+   "text": "UAT owner: Whole Team."
+  },
+  {
+   "id": "R06740",
+   "lines": [
+    6740,
+    6740
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "info",
+   "text": "Day-45 Launch Gate Checklist",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06742",
+   "lines": [
+    6742,
+    6742
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "requirement",
+   "text": "All 10 gates must pass before cutting production traffic."
+  },
+  {
+   "id": "R06742a",
+   "lines": [
+    6742,
+    6742
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "constraint",
+   "text": "Cutting production traffic takes place on Day 45."
+  },
+  {
+   "id": "R06744",
+   "lines": [
+    6744,
+    6748
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "info",
+   "text": "Column headers: # | Launch Gate | Required Pass Condition",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06750",
+   "lines": [
+    6750,
+    6754
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "requirement",
+   "text": "Gate 1 Feature Completeness: All Phase-1 features (§2 left column) working in staging end-to-end."
+  },
+  {
+   "id": "R06756",
+   "lines": [
+    6756,
+    6760
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Gate 2 Security & Multi-Tenancy: Tenant isolation verified by audit."
+  },
+  {
+   "id": "R06760",
+   "lines": [
+    6760,
+    6760
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Gate 2: RBAC verified by audit."
+  },
+  {
+   "id": "R06760a",
+   "lines": [
+    6760,
+    6760
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Gate 2: maker-checker verified by audit."
+  },
+  {
+   "id": "R06760b",
+   "lines": [
+    6760,
+    6760
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Gate 2: KMS encryption verified by audit."
+  },
+  {
+   "id": "R06762",
+   "lines": [
+    6762,
+    6766
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "constraint",
+   "text": "Gate 3 Reliability & Retries: Bounded retries (≤3) verified."
+  },
+  {
+   "id": "R06766",
+   "lines": [
+    6766,
+    6766
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Gate 3: idempotency keys verified."
+  },
+  {
+   "id": "R06766a",
+   "lines": [
+    6766,
+    6766
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Gate 3: failed-job re-runs verified."
+  },
+  {
+   "id": "R06768",
+   "lines": [
+    6768,
+    6772
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Gate 4 AI Contract Integrity: Structured JSON output validated."
+  },
+  {
+   "id": "R06772",
+   "lines": [
+    6772,
+    6772
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Gate 4: AgentRun costs tracked."
+  },
+  {
+   "id": "R06772a",
+   "lines": [
+    6772,
+    6772
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "requirement",
+   "text": "Gate 4: no path bypasses rules."
+  },
+  {
+   "id": "R06774",
+   "lines": [
+    6774,
+    6778
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Gate 5 Marketplace Adapters: Amazon adapter verified."
+  },
+  {
+   "id": "R06778",
+   "lines": [
+    6778,
+    6778
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "requirement",
+   "text": "Gate 5: adapters verified with per-field publish results."
+  },
+  {
+   "id": "R06778a",
+   "lines": [
+    6778,
+    6778
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Gate 5: Flipkart adapter verified."
+  },
+  {
+   "id": "R06780",
+   "lines": [
+    6780,
+    6784
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "constraint",
+   "text": "Gate 6 Data & Recovery: Cloud SQL backup/restore rehearsal verified in < 15 minutes."
+  },
+  {
+   "id": "R06786",
+   "lines": [
+    6786,
+    6790
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Gate 7 Observability: Sentry alerts live."
+  },
+  {
+   "id": "R06790",
+   "lines": [
+    6790,
+    6790
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Gate 7: Cloud Trace correlation live."
+  },
+  {
+   "id": "R06790a",
+   "lines": [
+    6790,
+    6790
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Gate 7: cost dashboards live."
+  },
+  {
+   "id": "R06792",
+   "lines": [
+    6792,
+    6796
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "constraint",
+   "text": "Gate 8 Performance & Load: 1,000-row CSV test passes."
+  },
+  {
+   "id": "R06796",
+   "lines": [
+    6796,
+    6796
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "constraint",
+   "text": "Gate 8: 20 concurrent generations pass."
+  },
+  {
+   "id": "R06796a",
+   "lines": [
+    6796,
+    6796
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "constraint",
+   "text": "Gate 8: zero queue starvation."
+  },
+  {
+   "id": "R06798",
+   "lines": [
+    6798,
+    6802
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Gate 9 User Acceptance Testing: Realistic product test set completes full journey."
+  },
+  {
+   "id": "R06802",
+   "lines": [
+    6802,
+    6802
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "constraint",
+   "text": "Gate 9: 0 launch blockers open."
+  },
+  {
+   "id": "R06804",
+   "lines": [
+    6804,
+    6808
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Gate 10 Rollback Procedure: Automated rollback scripts tested."
+  },
+  {
+   "id": "R06808",
+   "lines": [
+    6808,
+    6808
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "quality",
+   "text": "Gate 10: Automated rollback scripts documented."
+  },
+  {
+   "id": "R06810",
+   "lines": [
+    6810,
+    6810
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "constraint",
+   "text": "Risk Register & Mitigations contains 10 Risks."
+  },
+  {
+   "id": "R06812",
+   "lines": [
+    6812,
+    6816
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "info",
+   "text": "Column headers: Risk | Impact | Specific Mitigation Plan",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06818",
+   "lines": [
+    6818,
+    6820
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Risk: Marketplace API Delay; Impact: High."
+  },
+  {
+   "id": "R06822",
+   "lines": [
+    6822,
+    6822
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Marketplace API Delay): Submit developer applications on Day 1."
+  },
+  {
+   "id": "R06822a",
+   "lines": [
+    6822,
+    6822
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Marketplace API Delay): build and test against sandboxes."
+  },
+  {
+   "id": "R06822b",
+   "lines": [
+    6822,
+    6822
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Marketplace API Delay): build and test against FakeAdapter."
+  },
+  {
+   "id": "R06824",
+   "lines": [
+    6824,
+    6826
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Risk: LLM Cost Overrun; Impact: Medium."
+  },
+  {
+   "id": "R06828",
+   "lines": [
+    6828,
+    6828
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (LLM Cost Overrun): Route to cheapest model by default."
+  },
+  {
+   "id": "R06828a",
+   "lines": [
+    6828,
+    6828
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (LLM Cost Overrun): log cost per call in `agent_runs` from Day 10."
+  },
+  {
+   "id": "R06830",
+   "lines": [
+    6830,
+    6832
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Risk: Solo Phase Overrun; Impact: Medium."
+  },
+  {
+   "id": "R06834",
+   "lines": [
+    6834,
+    6834
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Solo Phase Overrun): 4-day slack buffer built into Days 11–14."
+  },
+  {
+   "id": "R06834a",
+   "lines": [
+    6834,
+    6834
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Solo Phase Overrun): ruthless vertical slice discipline."
+  },
+  {
+   "id": "R06836",
+   "lines": [
+    6836,
+    6838
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Risk: Vision False Positives; Impact: Medium."
+  },
+  {
+   "id": "R06840",
+   "lines": [
+    6840,
+    6840
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Vision False Positives): Deterministic pixel checks handle 80% of issues cheaply."
+  },
+  {
+   "id": "R06840a",
+   "lines": [
+    6840,
+    6840
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Vision False Positives): 50-image fixture library calibrated on Day 24."
+  },
+  {
+   "id": "R06842",
+   "lines": [
+    6842,
+    6844
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Risk: Cross-Tenant Leakage; Impact: Critical."
+  },
+  {
+   "id": "R06846",
+   "lines": [
+    6846,
+    6846
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Cross-Tenant Leakage): Mandatory `TenantScopedRepository` base class."
+  },
+  {
+   "id": "R06846a",
+   "lines": [
+    6846,
+    6846
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Cross-Tenant Leakage): automated CI isolation test from Day 5."
+  },
+  {
+   "id": "R06848",
+   "lines": [
+    6848,
+    6850
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Risk: Teammate Unavailability; Impact: Medium."
+  },
+  {
+   "id": "R06852",
+   "lines": [
+    6852,
+    6852
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Teammate Unavailability): Shared Pydantic contracts so any engineer can step in."
+  },
+  {
+   "id": "R06852a",
+   "lines": [
+    6852,
+    6852
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Teammate Unavailability): TL maintains full-system visibility."
+  },
+  {
+   "id": "R06852b",
+   "lines": [
+    6852,
+    6852
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Teammate Unavailability): ADRs so any engineer can step in."
+  },
+  {
+   "id": "R06854",
+   "lines": [
+    6854,
+    6856
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Risk: Scope Creep; Impact: High."
+  },
+  {
+   "id": "R06858",
+   "lines": [
+    6858,
+    6858
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Scope Creep): Scope table (§2) reviewed at every Friday retro."
+  },
+  {
+   "id": "R06858a",
+   "lines": [
+    6858,
+    6858
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Scope Creep): unlisted asks go to backlog."
+  },
+  {
+   "id": "R06860",
+   "lines": [
+    6860,
+    6862
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Risk: Undocumented API Quirks; Impact: Medium."
+  },
+  {
+   "id": "R06864",
+   "lines": [
+    6864,
+    6864
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Undocumented API Quirks): Adapters preserve raw error payloads."
+  },
+  {
+   "id": "R06864a",
+   "lines": [
+    6864,
+    6864
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Undocumented API Quirks): Week 5 has dedicated adapter hardening days."
+  },
+  {
+   "id": "R06866",
+   "lines": [
+    6866,
+    6868
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Risk: Prompt Injection Leakage; Impact: High."
+  },
+  {
+   "id": "R06870",
+   "lines": [
+    6870,
+    6870
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Prompt Injection Leakage): Product text treated strictly as untrusted user data."
+  },
+  {
+   "id": "R06870a",
+   "lines": [
+    6870,
+    6870
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Prompt Injection Leakage): credentials never enter prompts."
+  },
+  {
+   "id": "R06872",
+   "lines": [
+    6872,
+    6874
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Risk: Team Sprint Burnout; Impact: Medium."
+  },
+  {
+   "id": "R06876",
+   "lines": [
+    6876,
+    6876
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Team Sprint Burnout): Mandatory half-day rest per week."
+  },
+  {
+   "id": "R06876a",
+   "lines": [
+    6876,
+    6876
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Team Sprint Burnout): strict daily shutdown rhythm."
+  },
+  {
+   "id": "R06876b",
+   "lines": [
+    6876,
+    6876
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "risk",
+   "text": "Mitigation (Team Sprint Burnout): protect judgment quality in Weeks 6–7."
+  },
+  {
+   "id": "R06878",
+   "lines": [
+    6878,
+    6878
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "info",
+   "text": "Post-MVP Roadmap Preview",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06880",
+   "lines": [
+    6880,
+    6880
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Phase 2: Full listing version history UI."
+  },
+  {
+   "id": "R06880a",
+   "lines": [
+    6880,
+    6880
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Phase 2: unified analytics dashboard."
+  },
+  {
+   "id": "R06880b",
+   "lines": [
+    6880,
+    6880
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Phase 2: cross-channel sales attribution."
+  },
+  {
+   "id": "R06880c",
+   "lines": [
+    6880,
+    6880
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Phase 2: automated performance tracking."
+  },
+  {
+   "id": "R06881",
+   "lines": [
+    6881,
+    6881
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Phase 3: Schedule-driven Optimization Agent."
+  },
+  {
+   "id": "R06881a",
+   "lines": [
+    6881,
+    6881
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Phase 3: competitive trend ingestion."
+  },
+  {
+   "id": "R06881b",
+   "lines": [
+    6881,
+    6881
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Phase 3: confidence-based auto-publishing after proven approval track records."
+  },
+  {
+   "id": "R06882",
+   "lines": [
+    6882,
+    6882
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Future Expansion: Myntra adapter."
+  },
+  {
+   "id": "R06882a",
+   "lines": [
+    6882,
+    6882
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Future Expansion: Ajio adapter."
+  },
+  {
+   "id": "R06882b",
+   "lines": [
+    6882,
+    6882
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Future Expansion: Meesho adapter."
+  },
+  {
+   "id": "R06882c",
+   "lines": [
+    6882,
+    6882
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Future Expansion: Nykaa adapter."
+  },
+  {
+   "id": "R06882d",
+   "lines": [
+    6882,
+    6882
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Future Expansion: specialized agent for Pricing."
+  },
+  {
+   "id": "R06882e",
+   "lines": [
+    6882,
+    6882
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Future Expansion: specialized agent for Ads."
+  },
+  {
+   "id": "R06882f",
+   "lines": [
+    6882,
+    6882
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Future Expansion: specialized agent for Inventory."
+  },
+  {
+   "id": "R06882g",
+   "lines": [
+    6882,
+    6882
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Future Expansion: specialized agent for Returns."
+  },
+  {
+   "id": "R06882h",
+   "lines": [
+    6882,
+    6882
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Future Expansion: specialized agent for Catalog."
+  },
+  {
+   "id": "R06882i",
+   "lines": [
+    6882,
+    6882
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "scope",
+   "text": "Future Expansion: specialized agent for Ranking."
+  },
+  {
+   "id": "R06884",
+   "lines": [
+    6884,
+    6884
+   ],
+   "page": "[11] Testing Strategy, Launch Gate & Risks",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06886",
+   "lines": [
+    6886,
+    6886
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "info",
+   "text": "[12] API Surface, Dev Setup & Appendix",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06888",
+   "lines": [
+    6888,
+    6888
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "info",
+   "text": "Section: 45-Day MVP Build Plan",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06889",
+   "lines": [
+    6889,
+    6889
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "scope",
+   "text": "Page [12] API Surface, Dev Setup & Appendix scope: MVP."
+  },
+  {
+   "id": "R06890",
+   "lines": [
+    6890,
+    6890
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/mvp-dev-environment",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06891",
+   "lines": [
+    6891,
+    6891
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "interface",
+   "text": "Full REST API surface specification."
+  },
+  {
+   "id": "R06891a",
+   "lines": [
+    6891,
+    6891
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "Monorepo directory tree."
+  },
+  {
+   "id": "R06891b",
+   "lines": [
+    6891,
+    6891
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "Local docker-compose setup."
+  },
+  {
+   "id": "R06891c",
+   "lines": [
+    6891,
+    6891
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "interface",
+   "text": "Core environment variables."
+  },
+  {
+   "id": "R06891d",
+   "lines": [
+    6891,
+    6891
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "quality",
+   "text": "Git workflow."
+  },
+  {
+   "id": "R06891e",
+   "lines": [
+    6891,
+    6891
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "constraint",
+   "text": "Indicative GCP infrastructure costs."
+  },
+  {
+   "id": "R06892",
+   "lines": [
+    6892,
+    6892
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "info",
+   "text": "Keywords: api surface, monorepo, docker compose, env vars, git workflow, infrastructure cost, setup",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06894",
+   "lines": [
+    6894,
+    6894
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "constraint",
+   "text": "Full REST API Surface has 10 Endpoints."
+  },
+  {
+   "id": "R06896",
+   "lines": [
+    6896,
+    6896
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "quality",
+   "text": "All endpoints enforce authentication."
+  },
+  {
+   "id": "R06896a",
+   "lines": [
+    6896,
+    6896
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "quality",
+   "text": "All endpoints enforce RBAC middleware."
+  },
+  {
+   "id": "R06896b",
+   "lines": [
+    6896,
+    6896
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "quality",
+   "text": "All endpoints enforce correlation ID propagation."
+  },
+  {
+   "id": "R06898",
+   "lines": [
+    6898,
+    6902
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "info",
+   "text": "Column headers: Endpoint | Purpose | Key Acceptance Criteria",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06904",
+   "lines": [
+    6904,
+    6904
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "interface",
+   "text": "Endpoint `POST /products`."
+  },
+  {
+   "id": "R06906",
+   "lines": [
+    6906,
+    6906
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /products purpose: Manual product creation."
+  },
+  {
+   "id": "R06908",
+   "lines": [
+    6908,
+    6908
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /products: Canonical product saved."
+  },
+  {
+   "id": "R06908a",
+   "lines": [
+    6908,
+    6908
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /products: tenant-scoped."
+  },
+  {
+   "id": "R06908b",
+   "lines": [
+    6908,
+    6908
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /products: SKU uniqueness enforced."
+  },
+  {
+   "id": "R06910",
+   "lines": [
+    6910,
+    6910
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "interface",
+   "text": "Endpoint `POST /products/bulk`."
+  },
+  {
+   "id": "R06912",
+   "lines": [
+    6912,
+    6912
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "flow",
+   "text": "POST /products/bulk purpose: CSV upload → ARQ queue."
+  },
+  {
+   "id": "R06914",
+   "lines": [
+    6914,
+    6914
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "interface",
+   "text": "POST /products/bulk: Returns job_id."
+  },
+  {
+   "id": "R06914a",
+   "lines": [
+    6914,
+    6914
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /products/bulk: malformed rows isolated."
+  },
+  {
+   "id": "R06914b",
+   "lines": [
+    6914,
+    6914
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /products/bulk: never fails entire batch."
+  },
+  {
+   "id": "R06916",
+   "lines": [
+    6916,
+    6916
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "interface",
+   "text": "Endpoint `POST /listings/generate`."
+  },
+  {
+   "id": "R06918",
+   "lines": [
+    6918,
+    6918
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /listings/generate purpose: Trigger LangGraph run."
+  },
+  {
+   "id": "R06920",
+   "lines": [
+    6920,
+    6920
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /listings/generate: Creates AgentRun record."
+  },
+  {
+   "id": "R06920a",
+   "lines": [
+    6920,
+    6920
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /listings/generate: async job status pollable."
+  },
+  {
+   "id": "R06922",
+   "lines": [
+    6922,
+    6922
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "interface",
+   "text": "Endpoint `GET /listings/{id}/status`."
+  },
+  {
+   "id": "R06924",
+   "lines": [
+    6924,
+    6924
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "GET /listings/{id}/status purpose: Poll generation status."
+  },
+  {
+   "id": "R06926",
+   "lines": [
+    6926,
+    6926
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "interface",
+   "text": "GET /listings/{id}/status: Returns current state machine node."
+  },
+  {
+   "id": "R06926a",
+   "lines": [
+    6926,
+    6926
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "interface",
+   "text": "GET /listings/{id}/status: Returns retry attempt count."
+  },
+  {
+   "id": "R06928",
+   "lines": [
+    6928,
+    6928
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "interface",
+   "text": "Endpoint `POST /listings/validate`."
+  },
+  {
+   "id": "R06930",
+   "lines": [
+    6930,
+    6930
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /listings/validate purpose: Run schema checks."
+  },
+  {
+   "id": "R06930a",
+   "lines": [
+    6930,
+    6930
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /listings/validate purpose: Run rules checks."
+  },
+  {
+   "id": "R06930b",
+   "lines": [
+    6930,
+    6930
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /listings/validate purpose: Run vision checks."
+  },
+  {
+   "id": "R06932",
+   "lines": [
+    6932,
+    6932
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "interface",
+   "text": "POST /listings/validate: Returns unified ErrorReport shape."
+  },
+  {
+   "id": "R06932a",
+   "lines": [
+    6932,
+    6932
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "data",
+   "text": "POST /listings/validate: results saved in validation_runs."
+  },
+  {
+   "id": "R06934",
+   "lines": [
+    6934,
+    6934
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "interface",
+   "text": "Endpoint `POST /listings/approve`."
+  },
+  {
+   "id": "R06936",
+   "lines": [
+    6936,
+    6936
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /listings/approve purpose: Human approval."
+  },
+  {
+   "id": "R06936a",
+   "lines": [
+    6936,
+    6936
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /listings/approve purpose: Human rejection."
+  },
+  {
+   "id": "R06936b",
+   "lines": [
+    6936,
+    6936
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /listings/approve purpose: Human edit."
+  },
+  {
+   "id": "R06938",
+   "lines": [
+    6938,
+    6938
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /listings/approve: Enforces maker-checker server-side (generator cannot approve)."
+  },
+  {
+   "id": "R06940",
+   "lines": [
+    6940,
+    6940
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "interface",
+   "text": "Endpoint `POST /listings/publish`."
+  },
+  {
+   "id": "R06942",
+   "lines": [
+    6942,
+    6942
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /listings/publish purpose: Publish approved listing."
+  },
+  {
+   "id": "R06944",
+   "lines": [
+    6944,
+    6944
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /listings/publish: Only approved listings can be published."
+  },
+  {
+   "id": "R06944a",
+   "lines": [
+    6944,
+    6944
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "interface",
+   "text": "POST /listings/publish: returns per-field results."
+  },
+  {
+   "id": "R06946",
+   "lines": [
+    6946,
+    6946
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "interface",
+   "text": "Endpoint `POST /marketplaces/connect`."
+  },
+  {
+   "id": "R06948",
+   "lines": [
+    6948,
+    6948
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /marketplaces/connect purpose: Amazon OAuth."
+  },
+  {
+   "id": "R06948a",
+   "lines": [
+    6948,
+    6948
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "POST /marketplaces/connect purpose: Flipkart OAuth."
+  },
+  {
+   "id": "R06950",
+   "lines": [
+    6950,
+    6950
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "quality",
+   "text": "POST /marketplaces/connect: Tokens encrypted with KMS before persistence."
+  },
+  {
+   "id": "R06950a",
+   "lines": [
+    6950,
+    6950
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "interface",
+   "text": "POST /marketplaces/connect: health status returned."
+  },
+  {
+   "id": "R06952",
+   "lines": [
+    6952,
+    6952
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "interface",
+   "text": "Endpoint `GET /analytics`."
+  },
+  {
+   "id": "R06954",
+   "lines": [
+    6954,
+    6954
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "GET /analytics purpose: Operational metrics."
+  },
+  {
+   "id": "R06956",
+   "lines": [
+    6956,
+    6956
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "data",
+   "text": "GET /analytics metric: Generation volume."
+  },
+  {
+   "id": "R06956a",
+   "lines": [
+    6956,
+    6956
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "data",
+   "text": "GET /analytics metric: approval rate."
+  },
+  {
+   "id": "R06956b",
+   "lines": [
+    6956,
+    6956
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "data",
+   "text": "GET /analytics metric: validation pass rate."
+  },
+  {
+   "id": "R06956c",
+   "lines": [
+    6956,
+    6956
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "data",
+   "text": "GET /analytics metric: publish success."
+  },
+  {
+   "id": "R06958",
+   "lines": [
+    6958,
+    6958
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "interface",
+   "text": "Endpoint `GET /images/{id}/report`."
+  },
+  {
+   "id": "R06960",
+   "lines": [
+    6960,
+    6960
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "GET /images/{id}/report purpose: Fetch ImageReport."
+  },
+  {
+   "id": "R06962",
+   "lines": [
+    6962,
+    6962
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "GET /images/{id}/report: Issues visible per image per marketplace."
+  },
+  {
+   "id": "R06962a",
+   "lines": [
+    6962,
+    6962
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "requirement",
+   "text": "GET /images/{id}/report: suggested fixes visible per image per marketplace."
+  },
+  {
+   "id": "R06964",
+   "lines": [
+    6964,
+    6964
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "info",
+   "text": "Monorepo Directory Structure",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06966",
+   "lines": [
+    6966,
+    6966
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "info",
+   "text": "Directory Tree",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06968",
+   "lines": [
+    6968,
+    6969
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "Monorepo root: ai-marketplace-os/"
+  },
+  {
+   "id": "R06970",
+   "lines": [
+    6970,
+    6970
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "Directory ai-marketplace-os/apps/"
+  },
+  {
+   "id": "R06971",
+   "lines": [
+    6971,
+    6971
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/api/  # FastAPI async backend"
+  },
+  {
+   "id": "R06972",
+   "lines": [
+    6972,
+    6972
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/api/core/ holds config."
+  },
+  {
+   "id": "R06972a",
+   "lines": [
+    6972,
+    6972
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/api/core/ holds database."
+  },
+  {
+   "id": "R06972b",
+   "lines": [
+    6972,
+    6972
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/api/core/ holds security."
+  },
+  {
+   "id": "R06972c",
+   "lines": [
+    6972,
+    6972
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/api/core/ holds telemetry."
+  },
+  {
+   "id": "R06973",
+   "lines": [
+    6973,
+    6973
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/api/api/v1/routers/ holds the products router."
+  },
+  {
+   "id": "R06973a",
+   "lines": [
+    6973,
+    6973
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/api/api/v1/routers/ holds the listings router."
+  },
+  {
+   "id": "R06973b",
+   "lines": [
+    6973,
+    6973
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/api/api/v1/routers/ holds the marketplaces router."
+  },
+  {
+   "id": "R06973c",
+   "lines": [
+    6973,
+    6973
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/api/api/v1/routers/ holds the analytics router."
+  },
+  {
+   "id": "R06974",
+   "lines": [
+    6974,
+    6974
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/api/services/ holds context assembly."
+  },
+  {
+   "id": "R06974a",
+   "lines": [
+    6974,
+    6974
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/api/services/ holds rules engine."
+  },
+  {
+   "id": "R06974b",
+   "lines": [
+    6974,
+    6974
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/api/services/ holds model router."
+  },
+  {
+   "id": "R06975",
+   "lines": [
+    6975,
+    6975
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/api/repositories/  # tenant-scoped database repositories"
+  },
+  {
+   "id": "R06976",
+   "lines": [
+    6976,
+    6976
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/api/workers/ holds ARQ tasks."
+  },
+  {
+   "id": "R06976a",
+   "lines": [
+    6976,
+    6976
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/api/workers/ holds the LangGraph graph."
+  },
+  {
+   "id": "R06977",
+   "lines": [
+    6977,
+    6977
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/api/Dockerfile"
+  },
+  {
+   "id": "R06978",
+   "lines": [
+    6978,
+    6978
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/web/ is the Next.js 14 frontend."
+  },
+  {
+   "id": "R06978a",
+   "lines": [
+    6978,
+    6978
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/web/ Next.js frontend uses the App Router."
+  },
+  {
+   "id": "R06979",
+   "lines": [
+    6979,
+    6979
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/web/app/ holds layout shell."
+  },
+  {
+   "id": "R06979a",
+   "lines": [
+    6979,
+    6979
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/web/app/ holds routes."
+  },
+  {
+   "id": "R06979b",
+   "lines": [
+    6979,
+    6979
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/web/app/ holds pages."
+  },
+  {
+   "id": "R06980",
+   "lines": [
+    6980,
+    6980
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/web/components/ holds UI components."
+  },
+  {
+   "id": "R06980a",
+   "lines": [
+    6980,
+    6980
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/web/components/ holds tables."
+  },
+  {
+   "id": "R06980b",
+   "lines": [
+    6980,
+    6980
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/web/components/ holds status badges."
+  },
+  {
+   "id": "R06981",
+   "lines": [
+    6981,
+    6981
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "apps/web/Dockerfile"
+  },
+  {
+   "id": "R06982",
+   "lines": [
+    6982,
+    6982
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "Directory ai-marketplace-os/packages/"
+  },
+  {
+   "id": "R06983",
+   "lines": [
+    6983,
+    6983
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "packages/schemas/ holds Shared Pydantic models."
+  },
+  {
+   "id": "R06983a",
+   "lines": [
+    6983,
+    6983
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "packages/schemas/ holds generated TypeScript types."
+  },
+  {
+   "id": "R06984",
+   "lines": [
+    6984,
+    6984
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "infra/ holds Terraform provisioning scripts."
+  },
+  {
+   "id": "R06984a",
+   "lines": [
+    6984,
+    6984
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "infra/ holds gcloud provisioning scripts."
+  },
+  {
+   "id": "R06985",
+   "lines": [
+    6985,
+    6985
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "Directory ai-marketplace-os/docs/"
+  },
+  {
+   "id": "R06986",
+   "lines": [
+    6986,
+    6986
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "docs/adr/  # Architecture Decision Records"
+  },
+  {
+   "id": "R06987",
+   "lines": [
+    6987,
+    6988
+   ],
+   "page": "[12] API Surface, Dev Setup & Appendix",
+   "kind": "decision",
+   "text": "docker-compose.yml at monorepo root."
+  }
+ ]
+}

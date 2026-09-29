@@ -1,0 +1,4199 @@
+{
+ "chunk": "c15",
+ "start": 9178,
+ "end": 9763,
+ "items": [
+  {
+   "id": "R09178",
+   "lines": [
+    9178,
+    9178
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "info",
+   "text": "Page title [27] Keyword Agent",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09180",
+   "lines": [
+    9180,
+    9180
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "info",
+   "text": "Section: AI Agents",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09181",
+   "lines": [
+    9181,
+    9181
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "scope",
+   "text": "Page [27] Keyword Agent scope: MVP."
+  },
+  {
+   "id": "R09182",
+   "lines": [
+    9182,
+    9182
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "info",
+   "text": "Page URL .../page/keyword-agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09183",
+   "lines": [
+    9183,
+    9183
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "requirement",
+   "text": "The Keyword Agent generates search terms optimized for marketplace discovery."
+  },
+  {
+   "id": "R09183a",
+   "lines": [
+    9183,
+    9183
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "requirement",
+   "text": "The Keyword Agent generates backend keywords optimized for marketplace discovery."
+  },
+  {
+   "id": "R09184",
+   "lines": [
+    9184,
+    9184
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "info",
+   "text": "Keywords: keyword agent, search terms, backend keywords, SEO, search, discovery",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09186",
+   "lines": [
+    9186,
+    9186
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "info",
+   "text": "Purpose",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09188",
+   "lines": [
+    9188,
+    9188
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "info",
+   "text": "The Keyword Agent generates discovery-optimized search terms and backend keywords.",
+   "why_not": "restatement",
+   "dup_of": "R09183"
+  },
+  {
+   "id": "R09188a",
+   "lines": [
+    9188,
+    9188
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "requirement",
+   "text": "Keyword Agent focuses on what shoppers actually search for, not keyword stuffing."
+  },
+  {
+   "id": "R09188b",
+   "lines": [
+    9188,
+    9188
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "data",
+   "text": "Backend keywords are Amazon-specific."
+  },
+  {
+   "id": "R09188c",
+   "lines": [
+    9188,
+    9188
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "data",
+   "text": "Backend keywords are terms that don't appear in the listing."
+  },
+  {
+   "id": "R09188d",
+   "lines": [
+    9188,
+    9188
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "data",
+   "text": "Backend keywords help with search visibility."
+  },
+  {
+   "id": "R09190",
+   "lines": [
+    9190,
+    9190
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "info",
+   "text": "Inputs & Outputs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09192",
+   "lines": [
+    9192,
+    9194
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "info",
+   "text": "Table header: Input | Source",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09196",
+   "lines": [
+    9196,
+    9198
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "data",
+   "text": "Keyword Agent input: Category, sourced from Category mapping."
+  },
+  {
+   "id": "R09200",
+   "lines": [
+    9200,
+    9202
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "data",
+   "text": "Keyword Agent input: Product attributes, sourced from Product table."
+  },
+  {
+   "id": "R09204",
+   "lines": [
+    9204,
+    9206
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "data",
+   "text": "Keyword Agent input: Marketplace, sourced from Target marketplace."
+  },
+  {
+   "id": "R09208",
+   "lines": [
+    9208,
+    9210
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "data",
+   "text": "Keyword Agent input: Existing search signals, sourced from Performance data."
+  },
+  {
+   "id": "R09210",
+   "lines": [
+    9210,
+    9210
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "scope",
+   "text": "Performance data as source of existing search signals for Keyword Agent is Phase 3."
+  },
+  {
+   "id": "R09212",
+   "lines": [
+    9212,
+    9214
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "data",
+   "text": "Keyword Agent input: Brand terminology, sourced from Brand glossary chunks."
+  },
+  {
+   "id": "R09216",
+   "lines": [
+    9216,
+    9216
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "data",
+   "text": "Keyword Agent output: search_terms (array)."
+  },
+  {
+   "id": "R09216a",
+   "lines": [
+    9216,
+    9216
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "data",
+   "text": "Keyword Agent output: backend_keywords (array)."
+  },
+  {
+   "id": "R09216b",
+   "lines": [
+    9216,
+    9216
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "data",
+   "text": "Keyword Agent output: keyword_recommendations (optional)."
+  },
+  {
+   "id": "R09218",
+   "lines": [
+    9218,
+    9218
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "info",
+   "text": "Validation Rules",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09220",
+   "lines": [
+    9220,
+    9220
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "requirement",
+   "text": "Keyword validation rule: No keyword stuffing."
+  },
+  {
+   "id": "R09220a",
+   "lines": [
+    9220,
+    9220
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "requirement",
+   "text": "Keyword validation rule: each term must be semantically distinct."
+  },
+  {
+   "id": "R09221",
+   "lines": [
+    9221,
+    9221
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "requirement",
+   "text": "Backend keywords must not duplicate visible listing content (Amazon rule)."
+  },
+  {
+   "id": "R09222",
+   "lines": [
+    9222,
+    9222
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "requirement",
+   "text": "No competitor brand names in keywords."
+  },
+  {
+   "id": "R09223",
+   "lines": [
+    9223,
+    9223
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "constraint",
+   "text": "Marketplace-specific keyword length limits respected."
+  },
+  {
+   "id": "R09224",
+   "lines": [
+    9224,
+    9224
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "constraint",
+   "text": "Amazon backend keyword limit: 250 bytes total."
+  },
+  {
+   "id": "R09226",
+   "lines": [
+    9226,
+    9226
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "info",
+   "text": "Non-Technical Explanation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09228",
+   "lines": [
+    9228,
+    9228
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "info",
+   "text": "Keyword Agent figures out what words shoppers use to find products like yours; like an SEO specialist who knows exactly how Amazon and Flipkart search works.",
+   "why_not": "context-prose"
+  },
+  {
+   "id": "R09228a",
+   "lines": [
+    9228,
+    9228
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "risk",
+   "text": "Marketplaces penalize stuffing irrelevant keywords; Keyword Agent generates search-friendly terms without stuffing."
+  },
+  {
+   "id": "R09230",
+   "lines": [
+    9230,
+    9230
+   ],
+   "page": "[27] Keyword Agent",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09232",
+   "lines": [
+    9232,
+    9232
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "info",
+   "text": "Page title [28] Attribute Agent",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09234",
+   "lines": [
+    9234,
+    9234
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "info",
+   "text": "Section: AI Agents",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09235",
+   "lines": [
+    9235,
+    9235
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "scope",
+   "text": "Page [28] Attribute Agent scope: MVP."
+  },
+  {
+   "id": "R09236",
+   "lines": [
+    9236,
+    9236
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "info",
+   "text": "Page URL .../page/attribute-agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09237",
+   "lines": [
+    9237,
+    9237
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "requirement",
+   "text": "The Attribute Agent maps product information to marketplace-specific structured attributes."
+  },
+  {
+   "id": "R09237a",
+   "lines": [
+    9237,
+    9237
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "requirement",
+   "text": "The Attribute Agent handles category schemas."
+  },
+  {
+   "id": "R09237b",
+   "lines": [
+    9237,
+    9237
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "requirement",
+   "text": "The Attribute Agent handles marketplace field differences."
+  },
+  {
+   "id": "R09238",
+   "lines": [
+    9238,
+    9238
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "info",
+   "text": "Keywords: attribute agent, structured attributes, category schema, mapping, color, material, size",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09240",
+   "lines": [
+    9240,
+    9240
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "info",
+   "text": "Purpose",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09242",
+   "lines": [
+    9242,
+    9242
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "info",
+   "text": "The Attribute Agent converts product information into marketplace-specific structured attributes.",
+   "why_not": "restatement",
+   "dup_of": "R09237"
+  },
+  {
+   "id": "R09242a",
+   "lines": [
+    9242,
+    9242
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "data",
+   "text": "Each marketplace has its own category schema."
+  },
+  {
+   "id": "R09242b",
+   "lines": [
+    9242,
+    9242
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "data",
+   "text": "Marketplace category schemas have different attribute names."
+  },
+  {
+   "id": "R09242c",
+   "lines": [
+    9242,
+    9242
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "data",
+   "text": "Marketplace category schemas have different allowed values."
+  },
+  {
+   "id": "R09242d",
+   "lines": [
+    9242,
+    9242
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "data",
+   "text": "Marketplace category schemas have different requirements."
+  },
+  {
+   "id": "R09244",
+   "lines": [
+    9244,
+    9244
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "info",
+   "text": "Marketplace Mapping Example",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09246",
+   "lines": [
+    9246,
+    9250
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "info",
+   "text": "Table header: Canonical | Amazon | Flipkart",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09252",
+   "lines": [
+    9252,
+    9252
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "data",
+   "text": "Canonical attribute example: color = \"navy blue\"."
+  },
+  {
+   "id": "R09254",
+   "lines": [
+    9254,
+    9254
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "data",
+   "text": "Amazon mapping of canonical color: Color = \"Navy\"."
+  },
+  {
+   "id": "R09256",
+   "lines": [
+    9256,
+    9256
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "data",
+   "text": "Flipkart mapping of canonical color: Colour = \"Navy Blue\"."
+  },
+  {
+   "id": "R09258",
+   "lines": [
+    9258,
+    9258
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "data",
+   "text": "Canonical attribute example: material = \"organic cotton\"."
+  },
+  {
+   "id": "R09260",
+   "lines": [
+    9260,
+    9260
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "data",
+   "text": "Amazon mapping of canonical material: Material = \"Cotton\"."
+  },
+  {
+   "id": "R09262",
+   "lines": [
+    9262,
+    9262
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "data",
+   "text": "Flipkart mapping of canonical material: Fabric = \"Organic Cotton\"."
+  },
+  {
+   "id": "R09264",
+   "lines": [
+    9264,
+    9264
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "data",
+   "text": "Canonical attribute example: size = \"L\"."
+  },
+  {
+   "id": "R09266",
+   "lines": [
+    9266,
+    9266
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "data",
+   "text": "Amazon mapping of canonical size: Size = \"Large\"."
+  },
+  {
+   "id": "R09268",
+   "lines": [
+    9268,
+    9268
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "data",
+   "text": "Flipkart mapping of canonical size: Size = \"L\"."
+  },
+  {
+   "id": "R09270",
+   "lines": [
+    9270,
+    9270
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "info",
+   "text": "Engineering Notes",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09272",
+   "lines": [
+    9272,
+    9272
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "info",
+   "text": "Architecture Decision",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09274",
+   "lines": [
+    9274,
+    9274
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "decision",
+   "text": "Marketplace-specific attribute mapping belongs inside marketplace adapters / mapping layers, NOT spread throughout the AI system."
+  },
+  {
+   "id": "R09274a",
+   "lines": [
+    9274,
+    9274
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "requirement",
+   "text": "The Attribute Agent generates canonical attributes."
+  },
+  {
+   "id": "R09274b",
+   "lines": [
+    9274,
+    9274
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "requirement",
+   "text": "The adapter maps canonical attributes to marketplace-specific formats."
+  },
+  {
+   "id": "R09274c",
+   "lines": [
+    9274,
+    9274
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "requirement",
+   "text": "Keeping attribute mapping in adapters / mapping layers keeps marketplace logic contained."
+  },
+  {
+   "id": "R09276",
+   "lines": [
+    9276,
+    9276
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "interface",
+   "text": "Missing attributes are flagged in the ErrorReport with source \"rules_engine\"."
+  },
+  {
+   "id": "R09276a",
+   "lines": [
+    9276,
+    9276
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "interface",
+   "text": "Missing attributes are flagged with error code \"MISSING_ATTRIBUTE\"."
+  },
+  {
+   "id": "R09276b",
+   "lines": [
+    9276,
+    9276
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "interface",
+   "text": "Category mismatch (product doesn't fit the selected category schema) is flagged as \"CATEGORY_MISMATCH\"."
+  },
+  {
+   "id": "R09278",
+   "lines": [
+    9278,
+    9278
+   ],
+   "page": "[28] Attribute Agent",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09280",
+   "lines": [
+    9280,
+    9280
+   ],
+   "page": "[29] Image Agent",
+   "kind": "info",
+   "text": "Page title [29] Image Agent",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09282",
+   "lines": [
+    9282,
+    9282
+   ],
+   "page": "[29] Image Agent",
+   "kind": "info",
+   "text": "Section: AI Agents",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09283",
+   "lines": [
+    9283,
+    9283
+   ],
+   "page": "[29] Image Agent",
+   "kind": "scope",
+   "text": "Page [29] Image Agent scope: MVP."
+  },
+  {
+   "id": "R09284",
+   "lines": [
+    9284,
+    9284
+   ],
+   "page": "[29] Image Agent",
+   "kind": "info",
+   "text": "Page URL .../page/image-agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09285",
+   "lines": [
+    9285,
+    9285
+   ],
+   "page": "[29] Image Agent",
+   "kind": "requirement",
+   "text": "The Image Agent validates product images against marketplace requirements."
+  },
+  {
+   "id": "R09285a",
+   "lines": [
+    9285,
+    9285
+   ],
+   "page": "[29] Image Agent",
+   "kind": "decision",
+   "text": "Image validation uses deterministic checks."
+  },
+  {
+   "id": "R09285b",
+   "lines": [
+    9285,
+    9285
+   ],
+   "page": "[29] Image Agent",
+   "kind": "decision",
+   "text": "Image validation uses vision model analysis."
+  },
+  {
+   "id": "R09286",
+   "lines": [
+    9286,
+    9286
+   ],
+   "page": "[29] Image Agent",
+   "kind": "info",
+   "text": "Keywords: image agent, image compliance, vision, background, resolution, watermark",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09288",
+   "lines": [
+    9288,
+    9288
+   ],
+   "page": "[29] Image Agent",
+   "kind": "info",
+   "text": "Image Pipeline",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09290",
+   "lines": [
+    9290,
+    9290
+   ],
+   "page": "[29] Image Agent",
+   "kind": "requirement",
+   "text": "The Image Agent runs a compliance pipeline on every product image."
+  },
+  {
+   "id": "R09290a",
+   "lines": [
+    9290,
+    9290
+   ],
+   "page": "[29] Image Agent",
+   "kind": "constraint",
+   "text": "The Image Agent compliance pipeline is two-stage."
+  },
+  {
+   "id": "R09292",
+   "lines": [
+    9292,
+    9293
+   ],
+   "page": "[29] Image Agent",
+   "kind": "info",
+   "text": "mermaid graph TD fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09294",
+   "lines": [
+    9294,
+    9294
+   ],
+   "page": "[29] Image Agent",
+   "kind": "flow",
+   "text": "Image pipeline: IMG \"Product Image\" --> S3 \"Upload to S3\"."
+  },
+  {
+   "id": "R09294a",
+   "lines": [
+    9294,
+    9294
+   ],
+   "page": "[29] Image Agent",
+   "kind": "decision",
+   "text": "Product images are uploaded to S3 as the first step of the image pipeline, before deterministic checks."
+  },
+  {
+   "id": "R09295",
+   "lines": [
+    9295,
+    9295
+   ],
+   "page": "[29] Image Agent",
+   "kind": "flow",
+   "text": "Image pipeline: S3 \"Upload to S3\" --> DET \"Deterministic Checks\"."
+  },
+  {
+   "id": "R09296",
+   "lines": [
+    9296,
+    9296
+   ],
+   "page": "[29] Image Agent",
+   "kind": "flow",
+   "text": "Image pipeline: DET \"Deterministic Checks\" --> VIS \"Vision Model Review\"."
+  },
+  {
+   "id": "R09297",
+   "lines": [
+    9297,
+    9297
+   ],
+   "page": "[29] Image Agent",
+   "kind": "flow",
+   "text": "Image pipeline: VIS \"Vision Model Review\" --> RPT \"ImageReport per image per slot\"."
+  },
+  {
+   "id": "R09297a",
+   "lines": [
+    9297,
+    9297
+   ],
+   "page": "[29] Image Agent",
+   "kind": "data",
+   "text": "An ImageReport is produced per image per slot."
+  },
+  {
+   "id": "R09298",
+   "lines": [
+    9298,
+    9298
+   ],
+   "page": "[29] Image Agent",
+   "kind": "flow",
+   "text": "Image pipeline: RPT --> PASS {\"Pass?\"} decision."
+  },
+  {
+   "id": "R09298a",
+   "lines": [
+    9298,
+    9300
+   ],
+   "page": "[29] Image Agent",
+   "kind": "data",
+   "text": "Image pipeline \"Pass?\" decision outcomes: \"Yes\" or \"Fail/Warn\" (pass, fail, warn)."
+  },
+  {
+   "id": "R09299",
+   "lines": [
+    9299,
+    9299
+   ],
+   "page": "[29] Image Agent",
+   "kind": "flow",
+   "text": "Image pipeline: PASS -->|\"Yes\"| ATTACH \"Attach to listing\"."
+  },
+  {
+   "id": "R09300",
+   "lines": [
+    9300,
+    9300
+   ],
+   "page": "[29] Image Agent",
+   "kind": "flow",
+   "text": "Image pipeline: PASS -->|\"Fail/Warn\"| SURFACE \"Surface issue + suggestion\"."
+  },
+  {
+   "id": "R09301",
+   "lines": [
+    9301,
+    9301
+   ],
+   "page": "[29] Image Agent",
+   "kind": "info",
+   "text": "mermaid closing fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09303",
+   "lines": [
+    9303,
+    9303
+   ],
+   "page": "[29] Image Agent",
+   "kind": "info",
+   "text": "Check Types",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09305",
+   "lines": [
+    9305,
+    9311
+   ],
+   "page": "[29] Image Agent",
+   "kind": "info",
+   "text": "Table header: Check | Amazon | Flipkart | Method",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09313",
+   "lines": [
+    9313,
+    9315
+   ],
+   "page": "[29] Image Agent",
+   "kind": "constraint",
+   "text": "Amazon main image background: Pure white RGB(255,255,255)."
+  },
+  {
+   "id": "R09317",
+   "lines": [
+    9317,
+    9317
+   ],
+   "page": "[29] Image Agent",
+   "kind": "constraint",
+   "text": "Flipkart main image background: White/light."
+  },
+  {
+   "id": "R09319",
+   "lines": [
+    9319,
+    9319
+   ],
+   "page": "[29] Image Agent",
+   "kind": "decision",
+   "text": "Main image background check method: Programmatic pixel analysis."
+  },
+  {
+   "id": "R09319a",
+   "lines": [
+    9319,
+    9319
+   ],
+   "page": "[29] Image Agent",
+   "kind": "decision",
+   "text": "Main image background check method: vision confirmation."
+  },
+  {
+   "id": "R09321",
+   "lines": [
+    9321,
+    9323
+   ],
+   "page": "[29] Image Agent",
+   "kind": "constraint",
+   "text": "Amazon minimum resolution: 1000×1000 px (zoom)."
+  },
+  {
+   "id": "R09325",
+   "lines": [
+    9325,
+    9325
+   ],
+   "page": "[29] Image Agent",
+   "kind": "constraint",
+   "text": "Flipkart minimum resolution: 500 px min."
+  },
+  {
+   "id": "R09325a",
+   "lines": [
+    9325,
+    9325
+   ],
+   "page": "[29] Image Agent",
+   "kind": "constraint",
+   "text": "Flipkart resolution: 1000 recommended."
+  },
+  {
+   "id": "R09327",
+   "lines": [
+    9327,
+    9327
+   ],
+   "page": "[29] Image Agent",
+   "kind": "decision",
+   "text": "Minimum resolution check method: Deterministic (PIL/exif)."
+  },
+  {
+   "id": "R09329",
+   "lines": [
+    9329,
+    9331
+   ],
+   "page": "[29] Image Agent",
+   "kind": "constraint",
+   "text": "Amazon product fill ratio: ≥ 85% of frame."
+  },
+  {
+   "id": "R09333",
+   "lines": [
+    9333,
+    9333
+   ],
+   "page": "[29] Image Agent",
+   "kind": "data",
+   "text": "Flipkart product fill ratio: — (no requirement stated)."
+  },
+  {
+   "id": "R09335",
+   "lines": [
+    9335,
+    9335
+   ],
+   "page": "[29] Image Agent",
+   "kind": "decision",
+   "text": "Product fill ratio check method: Vision model."
+  },
+  {
+   "id": "R09337",
+   "lines": [
+    9337,
+    9339
+   ],
+   "page": "[29] Image Agent",
+   "kind": "constraint",
+   "text": "Amazon text overlays / watermarks: Not allowed on main image."
+  },
+  {
+   "id": "R09341",
+   "lines": [
+    9341,
+    9341
+   ],
+   "page": "[29] Image Agent",
+   "kind": "constraint",
+   "text": "Flipkart text overlays / watermarks: Restricted."
+  },
+  {
+   "id": "R09343",
+   "lines": [
+    9343,
+    9343
+   ],
+   "page": "[29] Image Agent",
+   "kind": "decision",
+   "text": "Text overlays / watermarks check method: Vision model."
+  },
+  {
+   "id": "R09345",
+   "lines": [
+    9345,
+    9347
+   ],
+   "page": "[29] Image Agent",
+   "kind": "constraint",
+   "text": "Amazon logo / branding: Only product logo on product itself."
+  },
+  {
+   "id": "R09349",
+   "lines": [
+    9349,
+    9349
+   ],
+   "page": "[29] Image Agent",
+   "kind": "constraint",
+   "text": "Flipkart logo / branding: Same (only product logo on product itself)."
+  },
+  {
+   "id": "R09351",
+   "lines": [
+    9351,
+    9351
+   ],
+   "page": "[29] Image Agent",
+   "kind": "decision",
+   "text": "Logo / branding check method: Vision model."
+  },
+  {
+   "id": "R09353",
+   "lines": [
+    9353,
+    9355
+   ],
+   "page": "[29] Image Agent",
+   "kind": "constraint",
+   "text": "Amazon aspect ratio: 1:1 main."
+  },
+  {
+   "id": "R09355",
+   "lines": [
+    9355,
+    9355
+   ],
+   "page": "[29] Image Agent",
+   "kind": "constraint",
+   "text": "Amazon aspect ratio: others vary by slot."
+  },
+  {
+   "id": "R09357",
+   "lines": [
+    9357,
+    9357
+   ],
+   "page": "[29] Image Agent",
+   "kind": "constraint",
+   "text": "Flipkart aspect ratio: 1:1 (of \"1:1 and 3:4\")."
+  },
+  {
+   "id": "R09357a",
+   "lines": [
+    9357,
+    9357
+   ],
+   "page": "[29] Image Agent",
+   "kind": "constraint",
+   "text": "Flipkart aspect ratio: 3:4 (of \"1:1 and 3:4\")."
+  },
+  {
+   "id": "R09359",
+   "lines": [
+    9359,
+    9359
+   ],
+   "page": "[29] Image Agent",
+   "kind": "decision",
+   "text": "Aspect ratio check method: Deterministic."
+  },
+  {
+   "id": "R09361",
+   "lines": [
+    9361,
+    9361
+   ],
+   "page": "[29] Image Agent",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09363",
+   "lines": [
+    9363,
+    9363
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "info",
+   "text": "Page title [30] Brand Voice Agent / Retrieval",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09365",
+   "lines": [
+    9365,
+    9365
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "info",
+   "text": "Section: AI Agents",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09366",
+   "lines": [
+    9366,
+    9366
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "scope",
+   "text": "Page [30] Brand Voice Agent / Retrieval scope: MVP."
+  },
+  {
+   "id": "R09367",
+   "lines": [
+    9367,
+    9367
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "info",
+   "text": "Page URL .../page/brand-voice-agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09368",
+   "lines": [
+    9368,
+    9368
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "requirement",
+   "text": "Brand Voice Retrieval: brand tone is vectorized."
+  },
+  {
+   "id": "R09368a",
+   "lines": [
+    9368,
+    9368
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "requirement",
+   "text": "Brand Voice Retrieval: vectorized brand tone, style, glossary and compliance rules are injected into agent prompts."
+  },
+  {
+   "id": "R09368b",
+   "lines": [
+    9368,
+    9368
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "requirement",
+   "text": "Brand Voice Retrieval: brand style is vectorized."
+  },
+  {
+   "id": "R09368c",
+   "lines": [
+    9368,
+    9368
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "requirement",
+   "text": "Brand Voice Retrieval: brand glossary is vectorized."
+  },
+  {
+   "id": "R09368d",
+   "lines": [
+    9368,
+    9368
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "requirement",
+   "text": "Brand Voice Retrieval: brand compliance rules are vectorized."
+  },
+  {
+   "id": "R09369",
+   "lines": [
+    9369,
+    9369
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "info",
+   "text": "Keywords: brand voice, retrieval, pgvector, embedding, tone, style, glossary",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09371",
+   "lines": [
+    9371,
+    9371
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "info",
+   "text": "What Gets Vectorized",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09373",
+   "lines": [
+    9373,
+    9377
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "info",
+   "text": "Table header: Artifact | Chunking | Example Content",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09379",
+   "lines": [
+    9379,
+    9381
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "data",
+   "text": "Vectorized artifact: Brand voice guide, chunked Per rule / tone clause."
+  },
+  {
+   "id": "R09383",
+   "lines": [
+    9383,
+    9383
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "data",
+   "text": "Brand voice guide example content: \"Playful, not corporate. Use 'you' not 'the customer'.\""
+  },
+  {
+   "id": "R09385",
+   "lines": [
+    9385,
+    9387
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "data",
+   "text": "Vectorized artifact: Style preferences, chunked Per guideline."
+  },
+  {
+   "id": "R09389",
+   "lines": [
+    9389,
+    9389
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "data",
+   "text": "Style preferences example content: \"Never use exclamation marks. Bullets start with verbs.\""
+  },
+  {
+   "id": "R09391",
+   "lines": [
+    9391,
+    9393
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "data",
+   "text": "Vectorized artifact: Glossary / terminology, chunked Per term."
+  },
+  {
+   "id": "R09395",
+   "lines": [
+    9395,
+    9395
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "data",
+   "text": "Glossary / terminology example content: \"Say 'kurta set' not 'kurta outfit'.\""
+  },
+  {
+   "id": "R09397",
+   "lines": [
+    9397,
+    9399
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "data",
+   "text": "Vectorized artifact: Past approved listings, chunked Per listing field."
+  },
+  {
+   "id": "R09401",
+   "lines": [
+    9401,
+    9401
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "data",
+   "text": "Past approved listings example content: High-performing titles, bullets, descriptions."
+  },
+  {
+   "id": "R09403",
+   "lines": [
+    9403,
+    9405
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "data",
+   "text": "Vectorized artifact: Compliance preferences, chunked Per rule."
+  },
+  {
+   "id": "R09407",
+   "lines": [
+    9407,
+    9407
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "data",
+   "text": "Compliance preferences example content: \"Never claim 'organic' without certification.\""
+  },
+  {
+   "id": "R09409",
+   "lines": [
+    9409,
+    9409
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "flow",
+   "text": "Brand voice retrieval happens at generation time (\"Retrieval at Generation Time\")."
+  },
+  {
+   "id": "R09411",
+   "lines": [
+    9411,
+    9412
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "info",
+   "text": "mermaid graph TD fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09413",
+   "lines": [
+    9413,
+    9413
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "interface",
+   "text": "Retrieval input REQ \"Generation request\" carries: product."
+  },
+  {
+   "id": "R09413a",
+   "lines": [
+    9413,
+    9413
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "interface",
+   "text": "Retrieval input REQ \"Generation request\" carries: brand_id."
+  },
+  {
+   "id": "R09413b",
+   "lines": [
+    9413,
+    9413
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "interface",
+   "text": "Retrieval input REQ \"Generation request\" carries: marketplace."
+  },
+  {
+   "id": "R09414",
+   "lines": [
+    9414,
+    9414
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "flow",
+   "text": "Retrieval step EMB: Embed the request context."
+  },
+  {
+   "id": "R09415",
+   "lines": [
+    9415,
+    9415
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "decision",
+   "text": "Retrieval step PGV: \"pgvector cosine-similarity search\" (pgvector used for retrieval)."
+  },
+  {
+   "id": "R09415a",
+   "lines": [
+    9415,
+    9415
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "constraint",
+   "text": "Brand voice retrieval: top-k = 8."
+  },
+  {
+   "id": "R09415b",
+   "lines": [
+    9415,
+    9415
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "decision",
+   "text": "Retrieval step PGV similarity metric: cosine-similarity."
+  },
+  {
+   "id": "R09416",
+   "lines": [
+    9416,
+    9416
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "flow",
+   "text": "Retrieval step INJECT: Inject retrieved chunks into agent prompt."
+  },
+  {
+   "id": "R09417",
+   "lines": [
+    9417,
+    9417
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "flow",
+   "text": "Retrieval step GEN: Agent generates text conditioned on voice + rules."
+  },
+  {
+   "id": "R09418",
+   "lines": [
+    9418,
+    9418
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "flow",
+   "text": "Retrieval sequence: REQ --> EMB --> PGV --> INJECT --> GEN."
+  },
+  {
+   "id": "R09419",
+   "lines": [
+    9419,
+    9419
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "info",
+   "text": "mermaid closing fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09421",
+   "lines": [
+    9421,
+    9421
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "decision",
+   "text": "Default embedding model: text-embedding-3-small."
+  },
+  {
+   "id": "R09421a",
+   "lines": [
+    9421,
+    9421
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "requirement",
+   "text": "The embedding model choice is a configuration, not an architecture decision."
+  },
+  {
+   "id": "R09421b",
+   "lines": [
+    9421,
+    9421
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "requirement",
+   "text": "The embedding model is swappable without architectural changes."
+  },
+  {
+   "id": "R09423",
+   "lines": [
+    9423,
+    9423
+   ],
+   "page": "[30] Brand Voice Agent / Retrieval",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09425",
+   "lines": [
+    9425,
+    9425
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "info",
+   "text": "Page title [31] Optimization Agent",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09427",
+   "lines": [
+    9427,
+    9427
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "info",
+   "text": "Section: AI Agents",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09428",
+   "lines": [
+    9428,
+    9428
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "scope",
+   "text": "Page [31] Optimization Agent scope: PHASE3."
+  },
+  {
+   "id": "R09429",
+   "lines": [
+    9429,
+    9429
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "info",
+   "text": "Page URL .../page/optimization-agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09430",
+   "lines": [
+    9430,
+    9430
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "requirement",
+   "text": "The Optimization Agent analyzes performance data."
+  },
+  {
+   "id": "R09430a",
+   "lines": [
+    9430,
+    9430
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "requirement",
+   "text": "The Optimization Agent proposes improvements to existing listings."
+  },
+  {
+   "id": "R09430b",
+   "lines": [
+    9430,
+    9430
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "requirement",
+   "text": "The Optimization Agent runs on schedule, not continuously."
+  },
+  {
+   "id": "R09431",
+   "lines": [
+    9431,
+    9431
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "info",
+   "text": "Keywords: optimization agent, performance, improvement, scheduled, CTR, conversion",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09433",
+   "lines": [
+    9433,
+    9433
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "info",
+   "text": "Purpose",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09435",
+   "lines": [
+    9435,
+    9435
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "data",
+   "text": "Optimization Agent consumes performance metric: impressions."
+  },
+  {
+   "id": "R09435a",
+   "lines": [
+    9435,
+    9435
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "data",
+   "text": "Optimization Agent consumes performance metric: clicks."
+  },
+  {
+   "id": "R09435b",
+   "lines": [
+    9435,
+    9435
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "data",
+   "text": "Optimization Agent consumes performance metric: conversions."
+  },
+  {
+   "id": "R09435c",
+   "lines": [
+    9435,
+    9435
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "data",
+   "text": "Optimization Agent consumes performance metric: returns."
+  },
+  {
+   "id": "R09435d",
+   "lines": [
+    9435,
+    9435
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "data",
+   "text": "Optimization Agent consumes performance metric: ranking."
+  },
+  {
+   "id": "R09435e",
+   "lines": [
+    9435,
+    9435
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "info",
+   "text": "Optimization Agent proposes changes to existing listings.",
+   "why_not": "restatement",
+   "dup_of": "R09430a"
+  },
+  {
+   "id": "R09435f",
+   "lines": [
+    9435,
+    9435
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "requirement",
+   "text": "Optimization Agent identifies underperforming listings."
+  },
+  {
+   "id": "R09435g",
+   "lines": [
+    9435,
+    9435
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "requirement",
+   "text": "Optimization Agent analyzes patterns in high-performing listings."
+  },
+  {
+   "id": "R09435h",
+   "lines": [
+    9435,
+    9435
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "requirement",
+   "text": "Optimization Agent suggests specific field-level improvements."
+  },
+  {
+   "id": "R09437",
+   "lines": [
+    9437,
+    9437
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "info",
+   "text": "Trigger Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09439",
+   "lines": [
+    9439,
+    9439
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "info",
+   "text": "Scheduled, Not Continuous",
+   "why_not": "restatement",
+   "dup_of": "R09430b"
+  },
+  {
+   "id": "R09441",
+   "lines": [
+    9441,
+    9441
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "constraint",
+   "text": "Optimization Agent runs on a schedule (e.g., weekly), not continuously."
+  },
+  {
+   "id": "R09441a",
+   "lines": [
+    9441,
+    9441
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "flow",
+   "text": "On schedule, Optimization Agent analyzes accumulated performance data."
+  },
+  {
+   "id": "R09441b",
+   "lines": [
+    9441,
+    9441
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "flow",
+   "text": "On schedule, Optimization Agent generates optimization proposals."
+  },
+  {
+   "id": "R09441c",
+   "lines": [
+    9441,
+    9441
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "quality",
+   "text": "Scheduled (not continuous) trigger is critical for cost efficiency."
+  },
+  {
+   "id": "R09441d",
+   "lines": [
+    9441,
+    9441
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "risk",
+   "text": "Continuous optimization would be expensive and unnecessary."
+  },
+  {
+   "id": "R09443",
+   "lines": [
+    9443,
+    9443
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "data",
+   "text": "Optimization Agent input: Performance metrics per listing per marketplace."
+  },
+  {
+   "id": "R09443a",
+   "lines": [
+    9443,
+    9443
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "data",
+   "text": "Optimization Agent output: Proposed changes to existing listings: title."
+  },
+  {
+   "id": "R09443b",
+   "lines": [
+    9443,
+    9443
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "data",
+   "text": "Optimization Agent output: Proposed changes to existing listings: bullets."
+  },
+  {
+   "id": "R09443c",
+   "lines": [
+    9443,
+    9443
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "data",
+   "text": "Optimization Agent output: Proposed changes to existing listings: keywords."
+  },
+  {
+   "id": "R09443d",
+   "lines": [
+    9443,
+    9443
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "flow",
+   "text": "Optimization proposals go through the same validation → approval pipeline as new listings."
+  },
+  {
+   "id": "R09445",
+   "lines": [
+    9445,
+    9445
+   ],
+   "page": "[31] Optimization Agent",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09447",
+   "lines": [
+    9447,
+    9447
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "info",
+   "text": "Page title [32] Future Agent Registry",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09449",
+   "lines": [
+    9449,
+    9449
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "info",
+   "text": "Section: AI Agents",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09450",
+   "lines": [
+    9450,
+    9450
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "scope",
+   "text": "Page [32] Future Agent Registry scope: FUTURE."
+  },
+  {
+   "id": "R09451",
+   "lines": [
+    9451,
+    9451
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "info",
+   "text": "Page URL .../page/future-agent-registry",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09452",
+   "lines": [
+    9452,
+    9452
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "requirement",
+   "text": "New agents can be registered and integrated into the platform without rewriting core infrastructure."
+  },
+  {
+   "id": "R09453",
+   "lines": [
+    9453,
+    9453
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "info",
+   "text": "Keywords: agent registry, future agents, extensibility, plugin, registration",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09455",
+   "lines": [
+    9455,
+    9455
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "info",
+   "text": "Registry Design",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09457",
+   "lines": [
+    9457,
+    9457
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "decision",
+   "text": "Agent registry pattern allows new agents to be added without modifying the core orchestration layer."
+  },
+  {
+   "id": "R09457a",
+   "lines": [
+    9457,
+    9457
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "requirement",
+   "text": "Each agent implements a standard interface."
+  },
+  {
+   "id": "R09459",
+   "lines": [
+    9459,
+    9459
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "info",
+   "text": "python code fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09460",
+   "lines": [
+    9460,
+    9460
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "interface",
+   "text": "class AgentInterface(ABC) is the standard agent interface."
+  },
+  {
+   "id": "R09461",
+   "lines": [
+    9461,
+    9461
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "info",
+   "text": "Docstring: \"Standard interface for all agents.\"",
+   "why_not": "restatement",
+   "dup_of": "R09457a"
+  },
+  {
+   "id": "R09462",
+   "lines": [
+    9462,
+    9462
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "data",
+   "text": "AgentInterface field: name: str."
+  },
+  {
+   "id": "R09463",
+   "lines": [
+    9463,
+    9463
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "data",
+   "text": "AgentInterface field: version: str."
+  },
+  {
+   "id": "R09464",
+   "lines": [
+    9464,
+    9464
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "data",
+   "text": "AgentInterface field: scope: str, values \"mvp\" | \"phase2\" | \"phase3\" | \"future\"."
+  },
+  {
+   "id": "R09466",
+   "lines": [
+    9466,
+    9467
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "interface",
+   "text": "AgentInterface abstract method: async def execute(self, context: AgentContext) -> AgentOutput."
+  },
+  {
+   "id": "R09469",
+   "lines": [
+    9469,
+    9470
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "interface",
+   "text": "AgentInterface abstract method: def get_input_schema(self) -> dict."
+  },
+  {
+   "id": "R09472",
+   "lines": [
+    9472,
+    9473
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "interface",
+   "text": "AgentInterface abstract method: def get_output_schema(self) -> dict."
+  },
+  {
+   "id": "R09474",
+   "lines": [
+    9474,
+    9474
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "info",
+   "text": "code fence close",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09476",
+   "lines": [
+    9476,
+    9476
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "requirement",
+   "text": "New agents register with the orchestrator."
+  },
+  {
+   "id": "R09476a",
+   "lines": [
+    9476,
+    9476
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "requirement",
+   "text": "New agents plug into the existing data layer."
+  },
+  {
+   "id": "R09476b",
+   "lines": [
+    9476,
+    9476
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "requirement",
+   "text": "New agents plug into the existing validation pipeline."
+  },
+  {
+   "id": "R09476c",
+   "lines": [
+    9476,
+    9476
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "requirement",
+   "text": "New agents plug into the existing observability infrastructure."
+  },
+  {
+   "id": "R09476d",
+   "lines": [
+    9476,
+    9476
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "scope",
+   "text": "Registry is how the Listing Agent can expand into the full Marketplace OS without platform rewrites."
+  },
+  {
+   "id": "R09478",
+   "lines": [
+    9478,
+    9478
+   ],
+   "page": "[32] Future Agent Registry",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09480",
+   "lines": [
+    9480,
+    9480
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "info",
+   "text": "Page title [33] Agent Responsibilities Matrix",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09482",
+   "lines": [
+    9482,
+    9482
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "info",
+   "text": "Section: AI Agents",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09483",
+   "lines": [
+    9483,
+    9483
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "scope",
+   "text": "Page [33] Agent Responsibilities Matrix scope: MVP."
+  },
+  {
+   "id": "R09484",
+   "lines": [
+    9484,
+    9484
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "info",
+   "text": "Page URL .../page/agent-responsibilities-matrix",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09485",
+   "lines": [
+    9485,
+    9485
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "info",
+   "text": "Description: Complete matrix of all agents, their inputs, outputs, and responsibilities.",
+   "why_not": "context-prose"
+  },
+  {
+   "id": "R09486",
+   "lines": [
+    9486,
+    9486
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "info",
+   "text": "Keywords: responsibilities, matrix, agents, inputs, outputs, comparison",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09488",
+   "lines": [
+    9488,
+    9488
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "info",
+   "text": "Responsibilities Matrix",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09490",
+   "lines": [
+    9490,
+    9498
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "info",
+   "text": "Table header: Agent | Input | Output | Notes | Scope",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09500",
+   "lines": [
+    9500,
+    9502
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Content Agent input: Product (of \"Product + brand voice + rules\")."
+  },
+  {
+   "id": "R09502",
+   "lines": [
+    9502,
+    9502
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Content Agent input: brand voice (of \"Product + brand voice + rules\")."
+  },
+  {
+   "id": "R09502a",
+   "lines": [
+    9502,
+    9502
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Content Agent input: rules (of \"Product + brand voice + rules\")."
+  },
+  {
+   "id": "R09504",
+   "lines": [
+    9504,
+    9504
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Content Agent output: Title (of \"Title, bullets, description\")."
+  },
+  {
+   "id": "R09504a",
+   "lines": [
+    9504,
+    9504
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Content Agent output: bullets (of \"Title, bullets, description\")."
+  },
+  {
+   "id": "R09504b",
+   "lines": [
+    9504,
+    9504
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Content Agent output: description (of \"Title, bullets, description\")."
+  },
+  {
+   "id": "R09506",
+   "lines": [
+    9506,
+    9506
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "constraint",
+   "text": "Content Agent note: Highest token spend."
+  },
+  {
+   "id": "R09508",
+   "lines": [
+    9508,
+    9508
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "scope",
+   "text": "Content Agent scope: MVP."
+  },
+  {
+   "id": "R09510",
+   "lines": [
+    9510,
+    9512
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Keyword Agent input: Category (of \"Category + competitor signals\")."
+  },
+  {
+   "id": "R09512",
+   "lines": [
+    9512,
+    9512
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Keyword Agent input: competitor signals (of \"Category + competitor signals\")."
+  },
+  {
+   "id": "R09514",
+   "lines": [
+    9514,
+    9514
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Keyword Agent output: Search terms (of \"Search terms, backend keywords\")."
+  },
+  {
+   "id": "R09514a",
+   "lines": [
+    9514,
+    9514
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Keyword Agent output: backend keywords (of \"Search terms, backend keywords\")."
+  },
+  {
+   "id": "R09516",
+   "lines": [
+    9516,
+    9516
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "requirement",
+   "text": "Keyword Agent note: Feeds SEO score."
+  },
+  {
+   "id": "R09518",
+   "lines": [
+    9518,
+    9518
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "scope",
+   "text": "Keyword Agent scope: MVP."
+  },
+  {
+   "id": "R09520",
+   "lines": [
+    9520,
+    9522
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Attribute Agent input: Product (of \"Product + category template\")."
+  },
+  {
+   "id": "R09522",
+   "lines": [
+    9522,
+    9522
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Attribute Agent input: category template (of \"Product + category template\")."
+  },
+  {
+   "id": "R09524",
+   "lines": [
+    9524,
+    9524
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Attribute Agent output: Structured attributes."
+  },
+  {
+   "id": "R09526",
+   "lines": [
+    9526,
+    9526
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "requirement",
+   "text": "Attribute Agent note: Must match marketplace category schema."
+  },
+  {
+   "id": "R09528",
+   "lines": [
+    9528,
+    9528
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "scope",
+   "text": "Attribute Agent scope: MVP."
+  },
+  {
+   "id": "R09530",
+   "lines": [
+    9530,
+    9532
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Image Agent input: Product images."
+  },
+  {
+   "id": "R09534",
+   "lines": [
+    9534,
+    9534
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Image Agent output: ImageReport per image per slot."
+  },
+  {
+   "id": "R09536",
+   "lines": [
+    9536,
+    9536
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "decision",
+   "text": "Image Agent note: Vision model (of \"Vision model + deterministic checks\")."
+  },
+  {
+   "id": "R09536a",
+   "lines": [
+    9536,
+    9536
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "decision",
+   "text": "Image Agent note: deterministic checks (of \"Vision model + deterministic checks\")."
+  },
+  {
+   "id": "R09538",
+   "lines": [
+    9538,
+    9538
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "scope",
+   "text": "Image Agent scope: MVP."
+  },
+  {
+   "id": "R09540",
+   "lines": [
+    9540,
+    9542
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Optimization Agent input: Performance metrics."
+  },
+  {
+   "id": "R09544",
+   "lines": [
+    9544,
+    9544
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Optimization Agent output: Proposed changes to existing listings."
+  },
+  {
+   "id": "R09546",
+   "lines": [
+    9546,
+    9546
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "requirement",
+   "text": "Optimization Agent note: Runs on schedule."
+  },
+  {
+   "id": "R09546a",
+   "lines": [
+    9546,
+    9546
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "requirement",
+   "text": "Optimization Agent note: not in create path."
+  },
+  {
+   "id": "R09548",
+   "lines": [
+    9548,
+    9548
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "scope",
+   "text": "Optimization Agent scope: Phase 3."
+  },
+  {
+   "id": "R09550",
+   "lines": [
+    9550,
+    9552
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Rules Engine input: Any generated output."
+  },
+  {
+   "id": "R09554",
+   "lines": [
+    9554,
+    9554
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "data",
+   "text": "Rules Engine output: ErrorReport or pass."
+  },
+  {
+   "id": "R09556",
+   "lines": [
+    9556,
+    9556
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "requirement",
+   "text": "Rules Engine note: Deterministic — never an LLM."
+  },
+  {
+   "id": "R09558",
+   "lines": [
+    9558,
+    9558
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "scope",
+   "text": "Rules Engine scope: MVP."
+  },
+  {
+   "id": "R09560",
+   "lines": [
+    9560,
+    9560
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "info",
+   "text": "Core Principle",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09562",
+   "lines": [
+    9562,
+    9562
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "requirement",
+   "text": "The Rules Engine is the final arbiter."
+  },
+  {
+   "id": "R09562a",
+   "lines": [
+    9562,
+    9562
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "requirement",
+   "text": "No LLM output ships without passing the Rules Engine."
+  },
+  {
+   "id": "R09564",
+   "lines": [
+    9564,
+    9564
+   ],
+   "page": "[33] Agent Responsibilities Matrix",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09566",
+   "lines": [
+    9566,
+    9566
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Page title [34] Listing Generation Responsibilities",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09568",
+   "lines": [
+    9568,
+    9568
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Section: Listing Generation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09569",
+   "lines": [
+    9569,
+    9569
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "scope",
+   "text": "Page [34] Listing Generation Responsibilities scope: MVP."
+  },
+  {
+   "id": "R09570",
+   "lines": [
+    9570,
+    9570
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Page URL .../page/listing-gen-responsibilities",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09571",
+   "lines": [
+    9571,
+    9571
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Description: Complete responsibilities for listing generation — which agent does what.",
+   "why_not": "context-prose"
+  },
+  {
+   "id": "R09572",
+   "lines": [
+    9572,
+    9572
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Keywords: listing generation, responsibilities",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09574",
+   "lines": [
+    9574,
+    9574
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Responsibility Table",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09576",
+   "lines": [
+    9576,
+    9582
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Table header: Component | Input | Output | Scope",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09584",
+   "lines": [
+    9584,
+    9586
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Content Agent input: Product.",
+   "why_not": "restatement",
+   "dup_of": "R09500"
+  },
+  {
+   "id": "R09586",
+   "lines": [
+    9586,
+    9586
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Content Agent input: brand voice.",
+   "why_not": "restatement",
+   "dup_of": "R09502"
+  },
+  {
+   "id": "R09586a",
+   "lines": [
+    9586,
+    9586
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Content Agent input: rules.",
+   "why_not": "restatement",
+   "dup_of": "R09502a"
+  },
+  {
+   "id": "R09588",
+   "lines": [
+    9588,
+    9588
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Content Agent output: Title.",
+   "why_not": "restatement",
+   "dup_of": "R09504"
+  },
+  {
+   "id": "R09588a",
+   "lines": [
+    9588,
+    9588
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Content Agent output: bullets.",
+   "why_not": "restatement",
+   "dup_of": "R09504a"
+  },
+  {
+   "id": "R09588b",
+   "lines": [
+    9588,
+    9588
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Content Agent output: description.",
+   "why_not": "restatement",
+   "dup_of": "R09504b"
+  },
+  {
+   "id": "R09590",
+   "lines": [
+    9590,
+    9590
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Content Agent scope: MVP.",
+   "why_not": "restatement",
+   "dup_of": "R09508"
+  },
+  {
+   "id": "R09592",
+   "lines": [
+    9592,
+    9594
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Keyword Agent input: Category (of \"Category + attributes\").",
+   "why_not": "restatement",
+   "dup_of": "R09510"
+  },
+  {
+   "id": "R09594",
+   "lines": [
+    9594,
+    9594
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "data",
+   "text": "Keyword Agent input: attributes (of \"Category + attributes\")."
+  },
+  {
+   "id": "R09596",
+   "lines": [
+    9596,
+    9596
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Keyword Agent output: Search terms.",
+   "why_not": "restatement",
+   "dup_of": "R09514"
+  },
+  {
+   "id": "R09596a",
+   "lines": [
+    9596,
+    9596
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Keyword Agent output: backend keywords.",
+   "why_not": "restatement",
+   "dup_of": "R09514a"
+  },
+  {
+   "id": "R09598",
+   "lines": [
+    9598,
+    9598
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Keyword Agent scope: MVP.",
+   "why_not": "restatement",
+   "dup_of": "R09518"
+  },
+  {
+   "id": "R09600",
+   "lines": [
+    9600,
+    9602
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Attribute Agent input: Product.",
+   "why_not": "restatement",
+   "dup_of": "R09520"
+  },
+  {
+   "id": "R09602",
+   "lines": [
+    9602,
+    9602
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Attribute Agent input: category template.",
+   "why_not": "restatement",
+   "dup_of": "R09522"
+  },
+  {
+   "id": "R09604",
+   "lines": [
+    9604,
+    9604
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Attribute Agent output: Structured attributes.",
+   "why_not": "restatement",
+   "dup_of": "R09524"
+  },
+  {
+   "id": "R09606",
+   "lines": [
+    9606,
+    9606
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Attribute Agent scope: MVP.",
+   "why_not": "restatement",
+   "dup_of": "R09528"
+  },
+  {
+   "id": "R09608",
+   "lines": [
+    9608,
+    9610
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Image Agent input: Product images.",
+   "why_not": "restatement",
+   "dup_of": "R09530"
+  },
+  {
+   "id": "R09612",
+   "lines": [
+    9612,
+    9612
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "data",
+   "text": "Image Agent output: ImageReport per image."
+  },
+  {
+   "id": "R09614",
+   "lines": [
+    9614,
+    9614
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Image Agent scope: MVP.",
+   "why_not": "restatement",
+   "dup_of": "R09538"
+  },
+  {
+   "id": "R09616",
+   "lines": [
+    9616,
+    9618
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Rules Engine input: Generated output.",
+   "why_not": "restatement",
+   "dup_of": "R09550"
+  },
+  {
+   "id": "R09620",
+   "lines": [
+    9620,
+    9620
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Rules Engine output: ErrorReport or pass.",
+   "why_not": "restatement",
+   "dup_of": "R09554"
+  },
+  {
+   "id": "R09622",
+   "lines": [
+    9622,
+    9622
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Rules Engine scope: MVP.",
+   "why_not": "restatement",
+   "dup_of": "R09558"
+  },
+  {
+   "id": "R09624",
+   "lines": [
+    9624,
+    9624
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Principle",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09626",
+   "lines": [
+    9626,
+    9626
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "The Rules Engine is the final arbiter.",
+   "why_not": "restatement",
+   "dup_of": "R09562"
+  },
+  {
+   "id": "R09626a",
+   "lines": [
+    9626,
+    9626
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "No LLM output ships without passing it.",
+   "why_not": "restatement",
+   "dup_of": "R09562a"
+  },
+  {
+   "id": "R09628",
+   "lines": [
+    9628,
+    9628
+   ],
+   "page": "[34] Listing Generation Responsibilities",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09630",
+   "lines": [
+    9630,
+    9630
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "info",
+   "text": "Page title [35] Canonical Listing Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09632",
+   "lines": [
+    9632,
+    9632
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "info",
+   "text": "Section: Listing Generation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09633",
+   "lines": [
+    9633,
+    9633
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "scope",
+   "text": "Page [35] Canonical Listing Model scope: MVP."
+  },
+  {
+   "id": "R09634",
+   "lines": [
+    9634,
+    9634
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "info",
+   "text": "Page URL .../page/canonical-listing-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09635",
+   "lines": [
+    9635,
+    9635
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "The canonical listing representation is marketplace-independent."
+  },
+  {
+   "id": "R09635a",
+   "lines": [
+    9635,
+    9635
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "interface",
+   "text": "The canonical listing is the core data contract between AI agents and marketplace adapters."
+  },
+  {
+   "id": "R09636",
+   "lines": [
+    9636,
+    9636
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "info",
+   "text": "Keywords: canonical, listing model, marketplace independent, JSON schema",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09638",
+   "lines": [
+    9638,
+    9638
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "info",
+   "text": "Canonical Schema",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09640",
+   "lines": [
+    9640,
+    9640
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "info",
+   "text": "Canonical Listing",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09642",
+   "lines": [
+    9642,
+    9643
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "info",
+   "text": "json code fence and opening brace",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09644",
+   "lines": [
+    9644,
+    9644
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing field: \"listing_id\" (example \"list_789\")."
+  },
+  {
+   "id": "R09645",
+   "lines": [
+    9645,
+    9645
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing field: \"product_id\" (example \"prod_456\")."
+  },
+  {
+   "id": "R09646",
+   "lines": [
+    9646,
+    9646
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing field: \"marketplace\" (example \"amazon\")."
+  },
+  {
+   "id": "R09647",
+   "lines": [
+    9647,
+    9647
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing field: \"category\" (example \"ethnic_wear_kurta_sets\")."
+  },
+  {
+   "id": "R09648",
+   "lines": [
+    9648,
+    9648
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing field: \"status\" (example \"generated\")."
+  },
+  {
+   "id": "R09649",
+   "lines": [
+    9649,
+    9649
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing field: \"content\" object."
+  },
+  {
+   "id": "R09650",
+   "lines": [
+    9650,
+    9650
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing content field: \"title\" (string)."
+  },
+  {
+   "id": "R09651",
+   "lines": [
+    9651,
+    9653
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing content field: \"bullets\" (array of strings)."
+  },
+  {
+   "id": "R09654",
+   "lines": [
+    9654,
+    9654
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing content field: \"description\" (string)."
+  },
+  {
+   "id": "R09655",
+   "lines": [
+    9655,
+    9655
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "info",
+   "text": "closing brace },",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09656",
+   "lines": [
+    9656,
+    9656
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing field: \"keywords\" object."
+  },
+  {
+   "id": "R09657",
+   "lines": [
+    9657,
+    9659
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing keywords field: \"search_terms\" (array of strings)."
+  },
+  {
+   "id": "R09660",
+   "lines": [
+    9660,
+    9662
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing keywords field: \"backend_keywords\" (array of strings)."
+  },
+  {
+   "id": "R09663",
+   "lines": [
+    9663,
+    9663
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "info",
+   "text": "closing brace },",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09664",
+   "lines": [
+    9664,
+    9664
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing field: \"attributes\" object."
+  },
+  {
+   "id": "R09665",
+   "lines": [
+    9665,
+    9665
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing attribute example: \"color\": \"navy blue\"."
+  },
+  {
+   "id": "R09666",
+   "lines": [
+    9666,
+    9666
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing attribute example: \"material\": \"organic cotton\"."
+  },
+  {
+   "id": "R09667",
+   "lines": [
+    9667,
+    9667
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing attribute example: \"size\": \"L\"."
+  },
+  {
+   "id": "R09668",
+   "lines": [
+    9668,
+    9668
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "info",
+   "text": "closing brace },",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09669",
+   "lines": [
+    9669,
+    9669
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing field: \"image_reports\" (array, example [])."
+  },
+  {
+   "id": "R09670",
+   "lines": [
+    9670,
+    9670
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing field: \"confidence_score\" (example 0.87)."
+  },
+  {
+   "id": "R09671",
+   "lines": [
+    9671,
+    9671
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing field: \"version\" (example 1)."
+  },
+  {
+   "id": "R09672",
+   "lines": [
+    9672,
+    9672
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "data",
+   "text": "Canonical listing field: \"created_at\" (example \"2024-01-15T10:30:00Z\")."
+  },
+  {
+   "id": "R09673",
+   "lines": [
+    9673,
+    9674
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "info",
+   "text": "closing brace and code fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09676",
+   "lines": [
+    9676,
+    9676
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "info",
+   "text": "Why Canonical",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09678",
+   "lines": [
+    9678,
+    9678
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "info",
+   "text": "The canonical model is marketplace-independent.",
+   "why_not": "restatement",
+   "dup_of": "R09635"
+  },
+  {
+   "id": "R09678a",
+   "lines": [
+    9678,
+    9678
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "constraint",
+   "text": "The canonical model does not contain Amazon-specific field names."
+  },
+  {
+   "id": "R09678b",
+   "lines": [
+    9678,
+    9678
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "constraint",
+   "text": "The canonical model does not contain Flipkart-specific formats."
+  },
+  {
+   "id": "R09678c",
+   "lines": [
+    9678,
+    9678
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "constraint",
+   "text": "The canonical model does not contain any raw marketplace API structures."
+  },
+  {
+   "id": "R09678d",
+   "lines": [
+    9678,
+    9678
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "requirement",
+   "text": "Marketplace-specific mapping happens inside adapters."
+  },
+  {
+   "id": "R09678e",
+   "lines": [
+    9678,
+    9678
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "requirement",
+   "text": "Adding a new marketplace requires only a new adapter, not changes to the core data model."
+  },
+  {
+   "id": "R09680",
+   "lines": [
+    9680,
+    9680
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "info",
+   "text": "Invariant",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09682",
+   "lines": [
+    9682,
+    9682
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "requirement",
+   "text": "Invariant: Marketplace-specific fields never appear in the canonical listing model."
+  },
+  {
+   "id": "R09682a",
+   "lines": [
+    9682,
+    9682
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "interface",
+   "text": "The canonical model is the shared contract between Intelligence and Execution layers."
+  },
+  {
+   "id": "R09684",
+   "lines": [
+    9684,
+    9684
+   ],
+   "page": "[35] Canonical Listing Model",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09686",
+   "lines": [
+    9686,
+    9686
+   ],
+   "page": "[36] Title Generation",
+   "kind": "info",
+   "text": "Page title [36] Title Generation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09688",
+   "lines": [
+    9688,
+    9688
+   ],
+   "page": "[36] Title Generation",
+   "kind": "info",
+   "text": "Section: Listing Generation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09689",
+   "lines": [
+    9689,
+    9689
+   ],
+   "page": "[36] Title Generation",
+   "kind": "scope",
+   "text": "Page [36] Title Generation scope: MVP."
+  },
+  {
+   "id": "R09690",
+   "lines": [
+    9690,
+    9690
+   ],
+   "page": "[36] Title Generation",
+   "kind": "info",
+   "text": "Page URL .../page/title-generation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09691",
+   "lines": [
+    9691,
+    9691
+   ],
+   "page": "[36] Title Generation",
+   "kind": "requirement",
+   "text": "Title generation accounts for marketplace constraints."
+  },
+  {
+   "id": "R09691a",
+   "lines": [
+    9691,
+    9691
+   ],
+   "page": "[36] Title Generation",
+   "kind": "requirement",
+   "text": "Title generation accounts for brand requirements."
+  },
+  {
+   "id": "R09691b",
+   "lines": [
+    9691,
+    9691
+   ],
+   "page": "[36] Title Generation",
+   "kind": "requirement",
+   "text": "Title generation accounts for SEO optimization."
+  },
+  {
+   "id": "R09691c",
+   "lines": [
+    9691,
+    9691
+   ],
+   "page": "[36] Title Generation",
+   "kind": "requirement",
+   "text": "Title generation accounts for character limits."
+  },
+  {
+   "id": "R09692",
+   "lines": [
+    9692,
+    9692
+   ],
+   "page": "[36] Title Generation",
+   "kind": "info",
+   "text": "Keywords: title, generation, character limit, SEO",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09694",
+   "lines": [
+    9694,
+    9694
+   ],
+   "page": "[36] Title Generation",
+   "kind": "info",
+   "text": "Title Rules by Marketplace",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09696",
+   "lines": [
+    9696,
+    9700
+   ],
+   "page": "[36] Title Generation",
+   "kind": "info",
+   "text": "Table header: Rule | Amazon | Flipkart",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09702",
+   "lines": [
+    9702,
+    9704
+   ],
+   "page": "[36] Title Generation",
+   "kind": "constraint",
+   "text": "Amazon title max length: 200 characters."
+  },
+  {
+   "id": "R09706",
+   "lines": [
+    9706,
+    9706
+   ],
+   "page": "[36] Title Generation",
+   "kind": "constraint",
+   "text": "Flipkart title max length: Varies by category."
+  },
+  {
+   "id": "R09708",
+   "lines": [
+    9708,
+    9710
+   ],
+   "page": "[36] Title Generation",
+   "kind": "requirement",
+   "text": "Amazon title required element: Brand."
+  },
+  {
+   "id": "R09710",
+   "lines": [
+    9710,
+    9710
+   ],
+   "page": "[36] Title Generation",
+   "kind": "requirement",
+   "text": "Amazon title required element: product type."
+  },
+  {
+   "id": "R09710a",
+   "lines": [
+    9710,
+    9710
+   ],
+   "page": "[36] Title Generation",
+   "kind": "requirement",
+   "text": "Amazon title required element: key differentiator."
+  },
+  {
+   "id": "R09712",
+   "lines": [
+    9712,
+    9712
+   ],
+   "page": "[36] Title Generation",
+   "kind": "requirement",
+   "text": "Flipkart title required element: Brand."
+  },
+  {
+   "id": "R09712a",
+   "lines": [
+    9712,
+    9712
+   ],
+   "page": "[36] Title Generation",
+   "kind": "requirement",
+   "text": "Flipkart title required element: product type."
+  },
+  {
+   "id": "R09714",
+   "lines": [
+    9714,
+    9716
+   ],
+   "page": "[36] Title Generation",
+   "kind": "constraint",
+   "text": "Amazon title banned term: \"best\"."
+  },
+  {
+   "id": "R09716",
+   "lines": [
+    9716,
+    9716
+   ],
+   "page": "[36] Title Generation",
+   "kind": "constraint",
+   "text": "Amazon title banned term: \"guaranteed\"."
+  },
+  {
+   "id": "R09716a",
+   "lines": [
+    9716,
+    9716
+   ],
+   "page": "[36] Title Generation",
+   "kind": "constraint",
+   "text": "Amazon title banned terms: medical claims."
+  },
+  {
+   "id": "R09718",
+   "lines": [
+    9718,
+    9718
+   ],
+   "page": "[36] Title Generation",
+   "kind": "constraint",
+   "text": "Flipkart title banned term: \"best\"."
+  },
+  {
+   "id": "R09718a",
+   "lines": [
+    9718,
+    9718
+   ],
+   "page": "[36] Title Generation",
+   "kind": "constraint",
+   "text": "Flipkart title banned terms: competitor names."
+  },
+  {
+   "id": "R09720",
+   "lines": [
+    9720,
+    9722
+   ],
+   "page": "[36] Title Generation",
+   "kind": "data",
+   "text": "Amazon title format: Brand + Product Type + Key Feature + Variant."
+  },
+  {
+   "id": "R09724",
+   "lines": [
+    9724,
+    9724
+   ],
+   "page": "[36] Title Generation",
+   "kind": "data",
+   "text": "Flipkart title format: Similar pattern (to Amazon)."
+  },
+  {
+   "id": "R09726",
+   "lines": [
+    9726,
+    9726
+   ],
+   "page": "[36] Title Generation",
+   "kind": "requirement",
+   "text": "The Content Agent generates titles that maximize search visibility."
+  },
+  {
+   "id": "R09726a",
+   "lines": [
+    9726,
+    9726
+   ],
+   "page": "[36] Title Generation",
+   "kind": "requirement",
+   "text": "Content Agent titles respect character limits."
+  },
+  {
+   "id": "R09726b",
+   "lines": [
+    9726,
+    9726
+   ],
+   "page": "[36] Title Generation",
+   "kind": "requirement",
+   "text": "Content Agent titles respect banned term lists."
+  },
+  {
+   "id": "R09726c",
+   "lines": [
+    9726,
+    9726
+   ],
+   "page": "[36] Title Generation",
+   "kind": "requirement",
+   "text": "The Rules Engine validates every title against marketplace-specific constraints."
+  },
+  {
+   "id": "R09728",
+   "lines": [
+    9728,
+    9728
+   ],
+   "page": "[36] Title Generation",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09730",
+   "lines": [
+    9730,
+    9730
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "info",
+   "text": "Page title [37] Bullet Generation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09732",
+   "lines": [
+    9732,
+    9732
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "info",
+   "text": "Section: Listing Generation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09733",
+   "lines": [
+    9733,
+    9733
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "scope",
+   "text": "Page [37] Bullet Generation scope: MVP."
+  },
+  {
+   "id": "R09734",
+   "lines": [
+    9734,
+    9734
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "info",
+   "text": "Page URL .../page/bullet-generation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09735",
+   "lines": [
+    9735,
+    9735
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "requirement",
+   "text": "Bullet point generation uses brand voice."
+  },
+  {
+   "id": "R09735a",
+   "lines": [
+    9735,
+    9735
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "requirement",
+   "text": "Bullet point generation includes feature highlighting."
+  },
+  {
+   "id": "R09735b",
+   "lines": [
+    9735,
+    9735
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "requirement",
+   "text": "Bullet point generation applies marketplace formatting."
+  },
+  {
+   "id": "R09736",
+   "lines": [
+    9736,
+    9736
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "info",
+   "text": "Keywords: bullet, points, features, generation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09738",
+   "lines": [
+    9738,
+    9738
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "info",
+   "text": "Bullet Point Rules",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09740",
+   "lines": [
+    9740,
+    9740
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "constraint",
+   "text": "Typically 5 bullet points per listing."
+  },
+  {
+   "id": "R09740a",
+   "lines": [
+    9740,
+    9740
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "requirement",
+   "text": "Each bullet should start with a verb or key benefit."
+  },
+  {
+   "id": "R09740b",
+   "lines": [
+    9740,
+    9740
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "requirement",
+   "text": "Brand voice chunks influence bullet tone and phrasing."
+  },
+  {
+   "id": "R09740c",
+   "lines": [
+    9740,
+    9740
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "requirement",
+   "text": "Amazon prefers feature-focused bullets."
+  },
+  {
+   "id": "R09740d",
+   "lines": [
+    9740,
+    9740
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "requirement",
+   "text": "Flipkart allows more descriptive bullet style."
+  },
+  {
+   "id": "R09742",
+   "lines": [
+    9742,
+    9742
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "constraint",
+   "text": "Each bullet ≤ marketplace max length."
+  },
+  {
+   "id": "R09743",
+   "lines": [
+    9743,
+    9743
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "requirement",
+   "text": "Bullet rule: Start with action verbs or key benefits."
+  },
+  {
+   "id": "R09744",
+   "lines": [
+    9744,
+    9744
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "requirement",
+   "text": "Bullets include relevant attributes naturally."
+  },
+  {
+   "id": "R09745",
+   "lines": [
+    9745,
+    9745
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "requirement",
+   "text": "Bullets contain no prohibited claims."
+  },
+  {
+   "id": "R09745a",
+   "lines": [
+    9745,
+    9745
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "requirement",
+   "text": "Bullets contain no competitor references."
+  },
+  {
+   "id": "R09746",
+   "lines": [
+    9746,
+    9746
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "requirement",
+   "text": "Bullet factual claims must match product data."
+  },
+  {
+   "id": "R09748",
+   "lines": [
+    9748,
+    9748
+   ],
+   "page": "[37] Bullet Generation",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09750",
+   "lines": [
+    9750,
+    9750
+   ],
+   "page": "[38] Description Generation",
+   "kind": "info",
+   "text": "Page title [38] Description Generation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09752",
+   "lines": [
+    9752,
+    9752
+   ],
+   "page": "[38] Description Generation",
+   "kind": "info",
+   "text": "Section: Listing Generation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09753",
+   "lines": [
+    9753,
+    9753
+   ],
+   "page": "[38] Description Generation",
+   "kind": "scope",
+   "text": "Page [38] Description Generation scope: MVP."
+  },
+  {
+   "id": "R09754",
+   "lines": [
+    9754,
+    9754
+   ],
+   "page": "[38] Description Generation",
+   "kind": "info",
+   "text": "Page URL .../page/description-generation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09755",
+   "lines": [
+    9755,
+    9755
+   ],
+   "page": "[38] Description Generation",
+   "kind": "requirement",
+   "text": "Product description generation produces rich text."
+  },
+  {
+   "id": "R09755a",
+   "lines": [
+    9755,
+    9755
+   ],
+   "page": "[38] Description Generation",
+   "kind": "requirement",
+   "text": "Product description generation uses storytelling within brand voice."
+  },
+  {
+   "id": "R09755b",
+   "lines": [
+    9755,
+    9755
+   ],
+   "page": "[38] Description Generation",
+   "kind": "requirement",
+   "text": "Product description generation supports marketplace HTML."
+  },
+  {
+   "id": "R09756",
+   "lines": [
+    9756,
+    9756
+   ],
+   "page": "[38] Description Generation",
+   "kind": "info",
+   "text": "Keywords: description, generation, rich text, storytelling",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09758",
+   "lines": [
+    9758,
+    9758
+   ],
+   "page": "[38] Description Generation",
+   "kind": "info",
+   "text": "Description Generation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09760",
+   "lines": [
+    9760,
+    9760
+   ],
+   "page": "[38] Description Generation",
+   "kind": "data",
+   "text": "Descriptions are the longest text field."
+  },
+  {
+   "id": "R09760a",
+   "lines": [
+    9760,
+    9760
+   ],
+   "page": "[38] Description Generation",
+   "kind": "requirement",
+   "text": "Descriptions combine brand storytelling with product information."
+  },
+  {
+   "id": "R09760b",
+   "lines": [
+    9760,
+    9760
+   ],
+   "page": "[38] Description Generation",
+   "kind": "requirement",
+   "text": "Descriptions are formatted for each marketplace's HTML/text requirements."
+  },
+  {
+   "id": "R09760c",
+   "lines": [
+    9760,
+    9760
+   ],
+   "page": "[38] Description Generation",
+   "kind": "interface",
+   "text": "Amazon supports basic HTML in descriptions."
+  },
+  {
+   "id": "R09760d",
+   "lines": [
+    9760,
+    9760
+   ],
+   "page": "[38] Description Generation",
+   "kind": "constraint",
+   "text": "Flipkart has specific formatting constraints for descriptions."
+  },
+  {
+   "id": "R09762",
+   "lines": [
+    9762,
+    9762
+   ],
+   "page": "[38] Description Generation",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  }
+ ]
+}

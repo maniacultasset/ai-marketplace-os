@@ -1,0 +1,5355 @@
+{
+ "chunk": "c22",
+ "start": 13081,
+ "end": 13584,
+ "items": [
+  {
+   "id": "R13081",
+   "lines": [
+    13081,
+    13081
+   ],
+   "page": "[191] Staging",
+   "kind": "info",
+   "text": "Staging",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13083",
+   "lines": [
+    13083,
+    13083
+   ],
+   "page": "[191] Staging",
+   "kind": "requirement",
+   "text": "Staging mirrors production."
+  },
+  {
+   "id": "R13083a",
+   "lines": [
+    13083,
+    13083
+   ],
+   "page": "[191] Staging",
+   "kind": "constraint",
+   "text": "Staging uses smaller instances than production."
+  },
+  {
+   "id": "R13083b",
+   "lines": [
+    13083,
+    13083
+   ],
+   "page": "[191] Staging",
+   "kind": "requirement",
+   "text": "Staging uses test marketplace accounts."
+  },
+  {
+   "id": "R13083c",
+   "lines": [
+    13083,
+    13083
+   ],
+   "page": "[191] Staging",
+   "kind": "quality",
+   "text": "Staging is used for integration testing."
+  },
+  {
+   "id": "R13083d",
+   "lines": [
+    13083,
+    13083
+   ],
+   "page": "[191] Staging",
+   "kind": "quality",
+   "text": "Staging is used for marketplace API testing."
+  },
+  {
+   "id": "R13083e",
+   "lines": [
+    13083,
+    13083
+   ],
+   "page": "[191] Staging",
+   "kind": "quality",
+   "text": "Staging is used for performance testing."
+  },
+  {
+   "id": "R13083f",
+   "lines": [
+    13083,
+    13083
+   ],
+   "page": "[191] Staging",
+   "kind": "quality",
+   "text": "Staging is used for UAT (user acceptance testing)."
+  },
+  {
+   "id": "R13085",
+   "lines": [
+    13085,
+    13085
+   ],
+   "page": "[191] Staging",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13087",
+   "lines": [
+    13087,
+    13087
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "info",
+   "text": "Page title [192] MVP Operating Cost",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13089",
+   "lines": [
+    13089,
+    13089
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "info",
+   "text": "Section: Cost",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13090",
+   "lines": [
+    13090,
+    13090
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "scope",
+   "text": "Page [192] MVP Operating Cost scope: MVP."
+  },
+  {
+   "id": "R13091",
+   "lines": [
+    13091,
+    13091
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "info",
+   "text": "Page URL .../page/mvp-operating-cost",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13092",
+   "lines": [
+    13092,
+    13092
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "constraint",
+   "text": "MVP monthly operating cost breakdown includes infrastructure."
+  },
+  {
+   "id": "R13092a",
+   "lines": [
+    13092,
+    13092
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "constraint",
+   "text": "MVP monthly operating cost breakdown includes AI."
+  },
+  {
+   "id": "R13093",
+   "lines": [
+    13093,
+    13093
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "info",
+   "text": "Keywords: cost, MVP, operating, monthly, budget",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13095",
+   "lines": [
+    13095,
+    13095
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "info",
+   "text": "Cost Breakdown",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13097",
+   "lines": [
+    13097,
+    13101
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "info",
+   "text": "Table header: Item | Monthly (₹) | Notes",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13103",
+   "lines": [
+    13103,
+    13105
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "constraint",
+   "text": "EC2 (dev + worker): ₹3,750 monthly."
+  },
+  {
+   "id": "R13107",
+   "lines": [
+    13107,
+    13107
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "decision",
+   "text": "EC2 (dev + worker) instance type: t3.medium."
+  },
+  {
+   "id": "R13107a",
+   "lines": [
+    13107,
+    13107
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "decision",
+   "text": "EC2 (dev + worker) instance type: t3.small."
+  },
+  {
+   "id": "R13109",
+   "lines": [
+    13109,
+    13111
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "constraint",
+   "text": "RDS PostgreSQL: ₹1,500 monthly."
+  },
+  {
+   "id": "R13113",
+   "lines": [
+    13113,
+    13113
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "decision",
+   "text": "RDS PostgreSQL instance: db.t3.micro."
+  },
+  {
+   "id": "R13113a",
+   "lines": [
+    13113,
+    13113
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "constraint",
+   "text": "RDS PostgreSQL storage: 20 GB."
+  },
+  {
+   "id": "R13115",
+   "lines": [
+    13115,
+    13117
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "constraint",
+   "text": "ElastiCache Redis: ₹1,200 monthly."
+  },
+  {
+   "id": "R13119",
+   "lines": [
+    13119,
+    13119
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "decision",
+   "text": "ElastiCache Redis is used for queue."
+  },
+  {
+   "id": "R13121",
+   "lines": [
+    13121,
+    13123
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "constraint",
+   "text": "S3 + egress: ₹250 monthly."
+  },
+  {
+   "id": "R13125",
+   "lines": [
+    13125,
+    13125
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "data",
+   "text": "S3 + egress line covers Images (stored in S3)."
+  },
+  {
+   "id": "R13125a",
+   "lines": [
+    13125,
+    13125
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "data",
+   "text": "S3 + egress line covers CSVs (stored in S3)."
+  },
+  {
+   "id": "R13127",
+   "lines": [
+    13127,
+    13127
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "decision",
+   "text": "LLM cost line item model: GPT-4o mini."
+  },
+  {
+   "id": "R13127a",
+   "lines": [
+    13127,
+    13129
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "constraint",
+   "text": "LLM (GPT-4o mini): ₹1,500–4,000 monthly."
+  },
+  {
+   "id": "R13131",
+   "lines": [
+    13131,
+    13131
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "constraint",
+   "text": "LLM monthly cost estimate assumes ~2k listing generations."
+  },
+  {
+   "id": "R13131a",
+   "lines": [
+    13131,
+    13131
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "constraint",
+   "text": "LLM monthly cost estimate includes image checks."
+  },
+  {
+   "id": "R13131b",
+   "lines": [
+    13131,
+    13131
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "constraint",
+   "text": "LLM monthly cost estimate includes embeddings."
+  },
+  {
+   "id": "R13133",
+   "lines": [
+    13133,
+    13135
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "constraint",
+   "text": "Total MVP monthly operating cost: ₹8,000–11,000."
+  },
+  {
+   "id": "R13137",
+   "lines": [
+    13137,
+    13137
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "risk",
+   "text": "Total monthly cost is a ballpark figure."
+  },
+  {
+   "id": "R13137a",
+   "lines": [
+    13137,
+    13137
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "risk",
+   "text": "Total monthly cost assumes a small team."
+  },
+  {
+   "id": "R13137b",
+   "lines": [
+    13137,
+    13137
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "risk",
+   "text": "Total monthly cost assumes the MVP phase."
+  },
+  {
+   "id": "R13139",
+   "lines": [
+    13139,
+    13139
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "info",
+   "text": "Estimates (callout title)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13141",
+   "lines": [
+    13141,
+    13141
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "risk",
+   "text": "Cost figures are ballpark estimates, not guaranteed pricing."
+  },
+  {
+   "id": "R13141a",
+   "lines": [
+    13141,
+    13141
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "risk",
+   "text": "Actual costs depend on usage volume."
+  },
+  {
+   "id": "R13141b",
+   "lines": [
+    13141,
+    13141
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "risk",
+   "text": "Actual costs depend on instance utilization."
+  },
+  {
+   "id": "R13141c",
+   "lines": [
+    13141,
+    13141
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "risk",
+   "text": "Actual costs depend on AI token consumption."
+  },
+  {
+   "id": "R13141d",
+   "lines": [
+    13141,
+    13141
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "constraint",
+   "text": "LLM cost scales roughly linearly with listing volume."
+  },
+  {
+   "id": "R13141e",
+   "lines": [
+    13141,
+    13141
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "constraint",
+   "text": "At 50 brands in production, budget ₹10,000–20,000/month."
+  },
+  {
+   "id": "R13143",
+   "lines": [
+    13143,
+    13143
+   ],
+   "page": "[192] MVP Operating Cost",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13145",
+   "lines": [
+    13145,
+    13145
+   ],
+   "page": "[193] Infrastructure Cost",
+   "kind": "info",
+   "text": "Page title [193] Infrastructure Cost",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13147",
+   "lines": [
+    13147,
+    13147
+   ],
+   "page": "[193] Infrastructure Cost",
+   "kind": "info",
+   "text": "Section: Cost",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13148",
+   "lines": [
+    13148,
+    13148
+   ],
+   "page": "[193] Infrastructure Cost",
+   "kind": "scope",
+   "text": "Page [193] Infrastructure Cost scope: MVP."
+  },
+  {
+   "id": "R13149",
+   "lines": [
+    13149,
+    13149
+   ],
+   "page": "[193] Infrastructure Cost",
+   "kind": "info",
+   "text": "Page URL .../page/infrastructure-cost",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13150",
+   "lines": [
+    13150,
+    13150
+   ],
+   "page": "[193] Infrastructure Cost",
+   "kind": "decision",
+   "text": "Infrastructure cost details are for AWS infrastructure."
+  },
+  {
+   "id": "R13151",
+   "lines": [
+    13151,
+    13151
+   ],
+   "page": "[193] Infrastructure Cost",
+   "kind": "info",
+   "text": "Keywords: infrastructure cost, AWS, EC2, RDS",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13153",
+   "lines": [
+    13153,
+    13153
+   ],
+   "page": "[193] Infrastructure Cost",
+   "kind": "info",
+   "text": "Infrastructure Cost",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13155",
+   "lines": [
+    13155,
+    13155
+   ],
+   "page": "[193] Infrastructure Cost",
+   "kind": "info",
+   "text": "EC2: ₹3,750/month (t3.medium + t3.small).",
+   "why_not": "restatement",
+   "dup_of": "R13103"
+  },
+  {
+   "id": "R13155a",
+   "lines": [
+    13155,
+    13155
+   ],
+   "page": "[193] Infrastructure Cost",
+   "kind": "info",
+   "text": "RDS: ₹1,500/month (db.t3.micro).",
+   "why_not": "restatement",
+   "dup_of": "R13109"
+  },
+  {
+   "id": "R13155b",
+   "lines": [
+    13155,
+    13155
+   ],
+   "page": "[193] Infrastructure Cost",
+   "kind": "info",
+   "text": "ElastiCache: ₹1,200/month.",
+   "why_not": "restatement",
+   "dup_of": "R13115"
+  },
+  {
+   "id": "R13155c",
+   "lines": [
+    13155,
+    13155
+   ],
+   "page": "[193] Infrastructure Cost",
+   "kind": "info",
+   "text": "S3: ₹250/month.",
+   "why_not": "restatement",
+   "dup_of": "R13121"
+  },
+  {
+   "id": "R13155d",
+   "lines": [
+    13155,
+    13155
+   ],
+   "page": "[193] Infrastructure Cost",
+   "kind": "constraint",
+   "text": "Total infrastructure: ~₹6,700/month for MVP."
+  },
+  {
+   "id": "R13157",
+   "lines": [
+    13157,
+    13157
+   ],
+   "page": "[193] Infrastructure Cost",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13159",
+   "lines": [
+    13159,
+    13159
+   ],
+   "page": "[194] LLM Cost",
+   "kind": "info",
+   "text": "Page title [194] LLM Cost",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13161",
+   "lines": [
+    13161,
+    13161
+   ],
+   "page": "[194] LLM Cost",
+   "kind": "info",
+   "text": "Section: Cost",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13162",
+   "lines": [
+    13162,
+    13162
+   ],
+   "page": "[194] LLM Cost",
+   "kind": "scope",
+   "text": "Page [194] LLM Cost scope: MVP."
+  },
+  {
+   "id": "R13163",
+   "lines": [
+    13163,
+    13163
+   ],
+   "page": "[194] LLM Cost",
+   "kind": "info",
+   "text": "Page URL .../page/llm-cost",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13164",
+   "lines": [
+    13164,
+    13164
+   ],
+   "page": "[194] LLM Cost",
+   "kind": "info",
+   "text": "LLM API cost analysis per listing.",
+   "why_not": "context-prose"
+  },
+  {
+   "id": "R13165",
+   "lines": [
+    13165,
+    13165
+   ],
+   "page": "[194] LLM Cost",
+   "kind": "info",
+   "text": "Keywords: LLM cost, GPT-4o mini, token cost, API pricing",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13167",
+   "lines": [
+    13167,
+    13167
+   ],
+   "page": "[194] LLM Cost",
+   "kind": "info",
+   "text": "LLM Cost",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13169",
+   "lines": [
+    13169,
+    13169
+   ],
+   "page": "[194] LLM Cost",
+   "kind": "constraint",
+   "text": "GPT-4o-mini pricing drives the majority of AI costs."
+  },
+  {
+   "id": "R13169a",
+   "lines": [
+    13169,
+    13169
+   ],
+   "page": "[194] LLM Cost",
+   "kind": "constraint",
+   "text": "Per listing estimate: ~2,000-4,000 input tokens."
+  },
+  {
+   "id": "R13169b",
+   "lines": [
+    13169,
+    13169
+   ],
+   "page": "[194] LLM Cost",
+   "kind": "constraint",
+   "text": "Per listing estimate: ~500-1,000 output tokens."
+  },
+  {
+   "id": "R13169c",
+   "lines": [
+    13169,
+    13169
+   ],
+   "page": "[194] LLM Cost",
+   "kind": "constraint",
+   "text": "At GPT-4o-mini pricing, ~₹1-3 per listing generation."
+  },
+  {
+   "id": "R13169d",
+   "lines": [
+    13169,
+    13169
+   ],
+   "page": "[194] LLM Cost",
+   "kind": "constraint",
+   "text": "Image compliance adds ~₹0.5-1 per image."
+  },
+  {
+   "id": "R13169e",
+   "lines": [
+    13169,
+    13169
+   ],
+   "page": "[194] LLM Cost",
+   "kind": "decision",
+   "text": "Vision is the same model (GPT-4o-mini) as generation."
+  },
+  {
+   "id": "R13169f",
+   "lines": [
+    13169,
+    13169
+   ],
+   "page": "[194] LLM Cost",
+   "kind": "constraint",
+   "text": "Vision has the same pricing as generation."
+  },
+  {
+   "id": "R13171",
+   "lines": [
+    13171,
+    13171
+   ],
+   "page": "[194] LLM Cost",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13173",
+   "lines": [
+    13173,
+    13173
+   ],
+   "page": "[195] Embedding Cost",
+   "kind": "info",
+   "text": "Page title [195] Embedding Cost",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13175",
+   "lines": [
+    13175,
+    13175
+   ],
+   "page": "[195] Embedding Cost",
+   "kind": "info",
+   "text": "Section: Cost",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13176",
+   "lines": [
+    13176,
+    13176
+   ],
+   "page": "[195] Embedding Cost",
+   "kind": "scope",
+   "text": "Page [195] Embedding Cost scope: MVP."
+  },
+  {
+   "id": "R13177",
+   "lines": [
+    13177,
+    13177
+   ],
+   "page": "[195] Embedding Cost",
+   "kind": "info",
+   "text": "Page URL .../page/embedding-cost",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13178",
+   "lines": [
+    13178,
+    13178
+   ],
+   "page": "[195] Embedding Cost",
+   "kind": "decision",
+   "text": "An embedding API is used for brand voice vectorization."
+  },
+  {
+   "id": "R13179",
+   "lines": [
+    13179,
+    13179
+   ],
+   "page": "[195] Embedding Cost",
+   "kind": "info",
+   "text": "Keywords: embedding cost, text-embedding-3-small, vectorization",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13181",
+   "lines": [
+    13181,
+    13181
+   ],
+   "page": "[195] Embedding Cost",
+   "kind": "info",
+   "text": "Embedding Cost",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13183",
+   "lines": [
+    13183,
+    13183
+   ],
+   "page": "[195] Embedding Cost",
+   "kind": "decision",
+   "text": "Embedding model: text-embedding-3-small."
+  },
+  {
+   "id": "R13183a",
+   "lines": [
+    13183,
+    13183
+   ],
+   "page": "[195] Embedding Cost",
+   "kind": "constraint",
+   "text": "text-embedding-3-small is extremely cheap."
+  },
+  {
+   "id": "R13183b",
+   "lines": [
+    13183,
+    13183
+   ],
+   "page": "[195] Embedding Cost",
+   "kind": "constraint",
+   "text": "Brand setup embedding is a one-time cost per brand."
+  },
+  {
+   "id": "R13183c",
+   "lines": [
+    13183,
+    13183
+   ],
+   "page": "[195] Embedding Cost",
+   "kind": "constraint",
+   "text": "Retrieval queries are also very cheap."
+  },
+  {
+   "id": "R13183d",
+   "lines": [
+    13183,
+    13183
+   ],
+   "page": "[195] Embedding Cost",
+   "kind": "constraint",
+   "text": "Total embedding costs are negligible compared to generation costs."
+  },
+  {
+   "id": "R13183e",
+   "lines": [
+    13183,
+    13183
+   ],
+   "page": "[195] Embedding Cost",
+   "kind": "constraint",
+   "text": "Total embedding costs typically less than ₹100/month."
+  },
+  {
+   "id": "R13185",
+   "lines": [
+    13185,
+    13185
+   ],
+   "page": "[195] Embedding Cost",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13187",
+   "lines": [
+    13187,
+    13187
+   ],
+   "page": "[196] Storage Cost",
+   "kind": "info",
+   "text": "Page title [196] Storage Cost",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13189",
+   "lines": [
+    13189,
+    13189
+   ],
+   "page": "[196] Storage Cost",
+   "kind": "info",
+   "text": "Section: Cost",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13190",
+   "lines": [
+    13190,
+    13190
+   ],
+   "page": "[196] Storage Cost",
+   "kind": "scope",
+   "text": "Page [196] Storage Cost scope: MVP."
+  },
+  {
+   "id": "R13191",
+   "lines": [
+    13191,
+    13191
+   ],
+   "page": "[196] Storage Cost",
+   "kind": "info",
+   "text": "Page URL .../page/storage-cost",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13192",
+   "lines": [
+    13192,
+    13192
+   ],
+   "page": "[196] Storage Cost",
+   "kind": "data",
+   "text": "S3 stores images."
+  },
+  {
+   "id": "R13192a",
+   "lines": [
+    13192,
+    13192
+   ],
+   "page": "[196] Storage Cost",
+   "kind": "data",
+   "text": "S3 stores artifacts."
+  },
+  {
+   "id": "R13193",
+   "lines": [
+    13193,
+    13193
+   ],
+   "page": "[196] Storage Cost",
+   "kind": "info",
+   "text": "Keywords: storage cost, S3, images, artifacts",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13195",
+   "lines": [
+    13195,
+    13195
+   ],
+   "page": "[196] Storage Cost",
+   "kind": "info",
+   "text": "Storage Cost",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13197",
+   "lines": [
+    13197,
+    13197
+   ],
+   "page": "[196] Storage Cost",
+   "kind": "constraint",
+   "text": "S3 storage is very affordable."
+  },
+  {
+   "id": "R13197a",
+   "lines": [
+    13197,
+    13197
+   ],
+   "page": "[196] Storage Cost",
+   "kind": "constraint",
+   "text": "Most storage costs come from egress (serving images)."
+  },
+  {
+   "id": "R13197b",
+   "lines": [
+    13197,
+    13197
+   ],
+   "page": "[196] Storage Cost",
+   "kind": "requirement",
+   "text": "Lifecycle policies archive old versions (S3)."
+  },
+  {
+   "id": "R13197c",
+   "lines": [
+    13197,
+    13197
+   ],
+   "page": "[196] Storage Cost",
+   "kind": "constraint",
+   "text": "With lifecycle policies, storage costs remain low."
+  },
+  {
+   "id": "R13197d",
+   "lines": [
+    13197,
+    13197
+   ],
+   "page": "[196] Storage Cost",
+   "kind": "info",
+   "text": "Storage estimate: ₹250/month for MVP.",
+   "why_not": "restatement",
+   "dup_of": "R13121"
+  },
+  {
+   "id": "R13199",
+   "lines": [
+    13199,
+    13199
+   ],
+   "page": "[196] Storage Cost",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13201",
+   "lines": [
+    13201,
+    13201
+   ],
+   "page": "[197] Marketplace API Cost",
+   "kind": "info",
+   "text": "Page title [197] Marketplace API Cost",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13203",
+   "lines": [
+    13203,
+    13203
+   ],
+   "page": "[197] Marketplace API Cost",
+   "kind": "info",
+   "text": "Section: Cost",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13204",
+   "lines": [
+    13204,
+    13204
+   ],
+   "page": "[197] Marketplace API Cost",
+   "kind": "scope",
+   "text": "Page [197] Marketplace API Cost scope: MVP."
+  },
+  {
+   "id": "R13205",
+   "lines": [
+    13205,
+    13205
+   ],
+   "page": "[197] Marketplace API Cost",
+   "kind": "info",
+   "text": "Page URL .../page/marketplace-api-cost",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13206",
+   "lines": [
+    13206,
+    13206
+   ],
+   "page": "[197] Marketplace API Cost",
+   "kind": "constraint",
+   "text": "Amazon SP-API is free to use."
+  },
+  {
+   "id": "R13206a",
+   "lines": [
+    13206,
+    13206
+   ],
+   "page": "[197] Marketplace API Cost",
+   "kind": "constraint",
+   "text": "Flipkart (marketplace API) is free to use."
+  },
+  {
+   "id": "R13207",
+   "lines": [
+    13207,
+    13207
+   ],
+   "page": "[197] Marketplace API Cost",
+   "kind": "info",
+   "text": "Keywords: marketplace API cost, Amazon, Flipkart, free",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13209",
+   "lines": [
+    13209,
+    13209
+   ],
+   "page": "[197] Marketplace API Cost",
+   "kind": "info",
+   "text": "Marketplace API Cost",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13211",
+   "lines": [
+    13211,
+    13211
+   ],
+   "page": "[197] Marketplace API Cost",
+   "kind": "constraint",
+   "text": "Amazon SP-API is free to use for authorized sellers."
+  },
+  {
+   "id": "R13211a",
+   "lines": [
+    13211,
+    13211
+   ],
+   "page": "[197] Marketplace API Cost",
+   "kind": "constraint",
+   "text": "Flipkart Seller API is free to use for authorized sellers."
+  },
+  {
+   "id": "R13211b",
+   "lines": [
+    13211,
+    13211
+   ],
+   "page": "[197] Marketplace API Cost",
+   "kind": "constraint",
+   "text": "Marketplace APIs: no per-call charges."
+  },
+  {
+   "id": "R13211c",
+   "lines": [
+    13211,
+    13211
+   ],
+   "page": "[197] Marketplace API Cost",
+   "kind": "constraint",
+   "text": "The only marketplace API cost is infrastructure to handle rate limits and retries."
+  },
+  {
+   "id": "R13211d",
+   "lines": [
+    13211,
+    13211
+   ],
+   "page": "[197] Marketplace API Cost",
+   "kind": "requirement",
+   "text": "Infrastructure handles marketplace API rate limits."
+  },
+  {
+   "id": "R13211e",
+   "lines": [
+    13211,
+    13211
+   ],
+   "page": "[197] Marketplace API Cost",
+   "kind": "requirement",
+   "text": "Infrastructure handles marketplace API retries."
+  },
+  {
+   "id": "R13213",
+   "lines": [
+    13213,
+    13213
+   ],
+   "page": "[197] Marketplace API Cost",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13215",
+   "lines": [
+    13215,
+    13215
+   ],
+   "page": "[198] Scaling Cost",
+   "kind": "info",
+   "text": "Page title [198] Scaling Cost",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13217",
+   "lines": [
+    13217,
+    13217
+   ],
+   "page": "[198] Scaling Cost",
+   "kind": "info",
+   "text": "Section: Cost",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13218",
+   "lines": [
+    13218,
+    13218
+   ],
+   "page": "[198] Scaling Cost",
+   "kind": "scope",
+   "text": "Page [198] Scaling Cost scope: MVP."
+  },
+  {
+   "id": "R13219",
+   "lines": [
+    13219,
+    13219
+   ],
+   "page": "[198] Scaling Cost",
+   "kind": "info",
+   "text": "Page URL .../page/scaling-cost",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13220",
+   "lines": [
+    13220,
+    13220
+   ],
+   "page": "[198] Scaling Cost",
+   "kind": "info",
+   "text": "Costs scale with usage: linear LLM scaling.",
+   "why_not": "restatement",
+   "dup_of": "R13141d"
+  },
+  {
+   "id": "R13220a",
+   "lines": [
+    13220,
+    13220
+   ],
+   "page": "[198] Scaling Cost",
+   "kind": "constraint",
+   "text": "Infrastructure costs scale as step functions."
+  },
+  {
+   "id": "R13221",
+   "lines": [
+    13221,
+    13221
+   ],
+   "page": "[198] Scaling Cost",
+   "kind": "info",
+   "text": "Keywords: scaling cost, growth, linear, projection",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13223",
+   "lines": [
+    13223,
+    13223
+   ],
+   "page": "[198] Scaling Cost",
+   "kind": "info",
+   "text": "Scaling Cost",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13225",
+   "lines": [
+    13225,
+    13225
+   ],
+   "page": "[198] Scaling Cost",
+   "kind": "info",
+   "text": "LLM costs scale roughly linearly with listing volume.",
+   "why_not": "restatement",
+   "dup_of": "R13141d"
+  },
+  {
+   "id": "R13225a",
+   "lines": [
+    13225,
+    13225
+   ],
+   "page": "[198] Scaling Cost",
+   "kind": "constraint",
+   "text": "Infrastructure costs scale in steps (upgrade instance sizes)."
+  },
+  {
+   "id": "R13225b",
+   "lines": [
+    13225,
+    13225
+   ],
+   "page": "[198] Scaling Cost",
+   "kind": "constraint",
+   "text": "Scaling Cost: at 50 brands: ₹10,000-20,000/month."
+  },
+  {
+   "id": "R13225c",
+   "lines": [
+    13225,
+    13225
+   ],
+   "page": "[198] Scaling Cost",
+   "kind": "requirement",
+   "text": "Cost optimization strategy (model routing) can significantly reduce the linear LLM scaling factor."
+  },
+  {
+   "id": "R13225d",
+   "lines": [
+    13225,
+    13225
+   ],
+   "page": "[198] Scaling Cost",
+   "kind": "requirement",
+   "text": "Cost optimization strategy (caching) can significantly reduce the linear LLM scaling factor."
+  },
+  {
+   "id": "R13225e",
+   "lines": [
+    13225,
+    13225
+   ],
+   "page": "[198] Scaling Cost",
+   "kind": "requirement",
+   "text": "Cost optimization strategy (avoiding regeneration) can significantly reduce the linear LLM scaling factor."
+  },
+  {
+   "id": "R13227",
+   "lines": [
+    13227,
+    13227
+   ],
+   "page": "[198] Scaling Cost",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13229",
+   "lines": [
+    13229,
+    13229
+   ],
+   "page": "[199] Cost per Listing",
+   "kind": "info",
+   "text": "Page title [199] Cost per Listing",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13231",
+   "lines": [
+    13231,
+    13231
+   ],
+   "page": "[199] Cost per Listing",
+   "kind": "info",
+   "text": "Section: Cost",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13232",
+   "lines": [
+    13232,
+    13232
+   ],
+   "page": "[199] Cost per Listing",
+   "kind": "scope",
+   "text": "Page [199] Cost per Listing scope: MVP."
+  },
+  {
+   "id": "R13233",
+   "lines": [
+    13233,
+    13233
+   ],
+   "page": "[199] Cost per Listing",
+   "kind": "info",
+   "text": "Page URL .../page/cost-per-listing",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13234",
+   "lines": [
+    13234,
+    13234
+   ],
+   "page": "[199] Cost per Listing",
+   "kind": "data",
+   "text": "Cost per listing is a derived metric: total cost per successful listing generation."
+  },
+  {
+   "id": "R13235",
+   "lines": [
+    13235,
+    13235
+   ],
+   "page": "[199] Cost per Listing",
+   "kind": "info",
+   "text": "Keywords: cost per listing, unit economics, per listing",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13237",
+   "lines": [
+    13237,
+    13237
+   ],
+   "page": "[199] Cost per Listing",
+   "kind": "info",
+   "text": "Cost per Listing",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13239",
+   "lines": [
+    13239,
+    13239
+   ],
+   "page": "[199] Cost per Listing",
+   "kind": "data",
+   "text": "Cost per listing = (AI generation cost + image processing cost + infrastructure amortization) / successful listings."
+  },
+  {
+   "id": "R13239a",
+   "lines": [
+    13239,
+    13239
+   ],
+   "page": "[199] Cost per Listing",
+   "kind": "constraint",
+   "text": "Target: ₹3-8 per listing at MVP scale."
+  },
+  {
+   "id": "R13239b",
+   "lines": [
+    13239,
+    13239
+   ],
+   "page": "[199] Cost per Listing",
+   "kind": "quality",
+   "text": "Cost per listing metric is trackable via AgentRun cost aggregation."
+  },
+  {
+   "id": "R13241",
+   "lines": [
+    13241,
+    13241
+   ],
+   "page": "[199] Cost per Listing",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13243",
+   "lines": [
+    13243,
+    13243
+   ],
+   "page": "[200] Cost Optimization Strategy",
+   "kind": "info",
+   "text": "Page title [200] Cost Optimization Strategy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13245",
+   "lines": [
+    13245,
+    13245
+   ],
+   "page": "[200] Cost Optimization Strategy",
+   "kind": "info",
+   "text": "Section: Cost",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13246",
+   "lines": [
+    13246,
+    13246
+   ],
+   "page": "[200] Cost Optimization Strategy",
+   "kind": "scope",
+   "text": "Page [200] Cost Optimization Strategy scope: MVP."
+  },
+  {
+   "id": "R13247",
+   "lines": [
+    13247,
+    13247
+   ],
+   "page": "[200] Cost Optimization Strategy",
+   "kind": "info",
+   "text": "Page URL .../page/cost-optimization-strategy",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13248",
+   "lines": [
+    13248,
+    13248
+   ],
+   "page": "[200] Cost Optimization Strategy",
+   "kind": "info",
+   "text": "Strategies for reducing operational costs over time.",
+   "why_not": "context-prose"
+  },
+  {
+   "id": "R13249",
+   "lines": [
+    13249,
+    13249
+   ],
+   "page": "[200] Cost Optimization Strategy",
+   "kind": "info",
+   "text": "Keywords: cost optimization, strategy, savings, efficiency",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13251",
+   "lines": [
+    13251,
+    13251
+   ],
+   "page": "[200] Cost Optimization Strategy",
+   "kind": "info",
+   "text": "Cost Optimization",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13253",
+   "lines": [
+    13253,
+    13253
+   ],
+   "page": "[200] Cost Optimization Strategy",
+   "kind": "requirement",
+   "text": "Cost optimization: model routing (cheapest model that meets quality bar)."
+  },
+  {
+   "id": "R13254",
+   "lines": [
+    13254,
+    13254
+   ],
+   "page": "[200] Cost Optimization Strategy",
+   "kind": "requirement",
+   "text": "Cost optimization: prompt compression (fewer tokens per request)."
+  },
+  {
+   "id": "R13255",
+   "lines": [
+    13255,
+    13255
+   ],
+   "page": "[200] Cost Optimization Strategy",
+   "kind": "requirement",
+   "text": "Cost optimization: caching to avoid re-embedding unchanged content."
+  },
+  {
+   "id": "R13255a",
+   "lines": [
+    13255,
+    13255
+   ],
+   "page": "[200] Cost Optimization Strategy",
+   "kind": "requirement",
+   "text": "Cost optimization: caching to avoid re-generating unchanged content."
+  },
+  {
+   "id": "R13256",
+   "lines": [
+    13256,
+    13256
+   ],
+   "page": "[200] Cost Optimization Strategy",
+   "kind": "requirement",
+   "text": "Cost optimization: batch operations (bulk embed)."
+  },
+  {
+   "id": "R13256a",
+   "lines": [
+    13256,
+    13256
+   ],
+   "page": "[200] Cost Optimization Strategy",
+   "kind": "requirement",
+   "text": "Cost optimization: batch operations (batch process)."
+  },
+  {
+   "id": "R13257",
+   "lines": [
+    13257,
+    13257
+   ],
+   "page": "[200] Cost Optimization Strategy",
+   "kind": "requirement",
+   "text": "Cost optimization: right-sizing infrastructure (don't over-provision)."
+  },
+  {
+   "id": "R13258",
+   "lines": [
+    13258,
+    13258
+   ],
+   "page": "[200] Cost Optimization Strategy",
+   "kind": "decision",
+   "text": "Cost optimization: reserved instances for predictable workloads."
+  },
+  {
+   "id": "R13260",
+   "lines": [
+    13260,
+    13260
+   ],
+   "page": "[200] Cost Optimization Strategy",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13262",
+   "lines": [
+    13262,
+    13262
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "info",
+   "text": "Page title [201] MVP Phase 1",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13264",
+   "lines": [
+    13264,
+    13264
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "info",
+   "text": "Section: Roadmap",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13265",
+   "lines": [
+    13265,
+    13265
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "scope",
+   "text": "Page [201] MVP Phase 1 scope: MVP."
+  },
+  {
+   "id": "R13266",
+   "lines": [
+    13266,
+    13266
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "info",
+   "text": "Page URL .../page/mvp-phase-1",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13267",
+   "lines": [
+    13267,
+    13267
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "scope",
+   "text": "Phase 1: core listing pipeline."
+  },
+  {
+   "id": "R13267a",
+   "lines": [
+    13267,
+    13267
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "scope",
+   "text": "Phase 1 includes Amazon and Flipkart adapters."
+  },
+  {
+   "id": "R13268",
+   "lines": [
+    13268,
+    13268
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "info",
+   "text": "Keywords: Phase 1, MVP, roadmap, deliverables",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13270",
+   "lines": [
+    13270,
+    13270
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "info",
+   "text": "Phase 1 Deliverables",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13272",
+   "lines": [
+    13272,
+    13272
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "info",
+   "text": "Phase 1 deliverable: Amazon + Flipkart adapters.",
+   "why_not": "restatement",
+   "dup_of": "R13267a"
+  },
+  {
+   "id": "R13273",
+   "lines": [
+    13273,
+    13273
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "scope",
+   "text": "Phase 1 deliverable: CSV bulk import."
+  },
+  {
+   "id": "R13274",
+   "lines": [
+    13274,
+    13274
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "scope",
+   "text": "Phase 1 deliverable: text generation of title."
+  },
+  {
+   "id": "R13274a",
+   "lines": [
+    13274,
+    13274
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "scope",
+   "text": "Phase 1 deliverable: text generation of bullets."
+  },
+  {
+   "id": "R13274b",
+   "lines": [
+    13274,
+    13274
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "scope",
+   "text": "Phase 1 deliverable: text generation of description."
+  },
+  {
+   "id": "R13274c",
+   "lines": [
+    13274,
+    13274
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "scope",
+   "text": "Phase 1 deliverable: text generation of keywords."
+  },
+  {
+   "id": "R13274d",
+   "lines": [
+    13274,
+    13274
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "scope",
+   "text": "Phase 1 deliverable: text generation of attributes."
+  },
+  {
+   "id": "R13275",
+   "lines": [
+    13275,
+    13275
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "scope",
+   "text": "Phase 1 deliverable: image compliance checking."
+  },
+  {
+   "id": "R13276",
+   "lines": [
+    13276,
+    13276
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "scope",
+   "text": "Phase 1 deliverable: validation with structured errors."
+  },
+  {
+   "id": "R13277",
+   "lines": [
+    13277,
+    13277
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "scope",
+   "text": "Phase 1 deliverable: human approval."
+  },
+  {
+   "id": "R13277a",
+   "lines": [
+    13277,
+    13277
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "requirement",
+   "text": "Phase 1 human approval uses maker-checker."
+  },
+  {
+   "id": "R13278",
+   "lines": [
+    13278,
+    13278
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "scope",
+   "text": "Phase 1 deliverable: publishing."
+  },
+  {
+   "id": "R13278a",
+   "lines": [
+    13278,
+    13278
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "requirement",
+   "text": "Phase 1 publishing returns per-field results."
+  },
+  {
+   "id": "R13279",
+   "lines": [
+    13279,
+    13279
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "scope",
+   "text": "Phase 1 deliverable: basic analytics dashboard."
+  },
+  {
+   "id": "R13281",
+   "lines": [
+    13281,
+    13281
+   ],
+   "page": "[201] MVP Phase 1",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13283",
+   "lines": [
+    13283,
+    13283
+   ],
+   "page": "[202] Phase 2",
+   "kind": "info",
+   "text": "Page title [202] Phase 2",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13285",
+   "lines": [
+    13285,
+    13285
+   ],
+   "page": "[202] Phase 2",
+   "kind": "info",
+   "text": "Section: Roadmap",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13286",
+   "lines": [
+    13286,
+    13286
+   ],
+   "page": "[202] Phase 2",
+   "kind": "scope",
+   "text": "Page [202] Phase 2 scope: PHASE2."
+  },
+  {
+   "id": "R13287",
+   "lines": [
+    13287,
+    13287
+   ],
+   "page": "[202] Phase 2",
+   "kind": "info",
+   "text": "Page URL .../page/phase-2",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13288",
+   "lines": [
+    13288,
+    13288
+   ],
+   "page": "[202] Phase 2",
+   "kind": "scope",
+   "text": "Phase 2: version history."
+  },
+  {
+   "id": "R13288a",
+   "lines": [
+    13288,
+    13288
+   ],
+   "page": "[202] Phase 2",
+   "kind": "scope",
+   "text": "Phase 2: refined image pipeline."
+  },
+  {
+   "id": "R13288b",
+   "lines": [
+    13288,
+    13288
+   ],
+   "page": "[202] Phase 2",
+   "kind": "scope",
+   "text": "Phase 2: unified analytics."
+  },
+  {
+   "id": "R13288c",
+   "lines": [
+    13288,
+    13288
+   ],
+   "page": "[202] Phase 2",
+   "kind": "scope",
+   "text": "Phase 2: sales attribution."
+  },
+  {
+   "id": "R13289",
+   "lines": [
+    13289,
+    13289
+   ],
+   "page": "[202] Phase 2",
+   "kind": "info",
+   "text": "Keywords: Phase 2, roadmap, version history, analytics",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13291",
+   "lines": [
+    13291,
+    13291
+   ],
+   "page": "[202] Phase 2",
+   "kind": "info",
+   "text": "Phase 2 Deliverables",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13293",
+   "lines": [
+    13293,
+    13293
+   ],
+   "page": "[202] Phase 2",
+   "kind": "scope",
+   "text": "Phase 2 deliverable: listing version history."
+  },
+  {
+   "id": "R13293a",
+   "lines": [
+    13293,
+    13293
+   ],
+   "page": "[202] Phase 2",
+   "kind": "scope",
+   "text": "Phase 2 deliverable: comparison UI for listing version history."
+  },
+  {
+   "id": "R13294",
+   "lines": [
+    13294,
+    13294
+   ],
+   "page": "[202] Phase 2",
+   "kind": "info",
+   "text": "Phase 2 deliverable: image pipeline refinements.",
+   "why_not": "restatement",
+   "dup_of": "R13288a"
+  },
+  {
+   "id": "R13295",
+   "lines": [
+    13295,
+    13295
+   ],
+   "page": "[202] Phase 2",
+   "kind": "scope",
+   "text": "Phase 2 deliverable: unified analytics dashboard."
+  },
+  {
+   "id": "R13296",
+   "lines": [
+    13296,
+    13296
+   ],
+   "page": "[202] Phase 2",
+   "kind": "info",
+   "text": "Phase 2 deliverable: sales attribution.",
+   "why_not": "restatement",
+   "dup_of": "R13288c"
+  },
+  {
+   "id": "R13297",
+   "lines": [
+    13297,
+    13297
+   ],
+   "page": "[202] Phase 2",
+   "kind": "scope",
+   "text": "Phase 2 deliverable: performance monitoring."
+  },
+  {
+   "id": "R13298",
+   "lines": [
+    13298,
+    13298
+   ],
+   "page": "[202] Phase 2",
+   "kind": "scope",
+   "text": "Phase 2 deliverable: prompt versioning."
+  },
+  {
+   "id": "R13298a",
+   "lines": [
+    13298,
+    13298
+   ],
+   "page": "[202] Phase 2",
+   "kind": "scope",
+   "text": "Phase 2 deliverable: (prompt) A/B testing."
+  },
+  {
+   "id": "R13299",
+   "lines": [
+    13299,
+    13299
+   ],
+   "page": "[202] Phase 2",
+   "kind": "scope",
+   "text": "Phase 2 deliverable: webhook architecture."
+  },
+  {
+   "id": "R13301",
+   "lines": [
+    13301,
+    13301
+   ],
+   "page": "[202] Phase 2",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13303",
+   "lines": [
+    13303,
+    13303
+   ],
+   "page": "[203] Phase 3",
+   "kind": "info",
+   "text": "Page title [203] Phase 3",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13305",
+   "lines": [
+    13305,
+    13305
+   ],
+   "page": "[203] Phase 3",
+   "kind": "info",
+   "text": "Section: Roadmap",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13306",
+   "lines": [
+    13306,
+    13306
+   ],
+   "page": "[203] Phase 3",
+   "kind": "scope",
+   "text": "Page [203] Phase 3 scope: PHASE3."
+  },
+  {
+   "id": "R13307",
+   "lines": [
+    13307,
+    13307
+   ],
+   "page": "[203] Phase 3",
+   "kind": "info",
+   "text": "Page URL .../page/phase-3",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13308",
+   "lines": [
+    13308,
+    13308
+   ],
+   "page": "[203] Phase 3",
+   "kind": "scope",
+   "text": "Phase 3: Optimization Agent."
+  },
+  {
+   "id": "R13308a",
+   "lines": [
+    13308,
+    13308
+   ],
+   "page": "[203] Phase 3",
+   "kind": "scope",
+   "text": "Phase 3: competitive signals."
+  },
+  {
+   "id": "R13308b",
+   "lines": [
+    13308,
+    13308
+   ],
+   "page": "[203] Phase 3",
+   "kind": "scope",
+   "text": "Phase 3: confidence-based auto-publish."
+  },
+  {
+   "id": "R13309",
+   "lines": [
+    13309,
+    13309
+   ],
+   "page": "[203] Phase 3",
+   "kind": "info",
+   "text": "Keywords: Phase 3, roadmap, optimization, auto-publish, competitive",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13311",
+   "lines": [
+    13311,
+    13311
+   ],
+   "page": "[203] Phase 3",
+   "kind": "info",
+   "text": "Phase 3 Deliverables",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13313",
+   "lines": [
+    13313,
+    13313
+   ],
+   "page": "[203] Phase 3",
+   "kind": "requirement",
+   "text": "Phase 3 Optimization Agent auto-suggests improvements."
+  },
+  {
+   "id": "R13314",
+   "lines": [
+    13314,
+    13314
+   ],
+   "page": "[203] Phase 3",
+   "kind": "info",
+   "text": "Phase 3 deliverable: competitive signals analysis.",
+   "why_not": "restatement",
+   "dup_of": "R13308a"
+  },
+  {
+   "id": "R13315",
+   "lines": [
+    13315,
+    13315
+   ],
+   "page": "[203] Phase 3",
+   "kind": "scope",
+   "text": "Phase 3 deliverable: low-risk auto-publish."
+  },
+  {
+   "id": "R13315a",
+   "lines": [
+    13315,
+    13315
+   ],
+   "page": "[203] Phase 3",
+   "kind": "requirement",
+   "text": "Phase 3 auto-publish gated by a confidence threshold."
+  },
+  {
+   "id": "R13315b",
+   "lines": [
+    13315,
+    13315
+   ],
+   "page": "[203] Phase 3",
+   "kind": "requirement",
+   "text": "Phase 3 auto-publish gated by consecutive-approval unlock."
+  },
+  {
+   "id": "R13316",
+   "lines": [
+    13316,
+    13316
+   ],
+   "page": "[203] Phase 3",
+   "kind": "scope",
+   "text": "Phase 3 deliverable: advanced model routing optimization."
+  },
+  {
+   "id": "R13317",
+   "lines": [
+    13317,
+    13317
+   ],
+   "page": "[203] Phase 3",
+   "kind": "scope",
+   "text": "Phase 3 deliverable: AI learning loop."
+  },
+  {
+   "id": "R13319",
+   "lines": [
+    13319,
+    13319
+   ],
+   "page": "[203] Phase 3",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13321",
+   "lines": [
+    13321,
+    13321
+   ],
+   "page": "[204] Future Marketplace Expansion",
+   "kind": "info",
+   "text": "Page title [204] Future Marketplace Expansion",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13323",
+   "lines": [
+    13323,
+    13323
+   ],
+   "page": "[204] Future Marketplace Expansion",
+   "kind": "info",
+   "text": "Section: Roadmap",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13324",
+   "lines": [
+    13324,
+    13324
+   ],
+   "page": "[204] Future Marketplace Expansion",
+   "kind": "scope",
+   "text": "Page [204] Future Marketplace Expansion scope: FUTURE."
+  },
+  {
+   "id": "R13325",
+   "lines": [
+    13325,
+    13325
+   ],
+   "page": "[204] Future Marketplace Expansion",
+   "kind": "info",
+   "text": "Page URL .../page/future-marketplace-expansion",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13326",
+   "lines": [
+    13326,
+    13326
+   ],
+   "page": "[204] Future Marketplace Expansion",
+   "kind": "scope",
+   "text": "Future new marketplace: Myntra."
+  },
+  {
+   "id": "R13326a",
+   "lines": [
+    13326,
+    13326
+   ],
+   "page": "[204] Future Marketplace Expansion",
+   "kind": "scope",
+   "text": "Future new marketplace: Ajio."
+  },
+  {
+   "id": "R13326b",
+   "lines": [
+    13326,
+    13326
+   ],
+   "page": "[204] Future Marketplace Expansion",
+   "kind": "scope",
+   "text": "Future new marketplace: Meesho."
+  },
+  {
+   "id": "R13326c",
+   "lines": [
+    13326,
+    13326
+   ],
+   "page": "[204] Future Marketplace Expansion",
+   "kind": "scope",
+   "text": "Future new marketplace: Nykaa."
+  },
+  {
+   "id": "R13327",
+   "lines": [
+    13327,
+    13327
+   ],
+   "page": "[204] Future Marketplace Expansion",
+   "kind": "info",
+   "text": "Keywords: future, marketplace, expansion, Myntra, Ajio",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13329",
+   "lines": [
+    13329,
+    13329
+   ],
+   "page": "[204] Future Marketplace Expansion",
+   "kind": "info",
+   "text": "Marketplace Expansion",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13331",
+   "lines": [
+    13331,
+    13331
+   ],
+   "page": "[204] Future Marketplace Expansion",
+   "kind": "decision",
+   "text": "New marketplaces are added as adapters."
+  },
+  {
+   "id": "R13331a",
+   "lines": [
+    13331,
+    13331
+   ],
+   "page": "[204] Future Marketplace Expansion",
+   "kind": "requirement",
+   "text": "Each new marketplace requires adapter implementation (following the interface)."
+  },
+  {
+   "id": "R13331b",
+   "lines": [
+    13331,
+    13331
+   ],
+   "page": "[204] Future Marketplace Expansion",
+   "kind": "requirement",
+   "text": "Each new marketplace requires field mapping configuration."
+  },
+  {
+   "id": "R13331c",
+   "lines": [
+    13331,
+    13331
+   ],
+   "page": "[204] Future Marketplace Expansion",
+   "kind": "requirement",
+   "text": "Each new marketplace requires an image compliance policy."
+  },
+  {
+   "id": "R13331d",
+   "lines": [
+    13331,
+    13331
+   ],
+   "page": "[204] Future Marketplace Expansion",
+   "kind": "requirement",
+   "text": "Each new marketplace requires category mapping."
+  },
+  {
+   "id": "R13331e",
+   "lines": [
+    13331,
+    13331
+   ],
+   "page": "[204] Future Marketplace Expansion",
+   "kind": "requirement",
+   "text": "Each new marketplace requires rule definition."
+  },
+  {
+   "id": "R13331f",
+   "lines": [
+    13331,
+    13331
+   ],
+   "page": "[204] Future Marketplace Expansion",
+   "kind": "requirement",
+   "text": "Adding a new marketplace requires no core platform changes."
+  },
+  {
+   "id": "R13333",
+   "lines": [
+    13333,
+    13333
+   ],
+   "page": "[204] Future Marketplace Expansion",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13335",
+   "lines": [
+    13335,
+    13335
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "info",
+   "text": "Page title [205] Future Agent Expansion",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13337",
+   "lines": [
+    13337,
+    13337
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "info",
+   "text": "Section: Roadmap",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13338",
+   "lines": [
+    13338,
+    13338
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "scope",
+   "text": "Page [205] Future Agent Expansion scope: FUTURE."
+  },
+  {
+   "id": "R13339",
+   "lines": [
+    13339,
+    13339
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "info",
+   "text": "Page URL .../page/future-agent-expansion",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13340",
+   "lines": [
+    13340,
+    13340
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "scope",
+   "text": "Future agent: Pricing."
+  },
+  {
+   "id": "R13340a",
+   "lines": [
+    13340,
+    13340
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "scope",
+   "text": "Future agent: Ads."
+  },
+  {
+   "id": "R13340b",
+   "lines": [
+    13340,
+    13340
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "scope",
+   "text": "Future agent: Inventory."
+  },
+  {
+   "id": "R13340c",
+   "lines": [
+    13340,
+    13340
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "scope",
+   "text": "Future agent: Returns."
+  },
+  {
+   "id": "R13340d",
+   "lines": [
+    13340,
+    13340
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "scope",
+   "text": "Future agent: Revenue Operations."
+  },
+  {
+   "id": "R13341",
+   "lines": [
+    13341,
+    13341
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "info",
+   "text": "Keywords: future, agent, expansion, ecosystem",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13343",
+   "lines": [
+    13343,
+    13343
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "info",
+   "text": "Agent Expansion",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13345",
+   "lines": [
+    13345,
+    13345
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "interface",
+   "text": "New agents implement AgentInterface."
+  },
+  {
+   "id": "R13345a",
+   "lines": [
+    13345,
+    13345
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "flow",
+   "text": "New agents register with the orchestrator."
+  },
+  {
+   "id": "R13345b",
+   "lines": [
+    13345,
+    13345
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "interface",
+   "text": "New agents define input schemas."
+  },
+  {
+   "id": "R13345c",
+   "lines": [
+    13345,
+    13345
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "interface",
+   "text": "New agents define output schemas."
+  },
+  {
+   "id": "R13345d",
+   "lines": [
+    13345,
+    13345
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "requirement",
+   "text": "New agents plug into the existing data layer."
+  },
+  {
+   "id": "R13345e",
+   "lines": [
+    13345,
+    13345
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "requirement",
+   "text": "New agents plug into the existing execution infrastructure."
+  },
+  {
+   "id": "R13345f",
+   "lines": [
+    13345,
+    13345
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "requirement",
+   "text": "The platform grows (new agents) without rewrites."
+  },
+  {
+   "id": "R13347",
+   "lines": [
+    13347,
+    13347
+   ],
+   "page": "[205] Future Agent Expansion",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13349",
+   "lines": [
+    13349,
+    13349
+   ],
+   "page": "[206] Auto-Publish Evolution",
+   "kind": "info",
+   "text": "Page title [206] Auto-Publish Evolution",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13351",
+   "lines": [
+    13351,
+    13351
+   ],
+   "page": "[206] Auto-Publish Evolution",
+   "kind": "info",
+   "text": "Section: Roadmap",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13352",
+   "lines": [
+    13352,
+    13352
+   ],
+   "page": "[206] Auto-Publish Evolution",
+   "kind": "scope",
+   "text": "Page [206] Auto-Publish Evolution scope: PHASE3."
+  },
+  {
+   "id": "R13353",
+   "lines": [
+    13353,
+    13353
+   ],
+   "page": "[206] Auto-Publish Evolution",
+   "kind": "info",
+   "text": "Page URL .../page/auto-publish-evolution",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13354",
+   "lines": [
+    13354,
+    13354
+   ],
+   "page": "[206] Auto-Publish Evolution",
+   "kind": "requirement",
+   "text": "Auto-publish evolution starts from mandatory human approval (evolves to confidence-based auto-publish)."
+  },
+  {
+   "id": "R13354a",
+   "lines": [
+    13354,
+    13354
+   ],
+   "page": "[206] Auto-Publish Evolution",
+   "kind": "info",
+   "text": "Evolution to confidence-based auto-publish.",
+   "why_not": "restatement",
+   "dup_of": "R13308b"
+  },
+  {
+   "id": "R13355",
+   "lines": [
+    13355,
+    13355
+   ],
+   "page": "[206] Auto-Publish Evolution",
+   "kind": "info",
+   "text": "Keywords: auto-publish, confidence, evolution, automation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13357",
+   "lines": [
+    13357,
+    13357
+   ],
+   "page": "[206] Auto-Publish Evolution",
+   "kind": "info",
+   "text": "Auto-Publish Evolution",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13359",
+   "lines": [
+    13359,
+    13359
+   ],
+   "page": "[206] Auto-Publish Evolution",
+   "kind": "scope",
+   "text": "Phase 3: listings that consistently pass validation may be auto-published."
+  },
+  {
+   "id": "R13359a",
+   "lines": [
+    13359,
+    13359
+   ],
+   "page": "[206] Auto-Publish Evolution",
+   "kind": "requirement",
+   "text": "Auto-publish eligibility requires high confidence scores."
+  },
+  {
+   "id": "R13359b",
+   "lines": [
+    13359,
+    13359
+   ],
+   "page": "[206] Auto-Publish Evolution",
+   "kind": "requirement",
+   "text": "Auto-publish only after establishing a track record."
+  },
+  {
+   "id": "R13359c",
+   "lines": [
+    13359,
+    13359
+   ],
+   "page": "[206] Auto-Publish Evolution",
+   "kind": "constraint",
+   "text": "Auto-publish requirement: N consecutive approvals without edits."
+  },
+  {
+   "id": "R13359d",
+   "lines": [
+    13359,
+    13359
+   ],
+   "page": "[206] Auto-Publish Evolution",
+   "kind": "constraint",
+   "text": "Auto-publish requirement: confidence score above threshold."
+  },
+  {
+   "id": "R13359e",
+   "lines": [
+    13359,
+    13359
+   ],
+   "page": "[206] Auto-Publish Evolution",
+   "kind": "requirement",
+   "text": "Auto-publish requirement: no critical errors."
+  },
+  {
+   "id": "R13359f",
+   "lines": [
+    13359,
+    13359
+   ],
+   "page": "[206] Auto-Publish Evolution",
+   "kind": "requirement",
+   "text": "Humans can always override auto-publish."
+  },
+  {
+   "id": "R13361",
+   "lines": [
+    13361,
+    13361
+   ],
+   "page": "[206] Auto-Publish Evolution",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13363",
+   "lines": [
+    13363,
+    13363
+   ],
+   "page": "[207] Optimization Evolution",
+   "kind": "info",
+   "text": "Page title [207] Optimization Evolution",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13365",
+   "lines": [
+    13365,
+    13365
+   ],
+   "page": "[207] Optimization Evolution",
+   "kind": "info",
+   "text": "Section: Roadmap",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13366",
+   "lines": [
+    13366,
+    13366
+   ],
+   "page": "[207] Optimization Evolution",
+   "kind": "scope",
+   "text": "Page [207] Optimization Evolution scope: PHASE3."
+  },
+  {
+   "id": "R13367",
+   "lines": [
+    13367,
+    13367
+   ],
+   "page": "[207] Optimization Evolution",
+   "kind": "info",
+   "text": "Page URL .../page/optimization-evolution",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13368",
+   "lines": [
+    13368,
+    13368
+   ],
+   "page": "[207] Optimization Evolution",
+   "kind": "scope",
+   "text": "Optimization Agent evolves from basic suggestions to advanced optimization."
+  },
+  {
+   "id": "R13369",
+   "lines": [
+    13369,
+    13369
+   ],
+   "page": "[207] Optimization Evolution",
+   "kind": "info",
+   "text": "Keywords: optimization, evolution, advanced, learning",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13371",
+   "lines": [
+    13371,
+    13371
+   ],
+   "page": "[207] Optimization Evolution",
+   "kind": "info",
+   "text": "Optimization Evolution",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13373",
+   "lines": [
+    13373,
+    13373
+   ],
+   "page": "[207] Optimization Evolution",
+   "kind": "scope",
+   "text": "Phase 3: basic performance-based suggestions (Optimization Agent)."
+  },
+  {
+   "id": "R13373a",
+   "lines": [
+    13373,
+    13373
+   ],
+   "page": "[207] Optimization Evolution",
+   "kind": "scope",
+   "text": "Phase 4+: A/B testing proposals."
+  },
+  {
+   "id": "R13373b",
+   "lines": [
+    13373,
+    13373
+   ],
+   "page": "[207] Optimization Evolution",
+   "kind": "scope",
+   "text": "Phase 4+: seasonal optimization."
+  },
+  {
+   "id": "R13373c",
+   "lines": [
+    13373,
+    13373
+   ],
+   "page": "[207] Optimization Evolution",
+   "kind": "scope",
+   "text": "Phase 4+: competitive positioning."
+  },
+  {
+   "id": "R13373d",
+   "lines": [
+    13373,
+    13373
+   ],
+   "page": "[207] Optimization Evolution",
+   "kind": "scope",
+   "text": "Phase 4+: cross-marketplace optimization coordination."
+  },
+  {
+   "id": "R13375",
+   "lines": [
+    13375,
+    13375
+   ],
+   "page": "[207] Optimization Evolution",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13377",
+   "lines": [
+    13377,
+    13377
+   ],
+   "page": "[208] AI Learning Loop",
+   "kind": "info",
+   "text": "Page title [208] AI Learning Loop",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13379",
+   "lines": [
+    13379,
+    13379
+   ],
+   "page": "[208] AI Learning Loop",
+   "kind": "info",
+   "text": "Section: Roadmap",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13380",
+   "lines": [
+    13380,
+    13380
+   ],
+   "page": "[208] AI Learning Loop",
+   "kind": "scope",
+   "text": "Page [208] AI Learning Loop scope: PHASE3."
+  },
+  {
+   "id": "R13381",
+   "lines": [
+    13381,
+    13381
+   ],
+   "page": "[208] AI Learning Loop",
+   "kind": "info",
+   "text": "Page URL .../page/ai-learning-loop",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13382",
+   "lines": [
+    13382,
+    13382
+   ],
+   "page": "[208] AI Learning Loop",
+   "kind": "requirement",
+   "text": "The platform learns and improves over time."
+  },
+  {
+   "id": "R13382a",
+   "lines": [
+    13382,
+    13382
+   ],
+   "page": "[208] AI Learning Loop",
+   "kind": "requirement",
+   "text": "The platform learns from feedback."
+  },
+  {
+   "id": "R13382b",
+   "lines": [
+    13382,
+    13382
+   ],
+   "page": "[208] AI Learning Loop",
+   "kind": "requirement",
+   "text": "The platform learns from performance."
+  },
+  {
+   "id": "R13382c",
+   "lines": [
+    13382,
+    13382
+   ],
+   "page": "[208] AI Learning Loop",
+   "kind": "requirement",
+   "text": "The platform learns from approved patterns."
+  },
+  {
+   "id": "R13383",
+   "lines": [
+    13383,
+    13383
+   ],
+   "page": "[208] AI Learning Loop",
+   "kind": "info",
+   "text": "Keywords: learning loop, feedback, improvement, AI learning",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13385",
+   "lines": [
+    13385,
+    13385
+   ],
+   "page": "[208] AI Learning Loop",
+   "kind": "info",
+   "text": "AI Learning Loop",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13387",
+   "lines": [
+    13387,
+    13387
+   ],
+   "page": "[208] AI Learning Loop",
+   "kind": "requirement",
+   "text": "The platform learns from approved listings."
+  },
+  {
+   "id": "R13387a",
+   "lines": [
+    13387,
+    13387
+   ],
+   "page": "[208] AI Learning Loop",
+   "kind": "data",
+   "text": "Approved listings are stored as brand context."
+  },
+  {
+   "id": "R13387b",
+   "lines": [
+    13387,
+    13387
+   ],
+   "page": "[208] AI Learning Loop",
+   "kind": "requirement",
+   "text": "The platform learns from rejected listings."
+  },
+  {
+   "id": "R13387c",
+   "lines": [
+    13387,
+    13387
+   ],
+   "page": "[208] AI Learning Loop",
+   "kind": "data",
+   "text": "Rejected listings: feedback stored."
+  },
+  {
+   "id": "R13387d",
+   "lines": [
+    13387,
+    13387
+   ],
+   "page": "[208] AI Learning Loop",
+   "kind": "info",
+   "text": "Platform learns from performance data (what works).",
+   "why_not": "restatement",
+   "dup_of": "R13382b"
+  },
+  {
+   "id": "R13387e",
+   "lines": [
+    13387,
+    13387
+   ],
+   "page": "[208] AI Learning Loop",
+   "kind": "requirement",
+   "text": "The platform learns from user edits (what humans change)."
+  },
+  {
+   "id": "R13387f",
+   "lines": [
+    13387,
+    13387
+   ],
+   "page": "[208] AI Learning Loop",
+   "kind": "requirement",
+   "text": "Over time, generation quality improves automatically."
+  },
+  {
+   "id": "R13389",
+   "lines": [
+    13389,
+    13389
+   ],
+   "page": "[208] AI Learning Loop",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13391",
+   "lines": [
+    13391,
+    13391
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "info",
+   "text": "Page title [209] Production Readiness Checklist",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13393",
+   "lines": [
+    13393,
+    13393
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "info",
+   "text": "Section: Roadmap",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13394",
+   "lines": [
+    13394,
+    13394
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "scope",
+   "text": "Page [209] Production Readiness Checklist scope: MVP."
+  },
+  {
+   "id": "R13395",
+   "lines": [
+    13395,
+    13395
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "info",
+   "text": "Page URL .../page/production-readiness-checklist",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13396",
+   "lines": [
+    13396,
+    13396
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "info",
+   "text": "Checklist for production launch readiness.",
+   "why_not": "context-prose"
+  },
+  {
+   "id": "R13397",
+   "lines": [
+    13397,
+    13397
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "info",
+   "text": "Keywords: production readiness, checklist, launch, go-live",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13399",
+   "lines": [
+    13399,
+    13399
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "info",
+   "text": "Production Readiness",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13401",
+   "lines": [
+    13401,
+    13401
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "quality",
+   "text": "Production readiness: database schema deployed."
+  },
+  {
+   "id": "R13401a",
+   "lines": [
+    13401,
+    13401
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "quality",
+   "text": "Production readiness: database schema migrated."
+  },
+  {
+   "id": "R13402",
+   "lines": [
+    13402,
+    13402
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "quality",
+   "text": "Production readiness: authentication tested."
+  },
+  {
+   "id": "R13402a",
+   "lines": [
+    13402,
+    13402
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "quality",
+   "text": "Production readiness: authorization tested."
+  },
+  {
+   "id": "R13403",
+   "lines": [
+    13403,
+    13403
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "quality",
+   "text": "Production readiness: marketplace OAuth flows verified."
+  },
+  {
+   "id": "R13404",
+   "lines": [
+    13404,
+    13404
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "quality",
+   "text": "Production readiness: image pipeline end-to-end tested."
+  },
+  {
+   "id": "R13405",
+   "lines": [
+    13405,
+    13405
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "quality",
+   "text": "Production readiness: error handling verified."
+  },
+  {
+   "id": "R13405a",
+   "lines": [
+    13405,
+    13405
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "quality",
+   "text": "Production readiness: structured errors verified."
+  },
+  {
+   "id": "R13406",
+   "lines": [
+    13406,
+    13406
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "quality",
+   "text": "Production readiness: observability (Sentry) configured."
+  },
+  {
+   "id": "R13406a",
+   "lines": [
+    13406,
+    13406
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "quality",
+   "text": "Production readiness: observability (OpenTelemetry) configured."
+  },
+  {
+   "id": "R13407",
+   "lines": [
+    13407,
+    13407
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "quality",
+   "text": "Production readiness: security audit completed."
+  },
+  {
+   "id": "R13408",
+   "lines": [
+    13408,
+    13408
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "quality",
+   "text": "Production readiness: load testing performed."
+  },
+  {
+   "id": "R13409",
+   "lines": [
+    13409,
+    13409
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "quality",
+   "text": "Production readiness: backup tested."
+  },
+  {
+   "id": "R13409a",
+   "lines": [
+    13409,
+    13409
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "quality",
+   "text": "Production readiness: recovery tested."
+  },
+  {
+   "id": "R13410",
+   "lines": [
+    13410,
+    13410
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "quality",
+   "text": "Production readiness: monitoring alerts configured."
+  },
+  {
+   "id": "R13412",
+   "lines": [
+    13412,
+    13412
+   ],
+   "page": "[209] Production Readiness Checklist",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13414",
+   "lines": [
+    13414,
+    13414
+   ],
+   "page": "[210] Development Plan",
+   "kind": "info",
+   "text": "Page title [210] Development Plan",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13416",
+   "lines": [
+    13416,
+    13416
+   ],
+   "page": "[210] Development Plan",
+   "kind": "info",
+   "text": "Section: Engineering",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13417",
+   "lines": [
+    13417,
+    13417
+   ],
+   "page": "[210] Development Plan",
+   "kind": "scope",
+   "text": "Page [210] Development Plan scope: MVP."
+  },
+  {
+   "id": "R13418",
+   "lines": [
+    13418,
+    13418
+   ],
+   "page": "[210] Development Plan",
+   "kind": "info",
+   "text": "Page URL .../page/development-plan",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13419",
+   "lines": [
+    13419,
+    13419
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Development Plan gives the recommended development order: a step-by-step implementation sequence."
+  },
+  {
+   "id": "R13420",
+   "lines": [
+    13420,
+    13420
+   ],
+   "page": "[210] Development Plan",
+   "kind": "info",
+   "text": "Keywords: development plan, build order, sequence, implementation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13422",
+   "lines": [
+    13422,
+    13422
+   ],
+   "page": "[210] Development Plan",
+   "kind": "info",
+   "text": "Recommended Build Order",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13424",
+   "lines": [
+    13424,
+    13424
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 1: Repository + environments — project setup."
+  },
+  {
+   "id": "R13424a",
+   "lines": [
+    13424,
+    13424
+   ],
+   "page": "[210] Development Plan",
+   "kind": "decision",
+   "text": "Build step 1 includes Docker Compose."
+  },
+  {
+   "id": "R13424b",
+   "lines": [
+    13424,
+    13424
+   ],
+   "page": "[210] Development Plan",
+   "kind": "quality",
+   "text": "Build step 1 includes CI."
+  },
+  {
+   "id": "R13425",
+   "lines": [
+    13425,
+    13425
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 2: Database schema — all tables."
+  },
+  {
+   "id": "R13425a",
+   "lines": [
+    13425,
+    13425
+   ],
+   "page": "[210] Development Plan",
+   "kind": "data",
+   "text": "Build step 2 includes indexes."
+  },
+  {
+   "id": "R13425b",
+   "lines": [
+    13425,
+    13425
+   ],
+   "page": "[210] Development Plan",
+   "kind": "decision",
+   "text": "Build step 2 includes pgvector extension."
+  },
+  {
+   "id": "R13426",
+   "lines": [
+    13426,
+    13426
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 3: Tenant/auth system — JWT."
+  },
+  {
+   "id": "R13426a",
+   "lines": [
+    13426,
+    13426
+   ],
+   "page": "[210] Development Plan",
+   "kind": "decision",
+   "text": "Build step 3 includes NextAuth."
+  },
+  {
+   "id": "R13426b",
+   "lines": [
+    13426,
+    13426
+   ],
+   "page": "[210] Development Plan",
+   "kind": "quality",
+   "text": "Build step 3 includes tenant isolation."
+  },
+  {
+   "id": "R13427",
+   "lines": [
+    13427,
+    13427
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 4: Marketplace account model — OAuth flow."
+  },
+  {
+   "id": "R13427a",
+   "lines": [
+    13427,
+    13427
+   ],
+   "page": "[210] Development Plan",
+   "kind": "quality",
+   "text": "Build step 4 includes encrypted token storage."
+  },
+  {
+   "id": "R13428",
+   "lines": [
+    13428,
+    13428
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 5: Product ingestion — manual import."
+  },
+  {
+   "id": "R13428a",
+   "lines": [
+    13428,
+    13428
+   ],
+   "page": "[210] Development Plan",
+   "kind": "requirement",
+   "text": "Build step 5 includes CSV import."
+  },
+  {
+   "id": "R13428b",
+   "lines": [
+    13428,
+    13428
+   ],
+   "page": "[210] Development Plan",
+   "kind": "requirement",
+   "text": "Build step 5 product import is with validation."
+  },
+  {
+   "id": "R13429",
+   "lines": [
+    13429,
+    13429
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 6: Canonical listing schema — JSON schema."
+  },
+  {
+   "id": "R13429a",
+   "lines": [
+    13429,
+    13429
+   ],
+   "page": "[210] Development Plan",
+   "kind": "decision",
+   "text": "Build step 6 includes Pydantic models."
+  },
+  {
+   "id": "R13430",
+   "lines": [
+    13430,
+    13430
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 7: Marketplace rules engine — deterministic validation."
+  },
+  {
+   "id": "R13430a",
+   "lines": [
+    13430,
+    13430
+   ],
+   "page": "[210] Development Plan",
+   "kind": "interface",
+   "text": "Build step 7 includes ErrorReport."
+  },
+  {
+   "id": "R13431",
+   "lines": [
+    13431,
+    13431
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 8: Brand voice vectorization — chunking."
+  },
+  {
+   "id": "R13431a",
+   "lines": [
+    13431,
+    13431
+   ],
+   "page": "[210] Development Plan",
+   "kind": "requirement",
+   "text": "Build step 8 includes embedding."
+  },
+  {
+   "id": "R13431b",
+   "lines": [
+    13431,
+    13431
+   ],
+   "page": "[210] Development Plan",
+   "kind": "decision",
+   "text": "Build step 8 includes pgvector storage."
+  },
+  {
+   "id": "R13432",
+   "lines": [
+    13432,
+    13432
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 9: Content Agent — prompt construction."
+  },
+  {
+   "id": "R13432a",
+   "lines": [
+    13432,
+    13432
+   ],
+   "page": "[210] Development Plan",
+   "kind": "requirement",
+   "text": "Build step 9 Content Agent includes structured output."
+  },
+  {
+   "id": "R13433",
+   "lines": [
+    13433,
+    13433
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 10: Keyword Agent — search terms."
+  },
+  {
+   "id": "R13433a",
+   "lines": [
+    13433,
+    13433
+   ],
+   "page": "[210] Development Plan",
+   "kind": "requirement",
+   "text": "Build step 10 Keyword Agent includes backend keywords."
+  },
+  {
+   "id": "R13434",
+   "lines": [
+    13434,
+    13434
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 11: Attribute Agent — category schema mapping."
+  },
+  {
+   "id": "R13435",
+   "lines": [
+    13435,
+    13435
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 12: Image pipeline — deterministic checks."
+  },
+  {
+   "id": "R13435a",
+   "lines": [
+    13435,
+    13435
+   ],
+   "page": "[210] Development Plan",
+   "kind": "requirement",
+   "text": "Build step 12 includes vision checks."
+  },
+  {
+   "id": "R13435b",
+   "lines": [
+    13435,
+    13435
+   ],
+   "page": "[210] Development Plan",
+   "kind": "interface",
+   "text": "Build step 12 includes ImageReport."
+  },
+  {
+   "id": "R13436",
+   "lines": [
+    13436,
+    13436
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 13: Agent orchestration — LangGraph graph."
+  },
+  {
+   "id": "R13436a",
+   "lines": [
+    13436,
+    13436
+   ],
+   "page": "[210] Development Plan",
+   "kind": "requirement",
+   "text": "Build step 13 includes parallel execution."
+  },
+  {
+   "id": "R13437",
+   "lines": [
+    13437,
+    13437
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 14: Validation — multi-stage validation pipeline."
+  },
+  {
+   "id": "R13438",
+   "lines": [
+    13438,
+    13438
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 15: Correction loop — targeted field correction."
+  },
+  {
+   "id": "R13438a",
+   "lines": [
+    13438,
+    13438
+   ],
+   "page": "[210] Development Plan",
+   "kind": "requirement",
+   "text": "Build step 15 correction loop has bounded retry."
+  },
+  {
+   "id": "R13439",
+   "lines": [
+    13439,
+    13439
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 16: Approval — human-in-the-loop."
+  },
+  {
+   "id": "R13439a",
+   "lines": [
+    13439,
+    13439
+   ],
+   "page": "[210] Development Plan",
+   "kind": "requirement",
+   "text": "Build step 16 approval includes maker-checker."
+  },
+  {
+   "id": "R13440",
+   "lines": [
+    13440,
+    13440
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 17: Amazon adapter — SP-API integration."
+  },
+  {
+   "id": "R13440a",
+   "lines": [
+    13440,
+    13440
+   ],
+   "page": "[210] Development Plan",
+   "kind": "requirement",
+   "text": "Build step 17 Amazon adapter includes field mapping."
+  },
+  {
+   "id": "R13441",
+   "lines": [
+    13441,
+    13441
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 18: Flipkart adapter — Seller API integration."
+  },
+  {
+   "id": "R13442",
+   "lines": [
+    13442,
+    13442
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 19: Publishing — async publish."
+  },
+  {
+   "id": "R13442a",
+   "lines": [
+    13442,
+    13442
+   ],
+   "page": "[210] Development Plan",
+   "kind": "requirement",
+   "text": "Build step 19 publishing returns per-field results."
+  },
+  {
+   "id": "R13443",
+   "lines": [
+    13443,
+    13443
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 20: Analytics — performance data collection."
+  },
+  {
+   "id": "R13443a",
+   "lines": [
+    13443,
+    13443
+   ],
+   "page": "[210] Development Plan",
+   "kind": "requirement",
+   "text": "Build step 20 analytics includes dashboard."
+  },
+  {
+   "id": "R13444",
+   "lines": [
+    13444,
+    13444
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 21: Observability — Sentry."
+  },
+  {
+   "id": "R13444a",
+   "lines": [
+    13444,
+    13444
+   ],
+   "page": "[210] Development Plan",
+   "kind": "decision",
+   "text": "Build step 21 observability includes OpenTelemetry."
+  },
+  {
+   "id": "R13444b",
+   "lines": [
+    13444,
+    13444
+   ],
+   "page": "[210] Development Plan",
+   "kind": "quality",
+   "text": "Build step 21 observability includes cost tracking."
+  },
+  {
+   "id": "R13445",
+   "lines": [
+    13445,
+    13445
+   ],
+   "page": "[210] Development Plan",
+   "kind": "flow",
+   "text": "Build step 22: Production hardening — security review."
+  },
+  {
+   "id": "R13445a",
+   "lines": [
+    13445,
+    13445
+   ],
+   "page": "[210] Development Plan",
+   "kind": "quality",
+   "text": "Build step 22 includes load test."
+  },
+  {
+   "id": "R13445b",
+   "lines": [
+    13445,
+    13445
+   ],
+   "page": "[210] Development Plan",
+   "kind": "quality",
+   "text": "Build step 22 includes monitoring."
+  },
+  {
+   "id": "R13447",
+   "lines": [
+    13447,
+    13447
+   ],
+   "page": "[210] Development Plan",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13449",
+   "lines": [
+    13449,
+    13449
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "info",
+   "text": "Page title [211] Module Dependency Graph",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13451",
+   "lines": [
+    13451,
+    13451
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "info",
+   "text": "Section: Engineering",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13452",
+   "lines": [
+    13452,
+    13452
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "scope",
+   "text": "Page [211] Module Dependency Graph scope: MVP."
+  },
+  {
+   "id": "R13453",
+   "lines": [
+    13453,
+    13453
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "info",
+   "text": "Page URL .../page/module-dependency-graph",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13454",
+   "lines": [
+    13454,
+    13454
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "info",
+   "text": "Visual dependency graph showing build order and parallelizable work.",
+   "why_not": "context-prose"
+  },
+  {
+   "id": "R13455",
+   "lines": [
+    13455,
+    13455
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "info",
+   "text": "Keywords: dependency graph, build order, parallel, sequence",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13457",
+   "lines": [
+    13457,
+    13457
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "info",
+   "text": "Module Dependency Graph",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13459",
+   "lines": [
+    13459,
+    13459
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "info",
+   "text": "Architecture Diagram: Engineering Dependency Graph",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13461",
+   "lines": [
+    13461,
+    13461
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "info",
+   "text": "Mermaid code fence open",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13462",
+   "lines": [
+    13462,
+    13462
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "info",
+   "text": "graph TD (diagram direction)",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13463",
+   "lines": [
+    13463,
+    13463
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: REPO \"Repository + Environments\" --> DB \"Database Schema\" (Repository + Environments is built before Database Schema)."
+  },
+  {
+   "id": "R13464",
+   "lines": [
+    13464,
+    13464
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: DB \"Database Schema\" --> AUTH \"Auth + Tenancy\" (Database Schema is built before Auth + Tenancy)."
+  },
+  {
+   "id": "R13465",
+   "lines": [
+    13465,
+    13465
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: AUTH \"Auth + Tenancy\" --> MKT_ACCT \"Marketplace Accounts\" (Auth + Tenancy is built before Marketplace Accounts)."
+  },
+  {
+   "id": "R13466",
+   "lines": [
+    13466,
+    13466
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: AUTH \"Auth + Tenancy\" --> PRODUCT \"Product Ingestion\" (Auth + Tenancy is built before Product Ingestion)."
+  },
+  {
+   "id": "R13467",
+   "lines": [
+    13467,
+    13467
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: PRODUCT \"Product Ingestion\" --> CANONICAL \"Canonical Model\" (Product Ingestion is built before Canonical Model)."
+  },
+  {
+   "id": "R13468",
+   "lines": [
+    13468,
+    13468
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: CANONICAL \"Canonical Model\" --> RULES \"Rules Engine\" (Canonical Model is built before Rules Engine)."
+  },
+  {
+   "id": "R13469",
+   "lines": [
+    13469,
+    13469
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: DB \"Database Schema\" --> BRAND \"Brand Voice Vectorization\" (Database Schema is built before Brand Voice Vectorization)."
+  },
+  {
+   "id": "R13470",
+   "lines": [
+    13470,
+    13470
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: BRAND \"Brand Voice Vectorization\" --> AGENTS \"AI Agents\" (Brand Voice Vectorization is built before AI Agents)."
+  },
+  {
+   "id": "R13471",
+   "lines": [
+    13471,
+    13471
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: RULES \"Rules Engine\" --> AGENTS \"AI Agents\" (Rules Engine is built before AI Agents)."
+  },
+  {
+   "id": "R13472",
+   "lines": [
+    13472,
+    13472
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: AGENTS \"AI Agents\" --> VALIDATION \"Validation Pipeline\" (AI Agents is built before Validation Pipeline)."
+  },
+  {
+   "id": "R13473",
+   "lines": [
+    13473,
+    13473
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: VALIDATION \"Validation Pipeline\" --> CORRECTION \"Correction Loop\" (Validation Pipeline is built before Correction Loop)."
+  },
+  {
+   "id": "R13474",
+   "lines": [
+    13474,
+    13474
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: CORRECTION \"Correction Loop\" --> APPROVAL \"Human Approval\" (Correction Loop is built before Human Approval)."
+  },
+  {
+   "id": "R13475",
+   "lines": [
+    13475,
+    13475
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: MKT_ACCT \"Marketplace Accounts\" --> ADAPTERS \"Marketplace Adapters\" (Marketplace Accounts is built before Marketplace Adapters)."
+  },
+  {
+   "id": "R13476",
+   "lines": [
+    13476,
+    13476
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: APPROVAL \"Human Approval\" --> PUBLISH \"Publishing\" (Human Approval is built before Publishing)."
+  },
+  {
+   "id": "R13477",
+   "lines": [
+    13477,
+    13477
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: ADAPTERS \"Marketplace Adapters\" --> PUBLISH \"Publishing\" (Marketplace Adapters is built before Publishing)."
+  },
+  {
+   "id": "R13478",
+   "lines": [
+    13478,
+    13478
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: PUBLISH \"Publishing\" --> ANALYTICS \"Analytics\" (Publishing is built before Analytics)."
+  },
+  {
+   "id": "R13479",
+   "lines": [
+    13479,
+    13479
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: ANALYTICS \"Analytics\" --> OBS \"Observability\" (Analytics is built before Observability)."
+  },
+  {
+   "id": "R13480",
+   "lines": [
+    13480,
+    13480
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: OBS \"Observability\" --> PROD \"Production Hardening\" (Observability is built before Production Hardening)."
+  },
+  {
+   "id": "R13481",
+   "lines": [
+    13481,
+    13481
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "info",
+   "text": "Mermaid code fence close",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13483",
+   "lines": [
+    13483,
+    13483
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Parallelizable: Brand Voice Vectorization can be built in parallel with Rules Engine."
+  },
+  {
+   "id": "R13483a",
+   "lines": [
+    13483,
+    13483
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Parallelizable: Brand Voice Vectorization can be built in parallel with Product Ingestion."
+  },
+  {
+   "id": "R13483b",
+   "lines": [
+    13483,
+    13483
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Brand Voice Vectorization, Rules Engine and Product Ingestion share the database dependency."
+  },
+  {
+   "id": "R13483c",
+   "lines": [
+    13483,
+    13483
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "flow",
+   "text": "Brand Voice Vectorization, Rules Engine and Product Ingestion do not depend on each other (\"but not each other\")."
+  },
+  {
+   "id": "R13485",
+   "lines": [
+    13485,
+    13485
+   ],
+   "page": "[211] Module Dependency Graph",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13487",
+   "lines": [
+    13487,
+    13487
+   ],
+   "page": "[212] Build Order",
+   "kind": "info",
+   "text": "Page title [212] Build Order",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13489",
+   "lines": [
+    13489,
+    13489
+   ],
+   "page": "[212] Build Order",
+   "kind": "info",
+   "text": "Section: Engineering",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13490",
+   "lines": [
+    13490,
+    13490
+   ],
+   "page": "[212] Build Order",
+   "kind": "scope",
+   "text": "Page [212] Build Order scope: MVP."
+  },
+  {
+   "id": "R13491",
+   "lines": [
+    13491,
+    13491
+   ],
+   "page": "[212] Build Order",
+   "kind": "info",
+   "text": "Page URL .../page/build-order",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13492",
+   "lines": [
+    13492,
+    13492
+   ],
+   "page": "[212] Build Order",
+   "kind": "requirement",
+   "text": "Build order is given with dependencies."
+  },
+  {
+   "id": "R13492a",
+   "lines": [
+    13492,
+    13492
+   ],
+   "page": "[212] Build Order",
+   "kind": "requirement",
+   "text": "Build order is given with acceptance criteria."
+  },
+  {
+   "id": "R13493",
+   "lines": [
+    13493,
+    13493
+   ],
+   "page": "[212] Build Order",
+   "kind": "info",
+   "text": "Keywords: build order, step by step, implementation, sequence",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13495",
+   "lines": [
+    13495,
+    13495
+   ],
+   "page": "[212] Build Order",
+   "kind": "info",
+   "text": "Build Order Details",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13497",
+   "lines": [
+    13497,
+    13497
+   ],
+   "page": "[212] Build Order",
+   "kind": "constraint",
+   "text": "Development Plan holds the complete 22-step build order."
+  },
+  {
+   "id": "R13497a",
+   "lines": [
+    13497,
+    13497
+   ],
+   "page": "[212] Build Order",
+   "kind": "requirement",
+   "text": "Each build step defines what gets built."
+  },
+  {
+   "id": "R13497b",
+   "lines": [
+    13497,
+    13497
+   ],
+   "page": "[212] Build Order",
+   "kind": "requirement",
+   "text": "Each build step defines what depends on it."
+  },
+  {
+   "id": "R13497c",
+   "lines": [
+    13497,
+    13497
+   ],
+   "page": "[212] Build Order",
+   "kind": "quality",
+   "text": "Each build step defines what should be tested."
+  },
+  {
+   "id": "R13497d",
+   "lines": [
+    13497,
+    13497
+   ],
+   "page": "[212] Build Order",
+   "kind": "requirement",
+   "text": "Each build step defines what is considered done."
+  },
+  {
+   "id": "R13499",
+   "lines": [
+    13499,
+    13499
+   ],
+   "page": "[212] Build Order",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13501",
+   "lines": [
+    13501,
+    13501
+   ],
+   "page": "[213] Engineering Tasks",
+   "kind": "info",
+   "text": "Page title [213] Engineering Tasks",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13503",
+   "lines": [
+    13503,
+    13503
+   ],
+   "page": "[213] Engineering Tasks",
+   "kind": "info",
+   "text": "Section: Engineering",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13504",
+   "lines": [
+    13504,
+    13504
+   ],
+   "page": "[213] Engineering Tasks",
+   "kind": "scope",
+   "text": "Page [213] Engineering Tasks scope: MVP."
+  },
+  {
+   "id": "R13505",
+   "lines": [
+    13505,
+    13505
+   ],
+   "page": "[213] Engineering Tasks",
+   "kind": "info",
+   "text": "Page URL .../page/engineering-tasks",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13506",
+   "lines": [
+    13506,
+    13506
+   ],
+   "page": "[213] Engineering Tasks",
+   "kind": "requirement",
+   "text": "Engineering task breakdown is by module."
+  },
+  {
+   "id": "R13507",
+   "lines": [
+    13507,
+    13507
+   ],
+   "page": "[213] Engineering Tasks",
+   "kind": "info",
+   "text": "Keywords: engineering tasks, breakdown, work items, stories",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13509",
+   "lines": [
+    13509,
+    13509
+   ],
+   "page": "[213] Engineering Tasks",
+   "kind": "info",
+   "text": "Engineering Tasks",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13511",
+   "lines": [
+    13511,
+    13511
+   ],
+   "page": "[213] Engineering Tasks",
+   "kind": "data",
+   "text": "Engineering tasks are organized by module."
+  },
+  {
+   "id": "R13511a",
+   "lines": [
+    13511,
+    13511
+   ],
+   "page": "[213] Engineering Tasks",
+   "kind": "data",
+   "text": "Engineering task module: auth."
+  },
+  {
+   "id": "R13511b",
+   "lines": [
+    13511,
+    13511
+   ],
+   "page": "[213] Engineering Tasks",
+   "kind": "data",
+   "text": "Engineering task module: products."
+  },
+  {
+   "id": "R13511c",
+   "lines": [
+    13511,
+    13511
+   ],
+   "page": "[213] Engineering Tasks",
+   "kind": "data",
+   "text": "Engineering task module: agents."
+  },
+  {
+   "id": "R13511d",
+   "lines": [
+    13511,
+    13511
+   ],
+   "page": "[213] Engineering Tasks",
+   "kind": "data",
+   "text": "Engineering task module: adapters (list continues \"etc.\")."
+  },
+  {
+   "id": "R13511e",
+   "lines": [
+    13511,
+    13511
+   ],
+   "page": "[213] Engineering Tasks",
+   "kind": "requirement",
+   "text": "Each module has setup tasks."
+  },
+  {
+   "id": "R13511f",
+   "lines": [
+    13511,
+    13511
+   ],
+   "page": "[213] Engineering Tasks",
+   "kind": "requirement",
+   "text": "Each module has core implementation tasks."
+  },
+  {
+   "id": "R13511g",
+   "lines": [
+    13511,
+    13511
+   ],
+   "page": "[213] Engineering Tasks",
+   "kind": "quality",
+   "text": "Each module has testing tasks."
+  },
+  {
+   "id": "R13511h",
+   "lines": [
+    13511,
+    13511
+   ],
+   "page": "[213] Engineering Tasks",
+   "kind": "requirement",
+   "text": "Each module has integration tasks."
+  },
+  {
+   "id": "R13511i",
+   "lines": [
+    13511,
+    13511
+   ],
+   "page": "[213] Engineering Tasks",
+   "kind": "flow",
+   "text": "Use the build order to determine task priority."
+  },
+  {
+   "id": "R13513",
+   "lines": [
+    13513,
+    13513
+   ],
+   "page": "[213] Engineering Tasks",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13515",
+   "lines": [
+    13515,
+    13515
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "info",
+   "text": "Page title [214] Backend Checklist",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13517",
+   "lines": [
+    13517,
+    13517
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "info",
+   "text": "Section: Engineering",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13518",
+   "lines": [
+    13518,
+    13518
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "scope",
+   "text": "Page [214] Backend Checklist scope: MVP."
+  },
+  {
+   "id": "R13519",
+   "lines": [
+    13519,
+    13519
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "info",
+   "text": "Page URL .../page/backend-checklist",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13520",
+   "lines": [
+    13520,
+    13520
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "scope",
+   "text": "Backend engineering checklist: everything the backend team needs to build."
+  },
+  {
+   "id": "R13521",
+   "lines": [
+    13521,
+    13521
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "info",
+   "text": "Keywords: backend, checklist, FastAPI, Python",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13523",
+   "lines": [
+    13523,
+    13523
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "info",
+   "text": "Backend Checklist",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13525",
+   "lines": [
+    13525,
+    13525
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "decision",
+   "text": "Backend checklist: FastAPI project setup."
+  },
+  {
+   "id": "R13525a",
+   "lines": [
+    13525,
+    13525
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "requirement",
+   "text": "FastAPI project with async support."
+  },
+  {
+   "id": "R13526",
+   "lines": [
+    13526,
+    13526
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "data",
+   "text": "Backend checklist: database models."
+  },
+  {
+   "id": "R13526a",
+   "lines": [
+    13526,
+    13526
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "decision",
+   "text": "Backend checklist: migrations (Alembic)."
+  },
+  {
+   "id": "R13527",
+   "lines": [
+    13527,
+    13527
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "quality",
+   "text": "Backend checklist: repository layer with tenant isolation."
+  },
+  {
+   "id": "R13528",
+   "lines": [
+    13528,
+    13528
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "quality",
+   "text": "Backend checklist: JWT authentication middleware."
+  },
+  {
+   "id": "R13529",
+   "lines": [
+    13529,
+    13529
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "interface",
+   "text": "Backend checklist: all REST API endpoints implemented."
+  },
+  {
+   "id": "R13530",
+   "lines": [
+    13530,
+    13530
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "decision",
+   "text": "Backend checklist: Redis job queue setup."
+  },
+  {
+   "id": "R13530a",
+   "lines": [
+    13530,
+    13530
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "decision",
+   "text": "Backend checklist: ARQ job queue setup."
+  },
+  {
+   "id": "R13531",
+   "lines": [
+    13531,
+    13531
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "requirement",
+   "text": "Backend checklist: marketplace adapter implementations."
+  },
+  {
+   "id": "R13532",
+   "lines": [
+    13532,
+    13532
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "interface",
+   "text": "Backend checklist: error handling with structured ErrorReport."
+  },
+  {
+   "id": "R13533",
+   "lines": [
+    13533,
+    13533
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "quality",
+   "text": "Backend checklist: unit tests for services."
+  },
+  {
+   "id": "R13533a",
+   "lines": [
+    13533,
+    13533
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "quality",
+   "text": "Backend checklist: unit tests for repositories."
+  },
+  {
+   "id": "R13534",
+   "lines": [
+    13534,
+    13534
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "quality",
+   "text": "Backend checklist: integration tests for API endpoints."
+  },
+  {
+   "id": "R13536",
+   "lines": [
+    13536,
+    13536
+   ],
+   "page": "[214] Backend Checklist",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13538",
+   "lines": [
+    13538,
+    13538
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "info",
+   "text": "Page title [215] Frontend Checklist",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13540",
+   "lines": [
+    13540,
+    13540
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "info",
+   "text": "Section: Engineering",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13541",
+   "lines": [
+    13541,
+    13541
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "scope",
+   "text": "Page [215] Frontend Checklist scope: MVP."
+  },
+  {
+   "id": "R13542",
+   "lines": [
+    13542,
+    13542
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "info",
+   "text": "Page URL .../page/frontend-checklist",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13543",
+   "lines": [
+    13543,
+    13543
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "scope",
+   "text": "Frontend engineering checklist covers dashboard."
+  },
+  {
+   "id": "R13543a",
+   "lines": [
+    13543,
+    13543
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "scope",
+   "text": "Frontend engineering checklist covers review UI."
+  },
+  {
+   "id": "R13543b",
+   "lines": [
+    13543,
+    13543
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "scope",
+   "text": "Frontend engineering checklist covers analytics."
+  },
+  {
+   "id": "R13544",
+   "lines": [
+    13544,
+    13544
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "info",
+   "text": "Keywords: frontend, checklist, Next.js, dashboard",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13546",
+   "lines": [
+    13546,
+    13546
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "info",
+   "text": "Frontend Checklist",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13548",
+   "lines": [
+    13548,
+    13548
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "decision",
+   "text": "Frontend checklist: Next.js project setup."
+  },
+  {
+   "id": "R13548a",
+   "lines": [
+    13548,
+    13548
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "decision",
+   "text": "Frontend checklist: TypeScript."
+  },
+  {
+   "id": "R13549",
+   "lines": [
+    13549,
+    13549
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "decision",
+   "text": "Frontend checklist: authentication flow (NextAuth)."
+  },
+  {
+   "id": "R13550",
+   "lines": [
+    13550,
+    13550
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "requirement",
+   "text": "Frontend checklist: dashboard page."
+  },
+  {
+   "id": "R13551",
+   "lines": [
+    13551,
+    13551
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "requirement",
+   "text": "Frontend checklist: product import page (CSV)."
+  },
+  {
+   "id": "R13551a",
+   "lines": [
+    13551,
+    13551
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "requirement",
+   "text": "Frontend checklist: product import page (manual)."
+  },
+  {
+   "id": "R13552",
+   "lines": [
+    13552,
+    13552
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "requirement",
+   "text": "Frontend checklist: listing generation status tracking."
+  },
+  {
+   "id": "R13553",
+   "lines": [
+    13553,
+    13553
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "requirement",
+   "text": "Frontend checklist: listing review UI."
+  },
+  {
+   "id": "R13553a",
+   "lines": [
+    13553,
+    13553
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "requirement",
+   "text": "Frontend checklist: listing approval UI."
+  },
+  {
+   "id": "R13554",
+   "lines": [
+    13554,
+    13554
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "requirement",
+   "text": "Frontend checklist: marketplace connection flow."
+  },
+  {
+   "id": "R13555",
+   "lines": [
+    13555,
+    13555
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "requirement",
+   "text": "Frontend checklist: analytics dashboard."
+  },
+  {
+   "id": "R13556",
+   "lines": [
+    13556,
+    13556
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "requirement",
+   "text": "Frontend checklist: image compliance viewer."
+  },
+  {
+   "id": "R13557",
+   "lines": [
+    13557,
+    13557
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "requirement",
+   "text": "Frontend checklist: error display components."
+  },
+  {
+   "id": "R13559",
+   "lines": [
+    13559,
+    13559
+   ],
+   "page": "[215] Frontend Checklist",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13561",
+   "lines": [
+    13561,
+    13561
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "info",
+   "text": "Page title [216] AI Engineering Checklist",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13563",
+   "lines": [
+    13563,
+    13563
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "info",
+   "text": "Section: Engineering",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13564",
+   "lines": [
+    13564,
+    13564
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "scope",
+   "text": "Page [216] AI Engineering Checklist scope: MVP."
+  },
+  {
+   "id": "R13565",
+   "lines": [
+    13565,
+    13565
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "info",
+   "text": "Page URL .../page/ai-engineering-checklist",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13566",
+   "lines": [
+    13566,
+    13566
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "scope",
+   "text": "AI engineering checklist covers agents."
+  },
+  {
+   "id": "R13566a",
+   "lines": [
+    13566,
+    13566
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "scope",
+   "text": "AI engineering checklist covers prompts."
+  },
+  {
+   "id": "R13566b",
+   "lines": [
+    13566,
+    13566
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "scope",
+   "text": "AI engineering checklist covers orchestration."
+  },
+  {
+   "id": "R13567",
+   "lines": [
+    13567,
+    13567
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "info",
+   "text": "Keywords: AI engineering, checklist, agents, prompts, LangGraph",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13569",
+   "lines": [
+    13569,
+    13569
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "info",
+   "text": "AI Engineering Checklist",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13571",
+   "lines": [
+    13571,
+    13571
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "decision",
+   "text": "AI checklist: LangGraph setup with agent graph."
+  },
+  {
+   "id": "R13572",
+   "lines": [
+    13572,
+    13572
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "requirement",
+   "text": "AI checklist: Content Agent implementation."
+  },
+  {
+   "id": "R13573",
+   "lines": [
+    13573,
+    13573
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "requirement",
+   "text": "AI checklist: Keyword Agent implementation."
+  },
+  {
+   "id": "R13574",
+   "lines": [
+    13574,
+    13574
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "requirement",
+   "text": "AI checklist: Attribute Agent implementation."
+  },
+  {
+   "id": "R13575",
+   "lines": [
+    13575,
+    13575
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "requirement",
+   "text": "AI checklist: image compliance pipeline (deterministic)."
+  },
+  {
+   "id": "R13575a",
+   "lines": [
+    13575,
+    13575
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "requirement",
+   "text": "AI checklist: image compliance pipeline (vision)."
+  },
+  {
+   "id": "R13576",
+   "lines": [
+    13576,
+    13576
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "requirement",
+   "text": "AI checklist: brand voice embedding pipeline."
+  },
+  {
+   "id": "R13577",
+   "lines": [
+    13577,
+    13577
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "decision",
+   "text": "AI checklist: pgvector retrieval implementation."
+  },
+  {
+   "id": "R13578",
+   "lines": [
+    13578,
+    13578
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "requirement",
+   "text": "AI checklist: model routing logic."
+  },
+  {
+   "id": "R13579",
+   "lines": [
+    13579,
+    13579
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "decision",
+   "text": "AI checklist: structured output validation (Pydantic)."
+  },
+  {
+   "id": "R13580",
+   "lines": [
+    13580,
+    13580
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "requirement",
+   "text": "AI checklist: correction loop with bounded retries."
+  },
+  {
+   "id": "R13581",
+   "lines": [
+    13581,
+    13581
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "quality",
+   "text": "AI checklist: AgentRun telemetry."
+  },
+  {
+   "id": "R13583",
+   "lines": [
+    13583,
+    13583
+   ],
+   "page": "[216] AI Engineering Checklist",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  }
+ ]
+}

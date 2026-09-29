@@ -1,0 +1,4281 @@
+{
+ "chunk": "c04",
+ "start": 2146,
+ "end": 2835,
+ "items": [
+  {
+   "id": "R02146",
+   "lines": [
+    2146,
+    2146
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "22. V1 Acceptance Criteria",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02148",
+   "lines": [
+    2148,
+    2148
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: a seller can create a brand profile once."
+  },
+  {
+   "id": "R02148a",
+   "lines": [
+    2148,
+    2148
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: a seller can reuse the brand profile across products."
+  },
+  {
+   "id": "R02149",
+   "lines": [
+    2149,
+    2149
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: a seller can provide apparel product information through a structured form."
+  },
+  {
+   "id": "R02149a",
+   "lines": [
+    2149,
+    2149
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: a seller can provide apparel product information through bulk input."
+  },
+  {
+   "id": "R02150",
+   "lines": [
+    2150,
+    2150
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "V1 acceptance: the system can represent one style with multiple color/size variants."
+  },
+  {
+   "id": "R02151",
+   "lines": [
+    2151,
+    2151
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "V1 acceptance: every important canonical attribute can retain its source."
+  },
+  {
+   "id": "R02151a",
+   "lines": [
+    2151,
+    2151
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "V1 acceptance: every important canonical attribute can retain its confidence."
+  },
+  {
+   "id": "R02152",
+   "lines": [
+    2152,
+    2152
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can map one canonical product into marketplace-specific category/field structures."
+  },
+  {
+   "id": "R02153",
+   "lines": [
+    2153,
+    2153
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "V1 acceptance: the system can distinguish required, conditional, optional and unsupported fields."
+  },
+  {
+   "id": "R02154",
+   "lines": [
+    2154,
+    2154
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can generate the title from verified product facts."
+  },
+  {
+   "id": "R02154a",
+   "lines": [
+    2154,
+    2154
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can generate bullets from verified product facts."
+  },
+  {
+   "id": "R02154b",
+   "lines": [
+    2154,
+    2154
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can generate the description from verified product facts."
+  },
+  {
+   "id": "R02154c",
+   "lines": [
+    2154,
+    2154
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can generate keywords from verified product facts."
+  },
+  {
+   "id": "R02155",
+   "lines": [
+    2155,
+    2155
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can validate the product before submission."
+  },
+  {
+   "id": "R02155a",
+   "lines": [
+    2155,
+    2155
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can show blocking reasons from pre-submission validation."
+  },
+  {
+   "id": "R02156",
+   "lines": [
+    2156,
+    2156
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can identify missing data."
+  },
+  {
+   "id": "R02156a",
+   "lines": [
+    2156,
+    2156
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can ask targeted human questions about missing data."
+  },
+  {
+   "id": "R02157",
+   "lines": [
+    2157,
+    2157
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can submit a listing."
+  },
+  {
+   "id": "R02157a",
+   "lines": [
+    2157,
+    2157
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can record the submission attempt."
+  },
+  {
+   "id": "R02158",
+   "lines": [
+    2158,
+    2158
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can read the resulting marketplace status/error."
+  },
+  {
+   "id": "R02159",
+   "lines": [
+    2159,
+    2159
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can automatically fix defined deterministic error classes."
+  },
+  {
+   "id": "R02160",
+   "lines": [
+    2160,
+    2160
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can retry safely without creating uncontrolled duplicate submissions."
+  },
+  {
+   "id": "R02161",
+   "lines": [
+    2161,
+    2161
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "V1 acceptance: the system can escalate unresolved issues to a human."
+  },
+  {
+   "id": "R02162",
+   "lines": [
+    2162,
+    2162
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can confirm a listing as LIVE only after marketplace success confirmation."
+  },
+  {
+   "id": "R02163",
+   "lines": [
+    2163,
+    2163
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the dashboard can show per-marketplace status."
+  },
+  {
+   "id": "R02163a",
+   "lines": [
+    2163,
+    2163
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the dashboard can show listing identifiers per marketplace."
+  },
+  {
+   "id": "R02163b",
+   "lines": [
+    2163,
+    2163
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the dashboard can show issues per marketplace."
+  },
+  {
+   "id": "R02163c",
+   "lines": [
+    2163,
+    2163
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the dashboard can show latest activity per marketplace."
+  },
+  {
+   "id": "R02164",
+   "lines": [
+    2164,
+    2164
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "quality",
+   "text": "V1 acceptance: the system preserves history so the team can understand what changed and why."
+  },
+  {
+   "id": "R02166",
+   "lines": [
+    2166,
+    2166
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "23. Product Metrics for V1",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02168",
+   "lines": [
+    2168,
+    2170
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "Table header: Metric | Definition",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02172",
+   "lines": [
+    2172,
+    2174
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "quality",
+   "text": "V1 metric \"Time to first listing\": time from complete product intake to first successful live listing."
+  },
+  {
+   "id": "R02176",
+   "lines": [
+    2176,
+    2178
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "quality",
+   "text": "V1 metric \"Listing success rate\": percentage of listing jobs that reach LIVE without manual marketplace intervention."
+  },
+  {
+   "id": "R02180",
+   "lines": [
+    2180,
+    2182
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "quality",
+   "text": "V1 metric \"First-pass success rate\": percentage of submissions accepted without a correction cycle."
+  },
+  {
+   "id": "R02184",
+   "lines": [
+    2184,
+    2186
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "quality",
+   "text": "V1 metric \"Auto-resolution rate\": percentage of errors resolved by the agent without seller intervention."
+  },
+  {
+   "id": "R02188",
+   "lines": [
+    2188,
+    2190
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "quality",
+   "text": "V1 metric \"Human question rate\": percentage of products requiring at least one seller question."
+  },
+  {
+   "id": "R02192",
+   "lines": [
+    2192,
+    2194
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "quality",
+   "text": "V1 metric \"Average human questions per SKU\": questions asked per product/job."
+  },
+  {
+   "id": "R02196",
+   "lines": [
+    2196,
+    2198
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "quality",
+   "text": "V1 metric \"Error recurrence rate\": percentage of issues that reappear after correction."
+  },
+  {
+   "id": "R02200",
+   "lines": [
+    2200,
+    2202
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "quality",
+   "text": "V1 metric \"Duplicate submission rate\": unwanted duplicate listing/submission incidents."
+  },
+  {
+   "id": "R02204",
+   "lines": [
+    2204,
+    2206
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "quality",
+   "text": "V1 metric \"Attribute completeness\": percentage of required/conditional fields correctly populated before submission."
+  },
+  {
+   "id": "R02208",
+   "lines": [
+    2208,
+    2210
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "quality",
+   "text": "V1 metric \"Live confirmation accuracy\": percentage of listings marked LIVE that are actually live."
+  },
+  {
+   "id": "R02212",
+   "lines": [
+    2212,
+    2212
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "risk",
+   "text": "24. Handoff to Lead Engineer: What Must Be Clear Before Build (the following points must be clear before build)."
+  },
+  {
+   "id": "R02214",
+   "lines": [
+    2214,
+    2214
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical product is the source of truth."
+  },
+  {
+   "id": "R02214a",
+   "lines": [
+    2214,
+    2214
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Marketplace listings are derived representations of the canonical product."
+  },
+  {
+   "id": "R02215",
+   "lines": [
+    2215,
+    2215
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Marketplace schemas are versioned."
+  },
+  {
+   "id": "R02215a",
+   "lines": [
+    2215,
+    2215
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "risk",
+   "text": "Marketplace schemas can change."
+  },
+  {
+   "id": "R02216",
+   "lines": [
+    2216,
+    2216
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Every field should have a source."
+  },
+  {
+   "id": "R02216a",
+   "lines": [
+    2216,
+    2216
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Critical facts should have confidence/evidence."
+  },
+  {
+   "id": "R02217",
+   "lines": [
+    2217,
+    2217
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Required fields are marketplace + category + context dependent."
+  },
+  {
+   "id": "R02218",
+   "lines": [
+    2218,
+    2218
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Variant relationships are first-class product data, not just a UI feature."
+  },
+  {
+   "id": "R02219",
+   "lines": [
+    2219,
+    2219
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Listing status is per marketplace."
+  },
+  {
+   "id": "R02219a",
+   "lines": [
+    2219,
+    2219
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Listing status is per variant where necessary."
+  },
+  {
+   "id": "R02220",
+   "lines": [
+    2220,
+    2220
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Errors are first-class records."
+  },
+  {
+   "id": "R02220a",
+   "lines": [
+    2220,
+    2220
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Error records carry a classification."
+  },
+  {
+   "id": "R02220b",
+   "lines": [
+    2220,
+    2220
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Error records carry a severity."
+  },
+  {
+   "id": "R02220c",
+   "lines": [
+    2220,
+    2220
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Error records carry a resolution state."
+  },
+  {
+   "id": "R02221",
+   "lines": [
+    2221,
+    2221
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Human questions are first-class workflow tasks, not generic support tickets."
+  },
+  {
+   "id": "R02222",
+   "lines": [
+    2222,
+    2222
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "quality",
+   "text": "Every submission should be auditable."
+  },
+  {
+   "id": "R02222a",
+   "lines": [
+    2222,
+    2222
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "quality",
+   "text": "Every correction should be auditable."
+  },
+  {
+   "id": "R02223",
+   "lines": [
+    2223,
+    2223
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "The workflow must be resumable."
+  },
+  {
+   "id": "R02223a",
+   "lines": [
+    2223,
+    2223
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "If a seller answers one question, the agent continues from the blocked step rather than restarting the entire job."
+  },
+  {
+   "id": "R02224",
+   "lines": [
+    2224,
+    2224
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "The agent must be idempotent at the business level."
+  },
+  {
+   "id": "R02224a",
+   "lines": [
+    2224,
+    2224
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Repeated status checks should not create duplicate product identities."
+  },
+  {
+   "id": "R02224b",
+   "lines": [
+    2224,
+    2224
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Safe retries should not create duplicate product identities."
+  },
+  {
+   "id": "R02225",
+   "lines": [
+    2225,
+    2225
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Preserve separation: the system should preserve marketplace-specific data."
+  },
+  {
+   "id": "R02225a",
+   "lines": [
+    2225,
+    2225
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Preserve separation: the canonical product should not be polluted with marketplace-only fields (\"without polluting the canonical product with marketplace-only fields\")."
+  },
+  {
+   "id": "R02227",
+   "lines": [
+    2227,
+    2227
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "risk",
+   "text": "25. Open product decisions are to be locked before implementation."
+  },
+  {
+   "id": "R02229",
+   "lines": [
+    2229,
+    2231
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "Table header: Decision | Recommended V1 Decision to Discuss",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02233",
+   "lines": [
+    2233,
+    2235
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "constraint",
+   "text": "Open decision \"Exact marketplace launch order\" (recommended V1, to discuss): pick 2–3 marketplaces for first production validation."
+  },
+  {
+   "id": "R02235",
+   "lines": [
+    2235,
+    2235
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "scope",
+   "text": "Open decision \"Exact marketplace launch order\" (recommended V1): add adapters incrementally."
+  },
+  {
+   "id": "R02237",
+   "lines": [
+    2237,
+    2239
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "scope",
+   "text": "Open decision \"Seller input method\" (recommended V1, to discuss): start with guided form."
+  },
+  {
+   "id": "R02239",
+   "lines": [
+    2239,
+    2239
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "scope",
+   "text": "Open decision \"Seller input method\" (recommended V1): start with spreadsheet upload."
+  },
+  {
+   "id": "R02239a",
+   "lines": [
+    2239,
+    2239
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "scope",
+   "text": "Open decision \"Seller input method\" (recommended V1): add connected PIM/ERP after core workflow is stable."
+  },
+  {
+   "id": "R02241",
+   "lines": [
+    2241,
+    2243
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "decision",
+   "text": "Open decision \"Human approval\" (recommended V1, to discuss): default to autonomous submission after validation."
+  },
+  {
+   "id": "R02243",
+   "lines": [
+    2243,
+    2243
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "decision",
+   "text": "Open decision \"Human approval\" (recommended V1): optional approval mode for cautious sellers."
+  },
+  {
+   "id": "R02245",
+   "lines": [
+    2245,
+    2247
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "scope",
+   "text": "Open decision \"Content language\" (recommended V1, to discuss): start with English."
+  },
+  {
+   "id": "R02247",
+   "lines": [
+    2247,
+    2247
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Open decision \"Content language\" (recommended V1): keep the content model language-ready."
+  },
+  {
+   "id": "R02249",
+   "lines": [
+    2249,
+    2251
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "scope",
+   "text": "Open decision \"Image generation\" (recommended V1, to discuss): do not make image generation a dependency for V1 listing completion."
+  },
+  {
+   "id": "R02253",
+   "lines": [
+    2253,
+    2255
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Open decision \"Marketplace schema refresh\" (recommended V1, to discuss): treat schema/rules as versioned."
+  },
+  {
+   "id": "R02255",
+   "lines": [
+    2255,
+    2255
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Open decision \"Marketplace schema refresh\" (recommended V1): treat schema/rules as refreshable rather than static."
+  },
+  {
+   "id": "R02257",
+   "lines": [
+    2257,
+    2259
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Open decision \"Error library\" (recommended V1, to discuss): build an internal error taxonomy."
+  },
+  {
+   "id": "R02259",
+   "lines": [
+    2259,
+    2259
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Open decision \"Error library\" (recommended V1): continuously map marketplace errors into the internal error taxonomy."
+  },
+  {
+   "id": "R02261",
+   "lines": [
+    2261,
+    2263
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Open decision \"Confidence threshold\" (recommended V1, to discuss): define which attributes can be inferred."
+  },
+  {
+   "id": "R02263",
+   "lines": [
+    2263,
+    2263
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Open decision \"Confidence threshold\" (recommended V1): define which attributes always require evidence/confirmation."
+  },
+  {
+   "id": "R02265",
+   "lines": [
+    2265,
+    2267
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Open decision \"Bulk listing\" (recommended V1, to discuss): design for one SKU and bulk SKU jobs from the same underlying workflow."
+  },
+  {
+   "id": "R02269",
+   "lines": [
+    2269,
+    2269
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "26. Reference Basis",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02271",
+   "lines": [
+    2271,
+    2271
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "The product requirements above are intentionally marketplace-agnostic."
+  },
+  {
+   "id": "R02271a",
+   "lines": [
+    2271,
+    2271
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "risk",
+   "text": "The listed official sources were used to ground the marketplace/compliance sections."
+  },
+  {
+   "id": "R02271b",
+   "lines": [
+    2271,
+    2271
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "The official sources should be treated as external references, not as permanent hard-coded requirements."
+  },
+  {
+   "id": "R02273",
+   "lines": [
+    2273,
+    2273
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "interface",
+   "text": "External reference: Amazon Selling Partner API — Product Type Definitions / Retrieve a Product Type Definition: https://developer-docs.amazon.com/sp-api/lang-en_EN/docs/retrieve-a-product-type-definition"
+  },
+  {
+   "id": "R02274",
+   "lines": [
+    2274,
+    2274
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "interface",
+   "text": "External reference: Amazon Selling Partner API — Manage Product Listings: https://developer-docs.amazon.com/sp-api/lang-en_EN/docs/manage-product-listings-guide"
+  },
+  {
+   "id": "R02275",
+   "lines": [
+    2275,
+    2275
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "risk",
+   "text": "External reference: Amazon India Seller Central — apparel image guidance / seller listing guidance: https://sellercentral.amazon.in/"
+  },
+  {
+   "id": "R02276",
+   "lines": [
+    2276,
+    2276
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "interface",
+   "text": "External reference: Flipkart Seller API — Listing Management API: https://seller.flipkart.com/api-docs/listing-api-docs/LMAPIOverview.html"
+  },
+  {
+   "id": "R02277",
+   "lines": [
+    2277,
+    2277
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "interface",
+   "text": "External reference: Flipkart Seller API — Marketplace platform overview: https://seller.flipkart.com/api-docs/FMPlatOverview.html"
+  },
+  {
+   "id": "R02278",
+   "lines": [
+    2278,
+    2278
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "risk",
+   "text": "External reference: Department of Consumer Affairs, Government of India — Legal Metrology (Packaged Commodities) Third Amendment Rules, 2022: https://consumeraffairs.nic.in/legalmetrologyactsandrules/legal-metrology-packaged-commodities-third-amendment-rules-2022"
+  },
+  {
+   "id": "R02279",
+   "lines": [
+    2279,
+    2279
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "risk",
+   "text": "External reference: Nykaa Seller Portal — Terms and Conditions / product content and description listing guidelines: https://seller.nykaa.com/terms-and-conditions"
+  },
+  {
+   "id": "R02281",
+   "lines": [
+    2281,
+    2281
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "Final Product Principle",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02283",
+   "lines": [
+    2283,
+    2283
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Final Product Principle step 1 of 15: UNDERSTAND PRODUCT."
+  },
+  {
+   "id": "R02283a",
+   "lines": [
+    2283,
+    2283
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Final Product Principle step 2 of 15: CLASSIFY (after UNDERSTAND PRODUCT)."
+  },
+  {
+   "id": "R02283b",
+   "lines": [
+    2283,
+    2283
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Final Product Principle step 3 of 15: EXTRACT ATTRIBUTES (after CLASSIFY)."
+  },
+  {
+   "id": "R02283c",
+   "lines": [
+    2283,
+    2283
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Final Product Principle step 4 of 15: BUILD CANONICAL PRODUCT (after EXTRACT ATTRIBUTES)."
+  },
+  {
+   "id": "R02283d",
+   "lines": [
+    2283,
+    2283
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Final Product Principle step 5 of 15: FILL MARKETPLACE SCHEMA (after BUILD CANONICAL PRODUCT)."
+  },
+  {
+   "id": "R02283e",
+   "lines": [
+    2283,
+    2283
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Final Product Principle step 6 of 15: GENERATE CONTENT (after FILL MARKETPLACE SCHEMA)."
+  },
+  {
+   "id": "R02283f",
+   "lines": [
+    2283,
+    2283
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Final Product Principle step 7 of 15: VALIDATE (after GENERATE CONTENT)."
+  },
+  {
+   "id": "R02283g",
+   "lines": [
+    2283,
+    2283
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Final Product Principle step 8 of 15: FIND MISSING DATA (after VALIDATE)."
+  },
+  {
+   "id": "R02283h",
+   "lines": [
+    2283,
+    2283
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Final Product Principle step 9 of 15: ASK HUMAN ONLY WHEN NECESSARY (after FIND MISSING DATA)."
+  },
+  {
+   "id": "R02283i",
+   "lines": [
+    2283,
+    2283
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Final Product Principle step 10 of 15: SUBMIT (after ASK HUMAN ONLY WHEN NECESSARY)."
+  },
+  {
+   "id": "R02283j",
+   "lines": [
+    2283,
+    2283
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Final Product Principle step 11 of 15: CHECK STATUS (after SUBMIT)."
+  },
+  {
+   "id": "R02283k",
+   "lines": [
+    2283,
+    2283
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Final Product Principle step 12 of 15: FIX ERRORS (after CHECK STATUS)."
+  },
+  {
+   "id": "R02283l",
+   "lines": [
+    2283,
+    2283
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Final Product Principle step 13 of 15: RESUBMIT (after FIX ERRORS)."
+  },
+  {
+   "id": "R02283m",
+   "lines": [
+    2283,
+    2283
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Final Product Principle step 14 of 15: CONFIRM LIVE (after RESUBMIT)."
+  },
+  {
+   "id": "R02283n",
+   "lines": [
+    2283,
+    2283
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Final Product Principle step 15 of 15: SHOW STATUS (after CONFIRM LIVE)."
+  },
+  {
+   "id": "R02285",
+   "lines": [
+    2285,
+    2285
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R02287",
+   "lines": [
+    2287,
+    2287
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "info",
+   "text": "Page title [01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02289",
+   "lines": [
+    2289,
+    2289
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "info",
+   "text": "Section: Founder's POV Doc",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R02290",
+   "lines": [
+    2290,
+    2290
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Page [01] Product Vision, 19-Step Flow & Scope (§1–4) is tagged Scope: MVP."
+  },
+  {
+   "id": "R02291",
+   "lines": [
+    2291,
+    2291
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "info",
+   "text": "Page URL: https://ashishvats16.github.io/system-arch/page/founders-product-flow-scope",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R02292",
+   "lines": [
+    2292,
+    2292
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Page [01] description: executive product definition."
+  },
+  {
+   "id": "R02292a",
+   "lines": [
+    2292,
+    2292
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "info",
+   "why_not": "restatement",
+   "dup_of": "R02338",
+   "text": "Page [01] description: 19-step end-to-end listing flow."
+  },
+  {
+   "id": "R02292b",
+   "lines": [
+    2292,
+    2292
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Page [01] description: scope boundaries."
+  },
+  {
+   "id": "R02292c",
+   "lines": [
+    2292,
+    2292
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "decision",
+   "text": "Page [01] description: marketplace multi-adapter strategy."
+  },
+  {
+   "id": "R02294",
+   "lines": [
+    2294,
+    2294
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Founder's Direct POV Document Status: V1 Product / Business Requirements."
+  },
+  {
+   "id": "R02294a",
+   "lines": [
+    2294,
+    2294
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Founder's Direct POV Document Status: Apparel Niche."
+  },
+  {
+   "id": "R02296",
+   "lines": [
+    2296,
+    2296
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "info",
+   "text": "AUTONOMOUS LISTING AGENT",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02298",
+   "lines": [
+    2298,
+    2298
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "V1 Business Requirements & End-to-End Listing Process are for Apparel / Fashion Marketplace Sellers."
+  },
+  {
+   "id": "R02300",
+   "lines": [
+    2300,
+    2300
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "info",
+   "text": "Important Notice on Living Marketplace Rules",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02302",
+   "lines": [
+    2302,
+    2302
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "risk",
+   "text": "Marketplace schemas change."
+  },
+  {
+   "id": "R02302a",
+   "lines": [
+    2302,
+    2302
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "risk",
+   "text": "Marketplace required fields change."
+  },
+  {
+   "id": "R02302b",
+   "lines": [
+    2302,
+    2302
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "risk",
+   "text": "Marketplace allowed values change."
+  },
+  {
+   "id": "R02302c",
+   "lines": [
+    2302,
+    2302
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "risk",
+   "text": "Marketplace validation rules change."
+  },
+  {
+   "id": "R02302d",
+   "lines": [
+    2302,
+    2302
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "The product must treat marketplace requirements as living rules rather than a one-time hard-coded field list."
+  },
+  {
+   "id": "R02302e",
+   "lines": [
+    2302,
+    2302
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "interface",
+   "text": "Amazon explicitly provides marketplace/product-type schemas."
+  },
+  {
+   "id": "R02302f",
+   "lines": [
+    2302,
+    2302
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "risk",
+   "text": "Amazon notes that requirements can change."
+  },
+  {
+   "id": "R02302g",
+   "lines": [
+    2302,
+    2302
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "risk",
+   "text": "Flipkart states that listing rules are subject to change."
+  },
+  {
+   "id": "R02304",
+   "lines": [
+    2304,
+    2304
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "info",
+   "text": "Purpose of this Document",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02306",
+   "lines": [
+    2306,
+    2306
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Document purpose: define, in non-technical business language, exactly what the product must collect when a seller wants to publish an apparel SKU across marketplaces."
+  },
+  {
+   "id": "R02306a",
+   "lines": [
+    2306,
+    2306
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Document purpose: define exactly what the product must understand when a seller wants to publish an apparel SKU across marketplaces."
+  },
+  {
+   "id": "R02306b",
+   "lines": [
+    2306,
+    2306
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Document purpose: define exactly what the product must create when a seller wants to publish an apparel SKU across marketplaces."
+  },
+  {
+   "id": "R02306c",
+   "lines": [
+    2306,
+    2306
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Document purpose: define exactly what the product must validate when a seller wants to publish an apparel SKU across marketplaces."
+  },
+  {
+   "id": "R02306d",
+   "lines": [
+    2306,
+    2306
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Document purpose: define exactly what the product must submit when a seller wants to publish an apparel SKU across marketplaces."
+  },
+  {
+   "id": "R02306e",
+   "lines": [
+    2306,
+    2306
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Document purpose: define exactly what the product must monitor when a seller wants to publish an apparel SKU across marketplaces."
+  },
+  {
+   "id": "R02306f",
+   "lines": [
+    2306,
+    2306
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Document purpose: define exactly what the product must repair when a seller wants to publish an apparel SKU across marketplaces."
+  },
+  {
+   "id": "R02306g",
+   "lines": [
+    2306,
+    2306
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Document purpose: define exactly what the product must report when a seller wants to publish an apparel SKU across marketplaces."
+  },
+  {
+   "id": "R02306h",
+   "lines": [
+    2306,
+    2306
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "A seller wants to publish an apparel SKU across marketplaces from one dashboard."
+  },
+  {
+   "id": "R02308",
+   "lines": [
+    2308,
+    2310
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "info",
+   "text": "Table header: Item | Definition",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02312",
+   "lines": [
+    2312,
+    2314
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "V1 product promise: seller gives basic brand + product information once."
+  },
+  {
+   "id": "R02314",
+   "lines": [
+    2314,
+    2314
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "V1 product promise: the agent turns seller information into marketplace-ready listings."
+  },
+  {
+   "id": "R02314a",
+   "lines": [
+    2314,
+    2314
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "V1 product promise: the agent manages the listing lifecycle until the listing is live or a human decision is genuinely required."
+  },
+  {
+   "id": "R02316",
+   "lines": [
+    2316,
+    2318
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Primary niche: Apparel / fashion products."
+  },
+  {
+   "id": "R02320",
+   "lines": [
+    2320,
+    2322
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Primary user: D2C brands."
+  },
+  {
+   "id": "R02322",
+   "lines": [
+    2322,
+    2322
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Primary user: manufacturers."
+  },
+  {
+   "id": "R02322a",
+   "lines": [
+    2322,
+    2322
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Primary user: traders."
+  },
+  {
+   "id": "R02322b",
+   "lines": [
+    2322,
+    2322
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Primary user: small sellers."
+  },
+  {
+   "id": "R02322c",
+   "lines": [
+    2322,
+    2322
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Primary user: marketplace agencies managing apparel catalogs."
+  },
+  {
+   "id": "R02324",
+   "lines": [
+    2324,
+    2326
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Core outcome step 1 of 6: One product source of truth."
+  },
+  {
+   "id": "R02326",
+   "lines": [
+    2326,
+    2326
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Core outcome step 2 of 6: marketplace-specific listing (after One product source of truth)."
+  },
+  {
+   "id": "R02326a",
+   "lines": [
+    2326,
+    2326
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Core outcome step 3 of 6: validation (after marketplace-specific listing)."
+  },
+  {
+   "id": "R02326b",
+   "lines": [
+    2326,
+    2326
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Core outcome step 4 of 6: submission (after validation)."
+  },
+  {
+   "id": "R02326c",
+   "lines": [
+    2326,
+    2326
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Core outcome step 5 of 6: error resolution (after submission)."
+  },
+  {
+   "id": "R02326d",
+   "lines": [
+    2326,
+    2326
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Core outcome step 6 of 6: live confirmation (after error resolution)."
+  },
+  {
+   "id": "R02328",
+   "lines": [
+    2328,
+    2330
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Operating principle: do not ask the seller for information the system can reliably derive, reuse or validate."
+  },
+  {
+   "id": "R02330",
+   "lines": [
+    2330,
+    2330
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Operating principle: ask only when missing information materially blocks a correct listing."
+  },
+  {
+   "id": "R02332",
+   "lines": [
+    2332,
+    2332
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "info",
+   "text": "1. Product in One Sentence",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02334",
+   "lines": [
+    2334,
+    2334
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "The Autonomous Listing Agent is a listing operations agent, not merely a content generator."
+  },
+  {
+   "id": "R02334a",
+   "lines": [
+    2334,
+    2334
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "The Autonomous Listing Agent takes a seller's product information and assets."
+  },
+  {
+   "id": "R02334b",
+   "lines": [
+    2334,
+    2334
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "The Autonomous Listing Agent builds a canonical product record."
+  },
+  {
+   "id": "R02334c",
+   "lines": [
+    2334,
+    2334
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "The Autonomous Listing Agent maps that product to each marketplace's category and field structure."
+  },
+  {
+   "id": "R02334d",
+   "lines": [
+    2334,
+    2334
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "The Autonomous Listing Agent generates or transforms listing content."
+  },
+  {
+   "id": "R02334e",
+   "lines": [
+    2334,
+    2334
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "The Autonomous Listing Agent validates completeness."
+  },
+  {
+   "id": "R02334f",
+   "lines": [
+    2334,
+    2334
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "The Autonomous Listing Agent validates compliance."
+  },
+  {
+   "id": "R02334g",
+   "lines": [
+    2334,
+    2334
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "The Autonomous Listing Agent submits the listing."
+  },
+  {
+   "id": "R02334h",
+   "lines": [
+    2334,
+    2334
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "The Autonomous Listing Agent reads marketplace responses."
+  },
+  {
+   "id": "R02334i",
+   "lines": [
+    2334,
+    2334
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "The Autonomous Listing Agent fixes resolvable errors."
+  },
+  {
+   "id": "R02334j",
+   "lines": [
+    2334,
+    2334
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "The Autonomous Listing Agent asks the seller only for unresolved information."
+  },
+  {
+   "id": "R02334k",
+   "lines": [
+    2334,
+    2334
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "The Autonomous Listing Agent resubmits."
+  },
+  {
+   "id": "R02334l",
+   "lines": [
+    2334,
+    2334
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "The Autonomous Listing Agent confirms the final live status."
+  },
+  {
+   "id": "R02336",
+   "lines": [
+    2336,
+    2336
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "info",
+   "text": "2. The End-to-End Flow",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02338",
+   "lines": [
+    2338,
+    2338
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "constraint",
+   "text": "The complete lifecycle from seller onboarding to live verification consists of 19 operational stages."
+  },
+  {
+   "id": "R02340",
+   "lines": [
+    2340,
+    2344
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 1 Seller / brand onboarding: capture stable business identity once."
+  },
+  {
+   "id": "R02344",
+   "lines": [
+    2344,
+    2344
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 1 Seller / brand onboarding: capture stable legal identity once."
+  },
+  {
+   "id": "R02344a",
+   "lines": [
+    2344,
+    2344
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 1 Seller / brand onboarding: capture stable brand identity once."
+  },
+  {
+   "id": "R02344b",
+   "lines": [
+    2344,
+    2344
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 1 Seller / brand onboarding: capture stable tax identity once."
+  },
+  {
+   "id": "R02346",
+   "lines": [
+    2346,
+    2350
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 2 Marketplace account connection: authenticate seller accounts."
+  },
+  {
+   "id": "R02350",
+   "lines": [
+    2350,
+    2350
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "data",
+   "text": "Stage 2 Marketplace account connection: store IDs."
+  },
+  {
+   "id": "R02350a",
+   "lines": [
+    2350,
+    2350
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "data",
+   "text": "Stage 2 Marketplace account connection: store default commercial terms."
+  },
+  {
+   "id": "R02352",
+   "lines": [
+    2352,
+    2356
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "interface",
+   "text": "Stage 3 Product intake: multi-modal ingestion via forms."
+  },
+  {
+   "id": "R02356",
+   "lines": [
+    2356,
+    2356
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "interface",
+   "text": "Stage 3 Product intake: multi-modal ingestion via CSV."
+  },
+  {
+   "id": "R02356a",
+   "lines": [
+    2356,
+    2356
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "interface",
+   "text": "Stage 3 Product intake: multi-modal ingestion via ERP."
+  },
+  {
+   "id": "R02356b",
+   "lines": [
+    2356,
+    2356
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "interface",
+   "text": "Stage 3 Product intake: multi-modal ingestion of images."
+  },
+  {
+   "id": "R02356c",
+   "lines": [
+    2356,
+    2356
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "interface",
+   "text": "Stage 3 Product intake: multi-modal ingestion of size charts."
+  },
+  {
+   "id": "R02358",
+   "lines": [
+    2358,
+    2362
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 4 Product understanding: isolate verified factual data from promotional marketing noise."
+  },
+  {
+   "id": "R02364",
+   "lines": [
+    2364,
+    2368
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 5 Category & sub-category classification: map gender into marketplace taxonomy."
+  },
+  {
+   "id": "R02368",
+   "lines": [
+    2368,
+    2368
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 5 Category & sub-category classification: map apparel type into marketplace taxonomy."
+  },
+  {
+   "id": "R02370",
+   "lines": [
+    2370,
+    2374
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 6 Attribute extraction & normalization: normalize fabric."
+  },
+  {
+   "id": "R02374",
+   "lines": [
+    2374,
+    2374
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 6 Attribute extraction & normalization: normalize fit."
+  },
+  {
+   "id": "R02374a",
+   "lines": [
+    2374,
+    2374
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 6 Attribute extraction & normalization: normalize pattern."
+  },
+  {
+   "id": "R02374b",
+   "lines": [
+    2374,
+    2374
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 6 Attribute extraction & normalization: normalize color."
+  },
+  {
+   "id": "R02374c",
+   "lines": [
+    2374,
+    2374
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 6 Attribute extraction & normalization: normalize weave."
+  },
+  {
+   "id": "R02374d",
+   "lines": [
+    2374,
+    2374
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 6 Attribute extraction & normalization: normalize care."
+  },
+  {
+   "id": "R02376",
+   "lines": [
+    2376,
+    2380
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 7 Canonical Product Intelligence record: create single source of truth record."
+  },
+  {
+   "id": "R02380",
+   "lines": [
+    2380,
+    2380
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "data",
+   "text": "Stage 7: the Canonical Product Intelligence record is immutable."
+  },
+  {
+   "id": "R02382",
+   "lines": [
+    2382,
+    2386
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 8 Marketplace schema mapping: transform canonical facts into target marketplace schemas."
+  },
+  {
+   "id": "R02388",
+   "lines": [
+    2388,
+    2392
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 9 Content generation & optimization: generate titles."
+  },
+  {
+   "id": "R02392",
+   "lines": [
+    2392,
+    2392
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 9 Content generation & optimization: generate bullets."
+  },
+  {
+   "id": "R02392a",
+   "lines": [
+    2392,
+    2392
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 9 Content generation & optimization: generate descriptions."
+  },
+  {
+   "id": "R02392b",
+   "lines": [
+    2392,
+    2392
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 9 Content generation & optimization: generate search keywords."
+  },
+  {
+   "id": "R02394",
+   "lines": [
+    2394,
+    2398
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 10 Media and variant validation: validate size charts."
+  },
+  {
+   "id": "R02398",
+   "lines": [
+    2398,
+    2398
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 10 Media and variant validation: validate swatch shots."
+  },
+  {
+   "id": "R02398a",
+   "lines": [
+    2398,
+    2398
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 10 Media and variant validation: validate parent-child links."
+  },
+  {
+   "id": "R02400",
+   "lines": [
+    2400,
+    2404
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 11 Compliance & completeness validation: pre-flight checks against Legal Metrology 2022."
+  },
+  {
+   "id": "R02404",
+   "lines": [
+    2404,
+    2404
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 11 Compliance & completeness validation: pre-flight checks against portal rules."
+  },
+  {
+   "id": "R02406",
+   "lines": [
+    2406,
+    2410
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 12 Human clarification only where necessary: targeted single-question prompts for blocking gaps."
+  },
+  {
+   "id": "R02412",
+   "lines": [
+    2412,
+    2416
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 13 Marketplace submission: dispatch validated payloads to marketplace APIs."
+  },
+  {
+   "id": "R02418",
+   "lines": [
+    2418,
+    2422
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 14 Submission/status monitoring: asynchronous polling for feed outcomes."
+  },
+  {
+   "id": "R02422",
+   "lines": [
+    2422,
+    2422
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "interface",
+   "text": "Stage 14 Submission/status monitoring: webhook listeners for feed outcomes."
+  },
+  {
+   "id": "R02424",
+   "lines": [
+    2424,
+    2428
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 15 Error diagnosis: translate raw portal error codes into plain actionable language."
+  },
+  {
+   "id": "R02430",
+   "lines": [
+    2430,
+    2434
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 16 Automatic correction: auto-fix deterministic enum mismatches."
+  },
+  {
+   "id": "R02434",
+   "lines": [
+    2434,
+    2434
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 16 Automatic correction: auto-fix deterministic formatting (source: \"enum mismatches, formatting & sizing\")."
+  },
+  {
+   "id": "R02434a",
+   "lines": [
+    2434,
+    2434
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 16 Automatic correction: auto-fix deterministic sizing (source: \"enum mismatches, formatting & sizing\")."
+  },
+  {
+   "id": "R02436",
+   "lines": [
+    2436,
+    2440
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 17 Resubmission: safe bounded retry."
+  },
+  {
+   "id": "R02440",
+   "lines": [
+    2440,
+    2440
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 17 Resubmission: retry with updated payload."
+  },
+  {
+   "id": "R02440a",
+   "lines": [
+    2440,
+    2440
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "data",
+   "text": "Stage 17 Resubmission: retry with incremented attempt."
+  },
+  {
+   "id": "R02442",
+   "lines": [
+    2442,
+    2446
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "data",
+   "text": "Stage 18 Live confirmation: capture live URL."
+  },
+  {
+   "id": "R02446",
+   "lines": [
+    2446,
+    2446
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "data",
+   "text": "Stage 18 Live confirmation: capture marketplace SKU."
+  },
+  {
+   "id": "R02446a",
+   "lines": [
+    2446,
+    2446
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "data",
+   "text": "Stage 18 Live confirmation: capture ASIN/FSN."
+  },
+  {
+   "id": "R02446b",
+   "lines": [
+    2446,
+    2446
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "data",
+   "text": "Stage 18 Live confirmation: capture active state."
+  },
+  {
+   "id": "R02448",
+   "lines": [
+    2448,
+    2452
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "flow",
+   "text": "Stage 19 Dashboard status + audit history: show unified multi-marketplace operational view."
+  },
+  {
+   "id": "R02452",
+   "lines": [
+    2452,
+    2452
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "quality",
+   "text": "Stage 19 Dashboard status + audit history: show audit trail."
+  },
+  {
+   "id": "R02454",
+   "lines": [
+    2454,
+    2454
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "info",
+   "text": "3. V1 Scope and Non-Goals",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02456",
+   "lines": [
+    2456,
+    2456
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "info",
+   "text": "Definition of Success",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02458",
+   "lines": [
+    2458,
+    2458
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "A product is not considered 'listed' merely because a submission was sent."
+  },
+  {
+   "id": "R02458a",
+   "lines": [
+    2458,
+    2458
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "A product is successful only when the marketplace confirms the relevant SKU/listing is live/active."
+  },
+  {
+   "id": "R02458b",
+   "lines": [
+    2458,
+    2458
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Success also requires the dashboard can show the marketplace identifier."
+  },
+  {
+   "id": "R02458c",
+   "lines": [
+    2458,
+    2458
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Success also requires the dashboard can show the current status."
+  },
+  {
+   "id": "R02458d",
+   "lines": [
+    2458,
+    2458
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Success also requires the dashboard can show the latest validation state."
+  },
+  {
+   "id": "R02460",
+   "lines": [
+    2460,
+    2462
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "info",
+   "text": "Table header: In V1 Scope | Not the Primary V1 Objective",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02464",
+   "lines": [
+    2464,
+    2464
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "In V1 scope: Apparel product listing."
+  },
+  {
+   "id": "R02466",
+   "lines": [
+    2466,
+    2466
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Not the primary V1 objective: Full marketplace order management."
+  },
+  {
+   "id": "R02468",
+   "lines": [
+    2468,
+    2468
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "In V1 scope: Multi-marketplace listing from one dashboard."
+  },
+  {
+   "id": "R02470",
+   "lines": [
+    2470,
+    2470
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Not the primary V1 objective: Full inventory/warehouse management."
+  },
+  {
+   "id": "R02472",
+   "lines": [
+    2472,
+    2472
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "In V1 scope: Product/category/attribute understanding."
+  },
+  {
+   "id": "R02474",
+   "lines": [
+    2474,
+    2474
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Not the primary V1 objective: Advertising optimization."
+  },
+  {
+   "id": "R02476",
+   "lines": [
+    2476,
+    2476
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "In V1 scope: Title (row \"Title, bullets, description, keywords and structured attributes\")."
+  },
+  {
+   "id": "R02476a",
+   "lines": [
+    2476,
+    2476
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "In V1 scope: bullets (row \"Title, bullets, description, keywords and structured attributes\")."
+  },
+  {
+   "id": "R02476b",
+   "lines": [
+    2476,
+    2476
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "In V1 scope: description (row \"Title, bullets, description, keywords and structured attributes\")."
+  },
+  {
+   "id": "R02476c",
+   "lines": [
+    2476,
+    2476
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "In V1 scope: keywords (row \"Title, bullets, description, keywords and structured attributes\")."
+  },
+  {
+   "id": "R02476d",
+   "lines": [
+    2476,
+    2476
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "In V1 scope: structured attributes (row \"Title, bullets, description, keywords and structured attributes\")."
+  },
+  {
+   "id": "R02478",
+   "lines": [
+    2478,
+    2478
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Not the primary V1 objective: Pricing optimization as a standalone agent."
+  },
+  {
+   "id": "R02480",
+   "lines": [
+    2480,
+    2480
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "In V1 scope: Variant handling."
+  },
+  {
+   "id": "R02480a",
+   "lines": [
+    2480,
+    2480
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "In V1 scope: Media handling."
+  },
+  {
+   "id": "R02482",
+   "lines": [
+    2482,
+    2482
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Not the primary V1 objective: Returns/reconciliation as a standalone workflow."
+  },
+  {
+   "id": "R02484",
+   "lines": [
+    2484,
+    2484
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "In V1 scope: Validation."
+  },
+  {
+   "id": "R02484a",
+   "lines": [
+    2484,
+    2484
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "In V1 scope: Error interpretation."
+  },
+  {
+   "id": "R02484b",
+   "lines": [
+    2484,
+    2484
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "In V1 scope: Error correction."
+  },
+  {
+   "id": "R02486",
+   "lines": [
+    2486,
+    2486
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Not the primary V1 objective: Customer service automation."
+  },
+  {
+   "id": "R02488",
+   "lines": [
+    2488,
+    2488
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "In V1 scope: Listing status."
+  },
+  {
+   "id": "R02488a",
+   "lines": [
+    2488,
+    2488
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "In V1 scope: Listing history."
+  },
+  {
+   "id": "R02490",
+   "lines": [
+    2490,
+    2490
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Not the primary V1 objective: End-to-end marketplace business operating system."
+  },
+  {
+   "id": "R02492",
+   "lines": [
+    2492,
+    2492
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "info",
+   "text": "4. Marketplace Strategy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02494",
+   "lines": [
+    2494,
+    2494
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "decision",
+   "text": "V1 should be designed around a common apparel product model."
+  },
+  {
+   "id": "R02494a",
+   "lines": [
+    2494,
+    2494
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "decision",
+   "text": "V1 should be designed around marketplace-specific adapters, alongside (\"plus\") the common apparel product model."
+  },
+  {
+   "id": "R02494b",
+   "lines": [
+    2494,
+    2494
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "data",
+   "text": "The common model is the source of truth."
+  },
+  {
+   "id": "R02494c",
+   "lines": [
+    2494,
+    2494
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Each marketplace adapter decides which fields are required, optional or conditionally required."
+  },
+  {
+   "id": "R02494d",
+   "lines": [
+    2494,
+    2494
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Each marketplace adapter decides allowed values."
+  },
+  {
+   "id": "R02494e",
+   "lines": [
+    2494,
+    2494
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Each marketplace adapter decides formatting rules."
+  },
+  {
+   "id": "R02494f",
+   "lines": [
+    2494,
+    2494
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Each marketplace adapter decides variation rules."
+  },
+  {
+   "id": "R02494g",
+   "lines": [
+    2494,
+    2494
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Each marketplace adapter decides submission/status behavior."
+  },
+  {
+   "id": "R02496",
+   "lines": [
+    2496,
+    2496
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Target marketplace set can include Amazon."
+  },
+  {
+   "id": "R02496a",
+   "lines": [
+    2496,
+    2496
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Target marketplace set can include Flipkart."
+  },
+  {
+   "id": "R02496b",
+   "lines": [
+    2496,
+    2496
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Target marketplace set can include Myntra."
+  },
+  {
+   "id": "R02496c",
+   "lines": [
+    2496,
+    2496
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Target marketplace set can include AJIO."
+  },
+  {
+   "id": "R02496d",
+   "lines": [
+    2496,
+    2496
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Target marketplace set can include Meesho."
+  },
+  {
+   "id": "R02496e",
+   "lines": [
+    2496,
+    2496
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "scope",
+   "text": "Target marketplace set can include Nykaa Fashion."
+  },
+  {
+   "id": "R02496f",
+   "lines": [
+    2496,
+    2496
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "risk",
+   "text": "Target marketplace set is subject to the commercial/API access available to the business."
+  },
+  {
+   "id": "R02497",
+   "lines": [
+    2497,
+    2497
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Category Semantic Variance: do not assume that the same apparel category means the same thing on every marketplace."
+  },
+  {
+   "id": "R02498",
+   "lines": [
+    2498,
+    2498
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "No Hard-Coded Lists: do not hard-code a single universal 'required fields' list."
+  },
+  {
+   "id": "R02499",
+   "lines": [
+    2499,
+    2499
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "data",
+   "text": "Dynamic Schemas: for each connected marketplace, maintain a current marketplace/category schema."
+  },
+  {
+   "id": "R02499a",
+   "lines": [
+    2499,
+    2499
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Dynamic Schemas: map the canonical product into each connected marketplace/category schema."
+  },
+  {
+   "id": "R02500",
+   "lines": [
+    2500,
+    2500
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "interface",
+   "text": "Amazon: Product Type Definitions are the source for product-type and marketplace requirements, including required/conditional attributes."
+  },
+  {
+   "id": "R02501",
+   "lines": [
+    2501,
+    2501
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "interface",
+   "text": "Flipkart Listing Management documentation separates product information from the seller listing."
+  },
+  {
+   "id": "R02501a",
+   "lines": [
+    2501,
+    2501
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "risk",
+   "text": "Flipkart states listing rules can change."
+  },
+  {
+   "id": "R02501b",
+   "lines": [
+    2501,
+    2501
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "requirement",
+   "text": "Because listing rules can change, errors should be handled explicitly (Flipkart Listing Management documentation)."
+  },
+  {
+   "id": "R02503",
+   "lines": [
+    2503,
+    2504
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "info",
+   "text": "Mermaid diagram start: graph LR",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02505",
+   "lines": [
+    2505,
+    2505
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "data",
+   "text": "Diagram (graph LR): CP \"Canonical Apparel Model (Master Truth)\" --> AD_AMZ \"Amazon Adapter (PTD Schema)\"."
+  },
+  {
+   "id": "R02506",
+   "lines": [
+    2506,
+    2506
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "data",
+   "text": "Diagram: CP (Canonical Apparel Model) --> AD_FK \"Flipkart Adapter (FMP / Vertical)\"."
+  },
+  {
+   "id": "R02507",
+   "lines": [
+    2507,
+    2507
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "data",
+   "text": "Diagram: CP (Canonical Apparel Model) --> AD_MYN \"Myntra Adapter (Fashion PIM)\"."
+  },
+  {
+   "id": "R02508",
+   "lines": [
+    2508,
+    2508
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "data",
+   "text": "Diagram: CP (Canonical Apparel Model) --> AD_AJIO \"AJIO Adapter (Reliance Schema)\"."
+  },
+  {
+   "id": "R02509",
+   "lines": [
+    2509,
+    2509
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "data",
+   "text": "Diagram: CP (Canonical Apparel Model) --> AD_MSH \"Meesho Adapter (Supplier Portal)\"."
+  },
+  {
+   "id": "R02510",
+   "lines": [
+    2510,
+    2510
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "data",
+   "text": "Diagram: CP (Canonical Apparel Model) --> AD_NYK \"Nykaa Fashion Adapter (Catalog API)\"."
+  },
+  {
+   "id": "R02512",
+   "lines": [
+    2512,
+    2516
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "info",
+   "text": "Mermaid classDef styling and closing fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02518",
+   "lines": [
+    2518,
+    2518
+   ],
+   "page": "[01] Product Vision, 19-Step Flow & Scope (§1–4)",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R02520",
+   "lines": [
+    2520,
+    2520
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "info",
+   "text": "Page title [02] Brand Onboarding & Catalog Intake (§5)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02522",
+   "lines": [
+    2522,
+    2522
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "info",
+   "text": "Section: Founder's POV Doc",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R02523",
+   "lines": [
+    2523,
+    2523
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "scope",
+   "text": "Page [02] Brand Onboarding & Catalog Intake (§5) is tagged Scope: MVP."
+  },
+  {
+   "id": "R02524",
+   "lines": [
+    2524,
+    2524
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "info",
+   "text": "Page URL: https://ashishvats16.github.io/system-arch/page/founders-brand-onboarding-intake",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R02525",
+   "lines": [
+    2525,
+    2525
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "requirement",
+   "text": "Page description: collect a stable brand profile once."
+  },
+  {
+   "id": "R02525a",
+   "lines": [
+    2525,
+    2525
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "requirement",
+   "text": "Page description: collect marketplace account credentials once."
+  },
+  {
+   "id": "R02525b",
+   "lines": [
+    2525,
+    2525
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "requirement",
+   "text": "Page description: multi-channel catalog intake merging."
+  },
+  {
+   "id": "R02527",
+   "lines": [
+    2527,
+    2527
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "info",
+   "text": "5. Brand Onboarding: Information to Collect Once",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02529",
+   "lines": [
+    2529,
+    2529
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "requirement",
+   "text": "Onboarding should be designed so that the seller enters stable information once."
+  },
+  {
+   "id": "R02529a",
+   "lines": [
+    2529,
+    2529
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "requirement",
+   "text": "The agent reuses onboarding information across products."
+  },
+  {
+   "id": "R02529b",
+   "lines": [
+    2529,
+    2529
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "requirement",
+   "text": "The agent reuses onboarding information across marketplaces."
+  },
+  {
+   "id": "R02531",
+   "lines": [
+    2531,
+    2531
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "info",
+   "text": "5.1 Brand / Business Profile",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02533",
+   "lines": [
+    2533,
+    2537
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "info",
+   "text": "Table header: Field / Group | What to Collect | Why it Matters",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02539",
+   "lines": [
+    2539,
+    2543
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand profile field \"Legal business name\": registered business name; matters for account and compliance identity."
+  },
+  {
+   "id": "R02545",
+   "lines": [
+    2545,
+    2549
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand profile field \"Brand name(s)\": exact consumer-facing brand name(s); matters for listing brand identity."
+  },
+  {
+   "id": "R02551",
+   "lines": [
+    2551,
+    2553
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand profile field \"Brand owner type\": Brand owner / manufacturer / reseller / distributor / trader."
+  },
+  {
+   "id": "R02555",
+   "lines": [
+    2555,
+    2555
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "requirement",
+   "text": "Brand owner type changes product identity and proof requirements."
+  },
+  {
+   "id": "R02557",
+   "lines": [
+    2557,
+    2561
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand profile field \"Brand website\": website/store URL; reference source for product facts."
+  },
+  {
+   "id": "R02563",
+   "lines": [
+    2563,
+    2567
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand profile field \"Brand description\": short factual brand description; used as content context."
+  },
+  {
+   "id": "R02569",
+   "lines": [
+    2569,
+    2573
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand profile field \"Brand logo\": primary logo assets; for branding / media where supported."
+  },
+  {
+   "id": "R02575",
+   "lines": [
+    2575,
+    2577
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand profile field \"Brand registry / authorization\": marketplace-specific status where relevant."
+  },
+  {
+   "id": "R02577",
+   "lines": [
+    2577,
+    2579
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand registry / authorization: supporting proof where relevant; matters for brand-related listing permissions."
+  },
+  {
+   "id": "R02581",
+   "lines": [
+    2581,
+    2583
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand profile field \"Customer care\": email."
+  },
+  {
+   "id": "R02583",
+   "lines": [
+    2583,
+    2583
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand profile field \"Customer care\": phone."
+  },
+  {
+   "id": "R02583a",
+   "lines": [
+    2583,
+    2585
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand profile field \"Customer care\": support details; matters for compliance and seller-facing information."
+  },
+  {
+   "id": "R02587",
+   "lines": [
+    2587,
+    2591
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand profile field \"Registered address\": business address; matters for compliance / marketplace account information."
+  },
+  {
+   "id": "R02593",
+   "lines": [
+    2593,
+    2595
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand profile field \"Manufacturer details\": manufacturer name."
+  },
+  {
+   "id": "R02595",
+   "lines": [
+    2595,
+    2597
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand profile field \"Manufacturer details\": manufacturer address; matters for apparel/product declarations."
+  },
+  {
+   "id": "R02599",
+   "lines": [
+    2599,
+    2603
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand profile field \"Packer / importer details\": packer details, where applicable; matters for compliance."
+  },
+  {
+   "id": "R02599a",
+   "lines": [
+    2599,
+    2603
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand profile field \"Packer / importer details\": importer details, where applicable; matters for compliance."
+  },
+  {
+   "id": "R02605",
+   "lines": [
+    2605,
+    2609
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand profile field \"Country of origin\": country of manufacture/origin; matters for compliance and listing."
+  },
+  {
+   "id": "R02611",
+   "lines": [
+    2611,
+    2615
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand profile field \"GST / tax information\": seller-provided tax details; matters for marketplace setup and tax-related fields."
+  },
+  {
+   "id": "R02613",
+   "lines": [
+    2613,
+    2613
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Brand profile field \"GST / tax information\": applicable registrations."
+  },
+  {
+   "id": "R02617",
+   "lines": [
+    2617,
+    2617
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "info",
+   "text": "5.2 Marketplace Account Profile",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02619",
+   "lines": [
+    2619,
+    2621
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "info",
+   "text": "Table header: Field / Group | Collect",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02623",
+   "lines": [
+    2623,
+    2625
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Marketplace account field \"Marketplace\": marketplace name."
+  },
+  {
+   "id": "R02627",
+   "lines": [
+    2627,
+    2629
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Marketplace account field \"Seller account\": connected seller account / store identifier."
+  },
+  {
+   "id": "R02631",
+   "lines": [
+    2631,
+    2633
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Marketplace account field \"Seller display name\": marketplace-facing seller/store name."
+  },
+  {
+   "id": "R02635",
+   "lines": [
+    2635,
+    2637
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Marketplace account field \"Pickup / fulfillment locations\": locations relevant to the seller."
+  },
+  {
+   "id": "R02639",
+   "lines": [
+    2639,
+    2641
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Marketplace account field \"Default shipping / procurement settings\": where the marketplace requires them."
+  },
+  {
+   "id": "R02643",
+   "lines": [
+    2643,
+    2645
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Marketplace account field \"Listing permissions\": brand/category permissions, approvals or restrictions."
+  },
+  {
+   "id": "R02647",
+   "lines": [
+    2647,
+    2649
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Marketplace account field \"Identifier status\": GTIN/EAN/UPC availability or exemption status, as applicable."
+  },
+  {
+   "id": "R02651",
+   "lines": [
+    2651,
+    2653
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Marketplace account field \"Default commercial rules\": default MRP, where applicable."
+  },
+  {
+   "id": "R02653",
+   "lines": [
+    2653,
+    2653
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Default commercial rules: selling price, where applicable."
+  },
+  {
+   "id": "R02653a",
+   "lines": [
+    2653,
+    2653
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Default commercial rules: tax/HSN conventions, where applicable."
+  },
+  {
+   "id": "R02653b",
+   "lines": [
+    2653,
+    2653
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "data",
+   "text": "Default commercial rules: shipping or SLA inputs, where applicable."
+  },
+  {
+   "id": "R02655",
+   "lines": [
+    2655,
+    2655
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "info",
+   "text": "5.3 Seller Catalog Intake Options",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02657",
+   "lines": [
+    2657,
+    2657
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "requirement",
+   "text": "The seller should be able to provide product information in multiple ways."
+  },
+  {
+   "id": "R02659",
+   "lines": [
+    2659,
+    2659
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "interface",
+   "text": "Catalog intake option: single product form."
+  },
+  {
+   "id": "R02660",
+   "lines": [
+    2660,
+    2660
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "interface",
+   "text": "Catalog intake option: bulk spreadsheet/template upload."
+  },
+  {
+   "id": "R02661",
+   "lines": [
+    2661,
+    2661
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "interface",
+   "text": "Catalog intake option: images + basic product information."
+  },
+  {
+   "id": "R02662",
+   "lines": [
+    2662,
+    2662
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "interface",
+   "text": "Catalog intake option: existing catalog export."
+  },
+  {
+   "id": "R02663",
+   "lines": [
+    2663,
+    2663
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "interface",
+   "text": "Catalog intake option: ERP/PIM/catalog source, where available."
+  },
+  {
+   "id": "R02664",
+   "lines": [
+    2664,
+    2664
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "interface",
+   "text": "Catalog intake option: URL/website product page, where permitted."
+  },
+  {
+   "id": "R02665",
+   "lines": [
+    2665,
+    2665
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "interface",
+   "text": "Catalog intake option: combination of the above."
+  },
+  {
+   "id": "R02667",
+   "lines": [
+    2667,
+    2667
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "info",
+   "text": "Data Ingestion Rule",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02669",
+   "lines": [
+    2669,
+    2669
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "requirement",
+   "text": "Data Ingestion Rule: the system should merge intake inputs rather than forcing the seller to repeat information."
+  },
+  {
+   "id": "R02671",
+   "lines": [
+    2671,
+    2671
+   ],
+   "page": "[02] Brand Onboarding & Catalog Intake (§5)",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R02673",
+   "lines": [
+    2673,
+    2673
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "info",
+   "text": "Page title [03] Master Apparel Data & Variants (§6–7)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02675",
+   "lines": [
+    2675,
+    2675
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "info",
+   "text": "Section: Founder's POV Doc",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R02676",
+   "lines": [
+    2676,
+    2676
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "scope",
+   "text": "Page [03] Master Apparel Data & Variants (§6–7) is tagged Scope: MVP."
+  },
+  {
+   "id": "R02677",
+   "lines": [
+    2677,
+    2677
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "info",
+   "text": "Page URL: https://ashishvats16.github.io/system-arch/page/founders-master-apparel-attributes",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R02678",
+   "lines": [
+    2678,
+    2678
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "scope",
+   "text": "Page [03] description: product identity."
+  },
+  {
+   "id": "R02678a",
+   "lines": [
+    2678,
+    2678
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "scope",
+   "text": "Page [03] description: core apparel attribute groups."
+  },
+  {
+   "id": "R02678b",
+   "lines": [
+    2678,
+    2678
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "scope",
+   "text": "Page [03] description: category-specific fields."
+  },
+  {
+   "id": "R02678c",
+   "lines": [
+    2678,
+    2678
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "The product family model is 3-level: style/color/size."
+  },
+  {
+   "id": "R02680",
+   "lines": [
+    2680,
+    2680
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "info",
+   "text": "6. Product Intake: Master Apparel Data Collection",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02682",
+   "lines": [
+    2682,
+    2682
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "The following is the master product dictionary."
+  },
+  {
+   "id": "R02682a",
+   "lines": [
+    2682,
+    2682
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "requirement",
+   "text": "The master product dictionary is deliberately broader than any one marketplace."
+  },
+  {
+   "id": "R02682b",
+   "lines": [
+    2682,
+    2682
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "The master product dictionary is the product's internal source of truth."
+  },
+  {
+   "id": "R02682c",
+   "lines": [
+    2682,
+    2682
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "flow",
+   "text": "Marketplace-specific fields are derived later from the master product dictionary."
+  },
+  {
+   "id": "R02684",
+   "lines": [
+    2684,
+    2684
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "info",
+   "text": "6.1 Product Identity",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02686",
+   "lines": [
+    2686,
+    2690
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "info",
+   "text": "Table header: Field | Required? | Example / Guidance",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02692",
+   "lines": [
+    2692,
+    2696
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Product identity field \"Seller SKU\": required Yes; example `BRAND-TSHIRT-001-BLK-M`."
+  },
+  {
+   "id": "R02698",
+   "lines": [
+    2698,
+    2702
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Product identity field \"Parent SKU / Style ID\": required If variants; example `BRAND-TSHIRT-001`."
+  },
+  {
+   "id": "R02704",
+   "lines": [
+    2704,
+    2708
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Product identity field \"Product name / style name\": required Yes; example Relaxed Fit Cotton T-Shirt."
+  },
+  {
+   "id": "R02710",
+   "lines": [
+    2710,
+    2714
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Product identity field \"Brand\": required Yes; exact registered/consumer-facing brand."
+  },
+  {
+   "id": "R02716",
+   "lines": [
+    2716,
+    2720
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Product identity field \"Manufacturer\": required Usually yes; legal manufacturer identity."
+  },
+  {
+   "id": "R02722",
+   "lines": [
+    2722,
+    2726
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Product identity field \"Model / style number\": required If available; example Style-001."
+  },
+  {
+   "id": "R02728",
+   "lines": [
+    2728,
+    2732
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Product identity field \"Product type\": required Yes; T-shirt, shirt, jeans, dress, kurta, etc."
+  },
+  {
+   "id": "R02734",
+   "lines": [
+    2734,
+    2738
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Product identity field \"Category\": required Yes; example Apparel > Men > Topwear > T-shirts."
+  },
+  {
+   "id": "R02740",
+   "lines": [
+    2740,
+    2744
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Product identity field \"Sub-category\": required Yes; example Crew Neck T-shirt."
+  },
+  {
+   "id": "R02746",
+   "lines": [
+    2746,
+    2750
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Product identity field \"Product identifier\": required If available/required; GTIN/EAN/UPC or applicable exemption."
+  },
+  {
+   "id": "R02752",
+   "lines": [
+    2752,
+    2756
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Product identity field \"Internal product ID\": System-generated; stable internal identity."
+  },
+  {
+   "id": "R02758",
+   "lines": [
+    2758,
+    2758
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "info",
+   "text": "6.2 Core Apparel Attributes",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02760",
+   "lines": [
+    2760,
+    2762
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "info",
+   "text": "Table header: Attribute Group | Fields to Capture",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02764",
+   "lines": [
+    2764,
+    2766
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Gender / audience\": Men / Women / Unisex / Boys / Girls."
+  },
+  {
+   "id": "R02766",
+   "lines": [
+    2766,
+    2766
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Gender / audience\": target gender."
+  },
+  {
+   "id": "R02766a",
+   "lines": [
+    2766,
+    2766
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Gender / audience\": age group where applicable."
+  },
+  {
+   "id": "R02768",
+   "lines": [
+    2768,
+    2770
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Color\": primary color."
+  },
+  {
+   "id": "R02770",
+   "lines": [
+    2770,
+    2770
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Color\": secondary color."
+  },
+  {
+   "id": "R02770a",
+   "lines": [
+    2770,
+    2770
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Color\": seller color name."
+  },
+  {
+   "id": "R02770b",
+   "lines": [
+    2770,
+    2770
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Color\": normalized color."
+  },
+  {
+   "id": "R02770c",
+   "lines": [
+    2770,
+    2770
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Color\": marketplace color value."
+  },
+  {
+   "id": "R02772",
+   "lines": [
+    2772,
+    2774
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Size\": seller size."
+  },
+  {
+   "id": "R02774",
+   "lines": [
+    2774,
+    2774
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Size\": normalized size."
+  },
+  {
+   "id": "R02774a",
+   "lines": [
+    2774,
+    2774
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Size\": marketplace size."
+  },
+  {
+   "id": "R02774b",
+   "lines": [
+    2774,
+    2774
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Size\": size system."
+  },
+  {
+   "id": "R02774c",
+   "lines": [
+    2774,
+    2774
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Size\": body/height type if applicable."
+  },
+  {
+   "id": "R02776",
+   "lines": [
+    2776,
+    2778
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Fit\": Regular, slim, relaxed, oversized, straight, skinny, tapered, loose, etc."
+  },
+  {
+   "id": "R02780",
+   "lines": [
+    2780,
+    2782
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Pattern\": Solid, striped, checked, printed, floral, graphic, textured, embroidered, etc."
+  },
+  {
+   "id": "R02784",
+   "lines": [
+    2784,
+    2786
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Fabric / material\": primary material."
+  },
+  {
+   "id": "R02786",
+   "lines": [
+    2786,
+    2786
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Fabric / material\": fiber composition."
+  },
+  {
+   "id": "R02786a",
+   "lines": [
+    2786,
+    2786
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Fabric / material\": blend %."
+  },
+  {
+   "id": "R02786b",
+   "lines": [
+    2786,
+    2786
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Fabric / material\": fabric type."
+  },
+  {
+   "id": "R02786c",
+   "lines": [
+    2786,
+    2786
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Fabric / material\": weave/finish where known."
+  },
+  {
+   "id": "R02788",
+   "lines": [
+    2788,
+    2790
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Construction\": knitted/woven."
+  },
+  {
+   "id": "R02790",
+   "lines": [
+    2790,
+    2790
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Construction\": lining."
+  },
+  {
+   "id": "R02790a",
+   "lines": [
+    2790,
+    2790
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Construction\": inner layer."
+  },
+  {
+   "id": "R02790b",
+   "lines": [
+    2790,
+    2790
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Construction\": transparency."
+  },
+  {
+   "id": "R02790c",
+   "lines": [
+    2790,
+    2790
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Construction\": stretch."
+  },
+  {
+   "id": "R02790d",
+   "lines": [
+    2790,
+    2790
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Construction\": GSM if relevant."
+  },
+  {
+   "id": "R02792",
+   "lines": [
+    2792,
+    2794
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Silhouette / style\": A-line, straight, wide leg, bodycon, oversized, etc. as applicable."
+  },
+  {
+   "id": "R02796",
+   "lines": [
+    2796,
+    2798
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Neck / collar\": Crew, V-neck, polo, spread, mandarin, round, etc."
+  },
+  {
+   "id": "R02800",
+   "lines": [
+    2800,
+    2802
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Sleeve\": sleeve type."
+  },
+  {
+   "id": "R02802",
+   "lines": [
+    2802,
+    2802
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Sleeve\": sleeve length."
+  },
+  {
+   "id": "R02802a",
+   "lines": [
+    2802,
+    2802
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Sleeve\": cuff type where relevant."
+  },
+  {
+   "id": "R02804",
+   "lines": [
+    2804,
+    2806
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Length\": Crop, regular, long, knee, midi, maxi, full length, etc."
+  },
+  {
+   "id": "R02808",
+   "lines": [
+    2808,
+    2810
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Rise / waist\": High/mid/low rise."
+  },
+  {
+   "id": "R02810",
+   "lines": [
+    2810,
+    2810
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Rise / waist\": waist style."
+  },
+  {
+   "id": "R02810a",
+   "lines": [
+    2810,
+    2810
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Rise / waist\": elastic/adjustable where relevant."
+  },
+  {
+   "id": "R02812",
+   "lines": [
+    2812,
+    2814
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Closure\": Button, zip, drawstring, pull-on, hook, etc."
+  },
+  {
+   "id": "R02816",
+   "lines": [
+    2816,
+    2818
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Pocket\": pocket presence where relevant."
+  },
+  {
+   "id": "R02818",
+   "lines": [
+    2818,
+    2818
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Pocket\": pocket type where relevant."
+  },
+  {
+   "id": "R02818a",
+   "lines": [
+    2818,
+    2818
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Pocket\": pocket count where relevant."
+  },
+  {
+   "id": "R02820",
+   "lines": [
+    2820,
+    2822
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Occasion\": Casual, formal, party, festive, active, travel, work, etc."
+  },
+  {
+   "id": "R02824",
+   "lines": [
+    2824,
+    2826
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Season\": Summer, winter, all-season, monsoon, festive etc. where relevant."
+  },
+  {
+   "id": "R02828",
+   "lines": [
+    2828,
+    2830
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Care\": wash care."
+  },
+  {
+   "id": "R02830",
+   "lines": [
+    2830,
+    2830
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Care\": dry clean."
+  },
+  {
+   "id": "R02830a",
+   "lines": [
+    2830,
+    2830
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Care\": iron/care instructions."
+  },
+  {
+   "id": "R02832",
+   "lines": [
+    2832,
+    2834
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Attribute group \"Country\": country of origin/manufacture."
+  }
+ ]
+}

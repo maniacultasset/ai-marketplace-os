@@ -1,0 +1,2217 @@
+{
+ "chunk": "c17",
+ "items": [
+  {
+   "id": "R10330",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:31",
+   "note": "PostgreSQL + pgvector as the single database (Canon, reaffirmed)."
+  },
+  {
+   "id": "R10331",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:39; AGENTS.md:122",
+   "note": "Separate vector DB is a named non-goal; no extra service."
+  },
+  {
+   "id": "R10332",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1073, 1067",
+   "note": "embedding <=> :q cosine distance; HNSW vector_cosine_ops."
+  },
+  {
+   "id": "R10332a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:41, 1068",
+   "note": "Year 1 ~60k vectors; exact filtered <=> scan per tenant, HNSW above ~20k chunks (T66)."
+  },
+  {
+   "id": "R10333",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1891",
+   "note": "Separate vector DB needs an ADR; halfvec or per-tenant partitioning first."
+  },
+  {
+   "id": "R10340",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:119, 122",
+   "note": "Backend supplies chunks via retrieve_brand_chunks -> BrandChunkDTO; prompt formatting is AI team."
+  },
+  {
+   "id": "R10347",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "BACKEND-ARCHITECTURE.md:1458",
+   "note": "Prompt injection and conditioning live in packages/pipeline; backend only returns chunks."
+  },
+  {
+   "id": "R10347a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:122; DATABASE.md:1062",
+   "note": "BrandChunkDTO.type; CHECK tone_rule|glossary|compliance|example."
+  },
+  {
+   "id": "R10347b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:122",
+   "note": "BrandChunkDTO carries source_type + source_id."
+  },
+  {
+   "id": "R10347c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:122",
+   "note": "BrandChunkDTO.similarity."
+  },
+  {
+   "id": "R10347d",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "BACKEND-ARCHITECTURE.md:1458",
+   "note": "Prompt injection and conditioning live in packages/pipeline; backend only returns chunks."
+  },
+  {
+   "id": "R10347e",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "BACKEND-ARCHITECTURE.md:1458",
+   "note": "Prompt injection and conditioning live in packages/pipeline; backend only returns chunks."
+  },
+  {
+   "id": "R10347f",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "BACKEND-ARCHITECTURE.md:1458",
+   "note": "Prompt injection and conditioning live in packages/pipeline; backend only returns chunks."
+  },
+  {
+   "id": "R10354",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:119, 122",
+   "note": "Page covered by port + BrandChunkDTO list, not BrandContextContract (see R10361)."
+  },
+  {
+   "id": "R10356",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:119, 122",
+   "note": "Contract is retrieve_brand_chunks(tenant_id, query, k=8, types) -> Sequence[BrandChunkDTO]."
+  },
+  {
+   "id": "R10361",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:119, 122; SPEC-TRACEABILITY.md:171",
+   "note": "Canon replaces the BrandContextContract envelope with port args + Sequence[BrandChunkDTO]; no T-row confirms it yet."
+  },
+  {
+   "id": "R10365",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:1058; T58",
+   "note": "brand_id is tenant_id (uuid), passed as port argument."
+  },
+  {
+   "id": "R10366",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:119",
+   "note": "Port parameter query: str; not returned as a contract field."
+  },
+  {
+   "id": "R10367",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:119",
+   "note": "Port returns Sequence[BrandChunkDTO], no retrieved_chunks wrapper field."
+  },
+  {
+   "id": "R10369",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:122",
+   "note": "Field is id (uuid), not chunk_id."
+  },
+  {
+   "id": "R10370",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:122; DATABASE.md:1062",
+   "note": "type; tone_rule in CHECK vocabulary."
+  },
+  {
+   "id": "R10371",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:122",
+   "note": "BrandChunkDTO.text."
+  },
+  {
+   "id": "R10372",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:122",
+   "note": "Field named similarity, not score."
+  },
+  {
+   "id": "R10375",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:122",
+   "note": "Chunk ids are UUIDs, not bv_12-style strings."
+  },
+  {
+   "id": "R10376",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1062",
+   "note": "glossary is a brand_chunks.type value."
+  },
+  {
+   "id": "R10377",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:222",
+   "note": "Glossary map {\"kurta outfit\": \"kurta set\"}; brand_embed derives glossary chunks (T38)."
+  },
+  {
+   "id": "R10378",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:122",
+   "note": "Score carried as similarity float."
+  },
+  {
+   "id": "R10381",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1063; CANON.md:122",
+   "note": "embedding_model stored per brand_chunks row; absent from BrandChunkDTO/port result."
+  },
+  {
+   "id": "R10381a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1063; BACKEND-ARCHITECTURE.md:1538",
+   "note": "text-embedding-3-small, 1536 dims."
+  },
+  {
+   "id": "R10382",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:119",
+   "note": "k: int = 8 default on retrieve_brand_chunks."
+  },
+  {
+   "id": "R10386",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "SPEC-TRACEABILITY.md:390 (G13)",
+   "note": "DTO has id, but chunk ids used per listing_version/agent_run are never recorded."
+  },
+  {
+   "id": "R10386a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:122",
+   "note": "BrandChunkDTO.type."
+  },
+  {
+   "id": "R10386b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:122",
+   "note": "BrandChunkDTO.text."
+  },
+  {
+   "id": "R10386c",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:122; DATABASE.md:1073",
+   "note": "similarity field; query returns cosine distance, conversion unspecified."
+  },
+  {
+   "id": "R10386d",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "VISION-ALIGNMENT.md:422",
+   "note": "AI team filters by similarity; threshold value unset; port has no min-score parameter."
+  },
+  {
+   "id": "R10393",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T93; G13",
+   "note": "Site contradicts itself on phase; plan has only source_type listing_version (DATABASE.md:1064)."
+  },
+  {
+   "id": "R10395",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "T93; G13",
+   "note": "No approve -> brand_embed trigger planned; G13 proposes it."
+  },
+  {
+   "id": "R10400",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "T93; G13",
+   "note": "Chunking of approved version not planned (G13)."
+  },
+  {
+   "id": "R10400a",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "T93; G13",
+   "note": "Embedding of approved listings not planned (G13)."
+  },
+  {
+   "id": "R10400b",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "T14; G13",
+   "note": "Needs performance data (Phase 2 per T14 proposal); no brand_chunks.weight column."
+  },
+  {
+   "id": "R10400c",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "T93; G13",
+   "note": "Learning loop listed Phase 3 in VISION-ALIGNMENT.md:352."
+  },
+  {
+   "id": "R10400d",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "T14",
+   "note": "Performance-driven learning depends on v1 performance ingestion (Q10, C9)."
+  },
+  {
+   "id": "R10407",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:222; T38",
+   "note": "Glossary as tenants.glossary JSONB map; chunks derived."
+  },
+  {
+   "id": "R10409",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:222",
+   "note": "tenants.glossary JSONB."
+  },
+  {
+   "id": "R10414",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:222",
+   "note": "Map {term_to_avoid: preferred_term}."
+  },
+  {
+   "id": "R10414a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:222",
+   "note": "Same example {\"kurta outfit\": \"kurta set\"}."
+  },
+  {
+   "id": "R10414b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:222",
+   "note": "Map shape holds it; example not seeded."
+  },
+  {
+   "id": "R10414c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:222, 1064; T38",
+   "note": "JSONB map is source of truth; brand_embed derives glossary chunks (source_type brand_profile)."
+  },
+  {
+   "id": "R10414d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:119; DATABASE.md:1072",
+   "note": "types filter on retrieve_brand_chunks; query filters on type."
+  },
+  {
+   "id": "R10414e",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:222, 510",
+   "note": "Says Rules Engine checks glossary, but none of the 14 RuleDef types does."
+  },
+  {
+   "id": "R10421",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:495, 508; T48",
+   "note": "Brand rules in v1 via nullable rules.tenant_id, 2 types only."
+  },
+  {
+   "id": "R10423",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:504, 519; T48",
+   "note": "Claim restrictions via claim_requires_attribute and banned_terms only."
+  },
+  {
+   "id": "R10423a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:519",
+   "note": "claim_requires_attribute requires certifications any_of gots."
+  },
+  {
+   "id": "R10428",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:508; T48",
+   "note": "Owner-only POST /api/v1/brand/rules; tenant rules limited to 2 types."
+  },
+  {
+   "id": "R10428a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:519",
+   "note": "organic -> certifications any_of gots example."
+  },
+  {
+   "id": "R10428b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:504; T48",
+   "note": "Brand banned_terms list; competitor names entered by the brand."
+  },
+  {
+   "id": "R10428c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:504; T48",
+   "note": "banned_terms word/substring list only; no semantic health-claim detection."
+  },
+  {
+   "id": "R10428d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:508",
+   "note": "Same text chunked into brand_chunks type compliance."
+  },
+  {
+   "id": "R10428e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:508, 1063",
+   "note": "Embedded with text-embedding-3-small."
+  },
+  {
+   "id": "R10428f",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:119; DATABASE.md:1062",
+   "note": "compliance chunks retrievable via types filter."
+  },
+  {
+   "id": "R10428g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:507",
+   "note": "Tenant rules run alongside platform rules, only tighten."
+  },
+  {
+   "id": "R10435",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10435",
+   "note": "Page [63] scope FUTURE (L10435)."
+  },
+  {
+   "id": "R10437",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10435",
+   "note": "Page [63] scope FUTURE (L10435)."
+  },
+  {
+   "id": "R10442",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10435",
+   "note": "Page [63] scope FUTURE (L10435)."
+  },
+  {
+   "id": "R10442a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:9",
+   "note": "v1 is the listing operator (Listing Agent)."
+  },
+  {
+   "id": "R10442b",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "L10435; DATABASE.md:1893",
+   "note": "FUTURE page; plan keeps one Postgres, Rules Engine, adapters, job_runs reusable."
+  },
+  {
+   "id": "R10442c",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "L10435; DATABASE.md:1893",
+   "note": "FUTURE page; plan keeps one Postgres, Rules Engine, adapters, job_runs reusable."
+  },
+  {
+   "id": "R10442d",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "L10435; DATABASE.md:1893",
+   "note": "FUTURE page; plan keeps one Postgres, Rules Engine, adapters, job_runs reusable."
+  },
+  {
+   "id": "R10450",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10435",
+   "note": "Page [63] scope FUTURE (L10435)."
+  },
+  {
+   "id": "R10452",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:122; T9",
+   "note": "Amazon.in + Flipkart only in v1."
+  },
+  {
+   "id": "R10452a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:122; T9",
+   "note": "Amazon.in + Flipkart only in v1."
+  },
+  {
+   "id": "R10452b",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10435; AGENTS.md:122",
+   "note": "Other marketplaces are a named non-goal for v1."
+  },
+  {
+   "id": "R10452c",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10435; AGENTS.md:122",
+   "note": "Other marketplaces are a named non-goal for v1."
+  },
+  {
+   "id": "R10452d",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10435; AGENTS.md:122",
+   "note": "Other marketplaces are a named non-goal for v1."
+  },
+  {
+   "id": "R10452e",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10435; AGENTS.md:122",
+   "note": "Other marketplaces are a named non-goal for v1."
+  },
+  {
+   "id": "R10454",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10435",
+   "note": "Page [63] scope FUTURE (L10435)."
+  },
+  {
+   "id": "R10455",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10435",
+   "note": "Page [63] scope FUTURE (L10435)."
+  },
+  {
+   "id": "R10456",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10435, L10470",
+   "note": "Future agents; not MVP."
+  },
+  {
+   "id": "R10457",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10435, L10470",
+   "note": "Future agents; not MVP."
+  },
+  {
+   "id": "R10458",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:9",
+   "note": "Listing generation pipeline is v1 scope."
+  },
+  {
+   "id": "R10459",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10435, L10470",
+   "note": "Future agents; not MVP."
+  },
+  {
+   "id": "R10460",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10435, L10470",
+   "note": "Future agents; not MVP."
+  },
+  {
+   "id": "R10461",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10435, L10470",
+   "note": "Future agents; not MVP."
+  },
+  {
+   "id": "R10462",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10435, L10470",
+   "note": "Future agents; not MVP."
+  },
+  {
+   "id": "R10463",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10435, L10470",
+   "note": "Future agents; not MVP."
+  },
+  {
+   "id": "R10464",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:79; BACKEND-ARCHITECTURE.md:1204",
+   "note": "Listing output executes only through adapters after approval."
+  },
+  {
+   "id": "R10465",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10435, L10470",
+   "note": "Future agents to execution layer."
+  },
+  {
+   "id": "R10465a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10435, L10470",
+   "note": "Future agents to execution layer."
+  },
+  {
+   "id": "R10465b",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10435, L10470",
+   "note": "Future agents to execution layer."
+  },
+  {
+   "id": "R10465c",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10435, L10470",
+   "note": "Future agents to execution layer."
+  },
+  {
+   "id": "R10470",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:9, 122",
+   "note": "Only listing in v1; Optimization Agent and competitive signals Phase 3."
+  },
+  {
+   "id": "R10470a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10470",
+   "note": "All other agents Future."
+  },
+  {
+   "id": "R10470b",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "L10435; DATABASE.md:1893",
+   "note": "FUTURE page; plan keeps one Postgres, Rules Engine, adapters, job_runs reusable."
+  },
+  {
+   "id": "R10470c",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "L10435; DATABASE.md:1893",
+   "note": "FUTURE page; plan keeps one Postgres, Rules Engine, adapters, job_runs reusable."
+  },
+  {
+   "id": "R10477",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204, 3106",
+   "note": "MarketplaceAdapter ABC is the unified interface."
+  },
+  {
+   "id": "R10479",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204, 3106",
+   "note": "MarketplaceAdapter ABC is the unified interface."
+  },
+  {
+   "id": "R10484",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204",
+   "note": "Adapters are the only code that talks to Amazon/Flipkart; no import-linter rule enforces it."
+  },
+  {
+   "id": "R10484a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204, 3106",
+   "note": "All marketplace calls go through MarketplaceAdapter; no import-linter rule enforces it."
+  },
+  {
+   "id": "R10484b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82; BACKEND-ARCHITECTURE.md:3094",
+   "note": "CanonicalListing is marketplace-neutral (invariant 4)."
+  },
+  {
+   "id": "R10484c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82; BACKEND-ARCHITECTURE.md:3094",
+   "note": "CanonicalListing is marketplace-neutral (invariant 4)."
+  },
+  {
+   "id": "R10484d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204",
+   "note": "Adapters map canonical to marketplace fields."
+  },
+  {
+   "id": "R10484e",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204; T22",
+   "note": "Third marketplace also needs marketplace CHECK, ErrorSource value and a table (T22)."
+  },
+  {
+   "id": "R10491",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:3094",
+   "note": "CanonicalListing marketplace-neutral (mkos_schemas.listing)."
+  },
+  {
+   "id": "R10493",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:3094",
+   "note": "CanonicalListing marketplace-neutral (mkos_schemas.listing)."
+  },
+  {
+   "id": "R10498",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:316",
+   "note": "Products hold seller facts, marketplace-neutral."
+  },
+  {
+   "id": "R10498a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:3094",
+   "note": "CanonicalListing before adapter transformation."
+  },
+  {
+   "id": "R10498b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541, 1152",
+   "note": "Specs keyed by canonical attribute keys; key names still open (T32)."
+  },
+  {
+   "id": "R10498c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82; T26",
+   "note": "Generic names, e.g. backend_keywords renamed hidden_terms."
+  },
+  {
+   "id": "R10498d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541-542; T49",
+   "note": "AI emits normalized canonical values; adapters apply value_map."
+  },
+  {
+   "id": "R10498e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82; BACKEND-ARCHITECTURE.md:3094",
+   "note": "No marketplace-specific structures in canonical listing."
+  },
+  {
+   "id": "R10498f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204; DATABASE.md:542",
+   "note": "Adapters translate canonical to marketplace formats."
+  },
+  {
+   "id": "R10502",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82",
+   "note": "Invariant 4."
+  },
+  {
+   "id": "R10502a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:3094",
+   "note": "CanonicalListing: pipeline output, Rules Engine and adapter input."
+  },
+  {
+   "id": "R10509",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204, 3106",
+   "note": "MarketplaceAdapter abstract base class."
+  },
+  {
+   "id": "R10511",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204, 3106",
+   "note": "MarketplaceAdapter abstract base class."
+  },
+  {
+   "id": "R10516",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204, 3106",
+   "note": "MarketplaceAdapter abstract base class."
+  },
+  {
+   "id": "R10520",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1532, 890; T86",
+   "note": "Site: get_listing(sku) -> ListingResult; plan [Proposed] returns ListingStatusSnapshot; no ruling or T-row."
+  },
+  {
+   "id": "R10521",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:3106",
+   "note": "create_listing in ABC."
+  },
+  {
+   "id": "R10522",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:890; AGENTS.md:91 (inv. 10)",
+   "note": "Adds idempotency_key and field_paths parameters [Proposed]; still returns ListingResult."
+  },
+  {
+   "id": "R10523",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:890; AGENTS.md:91 (inv. 10)",
+   "note": "Adds idempotency_key and field_paths parameters [Proposed]; still returns ListingResult."
+  },
+  {
+   "id": "R10524",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:3106; VISION-ALIGNMENT.md:394 (G11)",
+   "note": "Method only named; PerformanceResult type and params undefined; ABC not frozen (G11); ingestion waits on T14."
+  },
+  {
+   "id": "R10529",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204, 1852; DATABASE.md:1532",
+   "note": "Write methods return per-field ListingResult, never boolean; get_listing exception is R10520."
+  },
+  {
+   "id": "R10530",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:885",
+   "note": "Per-field status failed in publish_field_results."
+  },
+  {
+   "id": "R10530a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:885, 1318",
+   "note": "marketplace_code raw; listing_issues.raw_message exactly as returned."
+  },
+  {
+   "id": "R10531",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204; DATABASE.md:1008",
+   "note": "Adapter refreshes once on AUTH_EXPIRED."
+  },
+  {
+   "id": "R10531a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204, 2211 (G17)",
+   "note": "Ownership stated, but no outbound limiter designed; only job-level 429 backoff (plan marks it Gap)."
+  },
+  {
+   "id": "R10531b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204; DATABASE.md:890",
+   "note": "idempotency_key per submission."
+  },
+  {
+   "id": "R10531c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204; DATABASE.md:546",
+   "note": "marketplace_error_map to ErrorReport codes."
+  },
+  {
+   "id": "R10532",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82; DATABASE.md:542; T49",
+   "note": "Adapters apply value_map and marketplace_field."
+  },
+  {
+   "id": "R10540",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204",
+   "note": "Amazon adapter in v1."
+  },
+  {
+   "id": "R10542",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:261",
+   "note": "Amazon SP-API."
+  },
+  {
+   "id": "R10542a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:506",
+   "note": "OAuth connect/callback flow."
+  },
+  {
+   "id": "R10542b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:890",
+   "note": "publish_listing/update_listing/get_listing."
+  },
+  {
+   "id": "R10542c",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2209, 2211 (G17)",
+   "note": "Only 429 backoff via job retry; per-account/per-endpoint throttling is G17, undesigned."
+  },
+  {
+   "id": "R10542d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:546",
+   "note": "marketplace_error_map."
+  },
+  {
+   "id": "R10547",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:261, 506",
+   "note": "Login with Amazon OAuth 2.0."
+  },
+  {
+   "id": "R10547a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:452",
+   "note": "Connect, state + PKCE in Postgres, callback."
+  },
+  {
+   "id": "R10547b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1006; BACKEND-ARCHITECTURE.md:2125",
+   "note": "Per-write AES-256-GCM key wrapped by Cloud KMS."
+  },
+  {
+   "id": "R10547c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2118",
+   "note": "Tokens refresh automatically."
+  },
+  {
+   "id": "R10547d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1007, 1008",
+   "note": "expires_at; refresh once on AUTH_EXPIRED."
+  },
+  {
+   "id": "R10547e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1008",
+   "note": "needs_reconnect + reconnect_account human task."
+  },
+  {
+   "id": "R10553",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541-542; T49",
+   "note": "Field mapping from category_templates specs/value_map inside adapter."
+  },
+  {
+   "id": "R10554",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:890",
+   "note": "Adapter call with idempotency key."
+  },
+  {
+   "id": "R10555",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:885",
+   "note": "Per-field verdicts recorded."
+  },
+  {
+   "id": "R10556",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:890, 1532",
+   "note": "Returns ListingResult with items and per-field results."
+  },
+  {
+   "id": "R10561",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2211 (G17)",
+   "note": "No per-endpoint/operation outbound limiter; only inbound limits and 429 backoff."
+  },
+  {
+   "id": "R10561a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "VISION-ALIGNMENT.md:400 (G17)",
+   "note": "Token bucket per (marketplace, account, operation) proposed, not designed."
+  },
+  {
+   "id": "R10561b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1784, 2209; ADR-0004 §6",
+   "note": "Backoff is procrastinate job retry (1 s doubling, jitter, 60 s cap), not inside the adapter."
+  },
+  {
+   "id": "R10561c",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "VISION-ALIGNMENT.md:286, 400 (G17)",
+   "note": "publish queue has own concurrency; no per-account scheduling within quotas."
+  },
+  {
+   "id": "R10568",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:261",
+   "note": "Flipkart adapter in v1; API access/sandbox unconfirmed (Q16)."
+  },
+  {
+   "id": "R10570",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:261",
+   "note": "Flipkart Seller API."
+  },
+  {
+   "id": "R10570a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:506",
+   "note": "Flipkart seller API OAuth."
+  },
+  {
+   "id": "R10570b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204",
+   "note": "Marketplace-specific adapter implementation."
+  },
+  {
+   "id": "R10570c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204",
+   "note": "Marketplace-specific adapter implementation."
+  },
+  {
+   "id": "R10575",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:3106",
+   "note": "Same MarketplaceAdapter ABC."
+  },
+  {
+   "id": "R10575a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204",
+   "note": "Marketplace-specific adapter implementation."
+  },
+  {
+   "id": "R10575b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:506",
+   "note": "Flipkart seller API OAuth."
+  },
+  {
+   "id": "R10575c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541; T49",
+   "note": "Flipkart value_map/marketplace_field per template."
+  },
+  {
+   "id": "R10575d",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:530, 536; T68",
+   "note": "external_category_id = Flipkart vertical per (marketplace, category); no per-product override."
+  },
+  {
+   "id": "R10575e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:546",
+   "note": "marketplace_error_map rows per marketplace, seeded from observed responses."
+  },
+  {
+   "id": "R10575f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:552",
+   "note": "Maps to codes.py error_code, class, retry_class."
+  },
+  {
+   "id": "R10582",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10582; AGENTS.md:122",
+   "note": "Page [69] scope FUTURE."
+  },
+  {
+   "id": "R10584",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10582; AGENTS.md:122",
+   "note": "Page [69] scope FUTURE."
+  },
+  {
+   "id": "R10584a",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10582; AGENTS.md:122",
+   "note": "Page [69] scope FUTURE."
+  },
+  {
+   "id": "R10584b",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10582; AGENTS.md:122",
+   "note": "Page [69] scope FUTURE."
+  },
+  {
+   "id": "R10589",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "L10582",
+   "note": "FUTURE page; note a 3rd marketplace also touches CHECK/ErrorSource (T22)."
+  },
+  {
+   "id": "R10589a",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "L10582",
+   "note": "FUTURE page; note a 3rd marketplace also touches CHECK/ErrorSource (T22)."
+  },
+  {
+   "id": "R10589b",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "L10582",
+   "note": "FUTURE page; note a 3rd marketplace also touches CHECK/ErrorSource (T22)."
+  },
+  {
+   "id": "R10589c",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "L10582",
+   "note": "FUTURE page; note a 3rd marketplace also touches CHECK/ErrorSource (T22)."
+  },
+  {
+   "id": "R10589d",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "L10582",
+   "note": "FUTURE page; note a 3rd marketplace also touches CHECK/ErrorSource (T22)."
+  },
+  {
+   "id": "R10589e",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "L10582",
+   "note": "FUTURE page; note a 3rd marketplace also touches CHECK/ErrorSource (T22)."
+  },
+  {
+   "id": "R10600",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:490",
+   "note": "rules table."
+  },
+  {
+   "id": "R10607",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:490",
+   "note": "rules table."
+  },
+  {
+   "id": "R10607a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:496",
+   "note": "marketplace / category columns."
+  },
+  {
+   "id": "R10607b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:496",
+   "note": "marketplace / category columns."
+  },
+  {
+   "id": "R10607c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:501",
+   "note": "rule_def jsonb (RuleDef, 14 types)."
+  },
+  {
+   "id": "R10607d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:499",
+   "note": "severity error|warning; version >= 1."
+  },
+  {
+   "id": "R10607e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:499",
+   "note": "severity error|warning; version >= 1."
+  },
+  {
+   "id": "R10607f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:507, 527",
+   "note": "RuleSetResolver per (marketplace, category); pinned RuleSet in GenerationContext."
+  },
+  {
+   "id": "R10607g",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:508; T29",
+   "note": "Platform rules via app.cli rules import job run, not image deploy."
+  },
+  {
+   "id": "R10607h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1200",
+   "note": "Rules are rows, not code."
+  },
+  {
+   "id": "R10614",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:530",
+   "note": "category_templates is the [71] mapping table."
+  },
+  {
+   "id": "R10621",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:530",
+   "note": "category_templates is the [71] mapping table."
+  },
+  {
+   "id": "R10621a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:530; T68",
+   "note": "One row per (marketplace, category), not one row holding both IDs."
+  },
+  {
+   "id": "R10621b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:534",
+   "note": "category = internal slug."
+  },
+  {
+   "id": "R10621c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:536; T68",
+   "note": "external_category_id + PTD product_type; browse node not named."
+  },
+  {
+   "id": "R10621d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:536",
+   "note": "external_category_id (Flipkart vertical)."
+  },
+  {
+   "id": "R10621e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:507",
+   "note": "Rules fetched by (marketplace, category)."
+  },
+  {
+   "id": "R10621f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:539, 541",
+   "note": "Template attributes required/conditional/optional/unsupported."
+  },
+  {
+   "id": "R10621g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:496, 525",
+   "note": "image_requirement rules keyed by marketplace/category."
+  },
+  {
+   "id": "R10628",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541",
+   "note": "Field mapping in v1."
+  },
+  {
+   "id": "R10635",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541-542; T49",
+   "note": "Mapping config stored as category_templates value_map, applied inside adapter."
+  },
+  {
+   "id": "R10635a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541; T49, T32",
+   "note": "value_map supports it; canonical key name open (color vs color_name, T32)."
+  },
+  {
+   "id": "R10635b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541; T49, T32",
+   "note": "value_map supports it; canonical key name open (color vs color_name, T32)."
+  },
+  {
+   "id": "R10635c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541",
+   "note": "Data-driven value_map / marketplace_field."
+  },
+  {
+   "id": "R10642",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:546",
+   "note": "marketplace_error_map per marketplace."
+  },
+  {
+   "id": "R10649",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:546",
+   "note": "marketplace_error_map per marketplace."
+  },
+  {
+   "id": "R10649a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:553; CANON-ADDENDUM.md:102",
+   "note": "field is a paths.py path, not main_image."
+  },
+  {
+   "id": "R10649b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:547, 552, 1369",
+   "note": "Map rows seeded only from observed responses; this example row not adopted; code chosen per row."
+  },
+  {
+   "id": "R10649c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:155",
+   "note": "ErrorSource amazon_adapter."
+  },
+  {
+   "id": "R10649d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:86",
+   "note": "One ErrorReport shape (invariant 8)."
+  },
+  {
+   "id": "R10656",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10656, L10665",
+   "note": "Page [74] Catalog Agent FUTURE."
+  },
+  {
+   "id": "R10658",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10656, L10665",
+   "note": "Page [74] Catalog Agent FUTURE."
+  },
+  {
+   "id": "R10658a",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10656, L10665",
+   "note": "Page [74] Catalog Agent FUTURE."
+  },
+  {
+   "id": "R10663",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10656",
+   "note": "Future Catalog Agent."
+  },
+  {
+   "id": "R10663a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10656",
+   "note": "Future Catalog Agent."
+  },
+  {
+   "id": "R10663b",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10656",
+   "note": "Future Catalog Agent."
+  },
+  {
+   "id": "R10663c",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10656",
+   "note": "Future Catalog Agent."
+  },
+  {
+   "id": "R10663d",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10656",
+   "note": "Future Catalog Agent."
+  },
+  {
+   "id": "R10663e",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10656",
+   "note": "Future Catalog Agent."
+  },
+  {
+   "id": "R10665",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10656, L10665",
+   "note": "Page [74] Catalog Agent FUTURE."
+  },
+  {
+   "id": "R10665a",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "L10665",
+   "note": "Future data-layer/sync prerequisite."
+  },
+  {
+   "id": "R10665b",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "L10665",
+   "note": "Future data-layer/sync prerequisite."
+  },
+  {
+   "id": "R10672",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10672",
+   "note": "Page [75] FUTURE."
+  },
+  {
+   "id": "R10674",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10672",
+   "note": "Page [75] FUTURE."
+  },
+  {
+   "id": "R10679",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10672",
+   "note": "Future Revenue Ops Agent."
+  },
+  {
+   "id": "R10679a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10672",
+   "note": "Future Revenue Ops Agent."
+  },
+  {
+   "id": "R10679b",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10672",
+   "note": "Future Revenue Ops Agent."
+  },
+  {
+   "id": "R10679c",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10672",
+   "note": "Future Revenue Ops Agent."
+  },
+  {
+   "id": "R10679d",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10672",
+   "note": "Future Revenue Ops Agent."
+  },
+  {
+   "id": "R10681a",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "L10672",
+   "note": "Future prerequisites."
+  },
+  {
+   "id": "R10681b",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "L10672",
+   "note": "Future prerequisites."
+  },
+  {
+   "id": "R10681c",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "L10672",
+   "note": "Future prerequisites."
+  },
+  {
+   "id": "R10688",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10688",
+   "note": "Page [76] FUTURE."
+  },
+  {
+   "id": "R10690",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10688",
+   "note": "Page [76] FUTURE."
+  },
+  {
+   "id": "R10695",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10688",
+   "note": "Future Pricing Agent."
+  },
+  {
+   "id": "R10695a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10688",
+   "note": "Future Pricing Agent."
+  },
+  {
+   "id": "R10695b",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10688",
+   "note": "Future Pricing Agent."
+  },
+  {
+   "id": "R10695c",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10688",
+   "note": "Future Pricing Agent."
+  },
+  {
+   "id": "R10695d",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10688",
+   "note": "Future Pricing Agent."
+  },
+  {
+   "id": "R10695e",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10688",
+   "note": "Future Pricing Agent."
+  },
+  {
+   "id": "R10704",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10704",
+   "note": "Page [77] FUTURE."
+  },
+  {
+   "id": "R10706",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10704",
+   "note": "Page [77] FUTURE."
+  },
+  {
+   "id": "R10706a",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10704",
+   "note": "Page [77] FUTURE."
+  },
+  {
+   "id": "R10711",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10704",
+   "note": "Future Ads Agent."
+  },
+  {
+   "id": "R10711a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10704",
+   "note": "Future Ads Agent."
+  },
+  {
+   "id": "R10711b",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10704",
+   "note": "Future Ads Agent."
+  },
+  {
+   "id": "R10711c",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10704",
+   "note": "Future Ads Agent."
+  },
+  {
+   "id": "R10711d",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10704",
+   "note": "Future Ads Agent."
+  },
+  {
+   "id": "R10711e",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10704",
+   "note": "Page [77] FUTURE."
+  },
+  {
+   "id": "R10720",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10720",
+   "note": "Page [78] FUTURE."
+  },
+  {
+   "id": "R10722",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10720",
+   "note": "Page [78] FUTURE."
+  },
+  {
+   "id": "R10722a",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10720",
+   "note": "Page [78] FUTURE."
+  },
+  {
+   "id": "R10727",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10720",
+   "note": "Future Ranking Agent."
+  },
+  {
+   "id": "R10727a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10720",
+   "note": "Future Ranking Agent."
+  },
+  {
+   "id": "R10727b",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10720",
+   "note": "Future Ranking Agent."
+  },
+  {
+   "id": "R10727c",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10720",
+   "note": "Future Ranking Agent."
+  },
+  {
+   "id": "R10736",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10736",
+   "note": "Page [79] FUTURE."
+  },
+  {
+   "id": "R10738",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10736",
+   "note": "Page [79] FUTURE."
+  },
+  {
+   "id": "R10738a",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10736",
+   "note": "Page [79] FUTURE."
+  },
+  {
+   "id": "R10743",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10736",
+   "note": "Future Inventory Agent."
+  },
+  {
+   "id": "R10743a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10736",
+   "note": "Future Inventory Agent."
+  },
+  {
+   "id": "R10743b",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10736",
+   "note": "Future Inventory Agent."
+  },
+  {
+   "id": "R10743c",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10736",
+   "note": "Future Inventory Agent."
+  },
+  {
+   "id": "R10752",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10752",
+   "note": "Page [80] FUTURE."
+  },
+  {
+   "id": "R10754",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10752",
+   "note": "Page [80] FUTURE."
+  },
+  {
+   "id": "R10754a",
+   "status": "later-phase",
+   "owner": "client",
+   "ref": "L10752",
+   "note": "Page [80] FUTURE."
+  },
+  {
+   "id": "R10759",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10752",
+   "note": "Future Returns Agent."
+  },
+  {
+   "id": "R10759a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10752",
+   "note": "Future Returns Agent."
+  },
+  {
+   "id": "R10759b",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10752",
+   "note": "Future Returns Agent."
+  },
+  {
+   "id": "R10759c",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10752",
+   "note": "Future Returns Agent."
+  },
+  {
+   "id": "R10759d",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10752",
+   "note": "Future Returns Agent."
+  },
+  {
+   "id": "R10768",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10768; AGENTS.md:123",
+   "note": "Page [81] PHASE3; Optimization Agent Phase 3."
+  },
+  {
+   "id": "R10770",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10768; AGENTS.md:123",
+   "note": "Page [81] PHASE3; Optimization Agent Phase 3."
+  },
+  {
+   "id": "R10775",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10768; AGENTS.md:123",
+   "note": "Page [81] PHASE3; Optimization Agent Phase 3."
+  },
+  {
+   "id": "R10775a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10768; AGENTS.md:123",
+   "note": "Page [81] PHASE3; Optimization Agent Phase 3."
+  },
+  {
+   "id": "R10775b",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10768; AGENTS.md:123",
+   "note": "Page [81] PHASE3; Optimization Agent Phase 3."
+  },
+  {
+   "id": "R10775c",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10768; AGENTS.md:123",
+   "note": "Page [81] PHASE3; Optimization Agent Phase 3."
+  },
+  {
+   "id": "R10775d",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10768; AGENTS.md:123",
+   "note": "Page [81] PHASE3; Optimization Agent Phase 3."
+  },
+  {
+   "id": "R10782",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "BUILD-SEQUENCE.md:3; Q25",
+   "note": "S1-S14 stop at Rules Engine/AI seam; adapters, publishing, analytics have no build steps."
+  },
+  {
+   "id": "R10793",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md:91, 159",
+   "note": "Tenancy tables (S6) built before auth (S10)."
+  },
+  {
+   "id": "R10794",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md:91, 142",
+   "note": "Tenancy migration then TenantScopedRepository."
+  },
+  {
+   "id": "R10795",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md:91",
+   "note": "products in 0001 (S6)."
+  },
+  {
+   "id": "R10796",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "BUILD-SEQUENCE.md:23",
+   "note": "CanonicalListing frozen in schemas v1.0.0 (S2)."
+  },
+  {
+   "id": "R10797",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md:227",
+   "note": "Rules Engine over CanonicalListing (S14)."
+  },
+  {
+   "id": "R10798",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md:108",
+   "note": "brand_chunks in 0002 + 0002b (S7)."
+  },
+  {
+   "id": "R10799",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:119",
+   "note": "retrieve_brand_chunks port."
+  },
+  {
+   "id": "R10800",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:119",
+   "note": "validate_rules port."
+  },
+  {
+   "id": "R10801",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1555",
+   "note": "Worker re-runs deterministic checks on pipeline output."
+  },
+  {
+   "id": "R10802",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1565",
+   "note": "Approve asserts validated version; maker-checker."
+  },
+  {
+   "id": "R10803",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:79",
+   "note": "Adapters publish only after human approval."
+  },
+  {
+   "id": "R10804",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204",
+   "note": "Adapters publish."
+  },
+  {
+   "id": "R10805",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "T14",
+   "note": "Operational metrics v1; marketplace performance analytics Phase 2 proposed (C9, Q10)."
+  },
+  {
+   "id": "R10806",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10806",
+   "note": "Optimization marked Phase 3 on the diagram."
+  },
+  {
+   "id": "R10806a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "L10806",
+   "note": "Optimization marked Phase 3 on the diagram."
+  },
+  {
+   "id": "R10809",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "BUILD-SEQUENCE.md:3; Q25",
+   "note": "S1-S14 cover foundations only; no steps for adapters, publishing, analytics; re-baseline pending (Q25)."
+  },
+  {
+   "id": "R10809a",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "BUILD-SEQUENCE.md:3",
+   "note": "S2/S3 unblock AI and FE teams in parallel."
+  },
+  {
+   "id": "R10816",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "L10816",
+   "note": "Page [83] Agent Registry FUTURE."
+  },
+  {
+   "id": "R10823",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "L10816",
+   "note": "Page [83] Agent Registry FUTURE."
+  },
+  {
+   "id": "R10823a",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "L10816",
+   "note": "Page [83] Agent Registry FUTURE."
+  },
+  {
+   "id": "R10823b",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "L10816",
+   "note": "Page [83] Agent Registry FUTURE."
+  },
+  {
+   "id": "R10823c",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "L10816",
+   "note": "Page [83] Agent Registry FUTURE."
+  },
+  {
+   "id": "R10823d",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "L10816",
+   "note": "Page [83] Agent Registry FUTURE."
+  },
+  {
+   "id": "R10823e",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "L10816",
+   "note": "Page [83] Agent Registry FUTURE."
+  },
+  {
+   "id": "R10823f",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "L10816",
+   "note": "Page [83] Agent Registry FUTURE."
+  },
+  {
+   "id": "R10823g",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "L10816",
+   "note": "Page [83] Agent Registry FUTURE."
+  },
+  {
+   "id": "R10823h",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "L10816",
+   "note": "Page [83] Agent Registry FUTURE."
+  },
+  {
+   "id": "R10823i",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "L10816",
+   "note": "Page [83] Agent Registry FUTURE."
+  },
+  {
+   "id": "R10830",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:31",
+   "note": "PostgreSQL + pgvector single DB (PG17 per ADR-0003)."
+  },
+  {
+   "id": "R10832",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:31",
+   "note": "PostgreSQL + pgvector single DB (PG17 per ADR-0003)."
+  },
+  {
+   "id": "R10832a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:31",
+   "note": "PostgreSQL + pgvector single DB (PG17 per ADR-0003)."
+  },
+  {
+   "id": "R10837a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:402",
+   "note": "products."
+  },
+  {
+   "id": "R10837b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:741",
+   "note": "listings."
+  },
+  {
+   "id": "R10837c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:490",
+   "note": "rules."
+  },
+  {
+   "id": "R10837d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1057",
+   "note": "brand_chunks vector(1536)."
+  },
+  {
+   "id": "R10837e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:39; AGENTS.md:122",
+   "note": "Separate vector DB is a named non-goal."
+  },
+  {
+   "id": "R10837f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:41",
+   "note": "Year 1 ~60k vectors on one modest instance."
+  },
+  {
+   "id": "R10845",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2081, 2155; T24",
+   "note": "Site 13 tables kept plus 27 additive tables."
+  },
+  {
+   "id": "R10849",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:215",
+   "note": "tenants."
+  },
+  {
+   "id": "R10849a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:402",
+   "note": "products."
+  },
+  {
+   "id": "R10849b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:741",
+   "note": "listings."
+  },
+  {
+   "id": "R10849c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:983",
+   "note": "agent_runs."
+  },
+  {
+   "id": "R10851",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:100; AGENTS.md:83",
+   "note": "Four-layer tenant isolation; invariant 5."
+  },
+  {
+   "id": "R10855",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1198; AGENTS.md:83",
+   "note": "TenantScopedRepository + CrossTenantQueryError guard."
+  },
+  {
+   "id": "R10857",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1063",
+   "note": "vector(1536), text-embedding-3-small."
+  },
+  {
+   "id": "R10861",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1063",
+   "note": "vector(1536), text-embedding-3-small."
+  }
+ ]
+}

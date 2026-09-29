@@ -1,0 +1,4449 @@
+{
+ "chunk": "c12",
+ "start": 7611,
+ "end": 8080,
+ "items": [
+  {
+   "id": "R07611",
+   "lines": [
+    7611,
+    7611
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "info",
+   "text": "# [6] Architecture Diagram",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07613",
+   "lines": [
+    7613,
+    7613
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "info",
+   "text": "Section: Overview",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R07614",
+   "lines": [
+    7614,
+    7614
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Page [6] Architecture Diagram scope: MVP."
+  },
+  {
+   "id": "R07615",
+   "lines": [
+    7615,
+    7615
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/architecture-diagram",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R07616",
+   "lines": [
+    7616,
+    7616
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "info",
+   "text": "Description: the primary architecture diagram showing the complete system from brand to marketplace.",
+   "why_not": "context-prose"
+  },
+  {
+   "id": "R07616a",
+   "lines": [
+    7616,
+    7616
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "The primary architecture diagram includes the future Marketplace OS agent ecosystem."
+  },
+  {
+   "id": "R07617",
+   "lines": [
+    7617,
+    7617
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "info",
+   "text": "Keywords: diagram, architecture, visual, system diagram, marketplace OS",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R07619",
+   "lines": [
+    7619,
+    7619
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "info",
+   "text": "## Current MVP Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07621",
+   "lines": [
+    7621,
+    7621
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "info",
+   "text": "Architecture Diagram: MVP System Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07623",
+   "lines": [
+    7623,
+    7624
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "info",
+   "text": "Mermaid fence and graph direction (graph TB).",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R07625",
+   "lines": [
+    7625,
+    7625
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "MVP architecture node: BRAND."
+  },
+  {
+   "id": "R07626",
+   "lines": [
+    7626,
+    7626
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "MVP architecture group \"Marketplace Accounts\" (MKTACCTS)."
+  },
+  {
+   "id": "R07627",
+   "lines": [
+    7627,
+    7627
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "interface",
+   "text": "Marketplace Accounts include \"Amazon SP-API\"."
+  },
+  {
+   "id": "R07628",
+   "lines": [
+    7628,
+    7629
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "interface",
+   "text": "Marketplace Accounts include \"Flipkart Seller API\"."
+  },
+  {
+   "id": "R07630",
+   "lines": [
+    7630,
+    7630
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "MVP architecture group \"Unified Marketplace Data Layer\" (DATA)."
+  },
+  {
+   "id": "R07631",
+   "lines": [
+    7631,
+    7631
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Unified Marketplace Data Layer contains \"Product Catalog\"."
+  },
+  {
+   "id": "R07632",
+   "lines": [
+    7632,
+    7633
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Unified Marketplace Data Layer contains \"Canonical Model\"."
+  },
+  {
+   "id": "R07634",
+   "lines": [
+    7634,
+    7634
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "MVP architecture group \"AI Listing Agent\" (INTELLIGENCE)."
+  },
+  {
+   "id": "R07635",
+   "lines": [
+    7635,
+    7635
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "AI Listing Agent contains \"Content Agent\"."
+  },
+  {
+   "id": "R07636",
+   "lines": [
+    7636,
+    7636
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "AI Listing Agent contains \"Keyword Agent\"."
+  },
+  {
+   "id": "R07637",
+   "lines": [
+    7637,
+    7637
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "AI Listing Agent contains \"Attribute Agent\"."
+  },
+  {
+   "id": "R07638",
+   "lines": [
+    7638,
+    7638
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "AI Listing Agent contains \"Image Agent\"."
+  },
+  {
+   "id": "R07639",
+   "lines": [
+    7639,
+    7640
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "AI Listing Agent contains \"Brand Voice Retrieval\"."
+  },
+  {
+   "id": "R07641",
+   "lines": [
+    7641,
+    7641
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "MVP architecture group \"Control Plane\" (CONTROL)."
+  },
+  {
+   "id": "R07642",
+   "lines": [
+    7642,
+    7642
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Control Plane contains \"Rules Engine\"."
+  },
+  {
+   "id": "R07643",
+   "lines": [
+    7643,
+    7643
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Control Plane contains \"Vision Validation\"."
+  },
+  {
+   "id": "R07644",
+   "lines": [
+    7644,
+    7644
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Control Plane contains \"Quality/Confidence\"."
+  },
+  {
+   "id": "R07645",
+   "lines": [
+    7645,
+    7646
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Control Plane contains \"Human Approval\"."
+  },
+  {
+   "id": "R07647",
+   "lines": [
+    7647,
+    7647
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "MVP architecture group \"Execution Layer\" (EXEC)."
+  },
+  {
+   "id": "R07648",
+   "lines": [
+    7648,
+    7648
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Execution Layer contains \"Amazon Adapter\"."
+  },
+  {
+   "id": "R07649",
+   "lines": [
+    7649,
+    7650
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Execution Layer contains \"Flipkart Adapter\"."
+  },
+  {
+   "id": "R07651",
+   "lines": [
+    7651,
+    7651
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "MVP architecture node: \"Performance Data\"."
+  },
+  {
+   "id": "R07652",
+   "lines": [
+    7652,
+    7652
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "MVP architecture node: \"Optimization Agent\"."
+  },
+  {
+   "id": "R07654",
+   "lines": [
+    7654,
+    7654
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "BRAND --> Marketplace Accounts."
+  },
+  {
+   "id": "R07655",
+   "lines": [
+    7655,
+    7655
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "Marketplace Accounts --> Unified Marketplace Data Layer."
+  },
+  {
+   "id": "R07656",
+   "lines": [
+    7656,
+    7656
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "Unified Marketplace Data Layer --> AI Listing Agent."
+  },
+  {
+   "id": "R07657",
+   "lines": [
+    7657,
+    7657
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "AI Listing Agent --> Control Plane."
+  },
+  {
+   "id": "R07658",
+   "lines": [
+    7658,
+    7658
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "Control Plane --> Execution Layer."
+  },
+  {
+   "id": "R07659",
+   "lines": [
+    7659,
+    7659
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "Execution Layer --> Performance Data."
+  },
+  {
+   "id": "R07660",
+   "lines": [
+    7660,
+    7660
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "Performance Data --> Optimization Agent."
+  },
+  {
+   "id": "R07661",
+   "lines": [
+    7661,
+    7662
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "Optimization Agent --> Control Plane, edge labelled \"Proposed Changes\"."
+  },
+  {
+   "id": "R07664",
+   "lines": [
+    7664,
+    7664
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "info",
+   "text": "## Future AI Marketplace OS",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07666",
+   "lines": [
+    7666,
+    7666
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Long-term vision: a full AI Marketplace OS with specialized agents spanning the entire e-commerce operations stack."
+  },
+  {
+   "id": "R07668",
+   "lines": [
+    7668,
+    7668
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "info",
+   "text": "Architecture Diagram: Future AI Marketplace OS — Agent Ecosystem",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07670",
+   "lines": [
+    7670,
+    7671
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "info",
+   "text": "Mermaid fence and graph direction (graph TB).",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R07672",
+   "lines": [
+    7672,
+    7672
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Future architecture node: BRAND."
+  },
+  {
+   "id": "R07673",
+   "lines": [
+    7673,
+    7673
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Future architecture group \"Marketplaces\" (MKT)."
+  },
+  {
+   "id": "R07674",
+   "lines": [
+    7674,
+    7674
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Future AI Marketplace OS diagram: \"Marketplaces\" group (MKT) includes Amazon."
+  },
+  {
+   "id": "R07675",
+   "lines": [
+    7675,
+    7675
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Future AI Marketplace OS diagram: \"Marketplaces\" group (MKT) includes Flipkart."
+  },
+  {
+   "id": "R07676",
+   "lines": [
+    7676,
+    7676
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Future AI Marketplace OS diagram: \"Marketplaces\" group (MKT) includes Myntra."
+  },
+  {
+   "id": "R07677",
+   "lines": [
+    7677,
+    7677
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Future AI Marketplace OS diagram: \"Marketplaces\" group (MKT) includes Meesho."
+  },
+  {
+   "id": "R07678",
+   "lines": [
+    7678,
+    7678
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Future AI Marketplace OS diagram: \"Marketplaces\" group (MKT) includes Nykaa."
+  },
+  {
+   "id": "R07679",
+   "lines": [
+    7679,
+    7680
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Future AI Marketplace OS diagram: \"Marketplaces\" group (MKT) includes AJIO."
+  },
+  {
+   "id": "R07681",
+   "lines": [
+    7681,
+    7681
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Future architecture node: \"UNIFIED MARKETPLACE DATA LAYER\"."
+  },
+  {
+   "id": "R07682",
+   "lines": [
+    7682,
+    7682
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Future architecture node: \"AI MARKETPLACE OS\"."
+  },
+  {
+   "id": "R07683",
+   "lines": [
+    7683,
+    7683
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Future architecture group \"Agent Ecosystem\" (AGENTS)."
+  },
+  {
+   "id": "R07684",
+   "lines": [
+    7684,
+    7684
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Agent Ecosystem column \"Revenue Operations\" (COL1)."
+  },
+  {
+   "id": "R07685",
+   "lines": [
+    7685,
+    7685
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Revenue Operations includes \"Revenue Ops Agent\" (future)."
+  },
+  {
+   "id": "R07686",
+   "lines": [
+    7686,
+    7686
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Revenue Operations includes \"Pricing Agent\" (future)."
+  },
+  {
+   "id": "R07687",
+   "lines": [
+    7687,
+    7688
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Revenue Operations includes \"Ads Agent*\" (future, marked with asterisk)."
+  },
+  {
+   "id": "R07689",
+   "lines": [
+    7689,
+    7689
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Agent Ecosystem column \"Catalog\" (COL2)."
+  },
+  {
+   "id": "R07690",
+   "lines": [
+    7690,
+    7690
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Catalog includes \"Catalog Agent\" (future)."
+  },
+  {
+   "id": "R07691",
+   "lines": [
+    7691,
+    7691
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Catalog includes \"Listing Agent ✓ MVP\" — the Listing Agent is the MVP agent."
+  },
+  {
+   "id": "R07692",
+   "lines": [
+    7692,
+    7693
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Catalog includes \"Ranking Agent\" (future)."
+  },
+  {
+   "id": "R07694",
+   "lines": [
+    7694,
+    7694
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Agent Ecosystem column \"Operations\" (COL3)."
+  },
+  {
+   "id": "R07695",
+   "lines": [
+    7695,
+    7695
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Operations includes \"Inventory Agent\" (future)."
+  },
+  {
+   "id": "R07696",
+   "lines": [
+    7696,
+    7698
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Operations includes \"Returns Agent\" (future)."
+  },
+  {
+   "id": "R07699",
+   "lines": [
+    7699,
+    7699
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Future architecture node: \"EXECUTION LAYER\"."
+  },
+  {
+   "id": "R07701",
+   "lines": [
+    7701,
+    7701
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "Future: BRAND --> Marketplaces."
+  },
+  {
+   "id": "R07702",
+   "lines": [
+    7702,
+    7702
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "Future: Marketplaces --> UNIFIED MARKETPLACE DATA LAYER."
+  },
+  {
+   "id": "R07703",
+   "lines": [
+    7703,
+    7703
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "Future: UNIFIED MARKETPLACE DATA LAYER --> AI MARKETPLACE OS."
+  },
+  {
+   "id": "R07704",
+   "lines": [
+    7704,
+    7704
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "Future: AI MARKETPLACE OS --> Agent Ecosystem."
+  },
+  {
+   "id": "R07705",
+   "lines": [
+    7705,
+    7706
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "Future: Agent Ecosystem --> EXECUTION LAYER."
+  },
+  {
+   "id": "R07708",
+   "lines": [
+    7708,
+    7708
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "info",
+   "text": "MVP vs Future",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07710",
+   "lines": [
+    7710,
+    7710
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Only the Listing Agent (marked with ✓) is implemented in MVP."
+  },
+  {
+   "id": "R07710a",
+   "lines": [
+    7710,
+    7710
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "All other agents are part of the Future Marketplace OS vision."
+  },
+  {
+   "id": "R07710b",
+   "lines": [
+    7710,
+    7710
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "requirement",
+   "text": "The architecture is designed so these agents can be added without rewriting the platform."
+  },
+  {
+   "id": "R07710c",
+   "lines": [
+    7710,
+    7710
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "requirement",
+   "text": "Future agents follow the same adapter pattern."
+  },
+  {
+   "id": "R07710d",
+   "lines": [
+    7710,
+    7710
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "requirement",
+   "text": "Future agents use the same data layer."
+  },
+  {
+   "id": "R07710e",
+   "lines": [
+    7710,
+    7710
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "requirement",
+   "text": "Future agents plug into the same execution infrastructure."
+  },
+  {
+   "id": "R07712",
+   "lines": [
+    7712,
+    7712
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "info",
+   "text": "## Data Flow Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07714",
+   "lines": [
+    7714,
+    7714
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "info",
+   "text": "Architecture Diagram: Complete Data Flow",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07716",
+   "lines": [
+    7716,
+    7717
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "info",
+   "text": "Mermaid fence and graph direction (graph LR).",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R07718",
+   "lines": [
+    7718,
+    7718
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Data flow group INPUT."
+  },
+  {
+   "id": "R07719",
+   "lines": [
+    7719,
+    7719
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "Data flow INPUT includes \"CSV Upload\"."
+  },
+  {
+   "id": "R07720",
+   "lines": [
+    7720,
+    7720
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "Data flow INPUT includes \"Manual Entry\"."
+  },
+  {
+   "id": "R07721",
+   "lines": [
+    7721,
+    7722
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "Data flow INPUT includes \"Catalog Sync\"."
+  },
+  {
+   "id": "R07723",
+   "lines": [
+    7723,
+    7723
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Data flow group PROCESS."
+  },
+  {
+   "id": "R07724",
+   "lines": [
+    7724,
+    7724
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "PROCESS step \"Normalize\"."
+  },
+  {
+   "id": "R07725",
+   "lines": [
+    7725,
+    7725
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "PROCESS step \"Context Assembly\"."
+  },
+  {
+   "id": "R07726",
+   "lines": [
+    7726,
+    7726
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "PROCESS step \"AI Generation\"."
+  },
+  {
+   "id": "R07727",
+   "lines": [
+    7727,
+    7727
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "PROCESS step \"Validation\"."
+  },
+  {
+   "id": "R07728",
+   "lines": [
+    7728,
+    7729
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "PROCESS step \"Approval\"."
+  },
+  {
+   "id": "R07730",
+   "lines": [
+    7730,
+    7730
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "data",
+   "text": "Data flow group OUTPUT."
+  },
+  {
+   "id": "R07731",
+   "lines": [
+    7731,
+    7731
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Data flow OUTPUT includes Amazon."
+  },
+  {
+   "id": "R07732",
+   "lines": [
+    7732,
+    7733
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "scope",
+   "text": "Data flow OUTPUT includes Flipkart."
+  },
+  {
+   "id": "R07734",
+   "lines": [
+    7734,
+    7734
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "INPUT --> Normalize."
+  },
+  {
+   "id": "R07735",
+   "lines": [
+    7735,
+    7735
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "Normalize --> Context Assembly."
+  },
+  {
+   "id": "R07736",
+   "lines": [
+    7736,
+    7736
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "Context Assembly --> AI Generation."
+  },
+  {
+   "id": "R07737",
+   "lines": [
+    7737,
+    7737
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "AI Generation --> Validation."
+  },
+  {
+   "id": "R07738",
+   "lines": [
+    7738,
+    7738
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "Validation --> Approval."
+  },
+  {
+   "id": "R07739",
+   "lines": [
+    7739,
+    7740
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "flow",
+   "text": "Approval --> OUTPUT."
+  },
+  {
+   "id": "R07742",
+   "lines": [
+    7742,
+    7742
+   ],
+   "page": "[6] Architecture Diagram",
+   "kind": "info",
+   "text": "--- (page separator)",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R07744",
+   "lines": [
+    7744,
+    7744
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "info",
+   "text": "# [7] End-to-End User Flow",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07746",
+   "lines": [
+    7746,
+    7746
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "info",
+   "text": "Section: User & Product Flow",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R07747",
+   "lines": [
+    7747,
+    7747
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "scope",
+   "text": "Page [7] End-to-End User Flow scope: MVP."
+  },
+  {
+   "id": "R07748",
+   "lines": [
+    7748,
+    7748
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/e2e-user-flow",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R07749",
+   "lines": [
+    7749,
+    7749
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "info",
+   "text": "Description: the complete end-to-end journey from brand sign-in to live marketplace listing, including every decision point, failure path, and data transformation.",
+   "why_not": "context-prose"
+  },
+  {
+   "id": "R07750",
+   "lines": [
+    7750,
+    7750
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "info",
+   "text": "Keywords: end to end, user flow, journey, sign in, connect, import, generate, validate, approve, publish",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R07752",
+   "lines": [
+    7752,
+    7752
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "info",
+   "text": "## Complete Flow Diagram",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07754",
+   "lines": [
+    7754,
+    7754
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "info",
+   "text": "Architecture Diagram: End-to-End User Flow",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07756",
+   "lines": [
+    7756,
+    7757
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "info",
+   "text": "Mermaid fence and graph direction (graph TD).",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R07758",
+   "lines": [
+    7758,
+    7758
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "\"Brand Signs In\" --> \"Connect Amazon / Flipkart via OAuth\"."
+  },
+  {
+   "id": "R07759",
+   "lines": [
+    7759,
+    7759
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Connect via OAuth --> \"Credentials Encrypted & Stored\"."
+  },
+  {
+   "id": "R07760",
+   "lines": [
+    7760,
+    7760
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Credentials stored --> \"Import Products - CSV / Manual\"."
+  },
+  {
+   "id": "R07761",
+   "lines": [
+    7761,
+    7761
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Import --> \"Product Normalized to Canonical Model\"."
+  },
+  {
+   "id": "R07762",
+   "lines": [
+    7762,
+    7762
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Normalized --> \"Marketplace Category Selected\"."
+  },
+  {
+   "id": "R07763",
+   "lines": [
+    7763,
+    7763
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Category selected --> \"Marketplace Rules Loaded\"."
+  },
+  {
+   "id": "R07764",
+   "lines": [
+    7764,
+    7764
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Rules loaded --> \"Brand Voice Context Retrieved via pgvector\"."
+  },
+  {
+   "id": "R07765",
+   "lines": [
+    7765,
+    7765
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Brand voice retrieved --> \"AI Context Assembled\"."
+  },
+  {
+   "id": "R07766",
+   "lines": [
+    7766,
+    7766
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "AI Context Assembled --> \"Parallel Agent Execution\"."
+  },
+  {
+   "id": "R07768",
+   "lines": [
+    7768,
+    7768
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Parallel Agent Execution --> \"Content Agent\"."
+  },
+  {
+   "id": "R07768a",
+   "lines": [
+    7768,
+    7768
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "data",
+   "text": "Content Agent output: Title."
+  },
+  {
+   "id": "R07768b",
+   "lines": [
+    7768,
+    7768
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "data",
+   "text": "Content Agent output: Bullets."
+  },
+  {
+   "id": "R07768c",
+   "lines": [
+    7768,
+    7768
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "data",
+   "text": "Content Agent output: Description."
+  },
+  {
+   "id": "R07769",
+   "lines": [
+    7769,
+    7769
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Parallel Agent Execution --> \"Keyword Agent\"."
+  },
+  {
+   "id": "R07769a",
+   "lines": [
+    7769,
+    7769
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "data",
+   "text": "Keyword Agent output: Search Terms."
+  },
+  {
+   "id": "R07769b",
+   "lines": [
+    7769,
+    7769
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "data",
+   "text": "Keyword Agent output: Backend Keywords."
+  },
+  {
+   "id": "R07770",
+   "lines": [
+    7770,
+    7770
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Parallel Agent Execution --> \"Attribute Agent\"."
+  },
+  {
+   "id": "R07770a",
+   "lines": [
+    7770,
+    7770
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "data",
+   "text": "Attribute Agent output: Structured Attributes."
+  },
+  {
+   "id": "R07771",
+   "lines": [
+    7771,
+    7771
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Parallel Agent Execution --> \"Image Agent\"."
+  },
+  {
+   "id": "R07771a",
+   "lines": [
+    7771,
+    7771
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Image Agent performs Vision Compliance Checks."
+  },
+  {
+   "id": "R07773",
+   "lines": [
+    7773,
+    7773
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Content Agent --> \"Outputs Merged into Canonical Listing JSON\"."
+  },
+  {
+   "id": "R07774",
+   "lines": [
+    7774,
+    7774
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Keyword Agent --> Outputs Merged into Canonical Listing JSON."
+  },
+  {
+   "id": "R07775",
+   "lines": [
+    7775,
+    7775
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Attribute Agent --> Outputs Merged into Canonical Listing JSON."
+  },
+  {
+   "id": "R07776",
+   "lines": [
+    7776,
+    7776
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Image Agent --> Outputs Merged into Canonical Listing JSON."
+  },
+  {
+   "id": "R07778",
+   "lines": [
+    7778,
+    7778
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Merged canonical listing --> \"Schema Validation\"."
+  },
+  {
+   "id": "R07779",
+   "lines": [
+    7779,
+    7779
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Schema Validation --> \"Rules Engine - Deterministic\"."
+  },
+  {
+   "id": "R07779a",
+   "lines": [
+    7779,
+    7779
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "The Rules Engine is deterministic."
+  },
+  {
+   "id": "R07780",
+   "lines": [
+    7780,
+    7780
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Rules Engine --> \"Vision Validation\"."
+  },
+  {
+   "id": "R07781",
+   "lines": [
+    7781,
+    7781
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Vision Validation --> decision \"Pass?\"."
+  },
+  {
+   "id": "R07783",
+   "lines": [
+    7783,
+    7783
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Pass? \"FAILED\" --> \"Error Classification\"."
+  },
+  {
+   "id": "R07784",
+   "lines": [
+    7784,
+    7784
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Error Classification --> \"Correction Agent - Field-level Fix\"."
+  },
+  {
+   "id": "R07784a",
+   "lines": [
+    7784,
+    7784
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "The Correction Agent performs a field-level fix."
+  },
+  {
+   "id": "R07785",
+   "lines": [
+    7785,
+    7785
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Correction Agent --> decision \"Retry ≤ 3?\"."
+  },
+  {
+   "id": "R07785a",
+   "lines": [
+    7785,
+    7785
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "constraint",
+   "text": "Correction retries are capped at ≤ 3."
+  },
+  {
+   "id": "R07786",
+   "lines": [
+    7786,
+    7786
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Retry ≤ 3? \"Yes\" --> back to Rules Engine."
+  },
+  {
+   "id": "R07787",
+   "lines": [
+    7787,
+    7787
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Retry ≤ 3? \"No\" --> \"Job Blocked - Reason Surfaced\"."
+  },
+  {
+   "id": "R07787a",
+   "lines": [
+    7787,
+    7787
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "When a job is blocked, the reason is surfaced."
+  },
+  {
+   "id": "R07789",
+   "lines": [
+    7789,
+    7789
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Pass? \"PASSED\" --> \"Confidence Scoring\"."
+  },
+  {
+   "id": "R07790",
+   "lines": [
+    7790,
+    7790
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Confidence Scoring --> \"Human Approval\"."
+  },
+  {
+   "id": "R07791",
+   "lines": [
+    7791,
+    7791
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Human Approval --> \"Marketplace Adapter\"."
+  },
+  {
+   "id": "R07792",
+   "lines": [
+    7792,
+    7792
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Marketplace Adapter --> \"Publish to Marketplace\"."
+  },
+  {
+   "id": "R07793",
+   "lines": [
+    7793,
+    7793
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Publish --> \"Per-field Result\"."
+  },
+  {
+   "id": "R07794",
+   "lines": [
+    7794,
+    7794
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Per-field Result --> \"Performance Collection\"."
+  },
+  {
+   "id": "R07795",
+   "lines": [
+    7795,
+    7796
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Performance Collection --> \"Optimization Loop\"."
+  },
+  {
+   "id": "R07798",
+   "lines": [
+    7798,
+    7798
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "info",
+   "text": "## Step-by-Step Walkthrough",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07800",
+   "lines": [
+    7800,
+    7800
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Step-by-step walkthrough step 1: Connect (heading \"### 1. Connect\")."
+  },
+  {
+   "id": "R07802",
+   "lines": [
+    7802,
+    7802
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "interface",
+   "text": "Connect: OAuth to Amazon SP-API."
+  },
+  {
+   "id": "R07802a",
+   "lines": [
+    7802,
+    7802
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "interface",
+   "text": "Connect: OAuth to Flipkart Seller API."
+  },
+  {
+   "id": "R07802b",
+   "lines": [
+    7802,
+    7802
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "quality",
+   "text": "Tokens are encrypted at rest with AES-256."
+  },
+  {
+   "id": "R07802c",
+   "lines": [
+    7802,
+    7802
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "data",
+   "text": "Tokens are stored in the `MarketplaceAccount` table."
+  },
+  {
+   "id": "R07802d",
+   "lines": [
+    7802,
+    7802
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Token refresh is handled automatically by the adapters."
+  },
+  {
+   "id": "R07804",
+   "lines": [
+    7804,
+    7804
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Step-by-step walkthrough step 2: Import (heading \"### 2. Import\")."
+  },
+  {
+   "id": "R07806",
+   "lines": [
+    7806,
+    7806
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "constraint",
+   "text": "There are three import modes."
+  },
+  {
+   "id": "R07806a",
+   "lines": [
+    7806,
+    7806
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "scope",
+   "text": "Import mode: CSV bulk upload."
+  },
+  {
+   "id": "R07806b",
+   "lines": [
+    7806,
+    7806
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "scope",
+   "text": "Import mode: manual entry."
+  },
+  {
+   "id": "R07806c",
+   "lines": [
+    7806,
+    7806
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "scope",
+   "text": "Import mode: brand catalog sync."
+  },
+  {
+   "id": "R07806d",
+   "lines": [
+    7806,
+    7806
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "CSV upload enters the async queue."
+  },
+  {
+   "id": "R07806e",
+   "lines": [
+    7806,
+    7806
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Each CSV row is validated."
+  },
+  {
+   "id": "R07806f",
+   "lines": [
+    7806,
+    7806
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Validated CSV rows are fanned out into parallel Agent Runs."
+  },
+  {
+   "id": "R07806g",
+   "lines": [
+    7806,
+    7806
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "constraint",
+   "text": "Agent Run fan-out uses bounded concurrency per marketplace to respect rate limits."
+  },
+  {
+   "id": "R07808",
+   "lines": [
+    7808,
+    7808
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Step-by-step walkthrough step 3: Generate (heading \"### 3. Generate\")."
+  },
+  {
+   "id": "R07810",
+   "lines": [
+    7810,
+    7810
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "AI generates text: title."
+  },
+  {
+   "id": "R07810a",
+   "lines": [
+    7810,
+    7810
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "AI generates text: bullets."
+  },
+  {
+   "id": "R07810b",
+   "lines": [
+    7810,
+    7810
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "AI generates text: description."
+  },
+  {
+   "id": "R07810c",
+   "lines": [
+    7810,
+    7810
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "AI generates text: keywords."
+  },
+  {
+   "id": "R07810d",
+   "lines": [
+    7810,
+    7810
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "AI generates text: attributes."
+  },
+  {
+   "id": "R07810e",
+   "lines": [
+    7810,
+    7810
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "AI checks images."
+  },
+  {
+   "id": "R07810f",
+   "lines": [
+    7810,
+    7810
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "decision",
+   "text": "Brand voice is retrieved from pgvector embeddings."
+  },
+  {
+   "id": "R07810g",
+   "lines": [
+    7810,
+    7810
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Agents run in parallel where no dependencies exist."
+  },
+  {
+   "id": "R07810h",
+   "lines": [
+    7810,
+    7810
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Content, Keyword, Attribute, Image agents can execute concurrently."
+  },
+  {
+   "id": "R07812",
+   "lines": [
+    7812,
+    7812
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Step-by-step walkthrough step 4: Validate (heading \"### 4. Validate\")."
+  },
+  {
+   "id": "R07814",
+   "lines": [
+    7814,
+    7814
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Deterministic rules engine returns structured pass/fail via the unified ErrorReport."
+  },
+  {
+   "id": "R07814a",
+   "lines": [
+    7814,
+    7814
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Vision model returns structured pass/fail via the unified ErrorReport."
+  },
+  {
+   "id": "R07814b",
+   "lines": [
+    7814,
+    7814
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Rules check: character limits."
+  },
+  {
+   "id": "R07814c",
+   "lines": [
+    7814,
+    7814
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Rules check: banned terms."
+  },
+  {
+   "id": "R07814d",
+   "lines": [
+    7814,
+    7814
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Rules check: missing attributes."
+  },
+  {
+   "id": "R07814e",
+   "lines": [
+    7814,
+    7814
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Rules check: category compliance."
+  },
+  {
+   "id": "R07814f",
+   "lines": [
+    7814,
+    7814
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Vision checks: background color."
+  },
+  {
+   "id": "R07814g",
+   "lines": [
+    7814,
+    7814
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Vision checks: resolution."
+  },
+  {
+   "id": "R07814h",
+   "lines": [
+    7814,
+    7814
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Vision checks: text overlays."
+  },
+  {
+   "id": "R07814i",
+   "lines": [
+    7814,
+    7814
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Vision checks: watermarks."
+  },
+  {
+   "id": "R07816",
+   "lines": [
+    7816,
+    7816
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Step-by-step walkthrough step 5: Approve (heading \"### 5. Approve\")."
+  },
+  {
+   "id": "R07818",
+   "lines": [
+    7818,
+    7818
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Human reviews the generated output alongside validation results."
+  },
+  {
+   "id": "R07818a",
+   "lines": [
+    7818,
+    7818
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Human review shows warnings."
+  },
+  {
+   "id": "R07818b",
+   "lines": [
+    7818,
+    7818
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Human review shows errors."
+  },
+  {
+   "id": "R07818c",
+   "lines": [
+    7818,
+    7818
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Human review shows confidence score."
+  },
+  {
+   "id": "R07818d",
+   "lines": [
+    7818,
+    7818
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Human review shows marketplace differences."
+  },
+  {
+   "id": "R07818e",
+   "lines": [
+    7818,
+    7818
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Approval option: Approve."
+  },
+  {
+   "id": "R07818f",
+   "lines": [
+    7818,
+    7818
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Approval option: Reject (with feedback)."
+  },
+  {
+   "id": "R07818g",
+   "lines": [
+    7818,
+    7818
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Approval option: Edit."
+  },
+  {
+   "id": "R07818h",
+   "lines": [
+    7818,
+    7818
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Approval option: Regenerate."
+  },
+  {
+   "id": "R07818i",
+   "lines": [
+    7818,
+    7818
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Rejection feedback is stored."
+  },
+  {
+   "id": "R07818j",
+   "lines": [
+    7818,
+    7818
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Rejection feedback can be used as future context."
+  },
+  {
+   "id": "R07820",
+   "lines": [
+    7820,
+    7820
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Step-by-step walkthrough step 6: Publish (heading \"### 6. Publish\")."
+  },
+  {
+   "id": "R07822",
+   "lines": [
+    7822,
+    7822
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Adapters push to each marketplace."
+  },
+  {
+   "id": "R07822a",
+   "lines": [
+    7822,
+    7822
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Publishing uses per-field result reporting."
+  },
+  {
+   "id": "R07822b",
+   "lines": [
+    7822,
+    7822
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "On partial success, only failed fields are retried."
+  },
+  {
+   "id": "R07822c",
+   "lines": [
+    7822,
+    7822
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Partial-success retries of only failed fields rely on idempotency keys on the marketplace side."
+  },
+  {
+   "id": "R07822d",
+   "lines": [
+    7822,
+    7822
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "On partial success, the whole listing is never retried."
+  },
+  {
+   "id": "R07824",
+   "lines": [
+    7824,
+    7824
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Step-by-step walkthrough step 7: Learn (heading \"### 7. Learn\")."
+  },
+  {
+   "id": "R07826",
+   "lines": [
+    7826,
+    7826
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Performance metric conversion feeds the optimization loop."
+  },
+  {
+   "id": "R07826a",
+   "lines": [
+    7826,
+    7826
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Performance metric CTR feeds the optimization loop."
+  },
+  {
+   "id": "R07826b",
+   "lines": [
+    7826,
+    7826
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Performance metric returns feeds the optimization loop."
+  },
+  {
+   "id": "R07826c",
+   "lines": [
+    7826,
+    7826
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Performance metric ranking feeds the optimization loop."
+  },
+  {
+   "id": "R07826d",
+   "lines": [
+    7826,
+    7826
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "scope",
+   "text": "The Optimization Agent is Phase 3."
+  },
+  {
+   "id": "R07826e",
+   "lines": [
+    7826,
+    7826
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "The Optimization Agent proposes changes to existing listings based on performance data."
+  },
+  {
+   "id": "R07828",
+   "lines": [
+    7828,
+    7828
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "info",
+   "text": "## Failure Paths",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07830",
+   "lines": [
+    7830,
+    7834
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "info",
+   "text": "Table header: Failure Type | Response | Retry?",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R07836",
+   "lines": [
+    7836,
+    7838
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "constraint",
+   "text": "Rules engine failure: up to 3 agent correction attempts (bounded)."
+  },
+  {
+   "id": "R07840",
+   "lines": [
+    7840,
+    7840
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Rules engine failure retry: Yes — agent corrects specific field."
+  },
+  {
+   "id": "R07842",
+   "lines": [
+    7842,
+    7844
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Rate limit response: exponential backoff."
+  },
+  {
+   "id": "R07844",
+   "lines": [
+    7844,
+    7844
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Rate limit handling has no agent involvement."
+  },
+  {
+   "id": "R07846",
+   "lines": [
+    7846,
+    7846
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Rate limit retry: Yes — automatic."
+  },
+  {
+   "id": "R07848",
+   "lines": [
+    7848,
+    7850
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Auth failure response: auto-refresh token once."
+  },
+  {
+   "id": "R07850",
+   "lines": [
+    7850,
+    7850
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Auth failure: escalate to user if still failing after refresh."
+  },
+  {
+   "id": "R07852",
+   "lines": [
+    7852,
+    7852
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "constraint",
+   "text": "Auth failure retry: Once — then user action."
+  },
+  {
+   "id": "R07854",
+   "lines": [
+    7854,
+    7856
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Partial API success response: retry only failed fields."
+  },
+  {
+   "id": "R07856",
+   "lines": [
+    7856,
+    7856
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Partial API success response: never re-push the whole listing."
+  },
+  {
+   "id": "R07858",
+   "lines": [
+    7858,
+    7858
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Partial API success retry: Yes — field-level."
+  },
+  {
+   "id": "R07860",
+   "lines": [
+    7860,
+    7862
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "JSON schema failure response: structured output repair."
+  },
+  {
+   "id": "R07862",
+   "lines": [
+    7862,
+    7862
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "JSON schema failure: escalate model if needed."
+  },
+  {
+   "id": "R07864",
+   "lines": [
+    7864,
+    7864
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "JSON schema failure retry: Yes — model escalation."
+  },
+  {
+   "id": "R07866",
+   "lines": [
+    7866,
+    7866
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "info",
+   "text": "## Non-Technical Explanation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07868",
+   "lines": [
+    7868,
+    7868
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "info",
+   "text": "Non-Technical Explanation (callout label)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07870",
+   "lines": [
+    7870,
+    7870
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "The brand uploads its product catalog once instead of writing separate listings per platform (example: clothing brand on Amazon and Flipkart)."
+  },
+  {
+   "id": "R07870a",
+   "lines": [
+    7870,
+    7870
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "The AI writes optimized listings for each marketplace using the brand's voice."
+  },
+  {
+   "id": "R07870b",
+   "lines": [
+    7870,
+    7870
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Non-technical explanation: the AI checks that images meet platform requirements."
+  },
+  {
+   "id": "R07870c",
+   "lines": [
+    7870,
+    7870
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Non-technical explanation: the AI validates everything against marketplace rules."
+  },
+  {
+   "id": "R07870d",
+   "lines": [
+    7870,
+    7870
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "Non-technical explanation: the AI shows the brand owner the result for approval."
+  },
+  {
+   "id": "R07870e",
+   "lines": [
+    7870,
+    7870
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "flow",
+   "text": "After the owner clicks \"Approve\", the listing goes live on both platforms."
+  },
+  {
+   "id": "R07870f",
+   "lines": [
+    7870,
+    7870
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "requirement",
+   "text": "Over time, the system learns which listings perform best and suggests improvements."
+  },
+  {
+   "id": "R07872",
+   "lines": [
+    7872,
+    7872
+   ],
+   "page": "[7] End-to-End User Flow",
+   "kind": "info",
+   "text": "--- (page separator)",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R07874",
+   "lines": [
+    7874,
+    7874
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "info",
+   "text": "# [8] Product Import Flow",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07876",
+   "lines": [
+    7876,
+    7876
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "info",
+   "text": "Section: User & Product Flow",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R07877",
+   "lines": [
+    7877,
+    7877
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "scope",
+   "text": "Page [8] Product Import Flow scope: MVP."
+  },
+  {
+   "id": "R07878",
+   "lines": [
+    7878,
+    7878
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/product-import-flow",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R07879",
+   "lines": [
+    7879,
+    7879
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "scope",
+   "text": "Products enter the system via CSV bulk upload (page description)."
+  },
+  {
+   "id": "R07879a",
+   "lines": [
+    7879,
+    7879
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "scope",
+   "text": "Products enter the system via manual entry (page description)."
+  },
+  {
+   "id": "R07879b",
+   "lines": [
+    7879,
+    7879
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "scope",
+   "text": "Products enter the system via catalog sync (page description)."
+  },
+  {
+   "id": "R07879c",
+   "lines": [
+    7879,
+    7879
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "requirement",
+   "text": "Product import includes validation."
+  },
+  {
+   "id": "R07879d",
+   "lines": [
+    7879,
+    7879
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "requirement",
+   "text": "Product import includes normalization."
+  },
+  {
+   "id": "R07879e",
+   "lines": [
+    7879,
+    7879
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "requirement",
+   "text": "Product import includes async processing."
+  },
+  {
+   "id": "R07880",
+   "lines": [
+    7880,
+    7880
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "info",
+   "text": "Keywords: import, CSV, bulk, upload, product, catalog, manual entry",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R07882",
+   "lines": [
+    7882,
+    7882
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "info",
+   "text": "## Import Modes",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07884",
+   "lines": [
+    7884,
+    7888
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "info",
+   "text": "Table header: Mode | Use Case | Processing",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R07890",
+   "lines": [
+    7890,
+    7892
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "constraint",
+   "text": "CSV Bulk Upload use case: Large catalogs (100+ products)."
+  },
+  {
+   "id": "R07894",
+   "lines": [
+    7894,
+    7894
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "decision",
+   "text": "CSV Bulk Upload processing: Async via Redis/ARQ queue."
+  },
+  {
+   "id": "R07894a",
+   "lines": [
+    7894,
+    7894
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "requirement",
+   "text": "CSV Bulk Upload processing: row-level validation."
+  },
+  {
+   "id": "R07894b",
+   "lines": [
+    7894,
+    7894
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "flow",
+   "text": "CSV Bulk Upload processing: fan-out to parallel Agent Runs."
+  },
+  {
+   "id": "R07896",
+   "lines": [
+    7896,
+    7898
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "scope",
+   "text": "Manual Entry use case: Single product or quick addition."
+  },
+  {
+   "id": "R07900",
+   "lines": [
+    7900,
+    7900
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "requirement",
+   "text": "Manual Entry processing: synchronous validation."
+  },
+  {
+   "id": "R07900a",
+   "lines": [
+    7900,
+    7900
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "requirement",
+   "text": "Manual Entry processing: async generation."
+  },
+  {
+   "id": "R07902",
+   "lines": [
+    7902,
+    7904
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "scope",
+   "text": "Catalog Sync use case: Existing catalog integration."
+  },
+  {
+   "id": "R07906",
+   "lines": [
+    7906,
+    7906
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "scope",
+   "text": "Catalog Sync processing: Future: API-based sync with external catalog systems."
+  },
+  {
+   "id": "R07908",
+   "lines": [
+    7908,
+    7908
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "info",
+   "text": "## CSV Bulk Import Flow",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07910",
+   "lines": [
+    7910,
+    7911
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "info",
+   "text": "Mermaid fence and graph direction (graph TD).",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R07912",
+   "lines": [
+    7912,
+    7912
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "flow",
+   "text": "\"CSV Upload\" --> \"Parse & Validate Headers\"."
+  },
+  {
+   "id": "R07913",
+   "lines": [
+    7913,
+    7913
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "flow",
+   "text": "Parse & Validate Headers --> \"Row-level Validation\"."
+  },
+  {
+   "id": "R07914",
+   "lines": [
+    7914,
+    7914
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "flow",
+   "text": "Row-level Validation --> \"Queue: Fan-out per Row\"."
+  },
+  {
+   "id": "R07915",
+   "lines": [
+    7915,
+    7915
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "flow",
+   "text": "Queue: Fan-out per Row --> \"Product 1 Agent Run\"."
+  },
+  {
+   "id": "R07916",
+   "lines": [
+    7916,
+    7916
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "flow",
+   "text": "Queue fan-out --> \"Product 2 Agent Run\"."
+  },
+  {
+   "id": "R07917",
+   "lines": [
+    7917,
+    7917
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "flow",
+   "text": "Queue fan-out --> \"Product N Agent Run\"."
+  },
+  {
+   "id": "R07918",
+   "lines": [
+    7918,
+    7918
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "flow",
+   "text": "Product 1 Agent Run --> \"Aggregate Results\"."
+  },
+  {
+   "id": "R07919",
+   "lines": [
+    7919,
+    7919
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "flow",
+   "text": "Product 2 Agent Run --> Aggregate Results."
+  },
+  {
+   "id": "R07920",
+   "lines": [
+    7920,
+    7920
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "flow",
+   "text": "Product N Agent Run --> Aggregate Results."
+  },
+  {
+   "id": "R07921",
+   "lines": [
+    7921,
+    7921
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "flow",
+   "text": "Aggregate Results --> \"Summary Report\"."
+  },
+  {
+   "id": "R07922",
+   "lines": [
+    7922,
+    7923
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "flow",
+   "text": "Summary Report --> \"Per-row Approval UI\"."
+  },
+  {
+   "id": "R07925",
+   "lines": [
+    7925,
+    7925
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "requirement",
+   "text": "Partial failures isolate to the row."
+  },
+  {
+   "id": "R07925a",
+   "lines": [
+    7925,
+    7925
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "requirement",
+   "text": "The batch completes with a summary report despite partial failures."
+  },
+  {
+   "id": "R07925b",
+   "lines": [
+    7925,
+    7925
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "constraint",
+   "text": "Bounded concurrency per marketplace respects rate limits."
+  },
+  {
+   "id": "R07927",
+   "lines": [
+    7927,
+    7927
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "info",
+   "text": "## Import Validation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07929",
+   "lines": [
+    7929,
+    7929
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "requirement",
+   "text": "Each product row is validated for required field: SKU."
+  },
+  {
+   "id": "R07929a",
+   "lines": [
+    7929,
+    7929
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "requirement",
+   "text": "Each product row is validated for required field: title."
+  },
+  {
+   "id": "R07929b",
+   "lines": [
+    7929,
+    7929
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "constraint",
+   "text": "Each product row is validated for required field: at least one image."
+  },
+  {
+   "id": "R07929c",
+   "lines": [
+    7929,
+    7929
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "requirement",
+   "text": "Each product row is validated for data types."
+  },
+  {
+   "id": "R07929d",
+   "lines": [
+    7929,
+    7929
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "requirement",
+   "text": "Each product row is validated for category existence."
+  },
+  {
+   "id": "R07929e",
+   "lines": [
+    7929,
+    7929
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "requirement",
+   "text": "Each product row is validated for marketplace compatibility."
+  },
+  {
+   "id": "R07929f",
+   "lines": [
+    7929,
+    7929
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "requirement",
+   "text": "Invalid rows are surfaced immediately with exact error details."
+  },
+  {
+   "id": "R07929g",
+   "lines": [
+    7929,
+    7929
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "flow",
+   "text": "Valid rows proceed to agent generation."
+  },
+  {
+   "id": "R07931",
+   "lines": [
+    7931,
+    7931
+   ],
+   "page": "[8] Product Import Flow",
+   "kind": "info",
+   "text": "--- (page separator)",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R07933",
+   "lines": [
+    7933,
+    7933
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "info",
+   "text": "# [9] Marketplace Connection Flow",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07935",
+   "lines": [
+    7935,
+    7935
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "info",
+   "text": "Section: User & Product Flow",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R07936",
+   "lines": [
+    7936,
+    7936
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "scope",
+   "text": "Page [9] Marketplace Connection Flow scope: MVP."
+  },
+  {
+   "id": "R07937",
+   "lines": [
+    7937,
+    7937
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/marketplace-connection-flow",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R07938",
+   "lines": [
+    7938,
+    7938
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "decision",
+   "text": "Marketplace connection flow is OAuth-based for Amazon SP-API."
+  },
+  {
+   "id": "R07938a",
+   "lines": [
+    7938,
+    7938
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "decision",
+   "text": "Marketplace connection flow is OAuth-based for Flipkart Seller API."
+  },
+  {
+   "id": "R07939",
+   "lines": [
+    7939,
+    7939
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "info",
+   "text": "Keywords: marketplace, connection, OAuth, Amazon, Flipkart, SP-API, credentials",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R07941",
+   "lines": [
+    7941,
+    7941
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "info",
+   "text": "## OAuth Flow",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07943",
+   "lines": [
+    7943,
+    7944
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "info",
+   "text": "Mermaid fence and diagram type (sequenceDiagram).",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R07945",
+   "lines": [
+    7945,
+    7945
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "data",
+   "text": "OAuth sequence participant U: User."
+  },
+  {
+   "id": "R07946",
+   "lines": [
+    7946,
+    7946
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "decision",
+   "text": "OAuth sequence participant FE: Next.js Frontend."
+  },
+  {
+   "id": "R07947",
+   "lines": [
+    7947,
+    7947
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "decision",
+   "text": "OAuth sequence participant BE: FastAPI Backend."
+  },
+  {
+   "id": "R07948",
+   "lines": [
+    7948,
+    7949
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "data",
+   "text": "OAuth sequence participant MKT: Marketplace (Amazon/Flipkart)."
+  },
+  {
+   "id": "R07950",
+   "lines": [
+    7950,
+    7950
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "flow",
+   "text": "User clicks \"Connect Amazon\" in the frontend."
+  },
+  {
+   "id": "R07951",
+   "lines": [
+    7951,
+    7951
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "interface",
+   "text": "FE -> BE: POST /marketplaces/connect."
+  },
+  {
+   "id": "R07952",
+   "lines": [
+    7952,
+    7952
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "flow",
+   "text": "BE -> Marketplace: redirect to OAuth consent."
+  },
+  {
+   "id": "R07953",
+   "lines": [
+    7953,
+    7953
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "flow",
+   "text": "Marketplace displays consent screen to user."
+  },
+  {
+   "id": "R07954",
+   "lines": [
+    7954,
+    7954
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "flow",
+   "text": "User authorizes at the marketplace."
+  },
+  {
+   "id": "R07955",
+   "lines": [
+    7955,
+    7955
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "interface",
+   "text": "Marketplace -> BE: callback with auth code."
+  },
+  {
+   "id": "R07956",
+   "lines": [
+    7956,
+    7956
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "flow",
+   "text": "BE -> Marketplace: exchange code for tokens."
+  },
+  {
+   "id": "R07957",
+   "lines": [
+    7957,
+    7957
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "quality",
+   "text": "BE encrypts tokens (AES-256)."
+  },
+  {
+   "id": "R07958",
+   "lines": [
+    7958,
+    7958
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "data",
+   "text": "BE stores encrypted tokens in MarketplaceAccount."
+  },
+  {
+   "id": "R07959",
+   "lines": [
+    7959,
+    7959
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "flow",
+   "text": "BE -> FE: connection success."
+  },
+  {
+   "id": "R07960",
+   "lines": [
+    7960,
+    7961
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "flow",
+   "text": "FE -> User: \"Amazon Connected ✓\"."
+  },
+  {
+   "id": "R07963",
+   "lines": [
+    7963,
+    7963
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "info",
+   "text": "## Credential Security",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07965",
+   "lines": [
+    7965,
+    7965
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "quality",
+   "text": "OAuth tokens encrypted at rest with AES-256."
+  },
+  {
+   "id": "R07966",
+   "lines": [
+    7966,
+    7966
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "decision",
+   "text": "Encryption keys stored in AWS Secrets Manager."
+  },
+  {
+   "id": "R07966a",
+   "lines": [
+    7966,
+    7966
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "quality",
+   "text": "Encryption keys are never in application code."
+  },
+  {
+   "id": "R07967",
+   "lines": [
+    7967,
+    7967
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "requirement",
+   "text": "Token refresh handled automatically by adapters."
+  },
+  {
+   "id": "R07968",
+   "lines": [
+    7968,
+    7968
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "requirement",
+   "text": "Expired tokens trigger auto-refresh."
+  },
+  {
+   "id": "R07968a",
+   "lines": [
+    7968,
+    7968
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "flow",
+   "text": "Persistent token refresh failure escalates to user."
+  },
+  {
+   "id": "R07969",
+   "lines": [
+    7969,
+    7969
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "quality",
+   "text": "Each marketplace account is scoped to a tenant."
+  },
+  {
+   "id": "R07969a",
+   "lines": [
+    7969,
+    7969
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "quality",
+   "text": "No cross-tenant access to marketplace accounts."
+  },
+  {
+   "id": "R07971",
+   "lines": [
+    7971,
+    7971
+   ],
+   "page": "[9] Marketplace Connection Flow",
+   "kind": "info",
+   "text": "--- (page separator)",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R07973",
+   "lines": [
+    7973,
+    7973
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "info",
+   "text": "# [10] Listing Generation Flow",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07975",
+   "lines": [
+    7975,
+    7975
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "info",
+   "text": "Section: User & Product Flow",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R07976",
+   "lines": [
+    7976,
+    7976
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "scope",
+   "text": "Page [10] Listing Generation Flow scope: MVP."
+  },
+  {
+   "id": "R07977",
+   "lines": [
+    7977,
+    7977
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/listing-generation-flow",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R07978",
+   "lines": [
+    7978,
+    7978
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "requirement",
+   "text": "AI generates a complete listing from product data."
+  },
+  {
+   "id": "R07978a",
+   "lines": [
+    7978,
+    7978
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "Listing generation stage: context assembly."
+  },
+  {
+   "id": "R07978b",
+   "lines": [
+    7978,
+    7978
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "Listing generation stage: parallel agent execution."
+  },
+  {
+   "id": "R07978c",
+   "lines": [
+    7978,
+    7978
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "Listing generation stage: output merging."
+  },
+  {
+   "id": "R07978d",
+   "lines": [
+    7978,
+    7978
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "Listing generation stage: structured validation."
+  },
+  {
+   "id": "R07979",
+   "lines": [
+    7979,
+    7979
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "info",
+   "text": "Keywords: listing generation, AI generation, agents, context, prompt, parallel",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R07981",
+   "lines": [
+    7981,
+    7981
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "info",
+   "text": "## Generation Pipeline",
+   "why_not": "heading"
+  },
+  {
+   "id": "R07983",
+   "lines": [
+    7983,
+    7984
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "info",
+   "text": "Mermaid fence and graph direction (graph TD).",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R07985",
+   "lines": [
+    7985,
+    7985
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "\"Product Data\" --> \"Context Assembly\"."
+  },
+  {
+   "id": "R07986",
+   "lines": [
+    7986,
+    7986
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "\"Brand Voice Chunks\" --> Context Assembly."
+  },
+  {
+   "id": "R07987",
+   "lines": [
+    7987,
+    7987
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "\"Marketplace Rules\" --> Context Assembly."
+  },
+  {
+   "id": "R07988",
+   "lines": [
+    7988,
+    7988
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "\"Category Template\" --> Context Assembly."
+  },
+  {
+   "id": "R07989",
+   "lines": [
+    7989,
+    7989
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "Context Assembly --> \"Agent Orchestrator - LangGraph\"."
+  },
+  {
+   "id": "R07989a",
+   "lines": [
+    7989,
+    7989
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "decision",
+   "text": "The Agent Orchestrator is LangGraph."
+  },
+  {
+   "id": "R07990",
+   "lines": [
+    7990,
+    7990
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "Agent Orchestrator --> \"Content Agent\"."
+  },
+  {
+   "id": "R07991",
+   "lines": [
+    7991,
+    7991
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "Agent Orchestrator --> \"Keyword Agent\"."
+  },
+  {
+   "id": "R07992",
+   "lines": [
+    7992,
+    7992
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "Agent Orchestrator --> \"Attribute Agent\"."
+  },
+  {
+   "id": "R07993",
+   "lines": [
+    7993,
+    7993
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "Agent Orchestrator --> \"Image Agent\"."
+  },
+  {
+   "id": "R07994",
+   "lines": [
+    7994,
+    7994
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "Content Agent --> \"Output Merger\"."
+  },
+  {
+   "id": "R07995",
+   "lines": [
+    7995,
+    7995
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "Keyword Agent --> Output Merger."
+  },
+  {
+   "id": "R07996",
+   "lines": [
+    7996,
+    7996
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "Attribute Agent --> Output Merger."
+  },
+  {
+   "id": "R07997",
+   "lines": [
+    7997,
+    7997
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "Image Agent --> Output Merger."
+  },
+  {
+   "id": "R07998",
+   "lines": [
+    7998,
+    7998
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "Output Merger --> \"Canonical Listing JSON\"."
+  },
+  {
+   "id": "R07999",
+   "lines": [
+    7999,
+    8000
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "Canonical Listing JSON --> \"Validation Pipeline\"."
+  },
+  {
+   "id": "R08002",
+   "lines": [
+    8002,
+    8002
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "info",
+   "text": "## Context Assembly",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08004",
+   "lines": [
+    8004,
+    8004
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "requirement",
+   "text": "Before any agent runs, the system assembles a rich context object."
+  },
+  {
+   "id": "R08004a",
+   "lines": [
+    8004,
+    8004
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "data",
+   "text": "Context object contains: product data."
+  },
+  {
+   "id": "R08004b",
+   "lines": [
+    8004,
+    8004
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "data",
+   "text": "Context object contains: brand voice chunks."
+  },
+  {
+   "id": "R08004c",
+   "lines": [
+    8004,
+    8004
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "decision",
+   "text": "Brand voice chunks are retrieved via pgvector cosine similarity."
+  },
+  {
+   "id": "R08004d",
+   "lines": [
+    8004,
+    8004
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "data",
+   "text": "Context object contains: marketplace-specific rules."
+  },
+  {
+   "id": "R08004e",
+   "lines": [
+    8004,
+    8004
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "data",
+   "text": "Context object contains: category template with required/optional attributes."
+  },
+  {
+   "id": "R08004f",
+   "lines": [
+    8004,
+    8004
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "data",
+   "text": "Context object contains: previous listing versions (if any)."
+  },
+  {
+   "id": "R08004g",
+   "lines": [
+    8004,
+    8004
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "data",
+   "text": "Context object contains: user instructions."
+  },
+  {
+   "id": "R08006",
+   "lines": [
+    8006,
+    8006
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "info",
+   "text": "## Parallel Execution",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08008",
+   "lines": [
+    8008,
+    8008
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "requirement",
+   "text": "Content Agent, Keyword Agent, Attribute Agent, and Image Agent can execute in parallel."
+  },
+  {
+   "id": "R08008a",
+   "lines": [
+    8008,
+    8008
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "requirement",
+   "text": "Content, Keyword, Attribute and Image Agents have no inter-dependencies (reason they can run in parallel)."
+  },
+  {
+   "id": "R08008b",
+   "lines": [
+    8008,
+    8008
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "requirement",
+   "text": "Each agent reads from the shared context."
+  },
+  {
+   "id": "R08008c",
+   "lines": [
+    8008,
+    8008
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "requirement",
+   "text": "Each agent produces independent outputs."
+  },
+  {
+   "id": "R08008d",
+   "lines": [
+    8008,
+    8008
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "decision",
+   "text": "The Agent Orchestrator (LangGraph) manages this parallelism."
+  },
+  {
+   "id": "R08008e",
+   "lines": [
+    8008,
+    8008
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "requirement",
+   "text": "The Agent Orchestrator merges outputs into the canonical listing JSON."
+  },
+  {
+   "id": "R08010",
+   "lines": [
+    8010,
+    8010
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "info",
+   "text": "Engineering Note (callout label)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08012",
+   "lines": [
+    8012,
+    8012
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "decision",
+   "text": "LangGraph supports parallel node execution via branching edges."
+  },
+  {
+   "id": "R08012a",
+   "lines": [
+    8012,
+    8012
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "data",
+   "text": "Each agent node reads from the shared AgentState."
+  },
+  {
+   "id": "R08012b",
+   "lines": [
+    8012,
+    8012
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "data",
+   "text": "Each agent node writes to its own output field."
+  },
+  {
+   "id": "R08012c",
+   "lines": [
+    8012,
+    8012
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "flow",
+   "text": "The merge node combines all outputs into the final canonical listing."
+  },
+  {
+   "id": "R08014",
+   "lines": [
+    8014,
+    8014
+   ],
+   "page": "[10] Listing Generation Flow",
+   "kind": "info",
+   "text": "--- (page separator)",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08016",
+   "lines": [
+    8016,
+    8016
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "info",
+   "text": "# [11] Validation Flow",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08018",
+   "lines": [
+    8018,
+    8018
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "info",
+   "text": "Section: User & Product Flow",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08019",
+   "lines": [
+    8019,
+    8019
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "scope",
+   "text": "Page [11] Validation Flow scope: MVP."
+  },
+  {
+   "id": "R08020",
+   "lines": [
+    8020,
+    8020
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/validation-flow",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08021",
+   "lines": [
+    8021,
+    8021
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "constraint",
+   "text": "Validation is two-stage (page description)."
+  },
+  {
+   "id": "R08021a",
+   "lines": [
+    8021,
+    8021
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "requirement",
+   "text": "Validation stage: deterministic rules engine."
+  },
+  {
+   "id": "R08021b",
+   "lines": [
+    8021,
+    8021
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "requirement",
+   "text": "Validation stage: vision model checks."
+  },
+  {
+   "id": "R08021c",
+   "lines": [
+    8021,
+    8021
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "Validation returns structured ErrorReport."
+  },
+  {
+   "id": "R08022",
+   "lines": [
+    8022,
+    8022
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "info",
+   "text": "Keywords: validation, rules engine, vision, ErrorReport, compliance",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08024",
+   "lines": [
+    8024,
+    8024
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "info",
+   "text": "## Validation Stages",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08026",
+   "lines": [
+    8026,
+    8027
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "info",
+   "text": "Mermaid fence and graph direction (graph LR).",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08028",
+   "lines": [
+    8028,
+    8028
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "flow",
+   "text": "\"Canonical Listing\" --> \"Schema Validation\"."
+  },
+  {
+   "id": "R08029",
+   "lines": [
+    8029,
+    8029
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "flow",
+   "text": "Schema Validation --> \"Rules Engine\"."
+  },
+  {
+   "id": "R08030",
+   "lines": [
+    8030,
+    8030
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "flow",
+   "text": "Rules Engine --> \"Vision Model\"."
+  },
+  {
+   "id": "R08031",
+   "lines": [
+    8031,
+    8031
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "flow",
+   "text": "Vision Model --> decision \"All Pass?\"."
+  },
+  {
+   "id": "R08032",
+   "lines": [
+    8032,
+    8032
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "flow",
+   "text": "All Pass? \"Yes\" --> \"Quality Scoring\"."
+  },
+  {
+   "id": "R08033",
+   "lines": [
+    8033,
+    8033
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "flow",
+   "text": "All Pass? \"No\" --> \"Structured ErrorReport\"."
+  },
+  {
+   "id": "R08034",
+   "lines": [
+    8034,
+    8035
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "flow",
+   "text": "Structured ErrorReport --> \"Correction Agent\"."
+  },
+  {
+   "id": "R08037",
+   "lines": [
+    8037,
+    8037
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "requirement",
+   "text": "Stage 1: Schema Validation — JSON schema compliance."
+  },
+  {
+   "id": "R08037a",
+   "lines": [
+    8037,
+    8037
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "requirement",
+   "text": "Stage 1: Schema Validation — required fields present."
+  },
+  {
+   "id": "R08037b",
+   "lines": [
+    8037,
+    8037
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "requirement",
+   "text": "Stage 1: Schema Validation — correct data types."
+  },
+  {
+   "id": "R08039",
+   "lines": [
+    8039,
+    8039
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "requirement",
+   "text": "Stage 2: Rules Engine — deterministic marketplace rules."
+  },
+  {
+   "id": "R08039a",
+   "lines": [
+    8039,
+    8039
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "requirement",
+   "text": "Stage 2 rule: character limits."
+  },
+  {
+   "id": "R08039b",
+   "lines": [
+    8039,
+    8039
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "requirement",
+   "text": "Stage 2 rule: banned terms."
+  },
+  {
+   "id": "R08039c",
+   "lines": [
+    8039,
+    8039
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "requirement",
+   "text": "Stage 2 rule: attribute completeness."
+  },
+  {
+   "id": "R08039d",
+   "lines": [
+    8039,
+    8039
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "requirement",
+   "text": "Stage 2 rule: category compliance."
+  },
+  {
+   "id": "R08041",
+   "lines": [
+    8041,
+    8041
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "requirement",
+   "text": "Stage 3: Vision Model — image compliance: background color."
+  },
+  {
+   "id": "R08041a",
+   "lines": [
+    8041,
+    8041
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "requirement",
+   "text": "Stage 3 vision check: resolution."
+  },
+  {
+   "id": "R08041b",
+   "lines": [
+    8041,
+    8041
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "requirement",
+   "text": "Stage 3 vision check: text overlays."
+  },
+  {
+   "id": "R08041c",
+   "lines": [
+    8041,
+    8041
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "requirement",
+   "text": "Stage 3 vision check: watermarks."
+  },
+  {
+   "id": "R08041d",
+   "lines": [
+    8041,
+    8041
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "requirement",
+   "text": "Stage 3 vision check: product fill ratio."
+  },
+  {
+   "id": "R08043",
+   "lines": [
+    8043,
+    8043
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "info",
+   "text": "## ErrorReport Contract",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08045",
+   "lines": [
+    8045,
+    8045
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "The ErrorReport Contract is labelled \"Unified ErrorReport\"."
+  },
+  {
+   "id": "R08047",
+   "lines": [
+    8047,
+    8048
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "info",
+   "text": "JSON code fence and opening brace of the ErrorReport example.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08049",
+   "lines": [
+    8049,
+    8049
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "ErrorReport field \"status\", example \"failed\"."
+  },
+  {
+   "id": "R08050",
+   "lines": [
+    8050,
+    8050
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "ErrorReport field \"error_code\", example \"VALIDATION_FAILED\"."
+  },
+  {
+   "id": "R08051",
+   "lines": [
+    8051,
+    8051
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "ErrorReport field \"retryable\", example true."
+  },
+  {
+   "id": "R08052",
+   "lines": [
+    8052,
+    8052
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "ErrorReport field \"attempts_used\", example 1."
+  },
+  {
+   "id": "R08053",
+   "lines": [
+    8053,
+    8053
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "ErrorReport field \"max_attempts\", example 3."
+  },
+  {
+   "id": "R08053a",
+   "lines": [
+    8053,
+    8053
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "constraint",
+   "text": "ErrorReport example: \"max_attempts\": 3."
+  },
+  {
+   "id": "R08054",
+   "lines": [
+    8054,
+    8054
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "ErrorReport field \"errors\": array of per-field error objects."
+  },
+  {
+   "id": "R08055",
+   "lines": [
+    8055,
+    8056
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "ErrorReport errors[] item field \"field\", example \"title\"."
+  },
+  {
+   "id": "R08057",
+   "lines": [
+    8057,
+    8057
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "errors[] item field \"error_code\", example \"TITLE_TOO_LONG\"."
+  },
+  {
+   "id": "R08058",
+   "lines": [
+    8058,
+    8058
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "errors[] item field \"message\", example \"Title is 221 chars; Amazon limit is 200\"."
+  },
+  {
+   "id": "R08058a",
+   "lines": [
+    8058,
+    8058
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "constraint",
+   "text": "Amazon title limit is 200 chars (per ErrorReport example)."
+  },
+  {
+   "id": "R08059",
+   "lines": [
+    8059,
+    8059
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "errors[] item field \"value_submitted\", example \"Organic Cotton Kurta Set... (221 chars)\"."
+  },
+  {
+   "id": "R08060",
+   "lines": [
+    8060,
+    8060
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "errors[] item field \"suggestion\", example \"Shorten to <= 200 chars; move detail to bullets\"."
+  },
+  {
+   "id": "R08061",
+   "lines": [
+    8061,
+    8061
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "errors[] item field \"source\", example \"rules_engine\"."
+  },
+  {
+   "id": "R08062",
+   "lines": [
+    8062,
+    8062
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "errors[] item field \"retryable\", example true."
+  },
+  {
+   "id": "R08063",
+   "lines": [
+    8063,
+    8064
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "errors[] item field \"marketplace\", example \"amazon\"."
+  },
+  {
+   "id": "R08065",
+   "lines": [
+    8065,
+    8066
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "errors[] item \"field\" uses indexed path, example \"bullets[2]\"."
+  },
+  {
+   "id": "R08067",
+   "lines": [
+    8067,
+    8067
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "errors[] item error_code example \"BANNED_TERM\"."
+  },
+  {
+   "id": "R08068",
+   "lines": [
+    8068,
+    8068
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "errors[] item message example \"Contains 'best' which is restricted on Flipkart\"."
+  },
+  {
+   "id": "R08068a",
+   "lines": [
+    8068,
+    8068
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "constraint",
+   "text": "The term 'best' is restricted on Flipkart (per ErrorReport example)."
+  },
+  {
+   "id": "R08069",
+   "lines": [
+    8069,
+    8069
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "errors[] item value_submitted example \"Best quality fabric...\"."
+  },
+  {
+   "id": "R08070",
+   "lines": [
+    8070,
+    8070
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "errors[] item suggestion example \"Replace with factual claim, e.g. 'Premium quality fabric'\"."
+  },
+  {
+   "id": "R08071",
+   "lines": [
+    8071,
+    8071
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "info",
+   "text": "errors[] item \"source\": \"rules_engine\" (repeated in second example).",
+   "why_not": "restatement",
+   "dup_of": "R08061"
+  },
+  {
+   "id": "R08072",
+   "lines": [
+    8072,
+    8072
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "info",
+   "text": "errors[] item \"retryable\": true (repeated in second example).",
+   "why_not": "restatement",
+   "dup_of": "R08062"
+  },
+  {
+   "id": "R08073",
+   "lines": [
+    8073,
+    8073
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "interface",
+   "text": "errors[] item marketplace example \"flipkart\"."
+  },
+  {
+   "id": "R08074",
+   "lines": [
+    8074,
+    8077
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "info",
+   "text": "Closing braces, array bracket and code fence of the ErrorReport example.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08079",
+   "lines": [
+    8079,
+    8079
+   ],
+   "page": "[11] Validation Flow",
+   "kind": "info",
+   "text": "--- (page separator)",
+   "why_not": "table-scaffold"
+  }
+ ]
+}

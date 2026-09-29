@@ -1,0 +1,4900 @@
+{
+ "chunk": "c20",
+ "start": 11963,
+ "end": 12509,
+ "items": [
+  {
+   "id": "R11963",
+   "lines": [
+    11963,
+    11963
+   ],
+   "page": "[133] Exponential Backoff",
+   "kind": "info",
+   "text": "# [133] Exponential Backoff",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11965",
+   "lines": [
+    11965,
+    11965
+   ],
+   "page": "[133] Exponential Backoff",
+   "kind": "info",
+   "text": "Section: Execution & Reliability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11966",
+   "lines": [
+    11966,
+    11966
+   ],
+   "page": "[133] Exponential Backoff",
+   "kind": "scope",
+   "text": "Page [133] Exponential Backoff scope: MVP."
+  },
+  {
+   "id": "R11967",
+   "lines": [
+    11967,
+    11967
+   ],
+   "page": "[133] Exponential Backoff",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/exponential-backoff",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11968",
+   "lines": [
+    11968,
+    11968
+   ],
+   "page": "[133] Exponential Backoff",
+   "kind": "info",
+   "text": "Description: Exponential backoff implementation for rate-limited marketplace APIs.",
+   "why_not": "restatement",
+   "dup_of": "R11973"
+  },
+  {
+   "id": "R11969",
+   "lines": [
+    11969,
+    11969
+   ],
+   "page": "[133] Exponential Backoff",
+   "kind": "info",
+   "text": "Keywords: exponential backoff, rate limit, delay, jitter",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11971",
+   "lines": [
+    11971,
+    11971
+   ],
+   "page": "[133] Exponential Backoff",
+   "kind": "info",
+   "text": "## Exponential Backoff",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11973",
+   "lines": [
+    11973,
+    11973
+   ],
+   "page": "[133] Exponential Backoff",
+   "kind": "interface",
+   "text": "Exponential backoff applies to rate-limited responses (HTTP 429)."
+  },
+  {
+   "id": "R11973a",
+   "lines": [
+    11973,
+    11973
+   ],
+   "page": "[133] Exponential Backoff",
+   "kind": "constraint",
+   "text": "Backoff initial delay: 1s."
+  },
+  {
+   "id": "R11973b",
+   "lines": [
+    11973,
+    11973
+   ],
+   "page": "[133] Exponential Backoff",
+   "kind": "constraint",
+   "text": "Backoff delay is multiplied by 2 each attempt."
+  },
+  {
+   "id": "R11973c",
+   "lines": [
+    11973,
+    11973
+   ],
+   "page": "[133] Exponential Backoff",
+   "kind": "requirement",
+   "text": "Backoff adds random jitter to prevent thundering herd."
+  },
+  {
+   "id": "R11973d",
+   "lines": [
+    11973,
+    11973
+   ],
+   "page": "[133] Exponential Backoff",
+   "kind": "constraint",
+   "text": "Max backoff delay capped at 60s."
+  },
+  {
+   "id": "R11973e",
+   "lines": [
+    11973,
+    11973
+   ],
+   "page": "[133] Exponential Backoff",
+   "kind": "requirement",
+   "text": "Backoff has no agent involvement — purely automatic."
+  },
+  {
+   "id": "R11973f",
+   "lines": [
+    11973,
+    11973
+   ],
+   "page": "[133] Exponential Backoff",
+   "kind": "requirement",
+   "text": "Exponential backoff handles Amazon rate limiting gracefully."
+  },
+  {
+   "id": "R11973g",
+   "lines": [
+    11973,
+    11973
+   ],
+   "page": "[133] Exponential Backoff",
+   "kind": "requirement",
+   "text": "Exponential backoff handles Flipkart rate limiting gracefully."
+  },
+  {
+   "id": "R11975",
+   "lines": [
+    11975,
+    11975
+   ],
+   "page": "[133] Exponential Backoff",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11977",
+   "lines": [
+    11977,
+    11977
+   ],
+   "page": "[134] Rate Limiting",
+   "kind": "info",
+   "text": "# [134] Rate Limiting",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11979",
+   "lines": [
+    11979,
+    11979
+   ],
+   "page": "[134] Rate Limiting",
+   "kind": "info",
+   "text": "Section: Execution & Reliability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11980",
+   "lines": [
+    11980,
+    11980
+   ],
+   "page": "[134] Rate Limiting",
+   "kind": "scope",
+   "text": "Page [134] Rate Limiting scope: MVP."
+  },
+  {
+   "id": "R11981",
+   "lines": [
+    11981,
+    11981
+   ],
+   "page": "[134] Rate Limiting",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/rate-limiting",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11982",
+   "lines": [
+    11982,
+    11982
+   ],
+   "page": "[134] Rate Limiting",
+   "kind": "info",
+   "text": "Description: Per-marketplace rate limiting to respect API quotas.",
+   "why_not": "restatement",
+   "dup_of": "R11987"
+  },
+  {
+   "id": "R11983",
+   "lines": [
+    11983,
+    11983
+   ],
+   "page": "[134] Rate Limiting",
+   "kind": "info",
+   "text": "Keywords: rate limiting, throttling, API quota, marketplace",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11985",
+   "lines": [
+    11985,
+    11985
+   ],
+   "page": "[134] Rate Limiting",
+   "kind": "info",
+   "text": "## Rate Limiting",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11987",
+   "lines": [
+    11987,
+    11987
+   ],
+   "page": "[134] Rate Limiting",
+   "kind": "requirement",
+   "text": "Each marketplace adapter implements its own rate limiter."
+  },
+  {
+   "id": "R11987a",
+   "lines": [
+    11987,
+    11987
+   ],
+   "page": "[134] Rate Limiting",
+   "kind": "requirement",
+   "text": "Each adapter's rate limiter is based on the marketplace's published API quotas."
+  },
+  {
+   "id": "R11987b",
+   "lines": [
+    11987,
+    11987
+   ],
+   "page": "[134] Rate Limiting",
+   "kind": "flow",
+   "text": "Marketplace API requests are queued."
+  },
+  {
+   "id": "R11987c",
+   "lines": [
+    11987,
+    11987
+   ],
+   "page": "[134] Rate Limiting",
+   "kind": "requirement",
+   "text": "Queued requests are dispatched within rate limits."
+  },
+  {
+   "id": "R11987d",
+   "lines": [
+    11987,
+    11987
+   ],
+   "page": "[134] Rate Limiting",
+   "kind": "flow",
+   "text": "If rate limits are exceeded, exponential backoff applies."
+  },
+  {
+   "id": "R11987e",
+   "lines": [
+    11987,
+    11987
+   ],
+   "page": "[134] Rate Limiting",
+   "kind": "quality",
+   "text": "Rate limit metrics are tracked for observability."
+  },
+  {
+   "id": "R11989",
+   "lines": [
+    11989,
+    11989
+   ],
+   "page": "[134] Rate Limiting",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11991",
+   "lines": [
+    11991,
+    11991
+   ],
+   "page": "[135] Marketplace Throttling",
+   "kind": "info",
+   "text": "# [135] Marketplace Throttling",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11993",
+   "lines": [
+    11993,
+    11993
+   ],
+   "page": "[135] Marketplace Throttling",
+   "kind": "info",
+   "text": "Section: Execution & Reliability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11994",
+   "lines": [
+    11994,
+    11994
+   ],
+   "page": "[135] Marketplace Throttling",
+   "kind": "scope",
+   "text": "Page [135] Marketplace Throttling scope: MVP."
+  },
+  {
+   "id": "R11995",
+   "lines": [
+    11995,
+    11995
+   ],
+   "page": "[135] Marketplace Throttling",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/marketplace-throttling",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11996",
+   "lines": [
+    11996,
+    11996
+   ],
+   "page": "[135] Marketplace Throttling",
+   "kind": "info",
+   "text": "Description: How marketplace API throttling is managed per-account.",
+   "why_not": "restatement",
+   "dup_of": "R12001"
+  },
+  {
+   "id": "R11997",
+   "lines": [
+    11997,
+    11997
+   ],
+   "page": "[135] Marketplace Throttling",
+   "kind": "info",
+   "text": "Keywords: throttling, marketplace, per-account, concurrency",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11999",
+   "lines": [
+    11999,
+    11999
+   ],
+   "page": "[135] Marketplace Throttling",
+   "kind": "info",
+   "text": "## Marketplace Throttling",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12001",
+   "lines": [
+    12001,
+    12001
+   ],
+   "page": "[135] Marketplace Throttling",
+   "kind": "requirement",
+   "text": "Bounded concurrency per marketplace account ensures we never exceed API limits."
+  },
+  {
+   "id": "R12001a",
+   "lines": [
+    12001,
+    12001
+   ],
+   "page": "[135] Marketplace Throttling",
+   "kind": "decision",
+   "text": "Each marketplace adapter maintains a semaphore/token bucket."
+  },
+  {
+   "id": "R12001b",
+   "lines": [
+    12001,
+    12001
+   ],
+   "page": "[135] Marketplace Throttling",
+   "kind": "requirement",
+   "text": "The semaphore/token bucket controls how many concurrent API calls are in flight."
+  },
+  {
+   "id": "R12001c",
+   "lines": [
+    12001,
+    12001
+   ],
+   "page": "[135] Marketplace Throttling",
+   "kind": "requirement",
+   "text": "Bounded concurrency prevents mass bulk operations from triggering account-level throttling."
+  },
+  {
+   "id": "R12003",
+   "lines": [
+    12003,
+    12003
+   ],
+   "page": "[135] Marketplace Throttling",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12005",
+   "lines": [
+    12005,
+    12005
+   ],
+   "page": "[136] Idempotency",
+   "kind": "info",
+   "text": "# [136] Idempotency",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12007",
+   "lines": [
+    12007,
+    12007
+   ],
+   "page": "[136] Idempotency",
+   "kind": "info",
+   "text": "Section: Execution & Reliability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12008",
+   "lines": [
+    12008,
+    12008
+   ],
+   "page": "[136] Idempotency",
+   "kind": "scope",
+   "text": "Page [136] Idempotency scope: MVP."
+  },
+  {
+   "id": "R12009",
+   "lines": [
+    12009,
+    12009
+   ],
+   "page": "[136] Idempotency",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/idempotency",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12010",
+   "lines": [
+    12010,
+    12010
+   ],
+   "page": "[136] Idempotency",
+   "kind": "info",
+   "text": "Description: Idempotency keys on all marketplace mutations.",
+   "why_not": "restatement",
+   "dup_of": "R12017a"
+  },
+  {
+   "id": "R12010a",
+   "lines": [
+    12010,
+    12010
+   ],
+   "page": "[136] Idempotency",
+   "kind": "requirement",
+   "text": "Never double-publish."
+  },
+  {
+   "id": "R12011",
+   "lines": [
+    12011,
+    12011
+   ],
+   "page": "[136] Idempotency",
+   "kind": "info",
+   "text": "Keywords: idempotency, keys, double publish, deduplication",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12013",
+   "lines": [
+    12013,
+    12013
+   ],
+   "page": "[136] Idempotency",
+   "kind": "info",
+   "text": "## Idempotency",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12015",
+   "lines": [
+    12015,
+    12015
+   ],
+   "page": "[136] Idempotency",
+   "kind": "requirement",
+   "text": "Marketplace-mutation idempotency is labelled an Invariant."
+  },
+  {
+   "id": "R12017",
+   "lines": [
+    12017,
+    12017
+   ],
+   "page": "[136] Idempotency",
+   "kind": "requirement",
+   "text": "Marketplace mutations are idempotent."
+  },
+  {
+   "id": "R12017a",
+   "lines": [
+    12017,
+    12017
+   ],
+   "page": "[136] Idempotency",
+   "kind": "requirement",
+   "text": "Every marketplace write operation includes an idempotency key."
+  },
+  {
+   "id": "R12017b",
+   "lines": [
+    12017,
+    12017
+   ],
+   "page": "[136] Idempotency",
+   "kind": "flow",
+   "text": "If a network failure causes uncertainty about whether a publish succeeded, retrying with the same key is safe."
+  },
+  {
+   "id": "R12017c",
+   "lines": [
+    12017,
+    12017
+   ],
+   "page": "[136] Idempotency",
+   "kind": "risk",
+   "text": "Retrying with the same idempotency key is safe because the marketplace will deduplicate."
+  },
+  {
+   "id": "R12019",
+   "lines": [
+    12019,
+    12019
+   ],
+   "page": "[136] Idempotency",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12021",
+   "lines": [
+    12021,
+    12021
+   ],
+   "page": "[137] Partial Failure Handling",
+   "kind": "info",
+   "text": "# [137] Partial Failure Handling",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12023",
+   "lines": [
+    12023,
+    12023
+   ],
+   "page": "[137] Partial Failure Handling",
+   "kind": "info",
+   "text": "Section: Execution & Reliability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12024",
+   "lines": [
+    12024,
+    12024
+   ],
+   "page": "[137] Partial Failure Handling",
+   "kind": "scope",
+   "text": "Page [137] Partial Failure Handling scope: MVP."
+  },
+  {
+   "id": "R12025",
+   "lines": [
+    12025,
+    12025
+   ],
+   "page": "[137] Partial Failure Handling",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/partial-failure-handling",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12026",
+   "lines": [
+    12026,
+    12026
+   ],
+   "page": "[137] Partial Failure Handling",
+   "kind": "info",
+   "text": "Description: Handling partial marketplace success — retry only failed fields.",
+   "why_not": "restatement",
+   "dup_of": "R12033"
+  },
+  {
+   "id": "R12027",
+   "lines": [
+    12027,
+    12027
+   ],
+   "page": "[137] Partial Failure Handling",
+   "kind": "info",
+   "text": "Keywords: partial failure, partial success, field-level retry",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12029",
+   "lines": [
+    12029,
+    12029
+   ],
+   "page": "[137] Partial Failure Handling",
+   "kind": "info",
+   "text": "## Partial Failure Handling",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12031",
+   "lines": [
+    12031,
+    12031
+   ],
+   "page": "[137] Partial Failure Handling",
+   "kind": "requirement",
+   "text": "Partial-failure field-level retry is labelled an Invariant."
+  },
+  {
+   "id": "R12033",
+   "lines": [
+    12033,
+    12033
+   ],
+   "page": "[137] Partial Failure Handling",
+   "kind": "requirement",
+   "text": "On partial API success, retry only failed fields."
+  },
+  {
+   "id": "R12033a",
+   "lines": [
+    12033,
+    12033
+   ],
+   "page": "[137] Partial Failure Handling",
+   "kind": "requirement",
+   "text": "Never re-push the whole listing on partial API success."
+  },
+  {
+   "id": "R12033b",
+   "lines": [
+    12033,
+    12033
+   ],
+   "page": "[137] Partial Failure Handling",
+   "kind": "interface",
+   "text": "The adapter's ListingResult tells exactly which fields succeeded."
+  },
+  {
+   "id": "R12033c",
+   "lines": [
+    12033,
+    12033
+   ],
+   "page": "[137] Partial Failure Handling",
+   "kind": "interface",
+   "text": "The adapter's ListingResult tells exactly which fields failed."
+  },
+  {
+   "id": "R12033d",
+   "lines": [
+    12033,
+    12033
+   ],
+   "page": "[137] Partial Failure Handling",
+   "kind": "requirement",
+   "text": "Field-level retry prevents overwriting already-successful fields."
+  },
+  {
+   "id": "R12033e",
+   "lines": [
+    12033,
+    12033
+   ],
+   "page": "[137] Partial Failure Handling",
+   "kind": "quality",
+   "text": "Field-level retry reduces unnecessary API calls."
+  },
+  {
+   "id": "R12035",
+   "lines": [
+    12035,
+    12035
+   ],
+   "page": "[137] Partial Failure Handling",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12037",
+   "lines": [
+    12037,
+    12037
+   ],
+   "page": "[138] Dead Letter / Failed Jobs",
+   "kind": "info",
+   "text": "# [138] Dead Letter / Failed Jobs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12039",
+   "lines": [
+    12039,
+    12039
+   ],
+   "page": "[138] Dead Letter / Failed Jobs",
+   "kind": "info",
+   "text": "Section: Execution & Reliability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12040",
+   "lines": [
+    12040,
+    12040
+   ],
+   "page": "[138] Dead Letter / Failed Jobs",
+   "kind": "scope",
+   "text": "Page [138] Dead Letter / Failed Jobs scope: MVP."
+  },
+  {
+   "id": "R12041",
+   "lines": [
+    12041,
+    12041
+   ],
+   "page": "[138] Dead Letter / Failed Jobs",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/dead-letter-failed-jobs",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12042",
+   "lines": [
+    12042,
+    12042
+   ],
+   "page": "[138] Dead Letter / Failed Jobs",
+   "kind": "info",
+   "text": "Description: How permanently failed jobs are handled — dead letter queue and reprocessing.",
+   "why_not": "restatement",
+   "dup_of": "R12047"
+  },
+  {
+   "id": "R12043",
+   "lines": [
+    12043,
+    12043
+   ],
+   "page": "[138] Dead Letter / Failed Jobs",
+   "kind": "info",
+   "text": "Keywords: dead letter, failed jobs, reprocessing, DLQ",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12045",
+   "lines": [
+    12045,
+    12045
+   ],
+   "page": "[138] Dead Letter / Failed Jobs",
+   "kind": "info",
+   "text": "## Dead Letter Handling",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12047",
+   "lines": [
+    12047,
+    12047
+   ],
+   "page": "[138] Dead Letter / Failed Jobs",
+   "kind": "flow",
+   "text": "Jobs that exhaust all retry attempts are moved to a dead letter queue."
+  },
+  {
+   "id": "R12047a",
+   "lines": [
+    12047,
+    12047
+   ],
+   "page": "[138] Dead Letter / Failed Jobs",
+   "kind": "data",
+   "text": "Each failed job preserves its full ErrorReport."
+  },
+  {
+   "id": "R12047b",
+   "lines": [
+    12047,
+    12047
+   ],
+   "page": "[138] Dead Letter / Failed Jobs",
+   "kind": "data",
+   "text": "Each failed job preserves its input context."
+  },
+  {
+   "id": "R12047c",
+   "lines": [
+    12047,
+    12047
+   ],
+   "page": "[138] Dead Letter / Failed Jobs",
+   "kind": "data",
+   "text": "Each failed job preserves its failure history."
+  },
+  {
+   "id": "R12047d",
+   "lines": [
+    12047,
+    12047
+   ],
+   "page": "[138] Dead Letter / Failed Jobs",
+   "kind": "requirement",
+   "text": "Operators can inspect dead-lettered jobs."
+  },
+  {
+   "id": "R12047e",
+   "lines": [
+    12047,
+    12047
+   ],
+   "page": "[138] Dead Letter / Failed Jobs",
+   "kind": "requirement",
+   "text": "Operators can fix dead-lettered jobs."
+  },
+  {
+   "id": "R12047f",
+   "lines": [
+    12047,
+    12047
+   ],
+   "page": "[138] Dead Letter / Failed Jobs",
+   "kind": "requirement",
+   "text": "Operators can resubmit dead-lettered jobs."
+  },
+  {
+   "id": "R12049",
+   "lines": [
+    12049,
+    12049
+   ],
+   "page": "[138] Dead Letter / Failed Jobs",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12051",
+   "lines": [
+    12051,
+    12051
+   ],
+   "page": "[139] Job Reprocessing",
+   "kind": "info",
+   "text": "# [139] Job Reprocessing",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12053",
+   "lines": [
+    12053,
+    12053
+   ],
+   "page": "[139] Job Reprocessing",
+   "kind": "info",
+   "text": "Section: Execution & Reliability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12054",
+   "lines": [
+    12054,
+    12054
+   ],
+   "page": "[139] Job Reprocessing",
+   "kind": "scope",
+   "text": "Page [139] Job Reprocessing scope: MVP."
+  },
+  {
+   "id": "R12055",
+   "lines": [
+    12055,
+    12055
+   ],
+   "page": "[139] Job Reprocessing",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/job-reprocessing",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12056",
+   "lines": [
+    12056,
+    12056
+   ],
+   "page": "[139] Job Reprocessing",
+   "kind": "info",
+   "text": "Description: How failed jobs can be retried with the same input.",
+   "why_not": "restatement",
+   "dup_of": "R12061b"
+  },
+  {
+   "id": "R12057",
+   "lines": [
+    12057,
+    12057
+   ],
+   "page": "[139] Job Reprocessing",
+   "kind": "info",
+   "text": "Keywords: reprocessing, retry, failed jobs, re-run",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12059",
+   "lines": [
+    12059,
+    12059
+   ],
+   "page": "[139] Job Reprocessing",
+   "kind": "info",
+   "text": "## Job Reprocessing",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12061",
+   "lines": [
+    12061,
+    12061
+   ],
+   "page": "[139] Job Reprocessing",
+   "kind": "data",
+   "text": "Every AgentRun stores its complete input."
+  },
+  {
+   "id": "R12061a",
+   "lines": [
+    12061,
+    12061
+   ],
+   "page": "[139] Job Reprocessing",
+   "kind": "data",
+   "text": "Every AgentRun stores its ErrorReport."
+  },
+  {
+   "id": "R12061b",
+   "lines": [
+    12061,
+    12061
+   ],
+   "page": "[139] Job Reprocessing",
+   "kind": "requirement",
+   "text": "Failed jobs can be re-submitted with the same input."
+  },
+  {
+   "id": "R12061c",
+   "lines": [
+    12061,
+    12061
+   ],
+   "page": "[139] Job Reprocessing",
+   "kind": "flow",
+   "text": "Re-submission creates a new AgentRun with the same context."
+  },
+  {
+   "id": "R12061d",
+   "lines": [
+    12061,
+    12061
+   ],
+   "page": "[139] Job Reprocessing",
+   "kind": "quality",
+   "text": "Job reprocessing enables debugging and recovery without data loss."
+  },
+  {
+   "id": "R12063",
+   "lines": [
+    12063,
+    12063
+   ],
+   "page": "[139] Job Reprocessing",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12065",
+   "lines": [
+    12065,
+    12065
+   ],
+   "page": "[140] Batch Processing",
+   "kind": "info",
+   "text": "# [140] Batch Processing",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12067",
+   "lines": [
+    12067,
+    12067
+   ],
+   "page": "[140] Batch Processing",
+   "kind": "info",
+   "text": "Section: Execution & Reliability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12068",
+   "lines": [
+    12068,
+    12068
+   ],
+   "page": "[140] Batch Processing",
+   "kind": "scope",
+   "text": "Page [140] Batch Processing scope: MVP."
+  },
+  {
+   "id": "R12069",
+   "lines": [
+    12069,
+    12069
+   ],
+   "page": "[140] Batch Processing",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/batch-processing",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12070",
+   "lines": [
+    12070,
+    12070
+   ],
+   "page": "[140] Batch Processing",
+   "kind": "info",
+   "text": "Description: CSV bulk import batch processing — row-level validation, fan-out, aggregate results.",
+   "why_not": "restatement",
+   "dup_of": "R12075"
+  },
+  {
+   "id": "R12071",
+   "lines": [
+    12071,
+    12071
+   ],
+   "page": "[140] Batch Processing",
+   "kind": "info",
+   "text": "Keywords: batch, processing, bulk, CSV, fan-out",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12073",
+   "lines": [
+    12073,
+    12073
+   ],
+   "page": "[140] Batch Processing",
+   "kind": "info",
+   "text": "## Batch Processing",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12075",
+   "lines": [
+    12075,
+    12075
+   ],
+   "page": "[140] Batch Processing",
+   "kind": "flow",
+   "text": "Batch step 1: CSV upload."
+  },
+  {
+   "id": "R12075a",
+   "lines": [
+    12075,
+    12075
+   ],
+   "page": "[140] Batch Processing",
+   "kind": "flow",
+   "text": "Batch step 2: parse."
+  },
+  {
+   "id": "R12075b",
+   "lines": [
+    12075,
+    12075
+   ],
+   "page": "[140] Batch Processing",
+   "kind": "flow",
+   "text": "Batch step 3: row-level validation."
+  },
+  {
+   "id": "R12075c",
+   "lines": [
+    12075,
+    12075
+   ],
+   "page": "[140] Batch Processing",
+   "kind": "flow",
+   "text": "Batch step 4: fan-out into parallel Agent Runs."
+  },
+  {
+   "id": "R12075d",
+   "lines": [
+    12075,
+    12075
+   ],
+   "page": "[140] Batch Processing",
+   "kind": "constraint",
+   "text": "Batch fan-out uses bounded concurrency."
+  },
+  {
+   "id": "R12075e",
+   "lines": [
+    12075,
+    12075
+   ],
+   "page": "[140] Batch Processing",
+   "kind": "flow",
+   "text": "Batch step 5: aggregate per-row results."
+  },
+  {
+   "id": "R12075f",
+   "lines": [
+    12075,
+    12075
+   ],
+   "page": "[140] Batch Processing",
+   "kind": "flow",
+   "text": "Batch step 6: per-row approval UI."
+  },
+  {
+   "id": "R12075g",
+   "lines": [
+    12075,
+    12075
+   ],
+   "page": "[140] Batch Processing",
+   "kind": "requirement",
+   "text": "Partial failures isolate to the row."
+  },
+  {
+   "id": "R12075h",
+   "lines": [
+    12075,
+    12075
+   ],
+   "page": "[140] Batch Processing",
+   "kind": "requirement",
+   "text": "The batch completes with a summary report."
+  },
+  {
+   "id": "R12077",
+   "lines": [
+    12077,
+    12077
+   ],
+   "page": "[140] Batch Processing",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12079",
+   "lines": [
+    12079,
+    12079
+   ],
+   "page": "[141] Parallel Agent Runs",
+   "kind": "info",
+   "text": "# [141] Parallel Agent Runs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12081",
+   "lines": [
+    12081,
+    12081
+   ],
+   "page": "[141] Parallel Agent Runs",
+   "kind": "info",
+   "text": "Section: Execution & Reliability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12082",
+   "lines": [
+    12082,
+    12082
+   ],
+   "page": "[141] Parallel Agent Runs",
+   "kind": "scope",
+   "text": "Page [141] Parallel Agent Runs scope: MVP."
+  },
+  {
+   "id": "R12083",
+   "lines": [
+    12083,
+    12083
+   ],
+   "page": "[141] Parallel Agent Runs",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/parallel-agent-runs",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12084",
+   "lines": [
+    12084,
+    12084
+   ],
+   "page": "[141] Parallel Agent Runs",
+   "kind": "info",
+   "text": "Description: How multiple agents and multiple products are processed in parallel.",
+   "why_not": "restatement",
+   "dup_of": "R12089"
+  },
+  {
+   "id": "R12085",
+   "lines": [
+    12085,
+    12085
+   ],
+   "page": "[141] Parallel Agent Runs",
+   "kind": "info",
+   "text": "Keywords: parallel, agent runs, concurrency, bounded",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12087",
+   "lines": [
+    12087,
+    12087
+   ],
+   "page": "[141] Parallel Agent Runs",
+   "kind": "info",
+   "text": "## Parallel Agent Runs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12089",
+   "lines": [
+    12089,
+    12089
+   ],
+   "page": "[141] Parallel Agent Runs",
+   "kind": "flow",
+   "text": "Within a single listing generation: Content, Keyword, Attribute, and Image agents run in parallel."
+  },
+  {
+   "id": "R12089a",
+   "lines": [
+    12089,
+    12089
+   ],
+   "page": "[141] Parallel Agent Runs",
+   "kind": "data",
+   "text": "Content, Keyword, Attribute, and Image agents have no inter-dependencies."
+  },
+  {
+   "id": "R12089b",
+   "lines": [
+    12089,
+    12089
+   ],
+   "page": "[141] Parallel Agent Runs",
+   "kind": "constraint",
+   "text": "Across multiple products (bulk import): bounded concurrency limits how many products are processed simultaneously."
+  },
+  {
+   "id": "R12089c",
+   "lines": [
+    12089,
+    12089
+   ],
+   "page": "[141] Parallel Agent Runs",
+   "kind": "requirement",
+   "text": "Per-marketplace limits prevent API throttling."
+  },
+  {
+   "id": "R12091",
+   "lines": [
+    12091,
+    12091
+   ],
+   "page": "[141] Parallel Agent Runs",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12093",
+   "lines": [
+    12093,
+    12093
+   ],
+   "page": "[142] Model Routing",
+   "kind": "info",
+   "text": "# [142] Model Routing",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12095",
+   "lines": [
+    12095,
+    12095
+   ],
+   "page": "[142] Model Routing",
+   "kind": "info",
+   "text": "Section: AI Model Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12096",
+   "lines": [
+    12096,
+    12096
+   ],
+   "page": "[142] Model Routing",
+   "kind": "scope",
+   "text": "Page [142] Model Routing scope: MVP."
+  },
+  {
+   "id": "R12097",
+   "lines": [
+    12097,
+    12097
+   ],
+   "page": "[142] Model Routing",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/model-routing",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12098",
+   "lines": [
+    12098,
+    12098
+   ],
+   "page": "[142] Model Routing",
+   "kind": "info",
+   "text": "Description: Model routing architecture — cheapest model that meets quality bar.",
+   "why_not": "restatement",
+   "dup_of": "R12103"
+  },
+  {
+   "id": "R12098a",
+   "lines": [
+    12098,
+    12098
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "Model routing includes fallback."
+  },
+  {
+   "id": "R12098b",
+   "lines": [
+    12098,
+    12098
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "Model routing includes escalation."
+  },
+  {
+   "id": "R12099",
+   "lines": [
+    12099,
+    12099
+   ],
+   "page": "[142] Model Routing",
+   "kind": "info",
+   "text": "Keywords: model routing, model selection, GPT-4o mini, DeepSeek, fallback, escalation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12101",
+   "lines": [
+    12101,
+    12101
+   ],
+   "page": "[142] Model Routing",
+   "kind": "info",
+   "text": "## Routing Policy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12103",
+   "lines": [
+    12103,
+    12103
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "Core principle: use the cheapest model that meets the quality requirement."
+  },
+  {
+   "id": "R12103a",
+   "lines": [
+    12103,
+    12103
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "No vendor lock-in."
+  },
+  {
+   "id": "R12103b",
+   "lines": [
+    12103,
+    12103
+   ],
+   "page": "[142] Model Routing",
+   "kind": "requirement",
+   "text": "The model is an abstraction, not a hardcoded dependency."
+  },
+  {
+   "id": "R12105",
+   "lines": [
+    12105,
+    12109
+   ],
+   "page": "[142] Model Routing",
+   "kind": "info",
+   "text": "Table header: Task | Model | Why",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12111",
+   "lines": [
+    12111,
+    12113
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "Text generation (default) model: GPT-4o mini."
+  },
+  {
+   "id": "R12115",
+   "lines": [
+    12115,
+    12115
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "GPT-4o mini rationale: strong structured output."
+  },
+  {
+   "id": "R12115a",
+   "lines": [
+    12115,
+    12115
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "GPT-4o mini rationale: JSON mode."
+  },
+  {
+   "id": "R12115b",
+   "lines": [
+    12115,
+    12115
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "GPT-4o mini rationale: vision."
+  },
+  {
+   "id": "R12115c",
+   "lines": [
+    12115,
+    12115
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "GPT-4o mini rationale: very cheap."
+  },
+  {
+   "id": "R12117",
+   "lines": [
+    12117,
+    12119
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "Text generation (budget) model: DeepSeek-V3."
+  },
+  {
+   "id": "R12121",
+   "lines": [
+    12121,
+    12121
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "DeepSeek-V3 rationale: cheaper input."
+  },
+  {
+   "id": "R12121a",
+   "lines": [
+    12121,
+    12121
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "DeepSeek-V3 rationale: good text quality."
+  },
+  {
+   "id": "R12121b",
+   "lines": [
+    12121,
+    12121
+   ],
+   "page": "[142] Model Routing",
+   "kind": "constraint",
+   "text": "DeepSeek-V3 has no native vision."
+  },
+  {
+   "id": "R12123",
+   "lines": [
+    12123,
+    12125
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "Image compliance vision model: GPT-4o mini (vision)."
+  },
+  {
+   "id": "R12127",
+   "lines": [
+    12127,
+    12127
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "Same model for text and images = simpler pipeline."
+  },
+  {
+   "id": "R12129",
+   "lines": [
+    12129,
+    12131
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "Embeddings model: text-embedding-3-small."
+  },
+  {
+   "id": "R12133",
+   "lines": [
+    12133,
+    12133
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "text-embedding-3-small rationale: cheap."
+  },
+  {
+   "id": "R12133a",
+   "lines": [
+    12133,
+    12133
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "text-embedding-3-small rationale: adequate for cosine retrieval."
+  },
+  {
+   "id": "R12135",
+   "lines": [
+    12135,
+    12137
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "Heavy reasoning model: GPT-4o (up-tier)."
+  },
+  {
+   "id": "R12139",
+   "lines": [
+    12139,
+    12139
+   ],
+   "page": "[142] Model Routing",
+   "kind": "constraint",
+   "text": "GPT-4o used only if mini fails repeated corrections."
+  },
+  {
+   "id": "R12141",
+   "lines": [
+    12141,
+    12141
+   ],
+   "page": "[142] Model Routing",
+   "kind": "info",
+   "text": "## ModelRouter",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12143",
+   "lines": [
+    12143,
+    12143
+   ],
+   "page": "[142] Model Routing",
+   "kind": "info",
+   "text": "python code fence open",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12144",
+   "lines": [
+    12144,
+    12144
+   ],
+   "page": "[142] Model Routing",
+   "kind": "interface",
+   "text": "class ModelRouter."
+  },
+  {
+   "id": "R12145",
+   "lines": [
+    12145,
+    12145
+   ],
+   "page": "[142] Model Routing",
+   "kind": "interface",
+   "text": "ModelRouter.select_model(self, task, marketplace, complexity, budget, previous_failures)."
+  },
+  {
+   "id": "R12146",
+   "lines": [
+    12146,
+    12146
+   ],
+   "page": "[142] Model Routing",
+   "kind": "info",
+   "text": "# 1. Default: GPT-4o mini for text + vision",
+   "why_not": "restatement",
+   "dup_of": "R12111"
+  },
+  {
+   "id": "R12147",
+   "lines": [
+    12147,
+    12147
+   ],
+   "page": "[142] Model Routing",
+   "kind": "flow",
+   "text": "JSON failure twice → escalate to GPT-4o."
+  },
+  {
+   "id": "R12148",
+   "lines": [
+    12148,
+    12148
+   ],
+   "page": "[142] Model Routing",
+   "kind": "info",
+   "text": "# 3. Budget-constrained text → DeepSeek-V3",
+   "why_not": "restatement",
+   "dup_of": "R12117"
+  },
+  {
+   "id": "R12149",
+   "lines": [
+    12149,
+    12149
+   ],
+   "page": "[142] Model Routing",
+   "kind": "decision",
+   "text": "Embeddings → always embedding model."
+  },
+  {
+   "id": "R12150",
+   "lines": [
+    12150,
+    12150
+   ],
+   "page": "[142] Model Routing",
+   "kind": "quality",
+   "text": "Log model_used on every AgentRun."
+  },
+  {
+   "id": "R12150a",
+   "lines": [
+    12150,
+    12150
+   ],
+   "page": "[142] Model Routing",
+   "kind": "quality",
+   "text": "Log tokens on every AgentRun."
+  },
+  {
+   "id": "R12150b",
+   "lines": [
+    12150,
+    12150
+   ],
+   "page": "[142] Model Routing",
+   "kind": "quality",
+   "text": "Log cost on every AgentRun."
+  },
+  {
+   "id": "R12151",
+   "lines": [
+    12151,
+    12152
+   ],
+   "page": "[142] Model Routing",
+   "kind": "info",
+   "text": "code elision \"...\" and code fence close",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12154",
+   "lines": [
+    12154,
+    12154
+   ],
+   "page": "[142] Model Routing",
+   "kind": "info",
+   "text": "Vendor Independence (callout title).",
+   "why_not": "restatement",
+   "dup_of": "R12103a"
+  },
+  {
+   "id": "R12156",
+   "lines": [
+    12156,
+    12156
+   ],
+   "page": "[142] Model Routing",
+   "kind": "info",
+   "text": "Models are abstractions.",
+   "why_not": "restatement",
+   "dup_of": "R12103b"
+  },
+  {
+   "id": "R12156a",
+   "lines": [
+    12156,
+    12156
+   ],
+   "page": "[142] Model Routing",
+   "kind": "requirement",
+   "text": "Switching from GPT-4o-mini to Claude or Gemini requires changing the router configuration."
+  },
+  {
+   "id": "R12156b",
+   "lines": [
+    12156,
+    12156
+   ],
+   "page": "[142] Model Routing",
+   "kind": "requirement",
+   "text": "Switching models does not require changing the business logic."
+  },
+  {
+   "id": "R12158",
+   "lines": [
+    12158,
+    12158
+   ],
+   "page": "[142] Model Routing",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12160",
+   "lines": [
+    12160,
+    12160
+   ],
+   "page": "[143] Model Selection Policy",
+   "kind": "info",
+   "text": "# [143] Model Selection Policy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12162",
+   "lines": [
+    12162,
+    12162
+   ],
+   "page": "[143] Model Selection Policy",
+   "kind": "info",
+   "text": "Section: AI Model Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12163",
+   "lines": [
+    12163,
+    12163
+   ],
+   "page": "[143] Model Selection Policy",
+   "kind": "scope",
+   "text": "Page [143] Model Selection Policy scope: MVP."
+  },
+  {
+   "id": "R12164",
+   "lines": [
+    12164,
+    12164
+   ],
+   "page": "[143] Model Selection Policy",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/model-selection-policy",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12165",
+   "lines": [
+    12165,
+    12165
+   ],
+   "page": "[143] Model Selection Policy",
+   "kind": "info",
+   "text": "Description: Rules for selecting which model to use for each task.",
+   "why_not": "context-prose"
+  },
+  {
+   "id": "R12166",
+   "lines": [
+    12166,
+    12166
+   ],
+   "page": "[143] Model Selection Policy",
+   "kind": "info",
+   "text": "Keywords: model selection, policy, rules, which model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12168",
+   "lines": [
+    12168,
+    12168
+   ],
+   "page": "[143] Model Selection Policy",
+   "kind": "info",
+   "text": "## Selection Rules",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12170",
+   "lines": [
+    12170,
+    12170
+   ],
+   "page": "[143] Model Selection Policy",
+   "kind": "info",
+   "text": "Rule 1: Default route = GPT-4o mini for text + vision.",
+   "why_not": "restatement",
+   "dup_of": "R12111"
+  },
+  {
+   "id": "R12171",
+   "lines": [
+    12171,
+    12171
+   ],
+   "page": "[143] Model Selection Policy",
+   "kind": "flow",
+   "text": "Selection rule 2: if output fails JSON validation twice → escalate to next tier (GPT-4o)."
+  },
+  {
+   "id": "R12172",
+   "lines": [
+    12172,
+    12172
+   ],
+   "page": "[143] Model Selection Policy",
+   "kind": "flow",
+   "text": "Selection rule 3: if task is text-only and budget-constrained → route to DeepSeek-V3."
+  },
+  {
+   "id": "R12173",
+   "lines": [
+    12173,
+    12173
+   ],
+   "page": "[143] Model Selection Policy",
+   "kind": "info",
+   "text": "Rule 4: Embeddings always use the embedding model.",
+   "why_not": "restatement",
+   "dup_of": "R12149"
+  },
+  {
+   "id": "R12173a",
+   "lines": [
+    12173,
+    12173
+   ],
+   "page": "[143] Model Selection Policy",
+   "kind": "requirement",
+   "text": "Never run the generation model for retrieval."
+  },
+  {
+   "id": "R12174",
+   "lines": [
+    12174,
+    12174
+   ],
+   "page": "[143] Model Selection Policy",
+   "kind": "info",
+   "text": "Rule 5: Log model_used, tokens, and cost on every AgentRun.",
+   "why_not": "restatement",
+   "dup_of": "R12150"
+  },
+  {
+   "id": "R12176",
+   "lines": [
+    12176,
+    12176
+   ],
+   "page": "[143] Model Selection Policy",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12178",
+   "lines": [
+    12178,
+    12178
+   ],
+   "page": "[144] Model Fallback",
+   "kind": "info",
+   "text": "# [144] Model Fallback",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12180",
+   "lines": [
+    12180,
+    12180
+   ],
+   "page": "[144] Model Fallback",
+   "kind": "info",
+   "text": "Section: AI Model Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12181",
+   "lines": [
+    12181,
+    12181
+   ],
+   "page": "[144] Model Fallback",
+   "kind": "scope",
+   "text": "Page [144] Model Fallback scope: MVP."
+  },
+  {
+   "id": "R12182",
+   "lines": [
+    12182,
+    12182
+   ],
+   "page": "[144] Model Fallback",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/model-fallback",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12183",
+   "lines": [
+    12183,
+    12183
+   ],
+   "page": "[144] Model Fallback",
+   "kind": "info",
+   "text": "Description: Fallback chain when primary model fails.",
+   "why_not": "restatement",
+   "dup_of": "R12188"
+  },
+  {
+   "id": "R12184",
+   "lines": [
+    12184,
+    12184
+   ],
+   "page": "[144] Model Fallback",
+   "kind": "info",
+   "text": "Keywords: fallback, model failure, escalation, backup",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12186",
+   "lines": [
+    12186,
+    12186
+   ],
+   "page": "[144] Model Fallback",
+   "kind": "info",
+   "text": "## Fallback Chain",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12188",
+   "lines": [
+    12188,
+    12188
+   ],
+   "page": "[144] Model Fallback",
+   "kind": "flow",
+   "text": "Fallback chain step 1: Primary (GPT-4o mini)."
+  },
+  {
+   "id": "R12188a",
+   "lines": [
+    12188,
+    12188
+   ],
+   "page": "[144] Model Fallback",
+   "kind": "flow",
+   "text": "Fallback chain step 2: Repair attempt."
+  },
+  {
+   "id": "R12188b",
+   "lines": [
+    12188,
+    12188
+   ],
+   "page": "[144] Model Fallback",
+   "kind": "flow",
+   "text": "Fallback chain step 3: Re-prompt."
+  },
+  {
+   "id": "R12188c",
+   "lines": [
+    12188,
+    12188
+   ],
+   "page": "[144] Model Fallback",
+   "kind": "flow",
+   "text": "Fallback chain step 4: Escalate to GPT-4o."
+  },
+  {
+   "id": "R12188d",
+   "lines": [
+    12188,
+    12188
+   ],
+   "page": "[144] Model Fallback",
+   "kind": "flow",
+   "text": "Fallback chain step 5: if still failing, mark job as blocked."
+  },
+  {
+   "id": "R12188e",
+   "lines": [
+    12188,
+    12188
+   ],
+   "page": "[144] Model Fallback",
+   "kind": "quality",
+   "text": "Each fallback step is logged with cost."
+  },
+  {
+   "id": "R12188f",
+   "lines": [
+    12188,
+    12188
+   ],
+   "page": "[144] Model Fallback",
+   "kind": "quality",
+   "text": "Each fallback step is logged with duration."
+  },
+  {
+   "id": "R12188g",
+   "lines": [
+    12188,
+    12188
+   ],
+   "page": "[144] Model Fallback",
+   "kind": "requirement",
+   "text": "The system never silently switches models."
+  },
+  {
+   "id": "R12188h",
+   "lines": [
+    12188,
+    12188
+   ],
+   "page": "[144] Model Fallback",
+   "kind": "quality",
+   "text": "Observability captures every model decision."
+  },
+  {
+   "id": "R12190",
+   "lines": [
+    12190,
+    12190
+   ],
+   "page": "[144] Model Fallback",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12192",
+   "lines": [
+    12192,
+    12192
+   ],
+   "page": "[145] Heavy Reasoning Escalation",
+   "kind": "info",
+   "text": "# [145] Heavy Reasoning Escalation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12194",
+   "lines": [
+    12194,
+    12194
+   ],
+   "page": "[145] Heavy Reasoning Escalation",
+   "kind": "info",
+   "text": "Section: AI Model Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12195",
+   "lines": [
+    12195,
+    12195
+   ],
+   "page": "[145] Heavy Reasoning Escalation",
+   "kind": "scope",
+   "text": "Page [145] Heavy Reasoning Escalation scope: MVP."
+  },
+  {
+   "id": "R12196",
+   "lines": [
+    12196,
+    12196
+   ],
+   "page": "[145] Heavy Reasoning Escalation",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/heavy-reasoning-escalation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12197",
+   "lines": [
+    12197,
+    12197
+   ],
+   "page": "[145] Heavy Reasoning Escalation",
+   "kind": "constraint",
+   "text": "Heavier models are more expensive; escalate to them for complex corrections."
+  },
+  {
+   "id": "R12198",
+   "lines": [
+    12198,
+    12198
+   ],
+   "page": "[145] Heavy Reasoning Escalation",
+   "kind": "info",
+   "text": "Keywords: heavy reasoning, escalation, GPT-4o, complex",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12200",
+   "lines": [
+    12200,
+    12200
+   ],
+   "page": "[145] Heavy Reasoning Escalation",
+   "kind": "info",
+   "text": "## Escalation Criteria",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12202",
+   "lines": [
+    12202,
+    12202
+   ],
+   "page": "[145] Heavy Reasoning Escalation",
+   "kind": "requirement",
+   "text": "Escalate to the heavier model only when one of the listed escalation criteria holds."
+  },
+  {
+   "id": "R12202a",
+   "lines": [
+    12202,
+    12202
+   ],
+   "page": "[145] Heavy Reasoning Escalation",
+   "kind": "info",
+   "text": "Criterion: JSON output fails validation twice with mini.",
+   "why_not": "restatement",
+   "dup_of": "R12147"
+  },
+  {
+   "id": "R12202b",
+   "lines": [
+    12202,
+    12202
+   ],
+   "page": "[145] Heavy Reasoning Escalation",
+   "kind": "flow",
+   "text": "Escalation criterion: semantic correction fails repeatedly (same error persists)."
+  },
+  {
+   "id": "R12202c",
+   "lines": [
+    12202,
+    12202
+   ],
+   "page": "[145] Heavy Reasoning Escalation",
+   "kind": "flow",
+   "text": "Escalation criterion: the task requires complex multi-constraint reasoning."
+  },
+  {
+   "id": "R12202d",
+   "lines": [
+    12202,
+    12202
+   ],
+   "page": "[145] Heavy Reasoning Escalation",
+   "kind": "requirement",
+   "text": "Escalation is per-agent-run, not global."
+  },
+  {
+   "id": "R12202e",
+   "lines": [
+    12202,
+    12202
+   ],
+   "page": "[145] Heavy Reasoning Escalation",
+   "kind": "requirement",
+   "text": "Other agent runs continue with the default model during an escalation."
+  },
+  {
+   "id": "R12204",
+   "lines": [
+    12204,
+    12204
+   ],
+   "page": "[145] Heavy Reasoning Escalation",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12206",
+   "lines": [
+    12206,
+    12206
+   ],
+   "page": "[146] JSON Validation",
+   "kind": "info",
+   "text": "# [146] JSON Validation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12208",
+   "lines": [
+    12208,
+    12208
+   ],
+   "page": "[146] JSON Validation",
+   "kind": "info",
+   "text": "Section: AI Model Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12209",
+   "lines": [
+    12209,
+    12209
+   ],
+   "page": "[146] JSON Validation",
+   "kind": "scope",
+   "text": "Page [146] JSON Validation scope: MVP."
+  },
+  {
+   "id": "R12210",
+   "lines": [
+    12210,
+    12210
+   ],
+   "page": "[146] JSON Validation",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/json-validation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12211",
+   "lines": [
+    12211,
+    12211
+   ],
+   "page": "[146] JSON Validation",
+   "kind": "info",
+   "text": "Description: How AI JSON output is validated against Pydantic schemas.",
+   "why_not": "restatement",
+   "dup_of": "R12216"
+  },
+  {
+   "id": "R12212",
+   "lines": [
+    12212,
+    12212
+   ],
+   "page": "[146] JSON Validation",
+   "kind": "info",
+   "text": "Keywords: JSON validation, Pydantic, schema validation, structured",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12214",
+   "lines": [
+    12214,
+    12214
+   ],
+   "page": "[146] JSON Validation",
+   "kind": "info",
+   "text": "## JSON Validation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12216",
+   "lines": [
+    12216,
+    12216
+   ],
+   "page": "[146] JSON Validation",
+   "kind": "requirement",
+   "text": "Every AI agent output is validated against a Pydantic schema."
+  },
+  {
+   "id": "R12216a",
+   "lines": [
+    12216,
+    12216
+   ],
+   "page": "[146] JSON Validation",
+   "kind": "data",
+   "text": "The output schema defines required fields."
+  },
+  {
+   "id": "R12216b",
+   "lines": [
+    12216,
+    12216
+   ],
+   "page": "[146] JSON Validation",
+   "kind": "data",
+   "text": "The output schema defines field types."
+  },
+  {
+   "id": "R12216c",
+   "lines": [
+    12216,
+    12216
+   ],
+   "page": "[146] JSON Validation",
+   "kind": "data",
+   "text": "The output schema defines string constraints (max length)."
+  },
+  {
+   "id": "R12216d",
+   "lines": [
+    12216,
+    12216
+   ],
+   "page": "[146] JSON Validation",
+   "kind": "data",
+   "text": "The output schema defines value enumerations."
+  },
+  {
+   "id": "R12216e",
+   "lines": [
+    12216,
+    12216
+   ],
+   "page": "[146] JSON Validation",
+   "kind": "flow",
+   "text": "Invalid JSON triggers the repair pipeline."
+  },
+  {
+   "id": "R12218",
+   "lines": [
+    12218,
+    12218
+   ],
+   "page": "[146] JSON Validation",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12220",
+   "lines": [
+    12220,
+    12220
+   ],
+   "page": "[147] Structured Output Repair",
+   "kind": "info",
+   "text": "# [147] Structured Output Repair",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12222",
+   "lines": [
+    12222,
+    12222
+   ],
+   "page": "[147] Structured Output Repair",
+   "kind": "info",
+   "text": "Section: AI Model Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12223",
+   "lines": [
+    12223,
+    12223
+   ],
+   "page": "[147] Structured Output Repair",
+   "kind": "scope",
+   "text": "Page [147] Structured Output Repair scope: MVP."
+  },
+  {
+   "id": "R12224",
+   "lines": [
+    12224,
+    12224
+   ],
+   "page": "[147] Structured Output Repair",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/structured-output-repair",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12225",
+   "lines": [
+    12225,
+    12225
+   ],
+   "page": "[147] Structured Output Repair",
+   "kind": "info",
+   "text": "Description: How malformed AI output is repaired before escalating to a heavier model.",
+   "why_not": "restatement",
+   "dup_of": "R12233"
+  },
+  {
+   "id": "R12226",
+   "lines": [
+    12226,
+    12226
+   ],
+   "page": "[147] Structured Output Repair",
+   "kind": "info",
+   "text": "Keywords: output repair, fix JSON, malformed, repair",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12228",
+   "lines": [
+    12228,
+    12228
+   ],
+   "page": "[147] Structured Output Repair",
+   "kind": "info",
+   "text": "## Repair Pipeline",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12230",
+   "lines": [
+    12230,
+    12230
+   ],
+   "page": "[147] Structured Output Repair",
+   "kind": "flow",
+   "text": "Repair step 1: parse error identification — what exactly is wrong with the JSON."
+  },
+  {
+   "id": "R12231",
+   "lines": [
+    12231,
+    12231
+   ],
+   "page": "[147] Structured Output Repair",
+   "kind": "flow",
+   "text": "Repair step 2: attempt programmatic fix."
+  },
+  {
+   "id": "R12231a",
+   "lines": [
+    12231,
+    12231
+   ],
+   "page": "[147] Structured Output Repair",
+   "kind": "requirement",
+   "text": "Programmatic fix handles missing closing brackets."
+  },
+  {
+   "id": "R12231b",
+   "lines": [
+    12231,
+    12231
+   ],
+   "page": "[147] Structured Output Repair",
+   "kind": "requirement",
+   "text": "Programmatic fix handles trailing commas."
+  },
+  {
+   "id": "R12232",
+   "lines": [
+    12232,
+    12232
+   ],
+   "page": "[147] Structured Output Repair",
+   "kind": "flow",
+   "text": "Repair step 3: re-prompt with error details."
+  },
+  {
+   "id": "R12232a",
+   "lines": [
+    12232,
+    12232
+   ],
+   "page": "[147] Structured Output Repair",
+   "kind": "requirement",
+   "text": "Repair re-prompt uses stricter instructions."
+  },
+  {
+   "id": "R12233",
+   "lines": [
+    12233,
+    12233
+   ],
+   "page": "[147] Structured Output Repair",
+   "kind": "flow",
+   "text": "Repair step 4: if still failing, escalate to heavier model."
+  },
+  {
+   "id": "R12235",
+   "lines": [
+    12235,
+    12235
+   ],
+   "page": "[147] Structured Output Repair",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12237",
+   "lines": [
+    12237,
+    12237
+   ],
+   "page": "[148] Token Management",
+   "kind": "info",
+   "text": "# [148] Token Management",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12239",
+   "lines": [
+    12239,
+    12239
+   ],
+   "page": "[148] Token Management",
+   "kind": "info",
+   "text": "Section: AI Model Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12240",
+   "lines": [
+    12240,
+    12240
+   ],
+   "page": "[148] Token Management",
+   "kind": "scope",
+   "text": "Page [148] Token Management scope: MVP."
+  },
+  {
+   "id": "R12241",
+   "lines": [
+    12241,
+    12241
+   ],
+   "page": "[148] Token Management",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/token-management",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12242",
+   "lines": [
+    12242,
+    12242
+   ],
+   "page": "[148] Token Management",
+   "kind": "info",
+   "text": "Description: Token usage tracking, limits, and optimization.",
+   "why_not": "restatement",
+   "dup_of": "R12247"
+  },
+  {
+   "id": "R12243",
+   "lines": [
+    12243,
+    12243
+   ],
+   "page": "[148] Token Management",
+   "kind": "info",
+   "text": "Keywords: token, management, usage, limits, optimization",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12245",
+   "lines": [
+    12245,
+    12245
+   ],
+   "page": "[148] Token Management",
+   "kind": "info",
+   "text": "## Token Management",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12247",
+   "lines": [
+    12247,
+    12247
+   ],
+   "page": "[148] Token Management",
+   "kind": "data",
+   "text": "Every AgentRun records tokens_in."
+  },
+  {
+   "id": "R12247a",
+   "lines": [
+    12247,
+    12247
+   ],
+   "page": "[148] Token Management",
+   "kind": "data",
+   "text": "Every AgentRun records tokens_out."
+  },
+  {
+   "id": "R12247b",
+   "lines": [
+    12247,
+    12247
+   ],
+   "page": "[148] Token Management",
+   "kind": "constraint",
+   "text": "Token budgets can be set per agent."
+  },
+  {
+   "id": "R12247c",
+   "lines": [
+    12247,
+    12247
+   ],
+   "page": "[148] Token Management",
+   "kind": "constraint",
+   "text": "Token budgets can be set per marketplace."
+  },
+  {
+   "id": "R12247d",
+   "lines": [
+    12247,
+    12247
+   ],
+   "page": "[148] Token Management",
+   "kind": "constraint",
+   "text": "Token budgets can be set per tenant."
+  },
+  {
+   "id": "R12247e",
+   "lines": [
+    12247,
+    12247
+   ],
+   "page": "[148] Token Management",
+   "kind": "quality",
+   "text": "The system tracks cumulative token usage for cost observability."
+  },
+  {
+   "id": "R12247f",
+   "lines": [
+    12247,
+    12247
+   ],
+   "page": "[148] Token Management",
+   "kind": "requirement",
+   "text": "Prompt compression techniques reduce token usage without sacrificing output quality."
+  },
+  {
+   "id": "R12249",
+   "lines": [
+    12249,
+    12249
+   ],
+   "page": "[148] Token Management",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12251",
+   "lines": [
+    12251,
+    12251
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "info",
+   "text": "# [149] AI Cost Optimization",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12253",
+   "lines": [
+    12253,
+    12253
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "info",
+   "text": "Section: AI Model Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12254",
+   "lines": [
+    12254,
+    12254
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "scope",
+   "text": "Page [149] AI Cost Optimization scope: MVP."
+  },
+  {
+   "id": "R12255",
+   "lines": [
+    12255,
+    12255
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/ai-cost-optimization",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12256",
+   "lines": [
+    12256,
+    12256
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "info",
+   "text": "Description: Strategies for minimizing AI costs — model routing, caching, avoiding unnecessary regeneration.",
+   "why_not": "restatement",
+   "dup_of": "R12265"
+  },
+  {
+   "id": "R12257",
+   "lines": [
+    12257,
+    12257
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "info",
+   "text": "Keywords: cost optimization, AI cost, efficiency, savings",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12259",
+   "lines": [
+    12259,
+    12259
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "info",
+   "text": "## Optimization Strategies",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12261",
+   "lines": [
+    12261,
+    12261
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "info",
+   "text": "Model routing — Use cheapest model that meets quality bar.",
+   "why_not": "restatement",
+   "dup_of": "R12103"
+  },
+  {
+   "id": "R12262",
+   "lines": [
+    12262,
+    12262
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "info",
+   "text": "Prompt compression — Minimize token usage in prompts.",
+   "why_not": "restatement",
+   "dup_of": "R12247f"
+  },
+  {
+   "id": "R12263",
+   "lines": [
+    12263,
+    12263
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "constraint",
+   "text": "Retrieval top-k: only retrieve most relevant brand chunks (top-k=8)."
+  },
+  {
+   "id": "R12264",
+   "lines": [
+    12264,
+    12264
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "requirement",
+   "text": "Caching: cache repeated queries."
+  },
+  {
+   "id": "R12264a",
+   "lines": [
+    12264,
+    12264
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "requirement",
+   "text": "Caching: cache embeddings."
+  },
+  {
+   "id": "R12265",
+   "lines": [
+    12265,
+    12265
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "requirement",
+   "text": "Avoid unnecessary regeneration: don't regenerate if only one field failed."
+  },
+  {
+   "id": "R12266",
+   "lines": [
+    12266,
+    12266
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "requirement",
+   "text": "Event-driven generation: generate only when needed, not on schedule."
+  },
+  {
+   "id": "R12267",
+   "lines": [
+    12267,
+    12267
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "requirement",
+   "text": "Reuse approved outputs: clone approved listings for similar products."
+  },
+  {
+   "id": "R12268",
+   "lines": [
+    12268,
+    12268
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "requirement",
+   "text": "Image processing only when required: skip unchanged images."
+  },
+  {
+   "id": "R12269",
+   "lines": [
+    12269,
+    12269
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "requirement",
+   "text": "Batch embeddings: batch embed multiple chunks in one API call."
+  },
+  {
+   "id": "R12270",
+   "lines": [
+    12270,
+    12270
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "constraint",
+   "text": "Bounded retries: max 3 correction attempts, not unlimited."
+  },
+  {
+   "id": "R12272",
+   "lines": [
+    12272,
+    12272
+   ],
+   "page": "[149] AI Cost Optimization",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12274",
+   "lines": [
+    12274,
+    12274
+   ],
+   "page": "[150] Prompt Versioning",
+   "kind": "info",
+   "text": "# [150] Prompt Versioning",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12276",
+   "lines": [
+    12276,
+    12276
+   ],
+   "page": "[150] Prompt Versioning",
+   "kind": "info",
+   "text": "Section: AI Model Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12277",
+   "lines": [
+    12277,
+    12277
+   ],
+   "page": "[150] Prompt Versioning",
+   "kind": "scope",
+   "text": "Page [150] Prompt Versioning scope: PHASE2."
+  },
+  {
+   "id": "R12278",
+   "lines": [
+    12278,
+    12278
+   ],
+   "page": "[150] Prompt Versioning",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/prompt-versioning",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12279",
+   "lines": [
+    12279,
+    12279
+   ],
+   "page": "[150] Prompt Versioning",
+   "kind": "info",
+   "text": "Description: Versioning and tracking prompts for reproducibility and A/B testing.",
+   "why_not": "restatement",
+   "dup_of": "R12284"
+  },
+  {
+   "id": "R12280",
+   "lines": [
+    12280,
+    12280
+   ],
+   "page": "[150] Prompt Versioning",
+   "kind": "info",
+   "text": "Keywords: prompt versioning, tracking, reproducibility, A/B test",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12282",
+   "lines": [
+    12282,
+    12282
+   ],
+   "page": "[150] Prompt Versioning",
+   "kind": "info",
+   "text": "## Prompt Versioning",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12284",
+   "lines": [
+    12284,
+    12284
+   ],
+   "page": "[150] Prompt Versioning",
+   "kind": "requirement",
+   "text": "Phase 2: every prompt template is versioned."
+  },
+  {
+   "id": "R12284a",
+   "lines": [
+    12284,
+    12284
+   ],
+   "page": "[150] Prompt Versioning",
+   "kind": "data",
+   "text": "AgentRun records link to the prompt version used (Phase 2)."
+  },
+  {
+   "id": "R12284b",
+   "lines": [
+    12284,
+    12284
+   ],
+   "page": "[150] Prompt Versioning",
+   "kind": "quality",
+   "text": "Prompt versioning enables reproducibility (re-run with same prompt)."
+  },
+  {
+   "id": "R12284c",
+   "lines": [
+    12284,
+    12284
+   ],
+   "page": "[150] Prompt Versioning",
+   "kind": "quality",
+   "text": "Prompt versioning enables A/B testing (compare prompt versions)."
+  },
+  {
+   "id": "R12284d",
+   "lines": [
+    12284,
+    12284
+   ],
+   "page": "[150] Prompt Versioning",
+   "kind": "quality",
+   "text": "Prompt versioning enables regression detection."
+  },
+  {
+   "id": "R12286",
+   "lines": [
+    12286,
+    12286
+   ],
+   "page": "[150] Prompt Versioning",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12288",
+   "lines": [
+    12288,
+    12288
+   ],
+   "page": "[151] Model Observability",
+   "kind": "info",
+   "text": "# [151] Model Observability",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12290",
+   "lines": [
+    12290,
+    12290
+   ],
+   "page": "[151] Model Observability",
+   "kind": "info",
+   "text": "Section: AI Model Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12291",
+   "lines": [
+    12291,
+    12291
+   ],
+   "page": "[151] Model Observability",
+   "kind": "scope",
+   "text": "Page [151] Model Observability scope: MVP."
+  },
+  {
+   "id": "R12292",
+   "lines": [
+    12292,
+    12292
+   ],
+   "page": "[151] Model Observability",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/model-observability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12293",
+   "lines": [
+    12293,
+    12293
+   ],
+   "page": "[151] Model Observability",
+   "kind": "info",
+   "text": "Description: Tracking model performance — latency, token usage, cost, error rates.",
+   "why_not": "restatement",
+   "dup_of": "R12298f"
+  },
+  {
+   "id": "R12294",
+   "lines": [
+    12294,
+    12294
+   ],
+   "page": "[151] Model Observability",
+   "kind": "info",
+   "text": "Keywords: model observability, tracking, latency, cost, metrics",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12296",
+   "lines": [
+    12296,
+    12296
+   ],
+   "page": "[151] Model Observability",
+   "kind": "info",
+   "text": "## Model Observability",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12298",
+   "lines": [
+    12298,
+    12298
+   ],
+   "page": "[151] Model Observability",
+   "kind": "data",
+   "text": "Every AgentRun records: model_used."
+  },
+  {
+   "id": "R12298a",
+   "lines": [
+    12298,
+    12298
+   ],
+   "page": "[151] Model Observability",
+   "kind": "data",
+   "text": "Every AgentRun records: tokens_in."
+  },
+  {
+   "id": "R12298b",
+   "lines": [
+    12298,
+    12298
+   ],
+   "page": "[151] Model Observability",
+   "kind": "data",
+   "text": "Every AgentRun records: tokens_out."
+  },
+  {
+   "id": "R12298c",
+   "lines": [
+    12298,
+    12298
+   ],
+   "page": "[151] Model Observability",
+   "kind": "data",
+   "text": "Every AgentRun records: cost."
+  },
+  {
+   "id": "R12298d",
+   "lines": [
+    12298,
+    12298
+   ],
+   "page": "[151] Model Observability",
+   "kind": "data",
+   "text": "Every AgentRun records: duration_ms."
+  },
+  {
+   "id": "R12298e",
+   "lines": [
+    12298,
+    12298
+   ],
+   "page": "[151] Model Observability",
+   "kind": "data",
+   "text": "Every AgentRun records: status."
+  },
+  {
+   "id": "R12298f",
+   "lines": [
+    12298,
+    12298
+   ],
+   "page": "[151] Model Observability",
+   "kind": "quality",
+   "text": "AgentRun data enables cost per listing calculation."
+  },
+  {
+   "id": "R12298g",
+   "lines": [
+    12298,
+    12298
+   ],
+   "page": "[151] Model Observability",
+   "kind": "quality",
+   "text": "AgentRun data enables model performance comparison."
+  },
+  {
+   "id": "R12298h",
+   "lines": [
+    12298,
+    12298
+   ],
+   "page": "[151] Model Observability",
+   "kind": "quality",
+   "text": "AgentRun data enables error rate tracking per model."
+  },
+  {
+   "id": "R12298i",
+   "lines": [
+    12298,
+    12298
+   ],
+   "page": "[151] Model Observability",
+   "kind": "quality",
+   "text": "AgentRun data enables latency monitoring."
+  },
+  {
+   "id": "R12298j",
+   "lines": [
+    12298,
+    12298
+   ],
+   "page": "[151] Model Observability",
+   "kind": "quality",
+   "text": "All model metrics feed into the observability pipeline."
+  },
+  {
+   "id": "R12300",
+   "lines": [
+    12300,
+    12300
+   ],
+   "page": "[151] Model Observability",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12302",
+   "lines": [
+    12302,
+    12302
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "info",
+   "text": "# [152] AI Evaluation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12304",
+   "lines": [
+    12304,
+    12304
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "info",
+   "text": "Section: AI Model Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12305",
+   "lines": [
+    12305,
+    12305
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "scope",
+   "text": "Page [152] AI Evaluation scope: PHASE2."
+  },
+  {
+   "id": "R12306",
+   "lines": [
+    12306,
+    12306
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/ai-evaluation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12307",
+   "lines": [
+    12307,
+    12307
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "info",
+   "text": "Description: How AI output quality is evaluated — quality metrics.",
+   "why_not": "restatement",
+   "dup_of": "R12312"
+  },
+  {
+   "id": "R12307a",
+   "lines": [
+    12307,
+    12307
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "quality",
+   "text": "AI output quality evaluation uses evaluation datasets."
+  },
+  {
+   "id": "R12308",
+   "lines": [
+    12308,
+    12308
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "info",
+   "text": "Keywords: AI evaluation, quality, metrics, evaluation dataset",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12310",
+   "lines": [
+    12310,
+    12310
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "info",
+   "text": "## AI Evaluation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12312",
+   "lines": [
+    12312,
+    12312
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "quality",
+   "text": "Phase 2: structured evaluation of AI outputs."
+  },
+  {
+   "id": "R12312a",
+   "lines": [
+    12312,
+    12312
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "quality",
+   "text": "AI evaluation tracks: JSON validity rate."
+  },
+  {
+   "id": "R12312b",
+   "lines": [
+    12312,
+    12312
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "quality",
+   "text": "AI evaluation tracks: factual accuracy."
+  },
+  {
+   "id": "R12312c",
+   "lines": [
+    12312,
+    12312
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "quality",
+   "text": "AI evaluation tracks: brand voice adherence."
+  },
+  {
+   "id": "R12312d",
+   "lines": [
+    12312,
+    12312
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "quality",
+   "text": "AI evaluation tracks: marketplace compliance."
+  },
+  {
+   "id": "R12312e",
+   "lines": [
+    12312,
+    12312
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "quality",
+   "text": "AI evaluation tracks: hallucination rate."
+  },
+  {
+   "id": "R12312f",
+   "lines": [
+    12312,
+    12312
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "quality",
+   "text": "AI evaluation tracks: correction rate."
+  },
+  {
+   "id": "R12312g",
+   "lines": [
+    12312,
+    12312
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "quality",
+   "text": "AI evaluation tracks: human rejection rate."
+  },
+  {
+   "id": "R12312h",
+   "lines": [
+    12312,
+    12312
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "quality",
+   "text": "AI evaluation tracks: average retries."
+  },
+  {
+   "id": "R12312i",
+   "lines": [
+    12312,
+    12312
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "quality",
+   "text": "AI evaluation tracks: model escalation rate."
+  },
+  {
+   "id": "R12312j",
+   "lines": [
+    12312,
+    12312
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "quality",
+   "text": "AI evaluation tracks: cost per successful listing."
+  },
+  {
+   "id": "R12314",
+   "lines": [
+    12314,
+    12314
+   ],
+   "page": "[152] AI Evaluation",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12316",
+   "lines": [
+    12316,
+    12316
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "info",
+   "text": "# [153] AI Quality Metrics",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12318",
+   "lines": [
+    12318,
+    12318
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "info",
+   "text": "Section: AI Model Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12319",
+   "lines": [
+    12319,
+    12319
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "scope",
+   "text": "Page [153] AI Quality Metrics scope: PHASE2."
+  },
+  {
+   "id": "R12320",
+   "lines": [
+    12320,
+    12320
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/ai-quality-metrics",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12321",
+   "lines": [
+    12321,
+    12321
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "info",
+   "text": "Description: Key quality metrics for measuring AI agent performance.",
+   "why_not": "context-prose"
+  },
+  {
+   "id": "R12322",
+   "lines": [
+    12322,
+    12322
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "info",
+   "text": "Keywords: quality metrics, KPIs, performance indicators, AI quality",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12324",
+   "lines": [
+    12324,
+    12324
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "info",
+   "text": "## Key Metrics",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12326",
+   "lines": [
+    12326,
+    12330
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "info",
+   "text": "Table header: Metric | What It Measures | Target",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12332",
+   "lines": [
+    12332,
+    12334
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "data",
+   "text": "JSON validity rate measures % of outputs with valid JSON."
+  },
+  {
+   "id": "R12336",
+   "lines": [
+    12336,
+    12336
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "constraint",
+   "text": "JSON validity rate target: >99%."
+  },
+  {
+   "id": "R12338",
+   "lines": [
+    12338,
+    12340
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "data",
+   "text": "First-pass validation rate measures % passing rules without correction."
+  },
+  {
+   "id": "R12342",
+   "lines": [
+    12342,
+    12342
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "constraint",
+   "text": "First-pass validation rate target: >85%."
+  },
+  {
+   "id": "R12344",
+   "lines": [
+    12344,
+    12346
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "data",
+   "text": "Human approval rate measures % approved without edits."
+  },
+  {
+   "id": "R12348",
+   "lines": [
+    12348,
+    12348
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "constraint",
+   "text": "Human approval rate target: >80%."
+  },
+  {
+   "id": "R12350",
+   "lines": [
+    12350,
+    12352
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "data",
+   "text": "Average retries measures mean correction attempts."
+  },
+  {
+   "id": "R12354",
+   "lines": [
+    12354,
+    12354
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "constraint",
+   "text": "Average retries target: <0.5."
+  },
+  {
+   "id": "R12356",
+   "lines": [
+    12356,
+    12358
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "data",
+   "text": "Cost per listing measures total AI cost per successful listing."
+  },
+  {
+   "id": "R12360",
+   "lines": [
+    12360,
+    12360
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "constraint",
+   "text": "Cost per listing target: <₹5."
+  },
+  {
+   "id": "R12362",
+   "lines": [
+    12362,
+    12362
+   ],
+   "page": "[153] AI Quality Metrics",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12364",
+   "lines": [
+    12364,
+    12364
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "info",
+   "text": "# [154] Security Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12366",
+   "lines": [
+    12366,
+    12366
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "info",
+   "text": "Section: Security",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12367",
+   "lines": [
+    12367,
+    12367
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "scope",
+   "text": "Page [154] Security Architecture scope: MVP."
+  },
+  {
+   "id": "R12368",
+   "lines": [
+    12368,
+    12368
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/security-architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12369",
+   "lines": [
+    12369,
+    12369
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "info",
+   "text": "Description: Complete security architecture — authentication, authorization, encryption, tenant isolation, audit.",
+   "why_not": "restatement",
+   "dup_of": "R12378"
+  },
+  {
+   "id": "R12370",
+   "lines": [
+    12370,
+    12370
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "info",
+   "text": "Keywords: security, architecture, overview, trust boundaries",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12372",
+   "lines": [
+    12372,
+    12372
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "info",
+   "text": "## Security Overview",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12374",
+   "lines": [
+    12374,
+    12376
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "info",
+   "text": "Table header: Concern | Design",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12378",
+   "lines": [
+    12378,
+    12380
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "decision",
+   "text": "App authentication: JWT."
+  },
+  {
+   "id": "R12380",
+   "lines": [
+    12380,
+    12380
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "decision",
+   "text": "App authentication: JWT via NextAuth (self-hosted)."
+  },
+  {
+   "id": "R12382",
+   "lines": [
+    12382,
+    12384
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "interface",
+   "text": "Marketplace auth: OAuth (Amazon SP-API)."
+  },
+  {
+   "id": "R12384",
+   "lines": [
+    12384,
+    12384
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "interface",
+   "text": "Marketplace auth: OAuth (Flipkart Seller API)."
+  },
+  {
+   "id": "R12386",
+   "lines": [
+    12386,
+    12388
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "quality",
+   "text": "Token storage: AES-256 encrypted at rest."
+  },
+  {
+   "id": "R12390",
+   "lines": [
+    12390,
+    12392
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "quality",
+   "text": "Tenant isolation: mandatory tenant_id on every query."
+  },
+  {
+   "id": "R12394",
+   "lines": [
+    12394,
+    12396
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "data",
+   "text": "Role: Owner."
+  },
+  {
+   "id": "R12396",
+   "lines": [
+    12396,
+    12396
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "data",
+   "text": "Role: operator."
+  },
+  {
+   "id": "R12396a",
+   "lines": [
+    12396,
+    12396
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "data",
+   "text": "Role: reviewer."
+  },
+  {
+   "id": "R12396b",
+   "lines": [
+    12396,
+    12396
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "data",
+   "text": "Role: admin."
+  },
+  {
+   "id": "R12398",
+   "lines": [
+    12398,
+    12400
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "requirement",
+   "text": "Approval integrity: generator cannot approve own listing."
+  },
+  {
+   "id": "R12402",
+   "lines": [
+    12402,
+    12404
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "quality",
+   "text": "Auditability: full audit trail on every action."
+  },
+  {
+   "id": "R12406",
+   "lines": [
+    12406,
+    12408
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "quality",
+   "text": "Transport: TLS everywhere."
+  },
+  {
+   "id": "R12410",
+   "lines": [
+    12410,
+    12412
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "decision",
+   "text": "Secrets: AWS Secrets Manager."
+  },
+  {
+   "id": "R12414",
+   "lines": [
+    12414,
+    12414
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "info",
+   "text": "## Trust Boundaries",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12416",
+   "lines": [
+    12416,
+    12417
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "info",
+   "text": "mermaid fence and graph direction (graph TB)",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12418",
+   "lines": [
+    12418,
+    12418
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "data",
+   "text": "Trust boundary PUBLIC: \"Public Internet\"."
+  },
+  {
+   "id": "R12419",
+   "lines": [
+    12419,
+    12420
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "data",
+   "text": "Public Internet contains \"User Browser\" (BROWSER)."
+  },
+  {
+   "id": "R12421",
+   "lines": [
+    12421,
+    12421
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "data",
+   "text": "Trust boundary DMZ: \"TLS Termination\"."
+  },
+  {
+   "id": "R12422",
+   "lines": [
+    12422,
+    12423
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "data",
+   "text": "TLS Termination contains \"Load Balancer\" (LB)."
+  },
+  {
+   "id": "R12424",
+   "lines": [
+    12424,
+    12424
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "data",
+   "text": "Trust boundary APP: \"Application Tier\"."
+  },
+  {
+   "id": "R12425",
+   "lines": [
+    12425,
+    12425
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "decision",
+   "text": "Application Tier contains \"Next.js Frontend\" (FE)."
+  },
+  {
+   "id": "R12426",
+   "lines": [
+    12426,
+    12427
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "decision",
+   "text": "Application Tier contains \"FastAPI Backend\" (BE)."
+  },
+  {
+   "id": "R12428",
+   "lines": [
+    12428,
+    12428
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "data",
+   "text": "Trust boundary DATA: \"Data Tier\"."
+  },
+  {
+   "id": "R12429",
+   "lines": [
+    12429,
+    12429
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "decision",
+   "text": "Data Tier contains PostgreSQL (DB)."
+  },
+  {
+   "id": "R12429a",
+   "lines": [
+    12429,
+    12429
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "quality",
+   "text": "PostgreSQL is encrypted (\"PostgreSQL - encrypted\")."
+  },
+  {
+   "id": "R12430",
+   "lines": [
+    12430,
+    12430
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "decision",
+   "text": "Data Tier contains \"Redis\" (REDIS)."
+  },
+  {
+   "id": "R12431",
+   "lines": [
+    12431,
+    12432
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "decision",
+   "text": "Data Tier contains S3 (S3)."
+  },
+  {
+   "id": "R12431a",
+   "lines": [
+    12431,
+    12431
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "quality",
+   "text": "S3 is encrypted (\"S3 - encrypted\")."
+  },
+  {
+   "id": "R12433",
+   "lines": [
+    12433,
+    12433
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "data",
+   "text": "Trust boundary EXT: \"External APIs\"."
+  },
+  {
+   "id": "R12434",
+   "lines": [
+    12434,
+    12434
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "interface",
+   "text": "External APIs contains \"Amazon SP-API\" (AMZ)."
+  },
+  {
+   "id": "R12435",
+   "lines": [
+    12435,
+    12436
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "interface",
+   "text": "External APIs contains \"Flipkart API\" (FLK)."
+  },
+  {
+   "id": "R12437",
+   "lines": [
+    12437,
+    12437
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "flow",
+   "text": "Edge: BROWSER --> LB."
+  },
+  {
+   "id": "R12437a",
+   "lines": [
+    12437,
+    12437
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "flow",
+   "text": "Edge: LB --> FE."
+  },
+  {
+   "id": "R12437b",
+   "lines": [
+    12437,
+    12437
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "flow",
+   "text": "Edge: FE --> BE."
+  },
+  {
+   "id": "R12437c",
+   "lines": [
+    12437,
+    12437
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "flow",
+   "text": "Edge: BE --> DB."
+  },
+  {
+   "id": "R12438",
+   "lines": [
+    12438,
+    12438
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "flow",
+   "text": "Edge: BE --> REDIS."
+  },
+  {
+   "id": "R12438a",
+   "lines": [
+    12438,
+    12438
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "flow",
+   "text": "Edge: BE --> S3."
+  },
+  {
+   "id": "R12439",
+   "lines": [
+    12439,
+    12439
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "flow",
+   "text": "Edge: BE --> AMZ."
+  },
+  {
+   "id": "R12439a",
+   "lines": [
+    12439,
+    12439
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "flow",
+   "text": "Edge: BE --> FLK."
+  },
+  {
+   "id": "R12440",
+   "lines": [
+    12440,
+    12440
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "info",
+   "text": "code fence close",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12442",
+   "lines": [
+    12442,
+    12442
+   ],
+   "page": "[154] Security Architecture",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12444",
+   "lines": [
+    12444,
+    12444
+   ],
+   "page": "[155] Multi-Tenancy",
+   "kind": "info",
+   "text": "# [155] Multi-Tenancy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12446",
+   "lines": [
+    12446,
+    12446
+   ],
+   "page": "[155] Multi-Tenancy",
+   "kind": "info",
+   "text": "Section: Security",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12447",
+   "lines": [
+    12447,
+    12447
+   ],
+   "page": "[155] Multi-Tenancy",
+   "kind": "scope",
+   "text": "Page [155] Multi-Tenancy scope: MVP."
+  },
+  {
+   "id": "R12448",
+   "lines": [
+    12448,
+    12448
+   ],
+   "page": "[155] Multi-Tenancy",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/multi-tenancy",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12449",
+   "lines": [
+    12449,
+    12449
+   ],
+   "page": "[155] Multi-Tenancy",
+   "kind": "info",
+   "text": "Description: Multi-tenancy enforcement — tenant_id on every query at repository layer.",
+   "why_not": "restatement",
+   "dup_of": "R12456b"
+  },
+  {
+   "id": "R12450",
+   "lines": [
+    12450,
+    12450
+   ],
+   "page": "[155] Multi-Tenancy",
+   "kind": "info",
+   "text": "Keywords: multi-tenancy, tenant isolation, tenant_id",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12452",
+   "lines": [
+    12452,
+    12452
+   ],
+   "page": "[155] Multi-Tenancy",
+   "kind": "info",
+   "text": "## Multi-Tenancy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12454",
+   "lines": [
+    12454,
+    12454
+   ],
+   "page": "[155] Multi-Tenancy",
+   "kind": "requirement",
+   "text": "Tenant isolation is labelled an Invariant."
+  },
+  {
+   "id": "R12456",
+   "lines": [
+    12456,
+    12456
+   ],
+   "page": "[155] Multi-Tenancy",
+   "kind": "quality",
+   "text": "Tenant isolation is mandatory."
+  },
+  {
+   "id": "R12456a",
+   "lines": [
+    12456,
+    12456
+   ],
+   "page": "[155] Multi-Tenancy",
+   "kind": "info",
+   "text": "Every database query includes tenant_id filtering.",
+   "why_not": "restatement",
+   "dup_of": "R12390"
+  },
+  {
+   "id": "R12456b",
+   "lines": [
+    12456,
+    12456
+   ],
+   "page": "[155] Multi-Tenancy",
+   "kind": "decision",
+   "text": "tenant_id filtering is enforced at the repository layer — not the application layer."
+  },
+  {
+   "id": "R12456c",
+   "lines": [
+    12456,
+    12456
+   ],
+   "page": "[155] Multi-Tenancy",
+   "kind": "quality",
+   "text": "Cross-tenant data leakage is a critical security violation."
+  },
+  {
+   "id": "R12458",
+   "lines": [
+    12458,
+    12458
+   ],
+   "page": "[155] Multi-Tenancy",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12460",
+   "lines": [
+    12460,
+    12460
+   ],
+   "page": "[156] Tenant Isolation",
+   "kind": "info",
+   "text": "# [156] Tenant Isolation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12462",
+   "lines": [
+    12462,
+    12462
+   ],
+   "page": "[156] Tenant Isolation",
+   "kind": "info",
+   "text": "Section: Security",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12463",
+   "lines": [
+    12463,
+    12463
+   ],
+   "page": "[156] Tenant Isolation",
+   "kind": "scope",
+   "text": "Page [156] Tenant Isolation scope: MVP."
+  },
+  {
+   "id": "R12464",
+   "lines": [
+    12464,
+    12464
+   ],
+   "page": "[156] Tenant Isolation",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/tenant-isolation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12465",
+   "lines": [
+    12465,
+    12465
+   ],
+   "page": "[156] Tenant Isolation",
+   "kind": "quality",
+   "text": "Tenant data isolation is enforced at the database level."
+  },
+  {
+   "id": "R12466",
+   "lines": [
+    12466,
+    12466
+   ],
+   "page": "[156] Tenant Isolation",
+   "kind": "info",
+   "text": "Keywords: tenant isolation, data isolation, repository layer",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12468",
+   "lines": [
+    12468,
+    12468
+   ],
+   "page": "[156] Tenant Isolation",
+   "kind": "info",
+   "text": "## Tenant Isolation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12470",
+   "lines": [
+    12470,
+    12470
+   ],
+   "page": "[156] Tenant Isolation",
+   "kind": "info",
+   "text": "Repository-level enforcement.",
+   "why_not": "restatement",
+   "dup_of": "R12456b"
+  },
+  {
+   "id": "R12470a",
+   "lines": [
+    12470,
+    12470
+   ],
+   "page": "[156] Tenant Isolation",
+   "kind": "interface",
+   "text": "Every query method includes `WHERE tenant_id = :tenant_id`."
+  },
+  {
+   "id": "R12470b",
+   "lines": [
+    12470,
+    12470
+   ],
+   "page": "[156] Tenant Isolation",
+   "kind": "requirement",
+   "text": "The tenant_id comes from the authenticated JWT."
+  },
+  {
+   "id": "R12470c",
+   "lines": [
+    12470,
+    12470
+   ],
+   "page": "[156] Tenant Isolation",
+   "kind": "requirement",
+   "text": "The tenant_id cannot be overridden by the client."
+  },
+  {
+   "id": "R12470d",
+   "lines": [
+    12470,
+    12470
+   ],
+   "page": "[156] Tenant Isolation",
+   "kind": "decision",
+   "text": "Tenant filtering is implemented in a base repository class."
+  },
+  {
+   "id": "R12470e",
+   "lines": [
+    12470,
+    12470
+   ],
+   "page": "[156] Tenant Isolation",
+   "kind": "requirement",
+   "text": "All entity repositories extend the base repository class."
+  },
+  {
+   "id": "R12472",
+   "lines": [
+    12472,
+    12472
+   ],
+   "page": "[156] Tenant Isolation",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12474",
+   "lines": [
+    12474,
+    12474
+   ],
+   "page": "[157] Authentication",
+   "kind": "info",
+   "text": "# [157] Authentication",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12476",
+   "lines": [
+    12476,
+    12476
+   ],
+   "page": "[157] Authentication",
+   "kind": "info",
+   "text": "Section: Security",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12477",
+   "lines": [
+    12477,
+    12477
+   ],
+   "page": "[157] Authentication",
+   "kind": "scope",
+   "text": "Page [157] Authentication scope: MVP."
+  },
+  {
+   "id": "R12478",
+   "lines": [
+    12478,
+    12478
+   ],
+   "page": "[157] Authentication",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/authentication",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12479",
+   "lines": [
+    12479,
+    12479
+   ],
+   "page": "[157] Authentication",
+   "kind": "info",
+   "text": "Description: JWT authentication via NextAuth.",
+   "why_not": "restatement",
+   "dup_of": "R12380"
+  },
+  {
+   "id": "R12480",
+   "lines": [
+    12480,
+    12480
+   ],
+   "page": "[157] Authentication",
+   "kind": "info",
+   "text": "Keywords: authentication, JWT, NextAuth, login",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12482",
+   "lines": [
+    12482,
+    12482
+   ],
+   "page": "[157] Authentication",
+   "kind": "info",
+   "text": "## Authentication",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12484",
+   "lines": [
+    12484,
+    12484
+   ],
+   "page": "[157] Authentication",
+   "kind": "info",
+   "text": "JWT via NextAuth (self-hosted).",
+   "why_not": "restatement",
+   "dup_of": "R12380"
+  },
+  {
+   "id": "R12484a",
+   "lines": [
+    12484,
+    12484
+   ],
+   "page": "[157] Authentication",
+   "kind": "requirement",
+   "text": "Authentication supports email/password."
+  },
+  {
+   "id": "R12484b",
+   "lines": [
+    12484,
+    12484
+   ],
+   "page": "[157] Authentication",
+   "kind": "requirement",
+   "text": "Authentication supports OAuth providers."
+  },
+  {
+   "id": "R12484c",
+   "lines": [
+    12484,
+    12484
+   ],
+   "page": "[157] Authentication",
+   "kind": "data",
+   "text": "JWT tokens contain: user_id."
+  },
+  {
+   "id": "R12484d",
+   "lines": [
+    12484,
+    12484
+   ],
+   "page": "[157] Authentication",
+   "kind": "data",
+   "text": "JWT tokens contain: tenant_id."
+  },
+  {
+   "id": "R12484e",
+   "lines": [
+    12484,
+    12484
+   ],
+   "page": "[157] Authentication",
+   "kind": "data",
+   "text": "JWT tokens contain: roles."
+  },
+  {
+   "id": "R12484f",
+   "lines": [
+    12484,
+    12484
+   ],
+   "page": "[157] Authentication",
+   "kind": "data",
+   "text": "JWT tokens contain: expiration."
+  },
+  {
+   "id": "R12484g",
+   "lines": [
+    12484,
+    12484
+   ],
+   "page": "[157] Authentication",
+   "kind": "decision",
+   "text": "Token validation in FastAPI middleware."
+  },
+  {
+   "id": "R12486",
+   "lines": [
+    12486,
+    12486
+   ],
+   "page": "[157] Authentication",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12488",
+   "lines": [
+    12488,
+    12488
+   ],
+   "page": "[158] Authorization",
+   "kind": "info",
+   "text": "# [158] Authorization",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12490",
+   "lines": [
+    12490,
+    12490
+   ],
+   "page": "[158] Authorization",
+   "kind": "info",
+   "text": "Section: Security",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12491",
+   "lines": [
+    12491,
+    12491
+   ],
+   "page": "[158] Authorization",
+   "kind": "scope",
+   "text": "Page [158] Authorization scope: MVP."
+  },
+  {
+   "id": "R12492",
+   "lines": [
+    12492,
+    12492
+   ],
+   "page": "[158] Authorization",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/authorization",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12493",
+   "lines": [
+    12493,
+    12493
+   ],
+   "page": "[158] Authorization",
+   "kind": "decision",
+   "text": "Authorization is RBAC-based."
+  },
+  {
+   "id": "R12493a",
+   "lines": [
+    12493,
+    12493
+   ],
+   "page": "[158] Authorization",
+   "kind": "info",
+   "text": "Description: ... with four roles.",
+   "why_not": "restatement",
+   "dup_of": "R12498"
+  },
+  {
+   "id": "R12494",
+   "lines": [
+    12494,
+    12494
+   ],
+   "page": "[158] Authorization",
+   "kind": "info",
+   "text": "Keywords: authorization, RBAC, roles, permissions",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12496",
+   "lines": [
+    12496,
+    12496
+   ],
+   "page": "[158] Authorization",
+   "kind": "info",
+   "text": "## Authorization",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12498",
+   "lines": [
+    12498,
+    12498
+   ],
+   "page": "[158] Authorization",
+   "kind": "constraint",
+   "text": "Four roles: Owner, Operator, Reviewer, Admin."
+  },
+  {
+   "id": "R12498a",
+   "lines": [
+    12498,
+    12498
+   ],
+   "page": "[158] Authorization",
+   "kind": "requirement",
+   "text": "Each API endpoint specifies required roles."
+  },
+  {
+   "id": "R12498b",
+   "lines": [
+    12498,
+    12498
+   ],
+   "page": "[158] Authorization",
+   "kind": "requirement",
+   "text": "Authorization middleware checks JWT claims against endpoint requirements."
+  },
+  {
+   "id": "R12498c",
+   "lines": [
+    12498,
+    12498
+   ],
+   "page": "[158] Authorization",
+   "kind": "requirement",
+   "text": "Maker-checker is enforced at the business logic layer."
+  },
+  {
+   "id": "R12500",
+   "lines": [
+    12500,
+    12500
+   ],
+   "page": "[158] Authorization",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12502",
+   "lines": [
+    12502,
+    12502
+   ],
+   "page": "[159] Marketplace OAuth",
+   "kind": "info",
+   "text": "# [159] Marketplace OAuth",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12504",
+   "lines": [
+    12504,
+    12504
+   ],
+   "page": "[159] Marketplace OAuth",
+   "kind": "info",
+   "text": "Section: Security",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12505",
+   "lines": [
+    12505,
+    12505
+   ],
+   "page": "[159] Marketplace OAuth",
+   "kind": "scope",
+   "text": "Page [159] Marketplace OAuth scope: MVP."
+  },
+  {
+   "id": "R12506",
+   "lines": [
+    12506,
+    12506
+   ],
+   "page": "[159] Marketplace OAuth",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/marketplace-oauth",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12507",
+   "lines": [
+    12507,
+    12507
+   ],
+   "page": "[159] Marketplace OAuth",
+   "kind": "info",
+   "text": "Description: OAuth implementation for Amazon SP-API and Flipkart Seller API.",
+   "why_not": "restatement",
+   "dup_of": "R12382"
+  },
+  {
+   "id": "R12508",
+   "lines": [
+    12508,
+    12508
+   ],
+   "page": "[159] Marketplace OAuth",
+   "kind": "info",
+   "text": "Keywords: OAuth, Amazon SP-API, Flipkart, marketplace auth",
+   "why_not": "navigation"
+  }
+ ]
+}

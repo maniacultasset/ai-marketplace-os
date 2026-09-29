@@ -1,0 +1,4834 @@
+{
+ "chunk": "c16",
+ "start": 9764,
+ "end": 10327,
+ "items": [
+  {
+   "id": "R09764",
+   "lines": [
+    9764,
+    9764
+   ],
+   "page": "[39] Keyword Generation",
+   "kind": "info",
+   "text": "Page heading: [39] Keyword Generation.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09766",
+   "lines": [
+    9766,
+    9766
+   ],
+   "page": "[39] Keyword Generation",
+   "kind": "info",
+   "text": "Section: Listing Generation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09767",
+   "lines": [
+    9767,
+    9767
+   ],
+   "page": "[39] Keyword Generation",
+   "kind": "scope",
+   "text": "Page [39] Keyword Generation scope: MVP."
+  },
+  {
+   "id": "R09768",
+   "lines": [
+    9768,
+    9768
+   ],
+   "page": "[39] Keyword Generation",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/keyword-generation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09769",
+   "lines": [
+    9769,
+    9769
+   ],
+   "page": "[39] Keyword Generation",
+   "kind": "requirement",
+   "text": "Keyword Generation covers search term generation for marketplace discovery."
+  },
+  {
+   "id": "R09769a",
+   "lines": [
+    9769,
+    9769
+   ],
+   "page": "[39] Keyword Generation",
+   "kind": "requirement",
+   "text": "Keyword Generation covers backend keyword generation for marketplace discovery."
+  },
+  {
+   "id": "R09770",
+   "lines": [
+    9770,
+    9770
+   ],
+   "page": "[39] Keyword Generation",
+   "kind": "info",
+   "text": "Keywords: keyword, generation, search terms, backend",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09772",
+   "lines": [
+    9772,
+    9772
+   ],
+   "page": "[39] Keyword Generation",
+   "kind": "info",
+   "text": "## Keyword Generation Strategy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09774",
+   "lines": [
+    9774,
+    9774
+   ],
+   "page": "[39] Keyword Generation",
+   "kind": "requirement",
+   "text": "The Keyword Agent generates two types of keywords: search terms and backend keywords."
+  },
+  {
+   "id": "R09774a",
+   "lines": [
+    9774,
+    9774
+   ],
+   "page": "[39] Keyword Generation",
+   "kind": "data",
+   "text": "Search terms are visible and used in content."
+  },
+  {
+   "id": "R09774b",
+   "lines": [
+    9774,
+    9774
+   ],
+   "page": "[39] Keyword Generation",
+   "kind": "data",
+   "text": "Backend keywords are invisible and Amazon-specific."
+  },
+  {
+   "id": "R09774c",
+   "lines": [
+    9774,
+    9774
+   ],
+   "page": "[39] Keyword Generation",
+   "kind": "constraint",
+   "text": "Backend keywords fill the 250-byte limit."
+  },
+  {
+   "id": "R09774d",
+   "lines": [
+    9774,
+    9774
+   ],
+   "page": "[39] Keyword Generation",
+   "kind": "requirement",
+   "text": "Backend keywords use terms not already in the listing."
+  },
+  {
+   "id": "R09774e",
+   "lines": [
+    9774,
+    9774
+   ],
+   "page": "[39] Keyword Generation",
+   "kind": "requirement",
+   "text": "No keyword stuffing."
+  },
+  {
+   "id": "R09774f",
+   "lines": [
+    9774,
+    9774
+   ],
+   "page": "[39] Keyword Generation",
+   "kind": "requirement",
+   "text": "Each keyword term must be semantically distinct."
+  },
+  {
+   "id": "R09776",
+   "lines": [
+    9776,
+    9776
+   ],
+   "page": "[39] Keyword Generation",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09778",
+   "lines": [
+    9778,
+    9778
+   ],
+   "page": "[40] Attribute Generation",
+   "kind": "info",
+   "text": "Page heading: [40] Attribute Generation.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09780",
+   "lines": [
+    9780,
+    9780
+   ],
+   "page": "[40] Attribute Generation",
+   "kind": "info",
+   "text": "Section: Listing Generation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09781",
+   "lines": [
+    9781,
+    9781
+   ],
+   "page": "[40] Attribute Generation",
+   "kind": "scope",
+   "text": "Page [40] Attribute Generation scope: MVP."
+  },
+  {
+   "id": "R09782",
+   "lines": [
+    9782,
+    9782
+   ],
+   "page": "[40] Attribute Generation",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/attribute-generation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09783",
+   "lines": [
+    9783,
+    9783
+   ],
+   "page": "[40] Attribute Generation",
+   "kind": "requirement",
+   "text": "Structured attribute generation matching marketplace category schemas."
+  },
+  {
+   "id": "R09784",
+   "lines": [
+    9784,
+    9784
+   ],
+   "page": "[40] Attribute Generation",
+   "kind": "info",
+   "text": "Keywords: attribute, generation, category schema, structured",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09786",
+   "lines": [
+    9786,
+    9786
+   ],
+   "page": "[40] Attribute Generation",
+   "kind": "info",
+   "text": "## Attribute Generation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09788",
+   "lines": [
+    9788,
+    9788
+   ],
+   "page": "[40] Attribute Generation",
+   "kind": "requirement",
+   "text": "The Attribute Agent maps raw product data to the marketplace's category schema."
+  },
+  {
+   "id": "R09788a",
+   "lines": [
+    9788,
+    9788
+   ],
+   "page": "[40] Attribute Generation",
+   "kind": "data",
+   "text": "Each category has required and optional attributes."
+  },
+  {
+   "id": "R09788b",
+   "lines": [
+    9788,
+    9788
+   ],
+   "page": "[40] Attribute Generation",
+   "kind": "data",
+   "text": "Category attributes have specific allowed values."
+  },
+  {
+   "id": "R09788c",
+   "lines": [
+    9788,
+    9788
+   ],
+   "page": "[40] Attribute Generation",
+   "kind": "interface",
+   "text": "Missing required attributes generate \"MISSING_ATTRIBUTE\" errors in the Rules Engine."
+  },
+  {
+   "id": "R09790",
+   "lines": [
+    9790,
+    9790
+   ],
+   "page": "[40] Attribute Generation",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09792",
+   "lines": [
+    9792,
+    9792
+   ],
+   "page": "[41] Category Mapping",
+   "kind": "info",
+   "text": "Page heading: [41] Category Mapping.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09794",
+   "lines": [
+    9794,
+    9794
+   ],
+   "page": "[41] Category Mapping",
+   "kind": "info",
+   "text": "Section: Listing Generation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09795",
+   "lines": [
+    9795,
+    9795
+   ],
+   "page": "[41] Category Mapping",
+   "kind": "scope",
+   "text": "Page [41] Category Mapping scope: MVP."
+  },
+  {
+   "id": "R09796",
+   "lines": [
+    9796,
+    9796
+   ],
+   "page": "[41] Category Mapping",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/category-mapping",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09797",
+   "lines": [
+    9797,
+    9797
+   ],
+   "page": "[41] Category Mapping",
+   "kind": "requirement",
+   "text": "Products are mapped to marketplace-specific category trees."
+  },
+  {
+   "id": "R09798",
+   "lines": [
+    9798,
+    9798
+   ],
+   "page": "[41] Category Mapping",
+   "kind": "info",
+   "text": "Keywords: category, mapping, browse node, taxonomy",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09800",
+   "lines": [
+    9800,
+    9800
+   ],
+   "page": "[41] Category Mapping",
+   "kind": "info",
+   "text": "## Category Mapping",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09802",
+   "lines": [
+    9802,
+    9802
+   ],
+   "page": "[41] Category Mapping",
+   "kind": "data",
+   "text": "Each marketplace has its own category taxonomy."
+  },
+  {
+   "id": "R09802a",
+   "lines": [
+    9802,
+    9802
+   ],
+   "page": "[41] Category Mapping",
+   "kind": "data",
+   "text": "Amazon uses Browse Nodes."
+  },
+  {
+   "id": "R09802b",
+   "lines": [
+    9802,
+    9802
+   ],
+   "page": "[41] Category Mapping",
+   "kind": "data",
+   "text": "Flipkart uses its own category tree."
+  },
+  {
+   "id": "R09802c",
+   "lines": [
+    9802,
+    9802
+   ],
+   "page": "[41] Category Mapping",
+   "kind": "requirement",
+   "text": "The platform maintains a mapping between internal categories and marketplace-specific categories."
+  },
+  {
+   "id": "R09802d",
+   "lines": [
+    9802,
+    9802
+   ],
+   "page": "[41] Category Mapping",
+   "kind": "requirement",
+   "text": "Category selection determines which rules apply."
+  },
+  {
+   "id": "R09802e",
+   "lines": [
+    9802,
+    9802
+   ],
+   "page": "[41] Category Mapping",
+   "kind": "requirement",
+   "text": "Category selection determines which attribute schemas apply."
+  },
+  {
+   "id": "R09804",
+   "lines": [
+    9804,
+    9804
+   ],
+   "page": "[41] Category Mapping",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09806",
+   "lines": [
+    9806,
+    9806
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "info",
+   "text": "Page heading: [42] Marketplace-specific Content.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09808",
+   "lines": [
+    9808,
+    9808
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "info",
+   "text": "Section: Listing Generation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09809",
+   "lines": [
+    9809,
+    9809
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "scope",
+   "text": "Page [42] Marketplace-specific Content scope: MVP."
+  },
+  {
+   "id": "R09810",
+   "lines": [
+    9810,
+    9810
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/marketplace-specific-content",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09811",
+   "lines": [
+    9811,
+    9811
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "requirement",
+   "text": "Content differs between Amazon and Flipkart in formatting."
+  },
+  {
+   "id": "R09811a",
+   "lines": [
+    9811,
+    9811
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "constraint",
+   "text": "Content differs between Amazon and Flipkart in length limits."
+  },
+  {
+   "id": "R09811b",
+   "lines": [
+    9811,
+    9811
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "requirement",
+   "text": "Content differs between Amazon and Flipkart in tone expectations."
+  },
+  {
+   "id": "R09812",
+   "lines": [
+    9812,
+    9812
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "info",
+   "text": "Keywords: marketplace specific, Amazon, Flipkart, differences",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09814",
+   "lines": [
+    9814,
+    9814
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "info",
+   "text": "## Marketplace Differences",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09816",
+   "lines": [
+    9816,
+    9820
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "info",
+   "text": "Table header: Aspect | Amazon | Flipkart.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09822",
+   "lines": [
+    9822,
+    9824
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "data",
+   "text": "Amazon title format: Brand + Type + Feature + Variant."
+  },
+  {
+   "id": "R09826",
+   "lines": [
+    9826,
+    9826
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "data",
+   "text": "Flipkart title format: Similar but category-specific."
+  },
+  {
+   "id": "R09828",
+   "lines": [
+    9828,
+    9830
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "constraint",
+   "text": "Amazon bullet count: 5 standard."
+  },
+  {
+   "id": "R09832",
+   "lines": [
+    9832,
+    9832
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "data",
+   "text": "Flipkart bullet count: Varies."
+  },
+  {
+   "id": "R09834",
+   "lines": [
+    9834,
+    9836
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "interface",
+   "text": "Amazon description HTML: Basic HTML supported."
+  },
+  {
+   "id": "R09838",
+   "lines": [
+    9838,
+    9838
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "interface",
+   "text": "Flipkart description HTML: Specific formatting."
+  },
+  {
+   "id": "R09840",
+   "lines": [
+    9840,
+    9842
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "constraint",
+   "text": "Amazon backend keywords: 250 bytes."
+  },
+  {
+   "id": "R09840a",
+   "lines": [
+    9840,
+    9842
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "data",
+   "text": "Amazon backend keywords: hidden."
+  },
+  {
+   "id": "R09844",
+   "lines": [
+    9844,
+    9844
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "scope",
+   "text": "Flipkart backend keywords: Not applicable."
+  },
+  {
+   "id": "R09846",
+   "lines": [
+    9846,
+    9848
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "constraint",
+   "text": "Amazon main image: Pure white background."
+  },
+  {
+   "id": "R09850",
+   "lines": [
+    9850,
+    9850
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "constraint",
+   "text": "Flipkart main image: White/light background."
+  },
+  {
+   "id": "R09852",
+   "lines": [
+    9852,
+    9852
+   ],
+   "page": "[42] Marketplace-specific Content",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09854",
+   "lines": [
+    9854,
+    9854
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "info",
+   "text": "Page heading: [43] Listing Versioning.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09856",
+   "lines": [
+    9856,
+    9856
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "info",
+   "text": "Section: Listing Generation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09857",
+   "lines": [
+    9857,
+    9857
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "scope",
+   "text": "Page [43] Listing Versioning scope: PHASE2."
+  },
+  {
+   "id": "R09858",
+   "lines": [
+    9858,
+    9858
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/listing-versioning",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09859",
+   "lines": [
+    9859,
+    9859
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "requirement",
+   "text": "Listing version history tracks changes."
+  },
+  {
+   "id": "R09859a",
+   "lines": [
+    9859,
+    9859
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "requirement",
+   "text": "Listing version history supports comparing versions."
+  },
+  {
+   "id": "R09859b",
+   "lines": [
+    9859,
+    9859
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "requirement",
+   "text": "Listing version history provides rollback capability."
+  },
+  {
+   "id": "R09860",
+   "lines": [
+    9860,
+    9860
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "info",
+   "text": "Keywords: versioning, version history, rollback, compare",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09862",
+   "lines": [
+    9862,
+    9862
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "info",
+   "text": "## Listing Versioning",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09864",
+   "lines": [
+    9864,
+    9864
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "requirement",
+   "text": "Every listing modification creates a new `ListingVersion` record."
+  },
+  {
+   "id": "R09864a",
+   "lines": [
+    9864,
+    9864
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "data",
+   "text": "The ListingVersion stores the complete content JSON."
+  },
+  {
+   "id": "R09864b",
+   "lines": [
+    9864,
+    9864
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "data",
+   "text": "The ListingVersion stores image reports."
+  },
+  {
+   "id": "R09864c",
+   "lines": [
+    9864,
+    9864
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "data",
+   "text": "The ListingVersion stores validation results."
+  },
+  {
+   "id": "R09864d",
+   "lines": [
+    9864,
+    9864
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "data",
+   "text": "The ListingVersion stores metadata."
+  },
+  {
+   "id": "R09864e",
+   "lines": [
+    9864,
+    9864
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "requirement",
+   "text": "Versioning enables version comparison."
+  },
+  {
+   "id": "R09864f",
+   "lines": [
+    9864,
+    9864
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "requirement",
+   "text": "Versioning enables rollback to previous approved versions."
+  },
+  {
+   "id": "R09864g",
+   "lines": [
+    9864,
+    9864
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "requirement",
+   "text": "Versioning enables performance tracking per version."
+  },
+  {
+   "id": "R09866",
+   "lines": [
+    9866,
+    9868
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "scope",
+   "text": "Phase 2 callout: Full version history UI is Phase 2."
+  },
+  {
+   "id": "R09868",
+   "lines": [
+    9868,
+    9868
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "scope",
+   "text": "In MVP, versions are stored."
+  },
+  {
+   "id": "R09868a",
+   "lines": [
+    9868,
+    9868
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "scope",
+   "text": "In MVP, the version comparison UI is simplified."
+  },
+  {
+   "id": "R09870",
+   "lines": [
+    9870,
+    9870
+   ],
+   "page": "[43] Listing Versioning",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09872",
+   "lines": [
+    9872,
+    9872
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "info",
+   "text": "Page heading: [44] Image Compliance Pipeline.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09874",
+   "lines": [
+    9874,
+    9874
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "info",
+   "text": "Section: Image Compliance",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09875",
+   "lines": [
+    9875,
+    9875
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "scope",
+   "text": "Page [44] Image Compliance Pipeline scope: MVP."
+  },
+  {
+   "id": "R09876",
+   "lines": [
+    9876,
+    9876
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/image-compliance-pipeline",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09877",
+   "lines": [
+    9877,
+    9877
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "flow",
+   "text": "Image compliance pipeline starts from upload."
+  },
+  {
+   "id": "R09877a",
+   "lines": [
+    9877,
+    9877
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "flow",
+   "text": "Image compliance pipeline runs deterministic checks."
+  },
+  {
+   "id": "R09877b",
+   "lines": [
+    9877,
+    9877
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "flow",
+   "text": "Image compliance pipeline runs vision model analysis."
+  },
+  {
+   "id": "R09877c",
+   "lines": [
+    9877,
+    9877
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "interface",
+   "text": "Image compliance pipeline ends in a structured ImageReport."
+  },
+  {
+   "id": "R09878",
+   "lines": [
+    9878,
+    9878
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "info",
+   "text": "Keywords: image, compliance, pipeline, vision, deterministic, ImageReport",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09880",
+   "lines": [
+    9880,
+    9880
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "info",
+   "text": "## Why a Dedicated Pipeline",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09882",
+   "lines": [
+    9882,
+    9882
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "risk",
+   "text": "Amazon and Flipkart reject listings silently or visibly for image violations."
+  },
+  {
+   "id": "R09882a",
+   "lines": [
+    9882,
+    9882
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "data",
+   "text": "Image violation type: white-background rules."
+  },
+  {
+   "id": "R09882b",
+   "lines": [
+    9882,
+    9882
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "data",
+   "text": "Image violation type: resolution."
+  },
+  {
+   "id": "R09882c",
+   "lines": [
+    9882,
+    9882
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "data",
+   "text": "Image violation type: text overlays."
+  },
+  {
+   "id": "R09882d",
+   "lines": [
+    9882,
+    9882
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "data",
+   "text": "Image violation type: watermarks."
+  },
+  {
+   "id": "R09882e",
+   "lines": [
+    9882,
+    9882
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "flow",
+   "text": "The image compliance pipeline runs before human approval."
+  },
+  {
+   "id": "R09882f",
+   "lines": [
+    9882,
+    9882
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "flow",
+   "text": "The image compliance pipeline runs in parallel with text generation."
+  },
+  {
+   "id": "R09882g",
+   "lines": [
+    9882,
+    9882
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "risk",
+   "text": "Catching image issues early prevents wasted publishing attempts."
+  },
+  {
+   "id": "R09884",
+   "lines": [
+    9884,
+    9884
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "info",
+   "text": "## Pipeline Flow",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09886",
+   "lines": [
+    9886,
+    9886
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "info",
+   "text": "Architecture Diagram: Image Compliance Pipeline",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09888",
+   "lines": [
+    9888,
+    9889
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "info",
+   "text": "```mermaid fence and 'graph TD' declaration.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09890",
+   "lines": [
+    9890,
+    9890
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "flow",
+   "text": "Diagram: Image Upload --> Store in S3."
+  },
+  {
+   "id": "R09891",
+   "lines": [
+    9891,
+    9891
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "flow",
+   "text": "Diagram: Store in S3 --> Deterministic Checks."
+  },
+  {
+   "id": "R09892",
+   "lines": [
+    9892,
+    9892
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "flow",
+   "text": "Diagram: Deterministic Checks --> Vision Model Review."
+  },
+  {
+   "id": "R09892a",
+   "lines": [
+    9892,
+    9892
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "data",
+   "text": "Deterministic Checks edge label: resolution."
+  },
+  {
+   "id": "R09892b",
+   "lines": [
+    9892,
+    9892
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "data",
+   "text": "Deterministic Checks edge label: format."
+  },
+  {
+   "id": "R09892c",
+   "lines": [
+    9892,
+    9892
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "data",
+   "text": "Deterministic Checks edge label: aspect ratio."
+  },
+  {
+   "id": "R09892d",
+   "lines": [
+    9892,
+    9892
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "data",
+   "text": "Deterministic Checks edge label: EXIF."
+  },
+  {
+   "id": "R09893",
+   "lines": [
+    9893,
+    9893
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "flow",
+   "text": "Diagram: Vision Model Review --> Structured ImageReport."
+  },
+  {
+   "id": "R09893a",
+   "lines": [
+    9893,
+    9893
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "data",
+   "text": "Vision Model Review edge label: background."
+  },
+  {
+   "id": "R09893b",
+   "lines": [
+    9893,
+    9893
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "data",
+   "text": "Vision Model Review edge label: fill."
+  },
+  {
+   "id": "R09893c",
+   "lines": [
+    9893,
+    9893
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "data",
+   "text": "Vision Model Review edge label: text."
+  },
+  {
+   "id": "R09893d",
+   "lines": [
+    9893,
+    9893
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "data",
+   "text": "Vision Model Review edge label: watermark."
+  },
+  {
+   "id": "R09894",
+   "lines": [
+    9894,
+    9894
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "flow",
+   "text": "Diagram: Structured ImageReport --> decision \"Pass/Warn/Fail?\"."
+  },
+  {
+   "id": "R09894a",
+   "lines": [
+    9894,
+    9894
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "data",
+   "text": "Image check outcome values: Pass, Warn, Fail."
+  },
+  {
+   "id": "R09895",
+   "lines": [
+    9895,
+    9895
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "flow",
+   "text": "Diagram: \"Pass\" --> Attach to listing."
+  },
+  {
+   "id": "R09896",
+   "lines": [
+    9896,
+    9896
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "flow",
+   "text": "Diagram: \"Fail/Warn\" --> Surface issue."
+  },
+  {
+   "id": "R09896a",
+   "lines": [
+    9896,
+    9896
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "flow",
+   "text": "Diagram: \"Fail/Warn\" --> surface suggested fix."
+  },
+  {
+   "id": "R09897",
+   "lines": [
+    9897,
+    9897
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "flow",
+   "text": "Diagram: Surface issue + suggested fix --> User reviews."
+  },
+  {
+   "id": "R09898",
+   "lines": [
+    9898,
+    9898
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "flow",
+   "text": "Diagram: User \"Fix & re-upload\" --> Image Upload."
+  },
+  {
+   "id": "R09899",
+   "lines": [
+    9899,
+    9899
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "flow",
+   "text": "Diagram: User \"Accept warning\" --> Attach to listing."
+  },
+  {
+   "id": "R09900",
+   "lines": [
+    9900,
+    9900
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "info",
+   "text": "Closing ``` of mermaid diagram.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09902",
+   "lines": [
+    9902,
+    9902
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "info",
+   "text": "## Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09904",
+   "lines": [
+    9904,
+    9904
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "decision",
+   "text": "Marketplace-specific image rules are stored as policy configurations."
+  },
+  {
+   "id": "R09904a",
+   "lines": [
+    9904,
+    9904
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "requirement",
+   "text": "Marketplace-specific rules are NOT hardcoded into the vision agent."
+  },
+  {
+   "id": "R09904b",
+   "lines": [
+    9904,
+    9904
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "data",
+   "text": "Amazon and Flipkart image rules are separate policy documents."
+  },
+  {
+   "id": "R09904c",
+   "lines": [
+    9904,
+    9904
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "requirement",
+   "text": "The pipeline evaluates against the marketplace policy documents."
+  },
+  {
+   "id": "R09904d",
+   "lines": [
+    9904,
+    9904
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "requirement",
+   "text": "Adding a new marketplace's image rules requires only a new policy configuration, not code changes."
+  },
+  {
+   "id": "R09906",
+   "lines": [
+    9906,
+    9908
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "requirement",
+   "text": "Invariant: Marketplace image rules are policy configurations, not hardcoded logic."
+  },
+  {
+   "id": "R09908",
+   "lines": [
+    9908,
+    9908
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "requirement",
+   "text": "Invariant: The vision agent evaluates images against loaded policies."
+  },
+  {
+   "id": "R09910",
+   "lines": [
+    9910,
+    9910
+   ],
+   "page": "[44] Image Compliance Pipeline",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09912",
+   "lines": [
+    9912,
+    9912
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "info",
+   "text": "Page heading: [45] Image Processing Flow.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09914",
+   "lines": [
+    9914,
+    9914
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "info",
+   "text": "Section: Image Compliance",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09915",
+   "lines": [
+    9915,
+    9915
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "scope",
+   "text": "Page [45] Image Processing Flow scope: MVP."
+  },
+  {
+   "id": "R09916",
+   "lines": [
+    9916,
+    9916
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/image-processing-flow",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09917",
+   "lines": [
+    9917,
+    9917
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "flow",
+   "text": "Detailed step-by-step image processing from upload to final report."
+  },
+  {
+   "id": "R09918",
+   "lines": [
+    9918,
+    9918
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "info",
+   "text": "Keywords: image processing, S3, upload, flow",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09920",
+   "lines": [
+    9920,
+    9920
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "info",
+   "text": "## Processing Steps",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09922",
+   "lines": [
+    9922,
+    9922
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "flow",
+   "text": "Step 1: Image uploaded via API."
+  },
+  {
+   "id": "R09922a",
+   "lines": [
+    9922,
+    9922
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "decision",
+   "text": "Step 1: Uploaded image stored in S3."
+  },
+  {
+   "id": "R09922b",
+   "lines": [
+    9922,
+    9922
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "quality",
+   "text": "Step 1: Image stored with tenant-scoped path."
+  },
+  {
+   "id": "R09923",
+   "lines": [
+    9923,
+    9923
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "constraint",
+   "text": "Step 2 file validation: format (JPEG/PNG/TIFF)."
+  },
+  {
+   "id": "R09923a",
+   "lines": [
+    9923,
+    9923
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "requirement",
+   "text": "Step 2 file validation: corruption check."
+  },
+  {
+   "id": "R09923b",
+   "lines": [
+    9923,
+    9923
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "requirement",
+   "text": "Step 2 file validation: EXIF extraction."
+  },
+  {
+   "id": "R09924",
+   "lines": [
+    9924,
+    9924
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "requirement",
+   "text": "Step 3 deterministic checks: resolution."
+  },
+  {
+   "id": "R09924a",
+   "lines": [
+    9924,
+    9924
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "requirement",
+   "text": "Step 3 deterministic checks: aspect ratio."
+  },
+  {
+   "id": "R09924b",
+   "lines": [
+    9924,
+    9924
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "requirement",
+   "text": "Step 3 deterministic checks: dimensions."
+  },
+  {
+   "id": "R09924c",
+   "lines": [
+    9924,
+    9924
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "requirement",
+   "text": "Step 3 deterministic checks: file size."
+  },
+  {
+   "id": "R09925",
+   "lines": [
+    9925,
+    9925
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "requirement",
+   "text": "Step 4 vision model analysis: background color."
+  },
+  {
+   "id": "R09925a",
+   "lines": [
+    9925,
+    9925
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "requirement",
+   "text": "Step 4 vision model analysis: product fill ratio."
+  },
+  {
+   "id": "R09925b",
+   "lines": [
+    9925,
+    9925
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "requirement",
+   "text": "Step 4 vision model analysis: text overlays."
+  },
+  {
+   "id": "R09925c",
+   "lines": [
+    9925,
+    9925
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "requirement",
+   "text": "Step 4 vision model analysis: watermarks."
+  },
+  {
+   "id": "R09925d",
+   "lines": [
+    9925,
+    9925
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "requirement",
+   "text": "Step 4 vision model analysis: logo placement."
+  },
+  {
+   "id": "R09926",
+   "lines": [
+    9926,
+    9926
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "flow",
+   "text": "Step 5 marketplace rule evaluation: check results against marketplace-specific policies."
+  },
+  {
+   "id": "R09927",
+   "lines": [
+    9927,
+    9927
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "flow",
+   "text": "Step 6: Generate structured ImageReport."
+  },
+  {
+   "id": "R09927a",
+   "lines": [
+    9927,
+    9927
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "data",
+   "text": "ImageReport carries per-check results."
+  },
+  {
+   "id": "R09928",
+   "lines": [
+    9928,
+    9928
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "interface",
+   "text": "Step 7: Return pass/warn/fail."
+  },
+  {
+   "id": "R09928a",
+   "lines": [
+    9928,
+    9928
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "requirement",
+   "text": "Step 7: Return suggestions for each issue."
+  },
+  {
+   "id": "R09930",
+   "lines": [
+    9930,
+    9930
+   ],
+   "page": "[45] Image Processing Flow",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09932",
+   "lines": [
+    9932,
+    9932
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "info",
+   "text": "Page heading: [46] Deterministic Image Checks.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09934",
+   "lines": [
+    9934,
+    9934
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "info",
+   "text": "Section: Image Compliance",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09935",
+   "lines": [
+    9935,
+    9935
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "scope",
+   "text": "Page [46] Deterministic Image Checks scope: MVP."
+  },
+  {
+   "id": "R09936",
+   "lines": [
+    9936,
+    9936
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/deterministic-image-checks",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09937",
+   "lines": [
+    9937,
+    9937
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "requirement",
+   "text": "Deterministic image checks are programmatic."
+  },
+  {
+   "id": "R09937a",
+   "lines": [
+    9937,
+    9937
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "data",
+   "text": "Programmatic image check: resolution."
+  },
+  {
+   "id": "R09937b",
+   "lines": [
+    9937,
+    9937
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "data",
+   "text": "Programmatic image check: format."
+  },
+  {
+   "id": "R09937c",
+   "lines": [
+    9937,
+    9937
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "data",
+   "text": "Programmatic image check: aspect ratio."
+  },
+  {
+   "id": "R09937d",
+   "lines": [
+    9937,
+    9937
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "data",
+   "text": "Programmatic image check: EXIF."
+  },
+  {
+   "id": "R09937e",
+   "lines": [
+    9937,
+    9937
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "data",
+   "text": "Programmatic image check: file size."
+  },
+  {
+   "id": "R09937f",
+   "lines": [
+    9937,
+    9937
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "data",
+   "text": "Programmatic image check: corruption."
+  },
+  {
+   "id": "R09938",
+   "lines": [
+    9938,
+    9938
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "info",
+   "text": "Keywords: deterministic, resolution, format, aspect ratio, EXIF",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09940",
+   "lines": [
+    9940,
+    9940
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "info",
+   "text": "## Deterministic Checks",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09942",
+   "lines": [
+    9942,
+    9946
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "info",
+   "text": "Table header: Check | Method | Threshold.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09948",
+   "lines": [
+    9948,
+    9950
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "decision",
+   "text": "Resolution check method: PIL/Pillow."
+  },
+  {
+   "id": "R09952",
+   "lines": [
+    9952,
+    9952
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "constraint",
+   "text": "Resolution threshold Amazon: 1000×1000."
+  },
+  {
+   "id": "R09952a",
+   "lines": [
+    9952,
+    9952
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "constraint",
+   "text": "Resolution threshold Flipkart: 500+ min."
+  },
+  {
+   "id": "R09954",
+   "lines": [
+    9954,
+    9956
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "decision",
+   "text": "Format check method: File header inspection."
+  },
+  {
+   "id": "R09958",
+   "lines": [
+    9958,
+    9958
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "constraint",
+   "text": "Format threshold: JPEG, PNG, TIFF."
+  },
+  {
+   "id": "R09960",
+   "lines": [
+    9960,
+    9962
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "decision",
+   "text": "Aspect ratio check method: Width/height calculation."
+  },
+  {
+   "id": "R09964",
+   "lines": [
+    9964,
+    9964
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "constraint",
+   "text": "Aspect ratio threshold: 1:1 main."
+  },
+  {
+   "id": "R09964a",
+   "lines": [
+    9964,
+    9964
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "constraint",
+   "text": "Aspect ratio threshold varies by slot."
+  },
+  {
+   "id": "R09966",
+   "lines": [
+    9966,
+    9968
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "decision",
+   "text": "File size check method: Byte count."
+  },
+  {
+   "id": "R09970",
+   "lines": [
+    9970,
+    9970
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "constraint",
+   "text": "File size threshold: Max 10MB typically."
+  },
+  {
+   "id": "R09972",
+   "lines": [
+    9972,
+    9974
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "decision",
+   "text": "Corruption check method: PIL open + verify."
+  },
+  {
+   "id": "R09976",
+   "lines": [
+    9976,
+    9976
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "requirement",
+   "text": "Corruption threshold: Must load without error."
+  },
+  {
+   "id": "R09978",
+   "lines": [
+    9978,
+    9980
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "decision",
+   "text": "EXIF orientation check method: EXIF tag reading."
+  },
+  {
+   "id": "R09982",
+   "lines": [
+    9982,
+    9982
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "requirement",
+   "text": "EXIF orientation threshold: Auto-correct rotation."
+  },
+  {
+   "id": "R09984",
+   "lines": [
+    9984,
+    9984
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "quality",
+   "text": "Deterministic image checks are fast."
+  },
+  {
+   "id": "R09984a",
+   "lines": [
+    9984,
+    9984
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "quality",
+   "text": "Deterministic image checks are cheap."
+  },
+  {
+   "id": "R09984b",
+   "lines": [
+    9984,
+    9984
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "requirement",
+   "text": "Deterministic image checks are deterministic."
+  },
+  {
+   "id": "R09984c",
+   "lines": [
+    9984,
+    9984
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "flow",
+   "text": "Deterministic checks catch obvious issues before the vision model analysis."
+  },
+  {
+   "id": "R09984d",
+   "lines": [
+    9984,
+    9984
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "constraint",
+   "text": "Vision model analysis is more expensive than deterministic checks."
+  },
+  {
+   "id": "R09986",
+   "lines": [
+    9986,
+    9986
+   ],
+   "page": "[46] Deterministic Image Checks",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09988",
+   "lines": [
+    9988,
+    9988
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "info",
+   "text": "Page heading: [47] Vision Model Checks.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09990",
+   "lines": [
+    9990,
+    9990
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "info",
+   "text": "Section: Image Compliance",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09991",
+   "lines": [
+    9991,
+    9991
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "scope",
+   "text": "Page [47] Vision Model Checks scope: MVP."
+  },
+  {
+   "id": "R09992",
+   "lines": [
+    9992,
+    9992
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/vision-model-checks",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09993",
+   "lines": [
+    9993,
+    9993
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "requirement",
+   "text": "Vision model analysis is used for image compliance."
+  },
+  {
+   "id": "R09993a",
+   "lines": [
+    9993,
+    9993
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "data",
+   "text": "Vision model analysis for image compliance covers: background."
+  },
+  {
+   "id": "R09993b",
+   "lines": [
+    9993,
+    9993
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "data",
+   "text": "Vision model analysis for image compliance covers: product fill."
+  },
+  {
+   "id": "R09993c",
+   "lines": [
+    9993,
+    9993
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "data",
+   "text": "Vision model analysis for image compliance covers: text overlays."
+  },
+  {
+   "id": "R09993d",
+   "lines": [
+    9993,
+    9993
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "data",
+   "text": "Vision model analysis for image compliance covers: watermarks."
+  },
+  {
+   "id": "R09994",
+   "lines": [
+    9994,
+    9994
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "info",
+   "text": "Keywords: vision model, GPT-4o, background, fill ratio, watermark",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09996",
+   "lines": [
+    9996,
+    9996
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "info",
+   "text": "## Vision Model Checks",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09998",
+   "lines": [
+    9998,
+    9998
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "decision",
+   "text": "Vision checks use GPT-4o-mini (vision)."
+  },
+  {
+   "id": "R09998a",
+   "lines": [
+    9998,
+    9998
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "requirement",
+   "text": "The system analyzes each image with the vision model."
+  },
+  {
+   "id": "R10000",
+   "lines": [
+    10000,
+    10000
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "constraint",
+   "text": "Background compliance: background must be pure white (Amazon)."
+  },
+  {
+   "id": "R10000a",
+   "lines": [
+    10000,
+    10000
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "constraint",
+   "text": "Background compliance: background must be light (Flipkart)."
+  },
+  {
+   "id": "R10001",
+   "lines": [
+    10001,
+    10001
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "constraint",
+   "text": "Product fill ratio: product fills ≥85% of the frame (Amazon)."
+  },
+  {
+   "id": "R10002",
+   "lines": [
+    10002,
+    10002
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "requirement",
+   "text": "Text overlays: detect any text on the main image."
+  },
+  {
+   "id": "R10003",
+   "lines": [
+    10003,
+    10003
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "requirement",
+   "text": "Watermarks: detect any visible watermarks."
+  },
+  {
+   "id": "R10004",
+   "lines": [
+    10004,
+    10004
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "requirement",
+   "text": "Logo placement: only product logo on the product itself."
+  },
+  {
+   "id": "R10005",
+   "lines": [
+    10005,
+    10005
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "requirement",
+   "text": "Product visibility: product is clearly visible."
+  },
+  {
+   "id": "R10005a",
+   "lines": [
+    10005,
+    10005
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "requirement",
+   "text": "Product visibility: product is well-lit."
+  },
+  {
+   "id": "R10007",
+   "lines": [
+    10007,
+    10007
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "interface",
+   "text": "The vision model returns structured findings."
+  },
+  {
+   "id": "R10007a",
+   "lines": [
+    10007,
+    10007
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "flow",
+   "text": "Vision findings are evaluated against marketplace-specific policies."
+  },
+  {
+   "id": "R10009",
+   "lines": [
+    10009,
+    10009
+   ],
+   "page": "[47] Vision Model Checks",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10011",
+   "lines": [
+    10011,
+    10011
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "info",
+   "text": "Page heading: [48] ImageReport Schema.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10013",
+   "lines": [
+    10013,
+    10013
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "info",
+   "text": "Section: Image Compliance",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10014",
+   "lines": [
+    10014,
+    10014
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "scope",
+   "text": "Page [48] ImageReport Schema scope: MVP."
+  },
+  {
+   "id": "R10015",
+   "lines": [
+    10015,
+    10015
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/image-report-schema",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10016",
+   "lines": [
+    10016,
+    10016
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "ImageReport is structured per image."
+  },
+  {
+   "id": "R10016a",
+   "lines": [
+    10016,
+    10016
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "ImageReport is structured per marketplace."
+  },
+  {
+   "id": "R10016b",
+   "lines": [
+    10016,
+    10016
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "ImageReport includes check details."
+  },
+  {
+   "id": "R10016c",
+   "lines": [
+    10016,
+    10016
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "ImageReport includes suggestions."
+  },
+  {
+   "id": "R10017",
+   "lines": [
+    10017,
+    10017
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "info",
+   "text": "Keywords: ImageReport, schema, image report, JSON",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10019",
+   "lines": [
+    10019,
+    10019
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "info",
+   "text": "## Schema Definition",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10021",
+   "lines": [
+    10021,
+    10021
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "info",
+   "text": "Code block title: ImageReport.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10023",
+   "lines": [
+    10023,
+    10024
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "info",
+   "text": "```json fence and opening '{'.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10025",
+   "lines": [
+    10025,
+    10025
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "ImageReport field `image_id` (sample \"img_123\")."
+  },
+  {
+   "id": "R10026",
+   "lines": [
+    10026,
+    10026
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "ImageReport field `marketplace` (sample \"amazon\")."
+  },
+  {
+   "id": "R10027",
+   "lines": [
+    10027,
+    10027
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "ImageReport field `slot` (sample \"main\")."
+  },
+  {
+   "id": "R10028",
+   "lines": [
+    10028,
+    10028
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "ImageReport field `pass` boolean (sample false)."
+  },
+  {
+   "id": "R10029",
+   "lines": [
+    10029,
+    10029
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "ImageReport field `issues` is an array of issue objects."
+  },
+  {
+   "id": "R10030",
+   "lines": [
+    10030,
+    10030
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "info",
+   "text": "'{' opening first issue object.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10031",
+   "lines": [
+    10031,
+    10031
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "Issue field `type` (sample \"background\")."
+  },
+  {
+   "id": "R10032",
+   "lines": [
+    10032,
+    10032
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "Issue field `severity` (sample \"error\")."
+  },
+  {
+   "id": "R10033",
+   "lines": [
+    10033,
+    10033
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "Issue field `detail` (sample \"Background is RGB(248,250,249), not pure white\")."
+  },
+  {
+   "id": "R10034",
+   "lines": [
+    10034,
+    10034
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "Issue field `suggestion` (sample \"Replace background with RGB(255,255,255) or use background removal\")."
+  },
+  {
+   "id": "R10035",
+   "lines": [
+    10035,
+    10036
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "info",
+   "text": "'},' and '{' between issue objects.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10037",
+   "lines": [
+    10037,
+    10037
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "Issue `type` sample value \"resolution\"."
+  },
+  {
+   "id": "R10038",
+   "lines": [
+    10038,
+    10038
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "Resolution issue `severity` sample value \"error\"."
+  },
+  {
+   "id": "R10039",
+   "lines": [
+    10039,
+    10039
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "Issue `detail` sample \"Image is 800x800; minimum 1000x1000 for zoom\"."
+  },
+  {
+   "id": "R10039a",
+   "lines": [
+    10039,
+    10039
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "constraint",
+   "text": "Minimum 1000x1000 for zoom."
+  },
+  {
+   "id": "R10040",
+   "lines": [
+    10040,
+    10040
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "Issue `suggestion` sample \"Upscale or re-export at 1000x1000\"."
+  },
+  {
+   "id": "R10041",
+   "lines": [
+    10041,
+    10042
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "info",
+   "text": "'},' and '{' between issue objects.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10043",
+   "lines": [
+    10043,
+    10043
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "Issue `type` sample value \"text_overlay\"."
+  },
+  {
+   "id": "R10044",
+   "lines": [
+    10044,
+    10044
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "Issue `severity` sample value \"warning\"."
+  },
+  {
+   "id": "R10045",
+   "lines": [
+    10045,
+    10045
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "Issue `detail` sample \"Small text detected in corner\"."
+  },
+  {
+   "id": "R10046",
+   "lines": [
+    10046,
+    10046
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "Issue `suggestion` sample \"Remove text from main image; move to secondary slot\"."
+  },
+  {
+   "id": "R10047",
+   "lines": [
+    10047,
+    10048
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "info",
+   "text": "'}' and '],' closing the issues array.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10049",
+   "lines": [
+    10049,
+    10049
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "ImageReport field `confidence` (sample 0.82)."
+  },
+  {
+   "id": "R10050",
+   "lines": [
+    10050,
+    10050
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "ImageReport field `processed_at` timestamp (sample \"2024-01-15T10:30:00Z\")."
+  },
+  {
+   "id": "R10051",
+   "lines": [
+    10051,
+    10051
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "ImageReport field `model_used` (sample \"gpt-4o-mini\")."
+  },
+  {
+   "id": "R10052",
+   "lines": [
+    10052,
+    10053
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "info",
+   "text": "Closing '}' and ``` fence.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10055",
+   "lines": [
+    10055,
+    10055
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "requirement",
+   "text": "Every ImageReport field is intentionally included."
+  },
+  {
+   "id": "R10055a",
+   "lines": [
+    10055,
+    10055
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "quality",
+   "text": "`image_id` is for tracking."
+  },
+  {
+   "id": "R10055b",
+   "lines": [
+    10055,
+    10055
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "`marketplace` is for context."
+  },
+  {
+   "id": "R10055c",
+   "lines": [
+    10055,
+    10055
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "`slot` is for context."
+  },
+  {
+   "id": "R10055d",
+   "lines": [
+    10055,
+    10055
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "requirement",
+   "text": "`pass` is for quick filtering."
+  },
+  {
+   "id": "R10055e",
+   "lines": [
+    10055,
+    10055
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "`issues` array is for detailed findings."
+  },
+  {
+   "id": "R10055f",
+   "lines": [
+    10055,
+    10055
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "data",
+   "text": "`confidence` is for model certainty."
+  },
+  {
+   "id": "R10055g",
+   "lines": [
+    10055,
+    10055
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "quality",
+   "text": "`model_used` is for observability."
+  },
+  {
+   "id": "R10057",
+   "lines": [
+    10057,
+    10057
+   ],
+   "page": "[48] ImageReport Schema",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10059",
+   "lines": [
+    10059,
+    10059
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "info",
+   "text": "Page heading: [49] Image Error Taxonomy.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10061",
+   "lines": [
+    10061,
+    10061
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "info",
+   "text": "Section: Image Compliance",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10062",
+   "lines": [
+    10062,
+    10062
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "scope",
+   "text": "Page [49] Image Error Taxonomy scope: MVP."
+  },
+  {
+   "id": "R10063",
+   "lines": [
+    10063,
+    10063
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/image-error-taxonomy",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10064",
+   "lines": [
+    10064,
+    10064
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "data",
+   "text": "Image compliance errors are classified by type."
+  },
+  {
+   "id": "R10064a",
+   "lines": [
+    10064,
+    10064
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "data",
+   "text": "Image compliance errors are classified by severity."
+  },
+  {
+   "id": "R10064b",
+   "lines": [
+    10064,
+    10064
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "data",
+   "text": "Image compliance errors carry corrective actions."
+  },
+  {
+   "id": "R10065",
+   "lines": [
+    10065,
+    10065
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "info",
+   "text": "Keywords: image error, taxonomy, severity, classification",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10067",
+   "lines": [
+    10067,
+    10067
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "info",
+   "text": "## Error Types",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10069",
+   "lines": [
+    10069,
+    10073
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "info",
+   "text": "Table header: Error Code | Severity | Corrective Action.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10075",
+   "lines": [
+    10075,
+    10075
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "interface",
+   "text": "Image error code BACKGROUND_OFF."
+  },
+  {
+   "id": "R10077",
+   "lines": [
+    10077,
+    10077
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "data",
+   "text": "BACKGROUND_OFF severity: Error."
+  },
+  {
+   "id": "R10079",
+   "lines": [
+    10079,
+    10079
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "requirement",
+   "text": "BACKGROUND_OFF corrective action: Background removal / replacement."
+  },
+  {
+   "id": "R10081",
+   "lines": [
+    10081,
+    10081
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "interface",
+   "text": "Image error code RESOLUTION_LOW."
+  },
+  {
+   "id": "R10083",
+   "lines": [
+    10083,
+    10083
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "data",
+   "text": "RESOLUTION_LOW severity: Error."
+  },
+  {
+   "id": "R10085",
+   "lines": [
+    10085,
+    10085
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "requirement",
+   "text": "RESOLUTION_LOW corrective action: Upscale or re-export."
+  },
+  {
+   "id": "R10087",
+   "lines": [
+    10087,
+    10087
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "interface",
+   "text": "Image error code TEXT_DETECTED."
+  },
+  {
+   "id": "R10089",
+   "lines": [
+    10089,
+    10089
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "data",
+   "text": "TEXT_DETECTED severity: Warning/Error."
+  },
+  {
+   "id": "R10091",
+   "lines": [
+    10091,
+    10091
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "requirement",
+   "text": "TEXT_DETECTED corrective action: Remove text from main image."
+  },
+  {
+   "id": "R10093",
+   "lines": [
+    10093,
+    10093
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "interface",
+   "text": "Image error code WATERMARK."
+  },
+  {
+   "id": "R10095",
+   "lines": [
+    10095,
+    10095
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "data",
+   "text": "WATERMARK severity: Error."
+  },
+  {
+   "id": "R10097",
+   "lines": [
+    10097,
+    10097
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "requirement",
+   "text": "WATERMARK corrective action: Remove watermark."
+  },
+  {
+   "id": "R10099",
+   "lines": [
+    10099,
+    10099
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "interface",
+   "text": "Image error code FILL_RATIO_LOW."
+  },
+  {
+   "id": "R10101",
+   "lines": [
+    10101,
+    10101
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "data",
+   "text": "FILL_RATIO_LOW severity: Warning."
+  },
+  {
+   "id": "R10103",
+   "lines": [
+    10103,
+    10103
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "requirement",
+   "text": "FILL_RATIO_LOW corrective action: Crop or recompose."
+  },
+  {
+   "id": "R10105",
+   "lines": [
+    10105,
+    10105
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "interface",
+   "text": "Image error code WRONG_ASPECT."
+  },
+  {
+   "id": "R10107",
+   "lines": [
+    10107,
+    10107
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "data",
+   "text": "WRONG_ASPECT severity: Error."
+  },
+  {
+   "id": "R10109",
+   "lines": [
+    10109,
+    10109
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "requirement",
+   "text": "WRONG_ASPECT corrective action: Crop to correct ratio."
+  },
+  {
+   "id": "R10111",
+   "lines": [
+    10111,
+    10111
+   ],
+   "page": "[49] Image Error Taxonomy",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10113",
+   "lines": [
+    10113,
+    10113
+   ],
+   "page": "[50] Image Correction Loop",
+   "kind": "info",
+   "text": "Page heading: [50] Image Correction Loop.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10115",
+   "lines": [
+    10115,
+    10115
+   ],
+   "page": "[50] Image Correction Loop",
+   "kind": "info",
+   "text": "Section: Image Compliance",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10116",
+   "lines": [
+    10116,
+    10116
+   ],
+   "page": "[50] Image Correction Loop",
+   "kind": "scope",
+   "text": "Page [50] Image Correction Loop scope: MVP."
+  },
+  {
+   "id": "R10117",
+   "lines": [
+    10117,
+    10117
+   ],
+   "page": "[50] Image Correction Loop",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/image-correction-loop",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10118",
+   "lines": [
+    10118,
+    10118
+   ],
+   "page": "[50] Image Correction Loop",
+   "kind": "requirement",
+   "text": "Image compliance issues are surfaced to users."
+  },
+  {
+   "id": "R10118a",
+   "lines": [
+    10118,
+    10118
+   ],
+   "page": "[50] Image Correction Loop",
+   "kind": "flow",
+   "text": "Image compliance issues are corrected through re-upload."
+  },
+  {
+   "id": "R10119",
+   "lines": [
+    10119,
+    10119
+   ],
+   "page": "[50] Image Correction Loop",
+   "kind": "info",
+   "text": "Keywords: image correction, reprocess, fix, re-upload",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10121",
+   "lines": [
+    10121,
+    10121
+   ],
+   "page": "[50] Image Correction Loop",
+   "kind": "info",
+   "text": "## Correction Loop",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10123",
+   "lines": [
+    10123,
+    10123
+   ],
+   "page": "[50] Image Correction Loop",
+   "kind": "flow",
+   "text": "For text content the AI can self-correct."
+  },
+  {
+   "id": "R10123a",
+   "lines": [
+    10123,
+    10123
+   ],
+   "page": "[50] Image Correction Loop",
+   "kind": "flow",
+   "text": "Image issues typically require user action."
+  },
+  {
+   "id": "R10123b",
+   "lines": [
+    10123,
+    10123
+   ],
+   "page": "[50] Image Correction Loop",
+   "kind": "requirement",
+   "text": "The pipeline surfaces the exact issue."
+  },
+  {
+   "id": "R10123c",
+   "lines": [
+    10123,
+    10123
+   ],
+   "page": "[50] Image Correction Loop",
+   "kind": "requirement",
+   "text": "The pipeline surfaces the severity."
+  },
+  {
+   "id": "R10123d",
+   "lines": [
+    10123,
+    10123
+   ],
+   "page": "[50] Image Correction Loop",
+   "kind": "requirement",
+   "text": "The pipeline surfaces a specific suggestion."
+  },
+  {
+   "id": "R10123e",
+   "lines": [
+    10123,
+    10123
+   ],
+   "page": "[50] Image Correction Loop",
+   "kind": "flow",
+   "text": "The user can fix and re-upload the image."
+  },
+  {
+   "id": "R10123f",
+   "lines": [
+    10123,
+    10123
+   ],
+   "page": "[50] Image Correction Loop",
+   "kind": "flow",
+   "text": "The user can accept warnings (proceed with non-critical issues)."
+  },
+  {
+   "id": "R10123g",
+   "lines": [
+    10123,
+    10123
+   ],
+   "page": "[50] Image Correction Loop",
+   "kind": "flow",
+   "text": "The user can use a different image."
+  },
+  {
+   "id": "R10123h",
+   "lines": [
+    10123,
+    10123
+   ],
+   "page": "[50] Image Correction Loop",
+   "kind": "flow",
+   "text": "Re-uploaded images go through the full pipeline again."
+  },
+  {
+   "id": "R10125",
+   "lines": [
+    10125,
+    10125
+   ],
+   "page": "[50] Image Correction Loop",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10127",
+   "lines": [
+    10127,
+    10127
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "info",
+   "text": "Page heading: [51] Marketplace Image Rules.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10129",
+   "lines": [
+    10129,
+    10129
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "info",
+   "text": "Section: Image Compliance",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10130",
+   "lines": [
+    10130,
+    10130
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "scope",
+   "text": "Page [51] Marketplace Image Rules scope: MVP."
+  },
+  {
+   "id": "R10131",
+   "lines": [
+    10131,
+    10131
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/marketplace-image-rules",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10132",
+   "lines": [
+    10132,
+    10132
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "decision",
+   "text": "Marketplace-specific image requirements are stored as policy configurations."
+  },
+  {
+   "id": "R10133",
+   "lines": [
+    10133,
+    10133
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "info",
+   "text": "Keywords: marketplace image, rules, Amazon image, Flipkart image, policy",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10135",
+   "lines": [
+    10135,
+    10135
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "info",
+   "text": "## Marketplace Image Rules",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10137",
+   "lines": [
+    10137,
+    10141
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "info",
+   "text": "Table header: Rule | Amazon | Flipkart.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10143",
+   "lines": [
+    10143,
+    10145
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "constraint",
+   "text": "Amazon main background: Pure white RGB(255,255,255)."
+  },
+  {
+   "id": "R10147",
+   "lines": [
+    10147,
+    10147
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "constraint",
+   "text": "Flipkart main background: White / light."
+  },
+  {
+   "id": "R10149",
+   "lines": [
+    10149,
+    10151
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "constraint",
+   "text": "Amazon min resolution: 1000×1000 (zoom)."
+  },
+  {
+   "id": "R10153",
+   "lines": [
+    10153,
+    10153
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "constraint",
+   "text": "Flipkart min resolution: 500+ min."
+  },
+  {
+   "id": "R10153a",
+   "lines": [
+    10153,
+    10153
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "constraint",
+   "text": "Flipkart resolution: 1000 recommended."
+  },
+  {
+   "id": "R10155",
+   "lines": [
+    10155,
+    10157
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "constraint",
+   "text": "Amazon main aspect: 1:1."
+  },
+  {
+   "id": "R10159",
+   "lines": [
+    10159,
+    10159
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "constraint",
+   "text": "Flipkart main aspect: 1:1."
+  },
+  {
+   "id": "R10159a",
+   "lines": [
+    10159,
+    10159
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "constraint",
+   "text": "Flipkart main aspect: 3:4."
+  },
+  {
+   "id": "R10161",
+   "lines": [
+    10161,
+    10163
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "requirement",
+   "text": "Amazon text on main image: Prohibited."
+  },
+  {
+   "id": "R10165",
+   "lines": [
+    10165,
+    10165
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "requirement",
+   "text": "Flipkart text on main image: Restricted."
+  },
+  {
+   "id": "R10167",
+   "lines": [
+    10167,
+    10169
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "requirement",
+   "text": "Amazon watermarks: Prohibited."
+  },
+  {
+   "id": "R10171",
+   "lines": [
+    10171,
+    10171
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "requirement",
+   "text": "Flipkart watermarks: Prohibited."
+  },
+  {
+   "id": "R10173",
+   "lines": [
+    10173,
+    10175
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "requirement",
+   "text": "Amazon logo: Only product logo on product."
+  },
+  {
+   "id": "R10177",
+   "lines": [
+    10177,
+    10177
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "requirement",
+   "text": "Flipkart logo: Same (only product logo on product)."
+  },
+  {
+   "id": "R10179",
+   "lines": [
+    10179,
+    10179
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "info",
+   "text": "These rules are stored as policy configurations, not hardcoded.",
+   "why_not": "restatement",
+   "dup_of": "R09904"
+  },
+  {
+   "id": "R10179a",
+   "lines": [
+    10179,
+    10179
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "info",
+   "text": "Adding a new marketplace's image rules requires adding a new policy document.",
+   "why_not": "restatement",
+   "dup_of": "R09904d"
+  },
+  {
+   "id": "R10181",
+   "lines": [
+    10181,
+    10181
+   ],
+   "page": "[51] Marketplace Image Rules",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10183",
+   "lines": [
+    10183,
+    10183
+   ],
+   "page": "[52] Image Storage Lifecycle",
+   "kind": "info",
+   "text": "Page heading: [52] Image Storage Lifecycle.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10185",
+   "lines": [
+    10185,
+    10185
+   ],
+   "page": "[52] Image Storage Lifecycle",
+   "kind": "info",
+   "text": "Section: Image Compliance",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10186",
+   "lines": [
+    10186,
+    10186
+   ],
+   "page": "[52] Image Storage Lifecycle",
+   "kind": "scope",
+   "text": "Page [52] Image Storage Lifecycle scope: MVP."
+  },
+  {
+   "id": "R10187",
+   "lines": [
+    10187,
+    10187
+   ],
+   "page": "[52] Image Storage Lifecycle",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/image-storage-lifecycle",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10188",
+   "lines": [
+    10188,
+    10188
+   ],
+   "page": "[52] Image Storage Lifecycle",
+   "kind": "decision",
+   "text": "Images are stored in S3."
+  },
+  {
+   "id": "R10188a",
+   "lines": [
+    10188,
+    10188
+   ],
+   "page": "[52] Image Storage Lifecycle",
+   "kind": "flow",
+   "text": "Image storage lifecycle stage: upload."
+  },
+  {
+   "id": "R10188b",
+   "lines": [
+    10188,
+    10188
+   ],
+   "page": "[52] Image Storage Lifecycle",
+   "kind": "flow",
+   "text": "Image storage lifecycle stage: processing."
+  },
+  {
+   "id": "R10188c",
+   "lines": [
+    10188,
+    10188
+   ],
+   "page": "[52] Image Storage Lifecycle",
+   "kind": "flow",
+   "text": "Image storage lifecycle stage: versioning."
+  },
+  {
+   "id": "R10188d",
+   "lines": [
+    10188,
+    10188
+   ],
+   "page": "[52] Image Storage Lifecycle",
+   "kind": "flow",
+   "text": "Image storage lifecycle stage: cleanup."
+  },
+  {
+   "id": "R10189",
+   "lines": [
+    10189,
+    10189
+   ],
+   "page": "[52] Image Storage Lifecycle",
+   "kind": "info",
+   "text": "Keywords: image storage, S3, lifecycle, cleanup",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10191",
+   "lines": [
+    10191,
+    10191
+   ],
+   "page": "[52] Image Storage Lifecycle",
+   "kind": "info",
+   "text": "## Storage Lifecycle",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10193",
+   "lines": [
+    10193,
+    10193
+   ],
+   "page": "[52] Image Storage Lifecycle",
+   "kind": "quality",
+   "text": "Images are stored in S3 with tenant-scoped paths."
+  },
+  {
+   "id": "R10193a",
+   "lines": [
+    10193,
+    10193
+   ],
+   "page": "[52] Image Storage Lifecycle",
+   "kind": "interface",
+   "text": "Image path: `s3://bucket/{tenant_id}/{product_id}/images/{image_id}.jpg`."
+  },
+  {
+   "id": "R10193b",
+   "lines": [
+    10193,
+    10193
+   ],
+   "page": "[52] Image Storage Lifecycle",
+   "kind": "requirement",
+   "text": "Multiple image versions are kept for audit."
+  },
+  {
+   "id": "R10193c",
+   "lines": [
+    10193,
+    10193
+   ],
+   "page": "[52] Image Storage Lifecycle",
+   "kind": "requirement",
+   "text": "Processing artifacts (thumbnails) are stored alongside originals."
+  },
+  {
+   "id": "R10193d",
+   "lines": [
+    10193,
+    10193
+   ],
+   "page": "[52] Image Storage Lifecycle",
+   "kind": "requirement",
+   "text": "Processing artifacts (processed versions) are stored alongside originals."
+  },
+  {
+   "id": "R10193e",
+   "lines": [
+    10193,
+    10193
+   ],
+   "page": "[52] Image Storage Lifecycle",
+   "kind": "quality",
+   "text": "Lifecycle policies can archive old versions to reduce costs."
+  },
+  {
+   "id": "R10195",
+   "lines": [
+    10195,
+    10195
+   ],
+   "page": "[52] Image Storage Lifecycle",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10197",
+   "lines": [
+    10197,
+    10197
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "info",
+   "text": "Page heading: [53] Brand Voice Architecture.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10199",
+   "lines": [
+    10199,
+    10199
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "info",
+   "text": "Section: Brand Intelligence",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10200",
+   "lines": [
+    10200,
+    10200
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "scope",
+   "text": "Page [53] Brand Voice Architecture scope: MVP."
+  },
+  {
+   "id": "R10201",
+   "lines": [
+    10201,
+    10201
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/brand-voice-architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10202",
+   "lines": [
+    10202,
+    10202
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "requirement",
+   "text": "Brand voice architecture includes vectorization."
+  },
+  {
+   "id": "R10202a",
+   "lines": [
+    10202,
+    10202
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "requirement",
+   "text": "Brand voice architecture includes chunking."
+  },
+  {
+   "id": "R10202b",
+   "lines": [
+    10202,
+    10202
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "requirement",
+   "text": "Brand voice architecture includes embedding."
+  },
+  {
+   "id": "R10202c",
+   "lines": [
+    10202,
+    10202
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "requirement",
+   "text": "Brand voice architecture includes retrieval."
+  },
+  {
+   "id": "R10202d",
+   "lines": [
+    10202,
+    10202
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "requirement",
+   "text": "Brand voice architecture includes context injection into AI agents."
+  },
+  {
+   "id": "R10203",
+   "lines": [
+    10203,
+    10203
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "info",
+   "text": "Keywords: brand voice, architecture, vectorization, embedding, retrieval",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10205",
+   "lines": [
+    10205,
+    10205
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "info",
+   "text": "## Architecture Overview",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10207",
+   "lines": [
+    10207,
+    10207
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "requirement",
+   "text": "Brand intelligence ensures AI-generated content sounds like the brand, not like generic AI output."
+  },
+  {
+   "id": "R10207a",
+   "lines": [
+    10207,
+    10207
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "data",
+   "text": "The system stores pieces of the brand's writing style as vector embeddings."
+  },
+  {
+   "id": "R10207b",
+   "lines": [
+    10207,
+    10207
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "data",
+   "text": "The system stores the brand's terminology as vector embeddings."
+  },
+  {
+   "id": "R10207c",
+   "lines": [
+    10207,
+    10207
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "data",
+   "text": "The system stores the brand's compliance rules as vector embeddings."
+  },
+  {
+   "id": "R10207d",
+   "lines": [
+    10207,
+    10207
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "flow",
+   "text": "The system retrieves the most relevant pieces when generating new listings."
+  },
+  {
+   "id": "R10209",
+   "lines": [
+    10209,
+    10209
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "info",
+   "text": "Architecture Diagram: Brand Voice Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10211",
+   "lines": [
+    10211,
+    10212
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "info",
+   "text": "```mermaid fence and 'graph TD' declaration.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10213",
+   "lines": [
+    10213,
+    10213
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "flow",
+   "text": "Diagram: Brand Voice Guide --> Chunking."
+  },
+  {
+   "id": "R10214",
+   "lines": [
+    10214,
+    10214
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "flow",
+   "text": "Diagram: Style Guide --> Chunking."
+  },
+  {
+   "id": "R10215",
+   "lines": [
+    10215,
+    10215
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "flow",
+   "text": "Diagram: Glossary --> Chunking."
+  },
+  {
+   "id": "R10216",
+   "lines": [
+    10216,
+    10216
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "flow",
+   "text": "Diagram: Approved Listings --> Chunking."
+  },
+  {
+   "id": "R10217",
+   "lines": [
+    10217,
+    10217
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "flow",
+   "text": "Diagram: Compliance Rules --> Chunking."
+  },
+  {
+   "id": "R10218",
+   "lines": [
+    10218,
+    10218
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "flow",
+   "text": "Diagram: Chunking --> Embedding."
+  },
+  {
+   "id": "R10218a",
+   "lines": [
+    10218,
+    10218
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "decision",
+   "text": "Embedding model: text-embedding-3-small."
+  },
+  {
+   "id": "R10219",
+   "lines": [
+    10219,
+    10219
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "flow",
+   "text": "Diagram: Embedding --> pgvector Storage."
+  },
+  {
+   "id": "R10220",
+   "lines": [
+    10220,
+    10220
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "flow",
+   "text": "Diagram: pgvector Storage --> Cosine Similarity Retrieval."
+  },
+  {
+   "id": "R10221",
+   "lines": [
+    10221,
+    10221
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "flow",
+   "text": "Diagram: Cosine Similarity Retrieval --> Inject into Agent Prompt."
+  },
+  {
+   "id": "R10222",
+   "lines": [
+    10222,
+    10222
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "info",
+   "text": "Closing ``` of mermaid diagram.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10224",
+   "lines": [
+    10224,
+    10224
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "info",
+   "text": "## Retrieval Flow",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10226",
+   "lines": [
+    10226,
+    10226
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "flow",
+   "text": "At generation time, embed the request context."
+  },
+  {
+   "id": "R10226a",
+   "lines": [
+    10226,
+    10226
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "data",
+   "text": "Request context example: \"women's ethnic wear, brand X, tone: playful\"."
+  },
+  {
+   "id": "R10226b",
+   "lines": [
+    10226,
+    10226
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "flow",
+   "text": "pgvector cosine-similarity search over brand embeddings."
+  },
+  {
+   "id": "R10226c",
+   "lines": [
+    10226,
+    10226
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "constraint",
+   "text": "Brand retrieval top-k = 8."
+  },
+  {
+   "id": "R10226d",
+   "lines": [
+    10226,
+    10226
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "interface",
+   "text": "Inject retrieved chunks as \"Brand Voice Context\" in the agent prompt."
+  },
+  {
+   "id": "R10228",
+   "lines": [
+    10228,
+    10228
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "info",
+   "text": "Callout label: Non-Technical Explanation.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10230",
+   "lines": [
+    10230,
+    10230
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "info",
+   "text": "The system stores pieces of the brand's writing style.",
+   "why_not": "restatement",
+   "dup_of": "R10207a"
+  },
+  {
+   "id": "R10230a",
+   "lines": [
+    10230,
+    10230
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "info",
+   "text": "It finds the most relevant pieces whenever it writes a new listing.",
+   "why_not": "restatement",
+   "dup_of": "R10207d"
+  },
+  {
+   "id": "R10230b",
+   "lines": [
+    10230,
+    10230
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "info",
+   "text": "This ensures the AI always sounds like the brand.",
+   "why_not": "restatement",
+   "dup_of": "R10207"
+  },
+  {
+   "id": "R10232",
+   "lines": [
+    10232,
+    10232
+   ],
+   "page": "[53] Brand Voice Architecture",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10234",
+   "lines": [
+    10234,
+    10234
+   ],
+   "page": "[54] Brand Voice Vectorization",
+   "kind": "info",
+   "text": "Page heading: [54] Brand Voice Vectorization.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10236",
+   "lines": [
+    10236,
+    10236
+   ],
+   "page": "[54] Brand Voice Vectorization",
+   "kind": "info",
+   "text": "Section: Brand Intelligence",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10237",
+   "lines": [
+    10237,
+    10237
+   ],
+   "page": "[54] Brand Voice Vectorization",
+   "kind": "scope",
+   "text": "Page [54] Brand Voice Vectorization scope: MVP."
+  },
+  {
+   "id": "R10238",
+   "lines": [
+    10238,
+    10238
+   ],
+   "page": "[54] Brand Voice Vectorization",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/brand-voice-vectorization",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10239",
+   "lines": [
+    10239,
+    10239
+   ],
+   "page": "[54] Brand Voice Vectorization",
+   "kind": "requirement",
+   "text": "Defines what gets vectorized and how: chunking strategies for brand artifacts."
+  },
+  {
+   "id": "R10240",
+   "lines": [
+    10240,
+    10240
+   ],
+   "page": "[54] Brand Voice Vectorization",
+   "kind": "info",
+   "text": "Keywords: vectorization, chunking, embedding, brand chunks",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10242",
+   "lines": [
+    10242,
+    10242
+   ],
+   "page": "[54] Brand Voice Vectorization",
+   "kind": "info",
+   "text": "## What Gets Vectorized",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10244",
+   "lines": [
+    10244,
+    10244
+   ],
+   "page": "[54] Brand Voice Vectorization",
+   "kind": "requirement",
+   "text": "Everything the brand defines about itself gets chunked and embedded."
+  },
+  {
+   "id": "R10244a",
+   "lines": [
+    10244,
+    10244
+   ],
+   "page": "[54] Brand Voice Vectorization",
+   "kind": "data",
+   "text": "Vectorized: brand voice guide (per rule/tone clause)."
+  },
+  {
+   "id": "R10244b",
+   "lines": [
+    10244,
+    10244
+   ],
+   "page": "[54] Brand Voice Vectorization",
+   "kind": "data",
+   "text": "Vectorized: style preferences (per guideline)."
+  },
+  {
+   "id": "R10244c",
+   "lines": [
+    10244,
+    10244
+   ],
+   "page": "[54] Brand Voice Vectorization",
+   "kind": "data",
+   "text": "Vectorized: glossary/terminology (per term)."
+  },
+  {
+   "id": "R10244d",
+   "lines": [
+    10244,
+    10244
+   ],
+   "page": "[54] Brand Voice Vectorization",
+   "kind": "data",
+   "text": "Vectorized: past approved listings (per listing field)."
+  },
+  {
+   "id": "R10244e",
+   "lines": [
+    10244,
+    10244
+   ],
+   "page": "[54] Brand Voice Vectorization",
+   "kind": "data",
+   "text": "Vectorized: compliance preferences (per rule)."
+  },
+  {
+   "id": "R10244f",
+   "lines": [
+    10244,
+    10244
+   ],
+   "page": "[54] Brand Voice Vectorization",
+   "kind": "data",
+   "text": "Each chunk becomes a `BrandChunk` record."
+  },
+  {
+   "id": "R10244g",
+   "lines": [
+    10244,
+    10244
+   ],
+   "page": "[54] Brand Voice Vectorization",
+   "kind": "data",
+   "text": "`BrandChunk` record holds its text."
+  },
+  {
+   "id": "R10244h",
+   "lines": [
+    10244,
+    10244
+   ],
+   "page": "[54] Brand Voice Vectorization",
+   "kind": "data",
+   "text": "`BrandChunk` record holds its embedding vector."
+  },
+  {
+   "id": "R10246",
+   "lines": [
+    10246,
+    10246
+   ],
+   "page": "[54] Brand Voice Vectorization",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10248",
+   "lines": [
+    10248,
+    10248
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "info",
+   "text": "Page heading: [55] Brand Chunking.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10250",
+   "lines": [
+    10250,
+    10250
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "info",
+   "text": "Section: Brand Intelligence",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10251",
+   "lines": [
+    10251,
+    10251
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "scope",
+   "text": "Page [55] Brand Chunking scope: MVP."
+  },
+  {
+   "id": "R10252",
+   "lines": [
+    10252,
+    10252
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/brand-chunking",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10253",
+   "lines": [
+    10253,
+    10253
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "requirement",
+   "text": "Brand documents are split into meaningful chunks."
+  },
+  {
+   "id": "R10253a",
+   "lines": [
+    10253,
+    10253
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "requirement",
+   "text": "Brand documents are split into retrievable chunks."
+  },
+  {
+   "id": "R10254",
+   "lines": [
+    10254,
+    10254
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "info",
+   "text": "Keywords: chunking, strategy, split, documents, brand",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10256",
+   "lines": [
+    10256,
+    10256
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "info",
+   "text": "## Chunking Strategy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10258",
+   "lines": [
+    10258,
+    10262
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "info",
+   "text": "Table header: Artifact | Chunking | Example.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10264",
+   "lines": [
+    10264,
+    10266
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "data",
+   "text": "Brand voice guide chunking: Per rule / tone clause."
+  },
+  {
+   "id": "R10268",
+   "lines": [
+    10268,
+    10268
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "data",
+   "text": "Brand voice guide example chunk: \"Playful, not corporate. Use 'you' not 'the customer'.\""
+  },
+  {
+   "id": "R10270",
+   "lines": [
+    10270,
+    10272
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "data",
+   "text": "Style preferences chunking: Per guideline."
+  },
+  {
+   "id": "R10274",
+   "lines": [
+    10274,
+    10274
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "data",
+   "text": "Style preferences example chunk: \"Never use exclamation marks. Bullets start with verbs.\""
+  },
+  {
+   "id": "R10276",
+   "lines": [
+    10276,
+    10278
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "data",
+   "text": "Glossary chunking: Per term."
+  },
+  {
+   "id": "R10280",
+   "lines": [
+    10280,
+    10280
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "data",
+   "text": "Glossary example chunk: \"Say 'kurta set' not 'kurta outfit'.\""
+  },
+  {
+   "id": "R10282",
+   "lines": [
+    10282,
+    10284
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "data",
+   "text": "Approved listings chunking: Per listing field."
+  },
+  {
+   "id": "R10286",
+   "lines": [
+    10286,
+    10286
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "data",
+   "text": "Approved listings example: High-performing titles, bullets, descriptions."
+  },
+  {
+   "id": "R10288",
+   "lines": [
+    10288,
+    10290
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "data",
+   "text": "Compliance chunking: Per rule."
+  },
+  {
+   "id": "R10292",
+   "lines": [
+    10292,
+    10292
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "data",
+   "text": "Compliance example chunk: \"Never claim 'organic' without certification.\""
+  },
+  {
+   "id": "R10294",
+   "lines": [
+    10294,
+    10294
+   ],
+   "page": "[55] Brand Chunking",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10296",
+   "lines": [
+    10296,
+    10296
+   ],
+   "page": "[56] Embedding Pipeline",
+   "kind": "info",
+   "text": "Page heading: [56] Embedding Pipeline.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10298",
+   "lines": [
+    10298,
+    10298
+   ],
+   "page": "[56] Embedding Pipeline",
+   "kind": "info",
+   "text": "Section: Brand Intelligence",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10299",
+   "lines": [
+    10299,
+    10299
+   ],
+   "page": "[56] Embedding Pipeline",
+   "kind": "scope",
+   "text": "Page [56] Embedding Pipeline scope: MVP."
+  },
+  {
+   "id": "R10300",
+   "lines": [
+    10300,
+    10300
+   ],
+   "page": "[56] Embedding Pipeline",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/embedding-pipeline",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10301",
+   "lines": [
+    10301,
+    10301
+   ],
+   "page": "[56] Embedding Pipeline",
+   "kind": "decision",
+   "text": "Brand content is embedded using text-embedding-3-small."
+  },
+  {
+   "id": "R10301a",
+   "lines": [
+    10301,
+    10301
+   ],
+   "page": "[56] Embedding Pipeline",
+   "kind": "decision",
+   "text": "Brand content embeddings are stored in pgvector."
+  },
+  {
+   "id": "R10302",
+   "lines": [
+    10302,
+    10302
+   ],
+   "page": "[56] Embedding Pipeline",
+   "kind": "info",
+   "text": "Keywords: embedding, pipeline, text-embedding-3-small, pgvector",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10304",
+   "lines": [
+    10304,
+    10304
+   ],
+   "page": "[56] Embedding Pipeline",
+   "kind": "info",
+   "text": "## Embedding Pipeline",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10306",
+   "lines": [
+    10306,
+    10306
+   ],
+   "page": "[56] Embedding Pipeline",
+   "kind": "decision",
+   "text": "Default embedding model: `text-embedding-3-small`."
+  },
+  {
+   "id": "R10306a",
+   "lines": [
+    10306,
+    10306
+   ],
+   "page": "[56] Embedding Pipeline",
+   "kind": "requirement",
+   "text": "The embedding model is a config, not an architecture decision."
+  },
+  {
+   "id": "R10306b",
+   "lines": [
+    10306,
+    10306
+   ],
+   "page": "[56] Embedding Pipeline",
+   "kind": "requirement",
+   "text": "The embedding model is swappable."
+  },
+  {
+   "id": "R10306c",
+   "lines": [
+    10306,
+    10306
+   ],
+   "page": "[56] Embedding Pipeline",
+   "kind": "flow",
+   "text": "Chunks are embedded when brand content is created."
+  },
+  {
+   "id": "R10306d",
+   "lines": [
+    10306,
+    10306
+   ],
+   "page": "[56] Embedding Pipeline",
+   "kind": "flow",
+   "text": "Chunks are embedded when brand content is updated."
+  },
+  {
+   "id": "R10306e",
+   "lines": [
+    10306,
+    10306
+   ],
+   "page": "[56] Embedding Pipeline",
+   "kind": "data",
+   "text": "Embeddings are stored in the `BrandChunk` table's vector column (pgvector)."
+  },
+  {
+   "id": "R10306f",
+   "lines": [
+    10306,
+    10306
+   ],
+   "page": "[56] Embedding Pipeline",
+   "kind": "flow",
+   "text": "Batch embedding is used for initial brand setup."
+  },
+  {
+   "id": "R10306g",
+   "lines": [
+    10306,
+    10306
+   ],
+   "page": "[56] Embedding Pipeline",
+   "kind": "flow",
+   "text": "Incremental embedding is used for updates."
+  },
+  {
+   "id": "R10308",
+   "lines": [
+    10308,
+    10308
+   ],
+   "page": "[56] Embedding Pipeline",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10310",
+   "lines": [
+    10310,
+    10310
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "info",
+   "text": "Page heading: [57] Vector Retrieval.",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10312",
+   "lines": [
+    10312,
+    10312
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "info",
+   "text": "Section: Brand Intelligence",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10313",
+   "lines": [
+    10313,
+    10313
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "scope",
+   "text": "Page [57] Vector Retrieval scope: MVP."
+  },
+  {
+   "id": "R10314",
+   "lines": [
+    10314,
+    10314
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/vector-retrieval",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10315",
+   "lines": [
+    10315,
+    10315
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "flow",
+   "text": "pgvector cosine similarity retrieval runs at generation time."
+  },
+  {
+   "id": "R10316",
+   "lines": [
+    10316,
+    10316
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "info",
+   "text": "Keywords: vector, retrieval, cosine, similarity, top-k, pgvector",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10318",
+   "lines": [
+    10318,
+    10318
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "info",
+   "text": "## Retrieval Process",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10320",
+   "lines": [
+    10320,
+    10321
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "info",
+   "text": "```mermaid fence and 'graph LR' declaration.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10322",
+   "lines": [
+    10322,
+    10322
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "data",
+   "text": "Retrieval query: product + brand + marketplace + tone."
+  },
+  {
+   "id": "R10322a",
+   "lines": [
+    10322,
+    10322
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "flow",
+   "text": "Diagram: Query --> Embed query."
+  },
+  {
+   "id": "R10323",
+   "lines": [
+    10323,
+    10323
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "flow",
+   "text": "Diagram: Embed query --> pgvector cosine-similarity."
+  },
+  {
+   "id": "R10323a",
+   "lines": [
+    10323,
+    10323
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "constraint",
+   "text": "pgvector cosine-similarity retrieval: top-k=8."
+  },
+  {
+   "id": "R10324",
+   "lines": [
+    10324,
+    10324
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "flow",
+   "text": "Diagram: cosine-similarity results --> Filter by relevance threshold."
+  },
+  {
+   "id": "R10325",
+   "lines": [
+    10325,
+    10325
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "flow",
+   "text": "Diagram: Filter --> Brand Voice Context for prompt."
+  },
+  {
+   "id": "R10326",
+   "lines": [
+    10326,
+    10326
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "info",
+   "text": "Closing ``` of mermaid diagram.",
+   "why_not": "table-scaffold"
+  }
+ ]
+}

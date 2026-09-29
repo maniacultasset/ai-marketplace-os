@@ -1,0 +1,11 @@
+{
+  "name": "mkos-docgen",
+  "private": true,
+  "type": "module",
+  "description": "Builds the team-shareable .docx files in deliverables/ from the .md sources. See scripts/docgen/README.md.",
+  "dependencies": {
+    "@mermaid-js/mermaid-cli": "11.17.0",
+    "docx": "9.7.2",
+    "marked": "14.1.4"
+  }
+}

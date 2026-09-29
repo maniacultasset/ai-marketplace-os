@@ -1,0 +1,8495 @@
+{
+ "chunk": "c07",
+ "start": 4429,
+ "end": 5252,
+ "items": [
+  {
+   "id": "R04429",
+   "lines": [
+    4429,
+    4429
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "info",
+   "text": "§21 Example: One Apparel Product Through the System",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04431",
+   "lines": [
+    4431,
+    4431
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "info",
+   "text": "Product Specification Case Study",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04433",
+   "lines": [
+    4433,
+    4433
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Example product: Women's relaxed-fit cotton T-shirt."
+  },
+  {
+   "id": "R04433a",
+   "lines": [
+    4433,
+    4433
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Example product color: Black."
+  },
+  {
+   "id": "R04433b",
+   "lines": [
+    4433,
+    4433
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Example product sizes: S/M/L/XL."
+  },
+  {
+   "id": "R04433c",
+   "lines": [
+    4433,
+    4433
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Example seller SKU `FSH-TEE-001`."
+  },
+  {
+   "id": "R04435",
+   "lines": [
+    4435,
+    4437
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "info",
+   "text": "Column labels: Stage / What Happens",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R04439",
+   "lines": [
+    4439,
+    4441
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Intake: seller provides the product input fields."
+  },
+  {
+   "id": "R04441",
+   "lines": [
+    4441,
+    4441
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Intake input provided by seller: SKU."
+  },
+  {
+   "id": "R04441a",
+   "lines": [
+    4441,
+    4441
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Intake input provided by seller: product images."
+  },
+  {
+   "id": "R04441b",
+   "lines": [
+    4441,
+    4441
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Intake input provided by seller: product name."
+  },
+  {
+   "id": "R04441c",
+   "lines": [
+    4441,
+    4441
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Intake input provided by seller: brand."
+  },
+  {
+   "id": "R04441d",
+   "lines": [
+    4441,
+    4441
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Intake input provided by seller: fabric composition."
+  },
+  {
+   "id": "R04441e",
+   "lines": [
+    4441,
+    4441
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Intake input provided by seller: colors."
+  },
+  {
+   "id": "R04441f",
+   "lines": [
+    4441,
+    4441
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Intake input provided by seller: sizes."
+  },
+  {
+   "id": "R04441g",
+   "lines": [
+    4441,
+    4441
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Intake input provided by seller: MRP."
+  },
+  {
+   "id": "R04441h",
+   "lines": [
+    4441,
+    4441
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Intake input provided by seller: care instructions."
+  },
+  {
+   "id": "R04441i",
+   "lines": [
+    4441,
+    4441
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Intake input provided by seller: size chart."
+  },
+  {
+   "id": "R04443",
+   "lines": [
+    4443,
+    4445
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Understand: agent identifies a women's T-shirt."
+  },
+  {
+   "id": "R04445",
+   "lines": [
+    4445,
+    4445
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Understand: agent identifies black color."
+  },
+  {
+   "id": "R04445a",
+   "lines": [
+    4445,
+    4445
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Understand: agent identifies relaxed fit."
+  },
+  {
+   "id": "R04445b",
+   "lines": [
+    4445,
+    4445
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Understand: agent identifies cotton composition."
+  },
+  {
+   "id": "R04445c",
+   "lines": [
+    4445,
+    4445
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Understand: agent identifies four sizes."
+  },
+  {
+   "id": "R04447",
+   "lines": [
+    4447,
+    4449
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Classify: agent maps the product to the appropriate apparel/T-shirt category for each selected marketplace."
+  },
+  {
+   "id": "R04451",
+   "lines": [
+    4451,
+    4453
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Extract: agent normalizes 'Jet Black' to the marketplace's accepted black value where appropriate."
+  },
+  {
+   "id": "R04453",
+   "lines": [
+    4453,
+    4453
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "requirement",
+   "text": "Extract stage preserves the seller-provided value while normalizing to the marketplace value."
+  },
+  {
+   "id": "R04455",
+   "lines": [
+    4455,
+    4457
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Canonical: one product record is built for the product."
+  },
+  {
+   "id": "R04457",
+   "lines": [
+    4457,
+    4457
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Canonical product record contains identity."
+  },
+  {
+   "id": "R04457a",
+   "lines": [
+    4457,
+    4457
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Canonical product record contains attributes."
+  },
+  {
+   "id": "R04457b",
+   "lines": [
+    4457,
+    4457
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Canonical product record contains variants."
+  },
+  {
+   "id": "R04457c",
+   "lines": [
+    4457,
+    4457
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Canonical product record contains media."
+  },
+  {
+   "id": "R04457d",
+   "lines": [
+    4457,
+    4457
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Canonical product record contains compliance."
+  },
+  {
+   "id": "R04457e",
+   "lines": [
+    4457,
+    4457
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Canonical product record contains content."
+  },
+  {
+   "id": "R04459",
+   "lines": [
+    4459,
+    4461
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Generate: agent creates title."
+  },
+  {
+   "id": "R04461",
+   "lines": [
+    4461,
+    4461
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Generate: agent creates bullets."
+  },
+  {
+   "id": "R04461a",
+   "lines": [
+    4461,
+    4461
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Generate: agent creates description."
+  },
+  {
+   "id": "R04461b",
+   "lines": [
+    4461,
+    4461
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Generate: agent creates relevant keywords."
+  },
+  {
+   "id": "R04461c",
+   "lines": [
+    4461,
+    4461
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "requirement",
+   "text": "Generated content uses only verified facts."
+  },
+  {
+   "id": "R04463",
+   "lines": [
+    4463,
+    4465
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Validate: checks all marketplace-specific mandatory/conditional fields."
+  },
+  {
+   "id": "R04465",
+   "lines": [
+    4465,
+    4465
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Validate: checks variant/media rules."
+  },
+  {
+   "id": "R04467",
+   "lines": [
+    4467,
+    4469
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Human: if a marketplace requires a missing fabric detail, the agent asks one targeted question."
+  },
+  {
+   "id": "R04471",
+   "lines": [
+    4471,
+    4473
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Submit: agent submits the marketplace-specific representation."
+  },
+  {
+   "id": "R04475",
+   "lines": [
+    4475,
+    4477
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Error: marketplace rejects one size because the size value is invalid."
+  },
+  {
+   "id": "R04477",
+   "lines": [
+    4477,
+    4477
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "On size rejection the agent maps the canonical size to the accepted marketplace value."
+  },
+  {
+   "id": "R04477a",
+   "lines": [
+    4477,
+    4477
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "After mapping the corrected value, the agent revalidates."
+  },
+  {
+   "id": "R04479",
+   "lines": [
+    4479,
+    4481
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Resubmit: corrected listing is submitted."
+  },
+  {
+   "id": "R04483",
+   "lines": [
+    4483,
+    4485
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "flow",
+   "text": "Stage Live: marketplace confirms the listing active."
+  },
+  {
+   "id": "R04485",
+   "lines": [
+    4485,
+    4485
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Marketplace Listing ID is stored on LIVE."
+  },
+  {
+   "id": "R04485a",
+   "lines": [
+    4485,
+    4485
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Marketplace listing URL is stored on LIVE."
+  },
+  {
+   "id": "R04487",
+   "lines": [
+    4487,
+    4489
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "requirement",
+   "text": "Stage Dashboard: product shows LIVE for that marketplace."
+  },
+  {
+   "id": "R04489",
+   "lines": [
+    4489,
+    4489
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "requirement",
+   "text": "Dashboard shows separate statuses for any other marketplaces still processing."
+  },
+  {
+   "id": "R04491",
+   "lines": [
+    4491,
+    4491
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "info",
+   "text": "Page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R04493",
+   "lines": [
+    4493,
+    4493
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "info",
+   "text": "Page title [10]",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04495",
+   "lines": [
+    4495,
+    4495
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "info",
+   "text": "Section: Founder's POV Doc",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R04496",
+   "lines": [
+    4496,
+    4496
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "scope",
+   "text": "Page [10] Acceptance Criteria, Metrics & Lead Handoff scope: MVP."
+  },
+  {
+   "id": "R04497",
+   "lines": [
+    4497,
+    4497
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "info",
+   "text": "Page URL",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R04498",
+   "lines": [
+    4498,
+    4498
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "constraint",
+   "text": "Page [10] description cites 12 lead engineer invariants."
+  },
+  {
+   "id": "R04498a",
+   "lines": [
+    4498,
+    4498
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "scope",
+   "text": "Page [10] description: V1 acceptance checklist, core product operational metrics, open decisions and reference links."
+  },
+  {
+   "id": "R04500",
+   "lines": [
+    4500,
+    4500
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "info",
+   "text": "§22 V1 Acceptance Criteria",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04502",
+   "lines": [
+    4502,
+    4502
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: a seller can create a brand profile once."
+  },
+  {
+   "id": "R04502a",
+   "lines": [
+    4502,
+    4502
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the brand profile is reused across products."
+  },
+  {
+   "id": "R04503",
+   "lines": [
+    4503,
+    4503
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: a seller can provide apparel product information through a structured form."
+  },
+  {
+   "id": "R04503a",
+   "lines": [
+    4503,
+    4503
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: a seller can provide apparel product information through bulk input."
+  },
+  {
+   "id": "R04504",
+   "lines": [
+    4504,
+    4504
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can represent one style with multiple color/size variants."
+  },
+  {
+   "id": "R04505",
+   "lines": [
+    4505,
+    4505
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: every important canonical attribute can retain its source."
+  },
+  {
+   "id": "R04505a",
+   "lines": [
+    4505,
+    4505
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: every important canonical attribute can retain its confidence."
+  },
+  {
+   "id": "R04506",
+   "lines": [
+    4506,
+    4506
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can map one canonical product into marketplace-specific category/field structures."
+  },
+  {
+   "id": "R04507",
+   "lines": [
+    4507,
+    4507
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can distinguish required, conditional, optional and unsupported fields."
+  },
+  {
+   "id": "R04508",
+   "lines": [
+    4508,
+    4508
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can generate title."
+  },
+  {
+   "id": "R04508a",
+   "lines": [
+    4508,
+    4508
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can generate bullets."
+  },
+  {
+   "id": "R04508b",
+   "lines": [
+    4508,
+    4508
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can generate description."
+  },
+  {
+   "id": "R04508c",
+   "lines": [
+    4508,
+    4508
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can generate keywords."
+  },
+  {
+   "id": "R04508d",
+   "lines": [
+    4508,
+    4508
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: title, bullets, description and keywords are generated from verified product facts."
+  },
+  {
+   "id": "R04509",
+   "lines": [
+    4509,
+    4509
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can validate the product before submission."
+  },
+  {
+   "id": "R04509a",
+   "lines": [
+    4509,
+    4509
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can show blocking reasons."
+  },
+  {
+   "id": "R04510",
+   "lines": [
+    4510,
+    4510
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can identify missing data."
+  },
+  {
+   "id": "R04510a",
+   "lines": [
+    4510,
+    4510
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can ask targeted human questions."
+  },
+  {
+   "id": "R04511",
+   "lines": [
+    4511,
+    4511
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can submit a listing."
+  },
+  {
+   "id": "R04511a",
+   "lines": [
+    4511,
+    4511
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system records the submission attempt."
+  },
+  {
+   "id": "R04512",
+   "lines": [
+    4512,
+    4512
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can read the resulting marketplace status/error."
+  },
+  {
+   "id": "R04513",
+   "lines": [
+    4513,
+    4513
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can automatically fix defined deterministic error classes."
+  },
+  {
+   "id": "R04514",
+   "lines": [
+    4514,
+    4514
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can retry safely without creating uncontrolled duplicate submissions."
+  },
+  {
+   "id": "R04515",
+   "lines": [
+    4515,
+    4515
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system can escalate unresolved issues to a human."
+  },
+  {
+   "id": "R04516",
+   "lines": [
+    4516,
+    4516
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system confirms a listing as LIVE only after marketplace success confirmation."
+  },
+  {
+   "id": "R04517",
+   "lines": [
+    4517,
+    4517
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the dashboard can show per-marketplace status."
+  },
+  {
+   "id": "R04517a",
+   "lines": [
+    4517,
+    4517
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the dashboard can show listing identifiers."
+  },
+  {
+   "id": "R04517b",
+   "lines": [
+    4517,
+    4517
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the dashboard can show issues."
+  },
+  {
+   "id": "R04517c",
+   "lines": [
+    4517,
+    4517
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the dashboard can show latest activity."
+  },
+  {
+   "id": "R04518",
+   "lines": [
+    4518,
+    4518
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "V1 acceptance: the system preserves history so the team can understand what changed and why."
+  },
+  {
+   "id": "R04520",
+   "lines": [
+    4520,
+    4520
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "info",
+   "text": "§23 Product Metrics for V1",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04522",
+   "lines": [
+    4522,
+    4524
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "info",
+   "text": "Column labels: Metric / Definition",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R04526",
+   "lines": [
+    4526,
+    4528
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "quality",
+   "text": "V1 metric \"Time to first listing\": time from complete product intake to first successful live listing."
+  },
+  {
+   "id": "R04530",
+   "lines": [
+    4530,
+    4532
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "quality",
+   "text": "V1 metric \"Listing success rate\": percentage of listing jobs that reach LIVE without manual marketplace intervention."
+  },
+  {
+   "id": "R04534",
+   "lines": [
+    4534,
+    4536
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "quality",
+   "text": "V1 metric \"First-pass success rate\": percentage of submissions accepted without a correction cycle."
+  },
+  {
+   "id": "R04538",
+   "lines": [
+    4538,
+    4540
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "quality",
+   "text": "V1 metric \"Auto-resolution rate\": percentage of errors resolved by the agent without seller intervention."
+  },
+  {
+   "id": "R04542",
+   "lines": [
+    4542,
+    4544
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "quality",
+   "text": "V1 metric \"Human question rate\": percentage of products requiring at least one seller question."
+  },
+  {
+   "id": "R04546",
+   "lines": [
+    4546,
+    4548
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "quality",
+   "text": "V1 metric \"Average human questions per SKU\": questions asked per product/job."
+  },
+  {
+   "id": "R04550",
+   "lines": [
+    4550,
+    4552
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "quality",
+   "text": "V1 metric \"Error recurrence rate\": percentage of issues that reappear after correction."
+  },
+  {
+   "id": "R04554",
+   "lines": [
+    4554,
+    4556
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "quality",
+   "text": "V1 metric \"Duplicate submission rate\": unwanted duplicate listing/submission incidents."
+  },
+  {
+   "id": "R04558",
+   "lines": [
+    4558,
+    4560
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "quality",
+   "text": "V1 metric \"Attribute completeness\": percentage of required/conditional fields correctly populated before submission."
+  },
+  {
+   "id": "R04562",
+   "lines": [
+    4562,
+    4564
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "quality",
+   "text": "V1 metric \"Live confirmation accuracy\": percentage of listings marked LIVE that are actually live."
+  },
+  {
+   "id": "R04566",
+   "lines": [
+    4566,
+    4566
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "§24 Handoff to Lead Engineer: these items must be clear before build."
+  },
+  {
+   "id": "R04568",
+   "lines": [
+    4568,
+    4568
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "Canonical product is the source of truth."
+  },
+  {
+   "id": "R04568a",
+   "lines": [
+    4568,
+    4568
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "data",
+   "text": "Marketplace listings are derived representations of the canonical product."
+  },
+  {
+   "id": "R04569",
+   "lines": [
+    4569,
+    4569
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "data",
+   "text": "Marketplace schemas are versioned."
+  },
+  {
+   "id": "R04569a",
+   "lines": [
+    4569,
+    4569
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "Marketplace schemas can change."
+  },
+  {
+   "id": "R04570",
+   "lines": [
+    4570,
+    4570
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "Every field should have a source."
+  },
+  {
+   "id": "R04570a",
+   "lines": [
+    4570,
+    4570
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "Critical facts should have confidence/evidence."
+  },
+  {
+   "id": "R04571",
+   "lines": [
+    4571,
+    4571
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "Required fields are marketplace + category + context dependent."
+  },
+  {
+   "id": "R04572",
+   "lines": [
+    4572,
+    4572
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "data",
+   "text": "Variant relationships are first-class product data, not just a UI feature."
+  },
+  {
+   "id": "R04573",
+   "lines": [
+    4573,
+    4573
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "data",
+   "text": "Listing status is per marketplace."
+  },
+  {
+   "id": "R04573a",
+   "lines": [
+    4573,
+    4573
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "data",
+   "text": "Listing status is per variant where necessary."
+  },
+  {
+   "id": "R04574",
+   "lines": [
+    4574,
+    4574
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "data",
+   "text": "Errors are first-class records."
+  },
+  {
+   "id": "R04574a",
+   "lines": [
+    4574,
+    4574
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "data",
+   "text": "Error records carry classification."
+  },
+  {
+   "id": "R04574b",
+   "lines": [
+    4574,
+    4574
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "data",
+   "text": "Error records carry severity."
+  },
+  {
+   "id": "R04574c",
+   "lines": [
+    4574,
+    4574
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "data",
+   "text": "Error records carry resolution state."
+  },
+  {
+   "id": "R04575",
+   "lines": [
+    4575,
+    4575
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "data",
+   "text": "Human questions are first-class workflow tasks, not generic support tickets."
+  },
+  {
+   "id": "R04576",
+   "lines": [
+    4576,
+    4576
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "quality",
+   "text": "Every submission should be auditable."
+  },
+  {
+   "id": "R04576a",
+   "lines": [
+    4576,
+    4576
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "quality",
+   "text": "Every correction should be auditable."
+  },
+  {
+   "id": "R04577",
+   "lines": [
+    4577,
+    4577
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "The workflow must be resumable."
+  },
+  {
+   "id": "R04577a",
+   "lines": [
+    4577,
+    4577
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "flow",
+   "text": "If a seller answers one question, the agent continues from the blocked step rather than restarting the entire job."
+  },
+  {
+   "id": "R04578",
+   "lines": [
+    4578,
+    4578
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "The agent must be idempotent at the business level."
+  },
+  {
+   "id": "R04578a",
+   "lines": [
+    4578,
+    4578
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "Repeated status checks or safe retries should not create duplicate product identities."
+  },
+  {
+   "id": "R04579",
+   "lines": [
+    4579,
+    4579
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "The system should preserve marketplace-specific data."
+  },
+  {
+   "id": "R04579a",
+   "lines": [
+    4579,
+    4579
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "The canonical product must not be polluted with marketplace-only fields."
+  },
+  {
+   "id": "R04581",
+   "lines": [
+    4581,
+    4581
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "risk",
+   "text": "§25 Open Product Decisions must be locked before implementation."
+  },
+  {
+   "id": "R04583",
+   "lines": [
+    4583,
+    4585
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "info",
+   "text": "Column labels: Decision / Recommended V1 Decision to Discuss",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R04587",
+   "lines": [
+    4587,
+    4589
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "decision",
+   "text": "Open decision 'Exact marketplace launch order', Recommended V1 Decision to Discuss: pick 2–3 marketplaces for first production validation."
+  },
+  {
+   "id": "R04589",
+   "lines": [
+    4589,
+    4589
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "decision",
+   "text": "Open decision 'Exact marketplace launch order', Recommended V1 Decision to Discuss: add adapters incrementally."
+  },
+  {
+   "id": "R04591",
+   "lines": [
+    4591,
+    4593
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "decision",
+   "text": "Open decision 'Seller input method', Recommended V1 Decision to Discuss: start with guided form + spreadsheet upload."
+  },
+  {
+   "id": "R04593",
+   "lines": [
+    4593,
+    4593
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "scope",
+   "text": "Open decision 'Seller input method', Recommended V1 Decision to Discuss: add connected PIM/ERP after core workflow is stable."
+  },
+  {
+   "id": "R04595",
+   "lines": [
+    4595,
+    4597
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "decision",
+   "text": "Open decision 'Human approval', Recommended V1 Decision to Discuss: default to autonomous submission after validation."
+  },
+  {
+   "id": "R04597",
+   "lines": [
+    4597,
+    4597
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "decision",
+   "text": "Open decision 'Human approval', Recommended V1 Decision to Discuss: optional approval mode for cautious sellers."
+  },
+  {
+   "id": "R04599",
+   "lines": [
+    4599,
+    4601
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "decision",
+   "text": "Open decision 'Content language', Recommended V1 Decision to Discuss: start with English."
+  },
+  {
+   "id": "R04601",
+   "lines": [
+    4601,
+    4601
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "Open decision 'Content language', Recommended V1 Decision to Discuss: keep the content model language-ready."
+  },
+  {
+   "id": "R04603",
+   "lines": [
+    4603,
+    4605
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "scope",
+   "text": "Open decision 'Image generation', Recommended V1 Decision to Discuss: do not make image generation a dependency for V1 listing completion."
+  },
+  {
+   "id": "R04607",
+   "lines": [
+    4607,
+    4609
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "decision",
+   "text": "Open decision 'Marketplace schema refresh', Recommended V1 Decision to Discuss: treat schema/rules as versioned and refreshable rather than static."
+  },
+  {
+   "id": "R04611",
+   "lines": [
+    4611,
+    4613
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "Open decision 'Error library', Recommended V1 Decision to Discuss: build an internal error taxonomy."
+  },
+  {
+   "id": "R04613",
+   "lines": [
+    4613,
+    4613
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "Open decision 'Error library', Recommended V1 Decision to Discuss: continuously map marketplace errors into the internal error taxonomy."
+  },
+  {
+   "id": "R04615",
+   "lines": [
+    4615,
+    4617
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "Open decision 'Confidence threshold', Recommended V1 Decision to Discuss: define which attributes can be inferred and which always require evidence/confirmation."
+  },
+  {
+   "id": "R04619",
+   "lines": [
+    4619,
+    4621
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "Open decision 'Bulk listing', Recommended V1 Decision to Discuss: design for one SKU and bulk SKU jobs from the same underlying workflow."
+  },
+  {
+   "id": "R04623",
+   "lines": [
+    4623,
+    4623
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "info",
+   "text": "§26 Reference Basis",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04625",
+   "lines": [
+    4625,
+    4625
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "The product requirements above are intentionally marketplace-agnostic."
+  },
+  {
+   "id": "R04625a",
+   "lines": [
+    4625,
+    4625
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "risk",
+   "text": "The official sources were used to ground the marketplace/compliance sections."
+  },
+  {
+   "id": "R04625b",
+   "lines": [
+    4625,
+    4625
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "requirement",
+   "text": "The official sources should be treated as external references, not as permanent hard-coded requirements."
+  },
+  {
+   "id": "R04627",
+   "lines": [
+    4627,
+    4627
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "interface",
+   "text": "Reference: Amazon Selling Partner API — Product Type Definitions / Retrieve a Product Type Definition: https://developer-docs.amazon.com/sp-api/lang-en_EN/docs/retrieve-a-product-type-definition"
+  },
+  {
+   "id": "R04628",
+   "lines": [
+    4628,
+    4628
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "interface",
+   "text": "Reference: Amazon Selling Partner API — Manage Product Listings: https://developer-docs.amazon.com/sp-api/lang-en_EN/docs/manage-product-listings-guide"
+  },
+  {
+   "id": "R04629",
+   "lines": [
+    4629,
+    4629
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "interface",
+   "text": "Reference: Amazon India Seller Central — apparel image guidance / seller listing guidance: https://sellercentral.amazon.in/"
+  },
+  {
+   "id": "R04630",
+   "lines": [
+    4630,
+    4630
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "interface",
+   "text": "Reference: Flipkart Seller API — Listing Management API: https://seller.flipkart.com/api-docs/listing-api-docs/LMAPIOverview.html"
+  },
+  {
+   "id": "R04631",
+   "lines": [
+    4631,
+    4631
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "interface",
+   "text": "Reference: Flipkart Seller API — Marketplace platform overview: https://seller.flipkart.com/api-docs/FMPlatOverview.html"
+  },
+  {
+   "id": "R04632",
+   "lines": [
+    4632,
+    4632
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "quality",
+   "text": "Reference: Department of Consumer Affairs, Government of India — Legal Metrology (Packaged Commodities) Third Amendment Rules, 2022: https://consumeraffairs.nic.in/legalmetrologyactsandrules/legal-metrology-packaged-commodities-third-amendment-rules-2022"
+  },
+  {
+   "id": "R04633",
+   "lines": [
+    4633,
+    4633
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "interface",
+   "text": "Reference: Nykaa Seller Portal — Terms and Conditions / product content and description listing guidelines: https://seller.nykaa.com/terms-and-conditions"
+  },
+  {
+   "id": "R04635",
+   "lines": [
+    4635,
+    4635
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "info",
+   "text": "Final Product Principle",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04637",
+   "lines": [
+    4637,
+    4637
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "flow",
+   "text": "Final Product Principle step 1 of 15: UNDERSTAND PRODUCT."
+  },
+  {
+   "id": "R04637a",
+   "lines": [
+    4637,
+    4637
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "flow",
+   "text": "Final Product Principle step 2 of 15: CLASSIFY."
+  },
+  {
+   "id": "R04637b",
+   "lines": [
+    4637,
+    4637
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "flow",
+   "text": "Final Product Principle step 3 of 15: EXTRACT ATTRIBUTES."
+  },
+  {
+   "id": "R04637c",
+   "lines": [
+    4637,
+    4637
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "flow",
+   "text": "Final Product Principle step 4 of 15: BUILD CANONICAL PRODUCT."
+  },
+  {
+   "id": "R04637d",
+   "lines": [
+    4637,
+    4637
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "flow",
+   "text": "Final Product Principle step 5 of 15: FILL MARKETPLACE SCHEMA."
+  },
+  {
+   "id": "R04637e",
+   "lines": [
+    4637,
+    4637
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "flow",
+   "text": "Final Product Principle step 6 of 15: GENERATE CONTENT."
+  },
+  {
+   "id": "R04637f",
+   "lines": [
+    4637,
+    4637
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "flow",
+   "text": "Final Product Principle step 7 of 15: VALIDATE."
+  },
+  {
+   "id": "R04637g",
+   "lines": [
+    4637,
+    4637
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "flow",
+   "text": "Final Product Principle step 8 of 15: FIND MISSING DATA."
+  },
+  {
+   "id": "R04637h",
+   "lines": [
+    4637,
+    4637
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "flow",
+   "text": "Final Product Principle step 9 of 15: ASK HUMAN ONLY WHEN NECESSARY."
+  },
+  {
+   "id": "R04637i",
+   "lines": [
+    4637,
+    4637
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "flow",
+   "text": "Final Product Principle step 10 of 15: SUBMIT."
+  },
+  {
+   "id": "R04637j",
+   "lines": [
+    4637,
+    4637
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "flow",
+   "text": "Final Product Principle step 11 of 15: CHECK STATUS."
+  },
+  {
+   "id": "R04637k",
+   "lines": [
+    4637,
+    4637
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "flow",
+   "text": "Final Product Principle step 12 of 15: FIX ERRORS."
+  },
+  {
+   "id": "R04637l",
+   "lines": [
+    4637,
+    4637
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "flow",
+   "text": "Final Product Principle step 13 of 15: RESUBMIT."
+  },
+  {
+   "id": "R04637m",
+   "lines": [
+    4637,
+    4637
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "flow",
+   "text": "Final Product Principle step 14 of 15: CONFIRM LIVE."
+  },
+  {
+   "id": "R04637n",
+   "lines": [
+    4637,
+    4637
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "flow",
+   "text": "Final Product Principle step 15 of 15: SHOW STATUS."
+  },
+  {
+   "id": "R04639",
+   "lines": [
+    4639,
+    4639
+   ],
+   "page": "[10] Acceptance Criteria, Metrics & Lead Handoff (§22–26)",
+   "kind": "info",
+   "text": "Page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R04641",
+   "lines": [
+    4641,
+    4641
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "info",
+   "text": "Page title [01]",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04643",
+   "lines": [
+    4643,
+    4643
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "info",
+   "text": "Section: 45-Day MVP Build Plan",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R04644",
+   "lines": [
+    4644,
+    4644
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "scope",
+   "text": "Page [01] 45-Day Plan & Definition of Done scope: MVP."
+  },
+  {
+   "id": "R04645",
+   "lines": [
+    4645,
+    4645
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "info",
+   "text": "Page URL",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R04646",
+   "lines": [
+    4646,
+    4646
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "decision",
+   "text": "The 45-Day MVP Build Plan is the GCP Edition."
+  },
+  {
+   "id": "R04646a",
+   "lines": [
+    4646,
+    4646
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "constraint",
+   "text": "Page [01] description: 10 Non-Negotiable Invariants."
+  },
+  {
+   "id": "R04646b",
+   "lines": [
+    4646,
+    4646
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "info",
+   "text": "Page [01] description: executive overview, kickoff context, Day-45 Definition of Done and the core operational loop.",
+   "why_not": "restatement",
+   "dup_of": "R04681"
+  },
+  {
+   "id": "R04647",
+   "lines": [
+    4647,
+    4647
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "info",
+   "text": "Page keywords",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R04649",
+   "lines": [
+    4649,
+    4649
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "info",
+   "text": "Executive Summary & Timeline",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04651",
+   "lines": [
+    4651,
+    4651
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "scope",
+   "text": "The plan is an aggressive, production-ready roadmap to build and launch an AI-powered marketplace listing operator for D2C brands."
+  },
+  {
+   "id": "R04651a",
+   "lines": [
+    4651,
+    4651
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "scope",
+   "text": "Launch marketplaces: Amazon and Flipkart."
+  },
+  {
+   "id": "R04653",
+   "lines": [
+    4653,
+    4653
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "constraint",
+   "text": "Foundational architecture is built solo for ~10 days."
+  },
+  {
+   "id": "R04653a",
+   "lines": [
+    4653,
+    4653
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "constraint",
+   "text": "Then 4 engineers are onboarded (5-person team total)."
+  },
+  {
+   "id": "R04655",
+   "lines": [
+    4655,
+    4657
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "constraint",
+   "text": "Sprint Duration: 45 Calendar Days."
+  },
+  {
+   "id": "R04659",
+   "lines": [
+    4659,
+    4659
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "constraint",
+   "text": "Sprint dates: Mon Sep 21, 2026 → Wed Nov 4, 2026."
+  },
+  {
+   "id": "R04661",
+   "lines": [
+    4661,
+    4663
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "constraint",
+   "text": "Team Model: 1 Solo → 5 People."
+  },
+  {
+   "id": "R04665",
+   "lines": [
+    4665,
+    4665
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "constraint",
+   "text": "10-day foundation sprint."
+  },
+  {
+   "id": "R04665a",
+   "lines": [
+    4665,
+    4665
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "constraint",
+   "text": "Then 35 days scaled."
+  },
+  {
+   "id": "R04667",
+   "lines": [
+    4667,
+    4669
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "decision",
+   "text": "Cloud Platform: Google Cloud (GCP)."
+  },
+  {
+   "id": "R04671",
+   "lines": [
+    4671,
+    4671
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "decision",
+   "text": "Cloud platform component: Cloud Run."
+  },
+  {
+   "id": "R04671a",
+   "lines": [
+    4671,
+    4671
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "decision",
+   "text": "Cloud platform component: Cloud SQL pgvector."
+  },
+  {
+   "id": "R04671b",
+   "lines": [
+    4671,
+    4671
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "decision",
+   "text": "Cloud platform component: Redis."
+  },
+  {
+   "id": "R04671c",
+   "lines": [
+    4671,
+    4671
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "decision",
+   "text": "Cloud platform component: KMS."
+  },
+  {
+   "id": "R04673",
+   "lines": [
+    4673,
+    4675
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "scope",
+   "text": "Launch Scope: Amazon + Flipkart."
+  },
+  {
+   "id": "R04677",
+   "lines": [
+    4677,
+    4677
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "interface",
+   "text": "Amazon adapter uses LWA SP-API."
+  },
+  {
+   "id": "R04677a",
+   "lines": [
+    4677,
+    4677
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "interface",
+   "text": "Flipkart adapter uses Flipkart Seller API."
+  },
+  {
+   "id": "R04679",
+   "lines": [
+    4679,
+    4679
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "info",
+   "text": "Day-45 Definition of Done",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04681",
+   "lines": [
+    4681,
+    4681
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "On Day 45, a real D2C brand user must complete the full journey end-to-end in production without any manual engineering intervention."
+  },
+  {
+   "id": "R04683",
+   "lines": [
+    4683,
+    4683
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: user signs in securely via JWT."
+  },
+  {
+   "id": "R04683a",
+   "lines": [
+    4683,
+    4683
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: user selects a brand."
+  },
+  {
+   "id": "R04683b",
+   "lines": [
+    4683,
+    4683
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "quality",
+   "text": "DoD: maintain 100% tenant-scoped data isolation."
+  },
+  {
+   "id": "R04684",
+   "lines": [
+    4684,
+    4684
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: connect an Amazon and/or Flipkart account via OAuth."
+  },
+  {
+   "id": "R04684a",
+   "lines": [
+    4684,
+    4684
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "quality",
+   "text": "DoD: marketplace credentials encrypted at rest."
+  },
+  {
+   "id": "R04685",
+   "lines": [
+    4685,
+    4685
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: import products via CSV (bulk)."
+  },
+  {
+   "id": "R04685a",
+   "lines": [
+    4685,
+    4685
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: import products via manual entry."
+  },
+  {
+   "id": "R04685b",
+   "lines": [
+    4685,
+    4685
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: product import has automated validation."
+  },
+  {
+   "id": "R04685c",
+   "lines": [
+    4685,
+    4685
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: image upload to GCS."
+  },
+  {
+   "id": "R04686",
+   "lines": [
+    4686,
+    4686
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: trigger AI generation for title."
+  },
+  {
+   "id": "R04686a",
+   "lines": [
+    4686,
+    4686
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: trigger AI generation for bullets."
+  },
+  {
+   "id": "R04686b",
+   "lines": [
+    4686,
+    4686
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: trigger AI generation for description."
+  },
+  {
+   "id": "R04686c",
+   "lines": [
+    4686,
+    4686
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: trigger AI generation for keywords."
+  },
+  {
+   "id": "R04686d",
+   "lines": [
+    4686,
+    4686
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: trigger AI generation for attributes."
+  },
+  {
+   "id": "R04686e",
+   "lines": [
+    4686,
+    4686
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: generation is conditioned on the brand's voice guide via pgvector RAG."
+  },
+  {
+   "id": "R04687",
+   "lines": [
+    4687,
+    4687
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: user can view deterministic rule failures."
+  },
+  {
+   "id": "R04687a",
+   "lines": [
+    4687,
+    4687
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: user can view vision-based image compliance issues."
+  },
+  {
+   "id": "R04687b",
+   "lines": [
+    4687,
+    4687
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "interface",
+   "text": "DoD: rule and vision issues are formatted as unified, structured errors."
+  },
+  {
+   "id": "R04688",
+   "lines": [
+    4688,
+    4688
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: system automatically repairs field-level errors."
+  },
+  {
+   "id": "R04688a",
+   "lines": [
+    4688,
+    4688
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "constraint",
+   "text": "DoD: self-correction is bounded at max 3 retries."
+  },
+  {
+   "id": "R04688b",
+   "lines": [
+    4688,
+    4688
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: system blocks gracefully when human intervention is needed."
+  },
+  {
+   "id": "R04689",
+   "lines": [
+    4689,
+    4689
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: review listings side-by-side per marketplace."
+  },
+  {
+   "id": "R04689a",
+   "lines": [
+    4689,
+    4689
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: reviewer can edit fields."
+  },
+  {
+   "id": "R04689b",
+   "lines": [
+    4689,
+    4689
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: approve or reject listings."
+  },
+  {
+   "id": "R04689c",
+   "lines": [
+    4689,
+    4689
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "quality",
+   "text": "DoD: approve/reject is recorded with an audit trail."
+  },
+  {
+   "id": "R04689d",
+   "lines": [
+    4689,
+    4689
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: maker-checker — creator cannot approve own listing."
+  },
+  {
+   "id": "R04690",
+   "lines": [
+    4690,
+    4690
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: publish approved listings via marketplace adapters."
+  },
+  {
+   "id": "R04690a",
+   "lines": [
+    4690,
+    4690
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "interface",
+   "text": "DoD: publishing reports per-field success/failure."
+  },
+  {
+   "id": "R04690b",
+   "lines": [
+    4690,
+    4690
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "DoD: live operational analytics."
+  },
+  {
+   "id": "R04692",
+   "lines": [
+    4692,
+    4692
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "constraint",
+   "text": "There are 10 Non-Negotiable Architectural Invariants."
+  },
+  {
+   "id": "R04694",
+   "lines": [
+    4694,
+    4694
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "The 10 invariants are non-negotiable for the entire 45 days and beyond."
+  },
+  {
+   "id": "R04694a",
+   "lines": [
+    4694,
+    4694
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "Under deadline pressure, no engineer is permitted to cut corners on these rules."
+  },
+  {
+   "id": "R04696",
+   "lines": [
+    4696,
+    4696
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "info",
+   "text": "Non-Negotiable Architecture Invariants (label)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04698",
+   "lines": [
+    4698,
+    4698
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "Invariant 1: AI never publishes directly."
+  },
+  {
+   "id": "R04698a",
+   "lines": [
+    4698,
+    4698
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "Invariant 1: only adapters publish."
+  },
+  {
+   "id": "R04698b",
+   "lines": [
+    4698,
+    4698
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "Invariant 1: adapters publish strictly after human approval."
+  },
+  {
+   "id": "R04699",
+   "lines": [
+    4699,
+    4699
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "Invariant 2: Rules Engine is deterministic code, never an LLM call."
+  },
+  {
+   "id": "R04699a",
+   "lines": [
+    4699,
+    4699
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "Invariant 2: rules are the final arbiter."
+  },
+  {
+   "id": "R04700",
+   "lines": [
+    4700,
+    4700
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "Invariant 3: human approval is mandatory in MVP."
+  },
+  {
+   "id": "R04700a",
+   "lines": [
+    4700,
+    4700
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "scope",
+   "text": "Invariant 3: zero unvetted auto-publishing in Phase 1."
+  },
+  {
+   "id": "R04701",
+   "lines": [
+    4701,
+    4701
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "Invariant 4: marketplace logic stays inside adapters."
+  },
+  {
+   "id": "R04701a",
+   "lines": [
+    4701,
+    4701
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "data",
+   "text": "Invariant 4: the canonical listing model never contains marketplace-specific schema structures."
+  },
+  {
+   "id": "R04702",
+   "lines": [
+    4702,
+    4702
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "quality",
+   "text": "Invariant 5: mandatory tenant isolation on every query."
+  },
+  {
+   "id": "R04702a",
+   "lines": [
+    4702,
+    4702
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "quality",
+   "text": "Invariant 5: `tenant_id` scoping is enforced at the repository base class, with zero exceptions."
+  },
+  {
+   "id": "R04703",
+   "lines": [
+    4703,
+    4703
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "quality",
+   "text": "Invariant 6: marketplace credentials never enter LLM prompts."
+  },
+  {
+   "id": "R04703a",
+   "lines": [
+    4703,
+    4703
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "quality",
+   "text": "Invariant 6: tokens are encrypted at rest with Cloud KMS."
+  },
+  {
+   "id": "R04703b",
+   "lines": [
+    4703,
+    4703
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "quality",
+   "text": "Invariant 6: tokens are kept strictly isolated from AI contexts."
+  },
+  {
+   "id": "R04704",
+   "lines": [
+    4704,
+    4704
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "Invariant 7: every generation call persists an `AgentRun` record."
+  },
+  {
+   "id": "R04704a",
+   "lines": [
+    4704,
+    4704
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "data",
+   "text": "AgentRun record logs model."
+  },
+  {
+   "id": "R04704b",
+   "lines": [
+    4704,
+    4704
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "data",
+   "text": "AgentRun record logs token usage."
+  },
+  {
+   "id": "R04704c",
+   "lines": [
+    4704,
+    4704
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "data",
+   "text": "AgentRun record logs cost."
+  },
+  {
+   "id": "R04704d",
+   "lines": [
+    4704,
+    4704
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "data",
+   "text": "AgentRun record logs duration."
+  },
+  {
+   "id": "R04704e",
+   "lines": [
+    4704,
+    4704
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "data",
+   "text": "AgentRun record logs status."
+  },
+  {
+   "id": "R04705",
+   "lines": [
+    4705,
+    4705
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "interface",
+   "text": "Invariant 8 (Unified ErrorReport shape): rules engine failures return the exact same structured error contract."
+  },
+  {
+   "id": "R04705a",
+   "lines": [
+    4705,
+    4705
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "interface",
+   "text": "Invariant 8 (Unified ErrorReport shape): vision model failures return the exact same structured error contract."
+  },
+  {
+   "id": "R04705b",
+   "lines": [
+    4705,
+    4705
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "interface",
+   "text": "Invariant 8 (Unified ErrorReport shape): marketplace API failures return the exact same structured error contract."
+  },
+  {
+   "id": "R04706",
+   "lines": [
+    4706,
+    4706
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "constraint",
+   "text": "Invariant 9: agent correction loops are capped at 3 attempts (max 3 retries)."
+  },
+  {
+   "id": "R04706a",
+   "lines": [
+    4706,
+    4706
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "Invariant 9: no infinite loops ever exist."
+  },
+  {
+   "id": "R04707",
+   "lines": [
+    4707,
+    4707
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "Invariant 10: mutations are idempotent."
+  },
+  {
+   "id": "R04707a",
+   "lines": [
+    4707,
+    4707
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "Invariant 10: partial marketplace failures retry only the specific failed field, never the entire listing."
+  },
+  {
+   "id": "R04709",
+   "lines": [
+    4709,
+    4709
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "info",
+   "text": "Core Operational Loop",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04711",
+   "lines": [
+    4711,
+    4711
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "requirement",
+   "text": "The core operational loop is repeated to the team at every standup."
+  },
+  {
+   "id": "R04713",
+   "lines": [
+    4713,
+    4713
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "info",
+   "text": "Core Execution Rhythm (label)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04715",
+   "lines": [
+    4715,
+    4715
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "flow",
+   "text": "Core loop step 1 of 5: AI proposes."
+  },
+  {
+   "id": "R04715a",
+   "lines": [
+    4715,
+    4715
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "flow",
+   "text": "Core loop step 2 of 5: Deterministic rules validate."
+  },
+  {
+   "id": "R04715b",
+   "lines": [
+    4715,
+    4715
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "flow",
+   "text": "Core loop step 3 of 5: Humans approve."
+  },
+  {
+   "id": "R04715c",
+   "lines": [
+    4715,
+    4715
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "flow",
+   "text": "Core loop step 4 of 5: Adapters execute."
+  },
+  {
+   "id": "R04715d",
+   "lines": [
+    4715,
+    4715
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "flow",
+   "text": "Core loop step 5 of 5: Performance feeds back."
+  },
+  {
+   "id": "R04717",
+   "lines": [
+    4717,
+    4717
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "info",
+   "text": "Kickoff Constraints & Solo Phase",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04719",
+   "lines": [
+    4719,
+    4719
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "info",
+   "text": "During the first 10 days, you build solo.",
+   "why_not": "restatement",
+   "dup_of": "R04653"
+  },
+  {
+   "id": "R04719a",
+   "lines": [
+    4719,
+    4719
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "scope",
+   "text": "Solo phase builds a razor-thin vertical slice that validates the architecture, not broad features."
+  },
+  {
+   "id": "R04719b",
+   "lines": [
+    4719,
+    4719
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "constraint",
+   "text": "Solo vertical slice covers one category."
+  },
+  {
+   "id": "R04719c",
+   "lines": [
+    4719,
+    4719
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "constraint",
+   "text": "Solo vertical slice covers one marketplace's rules."
+  },
+  {
+   "id": "R04719d",
+   "lines": [
+    4719,
+    4719
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "constraint",
+   "text": "Solo vertical slice covers one end-to-end AI call."
+  },
+  {
+   "id": "R04719e",
+   "lines": [
+    4719,
+    4719
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "risk",
+   "text": "Days 11–14 have a 4-day slack buffer to absorb solo slippage before full-throttle scaling."
+  },
+  {
+   "id": "R04721",
+   "lines": [
+    4721,
+    4721
+   ],
+   "page": "[01] 45-Day Plan & Definition of Done",
+   "kind": "info",
+   "text": "Page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R04723",
+   "lines": [
+    4723,
+    4723
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "info",
+   "text": "Page title [02]",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04725",
+   "lines": [
+    4725,
+    4725
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "info",
+   "text": "Section: 45-Day MVP Build Plan",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R04726",
+   "lines": [
+    4726,
+    4726
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Page [02] Phase-1 Scope Lock & Non-Goals scope: MVP."
+  },
+  {
+   "id": "R04727",
+   "lines": [
+    4727,
+    4727
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "info",
+   "text": "Page URL",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R04728",
+   "lines": [
+    4728,
+    4728
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Phase 1 (Day 45) has strict scope boundaries."
+  },
+  {
+   "id": "R04728a",
+   "lines": [
+    4728,
+    4728
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Features not shipping on Day 45 are explicitly deferred to Phase 2, Phase 3, or Future."
+  },
+  {
+   "id": "R04729",
+   "lines": [
+    4729,
+    4729
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "info",
+   "text": "Page keywords",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R04731",
+   "lines": [
+    4731,
+    4731
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "info",
+   "text": "Phase-1 Scope Lock Table",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04733",
+   "lines": [
+    4733,
+    4733
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "requirement",
+   "text": "Every feature request during the 45-day sprint is judged against the scope table."
+  },
+  {
+   "id": "R04733a",
+   "lines": [
+    4733,
+    4733
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "A feature not in the left (in-scope) column goes to the backlog."
+  },
+  {
+   "id": "R04735",
+   "lines": [
+    4735,
+    4739
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "info",
+   "text": "Column labels: Area / Ships on Day 45 (In Scope) / Explicitly Deferred (Out of Scope)",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R04741",
+   "lines": [
+    4741,
+    4743
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Product Input — ships on Day 45 (in scope): CSV bulk upload."
+  },
+  {
+   "id": "R04743",
+   "lines": [
+    4743,
+    4743
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Product Input — ships on Day 45 (in scope): manual entry."
+  },
+  {
+   "id": "R04743a",
+   "lines": [
+    4743,
+    4743
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Product Input — ships on Day 45 (in scope): schema normalization."
+  },
+  {
+   "id": "R04743b",
+   "lines": [
+    4743,
+    4743
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Product Input — ships on Day 45 (in scope): GCS image upload."
+  },
+  {
+   "id": "R04745",
+   "lines": [
+    4745,
+    4745
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Product Input — explicitly deferred (out of scope): Full catalog sync from arbitrary external ERPs/PIMs."
+  },
+  {
+   "id": "R04747",
+   "lines": [
+    4747,
+    4749
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Marketplaces — ships on Day 45 (in scope): Amazon SP-API adapter."
+  },
+  {
+   "id": "R04749",
+   "lines": [
+    4749,
+    4749
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Marketplaces — ships on Day 45 (in scope): Flipkart Seller API adapter."
+  },
+  {
+   "id": "R04751",
+   "lines": [
+    4751,
+    4751
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Marketplaces — explicitly deferred (out of scope): Myntra."
+  },
+  {
+   "id": "R04751a",
+   "lines": [
+    4751,
+    4751
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Marketplaces — explicitly deferred (out of scope): Ajio."
+  },
+  {
+   "id": "R04751b",
+   "lines": [
+    4751,
+    4751
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Marketplaces — explicitly deferred (out of scope): Meesho."
+  },
+  {
+   "id": "R04751c",
+   "lines": [
+    4751,
+    4751
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Marketplaces — explicitly deferred (out of scope): Nykaa."
+  },
+  {
+   "id": "R04751d",
+   "lines": [
+    4751,
+    4751
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "requirement",
+   "text": "For deferred marketplaces the adapter interface is proven, not coded."
+  },
+  {
+   "id": "R04753",
+   "lines": [
+    4753,
+    4755
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "AI Generation — ships on Day 45 (in scope): Content agent."
+  },
+  {
+   "id": "R04755",
+   "lines": [
+    4755,
+    4755
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "AI Generation — ships on Day 45 (in scope): Keyword agent."
+  },
+  {
+   "id": "R04755a",
+   "lines": [
+    4755,
+    4755
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "AI Generation — ships on Day 45 (in scope): Attribute agent."
+  },
+  {
+   "id": "R04755b",
+   "lines": [
+    4755,
+    4755
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "AI Generation — ships on Day 45 (in scope): brand-voice RAG."
+  },
+  {
+   "id": "R04755c",
+   "lines": [
+    4755,
+    4755
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "AI Generation — ships on Day 45 (in scope): structured JSON."
+  },
+  {
+   "id": "R04757",
+   "lines": [
+    4757,
+    4757
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "AI Generation — explicitly deferred (out of scope): Optimization Agent."
+  },
+  {
+   "id": "R04757a",
+   "lines": [
+    4757,
+    4757
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "AI Generation — explicitly deferred (out of scope): continuous learning loops."
+  },
+  {
+   "id": "R04757b",
+   "lines": [
+    4757,
+    4757
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "AI Generation — explicitly deferred (out of scope): competitive signal scraping."
+  },
+  {
+   "id": "R04759",
+   "lines": [
+    4759,
+    4761
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Images — ships on Day 45 (in scope): Upload/GCS."
+  },
+  {
+   "id": "R04761",
+   "lines": [
+    4761,
+    4761
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Images — ships on Day 45 (in scope): deterministic checks (Pillow)."
+  },
+  {
+   "id": "R04761a",
+   "lines": [
+    4761,
+    4761
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Images — ships on Day 45 (in scope): vision checks."
+  },
+  {
+   "id": "R04761b",
+   "lines": [
+    4761,
+    4761
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Images — ships on Day 45 (in scope): ImageReport."
+  },
+  {
+   "id": "R04763",
+   "lines": [
+    4763,
+    4763
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Images — explicitly deferred (out of scope): advanced image generative editing."
+  },
+  {
+   "id": "R04763a",
+   "lines": [
+    4763,
+    4763
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Images — explicitly deferred (out of scope): in-browser canvas editing."
+  },
+  {
+   "id": "R04765",
+   "lines": [
+    4765,
+    4767
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Control Plane — ships on Day 45 (in scope): schema validation."
+  },
+  {
+   "id": "R04767",
+   "lines": [
+    4767,
+    4767
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Control Plane — ships on Day 45 (in scope): rules engine."
+  },
+  {
+   "id": "R04767a",
+   "lines": [
+    4767,
+    4767
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Control Plane — ships on Day 45 (in scope): ErrorReport."
+  },
+  {
+   "id": "R04767b",
+   "lines": [
+    4767,
+    4767
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Control Plane — ships on Day 45 (in scope): correction loop (≤3)."
+  },
+  {
+   "id": "R04767c",
+   "lines": [
+    4767,
+    4767
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Control Plane — ships on Day 45 (in scope): maker-checker approval."
+  },
+  {
+   "id": "R04769",
+   "lines": [
+    4769,
+    4769
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Control Plane — explicitly deferred (out of scope): confidence-based automated publishing without human approval."
+  },
+  {
+   "id": "R04771",
+   "lines": [
+    4771,
+    4773
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Analytics — ships on Day 45 (in scope): listing volume."
+  },
+  {
+   "id": "R04773",
+   "lines": [
+    4773,
+    4773
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Analytics — ships on Day 45 (in scope): approval rate."
+  },
+  {
+   "id": "R04773a",
+   "lines": [
+    4773,
+    4773
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Analytics — ships on Day 45 (in scope): validation pass/fail rate."
+  },
+  {
+   "id": "R04773b",
+   "lines": [
+    4773,
+    4773
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Analytics — ships on Day 45 (in scope): publish success rate."
+  },
+  {
+   "id": "R04775",
+   "lines": [
+    4775,
+    4775
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Analytics — explicitly deferred (out of scope): full unified cross-channel sales attribution."
+  },
+  {
+   "id": "R04775a",
+   "lines": [
+    4775,
+    4775
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Analytics — explicitly deferred (out of scope): margin modeling."
+  },
+  {
+   "id": "R04777",
+   "lines": [
+    4777,
+    4779
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Reliability — ships on Day 45 (in scope): Redis + ARQ async queue."
+  },
+  {
+   "id": "R04779",
+   "lines": [
+    4779,
+    4779
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Reliability — ships on Day 45 (in scope): retries with exponential backoff."
+  },
+  {
+   "id": "R04779a",
+   "lines": [
+    4779,
+    4779
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Reliability — ships on Day 45 (in scope): failed-job re-run."
+  },
+  {
+   "id": "R04779b",
+   "lines": [
+    4779,
+    4779
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Reliability — ships on Day 45 (in scope): correlation IDs."
+  },
+  {
+   "id": "R04781",
+   "lines": [
+    4781,
+    4781
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Reliability — explicitly deferred (out of scope): large-scale multi-cluster Kafka event streaming platform."
+  },
+  {
+   "id": "R04783",
+   "lines": [
+    4783,
+    4785
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Security — ships on Day 45 (in scope): JWT auth."
+  },
+  {
+   "id": "R04785",
+   "lines": [
+    4785,
+    4785
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Security — ships on Day 45 (in scope): RBAC (4 roles)."
+  },
+  {
+   "id": "R04785a",
+   "lines": [
+    4785,
+    4785
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Security — ships on Day 45 (in scope): tenant-scoped repo pattern."
+  },
+  {
+   "id": "R04785b",
+   "lines": [
+    4785,
+    4785
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Security — ships on Day 45 (in scope): KMS-wrapped OAuth tokens."
+  },
+  {
+   "id": "R04785c",
+   "lines": [
+    4785,
+    4785
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Security — ships on Day 45 (in scope): audit log."
+  },
+  {
+   "id": "R04787",
+   "lines": [
+    4787,
+    4787
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Security — explicitly deferred (out of scope): Enterprise SAML/SSO."
+  },
+  {
+   "id": "R04787a",
+   "lines": [
+    4787,
+    4787
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Security — explicitly deferred (out of scope): formal SOC2/ISO compliance certifications."
+  },
+  {
+   "id": "R04789",
+   "lines": [
+    4789,
+    4791
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Observability — ships on Day 45 (in scope): Sentry."
+  },
+  {
+   "id": "R04791",
+   "lines": [
+    4791,
+    4791
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Observability — ships on Day 45 (in scope): OpenTelemetry."
+  },
+  {
+   "id": "R04791a",
+   "lines": [
+    4791,
+    4791
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Observability — ships on Day 45 (in scope): Cloud Trace."
+  },
+  {
+   "id": "R04791b",
+   "lines": [
+    4791,
+    4791
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Observability — ships on Day 45 (in scope): AgentRun token/cost logging."
+  },
+  {
+   "id": "R04791c",
+   "lines": [
+    4791,
+    4791
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Observability — ships on Day 45 (in scope): adapter logs."
+  },
+  {
+   "id": "R04793",
+   "lines": [
+    4793,
+    4793
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Observability — explicitly deferred (out of scope): full self-hosted Prometheus/Grafana."
+  },
+  {
+   "id": "R04793a",
+   "lines": [
+    4793,
+    4793
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Observability — explicitly deferred (out of scope): Datadog enterprise stack."
+  },
+  {
+   "id": "R04795",
+   "lines": [
+    4795,
+    4797
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Agent Roster — ships on Day 45 (in scope): Listing Agent suite: Content agent."
+  },
+  {
+   "id": "R04797",
+   "lines": [
+    4797,
+    4797
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Agent Roster — ships on Day 45 (in scope): Listing Agent suite: Keyword agent."
+  },
+  {
+   "id": "R04797a",
+   "lines": [
+    4797,
+    4797
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Agent Roster — ships on Day 45 (in scope): Listing Agent suite: Attribute agent."
+  },
+  {
+   "id": "R04797b",
+   "lines": [
+    4797,
+    4797
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Agent Roster — ships on Day 45 (in scope): Listing Agent suite: Image agent."
+  },
+  {
+   "id": "R04797c",
+   "lines": [
+    4797,
+    4797
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Agent Roster — ships on Day 45 (in scope): Listing Agent suite: Brand RAG."
+  },
+  {
+   "id": "R04799",
+   "lines": [
+    4799,
+    4799
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Agent Roster — explicitly deferred (out of scope): Pricing agent."
+  },
+  {
+   "id": "R04799a",
+   "lines": [
+    4799,
+    4799
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Agent Roster — explicitly deferred (out of scope): Ads agent."
+  },
+  {
+   "id": "R04799b",
+   "lines": [
+    4799,
+    4799
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Agent Roster — explicitly deferred (out of scope): Inventory agent."
+  },
+  {
+   "id": "R04799c",
+   "lines": [
+    4799,
+    4799
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Agent Roster — explicitly deferred (out of scope): Returns agent."
+  },
+  {
+   "id": "R04799d",
+   "lines": [
+    4799,
+    4799
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Agent Roster — explicitly deferred (out of scope): Revenue Ops agent."
+  },
+  {
+   "id": "R04799e",
+   "lines": [
+    4799,
+    4799
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Agent Roster — explicitly deferred (out of scope): Catalog agent."
+  },
+  {
+   "id": "R04799f",
+   "lines": [
+    4799,
+    4799
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Agent Roster — explicitly deferred (out of scope): Ranking agent."
+  },
+  {
+   "id": "R04801",
+   "lines": [
+    4801,
+    4801
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "info",
+   "text": "Sprint Scope Discipline Rule",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04803",
+   "lines": [
+    4803,
+    4803
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "info",
+   "text": "The Left Column Rule (label)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04805",
+   "lines": [
+    4805,
+    4805
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "A proposed feature not in the left column goes directly to the Phase 2/3 backlog."
+  },
+  {
+   "id": "R04805a",
+   "lines": [
+    4805,
+    4805
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "requirement",
+   "text": "Features do NOT get quietly slipped into Phase 1 because \"it looks small.\""
+  },
+  {
+   "id": "R04805b",
+   "lines": [
+    4805,
+    4805
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "flow",
+   "text": "Review the scope table at every Friday retrospective."
+  },
+  {
+   "id": "R04807",
+   "lines": [
+    4807,
+    4807
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "info",
+   "text": "Explicit Non-Goals (What We Will NOT Build)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04809",
+   "lines": [
+    4809,
+    4809
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Non-goal (No Foundation Model Training): zero custom model training or fine-tuning."
+  },
+  {
+   "id": "R04809a",
+   "lines": [
+    4809,
+    4809
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "decision",
+   "text": "Use hosted foundation models."
+  },
+  {
+   "id": "R04809b",
+   "lines": [
+    4809,
+    4809
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "decision",
+   "text": "Hosted models sit behind a clean ModelRouter abstraction."
+  },
+  {
+   "id": "R04810",
+   "lines": [
+    4810,
+    4810
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Non-goal: no Kubernetes — no GKE or microservice mesh overhead."
+  },
+  {
+   "id": "R04810a",
+   "lines": [
+    4810,
+    4810
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "decision",
+   "text": "Compute runs entirely on serverless Cloud Run containers."
+  },
+  {
+   "id": "R04811",
+   "lines": [
+    4811,
+    4811
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Non-goal: no dedicated vector database — no Pinecone, Milvus, or Weaviate."
+  },
+  {
+   "id": "R04811a",
+   "lines": [
+    4811,
+    4811
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "decision",
+   "text": "Cloud SQL PostgreSQL with pgvector handles both relational and vector data at MVP scale."
+  },
+  {
+   "id": "R04812",
+   "lines": [
+    4812,
+    4812
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "requirement",
+   "text": "Non-goal: no algorithm may publish to Amazon or Flipkart without an explicit human approval button click."
+  },
+  {
+   "id": "R04813",
+   "lines": [
+    4813,
+    4813
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Non-goal: no real-time scraping of competitor listings during MVP."
+  },
+  {
+   "id": "R04813a",
+   "lines": [
+    4813,
+    4813
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Non-goal: no real-time scraping of volatile keyword trends during MVP."
+  },
+  {
+   "id": "R04815",
+   "lines": [
+    4815,
+    4815
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "info",
+   "text": "Deferred Marketplace OS Agents",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04817",
+   "lines": [
+    4817,
+    4817
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "The long-term vision includes 8 additional specialized agents."
+  },
+  {
+   "id": "R04817a",
+   "lines": [
+    4817,
+    4817
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "The 8 agents stay on the strategic roadmap but are strictly blocked from Phase 1."
+  },
+  {
+   "id": "R04819",
+   "lines": [
+    4819,
+    4821
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Pricing Agent: Deferred to Phase 2 / Phase 3."
+  },
+  {
+   "id": "R04823",
+   "lines": [
+    4823,
+    4825
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Ads Agent: Deferred to Phase 2 / Phase 3."
+  },
+  {
+   "id": "R04827",
+   "lines": [
+    4827,
+    4829
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Inventory Agent: Deferred to Phase 2 / Phase 3."
+  },
+  {
+   "id": "R04831",
+   "lines": [
+    4831,
+    4833
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Returns Agent: Deferred to Phase 2 / Phase 3."
+  },
+  {
+   "id": "R04835",
+   "lines": [
+    4835,
+    4837
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Revenue Operations Agent: Deferred to Phase 2 / Phase 3."
+  },
+  {
+   "id": "R04839",
+   "lines": [
+    4839,
+    4841
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Catalog Agent: Deferred to Phase 2 / Phase 3."
+  },
+  {
+   "id": "R04843",
+   "lines": [
+    4843,
+    4845
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Ranking Agent: Deferred to Phase 2 / Phase 3."
+  },
+  {
+   "id": "R04847",
+   "lines": [
+    4847,
+    4849
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "scope",
+   "text": "Optimization Agent: Deferred to Phase 2 / Phase 3."
+  },
+  {
+   "id": "R04851",
+   "lines": [
+    4851,
+    4851
+   ],
+   "page": "[02] Phase-1 Scope Lock & Non-Goals",
+   "kind": "info",
+   "text": "Page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R04853",
+   "lines": [
+    4853,
+    4853
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "info",
+   "text": "Page title [03]",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04855",
+   "lines": [
+    4855,
+    4855
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "info",
+   "text": "Section: 45-Day MVP Build Plan",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R04856",
+   "lines": [
+    4856,
+    4856
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Page [03] Day-by-Day Execution Plan scope: MVP."
+  },
+  {
+   "id": "R04857",
+   "lines": [
+    4857,
+    4857
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "info",
+   "text": "Page URL",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R04858",
+   "lines": [
+    4858,
+    4858
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Execution plan owner tags: TL, AI, BE, FE, OPS."
+  },
+  {
+   "id": "R04858a",
+   "lines": [
+    4858,
+    4858
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Each day of the 45-day schedule has clear daily deliverables and a definition of done."
+  },
+  {
+   "id": "R04859",
+   "lines": [
+    4859,
+    4859
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "info",
+   "text": "Page keywords",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R04861",
+   "lines": [
+    4861,
+    4861
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "info",
+   "text": "Interactive 45-Day Planner",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04863",
+   "lines": [
+    4863,
+    4863
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "info",
+   "text": "Use the interactive tool below to track day-by-day tasks.",
+   "why_not": "context-prose"
+  },
+  {
+   "id": "R04865",
+   "lines": [
+    4865,
+    4865
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "info",
+   "text": "45-Day Interactive Execution Planner",
+   "why_not": "heading"
+  },
+  {
+   "id": "R04867",
+   "lines": [
+    4867,
+    4867
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "info",
+   "text": "Planner filter caption (Showing 45 of 45 Days)",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R04869",
+   "lines": [
+    4869,
+    4869
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Plan phase: Solo = Days 1–10."
+  },
+  {
+   "id": "R04869a",
+   "lines": [
+    4869,
+    4869
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Plan phase: Week 2 = Days 11–14."
+  },
+  {
+   "id": "R04869b",
+   "lines": [
+    4869,
+    4869
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Plan phase: Week 3 = Days 15–21."
+  },
+  {
+   "id": "R04869c",
+   "lines": [
+    4869,
+    4869
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Plan phase: Week 4 = Days 22–28."
+  },
+  {
+   "id": "R04869d",
+   "lines": [
+    4869,
+    4869
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Plan phase: Week 5 = Days 29–35."
+  },
+  {
+   "id": "R04869e",
+   "lines": [
+    4869,
+    4869
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Plan phase: Week 6 = Days 36–42."
+  },
+  {
+   "id": "R04869f",
+   "lines": [
+    4869,
+    4869
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Plan phase: Week 7 = Days 43–45."
+  },
+  {
+   "id": "R04871",
+   "lines": [
+    4871,
+    4871
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Owner role tag: TL (Tech Lead)."
+  },
+  {
+   "id": "R04871a",
+   "lines": [
+    4871,
+    4871
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Owner role tag: AI (AI Eng)."
+  },
+  {
+   "id": "R04871b",
+   "lines": [
+    4871,
+    4871
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Owner role tag: BE (Backend)."
+  },
+  {
+   "id": "R04871c",
+   "lines": [
+    4871,
+    4871
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Owner role tag: FE (Frontend)."
+  },
+  {
+   "id": "R04871d",
+   "lines": [
+    4871,
+    4871
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Owner role tag: OPS (DevOps/QA)."
+  },
+  {
+   "id": "R04873",
+   "lines": [
+    4873,
+    4873
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 1 is Mon Sep 21 2026, phase Phase 0 (Solo)."
+  },
+  {
+   "id": "R04875",
+   "lines": [
+    4875,
+    4875
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 1 owner tags: TL."
+  },
+  {
+   "id": "R04877",
+   "lines": [
+    4877,
+    4877
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 1 deliverable theme: MVP Scope Freeze, GCP Provisioning & Marketplace Applications."
+  },
+  {
+   "id": "R04879",
+   "lines": [
+    4879,
+    4879
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 1: freeze MVP scope table (§2)."
+  },
+  {
+   "id": "R04879a",
+   "lines": [
+    4879,
+    4879
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 1: zero scope expansion permitted."
+  },
+  {
+   "id": "R04880",
+   "lines": [
+    4880,
+    4880
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 1: create GCP project(s) and enable core APIs."
+  },
+  {
+   "id": "R04880a",
+   "lines": [
+    4880,
+    4880
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 1 core GCP API enabled: Cloud Run."
+  },
+  {
+   "id": "R04880b",
+   "lines": [
+    4880,
+    4880
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 1 core GCP API enabled: Cloud SQL Admin."
+  },
+  {
+   "id": "R04880c",
+   "lines": [
+    4880,
+    4880
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 1 core GCP API enabled: Secret Manager."
+  },
+  {
+   "id": "R04880d",
+   "lines": [
+    4880,
+    4880
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 1 core GCP API enabled: Cloud Build."
+  },
+  {
+   "id": "R04880e",
+   "lines": [
+    4880,
+    4880
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 1 core GCP API enabled: Artifact Registry."
+  },
+  {
+   "id": "R04880f",
+   "lines": [
+    4880,
+    4880
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 1 core GCP API enabled: GCS."
+  },
+  {
+   "id": "R04880g",
+   "lines": [
+    4880,
+    4880
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 1 core GCP API enabled: Memorystore."
+  },
+  {
+   "id": "R04880h",
+   "lines": [
+    4880,
+    4880
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 1 core GCP API enabled: Cloud Trace."
+  },
+  {
+   "id": "R04880i",
+   "lines": [
+    4880,
+    4880
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 1 core GCP API enabled: Cloud Logging."
+  },
+  {
+   "id": "R04881",
+   "lines": [
+    4881,
+    4881
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 1 monorepo scaffold includes apps/api (FastAPI)."
+  },
+  {
+   "id": "R04881a",
+   "lines": [
+    4881,
+    4881
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 1 monorepo scaffold includes apps/web (Next.js)."
+  },
+  {
+   "id": "R04881b",
+   "lines": [
+    4881,
+    4881
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 1 monorepo scaffold includes packages/schemas."
+  },
+  {
+   "id": "R04881c",
+   "lines": [
+    4881,
+    4881
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 1 monorepo scaffold includes infra."
+  },
+  {
+   "id": "R04881d",
+   "lines": [
+    4881,
+    4881
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 1 monorepo scaffold includes docs/adr."
+  },
+  {
+   "id": "R04882",
+   "lines": [
+    4882,
+    4882
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 1: set up branch protection."
+  },
+  {
+   "id": "R04882a",
+   "lines": [
+    4882,
+    4882
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 1 tooling: ruff."
+  },
+  {
+   "id": "R04882b",
+   "lines": [
+    4882,
+    4882
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 1 tooling: black."
+  },
+  {
+   "id": "R04882c",
+   "lines": [
+    4882,
+    4882
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 1 tooling: mypy."
+  },
+  {
+   "id": "R04882d",
+   "lines": [
+    4882,
+    4882
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 1 tooling: eslint."
+  },
+  {
+   "id": "R04882e",
+   "lines": [
+    4882,
+    4882
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 1 tooling: prettier."
+  },
+  {
+   "id": "R04882f",
+   "lines": [
+    4882,
+    4882
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 1: set up ADR template."
+  },
+  {
+   "id": "R04883",
+   "lines": [
+    4883,
+    4883
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 1 CRITICAL: file Amazon SP-API developer application."
+  },
+  {
+   "id": "R04883a",
+   "lines": [
+    4883,
+    4883
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 1 CRITICAL: file Flipkart Seller API partner application."
+  },
+  {
+   "id": "R04883b",
+   "lines": [
+    4883,
+    4883
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "risk",
+   "text": "Marketplace developer/partner applications have the longest external lead time in the plan."
+  },
+  {
+   "id": "R04885",
+   "lines": [
+    4885,
+    4885
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 1 DoD: GCP project live with APIs enabled."
+  },
+  {
+   "id": "R04885a",
+   "lines": [
+    4885,
+    4885
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 1 DoD: monorepo pushed with branch protection."
+  },
+  {
+   "id": "R04885b",
+   "lines": [
+    4885,
+    4885
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 1 DoD: both marketplace developer applications filed."
+  },
+  {
+   "id": "R04887",
+   "lines": [
+    4887,
+    4887
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 2 is Tue Sep 22 2026, phase Phase 0 (Solo)."
+  },
+  {
+   "id": "R04889",
+   "lines": [
+    4889,
+    4889
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 2 owner tags: TL."
+  },
+  {
+   "id": "R04891",
+   "lines": [
+    4891,
+    4891
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 2 deliverable theme: FastAPI & Next.js Skeletons, Local Docker Compose & CI."
+  },
+  {
+   "id": "R04893",
+   "lines": [
+    4893,
+    4893
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 2 FastAPI skeleton includes core/config.py."
+  },
+  {
+   "id": "R04893a",
+   "lines": [
+    4893,
+    4893
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 2 FastAPI skeleton includes core/database.py."
+  },
+  {
+   "id": "R04893b",
+   "lines": [
+    4893,
+    4893
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 2 FastAPI skeleton includes api/v1/routers."
+  },
+  {
+   "id": "R04893c",
+   "lines": [
+    4893,
+    4893
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 2 FastAPI skeleton includes services."
+  },
+  {
+   "id": "R04893d",
+   "lines": [
+    4893,
+    4893
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 2 FastAPI skeleton includes repositories."
+  },
+  {
+   "id": "R04893e",
+   "lines": [
+    4893,
+    4893
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 2 FastAPI skeleton includes schemas."
+  },
+  {
+   "id": "R04893f",
+   "lines": [
+    4893,
+    4893
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 2 FastAPI skeleton includes Dockerfile."
+  },
+  {
+   "id": "R04894",
+   "lines": [
+    4894,
+    4894
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 2: Next.js 14 skeleton."
+  },
+  {
+   "id": "R04894a",
+   "lines": [
+    4894,
+    4894
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 2 Next.js skeleton includes App Router."
+  },
+  {
+   "id": "R04894b",
+   "lines": [
+    4894,
+    4894
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 2 Next.js skeleton includes Tailwind CSS."
+  },
+  {
+   "id": "R04894c",
+   "lines": [
+    4894,
+    4894
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 2 Next.js skeleton includes layout shell."
+  },
+  {
+   "id": "R04894d",
+   "lines": [
+    4894,
+    4894
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 2 Next.js skeleton includes /login placeholder page."
+  },
+  {
+   "id": "R04894e",
+   "lines": [
+    4894,
+    4894
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 2 Next.js skeleton includes /dashboard placeholder page."
+  },
+  {
+   "id": "R04895",
+   "lines": [
+    4895,
+    4895
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 2 docker-compose.yml service: pgvector/pgvector:pg16."
+  },
+  {
+   "id": "R04895a",
+   "lines": [
+    4895,
+    4895
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 2 docker-compose.yml service: redis:7."
+  },
+  {
+   "id": "R04895b",
+   "lines": [
+    4895,
+    4895
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 2 docker-compose.yml service: minio (local S3 stand-in)."
+  },
+  {
+   "id": "R04896",
+   "lines": [
+    4896,
+    4896
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 2: GitHub Actions CI."
+  },
+  {
+   "id": "R04896a",
+   "lines": [
+    4896,
+    4896
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "CI runs automated lint on PR."
+  },
+  {
+   "id": "R04896b",
+   "lines": [
+    4896,
+    4896
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "CI runs automated typecheck on PR."
+  },
+  {
+   "id": "R04896c",
+   "lines": [
+    4896,
+    4896
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "CI runs automated unit test on PR."
+  },
+  {
+   "id": "R04898",
+   "lines": [
+    4898,
+    4898
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 2 DoD: docker compose up boots all 3 local services."
+  },
+  {
+   "id": "R04898a",
+   "lines": [
+    4898,
+    4898
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 2 DoD: uvicorn runs."
+  },
+  {
+   "id": "R04898b",
+   "lines": [
+    4898,
+    4898
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 2 DoD: npm run dev runs."
+  },
+  {
+   "id": "R04898c",
+   "lines": [
+    4898,
+    4898
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 2 DoD: CI passes green on a dummy pull request."
+  },
+  {
+   "id": "R04900",
+   "lines": [
+    4900,
+    4900
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 3 is Wed Sep 23 2026, phase Phase 0 (Solo)."
+  },
+  {
+   "id": "R04902",
+   "lines": [
+    4902,
+    4902
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 3 owner tags: TL."
+  },
+  {
+   "id": "R04904",
+   "lines": [
+    4904,
+    4904
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 3 deliverable theme: GCP Cloud SQL (PostgreSQL 16 + pgvector) & Memorystore Redis."
+  },
+  {
+   "id": "R04906",
+   "lines": [
+    4906,
+    4906
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 3: provision Cloud SQL for PostgreSQL 16 instance."
+  },
+  {
+   "id": "R04906a",
+   "lines": [
+    4906,
+    4906
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 3: enable vector extension on Cloud SQL."
+  },
+  {
+   "id": "R04907",
+   "lines": [
+    4907,
+    4907
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 3: provision Memorystore for Redis."
+  },
+  {
+   "id": "R04907a",
+   "lines": [
+    4907,
+    4907
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Memorystore Redis sizing: Basic Tier, 1GB."
+  },
+  {
+   "id": "R04908",
+   "lines": [
+    4908,
+    4908
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 3: GCS bucket images."
+  },
+  {
+   "id": "R04908a",
+   "lines": [
+    4908,
+    4908
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 3: GCS bucket csv-imports."
+  },
+  {
+   "id": "R04908b",
+   "lines": [
+    4908,
+    4908
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "GCS buckets have lifecycle rules."
+  },
+  {
+   "id": "R04909",
+   "lines": [
+    4909,
+    4909
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 3: configure Serverless VPC Connector for Cloud Run."
+  },
+  {
+   "id": "R04909a",
+   "lines": [
+    4909,
+    4909
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Cloud Run reaches Cloud SQL and Memorystore over private IP."
+  },
+  {
+   "id": "R04910",
+   "lines": [
+    4910,
+    4910
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Day 3 Secret Manager seeded with DATABASE_URL."
+  },
+  {
+   "id": "R04910a",
+   "lines": [
+    4910,
+    4910
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Day 3 Secret Manager seeded with REDIS_URL."
+  },
+  {
+   "id": "R04910b",
+   "lines": [
+    4910,
+    4910
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Day 3 Secret Manager seeded with JWT_SECRET."
+  },
+  {
+   "id": "R04910c",
+   "lines": [
+    4910,
+    4910
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Day 3 Secret Manager seeded with LLM_API_KEY (placeholder)."
+  },
+  {
+   "id": "R04911",
+   "lines": [
+    4911,
+    4911
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 3: initialize Alembic migration environment in apps/api."
+  },
+  {
+   "id": "R04913",
+   "lines": [
+    4913,
+    4913
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 3 DoD: local machine connects to Cloud SQL via Cloud SQL Auth Proxy."
+  },
+  {
+   "id": "R04913a",
+   "lines": [
+    4913,
+    4913
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 3 DoD: initial empty Alembic migration applies cleanly."
+  },
+  {
+   "id": "R04915",
+   "lines": [
+    4915,
+    4915
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 4 is Thu Sep 24 2026, phase Phase 0 (Solo)."
+  },
+  {
+   "id": "R04917",
+   "lines": [
+    4917,
+    4917
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 4 owner tags: TL."
+  },
+  {
+   "id": "R04919",
+   "lines": [
+    4919,
+    4919
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 4 deliverable theme: Core Multi-Tenancy Data Model & Pydantic Validation."
+  },
+  {
+   "id": "R04921",
+   "lines": [
+    4921,
+    4921
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Alembic migration 0001_core_tenancy creates table tenants."
+  },
+  {
+   "id": "R04921a",
+   "lines": [
+    4921,
+    4921
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Alembic migration 0001_core_tenancy creates table users."
+  },
+  {
+   "id": "R04921b",
+   "lines": [
+    4921,
+    4921
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Alembic migration 0001_core_tenancy creates table products."
+  },
+  {
+   "id": "R04922",
+   "lines": [
+    4922,
+    4922
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Pydantic v2 schemas for Tenant (create, read, update)."
+  },
+  {
+   "id": "R04922a",
+   "lines": [
+    4922,
+    4922
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Pydantic v2 schemas for User (create, read, update)."
+  },
+  {
+   "id": "R04922b",
+   "lines": [
+    4922,
+    4922
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Pydantic v2 schemas for Product (create, read, update)."
+  },
+  {
+   "id": "R04923",
+   "lines": [
+    4923,
+    4923
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Unique SKU constraint per tenant (brand_id, sku)."
+  },
+  {
+   "id": "R04924",
+   "lines": [
+    4924,
+    4924
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 4 unit tests verify schema round-trip serialization."
+  },
+  {
+   "id": "R04924a",
+   "lines": [
+    4924,
+    4924
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 4 unit tests verify duplicate SKU rejection."
+  },
+  {
+   "id": "R04926",
+   "lines": [
+    4926,
+    4926
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 4 DoD: migration applies cleanly to Cloud SQL."
+  },
+  {
+   "id": "R04926a",
+   "lines": [
+    4926,
+    4926
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 4 DoD: unit tests verify SKU uniqueness."
+  },
+  {
+   "id": "R04926b",
+   "lines": [
+    4926,
+    4926
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 4 DoD: unit tests verify Pydantic validation."
+  },
+  {
+   "id": "R04928",
+   "lines": [
+    4928,
+    4928
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 5 is Fri Sep 25 2026, phase Phase 0 (Solo)."
+  },
+  {
+   "id": "R04930",
+   "lines": [
+    4930,
+    4930
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 5 owner tags: TL."
+  },
+  {
+   "id": "R04932",
+   "lines": [
+    4932,
+    4932
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 5 deliverable theme: Listing Pipeline Schema, pgvector HNSW Index & Tenant Isolation Test."
+  },
+  {
+   "id": "R04934",
+   "lines": [
+    4934,
+    4934
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Alembic migration 0002_listing_pipeline creates table marketplace_accounts."
+  },
+  {
+   "id": "R04934a",
+   "lines": [
+    4934,
+    4934
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Alembic migration 0002_listing_pipeline creates table listings."
+  },
+  {
+   "id": "R04934b",
+   "lines": [
+    4934,
+    4934
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Alembic migration 0002_listing_pipeline creates table listing_versions."
+  },
+  {
+   "id": "R04934c",
+   "lines": [
+    4934,
+    4934
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Alembic migration 0002_listing_pipeline creates table rules."
+  },
+  {
+   "id": "R04934d",
+   "lines": [
+    4934,
+    4934
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Alembic migration 0002_listing_pipeline creates table validation_runs."
+  },
+  {
+   "id": "R04934e",
+   "lines": [
+    4934,
+    4934
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Alembic migration 0002_listing_pipeline creates table agent_runs."
+  },
+  {
+   "id": "R04934f",
+   "lines": [
+    4934,
+    4934
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Alembic migration 0002_listing_pipeline creates table images."
+  },
+  {
+   "id": "R04934g",
+   "lines": [
+    4934,
+    4934
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Alembic migration 0002_listing_pipeline creates table performance."
+  },
+  {
+   "id": "R04934h",
+   "lines": [
+    4934,
+    4934
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Alembic migration 0002_listing_pipeline creates table audit_log."
+  },
+  {
+   "id": "R04934i",
+   "lines": [
+    4934,
+    4934
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Alembic migration 0002_listing_pipeline creates table brand_chunks."
+  },
+  {
+   "id": "R04935",
+   "lines": [
+    4935,
+    4935
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "HNSW cosine index on brand_chunks.embedding (vector_cosine_ops)."
+  },
+  {
+   "id": "R04936",
+   "lines": [
+    4936,
+    4936
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "TenantScopedRepository base class enforces tenant_id filtering on every query."
+  },
+  {
+   "id": "R04937",
+   "lines": [
+    4937,
+    4937
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Seed script: 1 demo tenant."
+  },
+  {
+   "id": "R04937a",
+   "lines": [
+    4937,
+    4937
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Seed script: 3 demo products."
+  },
+  {
+   "id": "R04938",
+   "lines": [
+    4938,
+    4938
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Automated cross-tenant isolation test proves tenant A queries return 0 rows for tenant B."
+  },
+  {
+   "id": "R04940",
+   "lines": [
+    4940,
+    4940
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 5 DoD: full schema live in Cloud SQL."
+  },
+  {
+   "id": "R04940a",
+   "lines": [
+    4940,
+    4940
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 5 DoD: automated test proves tenant isolation at repository layer."
+  },
+  {
+   "id": "R04942",
+   "lines": [
+    4942,
+    4942
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 6 is Sat Sep 26 2026, phase Phase 0 (Solo)."
+  },
+  {
+   "id": "R04944",
+   "lines": [
+    4944,
+    4944
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 6 owner tags: TL."
+  },
+  {
+   "id": "R04946",
+   "lines": [
+    4946,
+    4946
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 6 deliverable theme: JWT Auth, RBAC Middleware, Maker-Checker Stub & Audit Logging."
+  },
+  {
+   "id": "R04948",
+   "lines": [
+    4948,
+    4948
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 6: JWT authentication."
+  },
+  {
+   "id": "R04948a",
+   "lines": [
+    4948,
+    4948
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "JWT auth uses a NextAuth bridge."
+  },
+  {
+   "id": "R04949",
+   "lines": [
+    4949,
+    4949
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Role enum: Owner, Operator, Reviewer, Admin."
+  },
+  {
+   "id": "R04949a",
+   "lines": [
+    4949,
+    4949
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "require_role() FastAPI dependency."
+  },
+  {
+   "id": "R04950",
+   "lines": [
+    4950,
+    4950
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Maker-checker DB constraint stub on listing_versions (approved_by <> generated_by)."
+  },
+  {
+   "id": "R04951",
+   "lines": [
+    4951,
+    4951
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "audit() helper wired into service layer mixin."
+  },
+  {
+   "id": "R04952",
+   "lines": [
+    4952,
+    4952
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "request_id middleware with contextvars."
+  },
+  {
+   "id": "R04952a",
+   "lines": [
+    4952,
+    4952
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "request_id propagated in response header."
+  },
+  {
+   "id": "R04954",
+   "lines": [
+    4954,
+    4954
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 6 DoD: login issues valid JWT."
+  },
+  {
+   "id": "R04954a",
+   "lines": [
+    4954,
+    4954
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 6 DoD: protected endpoints reject unauthorized roles."
+  },
+  {
+   "id": "R04954b",
+   "lines": [
+    4954,
+    4954
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 6 DoD: actions log to audit_log table."
+  },
+  {
+   "id": "R04956",
+   "lines": [
+    4956,
+    4956
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 7 is Sun Sep 27 2026, phase Phase 0 (Solo)."
+  },
+  {
+   "id": "R04958",
+   "lines": [
+    4958,
+    4958
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 7 owner tags: TL."
+  },
+  {
+   "id": "R04960",
+   "lines": [
+    4960,
+    4960
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 7 deliverable theme: Walking Skeleton: Product CRUD UI + Staging Cloud Run Deployment."
+  },
+  {
+   "id": "R04962",
+   "lines": [
+    4962,
+    4962
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Day 7: Product CRUD API."
+  },
+  {
+   "id": "R04962a",
+   "lines": [
+    4962,
+    4962
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 7: Next.js frontend login → product list → create product wired end-to-end."
+  },
+  {
+   "id": "R04963",
+   "lines": [
+    4963,
+    4963
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 7: finalize Dockerfiles."
+  },
+  {
+   "id": "R04963a",
+   "lines": [
+    4963,
+    4963
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Build and push images to GCP Artifact Registry."
+  },
+  {
+   "id": "R04964",
+   "lines": [
+    4964,
+    4964
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Deploy api-staging to Cloud Run."
+  },
+  {
+   "id": "R04964a",
+   "lines": [
+    4964,
+    4964
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Deploy web-staging to Cloud Run."
+  },
+  {
+   "id": "R04964b",
+   "lines": [
+    4964,
+    4964
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Staging services get Secret Manager env vars."
+  },
+  {
+   "id": "R04965",
+   "lines": [
+    4965,
+    4965
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Configure custom staging domain."
+  },
+  {
+   "id": "R04965a",
+   "lines": [
+    4965,
+    4965
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Staging domain uses Google-managed TLS."
+  },
+  {
+   "id": "R04966",
+   "lines": [
+    4966,
+    4966
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 7: write and execute end-to-end smoke test script."
+  },
+  {
+   "id": "R04968",
+   "lines": [
+    4968,
+    4968
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 7 DoD: a teammate can log into staging and create a product over TLS (walking skeleton live)."
+  },
+  {
+   "id": "R04970",
+   "lines": [
+    4970,
+    4970
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 8 is Mon Sep 28 2026, phase Phase 0 (Solo)."
+  },
+  {
+   "id": "R04972",
+   "lines": [
+    4972,
+    4972
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 8 owner tags: TL."
+  },
+  {
+   "id": "R04974",
+   "lines": [
+    4974,
+    4974
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 8 deliverable theme: Bulk CSV Product Ingestion with Malformed Row Isolation."
+  },
+  {
+   "id": "R04976",
+   "lines": [
+    4976,
+    4976
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "POST /products/bulk endpoint accepts CSV upload."
+  },
+  {
+   "id": "R04976a",
+   "lines": [
+    4976,
+    4976
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Bulk CSV is stored in GCS."
+  },
+  {
+   "id": "R04976b",
+   "lines": [
+    4976,
+    4976
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Bulk CSV header validation."
+  },
+  {
+   "id": "R04977",
+   "lines": [
+    4977,
+    4977
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Row-by-row Pydantic validation of bulk CSV."
+  },
+  {
+   "id": "R04977a",
+   "lines": [
+    4977,
+    4977
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Bulk import produces a structured ImportReport."
+  },
+  {
+   "id": "R04978",
+   "lines": [
+    4978,
+    4978
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Malformed row isolation: one bad row never fails the whole batch."
+  },
+  {
+   "id": "R04978a",
+   "lines": [
+    4978,
+    4978
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Batch completes with per-row summary."
+  },
+  {
+   "id": "R04979",
+   "lines": [
+    4979,
+    4979
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Enforce tenant-scoped SKU collision checks."
+  },
+  {
+   "id": "R04981",
+   "lines": [
+    4981,
+    4981
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 8 DoD: 50-row CSV with 5 bad rows returns 45 imported products and 5 row-level errors, not a batch crash."
+  },
+  {
+   "id": "R04983",
+   "lines": [
+    4983,
+    4983
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 9 is Tue Sep 29 2026, phase Phase 0 (Solo)."
+  },
+  {
+   "id": "R04985",
+   "lines": [
+    4985,
+    4985
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 9 owner tags: TL."
+  },
+  {
+   "id": "R04987",
+   "lines": [
+    4987,
+    4987
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 9 deliverable theme: Deterministic Rules Engine & Structured ErrorReport Contract."
+  },
+  {
+   "id": "R04989",
+   "lines": [
+    4989,
+    4989
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Seed rule: Amazon title length (<=200 chars)."
+  },
+  {
+   "id": "R04989a",
+   "lines": [
+    4989,
+    4989
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Seed rule: banned terms list."
+  },
+  {
+   "id": "R04989b",
+   "lines": [
+    4989,
+    4989
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Seed rule: required category attributes."
+  },
+  {
+   "id": "R04990",
+   "lines": [
+    4990,
+    4990
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Pure-function RulesEngine.validate(listing, marketplace) -> ErrorReport."
+  },
+  {
+   "id": "R04991",
+   "lines": [
+    4991,
+    4991
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "ErrorReport schema field: error_code."
+  },
+  {
+   "id": "R04991a",
+   "lines": [
+    4991,
+    4991
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "ErrorReport schema field: retryable flag."
+  },
+  {
+   "id": "R04991b",
+   "lines": [
+    4991,
+    4991
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "ErrorReport schema field: suggestions."
+  },
+  {
+   "id": "R04991c",
+   "lines": [
+    4991,
+    4991
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "ErrorReport schema field: source tag."
+  },
+  {
+   "id": "R04992",
+   "lines": [
+    4992,
+    4992
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Exhaustive unit tests per rule fixture."
+  },
+  {
+   "id": "R04994",
+   "lines": [
+    4994,
+    4994
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 9 DoD: Rules Engine flags long titles with the unified ErrorReport JSON contract."
+  },
+  {
+   "id": "R04994a",
+   "lines": [
+    4994,
+    4994
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 9 DoD: Rules Engine flags banned terms with the unified ErrorReport JSON contract."
+  },
+  {
+   "id": "R04996",
+   "lines": [
+    4996,
+    4996
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 10 is Wed Sep 30 2026, phase Phase 0 (Solo)."
+  },
+  {
+   "id": "R04998",
+   "lines": [
+    4998,
+    4998
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 10 owner tags: TL."
+  },
+  {
+   "id": "R05000",
+   "lines": [
+    5000,
+    5000
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 10 deliverable theme: ModelRouter LLM Wiring, pgvector RAG Smoke Test & Team Onboarding Doc."
+  },
+  {
+   "id": "R05002",
+   "lines": [
+    5002,
+    5002
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "ModelRouter.generate_structured(prompt, schema) abstraction for swappable hosted LLMs."
+  },
+  {
+   "id": "R05003",
+   "lines": [
+    5003,
+    5003
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 10: first real LLM call generates title/bullets/description for a seeded product."
+  },
+  {
+   "id": "R05003a",
+   "lines": [
+    5003,
+    5003
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 10: first LLM call logged to agent_runs with token counts."
+  },
+  {
+   "id": "R05003b",
+   "lines": [
+    5003,
+    5003
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 10: first LLM call logged to agent_runs with cost."
+  },
+  {
+   "id": "R05004",
+   "lines": [
+    5004,
+    5004
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Embeddings smoke test: embed 5 brand sentences into brand_chunks."
+  },
+  {
+   "id": "R05004a",
+   "lines": [
+    5004,
+    5004
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Embeddings smoke test: cosine query returns correct match."
+  },
+  {
+   "id": "R05005",
+   "lines": [
+    5005,
+    5005
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Redis + ARQ background worker skeleton with dummy test job."
+  },
+  {
+   "id": "R05006",
+   "lines": [
+    5006,
+    5006
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Write ONBOARDING.md for incoming 4 engineers."
+  },
+  {
+   "id": "R05008",
+   "lines": [
+    5008,
+    5008
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 10 DoD: staging demo covers login → product import → rules validation → AI-drafted listing saved."
+  },
+  {
+   "id": "R05010",
+   "lines": [
+    5010,
+    5010
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 11 is Thu Oct 1 2026, phase Week 2 (Team Joins)."
+  },
+  {
+   "id": "R05012",
+   "lines": [
+    5012,
+    5012
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 11 owner tags: TL, AI, BE, FE, OPS."
+  },
+  {
+   "id": "R05014",
+   "lines": [
+    5014,
+    5014
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 11 deliverable theme: Team Onboarding, Flipkart Rules Expansion & Import UI Wireframe."
+  },
+  {
+   "id": "R05016",
+   "lines": [
+    5016,
+    5016
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 11 TL: run team onboarding — architecture walkthrough."
+  },
+  {
+   "id": "R05016a",
+   "lines": [
+    5016,
+    5016
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 11 TL: team onboarding — repo tour."
+  },
+  {
+   "id": "R05016b",
+   "lines": [
+    5016,
+    5016
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 11 TL: team onboarding — ADR process."
+  },
+  {
+   "id": "R05016c",
+   "lines": [
+    5016,
+    5016
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 11 TL: team onboarding — assign tickets."
+  },
+  {
+   "id": "R05017",
+   "lines": [
+    5017,
+    5017
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 11 AI: environment setup."
+  },
+  {
+   "id": "R05017a",
+   "lines": [
+    5017,
+    5017
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 11 AI: read brand-intelligence spec."
+  },
+  {
+   "id": "R05017b",
+   "lines": [
+    5017,
+    5017
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 11 AI: review brand profile data model."
+  },
+  {
+   "id": "R05018",
+   "lines": [
+    5018,
+    5018
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 11 BE: rules engine adds Flipkart-specific rules."
+  },
+  {
+   "id": "R05018a",
+   "lines": [
+    5018,
+    5018
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 11 BE: rules engine adds category mismatch checks."
+  },
+  {
+   "id": "R05018b",
+   "lines": [
+    5018,
+    5018
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 11 BE: rules engine adds category-specific attributes."
+  },
+  {
+   "id": "R05019",
+   "lines": [
+    5019,
+    5019
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 11 FE: import-review UI wireframe (CSV upload → per-row ImportReport table)."
+  },
+  {
+   "id": "R05019a",
+   "lines": [
+    5019,
+    5019
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "ImportReport table is filterable by status."
+  },
+  {
+   "id": "R05020",
+   "lines": [
+    5020,
+    5020
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 11 OPS: IAM accounts for team."
+  },
+  {
+   "id": "R05020a",
+   "lines": [
+    5020,
+    5020
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Split staging and prod Cloud Run services."
+  },
+  {
+   "id": "R05020b",
+   "lines": [
+    5020,
+    5020
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "GitHub Actions CI/CD auto-deploy on main."
+  },
+  {
+   "id": "R05022",
+   "lines": [
+    5022,
+    5022
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 11 DoD: all 5 engineers have local dev running."
+  },
+  {
+   "id": "R05022a",
+   "lines": [
+    5022,
+    5022
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 11 DoD: all 5 engineers have PRs merged."
+  },
+  {
+   "id": "R05022b",
+   "lines": [
+    5022,
+    5022
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 11 DoD: rules cover >= 2 marketplaces across 2 categories."
+  },
+  {
+   "id": "R05024",
+   "lines": [
+    5024,
+    5024
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 12 is Fri Oct 2 2026, phase Week 2 (Team Joins)."
+  },
+  {
+   "id": "R05026",
+   "lines": [
+    5026,
+    5026
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 12 owner tags: BE, OPS, FE, AI, TL."
+  },
+  {
+   "id": "R05028",
+   "lines": [
+    5028,
+    5028
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 12 deliverable theme: Async CSV Import via Redis+ARQ & Brand Chunk Taxonomy."
+  },
+  {
+   "id": "R05030",
+   "lines": [
+    5030,
+    5030
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Day 12 BE: migrate CSV import to async Redis + ARQ queue."
+  },
+  {
+   "id": "R05030a",
+   "lines": [
+    5030,
+    5030
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "CSV import queue has bounded concurrency."
+  },
+  {
+   "id": "R05030b",
+   "lines": [
+    5030,
+    5030
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "CSV import has status tracking."
+  },
+  {
+   "id": "R05031",
+   "lines": [
+    5031,
+    5031
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "ARQ worker deployed on Cloud Run."
+  },
+  {
+   "id": "R05031a",
+   "lines": [
+    5031,
+    5031
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "ARQ worker Cloud Run min-instances=1."
+  },
+  {
+   "id": "R05031b",
+   "lines": [
+    5031,
+    5031
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "ARQ worker has health checks."
+  },
+  {
+   "id": "R05032",
+   "lines": [
+    5032,
+    5032
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 12 FE: import-review UI wired to real job-status polling."
+  },
+  {
+   "id": "R05032a",
+   "lines": [
+    5032,
+    5032
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Job status values: queued/running/succeeded/failed/partial."
+  },
+  {
+   "id": "R05033",
+   "lines": [
+    5033,
+    5033
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "BrandChunk type taxonomy: tone_rule, glossary, compliance, example."
+  },
+  {
+   "id": "R05034",
+   "lines": [
+    5034,
+    5034
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 12 TL: code review."
+  },
+  {
+   "id": "R05034a",
+   "lines": [
+    5034,
+    5034
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 12 TL: verify re-uploading the same CSV never duplicates existing SKUs."
+  },
+  {
+   "id": "R05036",
+   "lines": [
+    5036,
+    5036
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 12 DoD: 500-row CSV imports asynchronously."
+  },
+  {
+   "id": "R05036a",
+   "lines": [
+    5036,
+    5036
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 12 DoD: job status visible in UI."
+  },
+  {
+   "id": "R05036b",
+   "lines": [
+    5036,
+    5036
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 12 DoD: failed rows re-runnable."
+  },
+  {
+   "id": "R05038",
+   "lines": [
+    5038,
+    5038
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 13 is Sat Oct 3 2026, phase Week 2 (Team Joins)."
+  },
+  {
+   "id": "R05040",
+   "lines": [
+    5040,
+    5040
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 13 owner tags: BE, FE, OPS, AI, TL."
+  },
+  {
+   "id": "R05042",
+   "lines": [
+    5042,
+    5042
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 13 deliverable theme: Rule Fixture Suite, Failed Row Re-Run & Playwright E2E Ingestion."
+  },
+  {
+   "id": "R05044",
+   "lines": [
+    5044,
+    5044
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 13 BE: rule fixture test suite with deterministic pass/fail cases."
+  },
+  {
+   "id": "R05044a",
+   "lines": [
+    5044,
+    5044
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Re-run failed rows endpoint."
+  },
+  {
+   "id": "R05045",
+   "lines": [
+    5045,
+    5045
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 13 FE: failed-row re-run button."
+  },
+  {
+   "id": "R05045a",
+   "lines": [
+    5045,
+    5045
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 13 FE: row-level error drawer."
+  },
+  {
+   "id": "R05046",
+   "lines": [
+    5046,
+    5046
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Playwright E2E smoke test for import → validate in GitHub Actions CI."
+  },
+  {
+   "id": "R05047",
+   "lines": [
+    5047,
+    5047
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 13 AI: chunking strategy document."
+  },
+  {
+   "id": "R05047a",
+   "lines": [
+    5047,
+    5047
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Chunking strategy document covers chunk size."
+  },
+  {
+   "id": "R05047b",
+   "lines": [
+    5047,
+    5047
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Chunking strategy document covers overlap."
+  },
+  {
+   "id": "R05047c",
+   "lines": [
+    5047,
+    5047
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Chunking strategy document covers per-artifact rules."
+  },
+  {
+   "id": "R05048",
+   "lines": [
+    5048,
+    5048
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 13 TL: ADR updates."
+  },
+  {
+   "id": "R05048a",
+   "lines": [
+    5048,
+    5048
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "risk",
+   "text": "Day 13 TL: check Amazon and Flipkart partner application status."
+  },
+  {
+   "id": "R05050",
+   "lines": [
+    5050,
+    5050
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 13 DoD: rule fixture suite passes 100% in CI."
+  },
+  {
+   "id": "R05050a",
+   "lines": [
+    5050,
+    5050
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 13 DoD: re-running failed rows processes only failed items."
+  },
+  {
+   "id": "R05052",
+   "lines": [
+    5052,
+    5052
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 14 is Sun Oct 4 2026, phase Week 2 (Team Joins)."
+  },
+  {
+   "id": "R05054",
+   "lines": [
+    5054,
+    5054
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 14 owner tags: TL, AI, BE, FE, OPS."
+  },
+  {
+   "id": "R05056",
+   "lines": [
+    5056,
+    5056
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 14 deliverable theme: Week 2 Milestone Demo & Scope Freeze."
+  },
+  {
+   "id": "R05058",
+   "lines": [
+    5058,
+    5058
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 14 staging demo: CSV upload → validated products → rules errors visible → re-run flow."
+  },
+  {
+   "id": "R05059",
+   "lines": [
+    5059,
+    5059
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Weekly retro verifies progress against §2 scope lock table."
+  },
+  {
+   "id": "R05060",
+   "lines": [
+    5060,
+    5060
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Finalize Week 3 tickets for Brand RAG and AI Agents."
+  },
+  {
+   "id": "R05062",
+   "lines": [
+    5062,
+    5062
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 14 DoD: zero open P0/P1 defects in the ingestion and rules pipeline."
+  },
+  {
+   "id": "R05062a",
+   "lines": [
+    5062,
+    5062
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 14 DoD: Week 2 scope locked."
+  },
+  {
+   "id": "R05064",
+   "lines": [
+    5064,
+    5064
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 15 is Mon Oct 5 2026, phase Week 3 (Agents & RAG)."
+  },
+  {
+   "id": "R05066",
+   "lines": [
+    5066,
+    5066
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 15 owner tags: AI, BE, FE, OPS."
+  },
+  {
+   "id": "R05068",
+   "lines": [
+    5068,
+    5068
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 15 deliverable theme: Brand Profile API, Vector Retrieval & HNSW Benchmarking."
+  },
+  {
+   "id": "R05070",
+   "lines": [
+    5070,
+    5070
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Day 15 AI: brand-profile API."
+  },
+  {
+   "id": "R05070a",
+   "lines": [
+    5070,
+    5070
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Brand profile field: tone."
+  },
+  {
+   "id": "R05070b",
+   "lines": [
+    5070,
+    5070
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Brand profile field: guidelines."
+  },
+  {
+   "id": "R05070c",
+   "lines": [
+    5070,
+    5070
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Brand profile field: glossary."
+  },
+  {
+   "id": "R05070d",
+   "lines": [
+    5070,
+    5070
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Brand profile field: compliance rules."
+  },
+  {
+   "id": "R05071",
+   "lines": [
+    5071,
+    5071
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "brand_chunks repository."
+  },
+  {
+   "id": "R05071a",
+   "lines": [
+    5071,
+    5071
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Tenant-scoped vector similarity retrieval function."
+  },
+  {
+   "id": "R05072",
+   "lines": [
+    5072,
+    5072
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 15 FE: brand-profile settings page in Next.js."
+  },
+  {
+   "id": "R05073",
+   "lines": [
+    5073,
+    5073
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Benchmark Cloud SQL HNSW index with synthetic 5,000-chunk dataset."
+  },
+  {
+   "id": "R05075",
+   "lines": [
+    5075,
+    5075
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 15 DoD: brand profile created for demo tenant with guideline text."
+  },
+  {
+   "id": "R05075a",
+   "lines": [
+    5075,
+    5075
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Vector index retrieves top-k in < 50ms."
+  },
+  {
+   "id": "R05077",
+   "lines": [
+    5077,
+    5077
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 16 is Tue Oct 6 2026, phase Week 3 (Agents & RAG)."
+  },
+  {
+   "id": "R05079",
+   "lines": [
+    5079,
+    5079
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 16 owner tags: AI, BE, FE, OPS."
+  },
+  {
+   "id": "R05081",
+   "lines": [
+    5081,
+    5081
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 16 deliverable theme: Document Chunking Pipeline, Batch Embedding & Cross-Tenant Vector Test."
+  },
+  {
+   "id": "R05083",
+   "lines": [
+    5083,
+    5083
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 16 AI: document chunking pipeline."
+  },
+  {
+   "id": "R05083a",
+   "lines": [
+    5083,
+    5083
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Batch-embed worker job inserting into brand_chunks."
+  },
+  {
+   "id": "R05084",
+   "lines": [
+    5084,
+    5084
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Cross-tenant isolation test for vector queries (brand A can never retrieve brand B chunks)."
+  },
+  {
+   "id": "R05085",
+   "lines": [
+    5085,
+    5085
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 16 FE: brand knowledge upload UI (drag-and-drop)."
+  },
+  {
+   "id": "R05085a",
+   "lines": [
+    5085,
+    5085
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Brand guide upload formats: PDF/markdown."
+  },
+  {
+   "id": "R05086",
+   "lines": [
+    5086,
+    5086
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 16 OPS: log all embedding calls into agent_runs table with token tracking."
+  },
+  {
+   "id": "R05086a",
+   "lines": [
+    5086,
+    5086
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 16 OPS: log all embedding calls into agent_runs table with cost tracking."
+  },
+  {
+   "id": "R05088",
+   "lines": [
+    5088,
+    5088
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 16 DoD: a 2-page guideline doc produces embedded chunks in < 30s."
+  },
+  {
+   "id": "R05088a",
+   "lines": [
+    5088,
+    5088
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 16 DoD: cross-tenant vector isolation passes."
+  },
+  {
+   "id": "R05090",
+   "lines": [
+    5090,
+    5090
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 17 is Wed Oct 7 2026, phase Week 3 (Agents & RAG)."
+  },
+  {
+   "id": "R05092",
+   "lines": [
+    5092,
+    5092
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 17 owner tags: AI, BE, TL, FE."
+  },
+  {
+   "id": "R05094",
+   "lines": [
+    5094,
+    5094
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 17 deliverable theme: ContextAssemblyService & Prompt Injection Boundary."
+  },
+  {
+   "id": "R05096",
+   "lines": [
+    5096,
+    5096
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Day 17 AI: ContextAssemblyService produces structured prompt context."
+  },
+  {
+   "id": "R05096a",
+   "lines": [
+    5096,
+    5096
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "ContextAssemblyService input: top-8 brand chunks."
+  },
+  {
+   "id": "R05096b",
+   "lines": [
+    5096,
+    5096
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "ContextAssemblyService input: product."
+  },
+  {
+   "id": "R05096c",
+   "lines": [
+    5096,
+    5096
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "ContextAssemblyService input: marketplace."
+  },
+  {
+   "id": "R05096d",
+   "lines": [
+    5096,
+    5096
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "ContextAssemblyService input: rules."
+  },
+  {
+   "id": "R05097",
+   "lines": [
+    5097,
+    5097
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Shared category and marketplace rules lookup service used by both context assembly and rules engine."
+  },
+  {
+   "id": "R05098",
+   "lines": [
+    5098,
+    5098
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 17 TL: thorough security review of prompt-injection boundary."
+  },
+  {
+   "id": "R05098a",
+   "lines": [
+    5098,
+    5098
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Product text is treated strictly as untrusted data."
+  },
+  {
+   "id": "R05099",
+   "lines": [
+    5099,
+    5099
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 17 FE: debug context viewer showing assembled context before model dispatch."
+  },
+  {
+   "id": "R05101",
+   "lines": [
+    5101,
+    5101
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 17 DoD: sample product context contains correct top-8 brand chunks."
+  },
+  {
+   "id": "R05101a",
+   "lines": [
+    5101,
+    5101
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 17 DoD: sample product context contains applicable marketplace rules."
+  },
+  {
+   "id": "R05103",
+   "lines": [
+    5103,
+    5103
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 18 is Thu Oct 8 2026, phase Week 3 (Agents & RAG)."
+  },
+  {
+   "id": "R05105",
+   "lines": [
+    5105,
+    5105
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 18 owner tags: AI, BE, FE, OPS."
+  },
+  {
+   "id": "R05107",
+   "lines": [
+    5107,
+    5107
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 18 deliverable theme: Content Agent (Title, Bullets, Description) & Draft Versioning."
+  },
+  {
+   "id": "R05109",
+   "lines": [
+    5109,
+    5109
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 18 AI: Content Agent implementation (title, bullets, description)."
+  },
+  {
+   "id": "R05109a",
+   "lines": [
+    5109,
+    5109
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Content Agent uses strict system/user separation."
+  },
+  {
+   "id": "R05109b",
+   "lines": [
+    5109,
+    5109
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Content Agent has a structured JSON output schema."
+  },
+  {
+   "id": "R05110",
+   "lines": [
+    5110,
+    5110
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "POST /listings/generate endpoint."
+  },
+  {
+   "id": "R05110a",
+   "lines": [
+    5110,
+    5110
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "POST /listings/generate creates an AgentRun record."
+  },
+  {
+   "id": "R05110b",
+   "lines": [
+    5110,
+    5110
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "POST /listings/generate creates a draft listing_version record."
+  },
+  {
+   "id": "R05111",
+   "lines": [
+    5111,
+    5111
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 18 FE: read-only listing-draft view showing generated fields."
+  },
+  {
+   "id": "R05112",
+   "lines": [
+    5112,
+    5112
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "ModelRouter has configured timeouts."
+  },
+  {
+   "id": "R05112a",
+   "lines": [
+    5112,
+    5112
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "ModelRouter retries automatically on 5xx."
+  },
+  {
+   "id": "R05114",
+   "lines": [
+    5114,
+    5114
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 18 DoD: real product input generates title, bullets, description saved as listing_version v1."
+  },
+  {
+   "id": "R05116",
+   "lines": [
+    5116,
+    5116
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 19 is Fri Oct 9 2026, phase Week 3 (Agents & RAG)."
+  },
+  {
+   "id": "R05118",
+   "lines": [
+    5118,
+    5118
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 19 owner tags: AI, BE, FE, OPS."
+  },
+  {
+   "id": "R05120",
+   "lines": [
+    5120,
+    5120
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 19 deliverable theme: Keyword Agent (Search Terms & Backend Keywords)."
+  },
+  {
+   "id": "R05122",
+   "lines": [
+    5122,
+    5122
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 19 AI: Keyword Agent generates search terms."
+  },
+  {
+   "id": "R05122a",
+   "lines": [
+    5122,
+    5122
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Keyword Agent generates marketplace backend keywords based on category and product."
+  },
+  {
+   "id": "R05123",
+   "lines": [
+    5123,
+    5123
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Keyword Agent output merged into canonical listing JSON representation."
+  },
+  {
+   "id": "R05124",
+   "lines": [
+    5124,
+    5124
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 19 FE: keywords section in listing draft view."
+  },
+  {
+   "id": "R05124a",
+   "lines": [
+    5124,
+    5124
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Keywords section shows character count indicators."
+  },
+  {
+   "id": "R05125",
+   "lines": [
+    5125,
+    5125
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 19 OPS: simple dashboard view of agent_runs cost."
+  },
+  {
+   "id": "R05125a",
+   "lines": [
+    5125,
+    5125
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 19 OPS: simple dashboard view of agent_runs model."
+  },
+  {
+   "id": "R05125b",
+   "lines": [
+    5125,
+    5125
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 19 OPS: simple dashboard view of agent_runs token usage."
+  },
+  {
+   "id": "R05127",
+   "lines": [
+    5127,
+    5127
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 19 DoD: keywords stored alongside content fields in the same version."
+  },
+  {
+   "id": "R05127a",
+   "lines": [
+    5127,
+    5127
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 19 DoD: character limits validated."
+  },
+  {
+   "id": "R05129",
+   "lines": [
+    5129,
+    5129
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 20 is Sat Oct 10 2026, phase Week 3 (Agents & RAG)."
+  },
+  {
+   "id": "R05131",
+   "lines": [
+    5131,
+    5131
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 20 owner tags: AI, BE, FE, TL."
+  },
+  {
+   "id": "R05133",
+   "lines": [
+    5133,
+    5133
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 20 deliverable theme: Attribute Agent & 3-Way Parallel Agent Merge."
+  },
+  {
+   "id": "R05135",
+   "lines": [
+    5135,
+    5135
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 20 AI: Attribute Agent extracts structured category attributes from product details."
+  },
+  {
+   "id": "R05136",
+   "lines": [
+    5136,
+    5136
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Canonical attribute-mapping table for launch categories."
+  },
+  {
+   "id": "R05137",
+   "lines": [
+    5137,
+    5137
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 20 FE: editable attributes grid in listing review screen."
+  },
+  {
+   "id": "R05138",
+   "lines": [
+    5138,
+    5138
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 20 TL: review 3-way parallel agent merge logic (Content + Keyword + Attribute) for race conditions."
+  },
+  {
+   "id": "R05138a",
+   "lines": [
+    5138,
+    5138
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 20 TL: review 3-way parallel agent merge logic (Content + Keyword + Attribute) for partial failures."
+  },
+  {
+   "id": "R05140",
+   "lines": [
+    5140,
+    5140
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 20 DoD: Attribute Agent output validates against >= 2 category templates."
+  },
+  {
+   "id": "R05140a",
+   "lines": [
+    5140,
+    5140
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 20 DoD: parallel outputs merge deterministically."
+  },
+  {
+   "id": "R05142",
+   "lines": [
+    5142,
+    5142
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 21 is Sun Oct 11 2026, phase Week 3 (Agents & RAG)."
+  },
+  {
+   "id": "R05144",
+   "lines": [
+    5144,
+    5144
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 21 owner tags: TL, AI, BE, FE, OPS."
+  },
+  {
+   "id": "R05146",
+   "lines": [
+    5146,
+    5146
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 21 deliverable theme: Week 3 Milestone Demo: First Full AI Vertical Slice."
+  },
+  {
+   "id": "R05148",
+   "lines": [
+    5148,
+    5148
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 21 demo: product → brand retrieval → 3 parallel agents → canonical JSON → schema validation → AgentRun telemetry."
+  },
+  {
+   "id": "R05149",
+   "lines": [
+    5149,
+    5149
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 21: staging demo."
+  },
+  {
+   "id": "R05149a",
+   "lines": [
+    5149,
+    5149
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 21: freeze Week 3 scope."
+  },
+  {
+   "id": "R05149b",
+   "lines": [
+    5149,
+    5149
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 21: retro."
+  },
+  {
+   "id": "R05150",
+   "lines": [
+    5150,
+    5150
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Verify generated copy adheres to brand voice guidelines."
+  },
+  {
+   "id": "R05152",
+   "lines": [
+    5152,
+    5152
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 21 DoD: listing is schema-valid."
+  },
+  {
+   "id": "R05152a",
+   "lines": [
+    5152,
+    5152
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 21 DoD: listing is visibly conditioned on brand voice guidelines, not generic copy."
+  },
+  {
+   "id": "R05154",
+   "lines": [
+    5154,
+    5154
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 22 is Mon Oct 12 2026, phase Week 4 (Vision & LangGraph)."
+  },
+  {
+   "id": "R05156",
+   "lines": [
+    5156,
+    5156
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 22 owner tags: BE, OPS, FE, AI."
+  },
+  {
+   "id": "R05158",
+   "lines": [
+    5158,
+    5158
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 22 deliverable theme: Image Upload to GCS & Deterministic Pixel Checks."
+  },
+  {
+   "id": "R05160",
+   "lines": [
+    5160,
+    5160
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 22: image upload → GCS storage → images DB record."
+  },
+  {
+   "id": "R05161",
+   "lines": [
+    5161,
+    5161
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Deterministic image checks (Pillow) per marketplace and slot."
+  },
+  {
+   "id": "R05161a",
+   "lines": [
+    5161,
+    5161
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Deterministic Pillow image check: format."
+  },
+  {
+   "id": "R05161b",
+   "lines": [
+    5161,
+    5161
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Deterministic Pillow image check: dimensions."
+  },
+  {
+   "id": "R05161c",
+   "lines": [
+    5161,
+    5161
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Deterministic Pillow image check: resolution."
+  },
+  {
+   "id": "R05161d",
+   "lines": [
+    5161,
+    5161
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Deterministic Pillow image check: aspect ratio."
+  },
+  {
+   "id": "R05162",
+   "lines": [
+    5162,
+    5162
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 22 FE: drag-and-drop image upload UI with slot assignment."
+  },
+  {
+   "id": "R05162a",
+   "lines": [
+    5162,
+    5162
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Image slots: main, secondary, swatch."
+  },
+  {
+   "id": "R05163",
+   "lines": [
+    5163,
+    5163
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 22 AI: draft vision-check prompt specification for secondary checks."
+  },
+  {
+   "id": "R05165",
+   "lines": [
+    5165,
+    5165
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Amazon zoom requirement: 1000x1000 image."
+  },
+  {
+   "id": "R05165a",
+   "lines": [
+    5165,
+    5165
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 22 DoD: an 800x800 image is flagged deterministically without calling vision LLM."
+  },
+  {
+   "id": "R05167",
+   "lines": [
+    5167,
+    5167
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 23 is Tue Oct 13 2026, phase Week 4 (Vision & LangGraph)."
+  },
+  {
+   "id": "R05169",
+   "lines": [
+    5169,
+    5169
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 23 owner tags: AI, BE, FE, OPS."
+  },
+  {
+   "id": "R05171",
+   "lines": [
+    5171,
+    5171
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 23 deliverable theme: Vision Model Checks (Background, Fill Ratio, Overlays) & ImageReport."
+  },
+  {
+   "id": "R05173",
+   "lines": [
+    5173,
+    5173
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Vision model check: pure white background RGB delta."
+  },
+  {
+   "id": "R05173a",
+   "lines": [
+    5173,
+    5173
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Vision model check: fill ratio (>=85%)."
+  },
+  {
+   "id": "R05173b",
+   "lines": [
+    5173,
+    5173
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Vision model check: text overlays."
+  },
+  {
+   "id": "R05173c",
+   "lines": [
+    5173,
+    5173
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Vision model check: watermarks."
+  },
+  {
+   "id": "R05173d",
+   "lines": [
+    5173,
+    5173
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Vision model check: competitor logos."
+  },
+  {
+   "id": "R05174",
+   "lines": [
+    5174,
+    5174
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Persist structured ImageReport per image/marketplace/slot."
+  },
+  {
+   "id": "R05175",
+   "lines": [
+    5175,
+    5175
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 23 FE: image compliance viewer with pass/fail badges."
+  },
+  {
+   "id": "R05175a",
+   "lines": [
+    5175,
+    5175
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 23 FE: image compliance viewer with issue breakdown."
+  },
+  {
+   "id": "R05176",
+   "lines": [
+    5176,
+    5176
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 23 OPS: log vision model latency into agent_runs."
+  },
+  {
+   "id": "R05176a",
+   "lines": [
+    5176,
+    5176
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 23 OPS: log vision model token counts into agent_runs."
+  },
+  {
+   "id": "R05176b",
+   "lines": [
+    5176,
+    5176
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 23 OPS: log vision model cost into agent_runs."
+  },
+  {
+   "id": "R05178",
+   "lines": [
+    5178,
+    5178
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 23 DoD: a non-white main-image background is flagged with RGB delta in ImageReport."
+  },
+  {
+   "id": "R05178a",
+   "lines": [
+    5178,
+    5178
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 23 DoD: a non-white main-image background is flagged with a specific suggestion in ImageReport."
+  },
+  {
+   "id": "R05180",
+   "lines": [
+    5180,
+    5180
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 24 is Wed Oct 14 2026, phase Week 4 (Vision & LangGraph)."
+  },
+  {
+   "id": "R05182",
+   "lines": [
+    5182,
+    5182
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 24 owner tags: BE, AI, OPS."
+  },
+  {
+   "id": "R05184",
+   "lines": [
+    5184,
+    5184
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 24 deliverable theme: Image Rule Definitions as Data & Fixture Validation Library."
+  },
+  {
+   "id": "R05186",
+   "lines": [
+    5186,
+    5186
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Marketplace image rule definitions stored as data (§12 Amazon vs Flipkart table), not hardcoded code."
+  },
+  {
+   "id": "R05187",
+   "lines": [
+    5187,
+    5187
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 24 AI: suggested-fix copy generator per image issue type."
+  },
+  {
+   "id": "R05188",
+   "lines": [
+    5188,
+    5188
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Compliant/non-compliant fixture image library (50 images) to measure vision model accuracy."
+  },
+  {
+   "id": "R05190",
+   "lines": [
+    5190,
+    5190
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 24 DoD: fixture suite achieves >= 90% agreement with hand-labeled ground truth image verdicts."
+  },
+  {
+   "id": "R05192",
+   "lines": [
+    5192,
+    5192
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 25 is Thu Oct 15 2026, phase Week 4 (Vision & LangGraph)."
+  },
+  {
+   "id": "R05194",
+   "lines": [
+    5194,
+    5194
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 25 owner tags: AI, TL, BE."
+  },
+  {
+   "id": "R05196",
+   "lines": [
+    5196,
+    5196
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 25 deliverable theme: LangGraph AgentState Model & Full Execution Snapshot."
+  },
+  {
+   "id": "R05198",
+   "lines": [
+    5198,
+    5198
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Typed AgentState model defined (AI/TL)."
+  },
+  {
+   "id": "R05198a",
+   "lines": [
+    5198,
+    5198
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "AgentState field: run_id."
+  },
+  {
+   "id": "R05198b",
+   "lines": [
+    5198,
+    5198
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "AgentState field: tenant_id."
+  },
+  {
+   "id": "R05198c",
+   "lines": [
+    5198,
+    5198
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "AgentState field: product_id."
+  },
+  {
+   "id": "R05198d",
+   "lines": [
+    5198,
+    5198
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "AgentState field: context."
+  },
+  {
+   "id": "R05198e",
+   "lines": [
+    5198,
+    5198
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "AgentState field: outputs."
+  },
+  {
+   "id": "R05198f",
+   "lines": [
+    5198,
+    5198
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "AgentState field: validation_results."
+  },
+  {
+   "id": "R05198g",
+   "lines": [
+    5198,
+    5198
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "AgentState field: errors."
+  },
+  {
+   "id": "R05198h",
+   "lines": [
+    5198,
+    5198
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "AgentState field: attempt_count."
+  },
+  {
+   "id": "R05198i",
+   "lines": [
+    5198,
+    5198
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "AgentState field: status."
+  },
+  {
+   "id": "R05199",
+   "lines": [
+    5199,
+    5199
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "agent_runs table stores full JSONB state snapshot for deterministic replay and debugging."
+  },
+  {
+   "id": "R05200",
+   "lines": [
+    5200,
+    5200
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Unit tests verify AgentState serialization round-trip."
+  },
+  {
+   "id": "R05202",
+   "lines": [
+    5202,
+    5202
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 25 DoD: AgentState round-trips through serialization."
+  },
+  {
+   "id": "R05202a",
+   "lines": [
+    5202,
+    5202
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 25 DoD: state snapshot persisted in agent_runs on every step."
+  },
+  {
+   "id": "R05204",
+   "lines": [
+    5204,
+    5204
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 26 is Fri Oct 16 2026, phase Week 4 (Vision & LangGraph)."
+  },
+  {
+   "id": "R05206",
+   "lines": [
+    5206,
+    5206
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 26 owner tags: AI, TL, BE, FE, OPS."
+  },
+  {
+   "id": "R05208",
+   "lines": [
+    5208,
+    5208
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 26 deliverable theme: Wire LangGraph Pipeline with OpenTelemetry Spans."
+  },
+  {
+   "id": "R05210",
+   "lines": [
+    5210,
+    5210
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "LangGraph graph node 1 of 6: load_context."
+  },
+  {
+   "id": "R05210a",
+   "lines": [
+    5210,
+    5210
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "LangGraph graph node 2 of 6: parallel agents (content, keyword, attribute, image)."
+  },
+  {
+   "id": "R05210b",
+   "lines": [
+    5210,
+    5210
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "LangGraph graph node 3 of 6: merge."
+  },
+  {
+   "id": "R05210c",
+   "lines": [
+    5210,
+    5210
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "LangGraph graph node 4 of 6: schema_validate."
+  },
+  {
+   "id": "R05210d",
+   "lines": [
+    5210,
+    5210
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "LangGraph graph node 5 of 6: rule_validate."
+  },
+  {
+   "id": "R05210e",
+   "lines": [
+    5210,
+    5210
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "LangGraph graph node 6 of 6: vision_validate."
+  },
+  {
+   "id": "R05210f",
+   "lines": [
+    5210,
+    5210
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "LangGraph parallel-agents node runs agent: content."
+  },
+  {
+   "id": "R05210g",
+   "lines": [
+    5210,
+    5210
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "LangGraph parallel-agents node runs agent: keyword."
+  },
+  {
+   "id": "R05210h",
+   "lines": [
+    5210,
+    5210
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "LangGraph parallel-agents node runs agent: attribute."
+  },
+  {
+   "id": "R05210i",
+   "lines": [
+    5210,
+    5210
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "LangGraph parallel-agents node runs agent: image."
+  },
+  {
+   "id": "R05211",
+   "lines": [
+    5211,
+    5211
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "/listings/generate invokes the graph asynchronously via ARQ worker."
+  },
+  {
+   "id": "R05212",
+   "lines": [
+    5212,
+    5212
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 26 FE: live node-progress timeline on generation status page."
+  },
+  {
+   "id": "R05213",
+   "lines": [
+    5213,
+    5213
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 26 OPS: instrument an OpenTelemetry span per graph node."
+  },
+  {
+   "id": "R05213a",
+   "lines": [
+    5213,
+    5213
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 26 OPS: graph-node OpenTelemetry spans export to Cloud Trace."
+  },
+  {
+   "id": "R05215",
+   "lines": [
+    5215,
+    5215
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 26 DoD: generation visibly progresses through each node in UI."
+  },
+  {
+   "id": "R05215a",
+   "lines": [
+    5215,
+    5215
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 26 DoD: Cloud Trace displays end-to-end span waterfall."
+  },
+  {
+   "id": "R05217",
+   "lines": [
+    5217,
+    5217
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 27 is Sat Oct 17 2026, phase Week 4 (Vision & LangGraph)."
+  },
+  {
+   "id": "R05219",
+   "lines": [
+    5219,
+    5219
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 27 owner tags: AI, BE, FE."
+  },
+  {
+   "id": "R05221",
+   "lines": [
+    5221,
+    5221
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 27 deliverable theme: Bounded Self-Correction Loop (Max 3 Retries) & Blocked State."
+  },
+  {
+   "id": "R05223",
+   "lines": [
+    5223,
+    5223
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Correction node classifies ErrorReport by field/source."
+  },
+  {
+   "id": "R05223a",
+   "lines": [
+    5223,
+    5223
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Correction node re-prompts only the affected field."
+  },
+  {
+   "id": "R05223b",
+   "lines": [
+    5223,
+    5223
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Correction node revalidates."
+  },
+  {
+   "id": "R05224",
+   "lines": [
+    5224,
+    5224
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Hard cap at 3 attempts enforced in graph edge logic."
+  },
+  {
+   "id": "R05224a",
+   "lines": [
+    5224,
+    5224
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Transition to BLOCKED state on exhaustion of attempts."
+  },
+  {
+   "id": "R05225",
+   "lines": [
+    5225,
+    5225
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Listing record persists and surfaces attempts_used."
+  },
+  {
+   "id": "R05225a",
+   "lines": [
+    5225,
+    5225
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Listing record persists and surfaces max_attempts."
+  },
+  {
+   "id": "R05226",
+   "lines": [
+    5226,
+    5226
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 27 FE: \"Blocked — Needs Manual Fix\" UI displays the exact failure reason."
+  },
+  {
+   "id": "R05226a",
+   "lines": [
+    5226,
+    5226
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 27 FE: \"Blocked — Needs Manual Fix\" UI displays suggestions."
+  },
+  {
+   "id": "R05228",
+   "lines": [
+    5228,
+    5228
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 27 DoD: a too-long title self-corrects within 2 attempts."
+  },
+  {
+   "id": "R05228a",
+   "lines": [
+    5228,
+    5228
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 27 DoD: a persistently invalid case blocks cleanly after 3 attempts."
+  },
+  {
+   "id": "R05230",
+   "lines": [
+    5230,
+    5230
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 28 is Sun Oct 18 2026, phase Week 4 (Vision & LangGraph)."
+  },
+  {
+   "id": "R05232",
+   "lines": [
+    5232,
+    5232
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 28 owner tags: OPS, TL, AI, BE, FE."
+  },
+  {
+   "id": "R05234",
+   "lines": [
+    5234,
+    5234
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 28 deliverable theme: Failure Injection Suite & Week 4 Milestone Demo."
+  },
+  {
+   "id": "R05236",
+   "lines": [
+    5236,
+    5236
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Failure injection test: LLM timeout."
+  },
+  {
+   "id": "R05236a",
+   "lines": [
+    5236,
+    5236
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Failure injection test: malformed JSON."
+  },
+  {
+   "id": "R05236b",
+   "lines": [
+    5236,
+    5236
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Failure injection test: rule validation failure."
+  },
+  {
+   "id": "R05236c",
+   "lines": [
+    5236,
+    5236
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Failure injection test: corrupt image."
+  },
+  {
+   "id": "R05236d",
+   "lines": [
+    5236,
+    5236
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Failure injection test: duplicate job."
+  },
+  {
+   "id": "R05237",
+   "lines": [
+    5237,
+    5237
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 28 staging demo of full generate → validate → correct → blocked pipeline."
+  },
+  {
+   "id": "R05238",
+   "lines": [
+    5238,
+    5238
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 28: weekly retro."
+  },
+  {
+   "id": "R05238a",
+   "lines": [
+    5238,
+    5238
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 28: Week 4 scope freeze."
+  },
+  {
+   "id": "R05240",
+   "lines": [
+    5240,
+    5240
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 28 DoD: every injected failure results in a well-formed ErrorReport or clean blocked state."
+  },
+  {
+   "id": "R05240a",
+   "lines": [
+    5240,
+    5240
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 28 DoD: zero silent crashes."
+  },
+  {
+   "id": "R05240b",
+   "lines": [
+    5240,
+    5240
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 28 DoD: zero infinite loops."
+  },
+  {
+   "id": "R05242",
+   "lines": [
+    5242,
+    5242
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 29 is Mon Oct 19 2026, phase Week 5 (Adapters & Publish)."
+  },
+  {
+   "id": "R05244",
+   "lines": [
+    5244,
+    5244
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 29 owner tags: OPS, BE, TL."
+  },
+  {
+   "id": "R05246",
+   "lines": [
+    5246,
+    5246
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 29 deliverable theme: MarketplaceAdapter ABC Interface & FakeAdapter Mock Suite."
+  },
+  {
+   "id": "R05248",
+   "lines": [
+    5248,
+    5248
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "MarketplaceAdapter abstract base class method: get_listing."
+  },
+  {
+   "id": "R05248a",
+   "lines": [
+    5248,
+    5248
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "MarketplaceAdapter abstract base class method: create_listing."
+  },
+  {
+   "id": "R05248b",
+   "lines": [
+    5248,
+    5248
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "MarketplaceAdapter abstract base class method: update_listing."
+  },
+  {
+   "id": "R05248c",
+   "lines": [
+    5248,
+    5248
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "MarketplaceAdapter abstract base class method: publish_listing."
+  },
+  {
+   "id": "R05248d",
+   "lines": [
+    5248,
+    5248
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "MarketplaceAdapter abstract base class method: get_performance."
+  },
+  {
+   "id": "R05249",
+   "lines": [
+    5249,
+    5249
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Per-field ListingResult contract (success/failure per field, never a bare boolean)."
+  },
+  {
+   "id": "R05250",
+   "lines": [
+    5250,
+    5250
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "FakeAdapter for unit and integration testing without live credentials."
+  },
+  {
+   "id": "R05251",
+   "lines": [
+    5251,
+    5251
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "TL review confirms zero marketplace-specific logic leaks into core service layer."
+  }
+ ]
+}

@@ -1,0 +1,1441 @@
+{
+ "chunk": "c23",
+ "start": 13585,
+ "end": 13711,
+ "items": [
+  {
+   "id": "R13585",
+   "lines": [
+    13585,
+    13585
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "info",
+   "text": "Page title [217] DevOps Checklist",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13587",
+   "lines": [
+    13587,
+    13587
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "info",
+   "text": "Section: Engineering",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13588",
+   "lines": [
+    13588,
+    13588
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "scope",
+   "text": "Page [217] DevOps Checklist scope: MVP."
+  },
+  {
+   "id": "R13589",
+   "lines": [
+    13589,
+    13589
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "info",
+   "text": "Page URL: https://ashishvats16.github.io/system-arch/page/devops-checklist",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13590",
+   "lines": [
+    13590,
+    13590
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "quality",
+   "text": "DevOps checklist description: covers infrastructure."
+  },
+  {
+   "id": "R13590a",
+   "lines": [
+    13590,
+    13590
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "quality",
+   "text": "DevOps checklist description: covers deployment."
+  },
+  {
+   "id": "R13590b",
+   "lines": [
+    13590,
+    13590
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "quality",
+   "text": "DevOps checklist description: covers monitoring."
+  },
+  {
+   "id": "R13591",
+   "lines": [
+    13591,
+    13591
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "info",
+   "text": "Keywords: DevOps, checklist, infrastructure, deployment",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13593",
+   "lines": [
+    13593,
+    13593
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "info",
+   "text": "DevOps Checklist",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13595",
+   "lines": [
+    13595,
+    13595
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "decision",
+   "text": "DevOps checklist: AWS infrastructure provisioning."
+  },
+  {
+   "id": "R13596",
+   "lines": [
+    13596,
+    13596
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "decision",
+   "text": "DevOps checklist: Docker Compose for local development."
+  },
+  {
+   "id": "R13597",
+   "lines": [
+    13597,
+    13597
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "decision",
+   "text": "DevOps checklist: Database provisioning (RDS)."
+  },
+  {
+   "id": "R13597a",
+   "lines": [
+    13597,
+    13597
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "decision",
+   "text": "DevOps checklist: Database provisioning includes pgvector (RDS + pgvector)."
+  },
+  {
+   "id": "R13598",
+   "lines": [
+    13598,
+    13598
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "decision",
+   "text": "DevOps checklist: Redis provisioning."
+  },
+  {
+   "id": "R13598a",
+   "lines": [
+    13598,
+    13598
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "decision",
+   "text": "DevOps checklist: Redis provisioned on ElastiCache."
+  },
+  {
+   "id": "R13599",
+   "lines": [
+    13599,
+    13599
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "decision",
+   "text": "DevOps checklist: S3 bucket creation."
+  },
+  {
+   "id": "R13599a",
+   "lines": [
+    13599,
+    13599
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "quality",
+   "text": "DevOps checklist: S3 buckets are created with policies."
+  },
+  {
+   "id": "R13600",
+   "lines": [
+    13600,
+    13600
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "quality",
+   "text": "DevOps checklist: TLS certificate setup."
+  },
+  {
+   "id": "R13601",
+   "lines": [
+    13601,
+    13601
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "quality",
+   "text": "DevOps checklist: CI/CD pipeline."
+  },
+  {
+   "id": "R13602",
+   "lines": [
+    13602,
+    13602
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "quality",
+   "text": "DevOps checklist: Monitoring."
+  },
+  {
+   "id": "R13602a",
+   "lines": [
+    13602,
+    13602
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "quality",
+   "text": "DevOps checklist: Alerting."
+  },
+  {
+   "id": "R13603",
+   "lines": [
+    13603,
+    13603
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "quality",
+   "text": "DevOps checklist: Backup procedures."
+  },
+  {
+   "id": "R13603a",
+   "lines": [
+    13603,
+    13603
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "quality",
+   "text": "DevOps checklist: Recovery procedures."
+  },
+  {
+   "id": "R13604",
+   "lines": [
+    13604,
+    13604
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "quality",
+   "text": "DevOps checklist: Environment variable management."
+  },
+  {
+   "id": "R13606",
+   "lines": [
+    13606,
+    13606
+   ],
+   "page": "[217] DevOps Checklist",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13608",
+   "lines": [
+    13608,
+    13608
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "info",
+   "text": "Page title [218] QA Checklist",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13610",
+   "lines": [
+    13610,
+    13610
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "info",
+   "text": "Section: Engineering",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13611",
+   "lines": [
+    13611,
+    13611
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "scope",
+   "text": "Page [218] QA Checklist scope: MVP."
+  },
+  {
+   "id": "R13612",
+   "lines": [
+    13612,
+    13612
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "info",
+   "text": "Page URL: https://ashishvats16.github.io/system-arch/page/qa-checklist",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13613",
+   "lines": [
+    13613,
+    13613
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist description: covers test strategy."
+  },
+  {
+   "id": "R13613a",
+   "lines": [
+    13613,
+    13613
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist description: covers test cases."
+  },
+  {
+   "id": "R13613b",
+   "lines": [
+    13613,
+    13613
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist description: covers coverage requirements."
+  },
+  {
+   "id": "R13614",
+   "lines": [
+    13614,
+    13614
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "info",
+   "text": "Keywords: QA, checklist, testing, test cases, quality assurance",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13616",
+   "lines": [
+    13616,
+    13616
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "info",
+   "text": "QA Checklist",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13618",
+   "lines": [
+    13618,
+    13618
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Unit tests for all services."
+  },
+  {
+   "id": "R13619",
+   "lines": [
+    13619,
+    13619
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Integration tests for API endpoints."
+  },
+  {
+   "id": "R13620",
+   "lines": [
+    13620,
+    13620
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Agent output validation tests."
+  },
+  {
+   "id": "R13621",
+   "lines": [
+    13621,
+    13621
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Rules engine test case: invalid title."
+  },
+  {
+   "id": "R13621a",
+   "lines": [
+    13621,
+    13621
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Rules engine test case: banned term."
+  },
+  {
+   "id": "R13621b",
+   "lines": [
+    13621,
+    13621
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Rules engine test case: missing attribute."
+  },
+  {
+   "id": "R13622",
+   "lines": [
+    13622,
+    13622
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Image compliance test case: invalid image."
+  },
+  {
+   "id": "R13622a",
+   "lines": [
+    13622,
+    13622
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Image compliance test case: wrong background."
+  },
+  {
+   "id": "R13622b",
+   "lines": [
+    13622,
+    13622
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Image compliance test case: low resolution."
+  },
+  {
+   "id": "R13623",
+   "lines": [
+    13623,
+    13623
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Marketplace adapter test: API failure."
+  },
+  {
+   "id": "R13623a",
+   "lines": [
+    13623,
+    13623
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Marketplace adapter test: rate limit."
+  },
+  {
+   "id": "R13623b",
+   "lines": [
+    13623,
+    13623
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Marketplace adapter test: auth expiry."
+  },
+  {
+   "id": "R13623c",
+   "lines": [
+    13623,
+    13623
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Marketplace adapter test: partial publish."
+  },
+  {
+   "id": "R13624",
+   "lines": [
+    13624,
+    13624
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Security test: tenant isolation."
+  },
+  {
+   "id": "R13624a",
+   "lines": [
+    13624,
+    13624
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Security test: unauthorized access."
+  },
+  {
+   "id": "R13624b",
+   "lines": [
+    13624,
+    13624
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Security test: RBAC."
+  },
+  {
+   "id": "R13625",
+   "lines": [
+    13625,
+    13625
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: End-to-end tests covering the full flow from import to publish."
+  },
+  {
+   "id": "R13626",
+   "lines": [
+    13626,
+    13626
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Load test: bulk import."
+  },
+  {
+   "id": "R13626a",
+   "lines": [
+    13626,
+    13626
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Load test: concurrent generation."
+  },
+  {
+   "id": "R13627",
+   "lines": [
+    13627,
+    13627
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Failure injection test: network failure."
+  },
+  {
+   "id": "R13627a",
+   "lines": [
+    13627,
+    13627
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Failure injection test: model timeout."
+  },
+  {
+   "id": "R13627b",
+   "lines": [
+    13627,
+    13627
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "quality",
+   "text": "QA checklist: Failure injection test: DB failure."
+  },
+  {
+   "id": "R13629",
+   "lines": [
+    13629,
+    13629
+   ],
+   "page": "[218] QA Checklist",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13631",
+   "lines": [
+    13631,
+    13631
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "info",
+   "text": "Page title [219] Security Checklist",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13633",
+   "lines": [
+    13633,
+    13633
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "info",
+   "text": "Section: Engineering",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13634",
+   "lines": [
+    13634,
+    13634
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "scope",
+   "text": "Page [219] Security Checklist scope: MVP."
+  },
+  {
+   "id": "R13635",
+   "lines": [
+    13635,
+    13635
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "info",
+   "text": "Page URL: https://ashishvats16.github.io/system-arch/page/security-checklist",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13636",
+   "lines": [
+    13636,
+    13636
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "quality",
+   "text": "Security checklist description: covers encryption."
+  },
+  {
+   "id": "R13636a",
+   "lines": [
+    13636,
+    13636
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "quality",
+   "text": "Security checklist description: covers authentication."
+  },
+  {
+   "id": "R13636b",
+   "lines": [
+    13636,
+    13636
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "quality",
+   "text": "Security checklist description: covers authorization."
+  },
+  {
+   "id": "R13636c",
+   "lines": [
+    13636,
+    13636
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "quality",
+   "text": "Security checklist description: covers audit."
+  },
+  {
+   "id": "R13637",
+   "lines": [
+    13637,
+    13637
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "info",
+   "text": "Keywords: security, checklist, encryption, audit",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13639",
+   "lines": [
+    13639,
+    13639
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "info",
+   "text": "Security Checklist",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13641",
+   "lines": [
+    13641,
+    13641
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "decision",
+   "text": "Security checklist: JWT authentication implemented."
+  },
+  {
+   "id": "R13641a",
+   "lines": [
+    13641,
+    13641
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "quality",
+   "text": "Security checklist: JWT authentication tested."
+  },
+  {
+   "id": "R13642",
+   "lines": [
+    13642,
+    13642
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "quality",
+   "text": "Security checklist: RBAC authorization on all endpoints."
+  },
+  {
+   "id": "R13643",
+   "lines": [
+    13643,
+    13643
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "quality",
+   "text": "Security checklist: Maker-checker enforcement verified."
+  },
+  {
+   "id": "R13644",
+   "lines": [
+    13644,
+    13644
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "quality",
+   "text": "Security checklist: Tenant isolation tested."
+  },
+  {
+   "id": "R13644a",
+   "lines": [
+    13644,
+    13644
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "requirement",
+   "text": "Security checklist: cross-tenant data access blocked."
+  },
+  {
+   "id": "R13645",
+   "lines": [
+    13645,
+    13645
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "quality",
+   "text": "Security checklist: Marketplace tokens encrypted."
+  },
+  {
+   "id": "R13645a",
+   "lines": [
+    13645,
+    13645
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "decision",
+   "text": "Security checklist: marketplace token encryption uses AES-256."
+  },
+  {
+   "id": "R13646",
+   "lines": [
+    13646,
+    13646
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "decision",
+   "text": "Security checklist: Secrets in AWS Secrets Manager."
+  },
+  {
+   "id": "R13647",
+   "lines": [
+    13647,
+    13647
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "quality",
+   "text": "Security checklist: TLS on all connections."
+  },
+  {
+   "id": "R13648",
+   "lines": [
+    13648,
+    13648
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "quality",
+   "text": "Security checklist: Audit logging for all important actions."
+  },
+  {
+   "id": "R13649",
+   "lines": [
+    13649,
+    13649
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "quality",
+   "text": "Security checklist: Input validation on all endpoints."
+  },
+  {
+   "id": "R13650",
+   "lines": [
+    13650,
+    13650
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "quality",
+   "text": "Security checklist: SQL injection prevention verified."
+  },
+  {
+   "id": "R13651",
+   "lines": [
+    13651,
+    13651
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "quality",
+   "text": "Security checklist: CORS configured correctly."
+  },
+  {
+   "id": "R13653",
+   "lines": [
+    13653,
+    13653
+   ],
+   "page": "[219] Security Checklist",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13655",
+   "lines": [
+    13655,
+    13655
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "info",
+   "text": "Page title [220] Production Launch Checklist",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13657",
+   "lines": [
+    13657,
+    13657
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "info",
+   "text": "Section: Engineering",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13658",
+   "lines": [
+    13658,
+    13658
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "scope",
+   "text": "Page [220] Production Launch Checklist scope: MVP."
+  },
+  {
+   "id": "R13659",
+   "lines": [
+    13659,
+    13659
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "info",
+   "text": "Page URL: https://ashishvats16.github.io/system-arch/page/production-launch-checklist",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13660",
+   "lines": [
+    13660,
+    13660
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "quality",
+   "text": "Production Launch Checklist is the complete pre-launch checklist for production deployment."
+  },
+  {
+   "id": "R13661",
+   "lines": [
+    13661,
+    13661
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "info",
+   "text": "Keywords: production launch, checklist, pre-launch, go-live",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13663",
+   "lines": [
+    13663,
+    13663
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "info",
+   "text": "Production Launch Checklist",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13665",
+   "lines": [
+    13665,
+    13665
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "scope",
+   "text": "Production launch checklist: All Phase 1 features implemented."
+  },
+  {
+   "id": "R13665a",
+   "lines": [
+    13665,
+    13665
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "quality",
+   "text": "Production launch checklist: All Phase 1 features tested."
+  },
+  {
+   "id": "R13666",
+   "lines": [
+    13666,
+    13666
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "quality",
+   "text": "Production launch checklist: Security audit completed."
+  },
+  {
+   "id": "R13667",
+   "lines": [
+    13667,
+    13667
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "quality",
+   "text": "Production launch checklist: Load testing passed."
+  },
+  {
+   "id": "R13668",
+   "lines": [
+    13668,
+    13668
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "quality",
+   "text": "Production launch checklist: Marketplace OAuth flows verified with production accounts."
+  },
+  {
+   "id": "R13669",
+   "lines": [
+    13669,
+    13669
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "quality",
+   "text": "Production launch checklist: Database backups configured."
+  },
+  {
+   "id": "R13670",
+   "lines": [
+    13670,
+    13670
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "quality",
+   "text": "Production launch checklist: Monitoring active."
+  },
+  {
+   "id": "R13670a",
+   "lines": [
+    13670,
+    13670
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "quality",
+   "text": "Production launch checklist: Alerting active."
+  },
+  {
+   "id": "R13671",
+   "lines": [
+    13671,
+    13671
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "quality",
+   "text": "Production launch checklist: Incident response plan documented."
+  },
+  {
+   "id": "R13672",
+   "lines": [
+    13672,
+    13672
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "quality",
+   "text": "Production launch checklist: Rollback procedures tested."
+  },
+  {
+   "id": "R13673",
+   "lines": [
+    13673,
+    13673
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "quality",
+   "text": "Production launch checklist: Documentation updated."
+  },
+  {
+   "id": "R13674",
+   "lines": [
+    13674,
+    13674
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "quality",
+   "text": "Production launch checklist: Team trained on operational procedures."
+  },
+  {
+   "id": "R13676",
+   "lines": [
+    13676,
+    13676
+   ],
+   "page": "[220] Production Launch Checklist",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13678",
+   "lines": [
+    13678,
+    13678
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "info",
+   "text": "Page title [221] Architectural Invariants",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13680",
+   "lines": [
+    13680,
+    13680
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "info",
+   "text": "Section: Engineering",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13681",
+   "lines": [
+    13681,
+    13681
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "scope",
+   "text": "Page [221] Architectural Invariants scope: MVP."
+  },
+  {
+   "id": "R13682",
+   "lines": [
+    13682,
+    13682
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "info",
+   "text": "Page URL: https://ashishvats16.github.io/system-arch/page/architectural-invariants",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13683",
+   "lines": [
+    13683,
+    13683
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "requirement",
+   "text": "The architectural invariants are non-negotiable architectural rules that must never be violated."
+  },
+  {
+   "id": "R13684",
+   "lines": [
+    13684,
+    13684
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "info",
+   "text": "Keywords: architectural invariants, rules, non-negotiable, constraints",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13686",
+   "lines": [
+    13686,
+    13686
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "info",
+   "text": "Architectural Invariants",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13688",
+   "lines": [
+    13688,
+    13688
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "info",
+   "text": "Never Violate These Rules",
+   "why_not": "restatement",
+   "dup_of": "R13683"
+  },
+  {
+   "id": "R13690",
+   "lines": [
+    13690,
+    13690
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "requirement",
+   "text": "Invariant 1: AI never directly publishes to marketplaces."
+  },
+  {
+   "id": "R13690a",
+   "lines": [
+    13690,
+    13703
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "constraint",
+   "text": "The Architectural Invariants list has 14 numbered invariants."
+  },
+  {
+   "id": "R13691",
+   "lines": [
+    13691,
+    13691
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "requirement",
+   "text": "Invariant 2: Rules Engine is deterministic."
+  },
+  {
+   "id": "R13691a",
+   "lines": [
+    13691,
+    13691
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "requirement",
+   "text": "Invariant 2: Rules Engine is never an LLM."
+  },
+  {
+   "id": "R13692",
+   "lines": [
+    13692,
+    13692
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "requirement",
+   "text": "Invariant 3: Human approval is required in MVP."
+  },
+  {
+   "id": "R13692a",
+   "lines": [
+    13692,
+    13692
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "scope",
+   "text": "Invariant 3: the human approval requirement is stated as applying in MVP."
+  },
+  {
+   "id": "R13693",
+   "lines": [
+    13693,
+    13693
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "requirement",
+   "text": "Invariant 4: Marketplace-specific logic belongs inside adapters only."
+  },
+  {
+   "id": "R13694",
+   "lines": [
+    13694,
+    13694
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "data",
+   "text": "Invariant 5: Canonical listing model is marketplace-independent."
+  },
+  {
+   "id": "R13695",
+   "lines": [
+    13695,
+    13695
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "quality",
+   "text": "Invariant 6: Tenant isolation is mandatory on every query."
+  },
+  {
+   "id": "R13696",
+   "lines": [
+    13696,
+    13696
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "quality",
+   "text": "Invariant 7: Marketplace credentials are encrypted at rest."
+  },
+  {
+   "id": "R13696a",
+   "lines": [
+    13696,
+    13696
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "decision",
+   "text": "Invariant 7: Marketplace credentials encryption at rest uses AES-256."
+  },
+  {
+   "id": "R13697",
+   "lines": [
+    13697,
+    13697
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "quality",
+   "text": "Invariant 8: All AgentRuns are observable."
+  },
+  {
+   "id": "R13697a",
+   "lines": [
+    13697,
+    13697
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "requirement",
+   "text": "Invariant 8: All AgentRuns are persisted."
+  },
+  {
+   "id": "R13698",
+   "lines": [
+    13698,
+    13698
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "interface",
+   "text": "Invariant 9: All failures use structured ErrorReport contracts."
+  },
+  {
+   "id": "R13699",
+   "lines": [
+    13699,
+    13699
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "requirement",
+   "text": "Invariant 10: Retries are bounded."
+  },
+  {
+   "id": "R13699a",
+   "lines": [
+    13699,
+    13699
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "constraint",
+   "text": "Invariant 10: retries are bounded at max 3 for agent corrections."
+  },
+  {
+   "id": "R13700",
+   "lines": [
+    13700,
+    13700
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "requirement",
+   "text": "Invariant 11: Marketplace mutations are idempotent."
+  },
+  {
+   "id": "R13701",
+   "lines": [
+    13701,
+    13701
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "requirement",
+   "text": "Invariant 12: Failed fields are retried individually, not the entire listing."
+  },
+  {
+   "id": "R13702",
+   "lines": [
+    13702,
+    13702
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "requirement",
+   "text": "Invariant 13: Optimization Agent runs on schedule, not continuously."
+  },
+  {
+   "id": "R13703",
+   "lines": [
+    13703,
+    13703
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "requirement",
+   "text": "Invariant 14: Future marketplaces don't require rewriting the core system."
+  },
+  {
+   "id": "R13705",
+   "lines": [
+    13705,
+    13705
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "info",
+   "text": "These invariants are the foundation of the system's reliability, security, and extensibility.",
+   "why_not": "context-prose"
+  },
+  {
+   "id": "R13705a",
+   "lines": [
+    13705,
+    13705
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "requirement",
+   "text": "Any modification to the codebase — by a human or an AI coding agent — must preserve these invariants."
+  },
+  {
+   "id": "R13707",
+   "lines": [
+    13707,
+    13707
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "info",
+   "text": "AI Implementation Context",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13709",
+   "lines": [
+    13709,
+    13709
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "requirement",
+   "text": "For an AI coding agent reading this: these invariants are non-negotiable."
+  },
+  {
+   "id": "R13709a",
+   "lines": [
+    13709,
+    13709
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "requirement",
+   "text": "AI coding agent: Do not bypass the Rules Engine."
+  },
+  {
+   "id": "R13709b",
+   "lines": [
+    13709,
+    13709
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "requirement",
+   "text": "AI coding agent: do not allow direct publishing."
+  },
+  {
+   "id": "R13709c",
+   "lines": [
+    13709,
+    13709
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "requirement",
+   "text": "AI coding agent: do not mix marketplace logic into the canonical model."
+  },
+  {
+   "id": "R13709d",
+   "lines": [
+    13709,
+    13709
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "requirement",
+   "text": "AI coding agent: do not remove tenant isolation."
+  },
+  {
+   "id": "R13709e",
+   "lines": [
+    13709,
+    13709
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "flow",
+   "text": "If a change appears to conflict with an invariant, escalate to a human architect."
+  },
+  {
+   "id": "R13711",
+   "lines": [
+    13711,
+    13711
+   ],
+   "page": "[221] Architectural Invariants",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  }
+ ]
+}

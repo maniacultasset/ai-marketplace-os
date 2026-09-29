@@ -1,0 +1,4359 @@
+{
+ "chunk": "c14",
+ "start": 8620,
+ "end": 9177,
+ "items": [
+  {
+   "id": "R08620",
+   "lines": [
+    8620,
+    8620
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "info",
+   "text": "State Transitions",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08622",
+   "lines": [
+    8622,
+    8628
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "info",
+   "text": "Table columns: From, To, Trigger, Side Effects",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08630",
+   "lines": [
+    8630,
+    8634
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "CREATED -> CONTEXT_LOADED, trigger: Context assembly complete."
+  },
+  {
+   "id": "R08636",
+   "lines": [
+    8636,
+    8636
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "requirement",
+   "text": "Side effect of CREATED -> CONTEXT_LOADED: Brand chunks retrieved."
+  },
+  {
+   "id": "R08636a",
+   "lines": [
+    8636,
+    8636
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "requirement",
+   "text": "Side effect of CREATED -> CONTEXT_LOADED: rules loaded."
+  },
+  {
+   "id": "R08638",
+   "lines": [
+    8638,
+    8642
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "CONTEXT_LOADED -> GENERATING, trigger: Agents dispatched."
+  },
+  {
+   "id": "R08644",
+   "lines": [
+    8644,
+    8644
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "requirement",
+   "text": "Side effect of CONTEXT_LOADED -> GENERATING: Parallel agent execution begins."
+  },
+  {
+   "id": "R08646",
+   "lines": [
+    8646,
+    8650
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "GENERATING -> GENERATED, trigger: All agents return."
+  },
+  {
+   "id": "R08652",
+   "lines": [
+    8652,
+    8652
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "requirement",
+   "text": "Side effect of GENERATING -> GENERATED: Outputs merged into canonical JSON."
+  },
+  {
+   "id": "R08654",
+   "lines": [
+    8654,
+    8658
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "VALIDATING -> CORRECTION_REQUIRED, trigger: Errors detected."
+  },
+  {
+   "id": "R08660",
+   "lines": [
+    8660,
+    8660
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "requirement",
+   "text": "Side effect of VALIDATING -> CORRECTION_REQUIRED: ErrorReport generated."
+  },
+  {
+   "id": "R08662",
+   "lines": [
+    8662,
+    8664
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "CORRECTION_REQUIRED -> RETRYING."
+  },
+  {
+   "id": "R08666",
+   "lines": [
+    8666,
+    8666
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "constraint",
+   "text": "Trigger for CORRECTION_REQUIRED -> RETRYING: retry_count < 3."
+  },
+  {
+   "id": "R08668",
+   "lines": [
+    8668,
+    8668
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "requirement",
+   "text": "Side effect of CORRECTION_REQUIRED -> RETRYING: Correction agent targets specific fields."
+  },
+  {
+   "id": "R08670",
+   "lines": [
+    8670,
+    8674
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "WAITING_APPROVAL -> APPROVED, trigger: Human clicks approve."
+  },
+  {
+   "id": "R08676",
+   "lines": [
+    8676,
+    8676
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "quality",
+   "text": "Side effect of WAITING_APPROVAL -> APPROVED: Approval logged in audit trail."
+  },
+  {
+   "id": "R08678",
+   "lines": [
+    8678,
+    8682
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "flow",
+   "text": "APPROVED -> PUBLISHING, trigger: Publish triggered."
+  },
+  {
+   "id": "R08684",
+   "lines": [
+    8684,
+    8684
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "requirement",
+   "text": "Side effect of APPROVED -> PUBLISHING: Adapter maps canonical -> marketplace format."
+  },
+  {
+   "id": "R08686",
+   "lines": [
+    8686,
+    8686
+   ],
+   "page": "[17] Agent State Machine",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08688",
+   "lines": [
+    8688,
+    8688
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "info",
+   "text": "[18] Agent Execution Graph",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08690",
+   "lines": [
+    8690,
+    8690
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "info",
+   "text": "Section: AI Listing Agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08691",
+   "lines": [
+    8691,
+    8691
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "scope",
+   "text": "Page [18] Agent Execution Graph has Scope: MVP."
+  },
+  {
+   "id": "R08692",
+   "lines": [
+    8692,
+    8692
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/agent-execution-graph",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08693",
+   "lines": [
+    8693,
+    8693
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "flow",
+   "text": "The execution graph defines how agents are dispatched."
+  },
+  {
+   "id": "R08693a",
+   "lines": [
+    8693,
+    8693
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "flow",
+   "text": "The execution graph defines how parallelism works."
+  },
+  {
+   "id": "R08693b",
+   "lines": [
+    8693,
+    8693
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "flow",
+   "text": "The execution graph defines how results are merged."
+  },
+  {
+   "id": "R08694",
+   "lines": [
+    8694,
+    8694
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "info",
+   "text": "Keywords: execution graph, parallel, dispatch, merge, dependency",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08696",
+   "lines": [
+    8696,
+    8696
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "info",
+   "text": "Parallelism Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08698",
+   "lines": [
+    8698,
+    8698
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "flow",
+   "text": "The four primary agents (Content, Keyword, Attribute, Image) execute in parallel."
+  },
+  {
+   "id": "R08698a",
+   "lines": [
+    8698,
+    8698
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "requirement",
+   "text": "The four primary agents read from the same shared context."
+  },
+  {
+   "id": "R08698b",
+   "lines": [
+    8698,
+    8698
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "requirement",
+   "text": "The four primary agents produce independent outputs."
+  },
+  {
+   "id": "R08700",
+   "lines": [
+    8700,
+    8701
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "info",
+   "text": "mermaid fence: graph LR",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08702",
+   "lines": [
+    8702,
+    8702
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "flow",
+   "text": "Diagram: Shared Context (CTX) -> Content Agent."
+  },
+  {
+   "id": "R08703",
+   "lines": [
+    8703,
+    8703
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "flow",
+   "text": "Diagram: Shared Context (CTX) -> Keyword Agent."
+  },
+  {
+   "id": "R08704",
+   "lines": [
+    8704,
+    8704
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "flow",
+   "text": "Diagram: Shared Context (CTX) -> Attribute Agent."
+  },
+  {
+   "id": "R08705",
+   "lines": [
+    8705,
+    8705
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "flow",
+   "text": "Diagram: Shared Context (CTX) -> Image Agent."
+  },
+  {
+   "id": "R08706",
+   "lines": [
+    8706,
+    8706
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "flow",
+   "text": "Diagram: Content Agent -> Merge."
+  },
+  {
+   "id": "R08707",
+   "lines": [
+    8707,
+    8707
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "flow",
+   "text": "Diagram: Keyword Agent -> Merge."
+  },
+  {
+   "id": "R08708",
+   "lines": [
+    8708,
+    8708
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "flow",
+   "text": "Diagram: Attribute Agent -> Merge."
+  },
+  {
+   "id": "R08709",
+   "lines": [
+    8709,
+    8709
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "flow",
+   "text": "Diagram: Image Agent -> Merge."
+  },
+  {
+   "id": "R08710",
+   "lines": [
+    8710,
+    8710
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "info",
+   "text": "code fence close",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08712",
+   "lines": [
+    8712,
+    8712
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "requirement",
+   "text": "There are no data dependencies between the four agents during generation."
+  },
+  {
+   "id": "R08712a",
+   "lines": [
+    8712,
+    8712
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "requirement",
+   "text": "The Content Agent doesn't need keywords to generate titles."
+  },
+  {
+   "id": "R08712b",
+   "lines": [
+    8712,
+    8712
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "requirement",
+   "text": "The Keyword Agent doesn't need the title to generate search terms."
+  },
+  {
+   "id": "R08712c",
+   "lines": [
+    8712,
+    8712
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "requirement",
+   "text": "Content Agent and Keyword Agent both work from the same product/category context."
+  },
+  {
+   "id": "R08714",
+   "lines": [
+    8714,
+    8714
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "info",
+   "text": "Agent Dependencies",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08716",
+   "lines": [
+    8716,
+    8716
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "info",
+   "text": "Sequential vs Parallel",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08718",
+   "lines": [
+    8718,
+    8718
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "flow",
+   "text": "Sequential (must complete before next): Context Loading -> Brand Retrieval."
+  },
+  {
+   "id": "R08718a",
+   "lines": [
+    8718,
+    8718
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "flow",
+   "text": "Sequential (must complete before next): Brand Retrieval -> Agent Dispatch."
+  },
+  {
+   "id": "R08719",
+   "lines": [
+    8719,
+    8719
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "info",
+   "text": "Parallel (no dependencies): Content Agent || Keyword Agent || Attribute Agent || Image Agent.",
+   "why_not": "restatement",
+   "dup_of": "R08698"
+  },
+  {
+   "id": "R08720",
+   "lines": [
+    8720,
+    8720
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "flow",
+   "text": "Sequential (requires all): Merge requires all parallel agents to complete."
+  },
+  {
+   "id": "R08720a",
+   "lines": [
+    8720,
+    8720
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "flow",
+   "text": "Sequential: Merge -> Validate."
+  },
+  {
+   "id": "R08720b",
+   "lines": [
+    8720,
+    8720
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "flow",
+   "text": "Sequential: Validate -> Quality Check."
+  },
+  {
+   "id": "R08720c",
+   "lines": [
+    8720,
+    8720
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "flow",
+   "text": "Sequential: Quality Check -> Approval."
+  },
+  {
+   "id": "R08722",
+   "lines": [
+    8722,
+    8722
+   ],
+   "page": "[18] Agent Execution Graph",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08724",
+   "lines": [
+    8724,
+    8724
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "info",
+   "text": "[19] Agent Run Lifecycle",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08726",
+   "lines": [
+    8726,
+    8726
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "info",
+   "text": "Section: AI Listing Agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08727",
+   "lines": [
+    8727,
+    8727
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "scope",
+   "text": "Page [19] Agent Run Lifecycle has Scope: MVP."
+  },
+  {
+   "id": "R08728",
+   "lines": [
+    8728,
+    8728
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/agent-run-lifecycle",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08729",
+   "lines": [
+    8729,
+    8729
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "requirement",
+   "text": "Individual AgentRun records are created."
+  },
+  {
+   "id": "R08729a",
+   "lines": [
+    8729,
+    8729
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "requirement",
+   "text": "Individual AgentRun records are tracked."
+  },
+  {
+   "id": "R08729b",
+   "lines": [
+    8729,
+    8729
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "requirement",
+   "text": "Individual AgentRun records are persisted."
+  },
+  {
+   "id": "R08729c",
+   "lines": [
+    8729,
+    8729
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "quality",
+   "text": "AgentRun records are the observability backbone."
+  },
+  {
+   "id": "R08730",
+   "lines": [
+    8730,
+    8730
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "info",
+   "text": "Keywords: AgentRun, lifecycle, tracking, observability, cost, tokens",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08732",
+   "lines": [
+    8732,
+    8732
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "info",
+   "text": "AgentRun Record",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08734",
+   "lines": [
+    8734,
+    8734
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "requirement",
+   "text": "Every agent execution creates an `AgentRun` record."
+  },
+  {
+   "id": "R08734a",
+   "lines": [
+    8734,
+    8734
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "data",
+   "text": "The `AgentRun` record captures the complete execution context."
+  },
+  {
+   "id": "R08736",
+   "lines": [
+    8736,
+    8736
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "info",
+   "text": "AgentRun (code block label)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08738",
+   "lines": [
+    8738,
+    8739
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "info",
+   "text": "json fence and opening brace",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08740",
+   "lines": [
+    8740,
+    8740
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "data",
+   "text": "AgentRun field id, example \"run_abc123\"."
+  },
+  {
+   "id": "R08741",
+   "lines": [
+    8741,
+    8741
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "data",
+   "text": "AgentRun field product_id, example \"prod_456\"."
+  },
+  {
+   "id": "R08742",
+   "lines": [
+    8742,
+    8742
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "data",
+   "text": "AgentRun field trigger, example \"user_request\"."
+  },
+  {
+   "id": "R08743",
+   "lines": [
+    8743,
+    8743
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "data",
+   "text": "AgentRun field model_used, example \"gpt-4o-mini\"."
+  },
+  {
+   "id": "R08744",
+   "lines": [
+    8744,
+    8744
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "data",
+   "text": "AgentRun field tokens_in, example 2340."
+  },
+  {
+   "id": "R08745",
+   "lines": [
+    8745,
+    8745
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "data",
+   "text": "AgentRun field tokens_out, example 890."
+  },
+  {
+   "id": "R08746",
+   "lines": [
+    8746,
+    8746
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "data",
+   "text": "AgentRun field cost, example 0.0023."
+  },
+  {
+   "id": "R08747",
+   "lines": [
+    8747,
+    8747
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "data",
+   "text": "AgentRun field duration_ms, example 3200."
+  },
+  {
+   "id": "R08748",
+   "lines": [
+    8748,
+    8748
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "data",
+   "text": "AgentRun field status, example \"completed\"."
+  },
+  {
+   "id": "R08749",
+   "lines": [
+    8749,
+    8749
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "data",
+   "text": "AgentRun field error_report_json, example null."
+  },
+  {
+   "id": "R08750",
+   "lines": [
+    8750,
+    8750
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "data",
+   "text": "AgentRun field created_at, example \"2024-01-15T10:30:00Z\"."
+  },
+  {
+   "id": "R08751",
+   "lines": [
+    8751,
+    8752
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "info",
+   "text": "closing brace and code fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08754",
+   "lines": [
+    8754,
+    8754
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "info",
+   "text": "Lifecycle",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08756",
+   "lines": [
+    8756,
+    8756
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "data",
+   "text": "AgentRun lifecycle states: CREATED, RUNNING, COMPLETED, FAILED, TIMEOUT."
+  },
+  {
+   "id": "R08756a",
+   "lines": [
+    8756,
+    8756
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "flow",
+   "text": "AgentRun transition CREATED -> RUNNING."
+  },
+  {
+   "id": "R08756b",
+   "lines": [
+    8756,
+    8756
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "flow",
+   "text": "AgentRun transition RUNNING -> COMPLETED."
+  },
+  {
+   "id": "R08756c",
+   "lines": [
+    8756,
+    8756
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "flow",
+   "text": "AgentRun transition RUNNING -> FAILED."
+  },
+  {
+   "id": "R08756d",
+   "lines": [
+    8756,
+    8756
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "flow",
+   "text": "AgentRun transition RUNNING -> TIMEOUT."
+  },
+  {
+   "id": "R08756e",
+   "lines": [
+    8756,
+    8756
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "requirement",
+   "text": "Every AgentRun stores its ErrorReport."
+  },
+  {
+   "id": "R08756f",
+   "lines": [
+    8756,
+    8756
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "requirement",
+   "text": "Failed jobs are re-runnable with the same input."
+  },
+  {
+   "id": "R08756g",
+   "lines": [
+    8756,
+    8756
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "quality",
+   "text": "AgentRun creates full cost observability."
+  },
+  {
+   "id": "R08756h",
+   "lines": [
+    8756,
+    8756
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "quality",
+   "text": "AgentRun data allows calculating cost per listing."
+  },
+  {
+   "id": "R08756i",
+   "lines": [
+    8756,
+    8756
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "quality",
+   "text": "AgentRun data allows calculating cost per agent."
+  },
+  {
+   "id": "R08756j",
+   "lines": [
+    8756,
+    8756
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "quality",
+   "text": "AgentRun data allows calculating cost per model."
+  },
+  {
+   "id": "R08758",
+   "lines": [
+    8758,
+    8758
+   ],
+   "page": "[19] Agent Run Lifecycle",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08760",
+   "lines": [
+    8760,
+    8760
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "info",
+   "text": "[20] Context Assembly",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08762",
+   "lines": [
+    8762,
+    8762
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "info",
+   "text": "Section: AI Listing Agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08763",
+   "lines": [
+    8763,
+    8763
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "scope",
+   "text": "Page [20] Context Assembly has Scope: MVP."
+  },
+  {
+   "id": "R08764",
+   "lines": [
+    8764,
+    8764
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/context-assembly",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08765",
+   "lines": [
+    8765,
+    8765
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "requirement",
+   "text": "The system assembles a rich context object that feeds into all AI agents."
+  },
+  {
+   "id": "R08765a",
+   "lines": [
+    8765,
+    8765
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "data",
+   "text": "The context object includes product data."
+  },
+  {
+   "id": "R08765b",
+   "lines": [
+    8765,
+    8765
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "data",
+   "text": "The context object includes brand voice."
+  },
+  {
+   "id": "R08765c",
+   "lines": [
+    8765,
+    8765
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "data",
+   "text": "The context object includes marketplace rules."
+  },
+  {
+   "id": "R08765d",
+   "lines": [
+    8765,
+    8765
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "data",
+   "text": "The context object includes category templates."
+  },
+  {
+   "id": "R08766",
+   "lines": [
+    8766,
+    8766
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "info",
+   "text": "Keywords: context, assembly, product data, brand voice, rules, category, retrieval",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08768",
+   "lines": [
+    8768,
+    8768
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "info",
+   "text": "Context Sources",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08770",
+   "lines": [
+    8770,
+    8771
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "info",
+   "text": "mermaid fence: graph TD",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08772",
+   "lines": [
+    8772,
+    8772
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "data",
+   "text": "Diagram: PostgreSQL supplies \"Product data\" to the Context Object."
+  },
+  {
+   "id": "R08773",
+   "lines": [
+    8773,
+    8773
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "data",
+   "text": "Diagram: PostgreSQL supplies \"Marketplace rules\" to the Context Object."
+  },
+  {
+   "id": "R08774",
+   "lines": [
+    8774,
+    8774
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "data",
+   "text": "Diagram: PostgreSQL supplies \"Category template\" to the Context Object."
+  },
+  {
+   "id": "R08775",
+   "lines": [
+    8775,
+    8775
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "data",
+   "text": "Diagram: pgvector supplies \"Brand voice chunks\" to the Context Object."
+  },
+  {
+   "id": "R08776",
+   "lines": [
+    8776,
+    8776
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "data",
+   "text": "Diagram: PostgreSQL supplies \"Previous versions\" to the Context Object."
+  },
+  {
+   "id": "R08777",
+   "lines": [
+    8777,
+    8777
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "data",
+   "text": "Diagram: User instructions feed the Context Object."
+  },
+  {
+   "id": "R08778",
+   "lines": [
+    8778,
+    8778
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "flow",
+   "text": "Diagram: Context Object -> Agent Prompts."
+  },
+  {
+   "id": "R08779",
+   "lines": [
+    8779,
+    8779
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "info",
+   "text": "code fence close",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08781",
+   "lines": [
+    8781,
+    8781
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "info",
+   "text": "Assembly Process",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08783",
+   "lines": [
+    8783,
+    8783
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "flow",
+   "text": "Assembly step 1: Load product from database."
+  },
+  {
+   "id": "R08783a",
+   "lines": [
+    8783,
+    8783
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "data",
+   "text": "Loaded product data includes SKU."
+  },
+  {
+   "id": "R08783b",
+   "lines": [
+    8783,
+    8783
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "data",
+   "text": "Loaded product data includes title."
+  },
+  {
+   "id": "R08783c",
+   "lines": [
+    8783,
+    8783
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "data",
+   "text": "Loaded product data includes images."
+  },
+  {
+   "id": "R08783d",
+   "lines": [
+    8783,
+    8783
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "data",
+   "text": "Loaded product data includes raw attributes."
+  },
+  {
+   "id": "R08784",
+   "lines": [
+    8784,
+    8784
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "flow",
+   "text": "Assembly step 2: Load marketplace rules for target marketplace + category."
+  },
+  {
+   "id": "R08785",
+   "lines": [
+    8785,
+    8785
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "flow",
+   "text": "Assembly step 3: Load category template with required/optional attributes."
+  },
+  {
+   "id": "R08785a",
+   "lines": [
+    8785,
+    8785
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "data",
+   "text": "Category template includes required/optional attributes."
+  },
+  {
+   "id": "R08786",
+   "lines": [
+    8786,
+    8786
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "flow",
+   "text": "Assembly step 4: Embed retrieval query."
+  },
+  {
+   "id": "R08786a",
+   "lines": [
+    8786,
+    8786
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "data",
+   "text": "Retrieval query composition: \"product type + brand + marketplace + tone\"."
+  },
+  {
+   "id": "R08787",
+   "lines": [
+    8787,
+    8787
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "flow",
+   "text": "Assembly step 5: pgvector cosine-similarity search over brand embeddings."
+  },
+  {
+   "id": "R08787a",
+   "lines": [
+    8787,
+    8787
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "constraint",
+   "text": "Brand embedding retrieval uses top-k = 8."
+  },
+  {
+   "id": "R08787b",
+   "lines": [
+    8787,
+    8787
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "decision",
+   "text": "Brand-voice retrieval uses pgvector cosine-similarity search over brand embeddings."
+  },
+  {
+   "id": "R08788",
+   "lines": [
+    8788,
+    8788
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "flow",
+   "text": "Assembly step 6: Inject brand voice chunks into context."
+  },
+  {
+   "id": "R08789",
+   "lines": [
+    8789,
+    8789
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "flow",
+   "text": "Assembly step 7: Load previous listing versions if they exist."
+  },
+  {
+   "id": "R08790",
+   "lines": [
+    8790,
+    8790
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "flow",
+   "text": "Assembly step 8: Include any user instructions."
+  },
+  {
+   "id": "R08791",
+   "lines": [
+    8791,
+    8791
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "flow",
+   "text": "Assembly step 9: Assemble final context object for agent prompts."
+  },
+  {
+   "id": "R08793",
+   "lines": [
+    8793,
+    8793
+   ],
+   "page": "[20] Context Assembly",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08795",
+   "lines": [
+    8795,
+    8795
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "info",
+   "text": "[21] Prompt Construction",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08797",
+   "lines": [
+    8797,
+    8797
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "info",
+   "text": "Section: AI Listing Agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08798",
+   "lines": [
+    8798,
+    8798
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "scope",
+   "text": "Page [21] Prompt Construction has Scope: MVP."
+  },
+  {
+   "id": "R08799",
+   "lines": [
+    8799,
+    8799
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/prompt-construction",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08800",
+   "lines": [
+    8800,
+    8800
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "Prompts are constructed for each agent."
+  },
+  {
+   "id": "R08800a",
+   "lines": [
+    8800,
+    8800
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "interface",
+   "text": "Agent prompts include system instructions."
+  },
+  {
+   "id": "R08800b",
+   "lines": [
+    8800,
+    8800
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "interface",
+   "text": "Agent prompts include brand voice injection."
+  },
+  {
+   "id": "R08800c",
+   "lines": [
+    8800,
+    8800
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "interface",
+   "text": "Agent prompts include marketplace rules."
+  },
+  {
+   "id": "R08800d",
+   "lines": [
+    8800,
+    8800
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "interface",
+   "text": "Agent prompts include structured output requirements."
+  },
+  {
+   "id": "R08801",
+   "lines": [
+    8801,
+    8801
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "info",
+   "text": "Keywords: prompt, construction, system prompt, brand voice, structured output, JSON",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08803",
+   "lines": [
+    8803,
+    8803
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "info",
+   "text": "Prompt Structure",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08805",
+   "lines": [
+    8805,
+    8805
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "info",
+   "text": "Content Agent Prompt Structure",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08807",
+   "lines": [
+    8807,
+    8807
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "info",
+   "text": "text code fence open",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08808",
+   "lines": [
+    8808,
+    8808
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "interface",
+   "text": "Content Agent prompt SYSTEM: \"You are a marketplace listing specialist for {marketplace}.\""
+  },
+  {
+   "id": "R08809",
+   "lines": [
+    8809,
+    8809
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "Content Agent prompt: \"You generate product titles\"."
+  },
+  {
+   "id": "R08809a",
+   "lines": [
+    8809,
+    8809
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "Content Agent prompt: \"You generate ... bullet points\"."
+  },
+  {
+   "id": "R08809b",
+   "lines": [
+    8809,
+    8809
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "Content Agent prompt: \"You generate ... descriptions\"."
+  },
+  {
+   "id": "R08810",
+   "lines": [
+    8810,
+    8810
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "Content Agent prompt: generated content is \"optimized for search\"."
+  },
+  {
+   "id": "R08810a",
+   "lines": [
+    8810,
+    8810
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "Content Agent prompt: generated content is optimized for \"conversion\"."
+  },
+  {
+   "id": "R08810b",
+   "lines": [
+    8810,
+    8810
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "Content Agent prompt: content is generated \"while maintaining the brand's voice\"."
+  },
+  {
+   "id": "R08812",
+   "lines": [
+    8812,
+    8812
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "Prompt RULES section: \"these are NON-NEGOTIABLE constraints\"."
+  },
+  {
+   "id": "R08813",
+   "lines": [
+    8813,
+    8813
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "constraint",
+   "text": "Prompt rule: Title must be ≤ {max_title_length} characters."
+  },
+  {
+   "id": "R08814",
+   "lines": [
+    8814,
+    8814
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "constraint",
+   "text": "Prompt rule: {num_bullets} bullet points."
+  },
+  {
+   "id": "R08814a",
+   "lines": [
+    8814,
+    8814
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "constraint",
+   "text": "Prompt rule: each bullet ≤ {max_bullet_length} characters."
+  },
+  {
+   "id": "R08815",
+   "lines": [
+    8815,
+    8815
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "constraint",
+   "text": "Prompt rule: Description ≤ {max_description_length} characters."
+  },
+  {
+   "id": "R08816",
+   "lines": [
+    8816,
+    8816
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "constraint",
+   "text": "Prompt rule: BANNED TERMS: {banned_terms}."
+  },
+  {
+   "id": "R08817",
+   "lines": [
+    8817,
+    8817
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "constraint",
+   "text": "Prompt rule: REQUIRED ATTRIBUTES in title: {required_in_title}."
+  },
+  {
+   "id": "R08819",
+   "lines": [
+    8819,
+    8820
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "interface",
+   "text": "Prompt section BRAND VOICE CONTEXT: {retrieved_brand_chunks}."
+  },
+  {
+   "id": "R08822",
+   "lines": [
+    8822,
+    8823
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "interface",
+   "text": "Prompt section PRODUCT DATA: {product_data}."
+  },
+  {
+   "id": "R08822a",
+   "lines": [
+    8822,
+    8822
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "Product data is the source of truth for factual claims."
+  },
+  {
+   "id": "R08825",
+   "lines": [
+    8825,
+    8825
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "interface",
+   "text": "Prompt section CATEGORY: {category_name}."
+  },
+  {
+   "id": "R08827",
+   "lines": [
+    8827,
+    8828
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "interface",
+   "text": "Prompt OUTPUT FORMAT: Respond in JSON matching this exact schema: {output_json_schema}."
+  },
+  {
+   "id": "R08830",
+   "lines": [
+    8830,
+    8831
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "Prompt: Do NOT invent materials not present in the product data."
+  },
+  {
+   "id": "R08830a",
+   "lines": [
+    8830,
+    8831
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "Prompt: Do NOT invent certifications not present in the product data."
+  },
+  {
+   "id": "R08830b",
+   "lines": [
+    8830,
+    8831
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "Prompt: Do NOT invent measurements not present in the product data."
+  },
+  {
+   "id": "R08830c",
+   "lines": [
+    8830,
+    8831
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "Prompt: Do NOT invent medical claims not present in the product data."
+  },
+  {
+   "id": "R08830d",
+   "lines": [
+    8830,
+    8831
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "Prompt: Do NOT invent product specifications not present in the product data."
+  },
+  {
+   "id": "R08832",
+   "lines": [
+    8832,
+    8832
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "info",
+   "text": "code fence close",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08834",
+   "lines": [
+    8834,
+    8834
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "info",
+   "text": "Hallucination Control",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08836",
+   "lines": [
+    8836,
+    8836
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "The AI must never invent factual product information."
+  },
+  {
+   "id": "R08836a",
+   "lines": [
+    8836,
+    8836
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "The prompt explicitly separates factual claims from creative language."
+  },
+  {
+   "id": "R08838",
+   "lines": [
+    8838,
+    8838
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "Factual claims (materials, specs, certifications) must come from product data."
+  },
+  {
+   "id": "R08839",
+   "lines": [
+    8839,
+    8839
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "Creative language (descriptions, selling points) is generated by AI within brand voice."
+  },
+  {
+   "id": "R08841",
+   "lines": [
+    8841,
+    8841
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "info",
+   "text": "Factual Accuracy Rule",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08843",
+   "lines": [
+    8843,
+    8843
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "The Content Agent must not generate materials unless they exist in the trusted product data."
+  },
+  {
+   "id": "R08843a",
+   "lines": [
+    8843,
+    8843
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "The Content Agent must not generate certifications unless they exist in the trusted product data."
+  },
+  {
+   "id": "R08843b",
+   "lines": [
+    8843,
+    8843
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "The Content Agent must not generate measurements unless they exist in the trusted product data."
+  },
+  {
+   "id": "R08843c",
+   "lines": [
+    8843,
+    8843
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "The Content Agent must not generate medical claims unless they exist in the trusted product data."
+  },
+  {
+   "id": "R08843d",
+   "lines": [
+    8843,
+    8843
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "The Content Agent must not generate performance claims unless they exist in the trusted product data."
+  },
+  {
+   "id": "R08843e",
+   "lines": [
+    8843,
+    8843
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "The Content Agent must not generate product specifications unless they exist in the trusted product data."
+  },
+  {
+   "id": "R08843f",
+   "lines": [
+    8843,
+    8843
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "requirement",
+   "text": "The Rules Engine validates factual claims against the product record."
+  },
+  {
+   "id": "R08845",
+   "lines": [
+    8845,
+    8845
+   ],
+   "page": "[21] Prompt Construction",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08847",
+   "lines": [
+    8847,
+    8847
+   ],
+   "page": "[22] Structured Output",
+   "kind": "info",
+   "text": "[22] Structured Output",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08849",
+   "lines": [
+    8849,
+    8849
+   ],
+   "page": "[22] Structured Output",
+   "kind": "info",
+   "text": "Section: AI Listing Agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08850",
+   "lines": [
+    8850,
+    8850
+   ],
+   "page": "[22] Structured Output",
+   "kind": "scope",
+   "text": "Page [22] Structured Output has Scope: MVP."
+  },
+  {
+   "id": "R08851",
+   "lines": [
+    8851,
+    8851
+   ],
+   "page": "[22] Structured Output",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/structured-output",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08852",
+   "lines": [
+    8852,
+    8852
+   ],
+   "page": "[22] Structured Output",
+   "kind": "requirement",
+   "text": "AI agents produce structured JSON output."
+  },
+  {
+   "id": "R08852a",
+   "lines": [
+    8852,
+    8852
+   ],
+   "page": "[22] Structured Output",
+   "kind": "decision",
+   "text": "Structured output uses Pydantic schemas."
+  },
+  {
+   "id": "R08852b",
+   "lines": [
+    8852,
+    8852
+   ],
+   "page": "[22] Structured Output",
+   "kind": "decision",
+   "text": "Structured output uses JSON mode."
+  },
+  {
+   "id": "R08852c",
+   "lines": [
+    8852,
+    8852
+   ],
+   "page": "[22] Structured Output",
+   "kind": "requirement",
+   "text": "Structured output is validated."
+  },
+  {
+   "id": "R08853",
+   "lines": [
+    8853,
+    8853
+   ],
+   "page": "[22] Structured Output",
+   "kind": "info",
+   "text": "Keywords: structured output, JSON, Pydantic, schema, validation, output format",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08855",
+   "lines": [
+    8855,
+    8855
+   ],
+   "page": "[22] Structured Output",
+   "kind": "info",
+   "text": "Output Schema",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08857",
+   "lines": [
+    8857,
+    8857
+   ],
+   "page": "[22] Structured Output",
+   "kind": "info",
+   "text": "Content Agent Output Schema",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08859",
+   "lines": [
+    8859,
+    8860
+   ],
+   "page": "[22] Structured Output",
+   "kind": "info",
+   "text": "json fence and opening brace",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08861",
+   "lines": [
+    8861,
+    8861
+   ],
+   "page": "[22] Structured Output",
+   "kind": "data",
+   "text": "Content Agent output field title (string), example \"Organic Cotton Kurta Set for Women | Navy Blue | Handloom Weave\"."
+  },
+  {
+   "id": "R08862",
+   "lines": [
+    8862,
+    8862
+   ],
+   "page": "[22] Structured Output",
+   "kind": "data",
+   "text": "Content Agent output field bullets: array of strings (example shows 5)."
+  },
+  {
+   "id": "R08863",
+   "lines": [
+    8863,
+    8863
+   ],
+   "page": "[22] Structured Output",
+   "kind": "data",
+   "text": "Example bullet: \"Crafted from 100% organic cotton for breathable comfort\"."
+  },
+  {
+   "id": "R08864",
+   "lines": [
+    8864,
+    8864
+   ],
+   "page": "[22] Structured Output",
+   "kind": "data",
+   "text": "Example bullet: \"Traditional handloom weave with contemporary design\"."
+  },
+  {
+   "id": "R08865",
+   "lines": [
+    8865,
+    8865
+   ],
+   "page": "[22] Structured Output",
+   "kind": "data",
+   "text": "Example bullet: \"Includes kurta and palazzo pants\"."
+  },
+  {
+   "id": "R08866",
+   "lines": [
+    8866,
+    8866
+   ],
+   "page": "[22] Structured Output",
+   "kind": "data",
+   "text": "Example bullet: \"Machine washable at 30°C\"."
+  },
+  {
+   "id": "R08867",
+   "lines": [
+    8867,
+    8867
+   ],
+   "page": "[22] Structured Output",
+   "kind": "data",
+   "text": "Example bullet: \"Available in sizes XS to XXL\"."
+  },
+  {
+   "id": "R08868",
+   "lines": [
+    8868,
+    8868
+   ],
+   "page": "[22] Structured Output",
+   "kind": "info",
+   "text": "closing bracket of bullets array",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08869",
+   "lines": [
+    8869,
+    8869
+   ],
+   "page": "[22] Structured Output",
+   "kind": "data",
+   "text": "Content Agent output field description (string), example \"Elevate your ethnic wardrobe with this premium organic cotton kurta set...\"."
+  },
+  {
+   "id": "R08870",
+   "lines": [
+    8870,
+    8871
+   ],
+   "page": "[22] Structured Output",
+   "kind": "info",
+   "text": "closing brace and code fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08873",
+   "lines": [
+    8873,
+    8873
+   ],
+   "page": "[22] Structured Output",
+   "kind": "info",
+   "text": "Output Repair",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08875",
+   "lines": [
+    8875,
+    8875
+   ],
+   "page": "[22] Structured Output",
+   "kind": "requirement",
+   "text": "If the model produces invalid JSON, an output repair sequence runs."
+  },
+  {
+   "id": "R08875a",
+   "lines": [
+    8875,
+    8875
+   ],
+   "page": "[22] Structured Output",
+   "kind": "risk",
+   "text": "Invalid JSON is rare with JSON mode, but possible."
+  },
+  {
+   "id": "R08877",
+   "lines": [
+    8877,
+    8877
+   ],
+   "page": "[22] Structured Output",
+   "kind": "flow",
+   "text": "Output repair first attempt: Parse and repair using Pydantic schema validation."
+  },
+  {
+   "id": "R08878",
+   "lines": [
+    8878,
+    8878
+   ],
+   "page": "[22] Structured Output",
+   "kind": "flow",
+   "text": "Output repair second attempt: Re-prompt with error message and stricter instructions."
+  },
+  {
+   "id": "R08879",
+   "lines": [
+    8879,
+    8879
+   ],
+   "page": "[22] Structured Output",
+   "kind": "flow",
+   "text": "Output repair third attempt: Escalate to higher-tier model (GPT-4o from GPT-4o-mini)."
+  },
+  {
+   "id": "R08879a",
+   "lines": [
+    8879,
+    8879
+   ],
+   "page": "[22] Structured Output",
+   "kind": "decision",
+   "text": "Output repair escalation target: higher-tier model GPT-4o, escalated from GPT-4o-mini."
+  },
+  {
+   "id": "R08881",
+   "lines": [
+    8881,
+    8881
+   ],
+   "page": "[22] Structured Output",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08883",
+   "lines": [
+    8883,
+    8883
+   ],
+   "page": "[23] AI Validation",
+   "kind": "info",
+   "text": "[23] AI Validation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08885",
+   "lines": [
+    8885,
+    8885
+   ],
+   "page": "[23] AI Validation",
+   "kind": "info",
+   "text": "Section: AI Listing Agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08886",
+   "lines": [
+    8886,
+    8886
+   ],
+   "page": "[23] AI Validation",
+   "kind": "scope",
+   "text": "Page [23] AI Validation has Scope: MVP."
+  },
+  {
+   "id": "R08887",
+   "lines": [
+    8887,
+    8887
+   ],
+   "page": "[23] AI Validation",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/ai-validation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08888",
+   "lines": [
+    8888,
+    8888
+   ],
+   "page": "[23] AI Validation",
+   "kind": "quality",
+   "text": "AI outputs are validated for JSON schema compliance."
+  },
+  {
+   "id": "R08888a",
+   "lines": [
+    8888,
+    8888
+   ],
+   "page": "[23] AI Validation",
+   "kind": "quality",
+   "text": "AI outputs are validated for factual accuracy."
+  },
+  {
+   "id": "R08888b",
+   "lines": [
+    8888,
+    8888
+   ],
+   "page": "[23] AI Validation",
+   "kind": "quality",
+   "text": "AI outputs are validated for brand voice adherence."
+  },
+  {
+   "id": "R08889",
+   "lines": [
+    8889,
+    8889
+   ],
+   "page": "[23] AI Validation",
+   "kind": "info",
+   "text": "Keywords: AI validation, output validation, factual accuracy, schema, compliance",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08891",
+   "lines": [
+    8891,
+    8891
+   ],
+   "page": "[23] AI Validation",
+   "kind": "info",
+   "text": "Validation Layers",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08893",
+   "lines": [
+    8893,
+    8897
+   ],
+   "page": "[23] AI Validation",
+   "kind": "info",
+   "text": "Table columns: Layer, What It Checks, Method",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08899",
+   "lines": [
+    8899,
+    8901
+   ],
+   "page": "[23] AI Validation",
+   "kind": "quality",
+   "text": "JSON Schema validation layer checks valid JSON."
+  },
+  {
+   "id": "R08899a",
+   "lines": [
+    8899,
+    8901
+   ],
+   "page": "[23] AI Validation",
+   "kind": "quality",
+   "text": "JSON Schema validation layer checks correct structure."
+  },
+  {
+   "id": "R08899b",
+   "lines": [
+    8899,
+    8901
+   ],
+   "page": "[23] AI Validation",
+   "kind": "quality",
+   "text": "JSON Schema validation layer checks required fields."
+  },
+  {
+   "id": "R08903",
+   "lines": [
+    8903,
+    8903
+   ],
+   "page": "[23] AI Validation",
+   "kind": "decision",
+   "text": "JSON Schema layer method: Pydantic validation."
+  },
+  {
+   "id": "R08903a",
+   "lines": [
+    8903,
+    8903
+   ],
+   "page": "[23] AI Validation",
+   "kind": "decision",
+   "text": "JSON Schema layer method: JSON schema validation."
+  },
+  {
+   "id": "R08905",
+   "lines": [
+    8905,
+    8907
+   ],
+   "page": "[23] AI Validation",
+   "kind": "quality",
+   "text": "Rules Engine validation layer checks character limits."
+  },
+  {
+   "id": "R08905a",
+   "lines": [
+    8905,
+    8907
+   ],
+   "page": "[23] AI Validation",
+   "kind": "quality",
+   "text": "Rules Engine validation layer checks banned terms."
+  },
+  {
+   "id": "R08905b",
+   "lines": [
+    8905,
+    8907
+   ],
+   "page": "[23] AI Validation",
+   "kind": "quality",
+   "text": "Rules Engine validation layer checks attribute completeness."
+  },
+  {
+   "id": "R08909",
+   "lines": [
+    8909,
+    8909
+   ],
+   "page": "[23] AI Validation",
+   "kind": "decision",
+   "text": "Rules Engine layer method: Deterministic rule evaluation."
+  },
+  {
+   "id": "R08911",
+   "lines": [
+    8911,
+    8913
+   ],
+   "page": "[23] AI Validation",
+   "kind": "quality",
+   "text": "Vision Model validation layer checks image compliance per marketplace."
+  },
+  {
+   "id": "R08915",
+   "lines": [
+    8915,
+    8915
+   ],
+   "page": "[23] AI Validation",
+   "kind": "decision",
+   "text": "Vision Model layer method: GPT-4o-mini vision."
+  },
+  {
+   "id": "R08915a",
+   "lines": [
+    8915,
+    8915
+   ],
+   "page": "[23] AI Validation",
+   "kind": "decision",
+   "text": "Vision Model layer method: deterministic checks."
+  },
+  {
+   "id": "R08917",
+   "lines": [
+    8917,
+    8919
+   ],
+   "page": "[23] AI Validation",
+   "kind": "quality",
+   "text": "Factual Accuracy validation layer checks that claims match product data."
+  },
+  {
+   "id": "R08921",
+   "lines": [
+    8921,
+    8921
+   ],
+   "page": "[23] AI Validation",
+   "kind": "decision",
+   "text": "Factual Accuracy layer method: Rules Engine cross-reference."
+  },
+  {
+   "id": "R08923",
+   "lines": [
+    8923,
+    8923
+   ],
+   "page": "[23] AI Validation",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08925",
+   "lines": [
+    8925,
+    8925
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "info",
+   "text": "[24] Correction Loop",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08927",
+   "lines": [
+    8927,
+    8927
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "info",
+   "text": "Section: AI Listing Agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08928",
+   "lines": [
+    8928,
+    8928
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "scope",
+   "text": "Page [24] Correction Loop has Scope: MVP."
+  },
+  {
+   "id": "R08929",
+   "lines": [
+    8929,
+    8929
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/correction-loop",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08930",
+   "lines": [
+    8930,
+    8930
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "requirement",
+   "text": "The correction agent fixes specific fields based on structured errors."
+  },
+  {
+   "id": "R08930a",
+   "lines": [
+    8930,
+    8930
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "requirement",
+   "text": "Correction is targeted correction, not full regeneration."
+  },
+  {
+   "id": "R08931",
+   "lines": [
+    8931,
+    8931
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "info",
+   "text": "Keywords: correction, loop, retry, fix, field-level, targeted, ErrorReport",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08933",
+   "lines": [
+    8933,
+    8933
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "info",
+   "text": "How Correction Works",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08935",
+   "lines": [
+    8935,
+    8936
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "info",
+   "text": "mermaid fence: graph TD",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08937",
+   "lines": [
+    8937,
+    8937
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "flow",
+   "text": "Correction diagram: ErrorReport with field-level errors -> Classify: which fields failed?"
+  },
+  {
+   "id": "R08938",
+   "lines": [
+    8938,
+    8938
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "flow",
+   "text": "Correction diagram: Classify -> Build correction prompt with ONLY failed fields."
+  },
+  {
+   "id": "R08939",
+   "lines": [
+    8939,
+    8939
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "flow",
+   "text": "Correction diagram: correction prompt -> Correction Agent - targets specific fields."
+  },
+  {
+   "id": "R08940",
+   "lines": [
+    8940,
+    8940
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "flow",
+   "text": "Correction diagram: Correction Agent -> Merge corrected fields into existing listing."
+  },
+  {
+   "id": "R08941",
+   "lines": [
+    8941,
+    8941
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "flow",
+   "text": "Correction diagram: Merge -> Re-validate."
+  },
+  {
+   "id": "R08942",
+   "lines": [
+    8942,
+    8942
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "flow",
+   "text": "Correction diagram: Re-validate -> Pass? decision."
+  },
+  {
+   "id": "R08943",
+   "lines": [
+    8943,
+    8943
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "flow",
+   "text": "Correction diagram: Pass Yes -> Continue to quality check."
+  },
+  {
+   "id": "R08944",
+   "lines": [
+    8944,
+    8944
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "flow",
+   "text": "Correction diagram: Pass No -> retry check."
+  },
+  {
+   "id": "R08944a",
+   "lines": [
+    8944,
+    8944
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "constraint",
+   "text": "Correction retry check: retry_count < 3?"
+  },
+  {
+   "id": "R08945",
+   "lines": [
+    8945,
+    8945
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "flow",
+   "text": "Correction diagram: retry_count < 3 Yes -> back to Classify."
+  },
+  {
+   "id": "R08946",
+   "lines": [
+    8946,
+    8946
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "flow",
+   "text": "Correction diagram: retry_count < 3 No -> Job blocked with exact reasons."
+  },
+  {
+   "id": "R08947",
+   "lines": [
+    8947,
+    8947
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "info",
+   "text": "code fence close",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08949",
+   "lines": [
+    8949,
+    8949
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "info",
+   "text": "Targeted vs Full Regeneration",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08951",
+   "lines": [
+    8951,
+    8951
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "info",
+   "text": "Correction Rule",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08953",
+   "lines": [
+    8953,
+    8953
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "requirement",
+   "text": "The agent must NOT regenerate the entire listing if only one field failed."
+  },
+  {
+   "id": "R08953a",
+   "lines": [
+    8953,
+    8953
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "requirement",
+   "text": "If only the title is too long, the correction agent receives only the title error."
+  },
+  {
+   "id": "R08953b",
+   "lines": [
+    8953,
+    8953
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "requirement",
+   "text": "If only the title is too long, the correction agent fixes only the title."
+  },
+  {
+   "id": "R08953c",
+   "lines": [
+    8953,
+    8953
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "requirement",
+   "text": "All other approved fields remain untouched during correction."
+  },
+  {
+   "id": "R08953d",
+   "lines": [
+    8953,
+    8953
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "quality",
+   "text": "Targeted (field-only) correction is critical for efficiency."
+  },
+  {
+   "id": "R08953e",
+   "lines": [
+    8953,
+    8953
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "quality",
+   "text": "Targeted (field-only) correction is critical for cost."
+  },
+  {
+   "id": "R08953f",
+   "lines": [
+    8953,
+    8953
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "quality",
+   "text": "Targeted (field-only) correction is critical for consistency."
+  },
+  {
+   "id": "R08955",
+   "lines": [
+    8955,
+    8955
+   ],
+   "page": "[24] Correction Loop",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08957",
+   "lines": [
+    8957,
+    8957
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "info",
+   "text": "[25] Bounded Retry System",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08959",
+   "lines": [
+    8959,
+    8959
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "info",
+   "text": "Section: AI Listing Agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08960",
+   "lines": [
+    8960,
+    8960
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "scope",
+   "text": "Page [25] Bounded Retry System has Scope: MVP."
+  },
+  {
+   "id": "R08961",
+   "lines": [
+    8961,
+    8961
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/bounded-retry-system",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08962",
+   "lines": [
+    8962,
+    8962
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "constraint",
+   "text": "Maximum 3 agent correction attempts."
+  },
+  {
+   "id": "R08962a",
+   "lines": [
+    8962,
+    8962
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "flow",
+   "text": "After exhaustion, the job is blocked."
+  },
+  {
+   "id": "R08962b",
+   "lines": [
+    8962,
+    8962
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "requirement",
+   "text": "After exhaustion, exact failure reasons are surfaced to the user."
+  },
+  {
+   "id": "R08963",
+   "lines": [
+    8963,
+    8963
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "info",
+   "text": "Keywords: bounded retry, max 3, retry limit, exhaustion, blocked",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R08965",
+   "lines": [
+    8965,
+    8965
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "info",
+   "text": "Retry Policy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08967",
+   "lines": [
+    8967,
+    8971
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "info",
+   "text": "Table columns: Failure Type, Max Retries, Strategy",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R08973",
+   "lines": [
+    8973,
+    8975
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "constraint",
+   "text": "Rules engine failure (field-level): Max Retries 3."
+  },
+  {
+   "id": "R08977",
+   "lines": [
+    8977,
+    8977
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "flow",
+   "text": "Rules engine failure strategy: Agent correction -> re-validate."
+  },
+  {
+   "id": "R08979",
+   "lines": [
+    8979,
+    8981
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "constraint",
+   "text": "JSON schema failure: Max Retries 2."
+  },
+  {
+   "id": "R08981",
+   "lines": [
+    8981,
+    8981
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "flow",
+   "text": "JSON schema failure: after 2 retries, then escalate model."
+  },
+  {
+   "id": "R08983",
+   "lines": [
+    8983,
+    8983
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "flow",
+   "text": "JSON schema failure strategy: Repair -> re-prompt -> escalate model."
+  },
+  {
+   "id": "R08985",
+   "lines": [
+    8985,
+    8987
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "constraint",
+   "text": "Rate limit failure: Max Retries \"Automatic\"."
+  },
+  {
+   "id": "R08987",
+   "lines": [
+    8987,
+    8987
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "decision",
+   "text": "Rate limit retries use exponential backoff."
+  },
+  {
+   "id": "R08989",
+   "lines": [
+    8989,
+    8989
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "requirement",
+   "text": "Rate limit strategy: No agent involvement."
+  },
+  {
+   "id": "R08991",
+   "lines": [
+    8991,
+    8993
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "constraint",
+   "text": "Auth failure: Max Retries 1 auto-refresh."
+  },
+  {
+   "id": "R08993",
+   "lines": [
+    8993,
+    8993
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "flow",
+   "text": "Auth failure: after 1 auto-refresh, then user."
+  },
+  {
+   "id": "R08995",
+   "lines": [
+    8995,
+    8995
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "flow",
+   "text": "Auth failure strategy: Token refresh -> escalate to user."
+  },
+  {
+   "id": "R08997",
+   "lines": [
+    8997,
+    8997
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "info",
+   "text": "Retry Exhaustion",
+   "why_not": "heading"
+  },
+  {
+   "id": "R08999",
+   "lines": [
+    8999,
+    8999
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "flow",
+   "text": "After 3 failed correction attempts, the job status becomes `BLOCKED`."
+  },
+  {
+   "id": "R08999a",
+   "lines": [
+    8999,
+    8999
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "requirement",
+   "text": "On retry exhaustion the exact ErrorReport is surfaced to the user."
+  },
+  {
+   "id": "R08999b",
+   "lines": [
+    8999,
+    8999
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "data",
+   "text": "Surfaced ErrorReport includes all failed fields."
+  },
+  {
+   "id": "R08999c",
+   "lines": [
+    8999,
+    8999
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "data",
+   "text": "Surfaced ErrorReport includes error codes."
+  },
+  {
+   "id": "R08999d",
+   "lines": [
+    8999,
+    8999
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "data",
+   "text": "Surfaced ErrorReport includes suggestions."
+  },
+  {
+   "id": "R08999e",
+   "lines": [
+    8999,
+    8999
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "flow",
+   "text": "After BLOCKED, the user can manually edit and resubmit."
+  },
+  {
+   "id": "R08999f",
+   "lines": [
+    8999,
+    8999
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "flow",
+   "text": "After BLOCKED, the user can provide additional instructions for regeneration."
+  },
+  {
+   "id": "R09001",
+   "lines": [
+    9001,
+    9001
+   ],
+   "page": "[25] Bounded Retry System",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09003",
+   "lines": [
+    9003,
+    9003
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "[26] Content Agent",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09005",
+   "lines": [
+    9005,
+    9005
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "Section: AI Agents",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09006",
+   "lines": [
+    9006,
+    9006
+   ],
+   "page": "[26] Content Agent",
+   "kind": "scope",
+   "text": "Page [26] Content Agent has Scope: MVP."
+  },
+  {
+   "id": "R09007",
+   "lines": [
+    9007,
+    9007
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/content-agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09008",
+   "lines": [
+    9008,
+    9008
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "The Content Agent generates marketplace-optimized titles."
+  },
+  {
+   "id": "R09008a",
+   "lines": [
+    9008,
+    9008
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "The Content Agent generates marketplace-optimized bullet points."
+  },
+  {
+   "id": "R09008b",
+   "lines": [
+    9008,
+    9008
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "The Content Agent generates marketplace-optimized descriptions."
+  },
+  {
+   "id": "R09008c",
+   "lines": [
+    9008,
+    9008
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "The Content Agent maintains brand voice while generating."
+  },
+  {
+   "id": "R09008d",
+   "lines": [
+    9008,
+    9008
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "The Content Agent prevents hallucinations."
+  },
+  {
+   "id": "R09009",
+   "lines": [
+    9009,
+    9009
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "Keywords: content agent, title, bullets, description, brand voice, hallucination, generation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R09011",
+   "lines": [
+    9011,
+    9011
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "Purpose",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09013",
+   "lines": [
+    9013,
+    9013
+   ],
+   "page": "[26] Content Agent",
+   "kind": "constraint",
+   "text": "The Content Agent is the highest-token-spend agent."
+  },
+  {
+   "id": "R09013a",
+   "lines": [
+    9013,
+    9013
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "The Content Agent generates the primary text content for marketplace listings: title."
+  },
+  {
+   "id": "R09013b",
+   "lines": [
+    9013,
+    9013
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "The Content Agent generates the primary text content for marketplace listings: bullet points."
+  },
+  {
+   "id": "R09013c",
+   "lines": [
+    9013,
+    9013
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "The Content Agent generates the primary text content for marketplace listings: description."
+  },
+  {
+   "id": "R09013d",
+   "lines": [
+    9013,
+    9013
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "The Content Agent must balance marketplace SEO optimization with brand voice adherence."
+  },
+  {
+   "id": "R09013e",
+   "lines": [
+    9013,
+    9013
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "The Content Agent never fabricates factual product claims."
+  },
+  {
+   "id": "R09015",
+   "lines": [
+    9015,
+    9017
+   ],
+   "page": "[26] Content Agent",
+   "kind": "decision",
+   "text": "Content Agent Default Model: GPT-4o mini."
+  },
+  {
+   "id": "R09019",
+   "lines": [
+    9019,
+    9019
+   ],
+   "page": "[26] Content Agent",
+   "kind": "decision",
+   "text": "Content Agent default model (GPT-4o mini) rationale: Strong structured output."
+  },
+  {
+   "id": "R09019a",
+   "lines": [
+    9019,
+    9019
+   ],
+   "page": "[26] Content Agent",
+   "kind": "decision",
+   "text": "Content Agent default model (GPT-4o mini) rationale: JSON mode."
+  },
+  {
+   "id": "R09021",
+   "lines": [
+    9021,
+    9023
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "Content Agent Token Spend: Highest of all agents.",
+   "why_not": "restatement",
+   "dup_of": "R09013"
+  },
+  {
+   "id": "R09025",
+   "lines": [
+    9025,
+    9025
+   ],
+   "page": "[26] Content Agent",
+   "kind": "constraint",
+   "text": "Content Agent token spend: ~2000-4000 tokens per generation."
+  },
+  {
+   "id": "R09027",
+   "lines": [
+    9027,
+    9029
+   ],
+   "page": "[26] Content Agent",
+   "kind": "scope",
+   "text": "Content Agent Scope: MVP."
+  },
+  {
+   "id": "R09031",
+   "lines": [
+    9031,
+    9031
+   ],
+   "page": "[26] Content Agent",
+   "kind": "scope",
+   "text": "Content Agent is a core agent in Phase 1."
+  },
+  {
+   "id": "R09033",
+   "lines": [
+    9033,
+    9033
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "Inputs & Outputs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09035",
+   "lines": [
+    9035,
+    9039
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "Table columns: Input, Source, Purpose",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09041",
+   "lines": [
+    9041,
+    9043
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Content Agent input Product data, source: Product table."
+  },
+  {
+   "id": "R09045",
+   "lines": [
+    9045,
+    9045
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Product data input purpose: SKU."
+  },
+  {
+   "id": "R09045a",
+   "lines": [
+    9045,
+    9045
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Product data input purpose: raw title."
+  },
+  {
+   "id": "R09045b",
+   "lines": [
+    9045,
+    9045
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Product data input purpose: images."
+  },
+  {
+   "id": "R09045c",
+   "lines": [
+    9045,
+    9045
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Product data input purpose: attributes."
+  },
+  {
+   "id": "R09045d",
+   "lines": [
+    9045,
+    9045
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "Product data input is the source of truth for factual claims."
+  },
+  {
+   "id": "R09047",
+   "lines": [
+    9047,
+    9049
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Content Agent input Brand voice chunks, source: pgvector retrieval."
+  },
+  {
+   "id": "R09051",
+   "lines": [
+    9051,
+    9051
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Brand voice chunks purpose: Tone."
+  },
+  {
+   "id": "R09051a",
+   "lines": [
+    9051,
+    9051
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Brand voice chunks purpose: style."
+  },
+  {
+   "id": "R09051b",
+   "lines": [
+    9051,
+    9051
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Brand voice chunks purpose: glossary."
+  },
+  {
+   "id": "R09051c",
+   "lines": [
+    9051,
+    9051
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Brand voice chunks purpose: compliance rules."
+  },
+  {
+   "id": "R09053",
+   "lines": [
+    9053,
+    9055
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Content Agent input Marketplace rules, source: Rules table."
+  },
+  {
+   "id": "R09057",
+   "lines": [
+    9057,
+    9057
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Marketplace rules purpose: Character limits."
+  },
+  {
+   "id": "R09057a",
+   "lines": [
+    9057,
+    9057
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Marketplace rules purpose: banned terms."
+  },
+  {
+   "id": "R09057b",
+   "lines": [
+    9057,
+    9057
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Marketplace rules purpose: required attributes in title."
+  },
+  {
+   "id": "R09059",
+   "lines": [
+    9059,
+    9061
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Content Agent input Category template, source: Category mapping."
+  },
+  {
+   "id": "R09063",
+   "lines": [
+    9063,
+    9063
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Category template purpose: Category-specific content expectations."
+  },
+  {
+   "id": "R09065",
+   "lines": [
+    9065,
+    9067
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Content Agent input Approved examples, source: ListingVersion table."
+  },
+  {
+   "id": "R09069",
+   "lines": [
+    9069,
+    9069
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Approved examples purpose: Previously approved listings for reference."
+  },
+  {
+   "id": "R09071",
+   "lines": [
+    9071,
+    9071
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Content Agent output: Title."
+  },
+  {
+   "id": "R09071a",
+   "lines": [
+    9071,
+    9071
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Content Agent output: bullet points (array)."
+  },
+  {
+   "id": "R09071b",
+   "lines": [
+    9071,
+    9071
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Content Agent output: description."
+  },
+  {
+   "id": "R09071c",
+   "lines": [
+    9071,
+    9071
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "Content Agent outputs are structured JSON matching the output schema."
+  },
+  {
+   "id": "R09073",
+   "lines": [
+    9073,
+    9073
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "Prompt Construction",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09075",
+   "lines": [
+    9075,
+    9075
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "Content Agent System Prompt",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09077",
+   "lines": [
+    9077,
+    9077
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "text code fence open",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09078",
+   "lines": [
+    9078,
+    9078
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "Content Agent system prompt: \"You are a marketplace listing specialist for {marketplace}.\""
+  },
+  {
+   "id": "R09079",
+   "lines": [
+    9079,
+    9079
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "System prompt: Generate a product title."
+  },
+  {
+   "id": "R09079a",
+   "lines": [
+    9079,
+    9079
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "System prompt: Generate {num_bullets} bullet points."
+  },
+  {
+   "id": "R09079b",
+   "lines": [
+    9079,
+    9079
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "System prompt: Generate a description."
+  },
+  {
+   "id": "R09081",
+   "lines": [
+    9081,
+    9081
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "System prompt section: RULES (NON-NEGOTIABLE)."
+  },
+  {
+   "id": "R09082",
+   "lines": [
+    9082,
+    9082
+   ],
+   "page": "[26] Content Agent",
+   "kind": "constraint",
+   "text": "System prompt rule: Title: ≤ {max_title_length} characters."
+  },
+  {
+   "id": "R09083",
+   "lines": [
+    9083,
+    9083
+   ],
+   "page": "[26] Content Agent",
+   "kind": "constraint",
+   "text": "System prompt rule: Each bullet: ≤ {max_bullet_length} characters."
+  },
+  {
+   "id": "R09084",
+   "lines": [
+    9084,
+    9084
+   ],
+   "page": "[26] Content Agent",
+   "kind": "constraint",
+   "text": "System prompt rule: Description: ≤ {max_desc_length} characters."
+  },
+  {
+   "id": "R09085",
+   "lines": [
+    9085,
+    9085
+   ],
+   "page": "[26] Content Agent",
+   "kind": "constraint",
+   "text": "System prompt rule: BANNED TERMS: {banned_terms_list}."
+  },
+  {
+   "id": "R09086",
+   "lines": [
+    9086,
+    9086
+   ],
+   "page": "[26] Content Agent",
+   "kind": "constraint",
+   "text": "System prompt rule: Title MUST include Brand name."
+  },
+  {
+   "id": "R09086a",
+   "lines": [
+    9086,
+    9086
+   ],
+   "page": "[26] Content Agent",
+   "kind": "constraint",
+   "text": "System prompt rule: Title MUST include product type."
+  },
+  {
+   "id": "R09086b",
+   "lines": [
+    9086,
+    9086
+   ],
+   "page": "[26] Content Agent",
+   "kind": "constraint",
+   "text": "System prompt rule: Title MUST include key differentiator."
+  },
+  {
+   "id": "R09088",
+   "lines": [
+    9088,
+    9089
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "System prompt section BRAND VOICE: {brand_voice_chunks}."
+  },
+  {
+   "id": "R09091",
+   "lines": [
+    9091,
+    9091
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "System prompt section PRODUCT DATA (factual source of truth)."
+  },
+  {
+   "id": "R09092",
+   "lines": [
+    9092,
+    9092
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "System prompt product field SKU: {sku}."
+  },
+  {
+   "id": "R09093",
+   "lines": [
+    9093,
+    9093
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "System prompt product field Raw Title: {raw_title}."
+  },
+  {
+   "id": "R09094",
+   "lines": [
+    9094,
+    9094
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "System prompt product field Category: {category}."
+  },
+  {
+   "id": "R09095",
+   "lines": [
+    9095,
+    9095
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "System prompt product field Material: {material}."
+  },
+  {
+   "id": "R09096",
+   "lines": [
+    9096,
+    9096
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "System prompt product field Color: {color}."
+  },
+  {
+   "id": "R09097",
+   "lines": [
+    9097,
+    9097
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "System prompt product field Attributes: {attributes_json}."
+  },
+  {
+   "id": "R09099",
+   "lines": [
+    9099,
+    9100
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "Content Agent system prompt ([26]): DO NOT invent materials not present in the product data above."
+  },
+  {
+   "id": "R09099a",
+   "lines": [
+    9099,
+    9100
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "Content Agent system prompt ([26]): DO NOT invent certifications not present in the product data above."
+  },
+  {
+   "id": "R09099b",
+   "lines": [
+    9099,
+    9100
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "Content Agent system prompt ([26]): DO NOT invent measurements not present in the product data above."
+  },
+  {
+   "id": "R09099c",
+   "lines": [
+    9099,
+    9100
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "Content Agent system prompt ([26]): DO NOT invent medical claims not present in the product data above."
+  },
+  {
+   "id": "R09099d",
+   "lines": [
+    9099,
+    9100
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "Content Agent system prompt ([26]): DO NOT invent specifications not present in the product data above."
+  },
+  {
+   "id": "R09102",
+   "lines": [
+    9102,
+    9102
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "System prompt: Respond with JSON: { \"title\": \"...\", \"bullets\": [...], \"description\": \"...\" }."
+  },
+  {
+   "id": "R09103",
+   "lines": [
+    9103,
+    9103
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "code fence close",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09105",
+   "lines": [
+    9105,
+    9105
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "Hallucination Control",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09107",
+   "lines": [
+    9107,
+    9107
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "Factual Accuracy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09109",
+   "lines": [
+    9109,
+    9109
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "The Content Agent separates factual claims from creative language."
+  },
+  {
+   "id": "R09109a",
+   "lines": [
+    9109,
+    9109
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "It MUST NOT invent: (introduces the list below)",
+   "why_not": "context-prose"
+  },
+  {
+   "id": "R09111",
+   "lines": [
+    9111,
+    9111
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "Content Agent MUST NOT invent materials or fabric compositions."
+  },
+  {
+   "id": "R09112",
+   "lines": [
+    9112,
+    9112
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "Content Agent MUST NOT invent certifications (organic, BIS, ISO)."
+  },
+  {
+   "id": "R09113",
+   "lines": [
+    9113,
+    9113
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "Content Agent MUST NOT invent measurements or dimensions."
+  },
+  {
+   "id": "R09114",
+   "lines": [
+    9114,
+    9114
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "Content Agent MUST NOT invent medical or health claims."
+  },
+  {
+   "id": "R09115",
+   "lines": [
+    9115,
+    9115
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "Content Agent MUST NOT invent performance claims or guarantees."
+  },
+  {
+   "id": "R09116",
+   "lines": [
+    9116,
+    9116
+   ],
+   "page": "[26] Content Agent",
+   "kind": "requirement",
+   "text": "Content Agent MUST NOT invent product specifications not in the source data."
+  },
+  {
+   "id": "R09118",
+   "lines": [
+    9118,
+    9118
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "The Rules Engine cross-references generated claims against the product record.",
+   "why_not": "restatement",
+   "dup_of": "R08843f"
+  },
+  {
+   "id": "R09120",
+   "lines": [
+    9120,
+    9120
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "Example Request/Response",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09122",
+   "lines": [
+    9122,
+    9122
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "Content Agent Output (example label)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09124",
+   "lines": [
+    9124,
+    9125
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "json fence and opening brace",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09126",
+   "lines": [
+    9126,
+    9126
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Example output title: \"Fabrica Organic Cotton Kurta Set for Women | Navy Blue | Handloom Weave | Sizes XS-XXL\"."
+  },
+  {
+   "id": "R09127",
+   "lines": [
+    9127,
+    9127
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Example output bullets array (5 bullets)."
+  },
+  {
+   "id": "R09128",
+   "lines": [
+    9128,
+    9128
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Example bullet: \"Crafted from 100% organic cotton certified by GOTS for breathable all-day comfort\"."
+  },
+  {
+   "id": "R09129",
+   "lines": [
+    9129,
+    9129
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Example bullet: \"Traditional handloom weave with contemporary silhouette — pairs effortlessly for festive or everyday wear\"."
+  },
+  {
+   "id": "R09130",
+   "lines": [
+    9130,
+    9130
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Example bullet: \"Set includes full-length kurta and matching palazzo pants with elasticated waist\"."
+  },
+  {
+   "id": "R09131",
+   "lines": [
+    9131,
+    9131
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Example bullet: \"Machine washable at 30°C — retains colour vibrancy wash after wash\"."
+  },
+  {
+   "id": "R09132",
+   "lines": [
+    9132,
+    9132
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Example bullet: \"Available in sizes XS through XXL with detailed size guide for perfect fit\"."
+  },
+  {
+   "id": "R09133",
+   "lines": [
+    9133,
+    9133
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "closing bracket of bullets array",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09134",
+   "lines": [
+    9134,
+    9134
+   ],
+   "page": "[26] Content Agent",
+   "kind": "data",
+   "text": "Example output description: \"Elevate your ethnic wardrobe with the Fabrica Organic Cotton Kurta Set...\"."
+  },
+  {
+   "id": "R09135",
+   "lines": [
+    9135,
+    9136
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "closing brace and code fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09138",
+   "lines": [
+    9138,
+    9138
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "Engineering Implementation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09140",
+   "lines": [
+    9140,
+    9140
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "Content Agent Pseudocode",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09142",
+   "lines": [
+    9142,
+    9142
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "python code fence open",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09143",
+   "lines": [
+    9143,
+    9143
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "Pseudocode class ContentAgent."
+  },
+  {
+   "id": "R09144",
+   "lines": [
+    9144,
+    9146
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "ContentAgent.__init__(self, model_router, prompt_builder) stores model_router and prompt_builder."
+  },
+  {
+   "id": "R09148",
+   "lines": [
+    9148,
+    9148
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "async def generate(self, context: AgentContext) -> ContentOutput."
+  },
+  {
+   "id": "R09149",
+   "lines": [
+    9149,
+    9150
+   ],
+   "page": "[26] Content Agent",
+   "kind": "flow",
+   "text": "generate step 1: Build prompt with brand voice + rules via prompt_builder.build_content_prompt(context)."
+  },
+  {
+   "id": "R09152",
+   "lines": [
+    9152,
+    9153
+   ],
+   "page": "[26] Content Agent",
+   "kind": "flow",
+   "text": "generate step 2: Select model via router: model_router.select(...)."
+  },
+  {
+   "id": "R09154",
+   "lines": [
+    9154,
+    9154
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "model_router.select argument task=\"content_generation\"."
+  },
+  {
+   "id": "R09155",
+   "lines": [
+    9155,
+    9155
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "model_router.select argument marketplace=context.marketplace."
+  },
+  {
+   "id": "R09156",
+   "lines": [
+    9156,
+    9157
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "model_router.select argument complexity=context.complexity_score."
+  },
+  {
+   "id": "R09159",
+   "lines": [
+    9159,
+    9161
+   ],
+   "page": "[26] Content Agent",
+   "kind": "flow",
+   "text": "generate step 3: Call model with JSON mode: await model.generate(messages=prompt.messages, ...)."
+  },
+  {
+   "id": "R09162",
+   "lines": [
+    9162,
+    9162
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "model.generate uses response_format=ContentOutputSchema."
+  },
+  {
+   "id": "R09163",
+   "lines": [
+    9163,
+    9164
+   ],
+   "page": "[26] Content Agent",
+   "kind": "constraint",
+   "text": "Content Agent model call uses temperature=0.7."
+  },
+  {
+   "id": "R09166",
+   "lines": [
+    9166,
+    9167
+   ],
+   "page": "[26] Content Agent",
+   "kind": "flow",
+   "text": "generate step 4: Validate structured output via output = ContentOutputSchema.model_validate_json(response)."
+  },
+  {
+   "id": "R09169",
+   "lines": [
+    9169,
+    9169
+   ],
+   "page": "[26] Content Agent",
+   "kind": "interface",
+   "text": "generate returns the validated output (return output), typed ContentOutput."
+  },
+  {
+   "id": "R09170",
+   "lines": [
+    9170,
+    9170
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "code fence close",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R09172",
+   "lines": [
+    9172,
+    9172
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "Non-Technical Explanation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R09174",
+   "lines": [
+    9174,
+    9174
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "Analogy restating itemised claims: Content Agent is like a skilled copywriter who knows the brand voice, understands marketplace requirements, never makes up product facts.",
+   "why_not": "restatement",
+   "dup_of": "R09013e"
+  },
+  {
+   "id": "R09176",
+   "lines": [
+    9176,
+    9176
+   ],
+   "page": "[26] Content Agent",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  }
+ ]
+}

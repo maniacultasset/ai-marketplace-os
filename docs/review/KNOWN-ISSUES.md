@@ -1,0 +1,66 @@
+# KNOWN ISSUES — real defects to fix at the step where they bite
+
+On 2026-09-26 a multi-agent review checked every doc against the others and against `scaffold/`.
+Each item below was confirmed by at least 2 of 3 independent reviewers. Simple "draft value → Canon
+value" swaps are listed in `SUPERSEDED.md` instead. This file holds defects that need a fix, an ADR
+or a client answer. When you fix an item, delete its row and cite the ADR or commit.
+
+## A. Needs a client or product answer (ask the user; blocks the step shown)
+
+| Issue | Why it matters | Step |
+|---|---|---|
+| The upstream spec site has a **Founder BRD** (11 pages) that says "default to autonomous submission after validation". It also defines a **14-status status model** and an apparel niche with variants, Legal Metrology and a 19-step flow. No repo doc mentions it. | This directly contradicts invariant 3 (human approval is mandatory) and the Canon's 9 listing statuses. The client's vision and the Canon may not match. | before S2 |
+| Kickoff pack section B1 has copy-paste blocks that provision the **forbidden KMS ring (`aimos`/`marketplace-tokens`)** and the **singular `/v1/marketplace/...` redirect URIs**. | If the client or DevOps already ran these or filed them with Amazon or Flipkart, KMS unseal fails and the redirect URIs need a 2–4 week re-review. | now |
+| No status is recorded for any Day-2–4 external item: SP-API and Flipkart filing, domain/`<APEX>`, cloud org and billing, OpenAI key, categories, UAT users. BLOCKERS.md has no status column. | The launch-critical lead times are running blind. | now |
+| `rejected` is used by D13 (reviewer regenerate) and by "Reject with feedback", but it is not one of the 9 listing statuses. There is also no status for a partially published listing. | A reviewer's rejection has no persisted state. | S2, S7 |
+| Emails are unique only per tenant `(tenant_id, lower(email))`, but login is by email and password with no tenant input. | The same email in two tenants makes login ambiguous. | S6, S10 |
+| The ops role (who clears BLOCKED, failed-publish and DLQ items), the analytics screen contents and the confidence-score formula are all undefined. | These are product gaps with no owner. | later |
+
+## B. Canon/Addendum design gaps (need an ADR plus a Canon edit)
+
+| Gap | Proposed direction | Step |
+|---|---|---|
+| The `rules` unique index and RuleSet shadowing key omit the rule type/attribute. | Add `rule_def->>'type'` and the attribute to the key. The seed's second required attribute on `attributes` collides. | S2, S7 |
+| Rule version selection and how `RuleSet.rules_version` is derived are unspecified. | Rule: the highest enabled version wins per key. | S7, S14 |
+| `banned_terms` `match="word"`: `\b#1\b` never matches, and `*` skips the keywords fields. | Define the tokenizer, and decide whether `*` includes keywords. | S14 |
+| The maker-checker 403 cannot be built as an `ErrorReport`: there is no `MAKER_CHECKER_VIOLATION` code and the field-path validator rejects non-listing paths. | Add the codes and a `request`/`listing` path for API-level errors. | S2, S10 |
+| `GenerationResult.terminal_state="generated"` has no mapping to a `listings.status` value. | Add an explicit mapping table. | S2, S13 |
+| `ImportReport` and `JWTClaims` exist only as prose, and `export.py` doesn't emit them. | Define the models and add them to MODELS. | S2 |
+| The S2 module list omits `rules.py`, `pipeline.py`, `export.py` and the 4 seam DTOs. The golden fixtures don't cover all 8 contracts. | Treat the Addendum §21 list as the S2 checklist. | S2 |
+| RLS 0005 conflicts with `platform_scope` (no `app.tenant_id` GUC is set). CI connects as a superuser, which bypasses RLS. | Give platform scope a BYPASSRLS role, or a policy branch. Run the isolation test as `app_rw`. | S9, 0005 |
+| Rollups and cost views need `platform_scope`, but the import allowlist excludes worker code. | Extend the allowlist to a named rollup module. | S9, S14 |
+| `app_ro` is promised, but bootstrap never creates it, and the roles get no passwords while password auth is mandated. | Extend `0000_bootstrap.sql` (secrets set outside git). | S5 |
+| `audit_log.tenant_id` is NOT NULL, but platform rule changes have no tenant. | Use nullable + CHECK for `actor_type` in (system, staff), or a separate platform audit. | S7, S10 |
+| `audit_log` has `ON DELETE CASCADE` from `tenants`, while 0004 makes it append-only with a DELETE-blocking trigger, and partitioning was rejected. As designed, a tenant can never be deleted, so there is no DPDP erasure path. | Write an ADR before 0004: soft offboarding (`tenants.status`) plus a migrator-owned `purge_tenant()` that the trigger recognises, with a stated audit-retention period. | 0002, 0004 |
+| The ruff selection omits `TID`, so the banned-api rule (TID251) never fires. T20 does not police `os.environ`. No rule bans string literals in `error_code=`. | Add TID. Write a custom check (grep or AST) for the other two. | S1 |
+| CODEOWNERS cannot enforce the "Tech Lead + AI lead + FE lead" approval rule, and the approval counts disagree between rules. | Use a ruleset with required approvals plus a CODEOWNERS team per path. | S1 |
+| Locally, the API and the worker health server both bind `PORT=8000`. | Give the worker health server its own `WORKER_HEALTH_PORT`. | S1, S13 |
+| Several "Done when" lines depend on artifacts from later steps (S1, S7, S8, S11), which creates ordering cycles. | Move those tests to the later step. | planning |
+| Numbering drift: the Canon cites "invariant 12" (two schemes, 10 vs 14 items); ADR numbers collide in the pack; Day 11 is a Thursday while the MAJOR windows fall on Sundays. | Use AGENTS.md §3 numbering. Keep an ADR ledger in `docs/adr/README.md`. | ongoing |
+
+## C. Scaffold bugs (fix when the file moves into place in S1, then test)
+
+| File | Bug | Fix |
+|---|---|---|
+| `app/db/session.py` | `SET LOCAL app.tenant_id = :tid` cannot be parameterized in Postgres, so **every tenant session fails**. | `SELECT set_config('app.tenant_id', :tid, true)` |
+| `app/core/config.py` | `Literal[1536]` rejects the env string `"1536"`, so the app won't boot. `extra="forbid"` rejects the register vars `OTEL_TRACES_SAMPLER` and `OTEL_TRACES_SAMPLER_ARG`. The module-level `settings` singleton defeats the `cache_clear()` the kill-switch test relies on. | Use an int field pinned by a validator; declare both OTEL fields; use `get_settings()` at call sites. |
+| `app/core/config.py` + 4 others | All five scaffold .py files fail the canonical ruff + black run (semicolon-joined lines and more). | Reformat when moving the files. |
+| `app/services/imports/row_model.py` | Before-validators run in reverse order, so blank prices become errors. `NaN`/`Infinity` prices crash with a non-ValueError. A header that passes after lowercasing still fails the exact-key model. A blank `status` fails instead of defaulting to `draft`. Short rows become `None`. A JSON attributes cell skips the key regex and the 50-pair cap. | Normalize the row once before validation, and reorder or merge the validators. Add a test per CSV contract row. |
+| `app/workers/main.py` | Shutdown cancels in-flight jobs and never calls `worker.close()` / `on_shutdown`. | Drain gracefully, then close. |
+| `app/workers/main.py` | Uses FastAPI + uvicorn where the Canon says an aiohttp health server. | Accept with an ADR, or switch. |
+| `app/db/session.py` | Commits in dependency teardown with `autoflush=False`, so constraint errors surface outside the handler. | Flush inside the service; map IntegrityError explicitly. |
+| `app/db/session.py`, `workers/main.py` | Import modules that exist nowhere (`app.core.security`, `app.db.guard`, `app.workers.settings`, `app.models`). | Create them in S9/S10/S13. Note `get_current_user` vs the Canon's `get_current_principal`. |
+| `.dockerignore` | `.env`, `*.pem`, `*.key`, `secrets/` match only at the repo root, so nested secrets get into the image. | Prefix them with `**/`. |
+| `scripts/seed.py` | Creates no `category_templates`, so every CSV row fails `CATEGORY_NOT_MAPPED`. `SEED_PASSWORD` is claimed but never read. `--reset` misses the later tables. `assert` fails ruff S101. No fixture export. | Rewrite as `app/cli.py` per A§5 with these fixes. |
+| `packages/schemas` (CONTRACTS reference code) | `ImageReport.model_dump()` emits `pass_`, not `pass` (needs `serialize_by_alias`). `value_submitted max_length=600` raises instead of truncating. `resolve()` rejects attribute paths with digits. The RuleDef discriminator is optional in JSON Schema. The rule message uses an undocumented `{allowed_values}` placeholder. | Fix in S2 with golden-fixture tests. |
+| `packages/pipeline/.../state.py` (AI team) | `operator.add` channels keep stale errors across correction attempts. `brand_chunks` is typed `list[str]`, not `BrandChunkDTO`. | Tell the AI team; it is their file. |
+| `apps/web/eslint.config.mjs` (FE team) | Type-aware rules run on `.js` files without a project, so `eslint .` crashes. | Tell the FE team. |
+
+## D. Hygiene
+
+- An absolute local machine path (`…/Clients-popcom/…/scratchpad/…`) appears in `CHECKLISTS.md` and
+  the kickoff pack. Scrub it before sharing either file outside the team.
+- `BLOCKERS.md` IAM matrix gives the AI group project-level `secretAccessor`, which covers the
+  marketplace secrets. That contradicts invariant 6. Grant it per secret.
+- `CANON.md` was never merged with the Addendum and never mentions it. `AGENTS.md` §2 sets the
+  precedence until someone merges them.

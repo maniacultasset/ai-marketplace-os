@@ -1,0 +1,2392 @@
+{
+ "chunk": "c22",
+ "items": [
+  {
+   "id": "R13083",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2372; docs/architecture/BACKEND-ARCHITECTURE.md:2404; ADR-0009",
+   "note": "Same image and deploy flow as prod; staging auto-deploys from main"
+  },
+  {
+   "id": "R13083a",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2404-2406; docs/adr/0001-hosting-gcp.md:31-33",
+   "note": "API min 0/max 1, db-f1-micro, worker pool off out of hours"
+  },
+  {
+   "id": "R13083b",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2413; Q16; T78",
+   "note": "AMAZON_USE_SANDBOX only; no Flipkart test account or switch"
+  },
+  {
+   "id": "R13083c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2665; ADR-0010",
+   "note": "Gate 3: migration, smoke and E2E on every staging deploy"
+  },
+  {
+   "id": "R13083d",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2413; Q16; T78",
+   "note": "Marketplace API testing on staging hinges on Q16 test accounts"
+  },
+  {
+   "id": "R13083e",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2671; docs/architecture/BACKEND-ARCHITECTURE.md:2692",
+   "note": "Load target set (1k-row CSV, 20 concurrent); no gate or environment runs it"
+  },
+  {
+   "id": "R13083f",
+   "status": "covered-changed",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2695; ADR-0010; T8",
+   "note": "No UAT; BRD §21 walkthrough automated on staging instead (Q15)"
+  },
+  {
+   "id": "R13090",
+   "status": "covered-changed",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2435-2451; ADR-0001:50-56; T6",
+   "note": "v1 cost section is the GCP estimate; totals differ from the page (Q13)"
+  },
+  {
+   "id": "R13092",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2435-2445; ADR-0001:50-58",
+   "note": "Infra estimate: prod ~$170, staging ~$25-35/mo"
+  },
+  {
+   "id": "R13092a",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2445",
+   "note": "LLM tokens excluded from estimate (\"volume-dependent\"); only daily caps set"
+  },
+  {
+   "id": "R13103",
+   "status": "covered-changed",
+   "owner": "ops",
+   "ref": "ADR-0001:30-31; T6",
+   "note": "Cloud Run API service + worker pool, not EC2"
+  },
+  {
+   "id": "R13107",
+   "status": "covered-changed",
+   "owner": "ops",
+   "ref": "ADR-0001:30-31; T6",
+   "note": "API 1 vCPU/1 GiB; worker pool 1 vCPU/2 GiB; no EC2 instance types"
+  },
+  {
+   "id": "R13107a",
+   "status": "covered-changed",
+   "owner": "ops",
+   "ref": "ADR-0001:30-31; T6",
+   "note": "API 1 vCPU/1 GiB; worker pool 1 vCPU/2 GiB; no EC2 instance types"
+  },
+  {
+   "id": "R13109",
+   "status": "covered-changed",
+   "owner": "ops",
+   "ref": "ADR-0001:33; T6",
+   "note": "Cloud SQL PG17 Enterprise, not RDS"
+  },
+  {
+   "id": "R13113",
+   "status": "covered-changed",
+   "owner": "ops",
+   "ref": "docs/adr/0001-hosting-gcp.md:33; T6",
+   "note": "db-custom-1-3840 zonal, not db.t3.micro"
+  },
+  {
+   "id": "R13113a",
+   "status": "covered-changed",
+   "owner": "ops",
+   "ref": "ADR-0001:33; T6",
+   "note": "30 GB SSD autoresize, not 20 GB"
+  },
+  {
+   "id": "R13115",
+   "status": "covered-changed",
+   "owner": "ops",
+   "ref": "ADR-0004; T3",
+   "note": "No Redis/ElastiCache line; queue in Postgres"
+  },
+  {
+   "id": "R13119",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; T3",
+   "note": "procrastinate on Postgres replaces Redis queue (spike-gated)"
+  },
+  {
+   "id": "R13121",
+   "status": "covered-changed",
+   "owner": "ops",
+   "ref": "ADR-0001:35; T6",
+   "note": "GCS inside ADR-0001 total; no separate egress line"
+  },
+  {
+   "id": "R13125",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0001:35",
+   "note": "GCS images and CSVs via S3-API StorageAdapter"
+  },
+  {
+   "id": "R13125a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0001:35",
+   "note": "GCS images and CSVs via S3-API StorageAdapter"
+  },
+  {
+   "id": "R13127",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/ENV.md:91",
+   "note": "LLM_MODEL_DEFAULT gpt-4o-mini (text + vision)"
+  },
+  {
+   "id": "R13127a",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2445; docs/canon/ENV.md:97-98",
+   "note": "No monthly LLM estimate; caps $12/day overall, $2.50/day per brand"
+  },
+  {
+   "id": "R13131",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2445",
+   "note": "No generation-volume assumption behind a cost estimate"
+  },
+  {
+   "id": "R13131a",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2445",
+   "note": "Vision cost recorded in agent_runs; no estimate line"
+  },
+  {
+   "id": "R13131b",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2445",
+   "note": "Embedding cost recorded in agent_runs; no estimate line"
+  },
+  {
+   "id": "R13133",
+   "status": "covered-changed",
+   "owner": "client",
+   "ref": "docs/adr/0001-hosting-gcp.md:56; T6",
+   "note": "~₹16.5-17.5k infra alone plus LLM vs ₹8-11k total; ceiling open (Q13)"
+  },
+  {
+   "id": "R13137",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2437; ADR-0001:50",
+   "note": "Our estimate is also list-price ballpark for v1"
+  },
+  {
+   "id": "R13137a",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/adr/0001-hosting-gcp.md:50-56; docs/STATE.md:40",
+   "note": "Estimate states no team-size assumption; sized for v1 scale 5-30 brands"
+  },
+  {
+   "id": "R13137b",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2437; ADR-0001:50",
+   "note": "Our estimate is also list-price ballpark for v1"
+  },
+  {
+   "id": "R13141",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2437; ADR-0001:50",
+   "note": "Our estimate is also list-price ballpark for v1"
+  },
+  {
+   "id": "R13141a",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2437; ADR-0001:91-97",
+   "note": "Usage-dependent; revisit triggers and budget alerts"
+  },
+  {
+   "id": "R13141b",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2437; ADR-0001:91-97",
+   "note": "Usage-dependent; revisit triggers and budget alerts"
+  },
+  {
+   "id": "R13141c",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2437; ADR-0001:91-97",
+   "note": "Usage-dependent; revisit triggers and budget alerts"
+  },
+  {
+   "id": "R13141d",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2445",
+   "note": "LLM tokens volume-dependent; per-call cost in agent_runs"
+  },
+  {
+   "id": "R13141e",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "docs/adr/0001-hosting-gcp.md:56; Q13; T6",
+   "note": "No 50-brand projection; infra alone ~₹16.5-17.5k nearly fills ₹10-20k"
+  },
+  {
+   "id": "R13148",
+   "status": "covered-changed",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2450-2451; ADR-0001; T6",
+   "note": "Infra cost page covered by GCP estimate, not AWS"
+  },
+  {
+   "id": "R13150",
+   "status": "covered-changed",
+   "owner": "ops",
+   "ref": "ADR-0001; T6",
+   "note": "GCP asia-south1, not AWS"
+  },
+  {
+   "id": "R13155d",
+   "status": "covered-changed",
+   "owner": "client",
+   "ref": "docs/adr/0001-hosting-gcp.md:56; T6",
+   "note": "GCP ~$195-205/mo (~₹16.5-17.5k) replaces AWS ~₹6,700 (C7); ceiling Q13"
+  },
+  {
+   "id": "R13162",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/ENV.md:91; docs/architecture/BACKEND-ARCHITECTURE.md:2762",
+   "note": "gpt-4o-mini default; cost per call in agent_runs.cost_usd"
+  },
+  {
+   "id": "R13169",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/ENV.md:91",
+   "note": "gpt-4o-mini is the default text + vision model"
+  },
+  {
+   "id": "R13169a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt size is AI team; tokens recorded in agent_runs"
+  },
+  {
+   "id": "R13169b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt size is AI team; tokens recorded in agent_runs"
+  },
+  {
+   "id": "R13169c",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2445",
+   "note": "No per-generation cost estimate; target is R13239a"
+  },
+  {
+   "id": "R13169d",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "Backend makes vision call; no per-image cost estimate"
+  },
+  {
+   "id": "R13169e",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/ENV.md:91",
+   "note": "LLM_MODEL_DEFAULT gpt-4o-mini covers text + vision"
+  },
+  {
+   "id": "R13169f",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/ENV.md:91",
+   "note": "LLM_MODEL_DEFAULT gpt-4o-mini covers text + vision"
+  },
+  {
+   "id": "R13176",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:93; docs/architecture/BACKEND-ARCHITECTURE.md:445-447",
+   "note": "text-embedding-3-small; backend owns embedding calls"
+  },
+  {
+   "id": "R13178",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:445-447; docs/canon/CANON.md:129",
+   "note": "Backend chunks and embeds brand documents"
+  },
+  {
+   "id": "R13183",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:93; docs/architecture/DATABASE.md:1063",
+   "note": "text-embedding-3-small, vector(1536)"
+  },
+  {
+   "id": "R13183a",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2445; docs/canon/ENV.md:93",
+   "note": "Model adopted; no embedding cost estimate in plan (only per-call cost_usd)"
+  },
+  {
+   "id": "R13183b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1055",
+   "note": "content_hash UNIQUE (Proposed) avoids re-embedding; G13 approve-embed would add recurring cost"
+  },
+  {
+   "id": "R13183c",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2445; docs/canon/ENV.md:93",
+   "note": "No retrieval-query cost estimate; query embeddings costed per call only"
+  },
+  {
+   "id": "R13183d",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2445",
+   "note": "No embedding vs generation cost comparison or estimate"
+  },
+  {
+   "id": "R13183e",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2445",
+   "note": "No embedding cost estimate"
+  },
+  {
+   "id": "R13190",
+   "status": "covered-changed",
+   "owner": "ops",
+   "ref": "ADR-0001:35; T6",
+   "note": "GCS, not S3; storage inside ADR-0001 total"
+  },
+  {
+   "id": "R13192",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0001:35",
+   "note": "GCS images via S3-API StorageAdapter"
+  },
+  {
+   "id": "R13192a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0001:35; docs/architecture/DATABASE.md:1832",
+   "note": "GCS holds CSVs, brand docs, submission payloads"
+  },
+  {
+   "id": "R13197",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2448; docs/adr/0001-hosting-gcp.md:35",
+   "note": "No storage cost line; ADR-0001 per-component breakdown not specified"
+  },
+  {
+   "id": "R13197a",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "ADR-0001:50-58",
+   "note": "No GCS egress line for serving images"
+  },
+  {
+   "id": "R13197b",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/adr/0001-hosting-gcp.md:35; docs/architecture/DATABASE.md:1835; VISION G12",
+   "note": "Lifecycle only for CSVs (30d ADR vs 90d DB); no image-version archiving"
+  },
+  {
+   "id": "R13197c",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "ADR-0001:86",
+   "note": "GCS lifecycle rules planned"
+  },
+  {
+   "id": "R13204",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T101",
+   "note": "Plan assumes free; fees depend on whose developer account files"
+  },
+  {
+   "id": "R13206",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T101",
+   "note": "Plan assumes free; verify Amazon 2026 SP-API fees"
+  },
+  {
+   "id": "R13206a",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "docs/drafts/BLOCKERS.md:8; T101",
+   "note": "Access needs partner approval; plan assumes free, unverified"
+  },
+  {
+   "id": "R13211",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T101",
+   "note": "Plan assumes free; verify Amazon 2026 SP-API fees"
+  },
+  {
+   "id": "R13211a",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "docs/drafts/BLOCKERS.md:8; T101",
+   "note": "Access needs partner approval; plan assumes free, unverified"
+  },
+  {
+   "id": "R13211b",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T101",
+   "note": "Plan assumes free; verify Amazon 2026 SP-API fees"
+  },
+  {
+   "id": "R13211c",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T101",
+   "note": "Only true if SP-API has no fees"
+  },
+  {
+   "id": "R13211d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1784; docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "429 retried with backoff (ADR-0004 §6); per-account token bucket G17 Proposed"
+  },
+  {
+   "id": "R13211e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1784; ADR-0004",
+   "note": "procrastinate retry, 1 s doubling with jitter, capped 60 s"
+  },
+  {
+   "id": "R13218",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2435; Q13; T6",
+   "note": "Scaling projection absent; client year-2 ceiling open"
+  },
+  {
+   "id": "R13220a",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "ADR-0001:33; docs/architecture/DATABASE.md:1880",
+   "note": "Vertical steps db-custom-1-3840 to 2-7680 on alarm"
+  },
+  {
+   "id": "R13225a",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "ADR-0001:33; docs/architecture/DATABASE.md:1880",
+   "note": "Vertical steps db-custom-1-3840 to 2-7680 on alarm"
+  },
+  {
+   "id": "R13225b",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "docs/adr/0001-hosting-gcp.md:56; Q13; T6",
+   "note": "No 50-brand projection; infra alone ~₹16.5-17.5k nearly fills ₹10-20k"
+  },
+  {
+   "id": "R13225c",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:738; docs/architecture/BACKEND-ARCHITECTURE.md:1541",
+   "note": "No escalation purpose in get_model_credentials"
+  },
+  {
+   "id": "R13225d",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:994; docs/architecture/DATABASE.md:1055",
+   "note": "Only embedding dedupe; no generation cache, which drives LLM scaling"
+  },
+  {
+   "id": "R13225e",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:994",
+   "note": "input_digest recorded; no skip-if-unchanged generation"
+  },
+  {
+   "id": "R13232",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2763",
+   "note": "Costs roll up per listing, brand and model"
+  },
+  {
+   "id": "R13234",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2763; docs/architecture/BACKEND-ARCHITECTURE.md:2964",
+   "note": "Roll-up is per listing; per-successful-listing definition not stated"
+  },
+  {
+   "id": "R13239",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2763",
+   "note": "Roll-up is agent_runs only; no infra amortization or successful-listing denominator"
+  },
+  {
+   "id": "R13239a",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "docs/review/VISION-ALIGNMENT.md:105; T102",
+   "note": "Site gives two definitions and targets; plan has no target"
+  },
+  {
+   "id": "R13239b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2762-2763",
+   "note": "agent_runs cost aggregation per listing"
+  },
+  {
+   "id": "R13246",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:313",
+   "note": "Routing escalation, skip-if-unchanged, batch API missing"
+  },
+  {
+   "id": "R13253",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/canon/ENV.md:91-92; docs/architecture/BACKEND-ARCHITECTURE.md:738",
+   "note": "gpt-4o-mini default, gpt-4o escalation env; port lacks escalation purpose"
+  },
+  {
+   "id": "R13254",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt design is AI team"
+  },
+  {
+   "id": "R13255",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1055; docs/architecture/DATABASE.md:1063",
+   "note": "brand_documents content_hash UNIQUE; chunk content_hash"
+  },
+  {
+   "id": "R13255a",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:994",
+   "note": "No skip-if-unchanged generation keyed on input_digest"
+  },
+  {
+   "id": "R13256",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:129",
+   "note": "Embedding batching not specified; backend owns embedding calls"
+  },
+  {
+   "id": "R13256a",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:831; VISION G10",
+   "note": "batches table Proposed; no batch generate contract or LLM batch API"
+  },
+  {
+   "id": "R13257",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "ADR-0001:30-33; ADR-0001:82",
+   "note": "Smallest tiers, max-instances caps, staging scales to zero"
+  },
+  {
+   "id": "R13258",
+   "status": "covered-changed",
+   "owner": "ops",
+   "ref": "ADR-0001:58; ADR-0001:87",
+   "note": "CUDs from year 2; nothing upfront while on credits"
+  },
+  {
+   "id": "R13265",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:627; AGENTS.md:122-123",
+   "note": "Phase-1 list matches v1 scope; per-item notes below"
+  },
+  {
+   "id": "R13267",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:627",
+   "note": "Generate, validate, approve, publish journeys §3.4-§3.6"
+  },
+  {
+   "id": "R13267a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:122-123; docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "Amazon + Flipkart adapters only in v1 (T9 open)"
+  },
+  {
+   "id": "R13273",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:210; docs/architecture/BACKEND-ARCHITECTURE.md:1334",
+   "note": "S13 CSV bulk import; POST /api/v1/products/bulk"
+  },
+  {
+   "id": "R13274",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131",
+   "note": "CanonicalListing content.title/bullets/description; AI team generates"
+  },
+  {
+   "id": "R13274a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131",
+   "note": "CanonicalListing content.title/bullets/description; AI team generates"
+  },
+  {
+   "id": "R13274b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131",
+   "note": "CanonicalListing content.title/bullets/description; AI team generates"
+  },
+  {
+   "id": "R13274c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2132; T26",
+   "note": "keywords.search_terms + hidden_terms (renamed backend_keywords)"
+  },
+  {
+   "id": "R13274d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2133",
+   "note": "attributes map + attribute_sources; AI team generates"
+  },
+  {
+   "id": "R13275",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540; docs/canon/CANON.md:129",
+   "note": "validate_images: backend Pillow checks, then vision call"
+  },
+  {
+   "id": "R13276",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:227; docs/architecture/BACKEND-ARCHITECTURE.md:1367",
+   "note": "S14 Rules Engine returns frozen ErrorReport"
+  },
+  {
+   "id": "R13277",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:81; ADR-0008",
+   "note": "Human approval mandatory in v1"
+  },
+  {
+   "id": "R13277a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2038; docs/drafts/BUILD-SEQUENCE.md:159",
+   "note": "Maker-checker in API and DB trigger (S10)"
+  },
+  {
+   "id": "R13278",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:837; docs/architecture/BACKEND-ARCHITECTURE.md:1813",
+   "note": "Publish journey and per-field retry designed"
+  },
+  {
+   "id": "R13278a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:883; docs/architecture/BACKEND-ARCHITECTURE.md:1342-1343; T46",
+   "note": "202 + job; per-field ledger publish_field_results (Proposed); retry-fields"
+  },
+  {
+   "id": "R13279",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1353; T14",
+   "note": "GET /api/v1/analytics operational metrics; no S-step builds it"
+  },
+  {
+   "id": "R13286",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "Site marks Phase 2 (L13286)"
+  },
+  {
+   "id": "R13288",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:772",
+   "note": "Phase 2; listing_versions already stores every version in v1"
+  },
+  {
+   "id": "R13288a",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "Site marks Phase 2 (L13286)"
+  },
+  {
+   "id": "R13288b",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "Site marks Phase 2 (L13286)"
+  },
+  {
+   "id": "R13288c",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "Site marks Phase 2 (L13286)"
+  },
+  {
+   "id": "R13293",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:772",
+   "note": "Phase 2; listing_versions already stores every version in v1"
+  },
+  {
+   "id": "R13293a",
+   "status": "later-phase",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "Phase 2 comparison UI"
+  },
+  {
+   "id": "R13295",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "Phase 2 unified analytics (T14 default)"
+  },
+  {
+   "id": "R13297",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "Phase 2 performance monitoring (T14 default)"
+  },
+  {
+   "id": "R13298",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Phase 2; ask AI team to fill prompt_version from day 1"
+  },
+  {
+   "id": "R13298a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Phase 2; ask AI team to fill prompt_version from day 1"
+  },
+  {
+   "id": "R13299",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1355",
+   "note": "Webhooks not in v1 (Phase 2)"
+  },
+  {
+   "id": "R13306",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "AGENTS.md:123-124",
+   "note": "Site marks Phase 3 (L13306)"
+  },
+  {
+   "id": "R13308",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "AGENTS.md:123-124",
+   "note": "Site marks Phase 3 (L13306)"
+  },
+  {
+   "id": "R13308a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "AGENTS.md:123-124",
+   "note": "Site marks Phase 3 (L13306)"
+  },
+  {
+   "id": "R13308b",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:225; ADR-0008",
+   "note": "Phase 3; auto_publish CHECK false in v1; review_decisions capture track record"
+  },
+  {
+   "id": "R13313",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "AGENTS.md:123-124",
+   "note": "Site marks Phase 3 (L13306)"
+  },
+  {
+   "id": "R13315",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:225; ADR-0008",
+   "note": "Phase 3; auto_publish CHECK false in v1; review_decisions capture track record"
+  },
+  {
+   "id": "R13315a",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:225; ADR-0008",
+   "note": "Phase 3; auto_publish CHECK false in v1; review_decisions capture track record"
+  },
+  {
+   "id": "R13315b",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:225; ADR-0008",
+   "note": "Phase 3; auto_publish CHECK false in v1; review_decisions capture track record"
+  },
+  {
+   "id": "R13316",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "AGENTS.md:123-124",
+   "note": "Site marks Phase 3 (L13306)"
+  },
+  {
+   "id": "R13317",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "AGENTS.md:123-124",
+   "note": "Site marks Phase 3 (L13306)"
+  },
+  {
+   "id": "R13324",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:123",
+   "note": "Future (L13324); non-goal in v1"
+  },
+  {
+   "id": "R13326",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:123",
+   "note": "Future (L13324); non-goal in v1"
+  },
+  {
+   "id": "R13326a",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:123",
+   "note": "Future (L13324); non-goal in v1"
+  },
+  {
+   "id": "R13326b",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:123",
+   "note": "Future (L13324); non-goal in v1"
+  },
+  {
+   "id": "R13326c",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:123",
+   "note": "Future (L13324); non-goal in v1"
+  },
+  {
+   "id": "R13331",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82",
+   "note": "Future; adapter pattern and data-driven rules/templates already in v1"
+  },
+  {
+   "id": "R13331a",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82",
+   "note": "Future; adapter pattern and data-driven rules/templates already in v1"
+  },
+  {
+   "id": "R13331b",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82",
+   "note": "Future; adapter pattern and data-driven rules/templates already in v1"
+  },
+  {
+   "id": "R13331c",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82",
+   "note": "Future; adapter pattern and data-driven rules/templates already in v1"
+  },
+  {
+   "id": "R13331d",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82",
+   "note": "Future; adapter pattern and data-driven rules/templates already in v1"
+  },
+  {
+   "id": "R13331e",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82",
+   "note": "Future; adapter pattern and data-driven rules/templates already in v1"
+  },
+  {
+   "id": "R13331f",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "docs/review/TEAM-QUESTIONS.md T22",
+   "note": "Future; our design needs a CHECK ALTER + Marketplace enum MINOR"
+  },
+  {
+   "id": "R13338",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Future (L13338); one pipeline entry point today"
+  },
+  {
+   "id": "R13340",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Future (L13338); one pipeline entry point today"
+  },
+  {
+   "id": "R13340a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Future (L13338); one pipeline entry point today"
+  },
+  {
+   "id": "R13340b",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Future (L13338); one pipeline entry point today"
+  },
+  {
+   "id": "R13340c",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Future (L13338); one pipeline entry point today"
+  },
+  {
+   "id": "R13340d",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Future (L13338); one pipeline entry point today"
+  },
+  {
+   "id": "R13345",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Future (L13338); one pipeline entry point today"
+  },
+  {
+   "id": "R13345a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Future (L13338); one pipeline entry point today"
+  },
+  {
+   "id": "R13345b",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Future (L13338); one pipeline entry point today"
+  },
+  {
+   "id": "R13345c",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Future (L13338); one pipeline entry point today"
+  },
+  {
+   "id": "R13345d",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "Future; ports + job spine are the extension points"
+  },
+  {
+   "id": "R13345e",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "Future; ports + job spine are the extension points"
+  },
+  {
+   "id": "R13345f",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "Future; ports + job spine are the extension points"
+  },
+  {
+   "id": "R13352",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:225; ADR-0008",
+   "note": "Phase 3 (L13352); v1 captures approvals and edits for the track record"
+  },
+  {
+   "id": "R13354",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:81; ADR-0008; docs/architecture/DATABASE.md:225",
+   "note": "v1 mandatory approval; auto_publish reserved, CHECK false"
+  },
+  {
+   "id": "R13359",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:225; ADR-0008",
+   "note": "Phase 3 (L13352); v1 captures approvals and edits for the track record"
+  },
+  {
+   "id": "R13359a",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:225; ADR-0008",
+   "note": "Phase 3 (L13352); v1 captures approvals and edits for the track record"
+  },
+  {
+   "id": "R13359b",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:225; ADR-0008",
+   "note": "Phase 3 (L13352); v1 captures approvals and edits for the track record"
+  },
+  {
+   "id": "R13359c",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:225; ADR-0008",
+   "note": "Phase 3 (L13352); v1 captures approvals and edits for the track record"
+  },
+  {
+   "id": "R13359d",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:225; ADR-0008",
+   "note": "Phase 3 (L13352); v1 captures approvals and edits for the track record"
+  },
+  {
+   "id": "R13359e",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:225; ADR-0008",
+   "note": "Phase 3 (L13352); v1 captures approvals and edits for the track record"
+  },
+  {
+   "id": "R13359f",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:225; ADR-0008",
+   "note": "Phase 3 (L13352); v1 captures approvals and edits for the track record"
+  },
+  {
+   "id": "R13366",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "AGENTS.md:123-124",
+   "note": "Phase 3 Optimization Agent"
+  },
+  {
+   "id": "R13368",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "AGENTS.md:123-124",
+   "note": "Phase 3 Optimization Agent"
+  },
+  {
+   "id": "R13373",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "AGENTS.md:123-124",
+   "note": "Phase 3 Optimization Agent"
+  },
+  {
+   "id": "R13373a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Site marks Phase 4+ (L13373)"
+  },
+  {
+   "id": "R13373b",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Site marks Phase 4+ (L13373)"
+  },
+  {
+   "id": "R13373c",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Site marks Phase 4+ (L13373)"
+  },
+  {
+   "id": "R13373d",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Site marks Phase 4+ (L13373)"
+  },
+  {
+   "id": "R13380",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "Phase 3 (L13380); signals captured in v1 via review_decisions (G4)"
+  },
+  {
+   "id": "R13382",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "Phase 3 (L13380); signals captured in v1 via review_decisions (G4)"
+  },
+  {
+   "id": "R13382a",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "Phase 3 (L13380); signals captured in v1 via review_decisions (G4)"
+  },
+  {
+   "id": "R13382b",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "Phase 3 (L13380); signals captured in v1 via review_decisions (G4)"
+  },
+  {
+   "id": "R13382c",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "Phase 3 (L13380); signals captured in v1 via review_decisions (G4)"
+  },
+  {
+   "id": "R13387",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "Phase 3 (L13380); signals captured in v1 via review_decisions (G4)"
+  },
+  {
+   "id": "R13387a",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1064",
+   "note": "Phase 3; approve-to-embed is G13 (source_type listing_version)"
+  },
+  {
+   "id": "R13387b",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "Phase 3 (L13380); signals captured in v1 via review_decisions (G4)"
+  },
+  {
+   "id": "R13387c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:798",
+   "note": "review_decisions stores reject reason_code + feedback in v1"
+  },
+  {
+   "id": "R13387e",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:781-782",
+   "note": "Phase 3; edits recorded via origin=edit + changed_paths"
+  },
+  {
+   "id": "R13387f",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "Phase 3 (L13380); signals captured in v1 via review_decisions (G4)"
+  },
+  {
+   "id": "R13394",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2631; docs/architecture/BACKEND-ARCHITECTURE.md:2785-2791",
+   "note": "No launch-readiness checklist; OAuth, image pipeline, load items unplanned"
+  },
+  {
+   "id": "R13401",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:74; ADR-0001:38",
+   "note": "Migrations S5-S8; migration job before every deploy"
+  },
+  {
+   "id": "R13401a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:74; ADR-0001:38",
+   "note": "Migrations S5-S8; migration job before every deploy"
+  },
+  {
+   "id": "R13402",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:173",
+   "note": "S10 done-when: login, refresh reuse, claims tested"
+  },
+  {
+   "id": "R13402a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:173",
+   "note": "Reviewer-only token 403; maker-checker at API and DB"
+  },
+  {
+   "id": "R13403",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:452; VISION Q12",
+   "note": "Flow designed; no step builds or verifies it; filings pending"
+  },
+  {
+   "id": "R13404",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2690",
+   "note": "Image suite placement not specified; no image-pipeline step"
+  },
+  {
+   "id": "R13405",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:241; docs/drafts/BUILD-SEQUENCE.md:173",
+   "note": "Frozen ErrorReport JSON asserted in S10/S14 done-when"
+  },
+  {
+   "id": "R13405a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:241; docs/drafts/BUILD-SEQUENCE.md:173",
+   "note": "Frozen ErrorReport JSON asserted in S10/S14 done-when"
+  },
+  {
+   "id": "R13406",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2756",
+   "note": "Sentry backend with APP_ENV tag and release SHA"
+  },
+  {
+   "id": "R13406a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2748",
+   "note": "OpenTelemetry to Cloud Trace via OTLP"
+  },
+  {
+   "id": "R13407",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2693",
+   "note": "Day-41 security audit kept; isolation/secrets checks every PR"
+  },
+  {
+   "id": "R13408",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2671; docs/architecture/BACKEND-ARCHITECTURE.md:2694",
+   "note": "Load target 1k-row CSV + 20 concurrent; no gate or step runs it"
+  },
+  {
+   "id": "R13409",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/DATABASE.md:1822",
+   "note": "Restore drills before launch (Proposed); restore-time target open"
+  },
+  {
+   "id": "R13409a",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/DATABASE.md:1822",
+   "note": "Restore drills before launch (Proposed); restore-time target open"
+  },
+  {
+   "id": "R13410",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2766",
+   "note": "Sentry, Slack, budget and LLM-cost alerts"
+  },
+  {
+   "id": "R13417",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:1; Q25",
+   "note": "S1-S14 re-sequences steps 1-7; steps 8, 12, 14, 17-22 unsequenced"
+  },
+  {
+   "id": "R13419",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:1; AGENTS.md:164",
+   "note": "S1-S14 re-sequences steps 1-7; steps 8, 17-22 unsequenced (Q25)"
+  },
+  {
+   "id": "R13424",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:6",
+   "note": "S1 monorepo, toolchain, local env"
+  },
+  {
+   "id": "R13424a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:14; docs/architecture/BACKEND-ARCHITECTURE.md:2417",
+   "note": "docker-compose: PG17+pgvector, MinIO; no Redis (T3)"
+  },
+  {
+   "id": "R13424b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:6; docs/architecture/BACKEND-ARCHITECTURE.md:2607",
+   "note": "12 required CI checks"
+  },
+  {
+   "id": "R13425",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:74-141",
+   "note": "S5-S8 migrations 0000-0003"
+  },
+  {
+   "id": "R13425a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2141; docs/drafts/BUILD-SEQUENCE.md:116",
+   "note": "Site indexes + HNSW in 0002b"
+  },
+  {
+   "id": "R13425b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:74",
+   "note": "0000_extensions creates pgvector"
+  },
+  {
+   "id": "R13426",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:159",
+   "note": "S10 FastAPI-issued JWT"
+  },
+  {
+   "id": "R13426a",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:249; T7",
+   "note": "NextAuth only holds session; FastAPI issues JWT"
+  },
+  {
+   "id": "R13426b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:142",
+   "note": "S9 TenantScopedRepository + isolation CI gate"
+  },
+  {
+   "id": "R13427",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:452; BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "marketplace_accounts in 0002; OAuth connect flow has no S-step"
+  },
+  {
+   "id": "R13427a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:116; docs/architecture/BACKEND-ARCHITECTURE.md:2080",
+   "note": "token_enc + kms_key_version; KMS envelope (S4, S7)"
+  },
+  {
+   "id": "R13428",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:201",
+   "note": "S12 products CRUD vertical slice"
+  },
+  {
+   "id": "R13428a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:210",
+   "note": "S13 CSV bulk import"
+  },
+  {
+   "id": "R13428b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:224",
+   "note": "Row-level errors; bad rows isolated"
+  },
+  {
+   "id": "R13429",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:23",
+   "note": "S2 mkos_schemas Pydantic + JSON Schema, frozen early"
+  },
+  {
+   "id": "R13429a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:23",
+   "note": "S2 mkos_schemas Pydantic + JSON Schema, frozen early"
+  },
+  {
+   "id": "R13430",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:227",
+   "note": "S14 pure-function Rules Engine"
+  },
+  {
+   "id": "R13430a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:241",
+   "note": "ErrorReport asserted in S14 done-when"
+  },
+  {
+   "id": "R13431",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:129; BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "Backend owns chunking + embedding; no S-step builds it"
+  },
+  {
+   "id": "R13431a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:129; BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "Backend owns chunking + embedding; no S-step builds it"
+  },
+  {
+   "id": "R13431b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:116; docs/architecture/DATABASE.md:1057",
+   "note": "brand_chunks vector(1536) + HNSW in S7"
+  },
+  {
+   "id": "R13432",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "AI team graph and agents; seam frozen in S14"
+  },
+  {
+   "id": "R13432a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Output validated against mkos_schemas GenerationResult (S2)"
+  },
+  {
+   "id": "R13433",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "AI team graph and agents; seam frozen in S14"
+  },
+  {
+   "id": "R13433a",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2132; T26",
+   "note": "keywords.hidden_terms, not backend_keywords"
+  },
+  {
+   "id": "R13434",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "AI team graph and agents; seam frozen in S14"
+  },
+  {
+   "id": "R13435",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:129; docs/architecture/BACKEND-ARCHITECTURE.md:1540; BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "Backend owns Pillow checks; no S-step builds them"
+  },
+  {
+   "id": "R13435a",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540; BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "Backend vision call (services/vision.py); no S-step"
+  },
+  {
+   "id": "R13435b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:31",
+   "note": "S2 images.py ImageReport + checks[]"
+  },
+  {
+   "id": "R13436",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "AI team graph and agents; seam frozen in S14"
+  },
+  {
+   "id": "R13436a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "AI team graph and agents; seam frozen in S14"
+  },
+  {
+   "id": "R13437",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1338; Q25",
+   "note": "Validate endpoint designed (schema, rules, vision); no S-step builds it"
+  },
+  {
+   "id": "R13438",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Correction node in graph; backend gives field paths in ErrorReport"
+  },
+  {
+   "id": "R13438a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:87; docs/canon/ENV.md:96",
+   "note": "3 attempts in graph, then blocked"
+  },
+  {
+   "id": "R13439",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:159; docs/architecture/BACKEND-ARCHITECTURE.md:2038",
+   "note": "S10 approval with maker-checker, built early"
+  },
+  {
+   "id": "R13439a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:159; docs/architecture/BACKEND-ARCHITECTURE.md:2038",
+   "note": "S10 approval with maker-checker, built early"
+  },
+  {
+   "id": "R13440",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:837; BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "Designed; only FakeAdapter in S14; no S-step builds it"
+  },
+  {
+   "id": "R13440a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:529",
+   "note": "category_templates field and value maps; build unsequenced"
+  },
+  {
+   "id": "R13441",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:837; BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "Designed; only FakeAdapter in S14; no S-step builds it"
+  },
+  {
+   "id": "R13442",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:837; BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "Designed; only FakeAdapter in S14; no S-step builds it"
+  },
+  {
+   "id": "R13442a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:883; docs/architecture/BACKEND-ARCHITECTURE.md:1342-1343",
+   "note": "Async 202 + job; per-field results in publish_field_results (Proposed)"
+  },
+  {
+   "id": "R13443",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "T14; VISION Q10",
+   "note": "Performance collection Phase 2 by default"
+  },
+  {
+   "id": "R13443a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1353; T14",
+   "note": "Operational analytics endpoint; no S-step builds it"
+  },
+  {
+   "id": "R13444",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:176; docs/architecture/BACKEND-ARCHITECTURE.md:2748; docs/architecture/BACKEND-ARCHITECTURE.md:2756",
+   "note": "Moved early to S11 (IDs, columns); exporters later"
+  },
+  {
+   "id": "R13444a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:176; docs/architecture/BACKEND-ARCHITECTURE.md:2748; docs/architecture/BACKEND-ARCHITECTURE.md:2756",
+   "note": "Moved early to S11 (IDs, columns); exporters later"
+  },
+  {
+   "id": "R13444b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2762-2763",
+   "note": "agent_runs cost roll-up per listing, brand, model"
+  },
+  {
+   "id": "R13445",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2693; Q25",
+   "note": "Day-41 security audit kept; no production-hardening S-step"
+  },
+  {
+   "id": "R13445a",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2671; docs/architecture/BACKEND-ARCHITECTURE.md:2694",
+   "note": "Load target set; no gate or step places the load test"
+  },
+  {
+   "id": "R13445b",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2766",
+   "note": "Alert table in §11.4"
+  },
+  {
+   "id": "R13452",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:1; Q25",
+   "note": "Foundation order matches; brand, adapters, publish, analytics, hardening unsequenced"
+  },
+  {
+   "id": "R13463",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:77",
+   "note": "S5 depends on S1 and S4"
+  },
+  {
+   "id": "R13464",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:145; docs/drafts/BUILD-SEQUENCE.md:162",
+   "note": "S9/S10 depend on S6-S8"
+  },
+  {
+   "id": "R13465",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:452; BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "No S-step for marketplace accounts/OAuth after S10"
+  },
+  {
+   "id": "R13466",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:196; docs/drafts/BUILD-SEQUENCE.md:213",
+   "note": "S12 products and S13 import depend on S10"
+  },
+  {
+   "id": "R13467",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:26; docs/drafts/BUILD-SEQUENCE.md:3; AGENTS.md:164",
+   "note": "Canonical contract frozen first (S2) to unblock AI and FE teams"
+  },
+  {
+   "id": "R13468",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:230",
+   "note": "S14 Rules Engine depends on S2"
+  },
+  {
+   "id": "R13469",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:129; BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "No S-step for brand voice vectorization"
+  },
+  {
+   "id": "R13470",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:129; BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "No S-step for brand voice vectorization"
+  },
+  {
+   "id": "R13471",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:235",
+   "note": "S14 builds Rules Engine then the AI seam"
+  },
+  {
+   "id": "R13472",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "Validation pipeline and correction loop unsequenced past S14"
+  },
+  {
+   "id": "R13473",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "Validation pipeline and correction loop unsequenced past S14"
+  },
+  {
+   "id": "R13474",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:159; AGENTS.md:164",
+   "note": "Approval + maker-checker built early in S10"
+  },
+  {
+   "id": "R13475",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "Adapters, publish and analytics have no S-step"
+  },
+  {
+   "id": "R13476",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "Adapters, publish and analytics have no S-step"
+  },
+  {
+   "id": "R13477",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "Adapters, publish and analytics have no S-step"
+  },
+  {
+   "id": "R13478",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "Adapters, publish and analytics have no S-step"
+  },
+  {
+   "id": "R13479",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:184",
+   "note": "Observability spine moved early to S11"
+  },
+  {
+   "id": "R13480",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "No production-hardening S-step; Day-41 audit kept"
+  },
+  {
+   "id": "R13483",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:255; BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "Rules Engine can start in parallel; brand vectorization has no step"
+  },
+  {
+   "id": "R13483a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:255; BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "Rules Engine can start in parallel; brand vectorization has no step"
+  },
+  {
+   "id": "R13483b",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:230; docs/drafts/BUILD-SEQUENCE.md:255",
+   "note": "S14 formally depends on S13; brand step missing"
+  },
+  {
+   "id": "R13483c",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:230; docs/drafts/BUILD-SEQUENCE.md:255",
+   "note": "S14 formally depends on S13; brand step missing"
+  },
+  {
+   "id": "R13490",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:1; Q25",
+   "note": "S1-S14 foundation only; nothing sequenced after S14"
+  },
+  {
+   "id": "R13492",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:9",
+   "note": "Each step has Depends on"
+  },
+  {
+   "id": "R13492a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:164-165",
+   "note": "Done-when lines are acceptance tests"
+  },
+  {
+   "id": "R13497",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:1; VISION Q25",
+   "note": "14 steps cover the foundation only; site steps 8, 17-22 unplanned"
+  },
+  {
+   "id": "R13497a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:12",
+   "note": "What gets built per step"
+  },
+  {
+   "id": "R13497b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:17",
+   "note": "Unblocks per step"
+  },
+  {
+   "id": "R13497c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:20; AGENTS.md:164-165",
+   "note": "Done when = acceptance tests, test-first"
+  },
+  {
+   "id": "R13497d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:20; AGENTS.md:164-165",
+   "note": "Done when = acceptance tests, test-first"
+  },
+  {
+   "id": "R13504",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/CHECKLISTS.md:3",
+   "note": "202 items across seven foundation areas"
+  },
+  {
+   "id": "R13506",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/CHECKLISTS.md:3",
+   "note": "202 items across seven foundation areas"
+  },
+  {
+   "id": "R13511",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/CHECKLISTS.md:3",
+   "note": "202 items across seven foundation areas"
+  },
+  {
+   "id": "R13511a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/CHECKLISTS.md:179",
+   "note": "Auth, RBAC and secrets area"
+  },
+  {
+   "id": "R13511b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/CHECKLISTS.md:234; docs/drafts/BUILD-SEQUENCE.md:201",
+   "note": "API surface area; S12 products CRUD slice"
+  },
+  {
+   "id": "R13511c",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agents are the AI team"
+  },
+  {
+   "id": "R13511d",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/drafts/CHECKLISTS.md:3; BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "No adapters checklist area or step"
+  },
+  {
+   "id": "R13511e",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:12",
+   "note": "Steps list setup, core and integration work; adapters missing"
+  },
+  {
+   "id": "R13511f",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:12",
+   "note": "Steps list setup, core and integration work; adapters missing"
+  },
+  {
+   "id": "R13511g",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:189",
+   "note": "Test-first per step"
+  },
+  {
+   "id": "R13511h",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:12",
+   "note": "Steps list setup, core and integration work; adapters missing"
+  },
+  {
+   "id": "R13511i",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:164",
+   "note": "Build order S1-S14, no skipping ahead"
+  },
+  {
+   "id": "R13518",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:18; docs/drafts/BUILD-SEQUENCE.md:1",
+   "note": "Backend scope planned; adapters/errors API unsequenced"
+  },
+  {
+   "id": "R13520",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:18; docs/drafts/BUILD-SEQUENCE.md:1",
+   "note": "Backend scope planned; adapters/errors API unsequenced"
+  },
+  {
+   "id": "R13525",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:6",
+   "note": "S1 FastAPI app scaffold"
+  },
+  {
+   "id": "R13525a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:98-100",
+   "note": "FastAPI with SQLAlchemy asyncio on psycopg 3"
+  },
+  {
+   "id": "R13526",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:74-141; docs/architecture/DATABASE.md:162",
+   "note": "Models per DATABASE.md domains"
+  },
+  {
+   "id": "R13526a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:74",
+   "note": "S5 Alembic async wiring"
+  },
+  {
+   "id": "R13527",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:142; AGENTS.md:83",
+   "note": "TenantScopedRepository + guard"
+  },
+  {
+   "id": "R13528",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1196; docs/architecture/BACKEND-ARCHITECTURE.md:3001; T95",
+   "note": "Auth as per-route dependency (Proposed, S10); candidate T-row, none yet"
+  },
+  {
+   "id": "R13529",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1354; BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "GET /errors after S14; job history; adapter/publish endpoints unsequenced"
+  },
+  {
+   "id": "R13530",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; T3",
+   "note": "procrastinate on Postgres, no Redis/ARQ"
+  },
+  {
+   "id": "R13530a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; T3",
+   "note": "procrastinate on Postgres, no Redis/ARQ"
+  },
+  {
+   "id": "R13531",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:235; BUILD-SEQUENCE.md after S14; VISION Q25",
+   "note": "Only FakeAdapter in S14; Amazon/Flipkart adapters unsequenced"
+  },
+  {
+   "id": "R13532",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1367",
+   "note": "One error envelope and ErrorReport"
+  },
+  {
+   "id": "R13533",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2663; docs/architecture/BACKEND-ARCHITECTURE.md:2669",
+   "note": "Gate 1 tests; 90% branch coverage on core modules"
+  },
+  {
+   "id": "R13533a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2663; docs/architecture/BACKEND-ARCHITECTURE.md:2669",
+   "note": "Gate 1 tests; 90% branch coverage on core modules"
+  },
+  {
+   "id": "R13534",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2663; docs/architecture/BACKEND-ARCHITECTURE.md:2664",
+   "note": "Integration on real PG17; nightly Schemathesis"
+  },
+  {
+   "id": "R13541",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "FE scope; typed via @mkos/schemas"
+  },
+  {
+   "id": "R13543",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "FE scope; typed via @mkos/schemas"
+  },
+  {
+   "id": "R13543a",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "FE scope; typed via @mkos/schemas"
+  },
+  {
+   "id": "R13543b",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "FE scope; typed via @mkos/schemas"
+  },
+  {
+   "id": "R13548",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "FE scope; typed via @mkos/schemas"
+  },
+  {
+   "id": "R13548a",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "FE scope; typed via @mkos/schemas"
+  },
+  {
+   "id": "R13549",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:249; T7",
+   "note": "NextAuth holds session; FastAPI issues JWT"
+  },
+  {
+   "id": "R13550",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "FE scope; typed via @mkos/schemas"
+  },
+  {
+   "id": "R13551",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1334",
+   "note": "POST /api/v1/products/bulk"
+  },
+  {
+   "id": "R13551a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1332",
+   "note": "POST /api/v1/products"
+  },
+  {
+   "id": "R13552",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1350; docs/architecture/BACKEND-ARCHITECTURE.md:1337",
+   "note": "GET /api/v1/jobs/{job_id}; listing status alias"
+  },
+  {
+   "id": "R13553",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:744-790; docs/architecture/BACKEND-ARCHITECTURE.md:1338-1339",
+   "note": "Review queue read designed (§3.5); list path not in §5.2 table"
+  },
+  {
+   "id": "R13553a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1341",
+   "note": "POST /api/v1/listings/approve, maker-checker"
+  },
+  {
+   "id": "R13554",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1344-1345",
+   "note": "connect + callback; no S-step builds them"
+  },
+  {
+   "id": "R13555",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1353; T14",
+   "note": "Operational analytics endpoint"
+  },
+  {
+   "id": "R13556",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1348",
+   "note": "GET /api/v1/images/{id}/report"
+  },
+  {
+   "id": "R13557",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1367",
+   "note": "ErrorReport envelope; error paths"
+  },
+  {
+   "id": "R13564",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:129",
+   "note": "Chunking, embedding, Pillow checks moved to backend"
+  },
+  {
+   "id": "R13566",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "AI team scope"
+  },
+  {
+   "id": "R13566a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "AI team scope"
+  },
+  {
+   "id": "R13566b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "AI team scope"
+  },
+  {
+   "id": "R13571",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "AI team scope"
+  },
+  {
+   "id": "R13572",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "AI team scope"
+  },
+  {
+   "id": "R13573",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "AI team scope"
+  },
+  {
+   "id": "R13574",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "AI team scope"
+  },
+  {
+   "id": "R13575",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:129; docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "Backend owns Pillow checks; no S-step yet"
+  },
+  {
+   "id": "R13575a",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:129; docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "AI writes vision prompt; backend makes the call"
+  },
+  {
+   "id": "R13576",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:129; docs/architecture/BACKEND-ARCHITECTURE.md:445-447",
+   "note": "Backend owns embedding pipeline; no S-step yet"
+  },
+  {
+   "id": "R13577",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:129; docs/architecture/DATABASE.md:1068",
+   "note": "BrandChunkRepository.search owned by backend"
+  },
+  {
+   "id": "R13578",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:738; docs/architecture/BACKEND-ARCHITECTURE.md:1541",
+   "note": "get_model_credentials lacks escalation purpose; ENV has gpt-4o"
+  },
+  {
+   "id": "R13579",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:23",
+   "note": "GenerationResult Pydantic contract in mkos_schemas"
+  },
+  {
+   "id": "R13580",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:87",
+   "note": "Capped at 3, enforced in graph"
+  },
+  {
+   "id": "R13581",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1574; AGENTS.md:85",
+   "note": "Backend worker writes agent_runs from AgentRunRecords"
+  }
+ ]
+}

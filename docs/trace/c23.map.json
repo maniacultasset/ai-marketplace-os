@@ -1,0 +1,754 @@
+{
+ "chunk": "c23",
+ "items": [
+  {
+   "id": "R13588",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:330; ADR-0001; T3",
+   "note": "Page in v1 on GCP (ADR-0001), no Redis (ADR-0004)"
+  },
+  {
+   "id": "R13590",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:27",
+   "note": "GCP asia-south1 infra, reviewed OpenTofu (S4/S12)"
+  },
+  {
+   "id": "R13590a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0009-environments-and-release.md:23; docs/adr/0001-hosting-gcp.md:39",
+   "note": "Zero-traffic revision, smoke, traffic shift, auto-rollback"
+  },
+  {
+   "id": "R13590b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2697",
+   "note": "Cloud Logging, Cloud Trace, Sentry, alert table"
+  },
+  {
+   "id": "R13595",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:27; docs/architecture/BACKEND-ARCHITECTURE.md:2302; T6",
+   "note": "GCP via reviewed OpenTofu, not AWS; site build plan is GCP (VISION C7)"
+  },
+  {
+   "id": "R13596",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON-ADDENDUM.md:61; docs/adr/0009-environments-and-release.md:18; docs/architecture/BACKEND-ARCHITECTURE.md:2424",
+   "note": "docker compose: PG17+pgvector, MinIO; no Redis container (ADR-0004)"
+  },
+  {
+   "id": "R13597",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:33; ADR-0003; T6",
+   "note": "Cloud SQL PostgreSQL 17 Enterprise, not RDS (AWS pages superseded, C7)"
+  },
+  {
+   "id": "R13597a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:33; ADR-0003; T6",
+   "note": "pgvector 0.8.5 on Cloud SQL (Canon >= 0.8.2), not RDS"
+  },
+  {
+   "id": "R13598",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; T3",
+   "note": "No Redis; procrastinate queue on Postgres (spike-gated)"
+  },
+  {
+   "id": "R13598a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; T3",
+   "note": "No ElastiCache or Memorystore"
+  },
+  {
+   "id": "R13599",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:35; T6",
+   "note": "GCS buckets (images, CSVs) via S3-API StorageAdapter; MinIO locally"
+  },
+  {
+   "id": "R13599a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:35",
+   "note": "Only lifecycle rules + V4 signed URLs; bucket IAM / public-access-prevention policy unstated"
+  },
+  {
+   "id": "R13600",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:37; docs/drafts/BUILD-SEQUENCE.md:196,207; docs/architecture/BACKEND-ARCHITECTURE.md:1912",
+   "note": "TLS at ALB (prod) / Firebase Hosting (staging); managed cert in S12; cert details and apex domain pending"
+  },
+  {
+   "id": "R13601",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:38; docs/adr/0009-environments-and-release.md:17",
+   "note": "GitHub Actions + WIF + Artifact Registry; staging on merge, prod on tag"
+  },
+  {
+   "id": "R13602",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2697",
+   "note": "Logs, traces, Sentry; metric dashboards not specified"
+  },
+  {
+   "id": "R13602a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2766",
+   "note": "Sentry rules, Slack webhook, budget and LLM-cost alerts; rollout thresholds unspecified"
+  },
+  {
+   "id": "R13603",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:33; docs/architecture/DATABASE.md:1820",
+   "note": "Automated backups + PITR 7 days; weekly logical export proposed"
+  },
+  {
+   "id": "R13603a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1821-1822",
+   "note": "Proposed RPO <= 5 min, RTO <= 2 h, restore drills pre-launch then quarterly"
+  },
+  {
+   "id": "R13604",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:157; docs/adr/0001-hosting-gcp.md:36",
+   "note": "APP_ENV, one root .env.example, config.py only; Secret Manager env vars"
+  },
+  {
+   "id": "R13611",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:331",
+   "note": "Page in v1 via ADR-0010; failure injection is the gap"
+  },
+  {
+   "id": "R13613",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0010-automated-test-strategy.md:18",
+   "note": "Four gates, quality bars, toolset (ADR-0010 proposed, T8)"
+  },
+  {
+   "id": "R13613a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:189",
+   "note": "Failing tests written from each step's Done-when lines"
+  },
+  {
+   "id": "R13613b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0010-automated-test-strategy.md:27; docs/architecture/BACKEND-ARCHITECTURE.md:2617",
+   "note": "Canon ramp 70% at Day 11 +5/week; core 90% branch, 80% mutation"
+  },
+  {
+   "id": "R13618",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0010-automated-test-strategy.md:19; docs/architecture/BACKEND-ARCHITECTURE.md:2617",
+   "note": "Unit tests in PR gate under the coverage ramp"
+  },
+  {
+   "id": "R13619",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2663-2664",
+   "note": "Integration on real PG17 per PR; nightly Schemathesis over OpenAPI"
+  },
+  {
+   "id": "R13620",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:138; docs/architecture/BACKEND-ARCHITECTURE.md:2689",
+   "note": "Golden fixtures round-trip in contracts check; AI-team output suite placement not specified"
+  },
+  {
+   "id": "R13621",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:241",
+   "note": "S14 done-when: 221-char Amazon title flagged"
+  },
+  {
+   "id": "R13621a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:241",
+   "note": "S14 done-when: banned term flagged with frozen ErrorReport"
+  },
+  {
+   "id": "R13621b",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:241; docs/adr/0010-automated-test-strategy.md:27",
+   "note": "required_attribute rule exists; missing-attribute case not in S14 done-when (only title, banned term)"
+  },
+  {
+   "id": "R13622",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2690; docs/architecture/DATABASE.md:525",
+   "note": "Image suite not specified; Pillow checks are ours"
+  },
+  {
+   "id": "R13622a",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2690; docs/architecture/DATABASE.md:525",
+   "note": "White-background seed exists; only background_off contract fixture, no test"
+  },
+  {
+   "id": "R13622b",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2690; docs/architecture/DATABASE.md:525",
+   "note": "Min 1000/500 px seeded; no low-resolution test planned"
+  },
+  {
+   "id": "R13623",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1784; docs/adr/0010-automated-test-strategy.md:27",
+   "note": "5xx backoff decided (ADR-0004 §6); no adapter API-failure test named; publish-retry bar covers per-field retry only"
+  },
+  {
+   "id": "R13623a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2692",
+   "note": "429 backoff decided; rate-limit test unnamed; outbound limiter is G17"
+  },
+  {
+   "id": "R13623b",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2692",
+   "note": "Token/auth-expiry test not planned"
+  },
+  {
+   "id": "R13623c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0010-automated-test-strategy.md:27; docs/drafts/BUILD-SEQUENCE.md:256",
+   "note": "Publish retry core module; listing_result.partial_publish fixture"
+  },
+  {
+   "id": "R13624",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2618",
+   "note": "tenant-isolation required check incl. vector search"
+  },
+  {
+   "id": "R13624a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:173; docs/architecture/BACKEND-ARCHITECTURE.md:1363",
+   "note": "Wrong-role 403 test (S10); every-route-declares-role test proposed"
+  },
+  {
+   "id": "R13624b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:173; docs/architecture/BACKEND-ARCHITECTURE.md:1363",
+   "note": "S10 RBAC done-when; route-role matrix test proposed"
+  },
+  {
+   "id": "R13625",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0010-automated-test-strategy.md:23; docs/architecture/BACKEND-ARCHITECTURE.md:2665",
+   "note": "BRD §21 walkthrough intake-to-publish E2E on staging; Playwright owner unnamed"
+  },
+  {
+   "id": "R13626",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2671",
+   "note": "1,000-row CSV import load target"
+  },
+  {
+   "id": "R13626a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2671",
+   "note": "20 concurrent generations load target"
+  },
+  {
+   "id": "R13627",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2789",
+   "note": "Network-failure injection not in ADR-0010"
+  },
+  {
+   "id": "R13627a",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2789",
+   "note": "Model-timeout injection not in ADR-0010; model calls in AI graph, JOB_TIMEOUT 300 s ours"
+  },
+  {
+   "id": "R13627b",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2789",
+   "note": "DB-failure injection not planned; only worker kill -9 tests"
+  },
+  {
+   "id": "R13634",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:332",
+   "note": "Page in v1; TLS-everywhere and SQLi verification are gaps"
+  },
+  {
+   "id": "R13636",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2080",
+   "note": "KMS envelope encryption of seller tokens"
+  },
+  {
+   "id": "R13636a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1977",
+   "note": "FastAPI-issued JWT, argon2id passwords"
+  },
+  {
+   "id": "R13636b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2021",
+   "note": "Four roles via require_role dependency"
+  },
+  {
+   "id": "R13636c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2213",
+   "note": "Append-only audit_log"
+  },
+  {
+   "id": "R13641",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2005",
+   "note": "HS256 PyJWT; FastAPI issuer differs from NextAuth (T7)"
+  },
+  {
+   "id": "R13641a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:173",
+   "note": "S10 done-when: frozen claims, refresh reuse revokes chain"
+  },
+  {
+   "id": "R13642",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2021; docs/architecture/BACKEND-ARCHITECTURE.md:1363",
+   "note": "Endpoints declare roles; every-route test proposed (S10)"
+  },
+  {
+   "id": "R13643",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0010-automated-test-strategy.md:27; docs/drafts/BUILD-SEQUENCE.md:173",
+   "note": "Maker-checker core module 90%/80%; API + DB trigger"
+  },
+  {
+   "id": "R13644",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2618",
+   "note": "tenant-isolation required check"
+  },
+  {
+   "id": "R13644a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:83; docs/architecture/BACKEND-ARCHITECTURE.md:1915",
+   "note": "Four layers: repo base, query guard, RLS, composite FKs"
+  },
+  {
+   "id": "R13645",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:84",
+   "note": "KMS-encrypted at rest"
+  },
+  {
+   "id": "R13645a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1006; docs/architecture/BACKEND-ARCHITECTURE.md:2116",
+   "note": "Per-write AES-256-GCM key wrapped by KMS"
+  },
+  {
+   "id": "R13646",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:36; T6",
+   "note": "GCP Secret Manager as env vars; rotate by redeploy"
+  },
+  {
+   "id": "R13647",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2263",
+   "note": "DB and storage connection encryption stated nowhere; doc gap for ADR-0001/S4"
+  },
+  {
+   "id": "R13648",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2239; docs/architecture/DATABASE.md:285",
+   "note": "Append-only audit_log with reason column; credential-use action still open (DATABASE.md:1926, G11)"
+  },
+  {
+   "id": "R13649",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1402; docs/architecture/BACKEND-ARCHITECTURE.md:2664",
+   "note": "Pydantic contracts, request-validation handler, 10 MiB cap, nightly Schemathesis"
+  },
+  {
+   "id": "R13650",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2204",
+   "note": "Parameterised SQL only a site ask; no SQLi verification (test/lint/audit) planned"
+  },
+  {
+   "id": "R13651",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2208",
+   "note": "CORS allows only web-app origin(s) (ENV.md:15)"
+  },
+  {
+   "id": "R13658",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:333",
+   "note": "Launch is v1; prod OAuth (Q12) and incident plan (Q18) open"
+  },
+  {
+   "id": "R13660",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:333",
+   "note": "No consolidated pre-launch checklist; items spread over ADR-0009/0010"
+  },
+  {
+   "id": "R13665",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T16; VISION Q25",
+   "note": "Phase-1 set per plan scope lock (T16); steps after S14 unsequenced"
+  },
+  {
+   "id": "R13665a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0010-automated-test-strategy.md:18",
+   "note": "Every change passes the four ADR-0010 gates"
+  },
+  {
+   "id": "R13666",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2693",
+   "note": "Day-41 security audit kept"
+  },
+  {
+   "id": "R13667",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2671",
+   "note": "1,000-row + 20-concurrent load target; ADR-0004 spike bar"
+  },
+  {
+   "id": "R13668",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T77",
+   "note": "Prod filings/app approval status unknown (STATE open decision 5); verify step itself unplanned"
+  },
+  {
+   "id": "R13669",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:33",
+   "note": "Automated backups + PITR 7 days at creation"
+  },
+  {
+   "id": "R13670",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2697",
+   "note": "Logging, tracing, Sentry"
+  },
+  {
+   "id": "R13670a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2766",
+   "note": "Alert table; rollout breach thresholds unspecified"
+  },
+  {
+   "id": "R13671",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2779; Q18",
+   "note": "No incident response plan; ops owner open (VISION Q18)"
+  },
+  {
+   "id": "R13672",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0009-environments-and-release.md:30",
+   "note": "Rollback rehearsed before launch, target under 15 min"
+  },
+  {
+   "id": "R13673",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/adr/0009-environments-and-release.md:20; docs/drafts/BUILD-SEQUENCE.md:241",
+   "note": "Only per-release changelog (ADR-0009) and ONBOARDING.md (S14); no pre-launch docs/runbook step"
+  },
+  {
+   "id": "R13674",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2779",
+   "note": "No ops training or runbooks; ops owner open (VISION Q18)"
+  },
+  {
+   "id": "R13681",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:334",
+   "note": "Page in v1; 14 site invariants mapped onto our 10"
+  },
+  {
+   "id": "R13683",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:77",
+   "note": "10 invariants never traded for speed"
+  },
+  {
+   "id": "R13690",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:79",
+   "note": ""
+  },
+  {
+   "id": "R13690a",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "AGENTS.md:93; docs/architecture/BACKEND-ARCHITECTURE.md:176-179",
+   "note": "14 mapped onto 10 (4+5, 11+12 merged); #13 Phase 3; #14 principle"
+  },
+  {
+   "id": "R13691",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:80",
+   "note": ""
+  },
+  {
+   "id": "R13691a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:80; docs/drafts/BUILD-SEQUENCE.md:235",
+   "note": "ruff banned-api stops rules module importing openai"
+  },
+  {
+   "id": "R13692",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:81; ADR-0008",
+   "note": "Maker-checker too"
+  },
+  {
+   "id": "R13692a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:225",
+   "note": "auto_publish CHECK false in v1 (ADR-0008); unlock Phase 3"
+  },
+  {
+   "id": "R13693",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82",
+   "note": ""
+  },
+  {
+   "id": "R13694",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82",
+   "note": "No marketplace-specific fields; hidden_terms per T26"
+  },
+  {
+   "id": "R13695",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:83",
+   "note": ""
+  },
+  {
+   "id": "R13696",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:84",
+   "note": ""
+  },
+  {
+   "id": "R13696a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1006; docs/architecture/BACKEND-ARCHITECTURE.md:2125",
+   "note": "AES-256-GCM per write, KMS-wrapped; cipher ADR pending"
+  },
+  {
+   "id": "R13697",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:85; docs/architecture/BACKEND-ARCHITECTURE.md:2753",
+   "note": "agent_runs rows, per-node spans, daily cost alerts"
+  },
+  {
+   "id": "R13697a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:85",
+   "note": "Backend worker sole writer of agent_runs"
+  },
+  {
+   "id": "R13698",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:86",
+   "note": ""
+  },
+  {
+   "id": "R13699",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:87; docs/architecture/BACKEND-ARCHITECTURE.md:1779",
+   "note": "Correction cap 3; job retries bounded then dead_letter"
+  },
+  {
+   "id": "R13699a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:87",
+   "note": "Cap in graph; generation jobs max_attempts=1"
+  },
+  {
+   "id": "R13700",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:91; docs/architecture/BACKEND-ARCHITECTURE.md:192",
+   "note": "Idempotency key on every marketplace write"
+  },
+  {
+   "id": "R13701",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:91; docs/architecture/DATABASE.md:887",
+   "note": "Retry payload = latest failed fields only"
+  },
+  {
+   "id": "R13702",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:178",
+   "note": "Scheduled Optimization Agent is Phase 3 (site L6881, [203] L13308)"
+  },
+  {
+   "id": "R13703",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:178-179",
+   "note": "Kept as design principle; marketplace logic isolated in adapters"
+  },
+  {
+   "id": "R13705a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:77; AGENTS.md:216",
+   "note": "Never traded for speed; never weaken tenant isolation"
+  },
+  {
+   "id": "R13709",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:77",
+   "note": "Agent rulebook states invariants as non-negotiable"
+  },
+  {
+   "id": "R13709a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:80",
+   "note": "Rules Engine is final arbiter"
+  },
+  {
+   "id": "R13709b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:79",
+   "note": ""
+  },
+  {
+   "id": "R13709c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82",
+   "note": ""
+  },
+  {
+   "id": "R13709d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:83; AGENTS.md:216",
+   "note": ""
+  },
+  {
+   "id": "R13709e",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:65",
+   "note": "Ask, don't guess: agents escalate to the user (Tech Lead)"
+  }
+ ]
+}

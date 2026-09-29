@@ -1,0 +1,32 @@
+# Minimal ignore list, in place before `git init`. S1 extends it for the monorepo; don't shrink it.
+# Dependencies and build output
+node_modules/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+.next/
+
+# Secrets never go in git (AGENTS.md §1); .env.example is the only committed env file
+.env
+.env.*
+!.env.example
+
+# Doc tooling (scripts/docgen): build cache (diagram PNGs, generated pages, Chrome config)
+scripts/docgen/.cache/
+
+# OS and editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Claude Code: personal settings (the shared .claude/settings.json IS committed)
+.claude/settings.local.json
+
+# Generated Word docs (39 MB of binaries): rebuild with scripts/docgen/build.sh; share through the client's channel (EXECUTION-PLAN decision 19)
+deliverables/*.docx

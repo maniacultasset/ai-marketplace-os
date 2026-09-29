@@ -1,0 +1,7410 @@
+{
+ "chunk": "c05",
+ "start": 2836,
+ "end": 3512,
+ "items": [
+  {
+   "id": "R02836",
+   "lines": [
+    2836,
+    2836
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "info",
+   "text": "### 6.3 Category-Specific Attribute Examples",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02838",
+   "lines": [
+    2838,
+    2838
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "info",
+   "text": "Column: Sub-category",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02840",
+   "lines": [
+    2840,
+    2840
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "info",
+   "text": "Column: Common Additional Fields",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02842",
+   "lines": [
+    2842,
+    2842
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Apparel sub-category with category-specific attributes: T-shirts"
+  },
+  {
+   "id": "R02844",
+   "lines": [
+    2844,
+    2844
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "T-shirts common additional field: Neck"
+  },
+  {
+   "id": "R02844a",
+   "lines": [
+    2844,
+    2844
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "T-shirts common additional field: sleeve length"
+  },
+  {
+   "id": "R02844b",
+   "lines": [
+    2844,
+    2844
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "T-shirts common additional field: fit"
+  },
+  {
+   "id": "R02844c",
+   "lines": [
+    2844,
+    2844
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "T-shirts common additional field: pattern"
+  },
+  {
+   "id": "R02844d",
+   "lines": [
+    2844,
+    2844
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "T-shirts common additional field: fabric"
+  },
+  {
+   "id": "R02844e",
+   "lines": [
+    2844,
+    2844
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "T-shirts common additional field: print/graphic"
+  },
+  {
+   "id": "R02844f",
+   "lines": [
+    2844,
+    2844
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "T-shirts common additional field: collar"
+  },
+  {
+   "id": "R02844g",
+   "lines": [
+    2844,
+    2844
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "T-shirts common additional field: hem"
+  },
+  {
+   "id": "R02844h",
+   "lines": [
+    2844,
+    2844
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "T-shirts common additional field: stretch"
+  },
+  {
+   "id": "R02844i",
+   "lines": [
+    2844,
+    2844
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "T-shirts common additional field: transparency"
+  },
+  {
+   "id": "R02846",
+   "lines": [
+    2846,
+    2846
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Apparel sub-category with category-specific attributes: Shirts"
+  },
+  {
+   "id": "R02848",
+   "lines": [
+    2848,
+    2848
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Shirts common additional field: Collar type"
+  },
+  {
+   "id": "R02848a",
+   "lines": [
+    2848,
+    2848
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Shirts common additional field: sleeve"
+  },
+  {
+   "id": "R02848b",
+   "lines": [
+    2848,
+    2848
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Shirts common additional field: cuff"
+  },
+  {
+   "id": "R02848c",
+   "lines": [
+    2848,
+    2848
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Shirts common additional field: placket"
+  },
+  {
+   "id": "R02848d",
+   "lines": [
+    2848,
+    2848
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Shirts common additional field: fit"
+  },
+  {
+   "id": "R02848e",
+   "lines": [
+    2848,
+    2848
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Shirts common additional field: pattern"
+  },
+  {
+   "id": "R02848f",
+   "lines": [
+    2848,
+    2848
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Shirts common additional field: pocket"
+  },
+  {
+   "id": "R02848g",
+   "lines": [
+    2848,
+    2848
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Shirts common additional field: fabric"
+  },
+  {
+   "id": "R02848h",
+   "lines": [
+    2848,
+    2848
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Shirts common additional field: closure"
+  },
+  {
+   "id": "R02850",
+   "lines": [
+    2850,
+    2850
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Apparel sub-category with category-specific attributes: Tops / blouses"
+  },
+  {
+   "id": "R02852",
+   "lines": [
+    2852,
+    2852
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Tops / blouses common additional field: Neckline"
+  },
+  {
+   "id": "R02852a",
+   "lines": [
+    2852,
+    2852
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Tops / blouses common additional field: sleeve"
+  },
+  {
+   "id": "R02852b",
+   "lines": [
+    2852,
+    2852
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Tops / blouses common additional field: fit"
+  },
+  {
+   "id": "R02852c",
+   "lines": [
+    2852,
+    2852
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Tops / blouses common additional field: length"
+  },
+  {
+   "id": "R02852d",
+   "lines": [
+    2852,
+    2852
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Tops / blouses common additional field: pattern"
+  },
+  {
+   "id": "R02852e",
+   "lines": [
+    2852,
+    2852
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Tops / blouses common additional field: closure"
+  },
+  {
+   "id": "R02852f",
+   "lines": [
+    2852,
+    2852
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Tops / blouses common additional field: transparency"
+  },
+  {
+   "id": "R02852g",
+   "lines": [
+    2852,
+    2852
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Tops / blouses common additional field: lining"
+  },
+  {
+   "id": "R02852h",
+   "lines": [
+    2852,
+    2852
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Tops / blouses common additional field: fabric"
+  },
+  {
+   "id": "R02854",
+   "lines": [
+    2854,
+    2854
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Apparel sub-category with category-specific attributes: Dresses"
+  },
+  {
+   "id": "R02856",
+   "lines": [
+    2856,
+    2856
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Dresses common additional field: Dress type"
+  },
+  {
+   "id": "R02856a",
+   "lines": [
+    2856,
+    2856
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Dresses common additional field: neckline"
+  },
+  {
+   "id": "R02856b",
+   "lines": [
+    2856,
+    2856
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Dresses common additional field: sleeve"
+  },
+  {
+   "id": "R02856c",
+   "lines": [
+    2856,
+    2856
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Dresses common additional field: length"
+  },
+  {
+   "id": "R02856d",
+   "lines": [
+    2856,
+    2856
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Dresses common additional field: silhouette"
+  },
+  {
+   "id": "R02856e",
+   "lines": [
+    2856,
+    2856
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Dresses common additional field: waist"
+  },
+  {
+   "id": "R02856f",
+   "lines": [
+    2856,
+    2856
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Dresses common additional field: closure"
+  },
+  {
+   "id": "R02856g",
+   "lines": [
+    2856,
+    2856
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Dresses common additional field: lining"
+  },
+  {
+   "id": "R02856h",
+   "lines": [
+    2856,
+    2856
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Dresses common additional field: transparency"
+  },
+  {
+   "id": "R02856i",
+   "lines": [
+    2856,
+    2856
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Dresses common additional field: occasion"
+  },
+  {
+   "id": "R02858",
+   "lines": [
+    2858,
+    2858
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Apparel sub-category with category-specific attributes: Jeans"
+  },
+  {
+   "id": "R02860",
+   "lines": [
+    2860,
+    2860
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Jeans common additional field: Rise"
+  },
+  {
+   "id": "R02860a",
+   "lines": [
+    2860,
+    2860
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Jeans common additional field: fit"
+  },
+  {
+   "id": "R02860b",
+   "lines": [
+    2860,
+    2860
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Jeans common additional field: leg style"
+  },
+  {
+   "id": "R02860c",
+   "lines": [
+    2860,
+    2860
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Jeans common additional field: wash"
+  },
+  {
+   "id": "R02860d",
+   "lines": [
+    2860,
+    2860
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Jeans common additional field: stretch"
+  },
+  {
+   "id": "R02860e",
+   "lines": [
+    2860,
+    2860
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Jeans common additional field: waist closure"
+  },
+  {
+   "id": "R02860f",
+   "lines": [
+    2860,
+    2860
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Jeans common additional field: pocket"
+  },
+  {
+   "id": "R02860g",
+   "lines": [
+    2860,
+    2860
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Jeans common additional field: distressed/detailing"
+  },
+  {
+   "id": "R02862",
+   "lines": [
+    2862,
+    2862
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Apparel sub-category with category-specific attributes: Trousers / pants"
+  },
+  {
+   "id": "R02864",
+   "lines": [
+    2864,
+    2864
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Trousers / pants common additional field: Fit"
+  },
+  {
+   "id": "R02864a",
+   "lines": [
+    2864,
+    2864
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Trousers / pants common additional field: rise"
+  },
+  {
+   "id": "R02864b",
+   "lines": [
+    2864,
+    2864
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Trousers / pants common additional field: leg style"
+  },
+  {
+   "id": "R02864c",
+   "lines": [
+    2864,
+    2864
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Trousers / pants common additional field: pleat"
+  },
+  {
+   "id": "R02864d",
+   "lines": [
+    2864,
+    2864
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Trousers / pants common additional field: waist"
+  },
+  {
+   "id": "R02864e",
+   "lines": [
+    2864,
+    2864
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Trousers / pants common additional field: closure"
+  },
+  {
+   "id": "R02864f",
+   "lines": [
+    2864,
+    2864
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Trousers / pants common additional field: pocket"
+  },
+  {
+   "id": "R02864g",
+   "lines": [
+    2864,
+    2864
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Trousers / pants common additional field: fabric"
+  },
+  {
+   "id": "R02864h",
+   "lines": [
+    2864,
+    2864
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Trousers / pants common additional field: stretch"
+  },
+  {
+   "id": "R02864i",
+   "lines": [
+    2864,
+    2864
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Trousers / pants common additional field: lining"
+  },
+  {
+   "id": "R02866",
+   "lines": [
+    2866,
+    2866
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Apparel sub-category with category-specific attributes: Shorts"
+  },
+  {
+   "id": "R02868",
+   "lines": [
+    2868,
+    2868
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Shorts common additional field: Fit"
+  },
+  {
+   "id": "R02868a",
+   "lines": [
+    2868,
+    2868
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Shorts common additional field: rise"
+  },
+  {
+   "id": "R02868b",
+   "lines": [
+    2868,
+    2868
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Shorts common additional field: length"
+  },
+  {
+   "id": "R02868c",
+   "lines": [
+    2868,
+    2868
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Shorts common additional field: closure"
+  },
+  {
+   "id": "R02868d",
+   "lines": [
+    2868,
+    2868
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Shorts common additional field: pocket"
+  },
+  {
+   "id": "R02868e",
+   "lines": [
+    2868,
+    2868
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Shorts common additional field: fabric"
+  },
+  {
+   "id": "R02868f",
+   "lines": [
+    2868,
+    2868
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Shorts common additional field: stretch"
+  },
+  {
+   "id": "R02870",
+   "lines": [
+    2870,
+    2870
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Apparel sub-category with category-specific attributes: Skirts"
+  },
+  {
+   "id": "R02872",
+   "lines": [
+    2872,
+    2872
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Skirts common additional field: Silhouette"
+  },
+  {
+   "id": "R02872a",
+   "lines": [
+    2872,
+    2872
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Skirts common additional field: length"
+  },
+  {
+   "id": "R02872b",
+   "lines": [
+    2872,
+    2872
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Skirts common additional field: waist"
+  },
+  {
+   "id": "R02872c",
+   "lines": [
+    2872,
+    2872
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Skirts common additional field: closure"
+  },
+  {
+   "id": "R02872d",
+   "lines": [
+    2872,
+    2872
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Skirts common additional field: lining"
+  },
+  {
+   "id": "R02872e",
+   "lines": [
+    2872,
+    2872
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Skirts common additional field: pattern"
+  },
+  {
+   "id": "R02872f",
+   "lines": [
+    2872,
+    2872
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Skirts common additional field: fabric"
+  },
+  {
+   "id": "R02874",
+   "lines": [
+    2874,
+    2874
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Apparel sub-category with category-specific attributes: Kurtas"
+  },
+  {
+   "id": "R02876",
+   "lines": [
+    2876,
+    2876
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Kurtas common additional field: Kurta type"
+  },
+  {
+   "id": "R02876a",
+   "lines": [
+    2876,
+    2876
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Kurtas common additional field: neckline"
+  },
+  {
+   "id": "R02876b",
+   "lines": [
+    2876,
+    2876
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Kurtas common additional field: sleeve"
+  },
+  {
+   "id": "R02876c",
+   "lines": [
+    2876,
+    2876
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Kurtas common additional field: length"
+  },
+  {
+   "id": "R02876d",
+   "lines": [
+    2876,
+    2876
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Kurtas common additional field: print/embroidery"
+  },
+  {
+   "id": "R02876e",
+   "lines": [
+    2876,
+    2876
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Kurtas common additional field: fabric"
+  },
+  {
+   "id": "R02876f",
+   "lines": [
+    2876,
+    2876
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Kurtas common additional field: side slits"
+  },
+  {
+   "id": "R02876g",
+   "lines": [
+    2876,
+    2876
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Kurtas common additional field: occasion"
+  },
+  {
+   "id": "R02878",
+   "lines": [
+    2878,
+    2878
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Apparel sub-category with category-specific attributes: Ethnic sets / co-ords"
+  },
+  {
+   "id": "R02880",
+   "lines": [
+    2880,
+    2880
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Ethnic sets / co-ords common additional field: Set composition"
+  },
+  {
+   "id": "R02880a",
+   "lines": [
+    2880,
+    2880
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Ethnic sets / co-ords common additional field: number of pieces"
+  },
+  {
+   "id": "R02880b",
+   "lines": [
+    2880,
+    2880
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Ethnic sets / co-ords common additional field: top/bottom attributes"
+  },
+  {
+   "id": "R02880c",
+   "lines": [
+    2880,
+    2880
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Ethnic sets / co-ords common additional field: size relationship"
+  },
+  {
+   "id": "R02880d",
+   "lines": [
+    2880,
+    2880
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Ethnic sets / co-ords common additional field: fabric"
+  },
+  {
+   "id": "R02882",
+   "lines": [
+    2882,
+    2882
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Apparel sub-category with category-specific attributes: Jackets / outerwear"
+  },
+  {
+   "id": "R02884",
+   "lines": [
+    2884,
+    2884
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Jackets / outerwear common additional field: Closure"
+  },
+  {
+   "id": "R02884a",
+   "lines": [
+    2884,
+    2884
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Jackets / outerwear common additional field: collar"
+  },
+  {
+   "id": "R02884b",
+   "lines": [
+    2884,
+    2884
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Jackets / outerwear common additional field: sleeve"
+  },
+  {
+   "id": "R02884c",
+   "lines": [
+    2884,
+    2884
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Jackets / outerwear common additional field: lining"
+  },
+  {
+   "id": "R02884d",
+   "lines": [
+    2884,
+    2884
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Jackets / outerwear common additional field: insulation"
+  },
+  {
+   "id": "R02884e",
+   "lines": [
+    2884,
+    2884
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Jackets / outerwear common additional field: hood"
+  },
+  {
+   "id": "R02884f",
+   "lines": [
+    2884,
+    2884
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Jackets / outerwear common additional field: pocket"
+  },
+  {
+   "id": "R02884g",
+   "lines": [
+    2884,
+    2884
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Jackets / outerwear common additional field: fit"
+  },
+  {
+   "id": "R02884h",
+   "lines": [
+    2884,
+    2884
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Jackets / outerwear common additional field: fabric"
+  },
+  {
+   "id": "R02886",
+   "lines": [
+    2886,
+    2886
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Apparel sub-category with category-specific attributes: Sweatshirts / hoodies"
+  },
+  {
+   "id": "R02888",
+   "lines": [
+    2888,
+    2888
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Sweatshirts / hoodies common additional field: Hood"
+  },
+  {
+   "id": "R02888a",
+   "lines": [
+    2888,
+    2888
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Sweatshirts / hoodies common additional field: closure"
+  },
+  {
+   "id": "R02888b",
+   "lines": [
+    2888,
+    2888
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Sweatshirts / hoodies common additional field: sleeve"
+  },
+  {
+   "id": "R02888c",
+   "lines": [
+    2888,
+    2888
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Sweatshirts / hoodies common additional field: fit"
+  },
+  {
+   "id": "R02888d",
+   "lines": [
+    2888,
+    2888
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Sweatshirts / hoodies common additional field: fabric"
+  },
+  {
+   "id": "R02888e",
+   "lines": [
+    2888,
+    2888
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Sweatshirts / hoodies common additional field: fleece"
+  },
+  {
+   "id": "R02888f",
+   "lines": [
+    2888,
+    2888
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Sweatshirts / hoodies common additional field: pocket"
+  },
+  {
+   "id": "R02888g",
+   "lines": [
+    2888,
+    2888
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Sweatshirts / hoodies common additional field: pattern"
+  },
+  {
+   "id": "R02890",
+   "lines": [
+    2890,
+    2890
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "info",
+   "text": "## 7. Variants: The Product Family Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02892",
+   "lines": [
+    2892,
+    2892
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "requirement",
+   "text": "The system must distinguish the product style from the sellable variant."
+  },
+  {
+   "id": "R02892a",
+   "lines": [
+    2892,
+    2892
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "A common apparel family is one style with multiple colors and sizes."
+  },
+  {
+   "id": "R02894",
+   "lines": [
+    2894,
+    2894
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "info",
+   "text": "Column: Level",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02896",
+   "lines": [
+    2896,
+    2896
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "info",
+   "text": "Column: Example",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02898",
+   "lines": [
+    2898,
+    2898
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "info",
+   "text": "Column: Rule",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02900",
+   "lines": [
+    2900,
+    2900
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Product family variant level: Parent / style"
+  },
+  {
+   "id": "R02902",
+   "lines": [
+    2902,
+    2902
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Parent / style example: TSHIRT-001"
+  },
+  {
+   "id": "R02904",
+   "lines": [
+    2904,
+    2904
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Parent / style rule: Represents the underlying product/style."
+  },
+  {
+   "id": "R02906",
+   "lines": [
+    2906,
+    2906
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Product family variant level: Color child"
+  },
+  {
+   "id": "R02908",
+   "lines": [
+    2908,
+    2908
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Color child example: TSHIRT-001-BLK"
+  },
+  {
+   "id": "R02910",
+   "lines": [
+    2910,
+    2910
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Color child rule: One color variation."
+  },
+  {
+   "id": "R02912",
+   "lines": [
+    2912,
+    2912
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Product family variant level: Size child"
+  },
+  {
+   "id": "R02914",
+   "lines": [
+    2914,
+    2914
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Size child example: TSHIRT-001-BLK-M"
+  },
+  {
+   "id": "R02916",
+   "lines": [
+    2916,
+    2916
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Size child rule: One sellable size/color combination."
+  },
+  {
+   "id": "R02918",
+   "lines": [
+    2918,
+    2918
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Product family variant level: Marketplace listing"
+  },
+  {
+   "id": "R02920",
+   "lines": [
+    2920,
+    2920
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Marketplace listing example: Marketplace-specific SKU/listing ID"
+  },
+  {
+   "id": "R02922",
+   "lines": [
+    2922,
+    2922
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "data",
+   "text": "Marketplace listing rule: External representation of the sellable item."
+  },
+  {
+   "id": "R02924",
+   "lines": [
+    2924,
+    2924
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "info",
+   "text": "### Core Variation Invariants",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02926",
+   "lines": [
+    2926,
+    2926
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "requirement",
+   "text": "Store a complete size × color matrix."
+  },
+  {
+   "id": "R02926a",
+   "lines": [
+    2926,
+    2926
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "requirement",
+   "text": "The stored size × color matrix includes unavailable combinations."
+  },
+  {
+   "id": "R02927",
+   "lines": [
+    2927,
+    2927
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "requirement",
+   "text": "Never silently create a variant that the seller did not provide."
+  },
+  {
+   "id": "R02928",
+   "lines": [
+    2928,
+    2928
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "requirement",
+   "text": "Keep seller SKU stable even if marketplace identifiers differ."
+  },
+  {
+   "id": "R02929",
+   "lines": [
+    2929,
+    2929
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "requirement",
+   "text": "Record parent-child relationships separately from marketplace-specific variation rules."
+  },
+  {
+   "id": "R02930",
+   "lines": [
+    2930,
+    2930
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "interface",
+   "text": "Amazon's listing schema explicitly distinguishes parent and child listing levels."
+  },
+  {
+   "id": "R02930a",
+   "lines": [
+    2930,
+    2930
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "interface",
+   "text": "In Amazon's listing schema, different attributes are applicable to parent and child listing levels."
+  },
+  {
+   "id": "R02932",
+   "lines": [
+    2932,
+    2932
+   ],
+   "page": "[03] Master Apparel Data & Variants (§6–7)",
+   "kind": "info",
+   "text": "--- (page separator)",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02934",
+   "lines": [
+    2934,
+    2934
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "info",
+   "text": "# [04] Media, Content & Canonical Record (§8–10)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02936",
+   "lines": [
+    2936,
+    2936
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "info",
+   "text": "Section: Founder's POV Doc",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R02937",
+   "lines": [
+    2937,
+    2937
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "scope",
+   "text": "Page [04] Media, Content & Canonical Record (§8–10) Scope: MVP"
+  },
+  {
+   "id": "R02938",
+   "lines": [
+    2938,
+    2938
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/founders-media-content-canonical",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R02939",
+   "lines": [
+    2939,
+    2939
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "scope",
+   "text": "Page [04] description: covers media and swatch shot rules."
+  },
+  {
+   "id": "R02939a",
+   "lines": [
+    2939,
+    2939
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "scope",
+   "text": "Page [04] description: covers the content generation layer with the Golden Rule against hallucinations."
+  },
+  {
+   "id": "R02939b",
+   "lines": [
+    2939,
+    2939
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "scope",
+   "text": "Page [04] description: covers the canonical record schema."
+  },
+  {
+   "id": "R02941",
+   "lines": [
+    2941,
+    2941
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "info",
+   "text": "## 8. Media / Image Intake",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02943",
+   "lines": [
+    2943,
+    2943
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "For apparel, image requirements can differ by marketplace."
+  },
+  {
+   "id": "R02943a",
+   "lines": [
+    2943,
+    2943
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "interface",
+   "text": "Amazon's current seller guidance describes a main image for parent and child listings."
+  },
+  {
+   "id": "R02943b",
+   "lines": [
+    2943,
+    2943
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "interface",
+   "text": "Amazon's seller guidance allows alternative images for details such as fabric, features and angles."
+  },
+  {
+   "id": "R02945",
+   "lines": [
+    2945,
+    2945
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "info",
+   "text": "Column: Media Field",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02947",
+   "lines": [
+    2947,
+    2947
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "info",
+   "text": "Column: What the Seller Should Provide",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02949",
+   "lines": [
+    2949,
+    2949
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "info",
+   "text": "Column: Agent Responsibility",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02951",
+   "lines": [
+    2951,
+    2951
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Media intake field: Main product image"
+  },
+  {
+   "id": "R02953",
+   "lines": [
+    2953,
+    2953
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Main product image - seller should provide: Clean product image"
+  },
+  {
+   "id": "R02955",
+   "lines": [
+    2955,
+    2955
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Main product image - agent responsibility: Validate suitability"
+  },
+  {
+   "id": "R02955a",
+   "lines": [
+    2955,
+    2955
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Main product image - agent responsibility: Assign marketplace role"
+  },
+  {
+   "id": "R02957",
+   "lines": [
+    2957,
+    2957
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Media intake field: Additional images"
+  },
+  {
+   "id": "R02959",
+   "lines": [
+    2959,
+    2959
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Additional images - seller should provide: Front image, as available"
+  },
+  {
+   "id": "R02959a",
+   "lines": [
+    2959,
+    2959
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Additional images - seller should provide: back image, as available"
+  },
+  {
+   "id": "R02959b",
+   "lines": [
+    2959,
+    2959
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Additional images - seller should provide: side image, as available"
+  },
+  {
+   "id": "R02959c",
+   "lines": [
+    2959,
+    2959
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Additional images - seller should provide: detail image, as available"
+  },
+  {
+   "id": "R02959d",
+   "lines": [
+    2959,
+    2959
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Additional images - seller should provide: lifestyle image, as available"
+  },
+  {
+   "id": "R02961",
+   "lines": [
+    2961,
+    2961
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Additional images - agent responsibility: Map to supported slots"
+  },
+  {
+   "id": "R02963",
+   "lines": [
+    2963,
+    2963
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Media intake field: Color-specific images"
+  },
+  {
+   "id": "R02965",
+   "lines": [
+    2965,
+    2965
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Color-specific images - seller should provide: Images for each color"
+  },
+  {
+   "id": "R02967",
+   "lines": [
+    2967,
+    2967
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Color-specific images - agent responsibility: Associate with correct variant"
+  },
+  {
+   "id": "R02969",
+   "lines": [
+    2969,
+    2969
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Media intake field: Size chart"
+  },
+  {
+   "id": "R02971",
+   "lines": [
+    2971,
+    2971
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Size chart - seller should provide: Brand size chart"
+  },
+  {
+   "id": "R02973",
+   "lines": [
+    2973,
+    2973
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Size chart - agent responsibility: Associate with product/category where supported"
+  },
+  {
+   "id": "R02975",
+   "lines": [
+    2975,
+    2975
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Media intake field: Fabric/detail image"
+  },
+  {
+   "id": "R02977",
+   "lines": [
+    2977,
+    2977
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Fabric/detail image - seller should provide: Close-up"
+  },
+  {
+   "id": "R02979",
+   "lines": [
+    2979,
+    2979
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Fabric/detail image - agent responsibility: Use where useful and permitted"
+  },
+  {
+   "id": "R02981",
+   "lines": [
+    2981,
+    2981
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Media intake field: Packaging/label image"
+  },
+  {
+   "id": "R02983",
+   "lines": [
+    2983,
+    2983
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Packaging/label image - seller should provide: Label/packaging where needed"
+  },
+  {
+   "id": "R02985",
+   "lines": [
+    2985,
+    2985
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Packaging/label image - agent responsibility: Use for compliance evidence where applicable"
+  },
+  {
+   "id": "R02987",
+   "lines": [
+    2987,
+    2987
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Media intake field: Image metadata"
+  },
+  {
+   "id": "R02989",
+   "lines": [
+    2989,
+    2989
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Image metadata - seller should provide: File name"
+  },
+  {
+   "id": "R02989a",
+   "lines": [
+    2989,
+    2989
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Image metadata - seller should provide: seller reference"
+  },
+  {
+   "id": "R02991",
+   "lines": [
+    2991,
+    2991
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Image metadata - agent responsibility: Maintain traceability"
+  },
+  {
+   "id": "R02993",
+   "lines": [
+    2993,
+    2993
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "info",
+   "text": "## 9. Content Intelligence Layer",
+   "why_not": "heading"
+  },
+  {
+   "id": "R02995",
+   "lines": [
+    2995,
+    2995
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "decision",
+   "text": "The Content Intelligence Layer (§9) is the content layer shown in the reference architecture."
+  },
+  {
+   "id": "R02995a",
+   "lines": [
+    2995,
+    2995
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "The agent should not generate copy from images alone when authoritative product facts are available elsewhere."
+  },
+  {
+   "id": "R02997",
+   "lines": [
+    2997,
+    2997
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "info",
+   "text": "Column: Content Object",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R02999",
+   "lines": [
+    2999,
+    2999
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "info",
+   "text": "Column: Purpose",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03001",
+   "lines": [
+    3001,
+    3001
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "info",
+   "text": "Column: Source / Rule",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03003",
+   "lines": [
+    3003,
+    3003
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Content object: Marketplace title"
+  },
+  {
+   "id": "R03005",
+   "lines": [
+    3005,
+    3005
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Marketplace title purpose: Customer-facing product title"
+  },
+  {
+   "id": "R03007",
+   "lines": [
+    3007,
+    3007
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Marketplace title source/rule: Canonical facts"
+  },
+  {
+   "id": "R03007a",
+   "lines": [
+    3007,
+    3007
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Marketplace title source/rule: marketplace title rules (combined with canonical facts)"
+  },
+  {
+   "id": "R03009",
+   "lines": [
+    3009,
+    3009
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Content object: Key features / bullets"
+  },
+  {
+   "id": "R03011",
+   "lines": [
+    3011,
+    3011
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Key features / bullets purpose: Fast communication of product benefits/features"
+  },
+  {
+   "id": "R03013",
+   "lines": [
+    3013,
+    3013
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Key features / bullets source/rule: Verified product facts only"
+  },
+  {
+   "id": "R03015",
+   "lines": [
+    3015,
+    3015
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Content object: Description"
+  },
+  {
+   "id": "R03017",
+   "lines": [
+    3017,
+    3017
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Description purpose: Detailed customer-facing description"
+  },
+  {
+   "id": "R03019",
+   "lines": [
+    3019,
+    3019
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Description source/rule: Canonical facts"
+  },
+  {
+   "id": "R03019a",
+   "lines": [
+    3019,
+    3019
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Description source/rule: category context (combined with canonical facts)"
+  },
+  {
+   "id": "R03021",
+   "lines": [
+    3021,
+    3021
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Content object: Search keywords"
+  },
+  {
+   "id": "R03023",
+   "lines": [
+    3023,
+    3023
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Search keywords purpose: Search discoverability"
+  },
+  {
+   "id": "R03025",
+   "lines": [
+    3025,
+    3025
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Search keywords source/rule: Relevant terms grounded in product/category"
+  },
+  {
+   "id": "R03025a",
+   "lines": [
+    3025,
+    3025
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Search keywords source/rule: avoid unsupported claims"
+  },
+  {
+   "id": "R03027",
+   "lines": [
+    3027,
+    3027
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Content object: Backend/search fields"
+  },
+  {
+   "id": "R03029",
+   "lines": [
+    3029,
+    3029
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Backend/search fields purpose: Marketplace-specific search metadata"
+  },
+  {
+   "id": "R03031",
+   "lines": [
+    3031,
+    3031
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Backend/search fields source/rule: Marketplace schema"
+  },
+  {
+   "id": "R03033",
+   "lines": [
+    3033,
+    3033
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Content object: Size/fit information"
+  },
+  {
+   "id": "R03035",
+   "lines": [
+    3035,
+    3035
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Size/fit information purpose: Reduce size uncertainty"
+  },
+  {
+   "id": "R03037",
+   "lines": [
+    3037,
+    3037
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Size/fit information source/rule: Brand size data"
+  },
+  {
+   "id": "R03037a",
+   "lines": [
+    3037,
+    3037
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Size/fit information source/rule: never invent measurements"
+  },
+  {
+   "id": "R03039",
+   "lines": [
+    3039,
+    3039
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Content object: Care instructions"
+  },
+  {
+   "id": "R03041",
+   "lines": [
+    3041,
+    3041
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Care instructions purpose: Set expectations"
+  },
+  {
+   "id": "R03043",
+   "lines": [
+    3043,
+    3043
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Care instructions source/rule: Seller/manufacturer data"
+  },
+  {
+   "id": "R03045",
+   "lines": [
+    3045,
+    3045
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Content object: Material/fabric content"
+  },
+  {
+   "id": "R03047",
+   "lines": [
+    3047,
+    3047
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Material/fabric content purpose: Explain construction"
+  },
+  {
+   "id": "R03049",
+   "lines": [
+    3049,
+    3049
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Material/fabric content source/rule: Seller/manufacturer data"
+  },
+  {
+   "id": "R03051",
+   "lines": [
+    3051,
+    3051
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Content object: Occasion/style terms"
+  },
+  {
+   "id": "R03053",
+   "lines": [
+    3053,
+    3053
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Occasion/style terms purpose: Discovery/context"
+  },
+  {
+   "id": "R03055",
+   "lines": [
+    3055,
+    3055
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Occasion/style terms source/rule: Derived only when supported"
+  },
+  {
+   "id": "R03057",
+   "lines": [
+    3057,
+    3057
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Content object: Claims"
+  },
+  {
+   "id": "R03059",
+   "lines": [
+    3059,
+    3059
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Claims purpose: USP/performance statements"
+  },
+  {
+   "id": "R03061",
+   "lines": [
+    3061,
+    3061
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Claims source/rule: Must be supported by seller-provided evidence"
+  },
+  {
+   "id": "R03063",
+   "lines": [
+    3063,
+    3063
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "info",
+   "text": "Golden Rule for AI Content",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03065",
+   "lines": [
+    3065,
+    3065
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent may transform verified information."
+  },
+  {
+   "id": "R03065a",
+   "lines": [
+    3065,
+    3065
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent may structure verified information."
+  },
+  {
+   "id": "R03065b",
+   "lines": [
+    3065,
+    3065
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent may improve verified information."
+  },
+  {
+   "id": "R03065c",
+   "lines": [
+    3065,
+    3065
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent must not invent fabric composition simply to complete a listing."
+  },
+  {
+   "id": "R03065d",
+   "lines": [
+    3065,
+    3065
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent must not invent measurements simply to complete a listing."
+  },
+  {
+   "id": "R03065e",
+   "lines": [
+    3065,
+    3065
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent must not invent certifications simply to complete a listing."
+  },
+  {
+   "id": "R03065f",
+   "lines": [
+    3065,
+    3065
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent must not invent performance claims simply to complete a listing."
+  },
+  {
+   "id": "R03065g",
+   "lines": [
+    3065,
+    3065
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent must not invent care instructions simply to complete a listing."
+  },
+  {
+   "id": "R03065h",
+   "lines": [
+    3065,
+    3065
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent must not invent country of origin simply to complete a listing."
+  },
+  {
+   "id": "R03065i",
+   "lines": [
+    3065,
+    3065
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent must not invent tax information simply to complete a listing."
+  },
+  {
+   "id": "R03065j",
+   "lines": [
+    3065,
+    3065
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent must not invent other factual attributes simply to complete a listing."
+  },
+  {
+   "id": "R03067",
+   "lines": [
+    3067,
+    3067
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "info",
+   "text": "## 10. Canonical Product Intelligence Layer",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03069",
+   "lines": [
+    3069,
+    3069
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "For every product, maintain one canonical record."
+  },
+  {
+   "id": "R03069a",
+   "lines": [
+    3069,
+    3069
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "requirement",
+   "text": "The canonical record becomes the source of truth before any marketplace-specific output is created."
+  },
+  {
+   "id": "R03071",
+   "lines": [
+    3071,
+    3071
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "info",
+   "text": "Column: Canonical Section",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03073",
+   "lines": [
+    3073,
+    3073
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "info",
+   "text": "Column: Must Contain",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03075",
+   "lines": [
+    3075,
+    3075
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical record section: Identity"
+  },
+  {
+   "id": "R03077",
+   "lines": [
+    3077,
+    3077
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Identity section must contain: Internal product ID"
+  },
+  {
+   "id": "R03077a",
+   "lines": [
+    3077,
+    3077
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Identity section must contain: seller SKU"
+  },
+  {
+   "id": "R03077b",
+   "lines": [
+    3077,
+    3077
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Identity section must contain: parent SKU"
+  },
+  {
+   "id": "R03077c",
+   "lines": [
+    3077,
+    3077
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Identity section must contain: brand"
+  },
+  {
+   "id": "R03077d",
+   "lines": [
+    3077,
+    3077
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Identity section must contain: product/style name"
+  },
+  {
+   "id": "R03077e",
+   "lines": [
+    3077,
+    3077
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Identity section must contain: model/style number"
+  },
+  {
+   "id": "R03077f",
+   "lines": [
+    3077,
+    3077
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Identity section must contain: identifiers"
+  },
+  {
+   "id": "R03079",
+   "lines": [
+    3079,
+    3079
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical record section: Classification"
+  },
+  {
+   "id": "R03081",
+   "lines": [
+    3081,
+    3081
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Classification section must contain: Category"
+  },
+  {
+   "id": "R03081a",
+   "lines": [
+    3081,
+    3081
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Classification section must contain: sub-category"
+  },
+  {
+   "id": "R03081b",
+   "lines": [
+    3081,
+    3081
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Classification section must contain: product type"
+  },
+  {
+   "id": "R03081c",
+   "lines": [
+    3081,
+    3081
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Classification section must contain: gender/audience"
+  },
+  {
+   "id": "R03081d",
+   "lines": [
+    3081,
+    3081
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Classification section must contain: taxonomy confidence"
+  },
+  {
+   "id": "R03083",
+   "lines": [
+    3083,
+    3083
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical record section: Attributes"
+  },
+  {
+   "id": "R03085",
+   "lines": [
+    3085,
+    3085
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Attributes section must contain: All normalized apparel attributes"
+  },
+  {
+   "id": "R03085a",
+   "lines": [
+    3085,
+    3085
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Attributes section must contain: seller-provided values"
+  },
+  {
+   "id": "R03087",
+   "lines": [
+    3087,
+    3087
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical record section: Variants"
+  },
+  {
+   "id": "R03089",
+   "lines": [
+    3089,
+    3089
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Variants section must contain: Parent-child relationships"
+  },
+  {
+   "id": "R03089a",
+   "lines": [
+    3089,
+    3089
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Variants section must contain: colors"
+  },
+  {
+   "id": "R03089b",
+   "lines": [
+    3089,
+    3089
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Variants section must contain: sizes"
+  },
+  {
+   "id": "R03089c",
+   "lines": [
+    3089,
+    3089
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Variants section must contain: variant-level identifiers"
+  },
+  {
+   "id": "R03091",
+   "lines": [
+    3091,
+    3091
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical record section: Dimensions"
+  },
+  {
+   "id": "R03093",
+   "lines": [
+    3093,
+    3093
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Dimensions section must contain: Product dimensions"
+  },
+  {
+   "id": "R03093a",
+   "lines": [
+    3093,
+    3093
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Dimensions section must contain: package dimensions"
+  },
+  {
+   "id": "R03093b",
+   "lines": [
+    3093,
+    3093
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Dimensions section must contain: product weight where required"
+  },
+  {
+   "id": "R03093c",
+   "lines": [
+    3093,
+    3093
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Dimensions section must contain: package weight where required"
+  },
+  {
+   "id": "R03095",
+   "lines": [
+    3095,
+    3095
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical record section: Material"
+  },
+  {
+   "id": "R03097",
+   "lines": [
+    3097,
+    3097
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Material section must contain: Fabric/material composition"
+  },
+  {
+   "id": "R03097a",
+   "lines": [
+    3097,
+    3097
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Material section must contain: lining"
+  },
+  {
+   "id": "R03097b",
+   "lines": [
+    3097,
+    3097
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Material section must contain: construction"
+  },
+  {
+   "id": "R03099",
+   "lines": [
+    3099,
+    3099
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical record section: Compliance"
+  },
+  {
+   "id": "R03101",
+   "lines": [
+    3101,
+    3101
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Compliance section must contain: Manufacturer (Manufacturer/packer/importer)"
+  },
+  {
+   "id": "R03101a",
+   "lines": [
+    3101,
+    3101
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Compliance section must contain: packer (Manufacturer/packer/importer)"
+  },
+  {
+   "id": "R03101b",
+   "lines": [
+    3101,
+    3101
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Compliance section must contain: importer (Manufacturer/packer/importer)"
+  },
+  {
+   "id": "R03101c",
+   "lines": [
+    3101,
+    3101
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Compliance section must contain: origin"
+  },
+  {
+   "id": "R03101d",
+   "lines": [
+    3101,
+    3101
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Compliance section must contain: MRP"
+  },
+  {
+   "id": "R03101e",
+   "lines": [
+    3101,
+    3101
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Compliance section must contain: consumer care"
+  },
+  {
+   "id": "R03101f",
+   "lines": [
+    3101,
+    3101
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Compliance section must contain: size declarations"
+  },
+  {
+   "id": "R03101g",
+   "lines": [
+    3101,
+    3101
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Compliance section must contain: applicable regulatory data"
+  },
+  {
+   "id": "R03103",
+   "lines": [
+    3103,
+    3103
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical record section: Media"
+  },
+  {
+   "id": "R03105",
+   "lines": [
+    3105,
+    3105
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Media section must contain: Images"
+  },
+  {
+   "id": "R03105a",
+   "lines": [
+    3105,
+    3105
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Media section must contain: image roles"
+  },
+  {
+   "id": "R03105b",
+   "lines": [
+    3105,
+    3105
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Media section must contain: size chart"
+  },
+  {
+   "id": "R03105c",
+   "lines": [
+    3105,
+    3105
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Media section must contain: media validation state"
+  },
+  {
+   "id": "R03107",
+   "lines": [
+    3107,
+    3107
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical record section: Content"
+  },
+  {
+   "id": "R03109",
+   "lines": [
+    3109,
+    3109
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Content section must contain: Title"
+  },
+  {
+   "id": "R03109a",
+   "lines": [
+    3109,
+    3109
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Content section must contain: bullets"
+  },
+  {
+   "id": "R03109b",
+   "lines": [
+    3109,
+    3109
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Content section must contain: description"
+  },
+  {
+   "id": "R03109c",
+   "lines": [
+    3109,
+    3109
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Content section must contain: keywords"
+  },
+  {
+   "id": "R03109d",
+   "lines": [
+    3109,
+    3109
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Content section must contain: content source"
+  },
+  {
+   "id": "R03109e",
+   "lines": [
+    3109,
+    3109
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Content section must contain: content confidence"
+  },
+  {
+   "id": "R03111",
+   "lines": [
+    3111,
+    3111
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical record section: Marketplace mappings"
+  },
+  {
+   "id": "R03113",
+   "lines": [
+    3113,
+    3113
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Marketplace mappings section must contain: Marketplace category"
+  },
+  {
+   "id": "R03113a",
+   "lines": [
+    3113,
+    3113
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Marketplace mappings section must contain: product type"
+  },
+  {
+   "id": "R03113b",
+   "lines": [
+    3113,
+    3113
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Marketplace mappings section must contain: field mappings"
+  },
+  {
+   "id": "R03113c",
+   "lines": [
+    3113,
+    3113
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Marketplace mappings section must contain: external identifiers"
+  },
+  {
+   "id": "R03115",
+   "lines": [
+    3115,
+    3115
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical record section: Listing status"
+  },
+  {
+   "id": "R03117",
+   "lines": [
+    3117,
+    3117
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Listing status section must contain: Per-marketplace state"
+  },
+  {
+   "id": "R03117a",
+   "lines": [
+    3117,
+    3117
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Listing status section must contain: overall state"
+  },
+  {
+   "id": "R03119",
+   "lines": [
+    3119,
+    3119
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical record section: Issues"
+  },
+  {
+   "id": "R03121",
+   "lines": [
+    3121,
+    3121
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Issues section must contain: Validation errors"
+  },
+  {
+   "id": "R03121a",
+   "lines": [
+    3121,
+    3121
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Issues section must contain: submission errors"
+  },
+  {
+   "id": "R03121b",
+   "lines": [
+    3121,
+    3121
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Issues section must contain: severity"
+  },
+  {
+   "id": "R03121c",
+   "lines": [
+    3121,
+    3121
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Issues section must contain: owner"
+  },
+  {
+   "id": "R03121d",
+   "lines": [
+    3121,
+    3121
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical Issues section must contain: resolution"
+  },
+  {
+   "id": "R03123",
+   "lines": [
+    3123,
+    3123
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical record section: History"
+  },
+  {
+   "id": "R03125",
+   "lines": [
+    3125,
+    3125
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "data",
+   "text": "Canonical History section must contain: Who/what changed what and when"
+  },
+  {
+   "id": "R03127",
+   "lines": [
+    3127,
+    3127
+   ],
+   "page": "[04] Media, Content & Canonical Record (§8–10)",
+   "kind": "info",
+   "text": "--- (page separator)",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03129",
+   "lines": [
+    3129,
+    3129
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "info",
+   "text": "# [05] Business Data Model & 14-Step Engine (§11–12)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03131",
+   "lines": [
+    3131,
+    3131
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "info",
+   "text": "Section: Founder's POV Doc",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R03132",
+   "lines": [
+    3132,
+    3132
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "scope",
+   "text": "Page [05] Business Data Model & 14-Step Engine (§11–12) Scope: MVP"
+  },
+  {
+   "id": "R03133",
+   "lines": [
+    3133,
+    3133
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/founders-data-model-workflow",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R03134",
+   "lines": [
+    3134,
+    3134
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "scope",
+   "text": "Page [05] description: covers the logical database schema."
+  },
+  {
+   "id": "R03134a",
+   "lines": [
+    3134,
+    3134
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "scope",
+   "text": "Page [05] description: covers the source-of-truth priority hierarchy."
+  },
+  {
+   "id": "R03134b",
+   "lines": [
+    3134,
+    3134
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "constraint",
+   "text": "Page [05] description: the step-by-step autonomous listing workflow has 14 steps (14-step)."
+  },
+  {
+   "id": "R03136",
+   "lines": [
+    3136,
+    3136
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "info",
+   "text": "## 11. Business Database / Data Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03138",
+   "lines": [
+    3138,
+    3138
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "scope",
+   "text": "The following (§11) is the business-level schema."
+  },
+  {
+   "id": "R03138a",
+   "lines": [
+    3138,
+    3138
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "decision",
+   "text": "The business-level schema is not an implementation prescription."
+  },
+  {
+   "id": "R03138b",
+   "lines": [
+    3138,
+    3138
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "decision",
+   "text": "The engineering team can choose the underlying storage model."
+  },
+  {
+   "id": "R03138c",
+   "lines": [
+    3138,
+    3138
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "The product must preserve these logical records."
+  },
+  {
+   "id": "R03138d",
+   "lines": [
+    3138,
+    3138
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "The product must preserve these logical relationships."
+  },
+  {
+   "id": "R03140",
+   "lines": [
+    3140,
+    3140
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "info",
+   "text": "Column: Record",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03142",
+   "lines": [
+    3142,
+    3142
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "info",
+   "text": "Column: Key Fields / Columns",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03144",
+   "lines": [
+    3144,
+    3144
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "info",
+   "text": "Column: Relationship",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03146",
+   "lines": [
+    3146,
+    3146
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Business data model record: Brand"
+  },
+  {
+   "id": "R03148",
+   "lines": [
+    3148,
+    3148
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Brand key field/column: Brand ID"
+  },
+  {
+   "id": "R03148a",
+   "lines": [
+    3148,
+    3148
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Brand key field/column: legal name"
+  },
+  {
+   "id": "R03148b",
+   "lines": [
+    3148,
+    3148
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Brand key field/column: display name"
+  },
+  {
+   "id": "R03148c",
+   "lines": [
+    3148,
+    3148
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Brand key field/column: owner type"
+  },
+  {
+   "id": "R03148d",
+   "lines": [
+    3148,
+    3148
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Brand key field/column: website"
+  },
+  {
+   "id": "R03148e",
+   "lines": [
+    3148,
+    3148
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Brand key field/column: logo"
+  },
+  {
+   "id": "R03148f",
+   "lines": [
+    3148,
+    3148
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Brand key field/column: manufacturer/marketer details"
+  },
+  {
+   "id": "R03148g",
+   "lines": [
+    3148,
+    3148
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Brand key field/column: customer care"
+  },
+  {
+   "id": "R03150",
+   "lines": [
+    3150,
+    3150
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Brand relationship: One brand → many products"
+  },
+  {
+   "id": "R03152",
+   "lines": [
+    3152,
+    3152
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Business data model record: Seller Account"
+  },
+  {
+   "id": "R03154",
+   "lines": [
+    3154,
+    3154
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Seller Account key field/column: Seller ID"
+  },
+  {
+   "id": "R03154a",
+   "lines": [
+    3154,
+    3154
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Seller Account key field/column: brand ID"
+  },
+  {
+   "id": "R03154b",
+   "lines": [
+    3154,
+    3154
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Seller Account key field/column: marketplace"
+  },
+  {
+   "id": "R03154c",
+   "lines": [
+    3154,
+    3154
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Seller Account key field/column: account/store ID"
+  },
+  {
+   "id": "R03154d",
+   "lines": [
+    3154,
+    3154
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Seller Account key field/column: status"
+  },
+  {
+   "id": "R03154e",
+   "lines": [
+    3154,
+    3154
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Seller Account key field/column: locations"
+  },
+  {
+   "id": "R03154f",
+   "lines": [
+    3154,
+    3154
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Seller Account key field/column: permissions"
+  },
+  {
+   "id": "R03156",
+   "lines": [
+    3156,
+    3156
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Seller Account relationship: One seller → many marketplace accounts"
+  },
+  {
+   "id": "R03158",
+   "lines": [
+    3158,
+    3158
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Business data model record: Marketplace"
+  },
+  {
+   "id": "R03160",
+   "lines": [
+    3160,
+    3160
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace key field/column: Marketplace ID"
+  },
+  {
+   "id": "R03160a",
+   "lines": [
+    3160,
+    3160
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace key field/column: name"
+  },
+  {
+   "id": "R03160b",
+   "lines": [
+    3160,
+    3160
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace key field/column: country"
+  },
+  {
+   "id": "R03160c",
+   "lines": [
+    3160,
+    3160
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace key field/column: active status"
+  },
+  {
+   "id": "R03160d",
+   "lines": [
+    3160,
+    3160
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace key field/column: supported categories"
+  },
+  {
+   "id": "R03162",
+   "lines": [
+    3162,
+    3162
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace relationship: One marketplace → many schemas"
+  },
+  {
+   "id": "R03164",
+   "lines": [
+    3164,
+    3164
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Business data model record: Marketplace Schema"
+  },
+  {
+   "id": "R03166",
+   "lines": [
+    3166,
+    3166
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace Schema key field/column: Marketplace"
+  },
+  {
+   "id": "R03166a",
+   "lines": [
+    3166,
+    3166
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace Schema key field/column: category/product type"
+  },
+  {
+   "id": "R03166b",
+   "lines": [
+    3166,
+    3166
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace Schema key field/column: version"
+  },
+  {
+   "id": "R03166c",
+   "lines": [
+    3166,
+    3166
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace Schema key field/column: required fields"
+  },
+  {
+   "id": "R03166d",
+   "lines": [
+    3166,
+    3166
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace Schema key field/column: conditional rules"
+  },
+  {
+   "id": "R03166e",
+   "lines": [
+    3166,
+    3166
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace Schema key field/column: allowed values"
+  },
+  {
+   "id": "R03166f",
+   "lines": [
+    3166,
+    3166
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace Schema key field/column: media rules"
+  },
+  {
+   "id": "R03166g",
+   "lines": [
+    3166,
+    3166
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace Schema key field/column: variation rules"
+  },
+  {
+   "id": "R03166h",
+   "lines": [
+    3166,
+    3166
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace Schema key field/column: last updated"
+  },
+  {
+   "id": "R03168",
+   "lines": [
+    3168,
+    3168
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace Schema relationship: One marketplace/category → current schema"
+  },
+  {
+   "id": "R03168a",
+   "lines": [
+    3168,
+    3168
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace Schema relationship: One marketplace/category → historical schemas (current + historical schemas)"
+  },
+  {
+   "id": "R03170",
+   "lines": [
+    3170,
+    3170
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Business data model record: Product"
+  },
+  {
+   "id": "R03172",
+   "lines": [
+    3172,
+    3172
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Product key field/column: Product ID"
+  },
+  {
+   "id": "R03172a",
+   "lines": [
+    3172,
+    3172
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Product key field/column: brand ID"
+  },
+  {
+   "id": "R03172b",
+   "lines": [
+    3172,
+    3172
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Product key field/column: parent SKU"
+  },
+  {
+   "id": "R03172c",
+   "lines": [
+    3172,
+    3172
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Product key field/column: product name"
+  },
+  {
+   "id": "R03172d",
+   "lines": [
+    3172,
+    3172
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Product key field/column: product type"
+  },
+  {
+   "id": "R03172e",
+   "lines": [
+    3172,
+    3172
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Product key field/column: category"
+  },
+  {
+   "id": "R03172f",
+   "lines": [
+    3172,
+    3172
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Product key field/column: status"
+  },
+  {
+   "id": "R03174",
+   "lines": [
+    3174,
+    3174
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Product relationship: One product → many variants"
+  },
+  {
+   "id": "R03176",
+   "lines": [
+    3176,
+    3176
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Business data model record: Product Attribute"
+  },
+  {
+   "id": "R03178",
+   "lines": [
+    3178,
+    3178
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Product Attribute key field/column: Product ID"
+  },
+  {
+   "id": "R03178a",
+   "lines": [
+    3178,
+    3178
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Product Attribute key field/column: attribute name"
+  },
+  {
+   "id": "R03178b",
+   "lines": [
+    3178,
+    3178
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Product Attribute key field/column: value"
+  },
+  {
+   "id": "R03178c",
+   "lines": [
+    3178,
+    3178
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Product Attribute key field/column: normalized value"
+  },
+  {
+   "id": "R03178d",
+   "lines": [
+    3178,
+    3178
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Product Attribute key field/column: source"
+  },
+  {
+   "id": "R03178e",
+   "lines": [
+    3178,
+    3178
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Product Attribute key field/column: confidence"
+  },
+  {
+   "id": "R03178f",
+   "lines": [
+    3178,
+    3178
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Product Attribute key field/column: evidence"
+  },
+  {
+   "id": "R03178g",
+   "lines": [
+    3178,
+    3178
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Product Attribute key field/column: last updated"
+  },
+  {
+   "id": "R03180",
+   "lines": [
+    3180,
+    3180
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Product Attribute relationship: Many attributes per product"
+  },
+  {
+   "id": "R03182",
+   "lines": [
+    3182,
+    3182
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Business data model record: Variant"
+  },
+  {
+   "id": "R03184",
+   "lines": [
+    3184,
+    3184
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Variant key field/column: Variant ID"
+  },
+  {
+   "id": "R03184a",
+   "lines": [
+    3184,
+    3184
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Variant key field/column: product ID"
+  },
+  {
+   "id": "R03184b",
+   "lines": [
+    3184,
+    3184
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Variant key field/column: seller SKU"
+  },
+  {
+   "id": "R03184c",
+   "lines": [
+    3184,
+    3184
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Variant key field/column: color"
+  },
+  {
+   "id": "R03184d",
+   "lines": [
+    3184,
+    3184
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Variant key field/column: size"
+  },
+  {
+   "id": "R03184e",
+   "lines": [
+    3184,
+    3184
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Variant key field/column: identifier"
+  },
+  {
+   "id": "R03184f",
+   "lines": [
+    3184,
+    3184
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Variant key field/column: stock reference"
+  },
+  {
+   "id": "R03184g",
+   "lines": [
+    3184,
+    3184
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Variant key field/column: status"
+  },
+  {
+   "id": "R03186",
+   "lines": [
+    3186,
+    3186
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Variant relationship: One product → many variants (Variant row)"
+  },
+  {
+   "id": "R03188",
+   "lines": [
+    3188,
+    3188
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Business data model record: Media Asset"
+  },
+  {
+   "id": "R03190",
+   "lines": [
+    3190,
+    3190
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Media Asset key field/column: Asset ID"
+  },
+  {
+   "id": "R03190a",
+   "lines": [
+    3190,
+    3190
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Media Asset key field/column: product/variant ID"
+  },
+  {
+   "id": "R03190b",
+   "lines": [
+    3190,
+    3190
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Media Asset key field/column: type"
+  },
+  {
+   "id": "R03190c",
+   "lines": [
+    3190,
+    3190
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Media Asset key field/column: URL/reference"
+  },
+  {
+   "id": "R03190d",
+   "lines": [
+    3190,
+    3190
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Media Asset key field/column: role"
+  },
+  {
+   "id": "R03190e",
+   "lines": [
+    3190,
+    3190
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Media Asset key field/column: dimensions"
+  },
+  {
+   "id": "R03190f",
+   "lines": [
+    3190,
+    3190
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Media Asset key field/column: validation state"
+  },
+  {
+   "id": "R03192",
+   "lines": [
+    3192,
+    3192
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Media Asset relationship: Many assets per product/variant"
+  },
+  {
+   "id": "R03194",
+   "lines": [
+    3194,
+    3194
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Business data model record: Content Asset"
+  },
+  {
+   "id": "R03196",
+   "lines": [
+    3196,
+    3196
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Content Asset key field/column: Content ID"
+  },
+  {
+   "id": "R03196a",
+   "lines": [
+    3196,
+    3196
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Content Asset key field/column: product/variant ID"
+  },
+  {
+   "id": "R03196b",
+   "lines": [
+    3196,
+    3196
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Content Asset key field/column: type"
+  },
+  {
+   "id": "R03196c",
+   "lines": [
+    3196,
+    3196
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Content Asset key field/column: text"
+  },
+  {
+   "id": "R03196d",
+   "lines": [
+    3196,
+    3196
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Content Asset key field/column: source"
+  },
+  {
+   "id": "R03196e",
+   "lines": [
+    3196,
+    3196
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Content Asset key field/column: confidence"
+  },
+  {
+   "id": "R03196f",
+   "lines": [
+    3196,
+    3196
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Content Asset key field/column: approval state"
+  },
+  {
+   "id": "R03198",
+   "lines": [
+    3198,
+    3198
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Content Asset relationship: Many content objects per product"
+  },
+  {
+   "id": "R03200",
+   "lines": [
+    3200,
+    3200
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Business data model record: Marketplace Mapping"
+  },
+  {
+   "id": "R03202",
+   "lines": [
+    3202,
+    3202
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace Mapping key field/column: Product ID"
+  },
+  {
+   "id": "R03202a",
+   "lines": [
+    3202,
+    3202
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace Mapping key field/column: marketplace"
+  },
+  {
+   "id": "R03202b",
+   "lines": [
+    3202,
+    3202
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace Mapping key field/column: marketplace category"
+  },
+  {
+   "id": "R03202c",
+   "lines": [
+    3202,
+    3202
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace Mapping key field/column: product type"
+  },
+  {
+   "id": "R03202d",
+   "lines": [
+    3202,
+    3202
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace Mapping key field/column: mapped fields"
+  },
+  {
+   "id": "R03202e",
+   "lines": [
+    3202,
+    3202
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace Mapping key field/column: external IDs"
+  },
+  {
+   "id": "R03204",
+   "lines": [
+    3204,
+    3204
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Marketplace Mapping relationship: One canonical product → many marketplace mappings"
+  },
+  {
+   "id": "R03206",
+   "lines": [
+    3206,
+    3206
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Business data model record: Listing Job"
+  },
+  {
+   "id": "R03208",
+   "lines": [
+    3208,
+    3208
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Listing Job key field/column: Job ID"
+  },
+  {
+   "id": "R03208a",
+   "lines": [
+    3208,
+    3208
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Listing Job key field/column: product ID"
+  },
+  {
+   "id": "R03208b",
+   "lines": [
+    3208,
+    3208
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Listing Job key field/column: marketplace"
+  },
+  {
+   "id": "R03208c",
+   "lines": [
+    3208,
+    3208
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Listing Job key field/column: requested action"
+  },
+  {
+   "id": "R03208d",
+   "lines": [
+    3208,
+    3208
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Listing Job key field/column: started time"
+  },
+  {
+   "id": "R03208e",
+   "lines": [
+    3208,
+    3208
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Listing Job key field/column: current stage"
+  },
+  {
+   "id": "R03208f",
+   "lines": [
+    3208,
+    3208
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Listing Job key field/column: status"
+  },
+  {
+   "id": "R03210",
+   "lines": [
+    3210,
+    3210
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Listing Job relationship: One product → many jobs"
+  },
+  {
+   "id": "R03212",
+   "lines": [
+    3212,
+    3212
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Business data model record: Listing"
+  },
+  {
+   "id": "R03214",
+   "lines": [
+    3214,
+    3214
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Listing key field/column: Listing ID"
+  },
+  {
+   "id": "R03214a",
+   "lines": [
+    3214,
+    3214
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Listing key field/column: product ID"
+  },
+  {
+   "id": "R03214b",
+   "lines": [
+    3214,
+    3214
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Listing key field/column: marketplace"
+  },
+  {
+   "id": "R03214c",
+   "lines": [
+    3214,
+    3214
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Listing key field/column: marketplace SKU/ID"
+  },
+  {
+   "id": "R03214d",
+   "lines": [
+    3214,
+    3214
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Listing key field/column: parent/child relationship"
+  },
+  {
+   "id": "R03214e",
+   "lines": [
+    3214,
+    3214
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Listing key field/column: live URL if available"
+  },
+  {
+   "id": "R03214f",
+   "lines": [
+    3214,
+    3214
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Listing key field/column: current status"
+  },
+  {
+   "id": "R03216",
+   "lines": [
+    3216,
+    3216
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Listing relationship: One product → many marketplace listings"
+  },
+  {
+   "id": "R03218",
+   "lines": [
+    3218,
+    3218
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Business data model record: Validation Result"
+  },
+  {
+   "id": "R03220",
+   "lines": [
+    3220,
+    3220
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Validation Result key field/column: Listing/job ID"
+  },
+  {
+   "id": "R03220a",
+   "lines": [
+    3220,
+    3220
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Validation Result key field/column: field"
+  },
+  {
+   "id": "R03220b",
+   "lines": [
+    3220,
+    3220
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Validation Result key field/column: rule"
+  },
+  {
+   "id": "R03220c",
+   "lines": [
+    3220,
+    3220
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Validation Result key field/column: severity"
+  },
+  {
+   "id": "R03220d",
+   "lines": [
+    3220,
+    3220
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Validation Result key field/column: message"
+  },
+  {
+   "id": "R03220e",
+   "lines": [
+    3220,
+    3220
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Validation Result key field/column: source"
+  },
+  {
+   "id": "R03220f",
+   "lines": [
+    3220,
+    3220
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Validation Result key field/column: resolution state"
+  },
+  {
+   "id": "R03222",
+   "lines": [
+    3222,
+    3222
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Validation Result relationship: Many validations per job"
+  },
+  {
+   "id": "R03224",
+   "lines": [
+    3224,
+    3224
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Business data model record: Issue"
+  },
+  {
+   "id": "R03226",
+   "lines": [
+    3226,
+    3226
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Issue key field/column: Issue ID"
+  },
+  {
+   "id": "R03226a",
+   "lines": [
+    3226,
+    3226
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Issue key field/column: listing/job ID"
+  },
+  {
+   "id": "R03226b",
+   "lines": [
+    3226,
+    3226
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Issue key field/column: issue type"
+  },
+  {
+   "id": "R03226c",
+   "lines": [
+    3226,
+    3226
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Issue key field/column: marketplace code"
+  },
+  {
+   "id": "R03226d",
+   "lines": [
+    3226,
+    3226
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Issue key field/column: message"
+  },
+  {
+   "id": "R03226e",
+   "lines": [
+    3226,
+    3226
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Issue key field/column: severity"
+  },
+  {
+   "id": "R03226f",
+   "lines": [
+    3226,
+    3226
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Issue key field/column: auto-fixable flag"
+  },
+  {
+   "id": "R03226g",
+   "lines": [
+    3226,
+    3226
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Issue key field/column: action taken"
+  },
+  {
+   "id": "R03226h",
+   "lines": [
+    3226,
+    3226
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Issue key field/column: status"
+  },
+  {
+   "id": "R03228",
+   "lines": [
+    3228,
+    3228
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Issue relationship: Many issues per listing"
+  },
+  {
+   "id": "R03230",
+   "lines": [
+    3230,
+    3230
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Business data model record: Human Task"
+  },
+  {
+   "id": "R03232",
+   "lines": [
+    3232,
+    3232
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Human Task key field/column: Task ID"
+  },
+  {
+   "id": "R03232a",
+   "lines": [
+    3232,
+    3232
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Human Task key field/column: issue ID"
+  },
+  {
+   "id": "R03232b",
+   "lines": [
+    3232,
+    3232
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Human Task key field/column: question"
+  },
+  {
+   "id": "R03232c",
+   "lines": [
+    3232,
+    3232
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Human Task key field/column: missing field"
+  },
+  {
+   "id": "R03232d",
+   "lines": [
+    3232,
+    3232
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Human Task key field/column: evidence"
+  },
+  {
+   "id": "R03232e",
+   "lines": [
+    3232,
+    3232
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Human Task key field/column: requested response"
+  },
+  {
+   "id": "R03232f",
+   "lines": [
+    3232,
+    3232
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Human Task key field/column: status"
+  },
+  {
+   "id": "R03232g",
+   "lines": [
+    3232,
+    3232
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Human Task key field/column: timestamp"
+  },
+  {
+   "id": "R03234",
+   "lines": [
+    3234,
+    3234
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "Human Task relationship: Created only when agent cannot safely proceed"
+  },
+  {
+   "id": "R03236",
+   "lines": [
+    3236,
+    3236
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Business data model record: Audit Event"
+  },
+  {
+   "id": "R03238",
+   "lines": [
+    3238,
+    3238
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Audit Event key field/column: Event ID"
+  },
+  {
+   "id": "R03238a",
+   "lines": [
+    3238,
+    3238
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Audit Event key field/column: entity"
+  },
+  {
+   "id": "R03238b",
+   "lines": [
+    3238,
+    3238
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Audit Event key field/column: action"
+  },
+  {
+   "id": "R03238c",
+   "lines": [
+    3238,
+    3238
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Audit Event key field/column: old value"
+  },
+  {
+   "id": "R03238d",
+   "lines": [
+    3238,
+    3238
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Audit Event key field/column: new value"
+  },
+  {
+   "id": "R03238e",
+   "lines": [
+    3238,
+    3238
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Audit Event key field/column: actor"
+  },
+  {
+   "id": "R03238f",
+   "lines": [
+    3238,
+    3238
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Audit Event key field/column: reason"
+  },
+  {
+   "id": "R03238g",
+   "lines": [
+    3238,
+    3238
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "Audit Event key field/column: timestamp"
+  },
+  {
+   "id": "R03240",
+   "lines": [
+    3240,
+    3240
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "Audit Event relationship: recorded for All important changes"
+  },
+  {
+   "id": "R03242",
+   "lines": [
+    3242,
+    3242
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "info",
+   "text": "### 11.1 Source-of-Truth Priority",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03244",
+   "lines": [
+    3244,
+    3244
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Source-of-Truth Priority item 20 (first listed): Seller-provided structured data."
+  },
+  {
+   "id": "R03245",
+   "lines": [
+    3245,
+    3245
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Source-of-Truth Priority item 21 (second): Seller-provided documents/labels/size charts."
+  },
+  {
+   "id": "R03245a",
+   "lines": [
+    3245,
+    3245
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Source-of-Truth Priority item 21 (second): authoritative product assets."
+  },
+  {
+   "id": "R03246",
+   "lines": [
+    3246,
+    3246
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Source-of-Truth Priority item 22 (third): Connected catalog/PIM/ERP data."
+  },
+  {
+   "id": "R03246a",
+   "lines": [
+    3246,
+    3246
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "Connected catalog/PIM/ERP data is used only if explicitly connected and trusted."
+  },
+  {
+   "id": "R03247",
+   "lines": [
+    3247,
+    3247
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Source-of-Truth Priority item 23 (fourth): Existing marketplace data."
+  },
+  {
+   "id": "R03247a",
+   "lines": [
+    3247,
+    3247
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "Existing marketplace data is used when it is the seller's own authoritative listing data."
+  },
+  {
+   "id": "R03248",
+   "lines": [
+    3248,
+    3248
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Source-of-Truth Priority item 24 (fifth): Derived values from deterministic normalization or category rules."
+  },
+  {
+   "id": "R03249",
+   "lines": [
+    3249,
+    3249
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Source-of-Truth Priority item 25 (sixth): AI-generated inference."
+  },
+  {
+   "id": "R03249a",
+   "lines": [
+    3249,
+    3249
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "AI-generated inference only when the field is non-critical."
+  },
+  {
+   "id": "R03249b",
+   "lines": [
+    3249,
+    3249
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "AI-generated inference only when the inference is clearly permitted."
+  },
+  {
+   "id": "R03250",
+   "lines": [
+    3250,
+    3250
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "Never use an AI guess to fill a critical factual/compliance field."
+  },
+  {
+   "id": "R03252",
+   "lines": [
+    3252,
+    3252
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "info",
+   "text": "## 12. Step-by-Step Autonomous Listing Workflow",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03254",
+   "lines": [
+    3254,
+    3256
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Autonomous listing workflow STEP 1: UNDERSTAND PRODUCT"
+  },
+  {
+   "id": "R03258",
+   "lines": [
+    3258,
+    3258
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 1 goal: Build a complete understanding of the product before generating a marketplace listing."
+  },
+  {
+   "id": "R03260",
+   "lines": [
+    3260,
+    3260
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 1 input: Seller form"
+  },
+  {
+   "id": "R03260a",
+   "lines": [
+    3260,
+    3260
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 1 input: spreadsheet"
+  },
+  {
+   "id": "R03260b",
+   "lines": [
+    3260,
+    3260
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 1 input: images"
+  },
+  {
+   "id": "R03260c",
+   "lines": [
+    3260,
+    3260
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 1 input: website/catalog data"
+  },
+  {
+   "id": "R03260d",
+   "lines": [
+    3260,
+    3260
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 1 input: size chart"
+  },
+  {
+   "id": "R03260e",
+   "lines": [
+    3260,
+    3260
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 1 input: product documents"
+  },
+  {
+   "id": "R03260f",
+   "lines": [
+    3260,
+    3260
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 1 input: connected systems"
+  },
+  {
+   "id": "R03262",
+   "lines": [
+    3262,
+    3262
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 1 action: Identify product and variants"
+  },
+  {
+   "id": "R03262a",
+   "lines": [
+    3262,
+    3262
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 1 action: separate facts from marketing language"
+  },
+  {
+   "id": "R03262b",
+   "lines": [
+    3262,
+    3262
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 1 action: detect missing data"
+  },
+  {
+   "id": "R03262c",
+   "lines": [
+    3262,
+    3262
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 1 action: detect conflicting data"
+  },
+  {
+   "id": "R03262d",
+   "lines": [
+    3262,
+    3262
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 1 action: detect duplicate data"
+  },
+  {
+   "id": "R03262e",
+   "lines": [
+    3262,
+    3262
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 1 action: determine reliable vs confirmation-needed facts"
+  },
+  {
+   "id": "R03264",
+   "lines": [
+    3264,
+    3264
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 1 output: Structured product facts."
+  },
+  {
+   "id": "R03264a",
+   "lines": [
+    3264,
+    3264
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 1 output: each product fact carries its source."
+  },
+  {
+   "id": "R03264b",
+   "lines": [
+    3264,
+    3264
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 1 output: each product fact carries its confidence."
+  },
+  {
+   "id": "R03266",
+   "lines": [
+    3266,
+    3268
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Autonomous listing workflow STEP 2: CLASSIFY"
+  },
+  {
+   "id": "R03270",
+   "lines": [
+    3270,
+    3270
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 2 goal: Decide the correct product category and sub-category for each marketplace."
+  },
+  {
+   "id": "R03272",
+   "lines": [
+    3272,
+    3272
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 2 action: Identify product type (T-shirt, shirt, dress, jeans, etc.)"
+  },
+  {
+   "id": "R03272a",
+   "lines": [
+    3272,
+    3272
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 2 action: identify audience/gender"
+  },
+  {
+   "id": "R03272b",
+   "lines": [
+    3272,
+    3272
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 2 action: map canonical product to marketplace taxonomy"
+  },
+  {
+   "id": "R03272c",
+   "lines": [
+    3272,
+    3272
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 2 action: verify seller category eligibility"
+  },
+  {
+   "id": "R03272d",
+   "lines": [
+    3272,
+    3272
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 2 action: use evidence & rules (no random guesses)"
+  },
+  {
+   "id": "R03274",
+   "lines": [
+    3274,
+    3274
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 2 output: Canonical category"
+  },
+  {
+   "id": "R03274a",
+   "lines": [
+    3274,
+    3274
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 2 output: marketplace-specific category/product type"
+  },
+  {
+   "id": "R03274b",
+   "lines": [
+    3274,
+    3274
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 2 output: confidence"
+  },
+  {
+   "id": "R03276",
+   "lines": [
+    3276,
+    3278
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Autonomous listing workflow STEP 3: EXTRACT ATTRIBUTES"
+  },
+  {
+   "id": "R03280",
+   "lines": [
+    3280,
+    3280
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 3 goal: Populate all product attributes from the available evidence."
+  },
+  {
+   "id": "R03282",
+   "lines": [
+    3282,
+    3282
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 3 action: Extract color"
+  },
+  {
+   "id": "R03282a",
+   "lines": [
+    3282,
+    3282
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 3 action: Extract size"
+  },
+  {
+   "id": "R03282b",
+   "lines": [
+    3282,
+    3282
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 3 action: Extract fabric"
+  },
+  {
+   "id": "R03282c",
+   "lines": [
+    3282,
+    3282
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 3 action: Extract fit"
+  },
+  {
+   "id": "R03282d",
+   "lines": [
+    3282,
+    3282
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 3 action: Extract pattern"
+  },
+  {
+   "id": "R03282e",
+   "lines": [
+    3282,
+    3282
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 3 action: Extract neckline"
+  },
+  {
+   "id": "R03282f",
+   "lines": [
+    3282,
+    3282
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 3 action: Extract sleeve"
+  },
+  {
+   "id": "R03282g",
+   "lines": [
+    3282,
+    3282
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 3 action: Extract length"
+  },
+  {
+   "id": "R03282h",
+   "lines": [
+    3282,
+    3282
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 3 action: Extract closure"
+  },
+  {
+   "id": "R03282i",
+   "lines": [
+    3282,
+    3282
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 3 action: Extract occasion"
+  },
+  {
+   "id": "R03282j",
+   "lines": [
+    3282,
+    3282
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 3 action: normalize synonyms into controlled values"
+  },
+  {
+   "id": "R03282k",
+   "lines": [
+    3282,
+    3282
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 3 action: preserve original seller value"
+  },
+  {
+   "id": "R03282l",
+   "lines": [
+    3282,
+    3282
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 3 action: preserve normalized value"
+  },
+  {
+   "id": "R03282m",
+   "lines": [
+    3282,
+    3282
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 3 action: track source"
+  },
+  {
+   "id": "R03282n",
+   "lines": [
+    3282,
+    3282
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 3 action: detect contradictions (e.g., '100% cotton' vs 'cotton-poly blend')"
+  },
+  {
+   "id": "R03284",
+   "lines": [
+    3284,
+    3284
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 3 output: Complete canonical attribute set."
+  },
+  {
+   "id": "R03284a",
+   "lines": [
+    3284,
+    3284
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 3 output: missing/conflicting fields identified."
+  },
+  {
+   "id": "R03286",
+   "lines": [
+    3286,
+    3288
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Autonomous listing workflow STEP 4: FILL MARKETPLACE SCHEMA"
+  },
+  {
+   "id": "R03290",
+   "lines": [
+    3290,
+    3290
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 4 goal: Transform the canonical product into the exact field structure expected by each selected marketplace."
+  },
+  {
+   "id": "R03292",
+   "lines": [
+    3292,
+    3292
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 4 action: Load current marketplace/category schema"
+  },
+  {
+   "id": "R03292a",
+   "lines": [
+    3292,
+    3292
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 4 action: map canonical fields to portal fields"
+  },
+  {
+   "id": "R03292b",
+   "lines": [
+    3292,
+    3292
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 4 action: apply allowed-value enums"
+  },
+  {
+   "id": "R03292c",
+   "lines": [
+    3292,
+    3292
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 4 action: mark required fields"
+  },
+  {
+   "id": "R03292d",
+   "lines": [
+    3292,
+    3292
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 4 action: mark conditional fields"
+  },
+  {
+   "id": "R03292e",
+   "lines": [
+    3292,
+    3292
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 4 action: mark optional fields"
+  },
+  {
+   "id": "R03292f",
+   "lines": [
+    3292,
+    3292
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 4 action: mark unsupported fields"
+  },
+  {
+   "id": "R03292g",
+   "lines": [
+    3292,
+    3292
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 4 action: build parent/child variation structure"
+  },
+  {
+   "id": "R03292h",
+   "lines": [
+    3292,
+    3292
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 4 action: map media roles"
+  },
+  {
+   "id": "R03292i",
+   "lines": [
+    3292,
+    3292
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 4 action: map content fields"
+  },
+  {
+   "id": "R03294",
+   "lines": [
+    3294,
+    3294
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 4 output: Marketplace-ready draft for each marketplace."
+  },
+  {
+   "id": "R03296",
+   "lines": [
+    3296,
+    3298
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Autonomous listing workflow STEP 5: GENERATE CONTENT"
+  },
+  {
+   "id": "R03300",
+   "lines": [
+    3300,
+    3300
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 5 goal: Create customer-facing listing content from verified product facts."
+  },
+  {
+   "id": "R03302",
+   "lines": [
+    3302,
+    3302
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 5 creates: Title"
+  },
+  {
+   "id": "R03302a",
+   "lines": [
+    3302,
+    3302
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 5 creates: bullets/key features"
+  },
+  {
+   "id": "R03302b",
+   "lines": [
+    3302,
+    3302
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 5 creates: description"
+  },
+  {
+   "id": "R03302c",
+   "lines": [
+    3302,
+    3302
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 5 creates: search keywords"
+  },
+  {
+   "id": "R03302d",
+   "lines": [
+    3302,
+    3302
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 5 creates: size/fit copy"
+  },
+  {
+   "id": "R03302e",
+   "lines": [
+    3302,
+    3302
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 5 creates: portal-specific content fields"
+  },
+  {
+   "id": "R03304",
+   "lines": [
+    3304,
+    3304
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 5 rule: No unsupported claims"
+  },
+  {
+   "id": "R03304a",
+   "lines": [
+    3304,
+    3304
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 5 rule: no invented specs"
+  },
+  {
+   "id": "R03304b",
+   "lines": [
+    3304,
+    3304
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 5 rule: do not copy prohibited content"
+  },
+  {
+   "id": "R03304c",
+   "lines": [
+    3304,
+    3304
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 5 rule: keep consistent factual identity"
+  },
+  {
+   "id": "R03304d",
+   "lines": [
+    3304,
+    3304
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 5 rule: adapt tone/format to marketplace rules"
+  },
+  {
+   "id": "R03306",
+   "lines": [
+    3306,
+    3306
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 5 output: Content package with source traceability."
+  },
+  {
+   "id": "R03308",
+   "lines": [
+    3308,
+    3310
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Autonomous listing workflow STEP 6: VALIDATE"
+  },
+  {
+   "id": "R03312",
+   "lines": [
+    3312,
+    3312
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 6 goal: Catch problems before marketplace submission."
+  },
+  {
+   "id": "R03314",
+   "lines": [
+    3314,
+    3314
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 6 validate checklist: Required fields present"
+  },
+  {
+   "id": "R03314a",
+   "lines": [
+    3314,
+    3314
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 6 validate checklist: allowed values"
+  },
+  {
+   "id": "R03314b",
+   "lines": [
+    3314,
+    3314
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 6 validate checklist: parent/child relationship valid"
+  },
+  {
+   "id": "R03314c",
+   "lines": [
+    3314,
+    3314
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 6 validate checklist: color & size consistency"
+  },
+  {
+   "id": "R03314d",
+   "lines": [
+    3314,
+    3314
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 6 validate checklist: image presence"
+  },
+  {
+   "id": "R03314e",
+   "lines": [
+    3314,
+    3314
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 6 validate checklist: image association"
+  },
+  {
+   "id": "R03314f",
+   "lines": [
+    3314,
+    3314
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 6 validate checklist: price/MRP consistency"
+  },
+  {
+   "id": "R03314g",
+   "lines": [
+    3314,
+    3314
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 6 validate checklist: product identifier rules"
+  },
+  {
+   "id": "R03314h",
+   "lines": [
+    3314,
+    3314
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 6 validate checklist: HSN/tax fields"
+  },
+  {
+   "id": "R03314i",
+   "lines": [
+    3314,
+    3314
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 6 validate checklist: country of origin"
+  },
+  {
+   "id": "R03314j",
+   "lines": [
+    3314,
+    3314
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 6 validate checklist: manufacturer details"
+  },
+  {
+   "id": "R03314k",
+   "lines": [
+    3314,
+    3314
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 6 validate checklist: content policy checks"
+  },
+  {
+   "id": "R03314l",
+   "lines": [
+    3314,
+    3314
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 6 validate checklist: no conflicting facts"
+  },
+  {
+   "id": "R03316",
+   "lines": [
+    3316,
+    3316
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 6 output value: `PASS`"
+  },
+  {
+   "id": "R03316a",
+   "lines": [
+    3316,
+    3316
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 6 output value: `BLOCKED`"
+  },
+  {
+   "id": "R03316b",
+   "lines": [
+    3316,
+    3316
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 6 output value: `NEEDS HUMAN INPUT`"
+  },
+  {
+   "id": "R03316c",
+   "lines": [
+    3316,
+    3316
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 6 output is given with field-level reasons."
+  },
+  {
+   "id": "R03318",
+   "lines": [
+    3318,
+    3320
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Autonomous listing workflow STEP 7: FIND MISSING DATA"
+  },
+  {
+   "id": "R03322",
+   "lines": [
+    3322,
+    3322
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 7 goal: Determine whether missing information can be recovered automatically."
+  },
+  {
+   "id": "R03324",
+   "lines": [
+    3324,
+    3324
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 7: Try recovery sources in this strict hierarchy."
+  },
+  {
+   "id": "R03326",
+   "lines": [
+    3326,
+    3326
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 7 hierarchy 1: Existing canonical product record."
+  },
+  {
+   "id": "R03327",
+   "lines": [
+    3327,
+    3327
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 7 hierarchy 2: Same brand's trusted catalog conventions."
+  },
+  {
+   "id": "R03328",
+   "lines": [
+    3328,
+    3328
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 7 hierarchy 3: Connected PIM/ERP/catalog."
+  },
+  {
+   "id": "R03329",
+   "lines": [
+    3329,
+    3329
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 7 hierarchy 4: Existing marketplace listing owned by the seller."
+  },
+  {
+   "id": "R03330",
+   "lines": [
+    3330,
+    3330
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 7 hierarchy 5: Seller-provided files/assets."
+  },
+  {
+   "id": "R03331",
+   "lines": [
+    3331,
+    3331
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 7 hierarchy 6: Deterministic category mapping."
+  },
+  {
+   "id": "R03332",
+   "lines": [
+    3332,
+    3332
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 7 hierarchy 7: Ask seller."
+  },
+  {
+   "id": "R03334",
+   "lines": [
+    3334,
+    3334
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 7 output: Missing fields reduced to the smallest set genuinely required."
+  },
+  {
+   "id": "R03336",
+   "lines": [
+    3336,
+    3338
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Autonomous listing workflow STEP 8: ASK HUMAN ONLY WHEN NECESSARY"
+  },
+  {
+   "id": "R03340",
+   "lines": [
+    3340,
+    3340
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 8 goal: Ask the seller one clear question instead of sending them back to a large form."
+  },
+  {
+   "id": "R03342",
+   "lines": [
+    3342,
+    3342
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 8 example question: 'What is the fabric composition: 100% cotton or 95% cotton / 5% elastane?'"
+  },
+  {
+   "id": "R03342a",
+   "lines": [
+    3342,
+    3342
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 8 example question: 'Please provide the size chart for this product.'"
+  },
+  {
+   "id": "R03342b",
+   "lines": [
+    3342,
+    3342
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 8 example question: 'Which MRP should be used for the black variant?'"
+  },
+  {
+   "id": "R03342c",
+   "lines": [
+    3342,
+    3342
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 8 example question: 'Please confirm whether this is a women's or unisex product.'"
+  },
+  {
+   "id": "R03344",
+   "lines": [
+    3344,
+    3344
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 8 question must include: Why information is required"
+  },
+  {
+   "id": "R03344a",
+   "lines": [
+    3344,
+    3344
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 8 question must include: which products/variants it affects"
+  },
+  {
+   "id": "R03344b",
+   "lines": [
+    3344,
+    3344
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 8 question must include: exact expected answer"
+  },
+  {
+   "id": "R03344c",
+   "lines": [
+    3344,
+    3344
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 8 question must include: optional safe suggestions"
+  },
+  {
+   "id": "R03346",
+   "lines": [
+    3346,
+    3346
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 8 post-response: Update canonical record"
+  },
+  {
+   "id": "R03346a",
+   "lines": [
+    3346,
+    3346
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 8 post-response: resume automatically from blocked step"
+  },
+  {
+   "id": "R03348",
+   "lines": [
+    3348,
+    3350
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Autonomous listing workflow STEP 9: SUBMIT"
+  },
+  {
+   "id": "R03352",
+   "lines": [
+    3352,
+    3352
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 9 goal: Send the validated listing to the selected marketplace(s)."
+  },
+  {
+   "id": "R03354",
+   "lines": [
+    3354,
+    3354
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 9 action: Submit only required and permitted fields"
+  },
+  {
+   "id": "R03354a",
+   "lines": [
+    3354,
+    3354
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 9 action: record submission time"
+  },
+  {
+   "id": "R03354b",
+   "lines": [
+    3354,
+    3354
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 9 action: record job ID/reference"
+  },
+  {
+   "id": "R03354c",
+   "lines": [
+    3354,
+    3354
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 9 action: store exact version submitted"
+  },
+  {
+   "id": "R03354d",
+   "lines": [
+    3354,
+    3354
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 9 action: update status from Draft/Ready to Submitted/Pending"
+  },
+  {
+   "id": "R03356",
+   "lines": [
+    3356,
+    3356
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 9 output: Marketplace submission record."
+  },
+  {
+   "id": "R03358",
+   "lines": [
+    3358,
+    3360
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Autonomous listing workflow STEP 10: CHECK STATUS"
+  },
+  {
+   "id": "R03362",
+   "lines": [
+    3362,
+    3362
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 10 goal: Determine what happened after submission."
+  },
+  {
+   "id": "R03364",
+   "lines": [
+    3364,
+    3364
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 10 possible outcome: Accepted/processing"
+  },
+  {
+   "id": "R03364a",
+   "lines": [
+    3364,
+    3364
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 10 possible outcome: Active/live"
+  },
+  {
+   "id": "R03364b",
+   "lines": [
+    3364,
+    3364
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 10 possible outcome: Rejected"
+  },
+  {
+   "id": "R03364c",
+   "lines": [
+    3364,
+    3364
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 10 possible outcome: Partially accepted"
+  },
+  {
+   "id": "R03364d",
+   "lines": [
+    3364,
+    3364
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 10 possible outcome: Missing information"
+  },
+  {
+   "id": "R03364e",
+   "lines": [
+    3364,
+    3364
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 10 possible outcome: Validation failure"
+  },
+  {
+   "id": "R03364f",
+   "lines": [
+    3364,
+    3364
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 10 possible outcome: Pending marketplace review"
+  },
+  {
+   "id": "R03364g",
+   "lines": [
+    3364,
+    3364
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 10 possible outcome: Account/category permission issue"
+  },
+  {
+   "id": "R03366",
+   "lines": [
+    3366,
+    3366
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 10 rule: Keep checking until a terminal state is reached."
+  },
+  {
+   "id": "R03366a",
+   "lines": [
+    3366,
+    3366
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 10 rule: Keep checking until a human action is required (alternative stop condition)."
+  },
+  {
+   "id": "R03368",
+   "lines": [
+    3368,
+    3370
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Autonomous listing workflow STEP 11: FIX ERRORS"
+  },
+  {
+   "id": "R03372",
+   "lines": [
+    3372,
+    3372
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 11 goal: Diagnose errors."
+  },
+  {
+   "id": "R03372a",
+   "lines": [
+    3372,
+    3372
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 11 goal: Resolve errors."
+  },
+  {
+   "id": "R03372b",
+   "lines": [
+    3372,
+    3372
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 11 goal: errors are resolved without making the seller repeat the process."
+  },
+  {
+   "id": "R03374",
+   "lines": [
+    3374,
+    3374
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 11 for every error: Capture error code"
+  },
+  {
+   "id": "R03374a",
+   "lines": [
+    3374,
+    3374
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 11 for every error: Capture error message"
+  },
+  {
+   "id": "R03374b",
+   "lines": [
+    3374,
+    3374
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 11 for every error: identify affected SKU"
+  },
+  {
+   "id": "R03374c",
+   "lines": [
+    3374,
+    3374
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 11 for every error: identify affected field"
+  },
+  {
+   "id": "R03374d",
+   "lines": [
+    3374,
+    3374
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 11 for every error: translate to plain language"
+  },
+  {
+   "id": "R03374e",
+   "lines": [
+    3374,
+    3374
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 11 for every error: determine if auto-fixable"
+  },
+  {
+   "id": "R03374f",
+   "lines": [
+    3374,
+    3374
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 11 for every error: apply deterministic fix"
+  },
+  {
+   "id": "R03374g",
+   "lines": [
+    3374,
+    3374
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 11 for every error: revalidate"
+  },
+  {
+   "id": "R03376",
+   "lines": [
+    3376,
+    3376
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 11 auto-fixable class: Wrong portal enum mapped from known canonical value"
+  },
+  {
+   "id": "R03376a",
+   "lines": [
+    3376,
+    3376
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 11 auto-fixable class: formatting issue"
+  },
+  {
+   "id": "R03376b",
+   "lines": [
+    3376,
+    3376
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 11 auto-fixable class: safely calculable derived field"
+  },
+  {
+   "id": "R03376c",
+   "lines": [
+    3376,
+    3376
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 11 auto-fixable class: incorrect parent/child mapping"
+  },
+  {
+   "id": "R03378",
+   "lines": [
+    3378,
+    3378
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 11 human-required class: Missing factual product info"
+  },
+  {
+   "id": "R03378a",
+   "lines": [
+    3378,
+    3378
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 11 human-required class: conflicting seller data"
+  },
+  {
+   "id": "R03378b",
+   "lines": [
+    3378,
+    3378
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 11 human-required class: brand authorization/approval"
+  },
+  {
+   "id": "R03378c",
+   "lines": [
+    3378,
+    3378
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 11 human-required class: account issue"
+  },
+  {
+   "id": "R03378d",
+   "lines": [
+    3378,
+    3378
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 11 human-required class: compliance evidence request"
+  },
+  {
+   "id": "R03380",
+   "lines": [
+    3380,
+    3382
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Autonomous listing workflow STEP 12: RESUBMIT"
+  },
+  {
+   "id": "R03384",
+   "lines": [
+    3384,
+    3384
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 12 goal: Send the corrected listing back to the marketplace."
+  },
+  {
+   "id": "R03386",
+   "lines": [
+    3386,
+    3386
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 12 action: Keep same seller SKU/identity"
+  },
+  {
+   "id": "R03386a",
+   "lines": [
+    3386,
+    3386
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 12 action: record correction made"
+  },
+  {
+   "id": "R03386b",
+   "lines": [
+    3386,
+    3386
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 12 action: increment submission attempt count"
+  },
+  {
+   "id": "R03386c",
+   "lines": [
+    3386,
+    3386
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 12 action: submit only after validation passes"
+  },
+  {
+   "id": "R03386d",
+   "lines": [
+    3386,
+    3386
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "STEP 12 action: preserve failed versions for audit"
+  },
+  {
+   "id": "R03388",
+   "lines": [
+    3388,
+    3390
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Autonomous listing workflow STEP 13: CONFIRM LIVE"
+  },
+  {
+   "id": "R03392",
+   "lines": [
+    3392,
+    3392
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 13 goal: Confirm the product is genuinely sellable/live."
+  },
+  {
+   "id": "R03394",
+   "lines": [
+    3394,
+    3394
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 13 minimum confirmation: Status = live/active"
+  },
+  {
+   "id": "R03394a",
+   "lines": [
+    3394,
+    3394
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 13 minimum confirmation: marketplace ID captured"
+  },
+  {
+   "id": "R03394b",
+   "lines": [
+    3394,
+    3394
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 13 minimum confirmation: seller SKU mapped"
+  },
+  {
+   "id": "R03394c",
+   "lines": [
+    3394,
+    3394
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 13 minimum confirmation: variant status captured"
+  },
+  {
+   "id": "R03394d",
+   "lines": [
+    3394,
+    3394
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 13 minimum confirmation: live URL captured where available"
+  },
+  {
+   "id": "R03394e",
+   "lines": [
+    3394,
+    3394
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 13 minimum confirmation: latest successful sync timestamp recorded"
+  },
+  {
+   "id": "R03396",
+   "lines": [
+    3396,
+    3396
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "data",
+   "text": "STEP 13 output: `LIVE` status."
+  },
+  {
+   "id": "R03398",
+   "lines": [
+    3398,
+    3400
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "flow",
+   "text": "Autonomous listing workflow STEP 14: SHOW DASHBOARD STATUS"
+  },
+  {
+   "id": "R03402",
+   "lines": [
+    3402,
+    3402
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 14 goal: Give the seller a simple operational view."
+  },
+  {
+   "id": "R03404",
+   "lines": [
+    3404,
+    3404
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 14 dashboard shows: Overall status"
+  },
+  {
+   "id": "R03404a",
+   "lines": [
+    3404,
+    3404
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 14 dashboard shows: per-marketplace status"
+  },
+  {
+   "id": "R03404b",
+   "lines": [
+    3404,
+    3404
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 14 dashboard shows: current step"
+  },
+  {
+   "id": "R03404c",
+   "lines": [
+    3404,
+    3404
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 14 dashboard shows: issue count"
+  },
+  {
+   "id": "R03404d",
+   "lines": [
+    3404,
+    3404
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 14 dashboard shows: human actions required"
+  },
+  {
+   "id": "R03404e",
+   "lines": [
+    3404,
+    3404
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 14 dashboard shows: last sync"
+  },
+  {
+   "id": "R03404f",
+   "lines": [
+    3404,
+    3404
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 14 dashboard shows: marketplace listing ID/SKU"
+  },
+  {
+   "id": "R03404g",
+   "lines": [
+    3404,
+    3404
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 14 dashboard shows: live URL"
+  },
+  {
+   "id": "R03404h",
+   "lines": [
+    3404,
+    3404
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "STEP 14 dashboard shows: attempt history"
+  },
+  {
+   "id": "R03406",
+   "lines": [
+    3406,
+    3406
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "info",
+   "text": "Core Dashboard Mandate",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03408",
+   "lines": [
+    3408,
+    3408
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "Core Dashboard Mandate: the dashboard should answer \"What is live\""
+  },
+  {
+   "id": "R03408a",
+   "lines": [
+    3408,
+    3408
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "Core Dashboard Mandate: the dashboard should answer \"what is not live\""
+  },
+  {
+   "id": "R03408b",
+   "lines": [
+    3408,
+    3408
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "Core Dashboard Mandate: the dashboard should answer \"why\""
+  },
+  {
+   "id": "R03408c",
+   "lines": [
+    3408,
+    3408
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "requirement",
+   "text": "Core Dashboard Mandate: the dashboard should answer \"what do I need to do?\""
+  },
+  {
+   "id": "R03410",
+   "lines": [
+    3410,
+    3410
+   ],
+   "page": "[05] Business Data Model & 14-Step Engine (§11–12)",
+   "kind": "info",
+   "text": "--- (page separator)",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03412",
+   "lines": [
+    3412,
+    3412
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "info",
+   "text": "# [06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03414",
+   "lines": [
+    3414,
+    3414
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "info",
+   "text": "Section: Founder's POV Doc",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R03415",
+   "lines": [
+    3415,
+    3415
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "scope",
+   "text": "Page [06] Status Lifecycle & Dashboard Specs (§13–14) Scope: MVP"
+  },
+  {
+   "id": "R03416",
+   "lines": [
+    3416,
+    3416
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/founders-status-dashboard-views",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R03417",
+   "lines": [
+    3417,
+    3417
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "constraint",
+   "text": "Page [06] description: 14-state granular listing status lifecycle."
+  },
+  {
+   "id": "R03417a",
+   "lines": [
+    3417,
+    3417
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "scope",
+   "text": "Page [06] description: operational requirements for the Product List dashboard view."
+  },
+  {
+   "id": "R03417b",
+   "lines": [
+    3417,
+    3417
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "scope",
+   "text": "Page [06] description: operational requirements for the Product Detail dashboard view."
+  },
+  {
+   "id": "R03419",
+   "lines": [
+    3419,
+    3419
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "info",
+   "text": "## 13. Listing Status Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03421",
+   "lines": [
+    3421,
+    3421
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "The product tracks granular operational status across all lifecycle phases."
+  },
+  {
+   "id": "R03423",
+   "lines": [
+    3423,
+    3423
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "info",
+   "text": "Column: Status",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03425",
+   "lines": [
+    3425,
+    3425
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "info",
+   "text": "Column: Meaning",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03427",
+   "lines": [
+    3427,
+    3427
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "info",
+   "text": "Column: Seller Action",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03429",
+   "lines": [
+    3429,
+    3429
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Listing status value: `DRAFT`"
+  },
+  {
+   "id": "R03431",
+   "lines": [
+    3431,
+    3431
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "`DRAFT` meaning: Product information has been started but is not ready."
+  },
+  {
+   "id": "R03433",
+   "lines": [
+    3433,
+    3433
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "flow",
+   "text": "`DRAFT` seller action: Provide missing information if shown."
+  },
+  {
+   "id": "R03435",
+   "lines": [
+    3435,
+    3435
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Listing status value: `UNDERSTANDING`"
+  },
+  {
+   "id": "R03437",
+   "lines": [
+    3437,
+    3437
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "`UNDERSTANDING` meaning: Agent is interpreting product inputs."
+  },
+  {
+   "id": "R03439",
+   "lines": [
+    3439,
+    3439
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "flow",
+   "text": "`UNDERSTANDING` seller action: None"
+  },
+  {
+   "id": "R03441",
+   "lines": [
+    3441,
+    3441
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Listing status value: `CLASSIFYING`"
+  },
+  {
+   "id": "R03443",
+   "lines": [
+    3443,
+    3443
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "`CLASSIFYING` meaning: Agent is selecting category/product type."
+  },
+  {
+   "id": "R03445",
+   "lines": [
+    3445,
+    3445
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "flow",
+   "text": "`CLASSIFYING` seller action: None unless ambiguous."
+  },
+  {
+   "id": "R03447",
+   "lines": [
+    3447,
+    3447
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Listing status value: `READY_FOR_REVIEW`"
+  },
+  {
+   "id": "R03449",
+   "lines": [
+    3449,
+    3449
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "`READY_FOR_REVIEW` meaning: Draft is structurally ready but requires seller confirmation."
+  },
+  {
+   "id": "R03451",
+   "lines": [
+    3451,
+    3451
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "flow",
+   "text": "`READY_FOR_REVIEW` seller action: Review only if requested by workflow."
+  },
+  {
+   "id": "R03453",
+   "lines": [
+    3453,
+    3453
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Listing status value: `READY_TO_LIST`"
+  },
+  {
+   "id": "R03455",
+   "lines": [
+    3455,
+    3455
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "`READY_TO_LIST` meaning: Validation passed for selected marketplace(s)."
+  },
+  {
+   "id": "R03457",
+   "lines": [
+    3457,
+    3457
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "flow",
+   "text": "`READY_TO_LIST` seller action: None"
+  },
+  {
+   "id": "R03459",
+   "lines": [
+    3459,
+    3459
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Listing status value: `SUBMITTING`"
+  },
+  {
+   "id": "R03461",
+   "lines": [
+    3461,
+    3461
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "`SUBMITTING` meaning: Listing is being sent."
+  },
+  {
+   "id": "R03463",
+   "lines": [
+    3463,
+    3463
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "flow",
+   "text": "`SUBMITTING` seller action: None"
+  },
+  {
+   "id": "R03465",
+   "lines": [
+    3465,
+    3465
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Listing status value: `PROCESSING`"
+  },
+  {
+   "id": "R03467",
+   "lines": [
+    3467,
+    3467
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "`PROCESSING` meaning: Marketplace is processing the submission."
+  },
+  {
+   "id": "R03469",
+   "lines": [
+    3469,
+    3469
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "flow",
+   "text": "`PROCESSING` seller action: None"
+  },
+  {
+   "id": "R03471",
+   "lines": [
+    3471,
+    3471
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Listing status value: `LIVE`"
+  },
+  {
+   "id": "R03473",
+   "lines": [
+    3473,
+    3473
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "`LIVE` meaning: Marketplace confirmed the listing is active/live."
+  },
+  {
+   "id": "R03475",
+   "lines": [
+    3475,
+    3475
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "flow",
+   "text": "`LIVE` seller action: None"
+  },
+  {
+   "id": "R03477",
+   "lines": [
+    3477,
+    3477
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Listing status value: `PARTIALLY_LIVE`"
+  },
+  {
+   "id": "R03479",
+   "lines": [
+    3479,
+    3479
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "`PARTIALLY_LIVE` meaning: Some variants/marketplaces are live while others are not."
+  },
+  {
+   "id": "R03481",
+   "lines": [
+    3481,
+    3481
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "flow",
+   "text": "`PARTIALLY_LIVE` seller action: Resolve failed portions if needed."
+  },
+  {
+   "id": "R03483",
+   "lines": [
+    3483,
+    3483
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Listing status value: `BLOCKED`"
+  },
+  {
+   "id": "R03485",
+   "lines": [
+    3485,
+    3485
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "`BLOCKED` meaning: Required information/permission/compliance issue prevents progress."
+  },
+  {
+   "id": "R03487",
+   "lines": [
+    3487,
+    3487
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "flow",
+   "text": "`BLOCKED` seller action: Complete the displayed task."
+  },
+  {
+   "id": "R03489",
+   "lines": [
+    3489,
+    3489
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Listing status value: `ERROR`"
+  },
+  {
+   "id": "R03491",
+   "lines": [
+    3491,
+    3491
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "`ERROR` meaning: Submission/validation failed."
+  },
+  {
+   "id": "R03493",
+   "lines": [
+    3493,
+    3493
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "flow",
+   "text": "`ERROR` seller action: Usually none if auto-fix is possible."
+  },
+  {
+   "id": "R03493a",
+   "lines": [
+    3493,
+    3493
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "flow",
+   "text": "`ERROR` seller action: otherwise resolve task."
+  },
+  {
+   "id": "R03495",
+   "lines": [
+    3495,
+    3495
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Listing status value: `HUMAN_ACTION_REQUIRED`"
+  },
+  {
+   "id": "R03497",
+   "lines": [
+    3497,
+    3497
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "`HUMAN_ACTION_REQUIRED` meaning: Agent cannot safely proceed without seller input/action."
+  },
+  {
+   "id": "R03499",
+   "lines": [
+    3499,
+    3499
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "flow",
+   "text": "`HUMAN_ACTION_REQUIRED` seller action: Answer the exact question."
+  },
+  {
+   "id": "R03499a",
+   "lines": [
+    3499,
+    3499
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "flow",
+   "text": "`HUMAN_ACTION_REQUIRED` seller action (alternative): perform the requested marketplace action."
+  },
+  {
+   "id": "R03501",
+   "lines": [
+    3501,
+    3501
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Listing status value: `PAUSED`"
+  },
+  {
+   "id": "R03503",
+   "lines": [
+    3503,
+    3503
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "`PAUSED` meaning: Seller or system intentionally paused the listing."
+  },
+  {
+   "id": "R03505",
+   "lines": [
+    3505,
+    3505
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "flow",
+   "text": "`PAUSED` seller action: Resume when ready."
+  },
+  {
+   "id": "R03507",
+   "lines": [
+    3507,
+    3507
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Listing status value: `ARCHIVED`"
+  },
+  {
+   "id": "R03509",
+   "lines": [
+    3509,
+    3509
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "`ARCHIVED` meaning: Listing workflow is closed."
+  },
+  {
+   "id": "R03511",
+   "lines": [
+    3511,
+    3511
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "flow",
+   "text": "`ARCHIVED` seller action: None"
+  }
+ ]
+}

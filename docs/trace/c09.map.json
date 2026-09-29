@@ -1,0 +1,2616 @@
+{
+ "chunk": "c09",
+ "items": [
+  {
+   "id": "R05867",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:43; ADR-0003; T2",
+   "note": "PostgreSQL 17 (pgvector >= 0.8.2) instead of 16."
+  },
+  {
+   "id": "R05869",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2081-2120",
+   "note": "Appendix A.1 maps all 13 site tables column by column."
+  },
+  {
+   "id": "R05869a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:47; DATABASE.md:22; DATABASE.md:2102",
+   "note": "tenant_id on every tenant table, incl. join-only tables (T59)."
+  },
+  {
+   "id": "R05869b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:22",
+   "note": "std tenant = tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE."
+  },
+  {
+   "id": "R05871",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "CANON.md:86; DATABASE.md:1756-1768",
+   "note": "No single database_schema_v1.sql; 0000_bootstrap.sql plus claimed Alembic revisions 0001-0005."
+  },
+  {
+   "id": "R05874",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:215-216; T31",
+   "note": "tenants = brand workspace; brand facts in 1:1 brand_profiles (T31)."
+  },
+  {
+   "id": "R05875",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:215",
+   "note": "tenants root table, no tenant_id."
+  },
+  {
+   "id": "R05876",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:21; DATABASE.md:2085",
+   "note": "uuid PK DEFAULT gen_random_uuid()."
+  },
+  {
+   "id": "R05877",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2085",
+   "note": "name text NOT NULL."
+  },
+  {
+   "id": "R05878",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:221",
+   "note": "tone text nullable."
+  },
+  {
+   "id": "R05879",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:222",
+   "note": "guidelines jsonb + CHECK jsonb_typeof = array (T38)."
+  },
+  {
+   "id": "R05880",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:222",
+   "note": "glossary jsonb + CHECK object map (T38)."
+  },
+  {
+   "id": "R05881",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2085",
+   "note": "created_at DEFAULT now(), plus NOT NULL."
+  },
+  {
+   "id": "R05884",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:246-252; ADR-0006 (proposed); T23",
+   "note": "RBAC role moved to tenant_memberships; users is a global identity."
+  },
+  {
+   "id": "R05885",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:233",
+   "note": "users table kept (global)."
+  },
+  {
+   "id": "R05886",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2088",
+   "note": "uuid PK."
+  },
+  {
+   "id": "R05887",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:234; DATABASE.md:2089; ADR-0006; T23",
+   "note": "No users.tenant_id; tenant link via tenant_memberships."
+  },
+  {
+   "id": "R05888",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:238",
+   "note": "email text NOT NULL."
+  },
+  {
+   "id": "R05889",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:239",
+   "note": "hashed_password nullable (argon2id)."
+  },
+  {
+   "id": "R05890",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:252; ADR-0006; T23",
+   "note": "role NOT NULL lives on tenant_memberships.role, not users."
+  },
+  {
+   "id": "R05890a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:252; ADR-0006; T23",
+   "note": "Same 4 values owner|operator|reviewer|admin, CHECK on tenant_memberships."
+  },
+  {
+   "id": "R05891",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2088",
+   "note": "created_at DEFAULT now()."
+  },
+  {
+   "id": "R05892",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:238; ADR-0006; T23",
+   "note": "UNIQUE (lower(email)) global instead of UNIQUE (tenant_id, email)."
+  },
+  {
+   "id": "R05895",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1033-1057",
+   "note": "brand_chunks is the pgvector RAG store in Postgres."
+  },
+  {
+   "id": "R05896",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON-ADDENDUM.md:32; DATABASE.md:1762",
+   "note": "CREATE EXTENSION vector in raw 0000_bootstrap.sql, not Alembic."
+  },
+  {
+   "id": "R05897",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1057",
+   "note": "brand_chunks table."
+  },
+  {
+   "id": "R05898",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2090",
+   "note": "uuid PK."
+  },
+  {
+   "id": "R05899",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1058; CANON.md:47; T58",
+   "note": "Column named tenant_id NOT NULL, not brand_id."
+  },
+  {
+   "id": "R05900",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1062",
+   "note": "type text NOT NULL."
+  },
+  {
+   "id": "R05900a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1062",
+   "note": "ck_brand_chunks_type CHECK tone_rule|glossary|compliance|example."
+  },
+  {
+   "id": "R05901",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1062; DATABASE.md:2090",
+   "note": "text NOT NULL."
+  },
+  {
+   "id": "R05902",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1063",
+   "note": "vector(1536), made NOT NULL."
+  },
+  {
+   "id": "R05902a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1063; CANON.md:119",
+   "note": "1536 dims, text-embedding-3-small."
+  },
+  {
+   "id": "R05903",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1058",
+   "note": "updated_at + set_updated_at trigger."
+  },
+  {
+   "id": "R05905",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1067",
+   "note": "brand_chunks_embedding_idx in 0002b."
+  },
+  {
+   "id": "R05905a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1067",
+   "note": "HNSW vector_cosine_ops m=16 ef_construction=64."
+  },
+  {
+   "id": "R05908",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:402",
+   "note": "products = canonical seller input (style/variant/standalone rows)."
+  },
+  {
+   "id": "R05909",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:402",
+   "note": "products table."
+  },
+  {
+   "id": "R05910",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2093",
+   "note": "uuid PK."
+  },
+  {
+   "id": "R05911",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2094; CANON.md:47; T58",
+   "note": "tenant_id instead of brand_id."
+  },
+  {
+   "id": "R05912",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:407; DATABASE.md:2093",
+   "note": "sku text NOT NULL (+ proposed charset CHECK, T72)."
+  },
+  {
+   "id": "R05913",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:408",
+   "note": "title text NOT NULL, 1..500."
+  },
+  {
+   "id": "R05914",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:414; DATABASE.md:2095; TEAM-QUESTIONS T62",
+   "note": "No products.images; renamed source_image_urls, images table authoritative. [06]/[85]/[89] agree; no Canon row."
+  },
+  {
+   "id": "R05915",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2093",
+   "note": "attributes jsonb (Fact envelopes)."
+  },
+  {
+   "id": "R05916",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:409; T69",
+   "note": "DEFAULT 'draft'; vocabulary draft|active pending T69."
+  },
+  {
+   "id": "R05917",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2093",
+   "note": "created_at."
+  },
+  {
+   "id": "R05918",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2093; DATABASE.md:403",
+   "note": "updated_at via trigger."
+  },
+  {
+   "id": "R05919",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:407; CANON.md:48; T58",
+   "note": "UNIQUE (tenant_id, sku) named products_tenant_sku_idx."
+  },
+  {
+   "id": "R05922",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:84; DATABASE.md:1006",
+   "note": "Credentials KMS-encrypted; only adapters decrypt."
+  },
+  {
+   "id": "R05923",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1000",
+   "note": "marketplace_accounts table."
+  },
+  {
+   "id": "R05924",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2097",
+   "note": "uuid PK."
+  },
+  {
+   "id": "R05925",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2098; CANON.md:47; T58",
+   "note": "tenant_id instead of brand_id."
+  },
+  {
+   "id": "R05926",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1005; DATABASE.md:2097",
+   "note": "marketplace text NOT NULL."
+  },
+  {
+   "id": "R05926a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2097; DATABASE.md:26",
+   "note": "CHECK marketplace IN ('amazon','flipkart')."
+  },
+  {
+   "id": "R05927",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1006; TEAM-QUESTIONS T27",
+   "note": "token_enc nullable (NULL after revoke, crypto-shred); site pages agree on NOT NULL."
+  },
+  {
+   "id": "R05927a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1006",
+   "note": "Per-write AES-256-GCM key wrapped by KMS; AAD tenant_id."
+  },
+  {
+   "id": "R05928",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1008; DATABASE.md:2100",
+   "note": "DEFAULT 'active'; values active|needs_reconnect|revoked."
+  },
+  {
+   "id": "R05929",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2097",
+   "note": "created_at."
+  },
+  {
+   "id": "R05932",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:741",
+   "note": "listings = per-marketplace entity."
+  },
+  {
+   "id": "R05933",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:741",
+   "note": "listings table (+ tenant_id, T59)."
+  },
+  {
+   "id": "R05934",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2101",
+   "note": "uuid PK."
+  },
+  {
+   "id": "R05935",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:746",
+   "note": "product_id -> products NOT NULL (style or standalone, T45)."
+  },
+  {
+   "id": "R05936",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:746",
+   "note": "marketplace text; UNIQUE (product_id, marketplace)."
+  },
+  {
+   "id": "R05937",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:747",
+   "note": "status text NOT NULL DEFAULT created."
+  },
+  {
+   "id": "R05937a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:747; CANON.md:53",
+   "note": "Same 9 lowercase values, TEXT + CHECK."
+  },
+  {
+   "id": "R05938",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:754",
+   "note": "external_id text nullable."
+  },
+  {
+   "id": "R05939",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2101",
+   "note": "created_at."
+  },
+  {
+   "id": "R05942",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:772; DATABASE.md:787",
+   "note": "listing_versions carries maker-checker CHECK and lv_guard."
+  },
+  {
+   "id": "R05943",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:772",
+   "note": "listing_versions table."
+  },
+  {
+   "id": "R05944",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2104",
+   "note": "uuid PK."
+  },
+  {
+   "id": "R05945",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:777",
+   "note": "listing_id -> listings NOT NULL (composite tenant FK)."
+  },
+  {
+   "id": "R05946",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:777",
+   "note": "version int NOT NULL."
+  },
+  {
+   "id": "R05947",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:778; DATABASE.md:2104",
+   "note": "content_json jsonb NOT NULL (CanonicalListing)."
+  },
+  {
+   "id": "R05948",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:778",
+   "note": "image_reports_json jsonb."
+  },
+  {
+   "id": "R05949",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:779; ADR-0006; T23",
+   "note": "FK -> tenant_memberships, not users(id); NOT NULL per Canon 0004 (site nullable)."
+  },
+  {
+   "id": "R05950",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:780; ADR-0006; T23",
+   "note": "approved_by_user_id FK -> tenant_memberships, not users(id)."
+  },
+  {
+   "id": "R05951",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2104",
+   "note": "created_at."
+  },
+  {
+   "id": "R05952",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:81; DATABASE.md:787-788",
+   "note": "Approver != maker or editor; API + CHECK + lv_guard."
+  },
+  {
+   "id": "R05953",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:787; DATABASE.md:2106",
+   "note": "Superset CHECK: approver <> generated_by and IS DISTINCT FROM edited_by."
+  },
+  {
+   "id": "R05956",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:490; AGENTS.md:80",
+   "note": "Rules are data rows evaluated by the deterministic engine."
+  },
+  {
+   "id": "R05957",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:490",
+   "note": "rules table in 0002 (+ nullable tenant_id, T48)."
+  },
+  {
+   "id": "R05958",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2107",
+   "note": "uuid PK."
+  },
+  {
+   "id": "R05959",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:496",
+   "note": "marketplace text NOT NULL."
+  },
+  {
+   "id": "R05960",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:496",
+   "note": "category text nullable; NULL = all categories."
+  },
+  {
+   "id": "R05961",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:497",
+   "note": "field text NOT NULL (paths.py path)."
+  },
+  {
+   "id": "R05962",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:501",
+   "note": "rule_def jsonb NOT NULL (RuleDef union)."
+  },
+  {
+   "id": "R05963",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:499",
+   "note": "severity text NOT NULL."
+  },
+  {
+   "id": "R05963a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:499",
+   "note": "CHECK error|warning, DEFAULT error."
+  },
+  {
+   "id": "R05964",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:499",
+   "note": "version int DEFAULT 1, >= 1."
+  },
+  {
+   "id": "R05965",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2107",
+   "note": "created_at."
+  },
+  {
+   "id": "R05968",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:809",
+   "note": "validation_runs, one row per stage per attempt."
+  },
+  {
+   "id": "R05969",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:809",
+   "note": "validation_runs table."
+  },
+  {
+   "id": "R05970",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2109",
+   "note": "uuid PK."
+  },
+  {
+   "id": "R05971",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:814",
+   "note": "listing_id -> listings NOT NULL."
+  },
+  {
+   "id": "R05972",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:815",
+   "note": "source text NOT NULL."
+  },
+  {
+   "id": "R05972a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:815; CANON.md:58; T60",
+   "note": "Source uses the 7 ErrorSource values (rules_engine, vision_model, amazon_adapter...), not rules|vision|marketplace_api."
+  },
+  {
+   "id": "R05973",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:816",
+   "note": "passed boolean NOT NULL."
+  },
+  {
+   "id": "R05974",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:816",
+   "note": "error_report_json jsonb."
+  },
+  {
+   "id": "R05975",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2109",
+   "note": "created_at."
+  },
+  {
+   "id": "R05978",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:85; DATABASE.md:983-998",
+   "note": "One agent_runs row per model call; budget kill switch."
+  },
+  {
+   "id": "R05979",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:983",
+   "note": "agent_runs table."
+  },
+  {
+   "id": "R05980",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2111",
+   "note": "uuid PK."
+  },
+  {
+   "id": "R05981",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:988",
+   "note": "product_id -> products nullable."
+  },
+  {
+   "id": "R05982",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:990",
+   "note": "trigger text NOT NULL."
+  },
+  {
+   "id": "R05982a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:990",
+   "note": "CHECK trigger IN generate|correct|embed|vision."
+  },
+  {
+   "id": "R05983",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:991",
+   "note": "model_used text."
+  },
+  {
+   "id": "R05984",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:991",
+   "note": "tokens_in int."
+  },
+  {
+   "id": "R05985",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:991",
+   "note": "tokens_out int."
+  },
+  {
+   "id": "R05986",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:992; CANON.md:56; T25",
+   "note": "cost_usd numeric(12,6) instead of cost DECIMAL(10,6)."
+  },
+  {
+   "id": "R05987",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:991",
+   "note": "duration_ms int."
+  },
+  {
+   "id": "R05988",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:991",
+   "note": "status NOT NULL: running|completed|failed|timeout."
+  },
+  {
+   "id": "R05989",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:991",
+   "note": "error_report_json jsonb nullable."
+  },
+  {
+   "id": "R05990",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2111",
+   "note": "created_at."
+  },
+  {
+   "id": "R05993",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:474",
+   "note": "images table = upload and storage metadata."
+  },
+  {
+   "id": "R05994",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:474",
+   "note": "images table."
+  },
+  {
+   "id": "R05995",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2113",
+   "note": "uuid PK."
+  },
+  {
+   "id": "R05996",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:474; DATABASE.md:22",
+   "note": "std tenant_id -> tenants NOT NULL."
+  },
+  {
+   "id": "R05997",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:479",
+   "note": "product_id -> products NOT NULL."
+  },
+  {
+   "id": "R05998",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:479",
+   "note": "storage_key text NOT NULL, never a URL."
+  },
+  {
+   "id": "R05999",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:483",
+   "note": "metadata jsonb NOT NULL DEFAULT '{}'."
+  },
+  {
+   "id": "R06000",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:482",
+   "note": "status DEFAULT 'uploaded'; vocabulary pending|uploaded|failed."
+  },
+  {
+   "id": "R06001",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2113",
+   "note": "created_at."
+  },
+  {
+   "id": "R06004",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1020-1021; T14",
+   "note": "performance table built in 0002; v1 filling per T14."
+  },
+  {
+   "id": "R06005",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1020",
+   "note": "performance table."
+  },
+  {
+   "id": "R06006",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2116",
+   "note": "uuid PK."
+  },
+  {
+   "id": "R06007",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1021",
+   "note": "listing_id NOT NULL -> listings."
+  },
+  {
+   "id": "R06008",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1021",
+   "note": "impressions int NOT NULL DEFAULT 0."
+  },
+  {
+   "id": "R06009",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1021",
+   "note": "clicks int NOT NULL DEFAULT 0."
+  },
+  {
+   "id": "R06010",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1021",
+   "note": "orders int NOT NULL DEFAULT 0."
+  },
+  {
+   "id": "R06011",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1021",
+   "note": "returns int NOT NULL DEFAULT 0."
+  },
+  {
+   "id": "R06012",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1021",
+   "note": "date date NOT NULL; UNIQUE (listing_id, date)."
+  },
+  {
+   "id": "R06015",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:301",
+   "note": "REVOKE UPDATE/DELETE/TRUNCATE + append-only trigger."
+  },
+  {
+   "id": "R06016",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:285",
+   "note": "audit_log table, not partitioned."
+  },
+  {
+   "id": "R06017",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:290",
+   "note": "uuid PK."
+  },
+  {
+   "id": "R06018",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:292; CANON.md:94; T65",
+   "note": "actor split into actor_type, actor_user_id (-> membership), actor_email."
+  },
+  {
+   "id": "R06019",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:293",
+   "note": "action text, e.g. listing.approved."
+  },
+  {
+   "id": "R06020",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:293; CANON.md:94; T65",
+   "note": "entity split into entity_type + entity_id, following [97]."
+  },
+  {
+   "id": "R06021",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:294",
+   "note": "before jsonb (allow-listed fields)."
+  },
+  {
+   "id": "R06022",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:294",
+   "note": "after jsonb (allow-listed fields)."
+  },
+  {
+   "id": "R06023",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:297; CANON.md:94; T65",
+   "note": "Column named occurred_at, not timestamp."
+  },
+  {
+   "id": "R06029",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:100; AGENTS.md:83",
+   "note": "Four-layer tenant isolation: repository guard, RLS, composite FKs, CI isolation test."
+  },
+  {
+   "id": "R06029a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:772-789",
+   "note": "Immutable listing_versions with origin and parent_version_id."
+  },
+  {
+   "id": "R06029b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:983-998",
+   "note": "agent_runs cost_usd per call plus daily budget reservation."
+  },
+  {
+   "id": "R06029c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1565; DATABASE.md:787",
+   "note": "Maker-checker enforced in API and DB (CHECK + lv_guard)."
+  },
+  {
+   "id": "R06031",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:787; DATABASE.md:2106",
+   "note": "DB-level CHECK approver <> maker (superset incl. editor)."
+  },
+  {
+   "id": "R06032",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:984; DATABASE.md:991",
+   "note": "tokens_in/tokens_out per model call."
+  },
+  {
+   "id": "R06032a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:992",
+   "note": "cost_usd per call (renamed, T25)."
+  },
+  {
+   "id": "R06032b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:991",
+   "note": "duration_ms per call."
+  },
+  {
+   "id": "R06032c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:991",
+   "note": "model_used per call; CHECK required unless running."
+  },
+  {
+   "id": "R06033",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1057-1063",
+   "note": "brand_chunks with pgvector embedding."
+  },
+  {
+   "id": "R06033a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1067",
+   "note": "HNSW index in 0002b."
+  },
+  {
+   "id": "R06033b",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1068-1075; TEAM-QUESTIONS T66",
+   "note": "HNSW built, but year-1 queries use exact filtered scan (<~20k chunks/tenant); T66 open, no Canon row."
+  },
+  {
+   "id": "R06037",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2141-2152",
+   "note": "All site mandatory indexes mapped in Appendix A.3."
+  },
+  {
+   "id": "R06037a",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "CANON.md:94-95; DATABASE.md:1758; TEAM-QUESTIONS T16",
+   "note": "Canon ledger put 0002/0002b on Day 5 (25 Sep); slipped, re-baseline pending (T16, Q25)."
+  },
+  {
+   "id": "R06039",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1067; DATABASE.md:2145",
+   "note": "brand_chunks_embedding_idx HNSW vector_cosine_ops."
+  },
+  {
+   "id": "R06040",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:407; DATABASE.md:2146; CANON.md:48; T58",
+   "note": "Same unique B-tree, named products_tenant_sku_idx on (tenant_id, sku)."
+  },
+  {
+   "id": "R06041",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:777; DATABASE.md:2147",
+   "note": "listing_versions_listing_version_idx UNIQUE (listing_id, version), site name kept."
+  },
+  {
+   "id": "R06042",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:996; DATABASE.md:2148",
+   "note": "agent_runs_product_created_idx (product_id, created_at) INCLUDE cost/tokens/duration."
+  },
+  {
+   "id": "R06042a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:996",
+   "note": "Covering index for analytics; index-only budget indexes too."
+  },
+  {
+   "id": "R06043",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:22; DATABASE.md:2149",
+   "note": "std-tenant anchor UNIQUE (tenant_id, id) on every tenant table; rules_tenant_idx."
+  },
+  {
+   "id": "R06047",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:3094; CANON.md:123",
+   "note": "Agents return CanonicalListing in GenerationResult."
+  },
+  {
+   "id": "R06047a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:119",
+   "note": "validate_rules(listing: CanonicalListing) -> ErrorReport."
+  },
+  {
+   "id": "R06047b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82; DATABASE.md:778",
+   "note": "No marketplace-specific fields, URLs or secrets in CanonicalListing."
+  },
+  {
+   "id": "R06049",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "CANON.md:42; CANON.md:44",
+   "note": "Contract is Pydantic CanonicalListing in mkos_schemas/listing.py; JSON Schema generated, no CanonicalListing.json name."
+  },
+  {
+   "id": "R06053",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2129",
+   "note": "product_id present."
+  },
+  {
+   "id": "R06054",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2129",
+   "note": "marketplace present."
+  },
+  {
+   "id": "R06055",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131; TEAM-QUESTIONS T61",
+   "note": "Site conflict: [06] flat title vs [35] content.title; plan picks nested, no Canon row."
+  },
+  {
+   "id": "R06056",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131; TEAM-QUESTIONS T61",
+   "note": "content.bullets list[str] per [35]; [06] top-level bullets; T61 open, no Canon row."
+  },
+  {
+   "id": "R06057",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131; TEAM-QUESTIONS T61",
+   "note": "Example value; fits bullets, placement (content.bullets) follows R06056/T61."
+  },
+  {
+   "id": "R06058",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131; TEAM-QUESTIONS T61",
+   "note": "Example value; fits bullets, placement (content.bullets) follows R06056/T61."
+  },
+  {
+   "id": "R06059",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131; TEAM-QUESTIONS T61",
+   "note": "Example value; fits bullets, placement (content.bullets) follows R06056/T61."
+  },
+  {
+   "id": "R06061",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131; TEAM-QUESTIONS T61",
+   "note": "content.description per [35]; [06] top-level description; T61 open, no Canon row."
+  },
+  {
+   "id": "R06062",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2132",
+   "note": "keywords object present."
+  },
+  {
+   "id": "R06063",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2132",
+   "note": "keywords.search_terms list[str]."
+  },
+  {
+   "id": "R06064",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2132; CONTRACTS.md:801",
+   "note": "Example value; fits search_terms."
+  },
+  {
+   "id": "R06065",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2132; CONTRACTS.md:801",
+   "note": "Example value; fits search_terms."
+  },
+  {
+   "id": "R06066",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2132; CONTRACTS.md:801",
+   "note": "Example value; fits search_terms."
+  },
+  {
+   "id": "R06068",
+   "status": "conflict",
+   "owner": "shared",
+   "ref": "DATABASE.md:2132; TEAM-QUESTIONS T26",
+   "note": "Renamed keywords.hidden_terms; [06] and [35] agree on backend_keywords; no Canon row."
+  },
+  {
+   "id": "R06069",
+   "status": "conflict",
+   "owner": "shared",
+   "ref": "CONTRACTS.md:802; TEAM-QUESTIONS T26",
+   "note": "Same value kept, but under keywords.hidden_terms; same conflict as R06068."
+  },
+  {
+   "id": "R06070",
+   "status": "conflict",
+   "owner": "shared",
+   "ref": "CONTRACTS.md:802; TEAM-QUESTIONS T26",
+   "note": "Same value kept, but under keywords.hidden_terms; same conflict as R06068."
+  },
+  {
+   "id": "R06071",
+   "status": "conflict",
+   "owner": "shared",
+   "ref": "CONTRACTS.md:802; TEAM-QUESTIONS T26",
+   "note": "Same value kept, but under keywords.hidden_terms; same conflict as R06068."
+  },
+  {
+   "id": "R06074",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2133",
+   "note": "attributes map of primitive values + backend-filled attribute_sources."
+  },
+  {
+   "id": "R06075",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1169",
+   "note": "Dictionary key size (critical)."
+  },
+  {
+   "id": "R06076",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1170; T32",
+   "note": "Key color holds seller colour name (T32)."
+  },
+  {
+   "id": "R06077",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "DATABASE.md:1169; TEAM-QUESTIONS T32",
+   "note": "Site conflict ([28]/[104] material vs BRD fabric_type); plan key fabric_type, material only alias."
+  },
+  {
+   "id": "R06078",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1170",
+   "note": "Dictionary key fit."
+  },
+  {
+   "id": "R06079",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1170",
+   "note": "Dictionary key sleeve_length."
+  },
+  {
+   "id": "R06081",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2134",
+   "note": "images[] of ImageRef."
+  },
+  {
+   "id": "R06083",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2134",
+   "note": "ImageRef.image_id."
+  },
+  {
+   "id": "R06084",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2134; DATABASE.md:481",
+   "note": "slot main in ImageSlot."
+  },
+  {
+   "id": "R06087",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2134",
+   "note": "ImageRef.image_id."
+  },
+  {
+   "id": "R06088",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2134; DATABASE.md:481",
+   "note": "slot secondary in ImageSlot."
+  },
+  {
+   "id": "R06091",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2136",
+   "note": "confidence_score float 0..1 or null."
+  },
+  {
+   "id": "R06092",
+   "status": "conflict",
+   "owner": "shared",
+   "ref": "DATABASE.md:2137; TEAM-QUESTIONS T61",
+   "note": "Renamed generated_by_agent_run_id (UUID); only [06] defines generated_by; no Canon row."
+  },
+  {
+   "id": "R06093",
+   "status": "conflict",
+   "owner": "shared",
+   "ref": "DATABASE.md:2137; CONTRACTS.md:782; TEAM-QUESTIONS T61",
+   "note": "schema_version '1.0.0' vs site '1.0'; only [06] defines it; no Canon row."
+  },
+  {
+   "id": "R06102",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "SPEC-TRACEABILITY.md:103; BUILD-SEQUENCE.md:227",
+   "note": "Page in v1: rules engine + seam in S14, statuses in S7/S10."
+  },
+  {
+   "id": "R06104",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:100-131",
+   "note": "LangGraph graph is AI team's; backend supplies seam, ports, worker."
+  },
+  {
+   "id": "R06104a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "CANON.md:53-54; DATABASE.md:1373; T12",
+   "note": "9 persisted statuses + transient PipelineStage, not the 14 [07] states."
+  },
+  {
+   "id": "R06104b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:80; BACKEND-ARCHITECTURE.md:1200",
+   "note": "Deterministic Rules Engine, rules as data."
+  },
+  {
+   "id": "R06104c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:86; BACKEND-ARCHITECTURE.md:1367-1398",
+   "note": "One ErrorReport shape for every source."
+  },
+  {
+   "id": "R06109",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1375; DATABASE.md:1402",
+   "note": "Table-driven listing_status_transitions + listings_status_guard."
+  },
+  {
+   "id": "R06109a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:87-90; BACKEND-ARCHITECTURE.md:1785",
+   "note": "Max 3 corrections in graph; jobs max_attempts=1 for domain failures."
+  },
+  {
+   "id": "R06115",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "CANON.md:51-53; DATABASE.md:1416; T12",
+   "note": "Initial listing status is created; queued is a job_runs status only."
+  },
+  {
+   "id": "R06116",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:54; DATABASE.md:1462",
+   "note": "Job claimed then stage load_context in job_runs.node, never listings.status."
+  },
+  {
+   "id": "R06117",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:54; DATABASE.md:1379",
+   "note": "listings.status generating on generate; inner stages retrieve_brand + 4 agent stages."
+  },
+  {
+   "id": "R06118",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:54; DATABASE.md:1462",
+   "note": "merge_outputs -> validate_schema as transient stages."
+  },
+  {
+   "id": "R06119",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:54; DATABASE.md:1462",
+   "note": "validate_schema -> validate_rules as transient stages."
+  },
+  {
+   "id": "R06120",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:54; DATABASE.md:1462",
+   "note": "validate_rules -> validate_vision as transient stages, after rules pass."
+  },
+  {
+   "id": "R06121",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "DATABASE.md:1462",
+   "note": "Graph routing is AI team's; our docs loop correct after validate_rules, not after vision."
+  },
+  {
+   "id": "R06122",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "DATABASE.md:1462; AGENTS.md:87",
+   "note": "Cap 3 covered; loop-back target (schema vs rules) is AI graph design."
+  },
+  {
+   "id": "R06123",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1381; AGENTS.md:87",
+   "note": "generating -> blocked, status_reason corrections_exhausted."
+  },
+  {
+   "id": "R06124",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:54; DATABASE.md:1462",
+   "note": "validate_vision -> quality_check as transient stages."
+  },
+  {
+   "id": "R06125",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:827; BACKEND-ARCHITECTURE.md:1558-1563; CANON.md:53; T12",
+   "note": "terminal_state maps to validated or needs_review (no NEEDS_APPROVAL value)."
+  },
+  {
+   "id": "R06126",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1383; DATABASE.md:1422-1423",
+   "note": "validated/needs_review -> approved with maker-checker."
+  },
+  {
+   "id": "R06127",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1384-1385; TEAM-QUESTIONS T40",
+   "note": "Site conflict [07] vs [17]; plan: reject -> blocked(rejected), optional reject_regenerate -> generating."
+  },
+  {
+   "id": "R06128",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1390",
+   "note": "approved -> publishing (publish event, current approval)."
+  },
+  {
+   "id": "R06129",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1391; T13",
+   "note": "submission_accepted -> published; LIVE tracked in marketplace_state (T13)."
+  },
+  {
+   "id": "R06130",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1392",
+   "note": "submission_failed -> failed (publish_failed/publish_partial)."
+  },
+  {
+   "id": "R06131",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1386; DATABASE.md:1389; DATABASE.md:1398; TEAM-QUESTIONS T51",
+   "note": "Plan exits blocked (regenerate, task_answered, resume_publish); BRD resumes from blocked (L1037); T51 open."
+  },
+  {
+   "id": "R06132",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1386; DATABASE.md:1396; TEAM-QUESTIONS T19",
+   "note": "Plan exits failed (retry_publish <=3, regenerate); [17] and L6262 retry failed fields; T19 open."
+  },
+  {
+   "id": "R06133",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1386; DATABASE.md:1394-1395; TEAM-QUESTIONS T13; T18",
+   "note": "Plan: published -> failed/blocked via status sync, regenerate; BRD keeps syncing; T13/T18 open."
+  },
+  {
+   "id": "R06138",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:100-104; BACKEND-ARCHITECTURE.md:1626",
+   "note": "LangGraph graph owned by AI team (packages/pipeline)."
+  },
+  {
+   "id": "R06138a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:1507",
+   "note": "Worker calls run_listing_pipeline in-process."
+  },
+  {
+   "id": "R06140",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:118; BACKEND-ARCHITECTURE.md:1518-1521",
+   "note": "Context pushed by backend; graph fetches nothing; no T-row yet."
+  },
+  {
+   "id": "R06140a",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:118; BACKEND-ARCHITECTURE.md:1518-1521",
+   "note": "marketplace_rules RuleSet pushed in GenerationContext; no T-row yet."
+  },
+  {
+   "id": "R06140b",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:118; BACKEND-ARCHITECTURE.md:1518-1521",
+   "note": "brand_profile pushed in GenerationContext; no T-row yet."
+  },
+  {
+   "id": "R06144",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:119; BACKEND-ARCHITECTURE.md:1538",
+   "note": "retrieve_brand_chunks port: pgvector cosine search; stage retrieve_brand."
+  },
+  {
+   "id": "R06144a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:119",
+   "note": "k=8 default."
+  },
+  {
+   "id": "R06148",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:54",
+   "note": "Parallel agent orchestration is AI team's; stages per agent."
+  },
+  {
+   "id": "R06148a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:54",
+   "note": "content_agent stage."
+  },
+  {
+   "id": "R06148b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:54",
+   "note": "keyword_agent stage."
+  },
+  {
+   "id": "R06148c",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:54",
+   "note": "attribute_agent stage."
+  },
+  {
+   "id": "R06148d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:119; BACKEND-ARCHITECTURE.md:1540",
+   "note": "image_agent via validate_images: backend Pillow checks + vision call."
+  },
+  {
+   "id": "R06152",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:54",
+   "note": "merge_outputs stage; output is our CanonicalListing contract."
+  },
+  {
+   "id": "R06156",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:120",
+   "note": "validate_schema = CanonicalListing.model_validate (no port)."
+  },
+  {
+   "id": "R06156a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:120",
+   "note": "Pydantic validation."
+  },
+  {
+   "id": "R06160",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:119; BACKEND-ARCHITECTURE.md:1539",
+   "note": "validate_rules port = deterministic Rules Engine."
+  },
+  {
+   "id": "R06164",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1540",
+   "note": "validate_images: Pillow then vision model via app/services/vision.py."
+  },
+  {
+   "id": "R06168",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:1367-1369; CANON.md:54",
+   "note": "No classify_errors stage; ErrorItem retry_class from ERROR_CODE_META classifies."
+  },
+  {
+   "id": "R06168a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:54; AGENTS.md:87",
+   "note": "Stage correct: bounded self-correction in graph."
+  },
+  {
+   "id": "R06168b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:87; CANON.md:123",
+   "note": "<= 3 corrections, then blocked."
+  },
+  {
+   "id": "R06172",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "BACKEND-ARCHITECTURE.md:738; KNOWN-ISSUES.md:17",
+   "note": "quality_check stage; confidence formula owed by AI team."
+  },
+  {
+   "id": "R06176",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:124; BACKEND-ARCHITECTURE.md:1565-1568",
+   "note": "No approval node; graph ends at quality_check; approval via API; no T-row."
+  },
+  {
+   "id": "R06176a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1565; AGENTS.md:81",
+   "note": "Maker-checker in approve API and DB guard."
+  },
+  {
+   "id": "R06180",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "CANON.md:124; BACKEND-ARCHITECTURE.md:1566",
+   "note": "No publish node; POST /api/v1/listings/publish + publish worker call adapter."
+  },
+  {
+   "id": "R06182",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:79",
+   "note": "Invariant 1: AI never publishes."
+  },
+  {
+   "id": "R06184",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:124; BACKEND-ARCHITECTURE.md:1621",
+   "note": "No graph node for approve/publish."
+  },
+  {
+   "id": "R06184a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1621; BACKEND-ARCHITECTURE.md:1862",
+   "note": "Publish route and worker check approval server-side."
+  },
+  {
+   "id": "R06184b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1862; CANON.md:124",
+   "note": "Publish gate: approved_version_id = current before adapter call."
+  },
+  {
+   "id": "R06188",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1200; BUILD-SEQUENCE.md:235",
+   "note": "Pure-Python RulesEngine.validate over rules loaded as data."
+  },
+  {
+   "id": "R06188a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md:235; BUILD-SEQUENCE.md:241",
+   "note": "Pure function with a fixture suite in CI (S14)."
+  },
+  {
+   "id": "R06188b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:80; CANON.md:126",
+   "note": "rules_engine.py hard-banned from importing openai/langgraph."
+  },
+  {
+   "id": "R06188c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:80",
+   "note": "Deterministic, final arbiter."
+  },
+  {
+   "id": "R06190",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:514",
+   "note": "max_length / min_length RuleDef types."
+  },
+  {
+   "id": "R06190a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md:235",
+   "note": "Seed Amazon title <= 200 (S14)."
+  },
+  {
+   "id": "R06190b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md:235",
+   "note": "Seed Flipkart title <= 150 (S14)."
+  },
+  {
+   "id": "R06191",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:514; BUILD-SEQUENCE.md:235",
+   "note": "banned_terms RuleDef + seeded banned-terms list."
+  },
+  {
+   "id": "R06191a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md:235",
+   "note": "Banned-terms seed list unspecified; \"best seller\" not named anywhere in plan."
+  },
+  {
+   "id": "R06191b",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md:235",
+   "note": "Banned-terms seed list unspecified; \"free shipping\" not named anywhere in plan."
+  },
+  {
+   "id": "R06191c",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md:235",
+   "note": "Banned-terms seed list unspecified; \"guaranteed cure\" not named anywhere in plan."
+  },
+  {
+   "id": "R06191d",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "DATABASE.md:504; TEAM-QUESTIONS T48",
+   "note": "No platform competitor-trademark list; only per-brand tenant banned_terms (T48 open). Which marks is a business choice."
+  },
+  {
+   "id": "R06192",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:514; DATABASE.md:526",
+   "note": "required_attribute RuleDef + template checks -> MISSING_ATTRIBUTE."
+  },
+  {
+   "id": "R06192a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169; DATABASE.md:522",
+   "note": "size is a critical dictionary key; fact_source '*critical' flags it missing."
+  },
+  {
+   "id": "R06192b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "TEAM-QUESTIONS T32; DATABASE.md:539; DATABASE.md:1170",
+   "note": "Seed apparel required-attributes = color + fabric_type (T32) plus template required_attributes."
+  },
+  {
+   "id": "R06192c",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "DATABASE.md:1169; TEAM-QUESTIONS T32",
+   "note": "Required as fabric_type; material only an input alias; key names open in T32."
+  },
+  {
+   "id": "R06192d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169; DATABASE.md:522",
+   "note": "wash_care and iron_care are critical dictionary keys."
+  },
+  {
+   "id": "R06196",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:86; BACKEND-ARCHITECTURE.md:1369-1394",
+   "note": "Site ErrorReport schema adopted verbatim."
+  },
+  {
+   "id": "R06196a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:119; BACKEND-ARCHITECTURE.md:1369",
+   "note": "validate_rules returns ErrorReport."
+  },
+  {
+   "id": "R06196b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:86; BACKEND-ARCHITECTURE.md:1397",
+   "note": "vision_model is an ErrorSource in the same shape."
+  },
+  {
+   "id": "R06196c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:86; BACKEND-ARCHITECTURE.md:1397",
+   "note": "amazon_adapter/flipkart_adapter sources in the same shape."
+  },
+  {
+   "id": "R06198",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "CANON.md:42; CANON.md:44",
+   "note": "ErrorReport is a Pydantic model in mkos_schemas/errors.py; JSON Schema generated, not UnifiedErrorReport.json."
+  },
+  {
+   "id": "R06202",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1376",
+   "note": "status field."
+  },
+  {
+   "id": "R06203",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1377",
+   "note": "Top-level error_code, e.g. VALIDATION_FAILED."
+  },
+  {
+   "id": "R06204",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1378",
+   "note": "Top-level retryable boolean."
+  },
+  {
+   "id": "R06205",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1379",
+   "note": "attempts_used."
+  },
+  {
+   "id": "R06206",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1380",
+   "note": "max_attempts."
+  },
+  {
+   "id": "R06206a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1380; AGENTS.md:87",
+   "note": "max_attempts 3."
+  },
+  {
+   "id": "R06207",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1381",
+   "note": "errors[] of ErrorItem."
+  },
+  {
+   "id": "R06209",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:1383; CONTRACTS.md:18; TEAM-QUESTIONS T61",
+   "note": "ErrorItem.field present; path value content.title under T61 nesting, not bare title."
+  },
+  {
+   "id": "R06210",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "DATABASE.md:1369; CONTRACTS.md:168; T83",
+   "note": "Site contradicts itself; codes.py drafts FIELD_TOO_LONG but BACKEND-ARCHITECTURE.md:1384 still shows TITLE_TOO_LONG."
+  },
+  {
+   "id": "R06211",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1385",
+   "note": "message."
+  },
+  {
+   "id": "R06212",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1386",
+   "note": "value_submitted."
+  },
+  {
+   "id": "R06213",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1387",
+   "note": "suggestion."
+  },
+  {
+   "id": "R06214",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1388; BACKEND-ARCHITECTURE.md:1397",
+   "note": "source from the 7-value ErrorSource."
+  },
+  {
+   "id": "R06215",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1389",
+   "note": "Per-item retryable (plus optional retry_class, T21)."
+  },
+  {
+   "id": "R06216",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1390",
+   "note": "marketplace."
+  },
+  {
+   "id": "R06232",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1397",
+   "note": "rules_engine ErrorSource."
+  },
+  {
+   "id": "R06234",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369; CONTRACTS.md:168",
+   "note": "FIELD_TOO_LONG in codes.py."
+  },
+  {
+   "id": "R06234a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "BANNED_TERM in codes.py (content_error/ai_correct)."
+  },
+  {
+   "id": "R06234b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "MISSING_ATTRIBUTE in codes.py."
+  },
+  {
+   "id": "R06236",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "DATABASE.md:1369; TEAM-QUESTIONS T47",
+   "note": "Content codes ai_correct; MISSING_ATTRIBUTE defaults user_action (BRD vs [122] conflict, T47 open)."
+  },
+  {
+   "id": "R06238",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:91; BACKEND-ARCHITECTURE.md:1785",
+   "note": "Correction fixes only failing fields, then re-validates."
+  },
+  {
+   "id": "R06238a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:119; BACKEND-ARCHITECTURE.md:1785",
+   "note": "validate_rules ErrorReport (message, suggestion) feeds correction."
+  },
+  {
+   "id": "R06240",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1397",
+   "note": "vision_model ErrorSource."
+  },
+  {
+   "id": "R06242",
+   "status": "conflict",
+   "owner": "shared",
+   "ref": "CONTRACTS.md:182; CONTRACTS.md:196; DATABASE.md:520; T84",
+   "note": "[07] L6242 and [122] use BACKGROUND_OFF as error_code; plan emits IMAGE_NON_COMPLIANT, code only as ImageIssueCode/raw_code."
+  },
+  {
+   "id": "R06242a",
+   "status": "conflict",
+   "owner": "shared",
+   "ref": "CONTRACTS.md:182; CONTRACTS.md:196; DATABASE.md:520; T84",
+   "note": "Same as R06242: RESOLUTION_LOW only an ImageIssueCode; ErrorItem code IMAGE_NON_COMPLIANT."
+  },
+  {
+   "id": "R06242b",
+   "status": "conflict",
+   "owner": "shared",
+   "ref": "CONTRACTS.md:182; CONTRACTS.md:197; DATABASE.md:520; T84",
+   "note": "Same as R06242: TEXT_DETECTED only an ImageIssueCode; ErrorItem code IMAGE_NON_COMPLIANT."
+  },
+  {
+   "id": "R06244",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "DATABASE.md:1369",
+   "note": "IMAGE_NON_COMPLIANT -> media_error with no retry_class; no conditional AI-retry split."
+  },
+  {
+   "id": "R06246",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1343",
+   "note": "human_tasks kind image_replacement asks the seller for a new image."
+  },
+  {
+   "id": "R06246a",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "DATABASE.md:1369; T85",
+   "note": "No image repair path; vision issues end as image_replacement task or warning."
+  },
+  {
+   "id": "R06248",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1397",
+   "note": "amazon_adapter ErrorSource."
+  },
+  {
+   "id": "R06250",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "RATE_LIMITED in codes.py (auto_retry)."
+  },
+  {
+   "id": "R06250a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "AUTH_EXPIRED in codes.py (after one refresh)."
+  },
+  {
+   "id": "R06250b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "SKU_CONFLICT in codes.py (identifier_error)."
+  },
+  {
+   "id": "R06252",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369; BACKEND-ARCHITECTURE.md:1784-1787",
+   "note": "Not AI-correctable; rate limits auto-retry, auth refresh once."
+  },
+  {
+   "id": "R06254",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1784",
+   "note": "procrastinate retry with backoff on 429 (1 s doubling, cap 60 s)."
+  },
+  {
+   "id": "R06254a",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "DATABASE.md:1463; VISION-ALIGNMENT.md:151 Q18; T82",
+   "note": "publishing -> blocked for a human exists; who acts is undefined (Q18 default: tenant owner; no T-row)."
+  },
+  {
+   "id": "R06256",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1397",
+   "note": "flipkart_adapter ErrorSource."
+  },
+  {
+   "id": "R06258",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369; CANON-ADDENDUM.md:420",
+   "note": "CATEGORY_NOT_MAPPED in codes.py; import-time lookups use source rules_engine."
+  },
+  {
+   "id": "R06258a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "API_REJECTED_PARTIAL in codes.py, class from marketplace_error_map."
+  },
+  {
+   "id": "R06260",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1788",
+   "note": "Partial publish: resend failed fields only, <= 3 submissions."
+  },
+  {
+   "id": "R06262",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:91; BACKEND-ARCHITECTURE.md:1788",
+   "note": "publish_field_results failed rows form the retry payload."
+  },
+  {
+   "id": "R06262a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369; DATABASE.md:1697",
+   "note": "CATEGORY_NOT_MAPPED -> system_failure -> ops alert."
+  },
+  {
+   "id": "R06269",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "SPEC-TRACEABILITY.md:104; CANON.md:100-131",
+   "note": "Seam, ports and RAG infra planned for v1."
+  },
+  {
+   "id": "R06271",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:100-131",
+   "note": "Agent layer is packages/pipeline; backend supplies seam."
+  },
+  {
+   "id": "R06271a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:129; DATABASE.md:1033-1076",
+   "note": "Backend owns chunking, embeddings, BrandChunkRepository.search."
+  },
+  {
+   "id": "R06271b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "ENV.md:91-93",
+   "note": "Default, escalation and embedding models set; escalation port missing (R06331a)."
+  },
+  {
+   "id": "R06271c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:85; DATABASE.md:983-998",
+   "note": "agent_runs per call + budget kill switch."
+  },
+  {
+   "id": "R06271d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:2167-2172",
+   "note": "Backend: strict output validation + Rules Engine; prompt/system separation is AI team."
+  },
+  {
+   "id": "R06271e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1538",
+   "note": "Cosine search via pgvector."
+  },
+  {
+   "id": "R06274",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:54",
+   "note": "Roster is AI team's; all agent stages in v1 PipelineStage."
+  },
+  {
+   "id": "R06276",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:54",
+   "note": "Agent roster is AI team's; agent_runs.agent_name has 7 values."
+  },
+  {
+   "id": "R06276a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "AGENTS.md:80",
+   "note": "Generation is AI's; compliance enforced by backend Rules Engine."
+  },
+  {
+   "id": "R06276b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:119",
+   "note": "Brand voice via retrieve_brand_chunks port."
+  },
+  {
+   "id": "R06286",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:54",
+   "note": "content_agent stage."
+  },
+  {
+   "id": "R06288",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:118",
+   "note": "GenerationContext.product."
+  },
+  {
+   "id": "R06288a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:119",
+   "note": "retrieve_brand_chunks k=8."
+  },
+  {
+   "id": "R06288b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:118",
+   "note": "GenerationContext.marketplace_rules (typed RuleSet)."
+  },
+  {
+   "id": "R06290",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131",
+   "note": "content.title in CanonicalListing."
+  },
+  {
+   "id": "R06290a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131",
+   "note": "content.bullets."
+  },
+  {
+   "id": "R06290b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131",
+   "note": "content.description."
+  },
+  {
+   "id": "R06292",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Descriptive cost note for the AI team."
+  },
+  {
+   "id": "R06292a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "BACKEND-ARCHITECTURE.md:1786",
+   "note": "JSON mode and repair live in AI graph."
+  },
+  {
+   "id": "R06294",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:54",
+   "note": "keyword_agent stage."
+  },
+  {
+   "id": "R06296",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:118",
+   "note": "GenerationContext.category."
+  },
+  {
+   "id": "R06296a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:118",
+   "note": "GenerationContext.product."
+  },
+  {
+   "id": "R06298",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2132",
+   "note": "keywords.search_terms."
+  },
+  {
+   "id": "R06298a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2132; CONTRACTS.md:231",
+   "note": "Keyword output hidden terms exist; field name keywords.hidden_terms (name conflict R06068, T26)."
+  },
+  {
+   "id": "R06300",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Keyword quality is AI team's."
+  },
+  {
+   "id": "R06300a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:514; DATABASE.md:1369",
+   "note": "Rules Engine enforces max_length/max_items/BYTE_BUDGET_EXCEEDED."
+  },
+  {
+   "id": "R06302",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:54",
+   "note": "attribute_agent stage."
+  },
+  {
+   "id": "R06304",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:118",
+   "note": "GenerationContext.product."
+  },
+  {
+   "id": "R06304a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:118",
+   "note": "GenerationContext.category_template (typed CategoryTemplate)."
+  },
+  {
+   "id": "R06306",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2133",
+   "note": "CanonicalListing.attributes map."
+  },
+  {
+   "id": "R06306a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1169",
+   "note": "Dictionary key size."
+  },
+  {
+   "id": "R06306b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1170",
+   "note": "Dictionary key color."
+  },
+  {
+   "id": "R06306c",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "DATABASE.md:1169; TEAM-QUESTIONS T32",
+   "note": "Key fabric_type; material only an input alias; key names open in T32."
+  },
+  {
+   "id": "R06308",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:118; DATABASE.md:526",
+   "note": "Backend pushes category_template; Rules Engine template checks validate; agent-side check is AI team."
+  },
+  {
+   "id": "R06310",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:129; BACKEND-ARCHITECTURE.md:1540",
+   "note": "Backend Pillow checks + vision call; AI writes the vision prompt."
+  },
+  {
+   "id": "R06312",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:1540; DATABASE.md:486",
+   "note": "Backend reads images rows (width, height, mime, bytes) for checks."
+  },
+  {
+   "id": "R06312a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:1540",
+   "note": "Backend loads the binary for Pillow and vision."
+  },
+  {
+   "id": "R06314",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:119; DATABASE.md:484",
+   "note": "validate_images -> list[ImageReport]; stored per image per marketplace."
+  },
+  {
+   "id": "R06316",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1540",
+   "note": "Deterministic Pillow checks first."
+  },
+  {
+   "id": "R06316a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1540",
+   "note": "Vision model call second."
+  },
+  {
+   "id": "R06318",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:129; BACKEND-ARCHITECTURE.md:1538",
+   "note": "BrandChunkRepository.search behind retrieve_brand_chunks."
+  },
+  {
+   "id": "R06320",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:119",
+   "note": "Pipeline builds the query text from the product."
+  },
+  {
+   "id": "R06320a",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "CANON.md:119",
+   "note": "retrieve_brand_chunks has no marketplace parameter; brand_chunks has no marketplace column."
+  },
+  {
+   "id": "R06320b",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "CANON.md:47; CANON.md:119; T58",
+   "note": "Port takes tenant_id, not brand_id."
+  },
+  {
+   "id": "R06322",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:119; BACKEND-ARCHITECTURE.md:1538",
+   "note": "Top-k (8) BrandChunkDTOs via pgvector."
+  },
+  {
+   "id": "R06324",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1538",
+   "note": "Repository method returning plain DTOs; no generation."
+  },
+  {
+   "id": "R06324a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:119",
+   "note": "Pipeline calls the port and feeds chunks to agents."
+  },
+  {
+   "id": "R06328",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:730-733; DATABASE.md:998",
+   "note": "Global and per-brand daily USD caps with claim-time reservation."
+  },
+  {
+   "id": "R06328a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "ENV.md:91-93; BACKEND-ARCHITECTURE.md:730",
+   "note": "Cheap default model, escalation tier, budget caps."
+  },
+  {
+   "id": "R06330",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "ENV.md:91",
+   "note": "LLM_MODEL_DEFAULT gpt-4o-mini for text."
+  },
+  {
+   "id": "R06330a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "ENV.md:91",
+   "note": "LLM_MODEL_DEFAULT covers vision too."
+  },
+  {
+   "id": "R06331",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "ENV.md:92; BACKEND-ARCHITECTURE.md:1786",
+   "note": "Tier-2 on a second JSON failure; trigger lives in AI graph."
+  },
+  {
+   "id": "R06331a",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "VISION-ALIGNMENT.md:190; BACKEND-ARCHITECTURE.md:738",
+   "note": "get_model_credentials has no escalation purpose; needs AI-seam Canon PR."
+  },
+  {
+   "id": "R06332",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "ENV.md:93; BACKEND-ARCHITECTURE.md:1538",
+   "note": "EMBEDDING_MODEL text-embedding-3-small."
+  },
+  {
+   "id": "R06332a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "ENV.md:93; CANON.md:119",
+   "note": "Separate EMBEDDING_MODEL and credentials purpose 'embedding'."
+  },
+  {
+   "id": "R06333",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:991; AGENTS.md:85",
+   "note": "model_used on every agent_runs row."
+  },
+  {
+   "id": "R06333a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:991",
+   "note": "tokens_in."
+  },
+  {
+   "id": "R06333b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:991",
+   "note": "tokens_out."
+  },
+  {
+   "id": "R06333c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:992; CANON.md:56; T25",
+   "note": "Logged as cost_usd numeric(12,6)."
+  }
+ ]
+}

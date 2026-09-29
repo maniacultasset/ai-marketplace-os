@@ -1,0 +1,2399 @@
+{
+ "chunk": "c21",
+ "items": [
+  {
+   "id": "R12512",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:506; docs/architecture/BACKEND-ARCHITECTURE.md:261",
+   "note": "OAuth 2.0 for Amazon and Flipkart"
+  },
+  {
+   "id": "R12512a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:261; docs/canon/ENV.md:105",
+   "note": "Login with Amazon; AMAZON_CLIENT_ID is the LWA client"
+  },
+  {
+   "id": "R12512b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:261; docs/architecture/BACKEND-ARCHITECTURE.md:506",
+   "note": "Flipkart Seller API OAuth"
+  },
+  {
+   "id": "R12512c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2093; docs/architecture/BACKEND-ARCHITECTURE.md:1344",
+   "note": "Adapter code sends owner to consent page; connect returns consent URL"
+  },
+  {
+   "id": "R12512d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2096",
+   "note": "Adapter swaps code for tokens after one-time state check"
+  },
+  {
+   "id": "R12512e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2116; docs/architecture/DATABASE.md:1006",
+   "note": "token_enc AES-256-GCM, KMS-wrapped key"
+  },
+  {
+   "id": "R12512f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2118; docs/architecture/DATABASE.md:1008",
+   "note": "Auto refresh; one retry then needs_reconnect"
+  },
+  {
+   "id": "R12519",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:273; ADR-0001",
+   "note": "Page in v1; keys in Cloud KMS envelope, not AWS Secrets Manager"
+  },
+  {
+   "id": "R12521",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2116; docs/architecture/DATABASE.md:1006",
+   "note": "AES-256-GCM token_enc at rest"
+  },
+  {
+   "id": "R12526",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2116; docs/architecture/BACKEND-ARCHITECTURE.md:2097",
+   "note": "Encrypted with fresh AES-256 key before write"
+  },
+  {
+   "id": "R12526a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2121; ADR-0001",
+   "note": "Key-encryption key in Cloud KMS (marketplace-os/oauth-token-key), not AWS Secrets Manager"
+  },
+  {
+   "id": "R12526b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2082; docs/architecture/BACKEND-ARCHITECTURE.md:2121",
+   "note": "Master key never leaves Cloud KMS"
+  },
+  {
+   "id": "R12526c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2082; docs/canon/CANON.md:70",
+   "note": "Env holds only KMS_KEY_URI reference, never key material"
+  },
+  {
+   "id": "R12526d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2117; docs/architecture/BACKEND-ARCHITECTURE.md:2103",
+   "note": "Decrypt in memory only"
+  },
+  {
+   "id": "R12526e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2117; docs/architecture/DATABASE.md:1001",
+   "note": "Only adapters decrypt, only inside a call"
+  },
+  {
+   "id": "R12533",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:274; ADR-0001",
+   "note": "GCP Secret Manager as env vars replaces AWS Secrets Manager"
+  },
+  {
+   "id": "R12535",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2121; ADR-0001",
+   "note": "Encryption keys in Cloud KMS, not a secrets store"
+  },
+  {
+   "id": "R12535a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2107; ADR-0001",
+   "note": "GCP Secret Manager, injected as env vars"
+  },
+  {
+   "id": "R12540",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2107; docs/architecture/BACKEND-ARCHITECTURE.md:2108; ADR-0001",
+   "note": "DATABASE_URL and DB password in GCP Secret Manager"
+  },
+  {
+   "id": "R12540b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2107; docs/canon/ENV.md:89; ADR-0001",
+   "note": "OPENAI_API_KEY, marketplace client secrets in GCP Secret Manager"
+  },
+  {
+   "id": "R12540d",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2107; ADR-0001",
+   "note": "Injected as env vars at instance start; app never calls Secret Manager API"
+  },
+  {
+   "id": "R12540e",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2107; AGENTS.md:158",
+   "note": "Env vars read once by app/core/config.py Settings"
+  },
+  {
+   "id": "R12540f",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2111; docs/review/VISION-ALIGNMENT.md:303; T98",
+   "note": "Env-var secrets rotate only by redeploy; no T-row yet"
+  },
+  {
+   "id": "R12547",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:275",
+   "note": "Page in v1; at-rest and in-transit statements for DB/storage undocumented (gaps)"
+  },
+  {
+   "id": "R12549",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:33-35; docs/review/SPEC-TRACEABILITY.md:275",
+   "note": "Cloud SQL/GCS default at-rest encryption never stated in ADR-0001; only tokens"
+  },
+  {
+   "id": "R12549a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2263; docs/review/VISION-ALIGNMENT.md:304",
+   "note": "In-transit encryption stated only at LB; DB and storage unstated"
+  },
+  {
+   "id": "R12554",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2263; docs/review/VISION-ALIGNMENT.md:304",
+   "note": "\"TLS everywhere\" not stated; doc gap for ADR-0001/S4"
+  },
+  {
+   "id": "R12554a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1912; docs/architecture/BACKEND-ARCHITECTURE.md:2350",
+   "note": "Inbound TLS at LB (prod) / Firebase Hosting (staging); outbound TLS not stated"
+  },
+  {
+   "id": "R12554b",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2263; T5",
+   "note": "Built-in Cloud SQL connection encryption not stated in ADR-0001"
+  },
+  {
+   "id": "R12554c",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2263; docs/review/VISION-ALIGNMENT.md:304",
+   "note": "TLS for Cloud Storage access not stated"
+  },
+  {
+   "id": "R12555",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:33; docs/review/SPEC-TRACEABILITY.md:275",
+   "note": "Cloud SQL encryption at rest (platform default) not stated in plan"
+  },
+  {
+   "id": "R12555a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:35; docs/review/SPEC-TRACEABILITY.md:275",
+   "note": "GCS server-side encryption (platform default) not stated in plan"
+  },
+  {
+   "id": "R12562",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:276",
+   "note": "Page in v1; ADR-0005 limits, Pydantic, CORS, body cap"
+  },
+  {
+   "id": "R12564",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2206; ADR-0005",
+   "note": "Postgres-backed rate-limit dependency"
+  },
+  {
+   "id": "R12564a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2204; docs/drafts/CONTRACTS.md:76",
+   "note": "Pydantic StrictModel request bodies, unknown key = 422"
+  },
+  {
+   "id": "R12564b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2208; docs/canon/ENV.md:15",
+   "note": "CORS allows only web app origin(s)"
+  },
+  {
+   "id": "R12569",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2206; docs/architecture/DATABASE.md:1023",
+   "note": "120 req/min per tenant"
+  },
+  {
+   "id": "R12569a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2206; docs/adr/0005-dependency-and-process-hygiene.md:15",
+   "note": "60/min per IP (ADR-0005); login 5/min per IP and email"
+  },
+  {
+   "id": "R12570",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2204; docs/architecture/BACKEND-ARCHITECTURE.md:1195",
+   "note": "Routers own request models; site requirement adopted"
+  },
+  {
+   "id": "R12570a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1195; AGENTS.md:97-98; docs/drafts/CONTRACTS.md:76-84",
+   "note": "Pydantic request models; StrictModel extra=forbid only in pre-Canon CONTRACTS draft"
+  },
+  {
+   "id": "R12571",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2208; docs/canon/ENV.md:15",
+   "note": "Allowed-origin CORS only"
+  },
+  {
+   "id": "R12572",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2208",
+   "note": "10 MiB multipart cap; larger CSV via signed URL; no JSON body cap stated"
+  },
+  {
+   "id": "R12573",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2204; docs/drafts/BUILD-SEQUENCE.md:14",
+   "note": "Parameterised SQL via SQLAlchemy; ruff S rules"
+  },
+  {
+   "id": "R12580",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:277; docs/architecture/DATABASE.md:285",
+   "note": "Page in v1; gaps: credential-use action (G11)"
+  },
+  {
+   "id": "R12582",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2239; docs/architecture/DATABASE.md:285",
+   "note": "Every state-changing action audited, append-only"
+  },
+  {
+   "id": "R12582a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2249; docs/architecture/DATABASE.md:1829",
+   "note": "Append-only, 24-month retention proposed for DPDP compliance"
+  },
+  {
+   "id": "R12582b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2239; docs/architecture/DATABASE.md:301",
+   "note": "Append-only trail for governance"
+  },
+  {
+   "id": "R12587",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:292; T65",
+   "note": "actor split into actor_type, actor_user_id, actor_email"
+  },
+  {
+   "id": "R12587a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:293",
+   "note": "action, e.g. listing.approved"
+  },
+  {
+   "id": "R12587b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:293; T65",
+   "note": "entity_type + entity_id"
+  },
+  {
+   "id": "R12587c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:297; T65",
+   "note": "occurred_at, not timestamp"
+  },
+  {
+   "id": "R12587d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:294; docs/architecture/DATABASE.md:300",
+   "note": "before/after for allow-listed columns; personal fields ids only"
+  },
+  {
+   "id": "R12587e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:301; docs/architecture/DATABASE.md:303",
+   "note": "Append-only with actor/entity/time indexes"
+  },
+  {
+   "id": "R12587f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2243; docs/architecture/DATABASE.md:294",
+   "note": "request_id links audit rows to logs and traces"
+  },
+  {
+   "id": "R12587g",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:303; docs/architecture/BACKEND-ARCHITECTURE.md:1353",
+   "note": "Audit rows indexed, but no audit read/report endpoint or view planned"
+  },
+  {
+   "id": "R12594",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:278; docs/architecture/BACKEND-ARCHITECTURE.md:2134",
+   "note": "Page in v1; provider retention review is client Q22"
+  },
+  {
+   "id": "R12596",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2134; docs/architecture/BACKEND-ARCHITECTURE.md:2162",
+   "note": "Sealed per-brand context; no credentials reach pipeline"
+  },
+  {
+   "id": "R12601",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2163; docs/canon/CANON.md:118",
+   "note": "Context pushed per tenant; retrieve_brand_chunks takes tenant_id"
+  },
+  {
+   "id": "R12601a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2163",
+   "note": "tenant-isolation check covers pgvector search"
+  },
+  {
+   "id": "R12601b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:89; docs/architecture/BACKEND-ARCHITECTURE.md:2107; ADR-0001",
+   "note": "OPENAI_API_KEY in GCP Secret Manager, via get_model_credentials"
+  },
+  {
+   "id": "R12601c",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2173; Q22; T99",
+   "note": "Not planned; default no-training API terms (Q22)"
+  },
+  {
+   "id": "R12608",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:279; docs/architecture/BACKEND-ARCHITECTURE.md:2167",
+   "note": "Page in v1; pattern rule (G6) and extra=ignore are open"
+  },
+  {
+   "id": "R12610",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2167",
+   "note": "Defences listed; Day-41 prompt-injection test"
+  },
+  {
+   "id": "R12615",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2167; docs/architecture/DATABASE.md:1062",
+   "note": "Product and brand text treated as untrusted input"
+  },
+  {
+   "id": "R12615a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:120; docs/architecture/BACKEND-ARCHITECTURE.md:692",
+   "note": "CanonicalListing.model_validate then validate_rules"
+  },
+  {
+   "id": "R12615b",
+   "status": "conflict",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:122; docs/drafts/CONTRACTS.md:89-95; T100",
+   "note": "Seam types are WireModel extra=ignore: unknown fields dropped, not rejected"
+  },
+  {
+   "id": "R12615c",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/review/VISION-ALIGNMENT.md:389; docs/architecture/BACKEND-ARCHITECTURE.md:2172",
+   "note": "Needs Rules Engine pattern rule (G6), only Proposed"
+  },
+  {
+   "id": "R12615d",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt construction is AI team; context pushed as data (CANON.md:118)"
+  },
+  {
+   "id": "R12615e",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:692-699; AGENTS.md:79",
+   "note": "Schema, rules, image checks before storage; human approval before publish"
+  },
+  {
+   "id": "R12622",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:280",
+   "note": "Page in v1; credential-access audit event missing (G11)"
+  },
+  {
+   "id": "R12624",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1006; docs/architecture/DATABASE.md:1015",
+   "note": "Per-tenant rows, AAD = tenant_id, RLS"
+  },
+  {
+   "id": "R12624a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2116; docs/architecture/DATABASE.md:1006",
+   "note": "AES-256-GCM, KMS-wrapped"
+  },
+  {
+   "id": "R12624b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2128; docs/architecture/DATABASE.md:1015; docs/architecture/BACKEND-ARCHITECTURE.md:2131",
+   "note": "No grant to read-only roles; per-secret secretAccessor"
+  },
+  {
+   "id": "R12629a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1006; docs/architecture/DATABASE.md:1015",
+   "note": "AAD tenant_id; one live account per brand per marketplace"
+  },
+  {
+   "id": "R12629b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2162; docs/canon/CANON.md:125",
+   "note": "import-linter + IAM keep pipeline away from marketplace_accounts"
+  },
+  {
+   "id": "R12629c",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2250; docs/review/VISION-ALIGNMENT.md:394",
+   "note": "No \"credential used\" audit action (G11)"
+  },
+  {
+   "id": "R12629d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2128; docs/drafts/BUILD-SEQUENCE.md:184",
+   "note": "token_enc excluded from logs; redaction deny-list and Sentry scrubber"
+  },
+  {
+   "id": "R12629e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2118; docs/architecture/BACKEND-ARCHITECTURE.md:2121",
+   "note": "Auto refresh; KMS key 90-day rotation"
+  },
+  {
+   "id": "R12636",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:281",
+   "note": "Page in v1 (S11 observability spine)"
+  },
+  {
+   "id": "R12638",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2741; docs/drafts/BUILD-SEQUENCE.md:184",
+   "note": "structlog JSON to stdout in API and worker"
+  },
+  {
+   "id": "R12643",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2741; ADR-0001",
+   "note": "Structured JSON to stdout, Cloud Logging"
+  },
+  {
+   "id": "R12643a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2744",
+   "note": "timestamp field"
+  },
+  {
+   "id": "R12643b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2744; docs/drafts/BUILD-SEQUENCE.md:184",
+   "note": "level, emitted as Cloud Logging severity"
+  },
+  {
+   "id": "R12643c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2744; docs/drafts/BUILD-SEQUENCE.md:190",
+   "note": "request_id in every log line"
+  },
+  {
+   "id": "R12643d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2744",
+   "note": "tenant_id field"
+  },
+  {
+   "id": "R12643e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2744",
+   "note": "module field"
+  },
+  {
+   "id": "R12643f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2744",
+   "note": "message field"
+  },
+  {
+   "id": "R12643g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2744",
+   "note": "context field"
+  },
+  {
+   "id": "R12643h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2733-2736",
+   "note": "request_id on job_runs, agent_runs, validation_runs, adapter logs"
+  },
+  {
+   "id": "R12643i",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2744; docs/drafts/BUILD-SEQUENCE.md:184",
+   "note": "Central redaction processor + Sentry scrubber"
+  },
+  {
+   "id": "R12650",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:282; docs/architecture/BACKEND-ARCHITECTURE.md:2778",
+   "note": "Page in v1; where most metrics are computed/shown not specified"
+  },
+  {
+   "id": "R12652",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2778; docs/drafts/CHECKLISTS.md:373",
+   "note": "Latency metric surface not specified; CHECKLISTS drafts Cloud Monitoring dashboards"
+  },
+  {
+   "id": "R12652a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2778",
+   "note": "Throughput not named anywhere in plan"
+  },
+  {
+   "id": "R12652b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2770",
+   "note": "Sentry tracks and alerts on elevated error rates"
+  },
+  {
+   "id": "R12657",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2778",
+   "note": "API latency p50 listed; computation and display not specified"
+  },
+  {
+   "id": "R12657a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2778",
+   "note": "API latency p95 listed; computation and display not specified"
+  },
+  {
+   "id": "R12657b",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2778",
+   "note": "API latency p99 listed; computation and display not specified"
+  },
+  {
+   "id": "R12658",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2778; docs/architecture/DATABASE.md:991",
+   "note": "duration_ms stored; generation-duration metric not defined"
+  },
+  {
+   "id": "R12659",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1353",
+   "note": "GET /api/v1/analytics v1 includes validation pass rate"
+  },
+  {
+   "id": "R12660",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2778; docs/architecture/BACKEND-ARCHITECTURE.md:2745",
+   "note": "Adapter call duration logged; latency metric not defined"
+  },
+  {
+   "id": "R12661",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2778; docs/drafts/BUILD-SEQUENCE.md:235",
+   "note": "Queue depth surface \"not specified\" (2778); only pre-Canon S14 /internal/ops/queue; latency alert only"
+  },
+  {
+   "id": "R12661a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2778; docs/architecture/DATABASE.md:929",
+   "note": "job_runs timestamps exist; processing-time metric not defined"
+  },
+  {
+   "id": "R12662",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2778",
+   "note": "ErrorSource recorded; per-source error-rate metric not defined"
+  },
+  {
+   "id": "R12663",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2763; docs/drafts/BUILD-SEQUENCE.md:235",
+   "note": "Cost per listing rollup; /internal/ops/cost"
+  },
+  {
+   "id": "R12670",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:283; docs/architecture/BACKEND-ARCHITECTURE.md:2748",
+   "note": "Page in v1; traceparent across jobs only Proposed"
+  },
+  {
+   "id": "R12672",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:40; docs/architecture/BACKEND-ARCHITECTURE.md:2748",
+   "note": "OpenTelemetry to Cloud Trace via OTLP"
+  },
+  {
+   "id": "R12677",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2738; docs/architecture/BACKEND-ARCHITECTURE.md:2753",
+   "note": "Only request_id enters jobs; traceparent Proposed (S11); no agent spans"
+  },
+  {
+   "id": "R12677a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2748; docs/drafts/CHECKLISTS.md:380",
+   "note": "OTel spans carry name; adapter span attributes named"
+  },
+  {
+   "id": "R12677b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2748",
+   "note": "OTel span duration"
+  },
+  {
+   "id": "R12677c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2748",
+   "note": "OTel span status"
+  },
+  {
+   "id": "R12677d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2748; docs/drafts/BUILD-SEQUENCE.md:184",
+   "note": "request_id span attribute; adapter span attributes"
+  },
+  {
+   "id": "R12684",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:284; docs/architecture/DATABASE.md:983; T25",
+   "note": "Page in v1; cost stored as cost_usd"
+  },
+  {
+   "id": "R12686",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:991; AGENTS.md:85",
+   "note": "model_used per run"
+  },
+  {
+   "id": "R12686a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "tokens_in, tokens_out"
+  },
+  {
+   "id": "R12686b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:992",
+   "note": "cost_usd per run"
+  },
+  {
+   "id": "R12686c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "duration_ms"
+  },
+  {
+   "id": "R12686d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "status running|completed|failed|timeout"
+  },
+  {
+   "id": "R12686e",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "error_report_json"
+  },
+  {
+   "id": "R12691",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "model_used"
+  },
+  {
+   "id": "R12691a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "tokens_in"
+  },
+  {
+   "id": "R12691b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "tokens_out"
+  },
+  {
+   "id": "R12691c",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:992; T25",
+   "note": "cost_usd numeric(12,6), not cost DECIMAL(10,6)"
+  },
+  {
+   "id": "R12691d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "duration_ms"
+  },
+  {
+   "id": "R12691e",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "status"
+  },
+  {
+   "id": "R12691f",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "error_report_json"
+  },
+  {
+   "id": "R12691g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991; docs/architecture/BACKEND-ARCHITECTURE.md:2763",
+   "note": "Aggregate by model_used"
+  },
+  {
+   "id": "R12691h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:996; docs/architecture/BACKEND-ARCHITECTURE.md:2763",
+   "note": "cost_usd indexes; rollups per listing, brand, model"
+  },
+  {
+   "id": "R12691i",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "status failed/timeout per run"
+  },
+  {
+   "id": "R12691j",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:996",
+   "note": "GIN index on error_report_json"
+  },
+  {
+   "id": "R12698",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:285",
+   "note": "Page in v1"
+  },
+  {
+   "id": "R12700",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2763",
+   "note": "Per-model rollup"
+  },
+  {
+   "id": "R12700a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:993",
+   "note": "agent_name column enables per-agent cost"
+  },
+  {
+   "id": "R12700b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2763; docs/architecture/DATABASE.md:996",
+   "note": "Per-brand rollup; tenant budget index"
+  },
+  {
+   "id": "R12705",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:992; docs/drafts/CHECKLISTS.md:368",
+   "note": "cost_usd per run; model-price derivation only in pre-Canon CHECKLISTS:368"
+  },
+  {
+   "id": "R12705a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2763",
+   "note": "Per-listing sum"
+  },
+  {
+   "id": "R12705b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2763",
+   "note": "Per-brand sum"
+  },
+  {
+   "id": "R12705c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2763",
+   "note": "Per-model aggregate"
+  },
+  {
+   "id": "R12705d",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2764; docs/architecture/BACKEND-ARCHITECTURE.md:2774; docs/drafts/BUILD-SEQUENCE.md:235",
+   "note": "Cost dashboard named, contents unspecified; daily-spend page only pre-Canon S14; daily cost alert exists"
+  },
+  {
+   "id": "R12705e",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1353; docs/drafts/BUILD-SEQUENCE.md:235",
+   "note": "analytics costs/timeseries only Proposed; trend view unspecified"
+  },
+  {
+   "id": "R12705f",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:235; docs/architecture/BACKEND-ARCHITECTURE.md:1353",
+   "note": "Cost per listing named; over-time view unspecified"
+  },
+  {
+   "id": "R12712",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:286",
+   "note": "Page in v1"
+  },
+  {
+   "id": "R12714",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2745",
+   "note": "Adapter call duration logged"
+  },
+  {
+   "id": "R12714a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2745; docs/architecture/BACKEND-ARCHITECTURE.md:2770",
+   "note": "Error details logged; Sentry alerts on marketplace failures"
+  },
+  {
+   "id": "R12719",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2745",
+   "note": "Each adapter call logged"
+  },
+  {
+   "id": "R12719a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2745",
+   "note": "endpoint"
+  },
+  {
+   "id": "R12719b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2745",
+   "note": "method"
+  },
+  {
+   "id": "R12719c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2745",
+   "note": "duration"
+  },
+  {
+   "id": "R12719d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2745",
+   "note": "status code"
+  },
+  {
+   "id": "R12719e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2745",
+   "note": "error details"
+  },
+  {
+   "id": "R12719f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2745",
+   "note": "remaining rate limit"
+  },
+  {
+   "id": "R12719g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2745; docs/architecture/BACKEND-ARCHITECTURE.md:2770",
+   "note": "Logs plus marketplace-failure alerts"
+  },
+  {
+   "id": "R12719h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2745",
+   "note": "rate_limit_remaining logged; per-account limiter itself is G17"
+  },
+  {
+   "id": "R12719i",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2745; docs/architecture/BACKEND-ARCHITECTURE.md:2770",
+   "note": "Logged errors plus Sentry grouping"
+  },
+  {
+   "id": "R12719j",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "docs/drafts/CHECKLISTS.md:385; docs/drafts/CHECKLISTS.md:375",
+   "note": "No SLA/SLO targets in plan; only a pre-Canon starter SLO draft"
+  },
+  {
+   "id": "R12726",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:287",
+   "note": "Page in v1"
+  },
+  {
+   "id": "R12728",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2756; docs/adr/0001-hosting-gcp.md:40",
+   "note": "Sentry on backend"
+  },
+  {
+   "id": "R12728a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2770",
+   "note": "Sentry alert rules"
+  },
+  {
+   "id": "R12733",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2756",
+   "note": "Exceptions to Sentry"
+  },
+  {
+   "id": "R12733a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2770",
+   "note": "Marketplace and AI failures alerted via Sentry; capture path not detailed"
+  },
+  {
+   "id": "R12733b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2770",
+   "note": "Critical errors"
+  },
+  {
+   "id": "R12733c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2770",
+   "note": "Elevated error rates"
+  },
+  {
+   "id": "R12733d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2770",
+   "note": "Marketplace API failures"
+  },
+  {
+   "id": "R12733e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2770",
+   "note": "AI model failures"
+  },
+  {
+   "id": "R12733f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2756",
+   "note": "Sentry grouping; release from git SHA"
+  },
+  {
+   "id": "R12740",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:288",
+   "note": "Page in v1; FE Sentry is FE team"
+  },
+  {
+   "id": "R12742",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2756",
+   "note": "Sentry error tracking"
+  },
+  {
+   "id": "R12742a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2757",
+   "note": "10% performance sampling"
+  },
+  {
+   "id": "R12747",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "FE team wires Sentry in Next.js (BACKEND-ARCHITECTURE.md:2759)"
+  },
+  {
+   "id": "R12747a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2756; docs/canon/ENV.md:127",
+   "note": "Sentry in FastAPI API and worker"
+  },
+  {
+   "id": "R12747b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:127; docs/architecture/BACKEND-ARCHITECTURE.md:2757",
+   "note": "send_default_pii=False plus scrubber: context minus personal data"
+  },
+  {
+   "id": "R12747c",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "Source maps are for the Next.js bundle"
+  },
+  {
+   "id": "R12747d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2757; docs/canon/ENV.md:128",
+   "note": "Transaction sampling 0.1"
+  },
+  {
+   "id": "R12754",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:289; docs/architecture/BACKEND-ARCHITECTURE.md:2748",
+   "note": "Page in v1; agent spans, traceparent, metrics are gaps"
+  },
+  {
+   "id": "R12756a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2778; docs/review/SPEC-TRACEABILITY.md:289",
+   "note": "OTel used for traces only; no metrics pipeline planned"
+  },
+  {
+   "id": "R12761",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2748; docs/drafts/BUILD-SEQUENCE.md:184",
+   "note": "OTel in FastAPI API and worker"
+  },
+  {
+   "id": "R12761a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2743; docs/drafts/CHECKLISTS.md:370",
+   "note": "FastAPI auto-instrumentation; probes excluded"
+  },
+  {
+   "id": "R12761b",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2748; docs/drafts/CHECKLISTS.md:370",
+   "note": "No SQLAlchemy/psycopg span instrumentation in plan; only pre-Canon CHECKLISTS (names asyncpg)"
+  },
+  {
+   "id": "R12761c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; T3",
+   "note": "No Redis; queue operations are Postgres queries"
+  },
+  {
+   "id": "R12761d",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:105; docs/architecture/BACKEND-ARCHITECTURE.md:1542",
+   "note": "Pipeline deps exclude OpenTelemetry; no plan for agent-node spans"
+  },
+  {
+   "id": "R12761e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:40; docs/architecture/BACKEND-ARCHITECTURE.md:2748",
+   "note": "Exported to Cloud Trace via OTLP"
+  },
+  {
+   "id": "R12768",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:290; T58",
+   "note": "Page in v1; brand_id collapses into tenant_id"
+  },
+  {
+   "id": "R12770",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:984; AGENTS.md:85",
+   "note": "One agent_runs row per model call"
+  },
+  {
+   "id": "R12775",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2733-2736; docs/architecture/DATABASE.md:988; T58",
+   "note": "Chain via request_id; brand_id is tenant_id"
+  },
+  {
+   "id": "R12775a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:993",
+   "note": "agent_runs.request_id"
+  },
+  {
+   "id": "R12775b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:984",
+   "note": "Std tenant column"
+  },
+  {
+   "id": "R12775c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1058; T58",
+   "note": "brand_id is tenant_id"
+  },
+  {
+   "id": "R12775d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:988",
+   "note": "agent_runs.product_id"
+  },
+  {
+   "id": "R12775e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:988",
+   "note": "agent_runs.listing_id"
+  },
+  {
+   "id": "R12775f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:984",
+   "note": "agent_runs.id; not propagated to validation/adapter logs"
+  },
+  {
+   "id": "R12775g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2733; docs/architecture/BACKEND-ARCHITECTURE.md:2738",
+   "note": "request_id end to end; single trace view needs traceparent (Proposed)"
+  },
+  {
+   "id": "R12782",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:291; ADR-0001; ADR-0004",
+   "note": "Page in v1; GCP, PG17, procrastinate, FastAPI JWT differ (C6, C7)"
+  },
+  {
+   "id": "R12784",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "AGENTS.md:95-122; ADR-0001; ADR-0002; ADR-0003; ADR-0004",
+   "note": "Stack recorded in AGENTS §4 and ADRs; deltas C6/C7"
+  },
+  {
+   "id": "R12795",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "FE team stack (apps/web, Next.js)"
+  },
+  {
+   "id": "R12795a",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "FE TypeScript; we ship @mkos/schemas types"
+  },
+  {
+   "id": "R12795b",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "FE styling choice"
+  },
+  {
+   "id": "R12799",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "Dashboard UI is FE; data via /api/v1"
+  },
+  {
+   "id": "R12799a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1336-1341",
+   "note": "Review UI is FE; generate, validate, edit, approve endpoints are ours"
+  },
+  {
+   "id": "R12799b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1353; T14",
+   "note": "Analytics UI is FE; GET /api/v1/analytics operational in v1 (performance: T14)"
+  },
+  {
+   "id": "R12801",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1906; T7",
+   "note": "FastAPI issues the JWT; NextAuth only holds the session"
+  },
+  {
+   "id": "R12805",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "NextAuth session layer is FE; issuer is ours (T7)"
+  },
+  {
+   "id": "R12805a",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "NextAuth session layer is FE; issuer is ours (T7)"
+  },
+  {
+   "id": "R12807",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:97",
+   "note": "FastAPI pinned exactly, Python 3.13"
+  },
+  {
+   "id": "R12811",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:99; docs/canon/CANON.md:109",
+   "note": "Async SQLAlchemy on psycopg 3; async seam"
+  },
+  {
+   "id": "R12811a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1277; AGENTS.md:97",
+   "note": "Pydantic models; mypy --strict on apps/api"
+  },
+  {
+   "id": "R12811b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:34; docs/canon/CANON.md:43",
+   "note": "/openapi.json and /docs; committed generated openapi.json"
+  },
+  {
+   "id": "R12813",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "LangGraph lives in packages/pipeline (CANON.md:105)"
+  },
+  {
+   "id": "R12817",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent graph is AI team; seam ours (CANON.md:109)"
+  },
+  {
+   "id": "R12817a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:87; ADR-0004",
+   "note": "Cap 3 inside graph; generation jobs max_attempts=1"
+  },
+  {
+   "id": "R12819",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/ENV.md:91",
+   "note": "LLM_MODEL_DEFAULT gpt-4o-mini"
+  },
+  {
+   "id": "R12819a",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/canon/ENV.md:90; docs/canon/CANON.md:71",
+   "note": "DeepSeek deferred for MVP; DEEPSEEK_API_KEY unset"
+  },
+  {
+   "id": "R12823",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:119; docs/canon/ENV.md:92",
+   "note": "get_model_credentials purposes lack escalation; LLM_MODEL_ESCALATION gpt-4o has no port path"
+  },
+  {
+   "id": "R12825",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/ENV.md:91; docs/architecture/BACKEND-ARCHITECTURE.md:1202",
+   "note": "gpt-4o-mini for vision; app/services/vision.py"
+  },
+  {
+   "id": "R12829",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/ENV.md:91",
+   "note": "Text + vision default is one model"
+  },
+  {
+   "id": "R12831",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:93; docs/architecture/DATABASE.md:1063",
+   "note": "text-embedding-3-small pinned"
+  },
+  {
+   "id": "R12835",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1057; docs/canon/CANON.md:119",
+   "note": "brand_chunks + retrieve_brand_chunks"
+  },
+  {
+   "id": "R12837",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:101",
+   "note": "pgvector >= 0.8.2 on Postgres"
+  },
+  {
+   "id": "R12841",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:101; AGENTS.md:121",
+   "note": "No separate vector database"
+  },
+  {
+   "id": "R12843",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:33; ADR-0003; T2",
+   "note": "Cloud SQL PostgreSQL 17, not RDS"
+  },
+  {
+   "id": "R12847",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:33; AGENTS.md:101",
+   "note": "pgvector 0.8.5 on Cloud SQL"
+  },
+  {
+   "id": "R12849",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; T3",
+   "note": "No Redis; Postgres queue"
+  },
+  {
+   "id": "R12849a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; T3",
+   "note": "procrastinate replaces ARQ"
+  },
+  {
+   "id": "R12853",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:32; ADR-0004",
+   "note": "Worker pool runs background jobs"
+  },
+  {
+   "id": "R12855",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:35; docs/architecture/BACKEND-ARCHITECTURE.md:1205",
+   "note": "GCS via S3-API StorageAdapter; MinIO locally"
+  },
+  {
+   "id": "R12859",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:35",
+   "note": "Images in object storage"
+  },
+  {
+   "id": "R12859a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:35",
+   "note": "CSVs, deleted after 30 days"
+  },
+  {
+   "id": "R12859b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:860",
+   "note": "Submission payload snapshots under tenant prefix; \"batch artifacts\" otherwise undefined"
+  },
+  {
+   "id": "R12861",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:40",
+   "note": "Sentry"
+  },
+  {
+   "id": "R12861a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:40",
+   "note": "OpenTelemetry to Cloud Trace"
+  },
+  {
+   "id": "R12865",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2756",
+   "note": "Sentry errors"
+  },
+  {
+   "id": "R12865a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2748",
+   "note": "OTel traces"
+  },
+  {
+   "id": "R12865b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2762; docs/architecture/DATABASE.md:992",
+   "note": "Cost in agent_runs.cost_usd"
+  },
+  {
+   "id": "R12867",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:31; T6",
+   "note": "Cloud Run service, not EC2 (C7)"
+  },
+  {
+   "id": "R12867a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:33; T6",
+   "note": "Cloud SQL, not RDS"
+  },
+  {
+   "id": "R12867b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; T3",
+   "note": "No ElastiCache/Memorystore"
+  },
+  {
+   "id": "R12871",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:27; T6",
+   "note": "GCP asia-south1 production hosting"
+  },
+  {
+   "id": "R12875",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:121; docs/architecture/DATABASE.md:1893",
+   "note": "Named non-goals; \"Not now\" list"
+  },
+  {
+   "id": "R12875a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:121",
+   "note": "No Kubernetes"
+  },
+  {
+   "id": "R12875b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:121",
+   "note": "No Kafka"
+  },
+  {
+   "id": "R12875c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1114",
+   "note": "One apps/api application, one image"
+  },
+  {
+   "id": "R12875d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:121",
+   "note": "No separate vector database"
+  },
+  {
+   "id": "R12875e",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:31-32; T6",
+   "note": "API min 1/max 3 + 1 worker pool instance on Cloud Run"
+  },
+  {
+   "id": "R12875f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1878; docs/adr/0001-hosting-gcp.md:91",
+   "note": "Scaling stages and revisit triggers"
+  },
+  {
+   "id": "R12882",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "FE Next.js pages (SPEC-TRACEABILITY.md:292)"
+  },
+  {
+   "id": "R12889a",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "Overview page; data via /api/v1"
+  },
+  {
+   "id": "R12889b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1332-1335",
+   "note": "Products CRUD, bulk import, import report endpoints"
+  },
+  {
+   "id": "R12889c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1336-1343",
+   "note": "generate, validate, edit, approve, publish endpoints"
+  },
+  {
+   "id": "R12889d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1344-1346",
+   "note": "connect, callback, accounts + health; no disconnect/revoke endpoint listed"
+  },
+  {
+   "id": "R12889e",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1353; T14",
+   "note": "v1 analytics operational only; performance Phase 2 unless client says otherwise"
+  },
+  {
+   "id": "R12889f",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "Rendering strategy is FE"
+  },
+  {
+   "id": "R12889g",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "Navigation is FE"
+  },
+  {
+   "id": "R12896",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:293; docs/canon/CANON.md:105",
+   "note": "Page in v1; agents live in packages/pipeline"
+  },
+  {
+   "id": "R12898a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1191",
+   "note": "Components and layering"
+  },
+  {
+   "id": "R12903a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1195",
+   "note": "api/v1 routers"
+  },
+  {
+   "id": "R12903b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1197",
+   "note": "Services"
+  },
+  {
+   "id": "R12903c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1198",
+   "note": "Repositories"
+  },
+  {
+   "id": "R12903d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1198",
+   "note": "TenantScopedRepository + guard"
+  },
+  {
+   "id": "R12903e",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:105",
+   "note": "Agents in packages/pipeline (AI team), called via seam"
+  },
+  {
+   "id": "R12903f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "Marketplace adapters"
+  },
+  {
+   "id": "R12903g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:34; docs/canon/CANON.md:43",
+   "note": "Generated openapi.json and /docs"
+  },
+  {
+   "id": "R12910",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:294",
+   "note": "Page in v1; ModelRouter escalation path is a gap"
+  },
+  {
+   "id": "R12912a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/ENV.md:88-92",
+   "note": "OpenAI via get_model_credentials"
+  },
+  {
+   "id": "R12912b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:22; docs/architecture/DATABASE.md:933",
+   "note": "Backend chunking + embedding calls; brand_embed job"
+  },
+  {
+   "id": "R12917a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/ENV.md:88; docs/canon/ENV.md:91",
+   "note": "OpenAI gpt-4o-mini"
+  },
+  {
+   "id": "R12917b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/ENV.md:91; docs/architecture/BACKEND-ARCHITECTURE.md:1202",
+   "note": "OpenAI vision via app/services/vision.py"
+  },
+  {
+   "id": "R12917d",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:119; docs/canon/ENV.md:88; docs/canon/ENV.md:92",
+   "note": "ModelRouter (AI) cannot fetch escalation model credentials: no purpose"
+  },
+  {
+   "id": "R12917e",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:109; docs/canon/CANON.md:119",
+   "note": "async seam and ports"
+  },
+  {
+   "id": "R12917f",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:113; AGENTS.md:85",
+   "note": "Backend writes agent_runs for every model call"
+  },
+  {
+   "id": "R12924",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:295; ADR-0003; ADR-0004",
+   "note": "Cloud SQL PG17, psycopg 3"
+  },
+  {
+   "id": "R12926b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2359-2360; docs/adr/0001-hosting-gcp.md:42",
+   "note": "Per-process pools in connection ledger"
+  },
+  {
+   "id": "R12931a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:99; ADR-0004; T4",
+   "note": "psycopg 3; asyncpg banned"
+  },
+  {
+   "id": "R12931c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:33; docs/architecture/DATABASE.md:1819",
+   "note": "Automated backups + PITR 7 days"
+  },
+  {
+   "id": "R12931d",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:33; T6",
+   "note": "db-custom-1-3840, not db.t3.micro"
+  },
+  {
+   "id": "R12931e",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:33",
+   "note": "30 GB SSD with autoresize, not 20 GB"
+  },
+  {
+   "id": "R12931f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2345; docs/architecture/DATABASE.md:1880",
+   "note": "Scale to db-custom-2-7680 on alarm"
+  },
+  {
+   "id": "R12938",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:296; T66",
+   "note": "Page in v1; HNSW replaces IVFFlat"
+  },
+  {
+   "id": "R12940",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:101; docs/architecture/DATABASE.md:1063",
+   "note": "pgvector extension"
+  },
+  {
+   "id": "R12945a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1057",
+   "note": "brand_chunks for brand voice"
+  },
+  {
+   "id": "R12945b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1063; docs/canon/ENV.md:94",
+   "note": "vector(1536)"
+  },
+  {
+   "id": "R12945c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1073",
+   "note": "embedding <=> :q cosine"
+  },
+  {
+   "id": "R12945d",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1067; T66",
+   "note": "HNSW vector_cosine_ops; exact scan year 1"
+  },
+  {
+   "id": "R12956",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:297; ADR-0004; T3",
+   "note": "No Redis in v1"
+  },
+  {
+   "id": "R12958a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; T3",
+   "note": "Caches: none in v1 (ADR-0004 §8)"
+  },
+  {
+   "id": "R12963",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; T3",
+   "note": "No ElastiCache/Memorystore"
+  },
+  {
+   "id": "R12963a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; T3",
+   "note": "procrastinate on Postgres is the broker"
+  },
+  {
+   "id": "R12963b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; T3",
+   "note": "Rules read from Postgres; no cache"
+  },
+  {
+   "id": "R12963c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; T3",
+   "note": "Category templates read from Postgres; no cache"
+  },
+  {
+   "id": "R12963d",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:273; ADR-0004; T3",
+   "note": "Sessions are JWT + refresh_tokens in Postgres"
+  },
+  {
+   "id": "R12963e",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; T3",
+   "note": "No Redis node"
+  },
+  {
+   "id": "R12963f",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1893; ADR-0004; T3",
+   "note": "Redis in \"Not now\" list"
+  },
+  {
+   "id": "R12970",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:298; ADR-0004; T3",
+   "note": "procrastinate replaces ARQ"
+  },
+  {
+   "id": "R12972",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; T3",
+   "note": "procrastinate >=3.10,<3.11"
+  },
+  {
+   "id": "R12977a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:933; ADR-0004; T3",
+   "note": "listing_generate job on procrastinate"
+  },
+  {
+   "id": "R12977b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:933; ADR-0004; T3",
+   "note": "listing_publish on publish queue"
+  },
+  {
+   "id": "R12977c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:933; ADR-0004; T3",
+   "note": "image_compliance job kind"
+  },
+  {
+   "id": "R12977d",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:933; ADR-0004; T3",
+   "note": "bulk_import job kind"
+  },
+  {
+   "id": "R12977e",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:952; ADR-0004; T3",
+   "note": "procrastinate periodic tasks"
+  },
+  {
+   "id": "R12977f",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:941; ADR-0004; T3",
+   "note": "job_runs.result_json is source of truth"
+  },
+  {
+   "id": "R12977g",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:937; ADR-0004; T3",
+   "note": "attempt/max_attempts, backoff retries"
+  },
+  {
+   "id": "R12977h",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2342; ADR-0004; T3",
+   "note": "Per-queue concurrency"
+  },
+  {
+   "id": "R12984",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:299; ADR-0001",
+   "note": "GCS via S3-API adapter; key convention gaps (G12)"
+  },
+  {
+   "id": "R12991",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:35",
+   "note": "Images in GCS through S3-API StorageAdapter"
+  },
+  {
+   "id": "R12991a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/review/VISION-ALIGNMENT.md:395; docs/architecture/DATABASE.md:479",
+   "note": "Image storage_key tenant-prefix convention not specified (G12)"
+  },
+  {
+   "id": "R12991c",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/review/VISION-ALIGNMENT.md:395; docs/review/SPEC-TRACEABILITY.md:299",
+   "note": "Processed image versions not modelled (G12)"
+  },
+  {
+   "id": "R12991e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:35; docs/adr/0001-hosting-gcp.md:86",
+   "note": "GCS lifecycle rules; CSVs deleted after 30 days"
+  },
+  {
+   "id": "R12991f",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:35",
+   "note": "No archive-class rule for noncurrent object versions; ADR-0001 lifecycle deletes CSVs only"
+  },
+  {
+   "id": "R12998",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:300; ADR-0001; T5",
+   "note": "GCP replaces AWS; built-in Cloud SQL connection"
+  },
+  {
+   "id": "R13000a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:35",
+   "note": "GCS, not S3"
+  },
+  {
+   "id": "R13005",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:31-32; T6",
+   "note": "Cloud Run service + worker pool, not EC2 t3.medium"
+  },
+  {
+   "id": "R13005a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:31-32",
+   "note": "One image; API service and worker pool run separately"
+  },
+  {
+   "id": "R13005e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:80",
+   "note": "Org policy locks region to asia-south1"
+  },
+  {
+   "id": "R13005f",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:34; T5",
+   "note": "No private subnet/VPC connector; built-in Cloud SQL connection"
+  },
+  {
+   "id": "R13005g",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2304; docs/adr/0001-hosting-gcp.md:37",
+   "note": "LB fronts API only; web app hosting and ingress not specified"
+  },
+  {
+   "id": "R13012",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:301; ADR-0001; ADR-0009",
+   "note": "Cloud Run revisions, not EC2"
+  },
+  {
+   "id": "R13014",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:31; docs/architecture/BACKEND-ARCHITECTURE.md:2501",
+   "note": "Cloud Run, not EC2 (superseded by plan)"
+  },
+  {
+   "id": "R13014a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:31; docs/drafts/BUILD-SEQUENCE.md:190",
+   "note": "Cloud Run restarts; liveness/startup probes on /healthz"
+  },
+  {
+   "id": "R13014b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:39; ADR-0009",
+   "note": "Zero-traffic revision, traffic shift, auto-rollback"
+  },
+  {
+   "id": "R13019a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:31; docs/architecture/BACKEND-ARCHITECTURE.md:2501",
+   "note": "Cloud Run manages processes, not systemd"
+  },
+  {
+   "id": "R13019b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:37",
+   "note": "Global external ALB, not Nginx"
+  },
+  {
+   "id": "R13019c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:38-39; ADR-0009",
+   "note": "One promoted image digest; no git pull"
+  },
+  {
+   "id": "R13019d",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:38",
+   "note": "Site \"Future\" (L13019); we already ship container images in v1 (ADR-0001)"
+  },
+  {
+   "id": "R13019e",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:38; ADR-0009",
+   "note": "Site \"Future\" (L13019); GitHub Actions CI/CD already in v1"
+  },
+  {
+   "id": "R13019f",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:39; ADR-0009",
+   "note": "Site \"Future\" (L13019); zero-traffic revisions + auto-rollback already in v1"
+  },
+  {
+   "id": "R13026",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:302; docs/architecture/BACKEND-ARCHITECTURE.md:2400",
+   "note": "Page in v1; staging marketplace accounts are Q16"
+  },
+  {
+   "id": "R13028",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2400; ADR-0009",
+   "note": "Local + staging + prod; no cloud dev tier"
+  },
+  {
+   "id": "R13039",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2400; docs/architecture/BACKEND-ARCHITECTURE.md:2417",
+   "note": "Local Docker development"
+  },
+  {
+   "id": "R13043",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2424",
+   "note": "pgvector/pgvector:0.8.5-pg17 compose"
+  },
+  {
+   "id": "R13043a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2426; ADR-0004; T3",
+   "note": "No Redis container"
+  },
+  {
+   "id": "R13045",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2400",
+   "note": "Staging auto-deploys from main for testing"
+  },
+  {
+   "id": "R13049",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2404-2406; ADR-0001",
+   "note": "Smaller GCP sizes (min 0/max 1, db-f1-micro)"
+  },
+  {
+   "id": "R13049a",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2413; Q16; T78",
+   "note": "AMAZON_USE_SANDBOX only; no Flipkart switch"
+  },
+  {
+   "id": "R13051",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2400",
+   "note": "Prod on tagged releases"
+  },
+  {
+   "id": "R13055",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:27; ADR-0001",
+   "note": "Full GCP setup, not AWS"
+  },
+  {
+   "id": "R13055a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2413; docs/canon/ENV.md:111",
+   "note": "Production seller accounts; sandbox false only in prod"
+  },
+  {
+   "id": "R13062",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:303; ADR-0004; T3",
+   "note": "Compose without Redis"
+  },
+  {
+   "id": "R13069a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2424",
+   "note": "pgvector/pgvector:0.8.5-pg17"
+  },
+  {
+   "id": "R13069c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2425",
+   "note": "MinIO via same StorageAdapter"
+  },
+  {
+   "id": "R13069d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:14",
+   "note": "make dev runs uvicorn --reload"
+  },
+  {
+   "id": "R13069e",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "Next.js dev server is FE"
+  },
+  {
+   "id": "R13069f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:64; docs/architecture/BACKEND-ARCHITECTURE.md:2428",
+   "note": "cp .env.example .env; one root .env.example"
+  },
+  {
+   "id": "R13069g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:106; docs/architecture/BACKEND-ARCHITECTURE.md:2110",
+   "note": "Never a committed .env; gitleaks required check"
+  },
+  {
+   "id": "R13076",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:304; docs/architecture/BACKEND-ARCHITECTURE.md:2400",
+   "note": "Page in v1; test accounts Q16, UAT T8"
+  },
+  {
+   "id": "R13078",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2400; docs/architecture/BACKEND-ARCHITECTURE.md:2409",
+   "note": "Staging auto-deploys every merge for pre-prod testing"
+  }
+ ]
+}

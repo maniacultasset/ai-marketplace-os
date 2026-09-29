@@ -1,0 +1,4184 @@
+{
+ "chunk": "c02",
+ "items": [
+  {
+   "id": "R00695",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1193",
+   "note": "Backend passes PromptProductFacts in GenerationContext; avoiding image-only copy is AI prompt logic"
+  },
+  {
+   "id": "R00703",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131",
+   "note": "CanonicalListing content.title, one per marketplace listing"
+  },
+  {
+   "id": "R00707",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1193",
+   "note": "Title written from PromptProductFacts by the AI team"
+  },
+  {
+   "id": "R00707a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:514",
+   "note": "Per-marketplace max_length, banned_terms, pattern rules judge the title"
+  },
+  {
+   "id": "R00709",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131",
+   "note": "content.bullets; min_items/max_items rules"
+  },
+  {
+   "id": "R00713",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1193; DATABASE.md:519",
+   "note": "AI writes from PromptProductFacts; claim_requires_attribute flags unsupported claims"
+  },
+  {
+   "id": "R00715",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131",
+   "note": "content.description"
+  },
+  {
+   "id": "R00719",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1193",
+   "note": "PromptProductFacts in GenerationContext"
+  },
+  {
+   "id": "R00719a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:527",
+   "note": "GenerationContext carries the pinned category template (for_generation)"
+  },
+  {
+   "id": "R00721",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2132",
+   "note": "keywords.search_terms"
+  },
+  {
+   "id": "R00725",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1193",
+   "note": "AI grounds terms in PromptProductFacts and the category template"
+  },
+  {
+   "id": "R00725a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:519",
+   "note": "claim_requires_attribute raises UNSUPPORTED_CLAIM on listing fields"
+  },
+  {
+   "id": "R00727",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:2132; AGENTS.md §3 inv 4; T26",
+   "note": "Canonical keywords.hidden_terms; adapter maps to Amazon backend terms, drops for Flipkart"
+  },
+  {
+   "id": "R00731",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541; AGENTS.md §3 inv 4; T26",
+   "note": "Template/adapter decides marketplace backend fields; canonical hidden_terms only"
+  },
+  {
+   "id": "R00733",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131 (CanonicalListing)",
+   "note": "No size/fit copy field in CanonicalListing; only size facts and size_chart slot"
+  },
+  {
+   "id": "R00737",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169; DATABASE.md:481",
+   "note": "size and size_measurements facts plus size_chart image slot"
+  },
+  {
+   "id": "R00737a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169; DATABASE.md:1178",
+   "note": "size_measurements is critical: facts_guard refuses source ai"
+  },
+  {
+   "id": "R00739",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169",
+   "note": "wash_care, iron_care facts sent as attributes; no separate care text field"
+  },
+  {
+   "id": "R00743",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169; DATABASE.md:1163",
+   "note": "wash_care/iron_care critical, never ai"
+  },
+  {
+   "id": "R00745",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169",
+   "note": "fabric_type and fiber_composition facts"
+  },
+  {
+   "id": "R00749",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169; DATABASE.md:1163",
+   "note": "fiber_composition/fabric_type critical, never ai"
+  },
+  {
+   "id": "R00751",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1170",
+   "note": "occasion and style keys are non-critical dictionary attributes"
+  },
+  {
+   "id": "R00755",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1170; DATABASE.md:1089",
+   "note": "AI value allowed only at confidence >= 0.70 with evidence_ref"
+  },
+  {
+   "id": "R00757",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169",
+   "note": "certifications and performance_claims facts"
+  },
+  {
+   "id": "R00761",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:519; DATABASE.md:1169",
+   "note": "claim_requires_attribute; claim facts seller/document source only"
+  },
+  {
+   "id": "R00765",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt behaviour; backend already supplies verified facts"
+  },
+  {
+   "id": "R00765a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt behaviour; backend already supplies verified facts"
+  },
+  {
+   "id": "R00765b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt behaviour; backend already supplies verified facts"
+  },
+  {
+   "id": "R00765c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1169; DATABASE.md:1178",
+   "note": "fiber_composition critical; DB refuses ai source; fact_source rule reports gaps"
+  },
+  {
+   "id": "R00765d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1169; DATABASE.md:1178",
+   "note": "size_measurements critical, never ai"
+  },
+  {
+   "id": "R00765e",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1169; DATABASE.md:519",
+   "note": "certifications seller/document only; organic-needs-GOTS claim rule"
+  },
+  {
+   "id": "R00765f",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1169; DATABASE.md:519",
+   "note": "performance_claims seller/document only; claim rules"
+  },
+  {
+   "id": "R00765g",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1169",
+   "note": "wash_care, iron_care critical, never ai"
+  },
+  {
+   "id": "R00765h",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1167",
+   "note": "country_of_origin critical, never derived or ai"
+  },
+  {
+   "id": "R00765i",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1167",
+   "note": "tax_rate, hsn_code critical; seller/document/pim only"
+  },
+  {
+   "id": "R00765j",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T34",
+   "note": "Critical list is our default; BRD leaves 'which attributes can be inferred' open (L2261-2263)"
+  },
+  {
+   "id": "R00769",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1188-1190",
+   "note": "products row plus resolved ProductFacts read model per product"
+  },
+  {
+   "id": "R00769a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1193",
+   "note": "ProductFacts feeds generation, validation and adapters; digest pinned at approval"
+  },
+  {
+   "id": "R00775",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187",
+   "note": "Identity columns on products"
+  },
+  {
+   "id": "R00777",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2198",
+   "note": "products.id"
+  },
+  {
+   "id": "R00777a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:407",
+   "note": "products.sku, UNIQUE (tenant_id, sku)"
+  },
+  {
+   "id": "R00777b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:415",
+   "note": "parent_product_id; CSV parent_style_id, parent_sku alias"
+  },
+  {
+   "id": "R00777c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:411",
+   "note": "brand_name, must be in brand_profiles.brand_names"
+  },
+  {
+   "id": "R00777d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:408",
+   "note": "products.title = BRD product_name"
+  },
+  {
+   "id": "R00777e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:411",
+   "note": "style_number"
+  },
+  {
+   "id": "R00777f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1111",
+   "note": "identifier_type/value/status (gtin|ean|upc; exempt)"
+  },
+  {
+   "id": "R00779",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2188",
+   "note": "Classification columns on products"
+  },
+  {
+   "id": "R00781",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:410",
+   "note": "category, internal slug"
+  },
+  {
+   "id": "R00781a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:411",
+   "note": "sub_category"
+  },
+  {
+   "id": "R00781b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:411",
+   "note": "product_type"
+  },
+  {
+   "id": "R00781c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:411",
+   "note": "gender men|women|unisex|boys|girls; age_group attribute"
+  },
+  {
+   "id": "R00781d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:411",
+   "note": "provenance.category.confidence"
+  },
+  {
+   "id": "R00783",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1099",
+   "note": "products.attributes, one Fact per dictionary key"
+  },
+  {
+   "id": "R00785",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1170",
+   "note": "Dictionary apparel keys, each with normalized value"
+  },
+  {
+   "id": "R00785a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1082",
+   "note": "Fact.value keeps seller input beside normalized"
+  },
+  {
+   "id": "R00787",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2168",
+   "note": "Style, colourway, variant family plus matrix cells"
+  },
+  {
+   "id": "R00789",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:415",
+   "note": "parent_product_id and variation_theme"
+  },
+  {
+   "id": "R00789a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:426",
+   "note": "product_colourways"
+  },
+  {
+   "id": "R00789b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:417; DATABASE.md:447",
+   "note": "size_run and variant_matrix_cells"
+  },
+  {
+   "id": "R00789c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1116",
+   "note": "Identifier per variant row; style row carries none"
+  },
+  {
+   "id": "R00791",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1112",
+   "note": "Dimension columns on products"
+  },
+  {
+   "id": "R00793",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169",
+   "note": "product_dimensions attribute (critical)"
+  },
+  {
+   "id": "R00793a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1112",
+   "note": "package_length/breadth/height_cm"
+  },
+  {
+   "id": "R00793b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1112",
+   "note": "product_weight_g, package_weight_g"
+  },
+  {
+   "id": "R00795",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169",
+   "note": "Material facts in attributes"
+  },
+  {
+   "id": "R00797",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169",
+   "note": "fabric_type, fiber_composition"
+  },
+  {
+   "id": "R00797a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169",
+   "note": "lining {lined, material}, critical"
+  },
+  {
+   "id": "R00797b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1170",
+   "note": "construction attribute, non-critical"
+  },
+  {
+   "id": "R00799",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1109",
+   "note": "Compliance columns on products"
+  },
+  {
+   "id": "R00801",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1110",
+   "note": "Manufacturer/marketer/packer/importer party FKs, brand defaults"
+  },
+  {
+   "id": "R00801a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1109",
+   "note": "country_of_origin ISO alpha-2"
+  },
+  {
+   "id": "R00801b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1108",
+   "note": "mrp numeric(12,2)"
+  },
+  {
+   "id": "R00801c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1110",
+   "note": "consumer_care_party_id"
+  },
+  {
+   "id": "R00801d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2198",
+   "note": "size plus size_measurements"
+  },
+  {
+   "id": "R00801e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1109",
+   "note": "generic_name, net_quantity; hsn_code, tax_rate on commercial row"
+  },
+  {
+   "id": "R00803",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:474",
+   "note": "images table"
+  },
+  {
+   "id": "R00805",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:474",
+   "note": "images rows per product"
+  },
+  {
+   "id": "R00805a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:481",
+   "note": "images.slot"
+  },
+  {
+   "id": "R00805b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:481",
+   "note": "slot size_chart"
+  },
+  {
+   "id": "R00805c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:484",
+   "note": "compliance_status plus per-marketplace image_report_json"
+  },
+  {
+   "id": "R00807",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2171",
+   "note": "Content kept per marketplace listing in listing_versions.content_json"
+  },
+  {
+   "id": "R00809",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131",
+   "note": "content.title"
+  },
+  {
+   "id": "R00809a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131",
+   "note": "content.bullets"
+  },
+  {
+   "id": "R00809b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131",
+   "note": "content.description"
+  },
+  {
+   "id": "R00809c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2132",
+   "note": "keywords.search_terms plus hidden_terms"
+  },
+  {
+   "id": "R00809d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1194",
+   "note": "attribute_sources, generated_by_agent_run_id, version origin"
+  },
+  {
+   "id": "R00809e",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2136",
+   "note": "CanonicalListing.confidence_score"
+  },
+  {
+   "id": "R00811",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T68; DATABASE.md:2172",
+   "note": "Mapping derived from the internal category template; no per-product mapping or override; T68 open"
+  },
+  {
+   "id": "R00813",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T68; DATABASE.md:536",
+   "note": "external_category_id per (marketplace, internal category), not per product; T68 open"
+  },
+  {
+   "id": "R00813a",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T68; DATABASE.md:536",
+   "note": "product_type from the category current template, not per product; T68 open"
+  },
+  {
+   "id": "R00813b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2172; AGENTS.md §3 inv 4; T68",
+   "note": "Field mappings are adapter value_map output (inv 4), kept only in the payload snapshot"
+  },
+  {
+   "id": "R00813c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:754; DATABASE.md:842",
+   "note": "listings.external_id and listing_items.external_id"
+  },
+  {
+   "id": "R00815",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1500",
+   "note": "listing_status_display view"
+  },
+  {
+   "id": "R00817",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:747; DATABASE.md:756",
+   "note": "listings.status plus marketplace_state per marketplace"
+  },
+  {
+   "id": "R00817a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1501",
+   "note": "product_status_display.overall_status, derived"
+  },
+  {
+   "id": "R00819",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1304",
+   "note": "listing_issues"
+  },
+  {
+   "id": "R00821",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1304",
+   "note": "Issues from validation runs and adapter results"
+  },
+  {
+   "id": "R00821a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1316",
+   "note": "listing_issues.severity"
+  },
+  {
+   "id": "R00821b",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1315",
+   "note": "No issue owner field; retry_class only implies seller vs system/ops"
+  },
+  {
+   "id": "R00821c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1321",
+   "note": "status plus resolution"
+  },
+  {
+   "id": "R00823",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:285",
+   "note": "audit_log"
+  },
+  {
+   "id": "R00825",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:292",
+   "note": "actor_type, actor_user_id, actor_email"
+  },
+  {
+   "id": "R00825a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:300",
+   "note": "before/after allow-list; personal fields ids only"
+  },
+  {
+   "id": "R00825b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:297",
+   "note": "occurred_at"
+  },
+  {
+   "id": "R00829",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2159",
+   "note": "Appendix A.5 maps every BRD logical record, citing L829"
+  },
+  {
+   "id": "R00829a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2159",
+   "note": "Appendix A.5 maps every BRD logical record, citing L829"
+  },
+  {
+   "id": "R00829b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2159",
+   "note": "Appendix A.5 maps every BRD logical record, citing L829"
+  },
+  {
+   "id": "R00829c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2163-2179",
+   "note": "Each logical record mapped to tables in A.5"
+  },
+  {
+   "id": "R00829d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2159",
+   "note": "Relationships kept as FKs in the §5 ERDs"
+  },
+  {
+   "id": "R00837",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2163; CANON.md:47; T31",
+   "note": "Brand = tenants + brand_profiles + business_parties"
+  },
+  {
+   "id": "R00839",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1119; CANON.md:47; T31",
+   "note": "Brand is the tenant; brand_profiles keyed by tenant_id"
+  },
+  {
+   "id": "R00839a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1126",
+   "note": "legal_entity_party_id to business_parties.legal_name"
+  },
+  {
+   "id": "R00839b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1123",
+   "note": "tenants.name plus brand_profiles.brand_names"
+  },
+  {
+   "id": "R00839c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1124",
+   "note": "brand_owner_type"
+  },
+  {
+   "id": "R00839d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1125",
+   "note": "website_url"
+  },
+  {
+   "id": "R00839e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1125",
+   "note": "logo_storage_key"
+  },
+  {
+   "id": "R00839f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1127",
+   "note": "default manufacturer/marketer/packer/importer party ids"
+  },
+  {
+   "id": "R00839g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1127",
+   "note": "consumer_care_party_id"
+  },
+  {
+   "id": "R00841",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:323",
+   "note": "tenants owns many products"
+  },
+  {
+   "id": "R00843",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2164",
+   "note": "marketplace_accounts plus settings"
+  },
+  {
+   "id": "R00845",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1005",
+   "note": "marketplace_accounts.id and seller_id"
+  },
+  {
+   "id": "R00845a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1001; AGENTS.md §5",
+   "note": "tenant_id, never brand_id"
+  },
+  {
+   "id": "R00845b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1005",
+   "note": "marketplace"
+  },
+  {
+   "id": "R00845c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1005",
+   "note": "seller_id"
+  },
+  {
+   "id": "R00845d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1008",
+   "note": "status active|needs_reconnect|revoked"
+  },
+  {
+   "id": "R00845e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1012",
+   "note": "settings.locations"
+  },
+  {
+   "id": "R00845f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1012",
+   "note": "settings.listing_permissions (brand registry, category approvals)"
+  },
+  {
+   "id": "R00847",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1015",
+   "note": "One live account per marketplace per tenant, so many across marketplaces"
+  },
+  {
+   "id": "R00849",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2165; CANON-ADDENDUM.md:100; AGENTS.md §4; T22",
+   "note": "No Marketplace table; marketplace TEXT + CHECK amazon|flipkart"
+  },
+  {
+   "id": "R00851",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2165; CANON-ADDENDUM.md:100; AGENTS.md §4; T22",
+   "note": "The marketplace text value is the id"
+  },
+  {
+   "id": "R00851a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2165; CANON-ADDENDUM.md:100; AGENTS.md §4; T22",
+   "note": "Marketplace enum names"
+  },
+  {
+   "id": "R00851b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2165; CANON-ADDENDUM.md:100; AGENTS.md §4; T22",
+   "note": "Country not stored; India implied"
+  },
+  {
+   "id": "R00851c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2165; CANON-ADDENDUM.md:100; AGENTS.md §4; T22",
+   "note": "No active flag; the CHECK lists live marketplaces"
+  },
+  {
+   "id": "R00851d",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2165; CANON-ADDENDUM.md:100; AGENTS.md §4; T22",
+   "note": "Supported categories = current category_templates rows"
+  },
+  {
+   "id": "R00853",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:535",
+   "note": "Versioned category_templates per (marketplace, category)"
+  },
+  {
+   "id": "R00855",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:529",
+   "note": "category_templates"
+  },
+  {
+   "id": "R00857",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:534",
+   "note": "category_templates.marketplace"
+  },
+  {
+   "id": "R00857a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:534; DATABASE.md:536",
+   "note": "category plus product_type"
+  },
+  {
+   "id": "R00857b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:535",
+   "note": "version, one is_current per key"
+  },
+  {
+   "id": "R00857c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541",
+   "note": "AttributeSpec requirement required"
+  },
+  {
+   "id": "R00857d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541",
+   "note": "requirement conditional with when: Condition[]"
+  },
+  {
+   "id": "R00857e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541",
+   "note": "allowed_values and value_map per spec"
+  },
+  {
+   "id": "R00857f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "Media rules are image_requirement rows per marketplace/category, not template content"
+  },
+  {
+   "id": "R00857g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:539",
+   "note": "attributes.variation_themes"
+  },
+  {
+   "id": "R00857h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:538",
+   "note": "fetched_at"
+  },
+  {
+   "id": "R00859",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:535",
+   "note": "is_current, one current per (marketplace, category)"
+  },
+  {
+   "id": "R00859a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:535",
+   "note": "Old versions kept, content immutable"
+  },
+  {
+   "id": "R00861",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2167",
+   "note": "products (style or standalone)"
+  },
+  {
+   "id": "R00863",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:402",
+   "note": "products.id"
+  },
+  {
+   "id": "R00863a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:403; AGENTS.md §5",
+   "note": "tenant_id, never brand_id"
+  },
+  {
+   "id": "R00863b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:415",
+   "note": "parent_product_id to the style row"
+  },
+  {
+   "id": "R00863c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:408",
+   "note": "products.title"
+  },
+  {
+   "id": "R00863d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:411",
+   "note": "product_type"
+  },
+  {
+   "id": "R00863e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:410",
+   "note": "category"
+  },
+  {
+   "id": "R00863f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:409",
+   "note": "products.status draft|active (vocabulary T69)"
+  },
+  {
+   "id": "R00865",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:415",
+   "note": "One style, many variant children via parent_product_id"
+  },
+  {
+   "id": "R00867",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2169",
+   "note": "Fact envelope in attributes/provenance"
+  },
+  {
+   "id": "R00869",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1099",
+   "note": "Facts stored on the product row"
+  },
+  {
+   "id": "R00869a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1099",
+   "note": "Dictionary key per Fact"
+  },
+  {
+   "id": "R00869b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1082",
+   "note": "Fact.value"
+  },
+  {
+   "id": "R00869c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1082",
+   "note": "Fact.normalized"
+  },
+  {
+   "id": "R00869d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1086",
+   "note": "Fact.source"
+  },
+  {
+   "id": "R00869e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1088",
+   "note": "Fact.confidence, required for derived/ai"
+  },
+  {
+   "id": "R00869f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1089",
+   "note": "evidence_ref plus evidence_snapshot"
+  },
+  {
+   "id": "R00869g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1082",
+   "note": "Fact.updated_at"
+  },
+  {
+   "id": "R00871",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1099",
+   "note": "Many keyed facts per product"
+  },
+  {
+   "id": "R00873",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2168",
+   "note": "Variant = products child + matrix cell + colourway"
+  },
+  {
+   "id": "R00875",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:402",
+   "note": "Child products.id"
+  },
+  {
+   "id": "R00875a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:415",
+   "note": "parent_product_id"
+  },
+  {
+   "id": "R00875b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:407",
+   "note": "products.sku"
+  },
+  {
+   "id": "R00875c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:418",
+   "note": "variant_attributes color, via colourway"
+  },
+  {
+   "id": "R00875d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:418",
+   "note": "variant_attributes size = cell size_key"
+  },
+  {
+   "id": "R00875e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1111",
+   "note": "identifier columns on the variant row"
+  },
+  {
+   "id": "R00875f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:412",
+   "note": "stock_ref"
+  },
+  {
+   "id": "R00875g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:409; DATABASE.md:447",
+   "note": "products.status plus cell availability; per-marketplace item state"
+  },
+  {
+   "id": "R00879",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2170",
+   "note": "images"
+  },
+  {
+   "id": "R00881",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:474",
+   "note": "images.id"
+  },
+  {
+   "id": "R00881a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:479-480",
+   "note": "product_id plus optional colourway_id"
+  },
+  {
+   "id": "R00881b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:486",
+   "note": "mime_type; images only"
+  },
+  {
+   "id": "R00881c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:479",
+   "note": "storage_key; URLs signed at read time (T63)"
+  },
+  {
+   "id": "R00881d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:481",
+   "note": "slot"
+  },
+  {
+   "id": "R00881e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:486",
+   "note": "width_px, height_px"
+  },
+  {
+   "id": "R00881f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:484",
+   "note": "compliance_status plus image_report_json"
+  },
+  {
+   "id": "R00883",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:479",
+   "note": "Many images per product or colourway"
+  },
+  {
+   "id": "R00885",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2171",
+   "note": "listing_versions.content_json"
+  },
+  {
+   "id": "R00887",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2171",
+   "note": "Version id plus content path"
+  },
+  {
+   "id": "R00887a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2171",
+   "note": "Via listing to product"
+  },
+  {
+   "id": "R00887b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2171",
+   "note": "Type = content path"
+  },
+  {
+   "id": "R00887c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:778",
+   "note": "content_json texts"
+  },
+  {
+   "id": "R00887d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2171",
+   "note": "generated_by_agent_run_id, origin, attribute_sources"
+  },
+  {
+   "id": "R00887e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2136",
+   "note": "confidence_score"
+  },
+  {
+   "id": "R00887f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2171",
+   "note": "approved_by_user_id/approved_at plus review_decisions"
+  },
+  {
+   "id": "R00889",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2171",
+   "note": "Many content paths and versions per product"
+  },
+  {
+   "id": "R00891",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T68; DATABASE.md:2172",
+   "note": "No per-product mapping row: listings + pinned category_templates; T68 open"
+  },
+  {
+   "id": "R00893",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:746",
+   "note": "listings.product_id"
+  },
+  {
+   "id": "R00893a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:746",
+   "note": "listings.marketplace"
+  },
+  {
+   "id": "R00893b",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T68; DATABASE.md:536",
+   "note": "external_category_id from the category template, no per-product value; T68 open"
+  },
+  {
+   "id": "R00893c",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T68; DATABASE.md:536",
+   "note": "product_type from the category template, no per-product value; T68 open"
+  },
+  {
+   "id": "R00893d",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2172; AGENTS.md §3 inv 4; T68",
+   "note": "Mapped fields only in the submission payload snapshot; mapping stays in adapters (inv 4)"
+  },
+  {
+   "id": "R00893e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:754; DATABASE.md:842",
+   "note": "external_id on listing and items"
+  },
+  {
+   "id": "R00895",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:746",
+   "note": "UNIQUE (product_id, marketplace)"
+  },
+  {
+   "id": "R00897",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2173",
+   "note": "job_runs"
+  },
+  {
+   "id": "R00899",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:928",
+   "note": "job_runs.id"
+  },
+  {
+   "id": "R00899a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2173",
+   "note": "Product reached via listing_id; no product_id column"
+  },
+  {
+   "id": "R00899b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2173",
+   "note": "Marketplace reached via listing_id"
+  },
+  {
+   "id": "R00899c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:933",
+   "note": "kind"
+  },
+  {
+   "id": "R00899d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:929",
+   "note": "started_at"
+  },
+  {
+   "id": "R00899e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:936",
+   "note": "node, 12 PipelineStage values, generate jobs only"
+  },
+  {
+   "id": "R00899f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:935",
+   "note": "status, 7 JobState values"
+  },
+  {
+   "id": "R00901",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2173",
+   "note": "Many jobs per listing, listings per product"
+  },
+  {
+   "id": "R00903",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2174",
+   "note": "listings + listing_items + listing_versions"
+  },
+  {
+   "id": "R00905",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:741",
+   "note": "listings.id"
+  },
+  {
+   "id": "R00905a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:746",
+   "note": "product_id"
+  },
+  {
+   "id": "R00905b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:746",
+   "note": "marketplace"
+  },
+  {
+   "id": "R00905c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:754-755; DATABASE.md:841",
+   "note": "external_id, marketplace_sku, item seller_sku"
+  },
+  {
+   "id": "R00905d",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T45; DATABASE.md:840",
+   "note": "listing_items item_role parent|child under one listing per style; grain open in T45"
+  },
+  {
+   "id": "R00905e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:757",
+   "note": "live_url, https only"
+  },
+  {
+   "id": "R00905f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:747",
+   "note": "listings.status"
+  },
+  {
+   "id": "R00907",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:746",
+   "note": "One listing per product per marketplace"
+  },
+  {
+   "id": "R00909",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2175",
+   "note": "validation_runs + listing_issues"
+  },
+  {
+   "id": "R00911",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1311",
+   "note": "listing_id plus job_id"
+  },
+  {
+   "id": "R00911a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1313",
+   "note": "field_path"
+  },
+  {
+   "id": "R00911b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1317",
+   "note": "rule_id"
+  },
+  {
+   "id": "R00911c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1316",
+   "note": "severity"
+  },
+  {
+   "id": "R00911d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1319",
+   "note": "message, plain_message"
+  },
+  {
+   "id": "R00911e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1312",
+   "note": "source"
+  },
+  {
+   "id": "R00911f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1321",
+   "note": "status plus resolution"
+  },
+  {
+   "id": "R00913",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:810",
+   "note": "One validation_runs row per stage per attempt"
+  },
+  {
+   "id": "R00915",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1304",
+   "note": "listing_issues"
+  },
+  {
+   "id": "R00917",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1304",
+   "note": "listing_issues.id"
+  },
+  {
+   "id": "R00917a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1311",
+   "note": "listing and job ids"
+  },
+  {
+   "id": "R00917b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1314",
+   "note": "error_class, 11 BRD classes"
+  },
+  {
+   "id": "R00917c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1318",
+   "note": "marketplace_code"
+  },
+  {
+   "id": "R00917d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1319",
+   "note": "message"
+  },
+  {
+   "id": "R00917e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1316",
+   "note": "severity"
+  },
+  {
+   "id": "R00917f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1316",
+   "note": "auto_fixable"
+  },
+  {
+   "id": "R00917g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1321",
+   "note": "action_taken"
+  },
+  {
+   "id": "R00917h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1321",
+   "note": "status open|auto_fixed|resolved|dismissed"
+  },
+  {
+   "id": "R00919",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1309",
+   "note": "Many issues per listing_id"
+  },
+  {
+   "id": "R00921",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1338",
+   "note": "human_tasks"
+  },
+  {
+   "id": "R00923",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1338",
+   "note": "human_tasks.id"
+  },
+  {
+   "id": "R00923a",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T20; DATABASE.md:1323",
+   "note": "Inverted: one task to many issues via listing_issues.human_task_id; T20 open"
+  },
+  {
+   "id": "R00923b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1346",
+   "note": "question"
+  },
+  {
+   "id": "R00923c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1344",
+   "note": "target_path"
+  },
+  {
+   "id": "R00923d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1348",
+   "note": "evidence"
+  },
+  {
+   "id": "R00923e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1347",
+   "note": "expected_answer AnswerSpec"
+  },
+  {
+   "id": "R00923f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1349",
+   "note": "status open|answered|applied|cancelled"
+  },
+  {
+   "id": "R00923g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1354",
+   "note": "created_at, answered_at, applied_at"
+  },
+  {
+   "id": "R00925",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1334",
+   "note": "Task only after missing-data ladder and do-not-ask list"
+  },
+  {
+   "id": "R00927",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2178",
+   "note": "audit_log"
+  },
+  {
+   "id": "R00929",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:290",
+   "note": "audit_log.id"
+  },
+  {
+   "id": "R00929a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:293",
+   "note": "entity_type, entity_id"
+  },
+  {
+   "id": "R00929b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:293",
+   "note": "action"
+  },
+  {
+   "id": "R00929c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:294",
+   "note": "before; personal fields ids only"
+  },
+  {
+   "id": "R00929d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:294",
+   "note": "after; personal fields ids only"
+  },
+  {
+   "id": "R00929e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:292",
+   "note": "actor_type/actor_user_id"
+  },
+  {
+   "id": "R00929f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:295",
+   "note": "reason"
+  },
+  {
+   "id": "R00929g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:297",
+   "note": "occurred_at (T65)"
+  },
+  {
+   "id": "R00931",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:300",
+   "note": "Per-entity allow-list; CI test checks every audited entity"
+  },
+  {
+   "id": "R00935",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1086; T33",
+   "note": "seller first in the Fact source trust order"
+  },
+  {
+   "id": "R00936",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T70; DATABASE.md:1089",
+   "note": "Documents only as images (labels, size charts); non-image documents deferred; T70 open"
+  },
+  {
+   "id": "R00936a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1089",
+   "note": "image evidence kind"
+  },
+  {
+   "id": "R00937",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1086",
+   "note": "pim ranked third in source order"
+  },
+  {
+   "id": "R00937a",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "BRD §25 L2239: add connected PIM/ERP after the core workflow; no connector in v1"
+  },
+  {
+   "id": "R00937b",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "BRD §25 L2239: add connected PIM/ERP after the core workflow; no connector in v1"
+  },
+  {
+   "id": "R00938",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1086",
+   "note": "marketplace ranked fourth"
+  },
+  {
+   "id": "R00938a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1086; AGENTS.md §4",
+   "note": "Marketplace facts only via tenant's own account; competitor scraping is a non-goal"
+  },
+  {
+   "id": "R00939",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1086",
+   "note": "derived ranked fifth"
+  },
+  {
+   "id": "R00940",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1086",
+   "note": "ai ranked last"
+  },
+  {
+   "id": "R00940a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1163; DATABASE.md:1178",
+   "note": "ck_ad_critical_never_ai plus facts_guard PRV01"
+  },
+  {
+   "id": "R00940b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1163",
+   "note": "allowed_sources per dictionary key"
+  },
+  {
+   "id": "R00941",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1178",
+   "note": "facts_guard refuses ai for critical keys; fact_source rule; list per T34"
+  },
+  {
+   "id": "R00945",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "VISION-ALIGNMENT.md:132; CANON.md:54",
+   "note": "No understand node among the 12 PipelineStages; backend only stores sourced facts"
+  },
+  {
+   "id": "R00949",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "VISION-ALIGNMENT.md:132; DATABASE.md:1193",
+   "note": "Facts resolved, but no understanding/completeness step before generation; missing facts flagged only after"
+  },
+  {
+   "id": "R00951",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1197",
+   "note": "POST /api/v1/products (form/API)"
+  },
+  {
+   "id": "R00951a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2183",
+   "note": "CSV import with BRD 64 headers verbatim"
+  },
+  {
+   "id": "R00951b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1347",
+   "note": "POST /api/v1/images/upload"
+  },
+  {
+   "id": "R00951c",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "DATABASE.md:2199; VISION-ALIGNMENT.md:357; T74",
+   "note": "Plan defers URL intake (SSRF) as Later; site lists it as a Step 1 input; no T-row"
+  },
+  {
+   "id": "R00951d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:481",
+   "note": "slot size_chart"
+  },
+  {
+   "id": "R00951e",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T70; DATABASE.md:2199",
+   "note": "Non-image product documents deferred; photographed labels only; T70 open"
+  },
+  {
+   "id": "R00951f",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "BRD §25 L2239: connected PIM/ERP after the core workflow"
+  },
+  {
+   "id": "R00953",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:415",
+   "note": "Import builds style/variant families from parent_style_id"
+  },
+  {
+   "id": "R00953a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent separates facts from marketing text"
+  },
+  {
+   "id": "R00953b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:522; DATABASE.md:526",
+   "note": "CRITICAL_FACT_MISSING and template MISSING_ATTRIBUTE"
+  },
+  {
+   "id": "R00953c",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "DATABASE.md:1343; VISION-ALIGNMENT.md:132; T33",
+   "note": "conflicting_facts task kind exists; nothing detects conflicts; FactWriter conflict rule only in T33"
+  },
+  {
+   "id": "R00953d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:424; DATABASE.md:1116",
+   "note": "Unique sku, variant_key, identifier; party dedupe_key"
+  },
+  {
+   "id": "R00953e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1163",
+   "note": "min_confidence, confirm_agent_captures; FACT_NEEDS_CONFIRMATION"
+  },
+  {
+   "id": "R00955",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1086",
+   "note": "Fact.source on every fact"
+  },
+  {
+   "id": "R00955a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1088",
+   "note": "confidence required for derived/ai, optional for seller facts"
+  },
+  {
+   "id": "R00957",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "DATABASE.md:1498; BACKEND-ARCHITECTURE.md:1564",
+   "note": "No classify node in the 12 PipelineStages; category seller-supplied; 'classifying' reserved"
+  },
+  {
+   "id": "R00961",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T68; DATABASE.md:530",
+   "note": "Marketplace category is a function of internal category, not decided per product; T68 open"
+  },
+  {
+   "id": "R00963",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:411",
+   "note": "product_type stored with provenance; ai allowed at >= 0.80"
+  },
+  {
+   "id": "R00963a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:411",
+   "note": "gender stored with provenance"
+  },
+  {
+   "id": "R00963b",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T68; DATABASE.md:530",
+   "note": "Taxonomy via current category_templates row; no per-product mapping; T68 open"
+  },
+  {
+   "id": "R00963c",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1012-1014",
+   "note": "category_approvals stored; no rule or step verifies eligibility before submit; only reactive permission_decision task"
+  },
+  {
+   "id": "R00963d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1167",
+   "note": "Classification keys min confidence 0.80 with provenance evidence"
+  },
+  {
+   "id": "R00965",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:410",
+   "note": "products.category"
+  },
+  {
+   "id": "R00965a",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T68; DATABASE.md:536",
+   "note": "Marketplace category/product type from the category template only; T68 open"
+  },
+  {
+   "id": "R00965b",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T68; DATABASE.md:411",
+   "note": "No marketplace-side confidence; only provenance.category.confidence; T68 open"
+  },
+  {
+   "id": "R00967",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1080",
+   "note": "attribute_agent and import write facts through FactWriter"
+  },
+  {
+   "id": "R00971",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1080",
+   "note": "Every fact sourced and evidenced"
+  },
+  {
+   "id": "R00973",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1170",
+   "note": "color"
+  },
+  {
+   "id": "R00973a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169",
+   "note": "size"
+  },
+  {
+   "id": "R00973b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169",
+   "note": "fabric_type"
+  },
+  {
+   "id": "R00973c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1170",
+   "note": "fit"
+  },
+  {
+   "id": "R00973d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1170",
+   "note": "pattern"
+  },
+  {
+   "id": "R00973e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1170",
+   "note": "neckline"
+  },
+  {
+   "id": "R00973f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1170",
+   "note": "sleeve_type, sleeve_length"
+  },
+  {
+   "id": "R00973g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1170",
+   "note": "garment_length"
+  },
+  {
+   "id": "R00973h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1170",
+   "note": "closure"
+  },
+  {
+   "id": "R00973i",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1170",
+   "note": "occasion"
+  },
+  {
+   "id": "R00973j",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1161-1162",
+   "note": "vocabulary plus input_aliases; normalized_by vocabulary|rule|ai|human"
+  },
+  {
+   "id": "R00973k",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1082",
+   "note": "Fact.value"
+  },
+  {
+   "id": "R00973l",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1082",
+   "note": "Fact.normalized"
+  },
+  {
+   "id": "R00973m",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1086",
+   "note": "Fact.source"
+  },
+  {
+   "id": "R00973n",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "DATABASE.md:1343; VISION-ALIGNMENT.md:132; T33",
+   "note": "No contradiction detector (e.g. 100% cotton vs blend); only a conflicting_facts task kind"
+  },
+  {
+   "id": "R00975",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1189",
+   "note": "ProductFacts"
+  },
+  {
+   "id": "R00975a",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "DATABASE.md:522; DATABASE.md:1343",
+   "note": "Missing flagged by CRITICAL_FACT_MISSING; no fact-vs-fact conflict detector (FACT_MISMATCH is listing vs facts)"
+  },
+  {
+   "id": "R00977",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541; T49",
+   "note": "Adapters map canonical listing via template specs"
+  },
+  {
+   "id": "R00981",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541",
+   "note": "marketplace_field and value_map per canonical key"
+  },
+  {
+   "id": "R00983",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:535",
+   "note": "Current template, pinned per version"
+  },
+  {
+   "id": "R00983a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541; T49",
+   "note": "marketplace_field, adapter-only"
+  },
+  {
+   "id": "R00983b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541; DATABASE.md:516",
+   "note": "allowed_values, value_map; allowed_values rule"
+  },
+  {
+   "id": "R00983c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541",
+   "note": "requirement required"
+  },
+  {
+   "id": "R00983d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541",
+   "note": "requirement conditional"
+  },
+  {
+   "id": "R00983e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541",
+   "note": "requirement optional"
+  },
+  {
+   "id": "R00983f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541; DATABASE.md:526",
+   "note": "requirement unsupported; adapter drops it"
+  },
+  {
+   "id": "R00983g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:848",
+   "note": "Parent row plus child per available cell (Amazon); Flipkart children only"
+  },
+  {
+   "id": "R00983h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:481",
+   "note": "Adapter publishable slot map; packaging_label never sent"
+  },
+  {
+   "id": "R00983i",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541",
+   "note": "Adapter maps canonical content paths"
+  },
+  {
+   "id": "R00985",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541; AGENTS.md §3 inv 4",
+   "note": "Draft stays canonical per marketplace; mapped only at publish; preview is G11"
+  },
+  {
+   "id": "R00987",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1193",
+   "note": "AI generates; backend feeds PromptProductFacts and stores CanonicalListing"
+  },
+  {
+   "id": "R00991",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1193",
+   "note": "Generation input is resolved facts"
+  },
+  {
+   "id": "R00993",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131",
+   "note": "content.title"
+  },
+  {
+   "id": "R00993a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131",
+   "note": "content.bullets"
+  },
+  {
+   "id": "R00993b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131",
+   "note": "content.description"
+  },
+  {
+   "id": "R00993c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2132",
+   "note": "keywords.search_terms"
+  },
+  {
+   "id": "R00993d",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "DATABASE.md:2131 (CanonicalListing)",
+   "note": "No size/fit copy field in CanonicalListing"
+  },
+  {
+   "id": "R00993e",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:2133; AGENTS.md §3 inv 4; T26",
+   "note": "Canonical attributes and hidden_terms per listing; adapters map to portal fields"
+  },
+  {
+   "id": "R00995",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:519",
+   "note": "claim_requires_attribute UNSUPPORTED_CLAIM"
+  },
+  {
+   "id": "R00995a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:523; DATABASE.md:1178",
+   "note": "fact_backed_attribute FACT_MISMATCH; facts_guard"
+  },
+  {
+   "id": "R00995b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:514",
+   "note": "banned_terms rules, platform and brand"
+  },
+  {
+   "id": "R00995c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:523",
+   "note": "Listing attributes must equal facts on every marketplace"
+  },
+  {
+   "id": "R00995d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:527",
+   "note": "Pinned RuleSet and template in GenerationContext; tone is AI work"
+  },
+  {
+   "id": "R00997",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1194",
+   "note": "attribute_sources plus generated_by_agent_run_id"
+  },
+  {
+   "id": "R00999",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:809",
+   "note": "validation_runs per stage"
+  },
+  {
+   "id": "R01003",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:823",
+   "note": "Passed rules_engine run required before approve/publish"
+  },
+  {
+   "id": "R01005",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:526; DATABASE.md:514",
+   "note": "Template required to MISSING_ATTRIBUTE; required_attribute rule"
+  },
+  {
+   "id": "R01005a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:516",
+   "note": "allowed_values rule VALUE_NOT_ALLOWED"
+  },
+  {
+   "id": "R01005b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:423",
+   "note": "Variant guard; VARIATION_INVALID"
+  },
+  {
+   "id": "R01005c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:452",
+   "note": "variant_matrix_guard colour axis; VARIANT_MATRIX_INCOMPLETE"
+  },
+  {
+   "id": "R01005d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:452",
+   "note": "size_key in size_run; matrix guard"
+  },
+  {
+   "id": "R01005e",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "image_requirement checks quality only; no rule asserts a main image exists"
+  },
+  {
+   "id": "R01005f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:480",
+   "note": "Colourway composite FK; size_chart only on style"
+  },
+  {
+   "id": "R01005g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1108; DATABASE.md:518",
+   "note": "ck_price_le_mrp, cross_field price_lte_mrp, PRICE_ABOVE_MRP"
+  },
+  {
+   "id": "R01005h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1116",
+   "note": "gtin_valid check digit; exemption against account (T39)"
+  },
+  {
+   "id": "R01005i",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1108",
+   "note": "HSN pattern, tax_rate 0..100, both critical"
+  },
+  {
+   "id": "R01005j",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1109",
+   "note": "ISO alpha-2, critical; legal_metrology error (T36)"
+  },
+  {
+   "id": "R01005k",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1110",
+   "note": "Party FKs; Compliance gate error (T36)"
+  },
+  {
+   "id": "R01005l",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:514; DATABASE.md:519",
+   "note": "banned_terms, length and claim rules"
+  },
+  {
+   "id": "R01005m",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:523",
+   "note": "fact_backed_attribute FACT_MISMATCH"
+  },
+  {
+   "id": "R01007",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:816",
+   "note": "validation_runs.passed = true"
+  },
+  {
+   "id": "R01007a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:748",
+   "note": "listings blocked/validation_errors"
+  },
+  {
+   "id": "R01007b",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:1496; T12; AGENTS.md §5 (9 statuses)",
+   "note": "Human task sets blocked/human_task_open, shown human_action_required"
+  },
+  {
+   "id": "R01007c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1313",
+   "note": "ErrorItem field_path per item"
+  },
+  {
+   "id": "R01009",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1334",
+   "note": "Ladder runs before any task"
+  },
+  {
+   "id": "R01013",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1334",
+   "note": "Auto-recovery before asking"
+  },
+  {
+   "id": "R01015",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T33; DATABASE.md:1334",
+   "note": "Step 7 read as search order vs §11.1 trust order; rungs 3-4 absent in v1; T33 open"
+  },
+  {
+   "id": "R01017",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1190",
+   "note": "Resolver: variant, colourway, style, brand default"
+  },
+  {
+   "id": "R01018",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T33",
+   "note": "Brand conventions fill non-critical keys as derived: only in T33 default, not in DATABASE.md"
+  },
+  {
+   "id": "R01019",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "BRD §25 L2239: connected PIM/ERP after the core workflow"
+  },
+  {
+   "id": "R01020",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "Q20; T75",
+   "note": "Site contradicts itself on catalog sync (L7392 vs L7902-7906); Q20 default Phase 2; no T-row"
+  },
+  {
+   "id": "R01021",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T70; DATABASE.md:1089",
+   "note": "Image evidence only; non-image seller files deferred; T70 open"
+  },
+  {
+   "id": "R01022",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1167",
+   "note": "derived source allowed for generic_name, net_quantity, size_system"
+  },
+  {
+   "id": "R01023",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1338",
+   "note": "human_tasks"
+  },
+  {
+   "id": "R01025",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1354; T20",
+   "note": "One live task per fact across variants and marketplaces"
+  },
+  {
+   "id": "R01027",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1357",
+   "note": "Answer, fact, resume flow"
+  },
+  {
+   "id": "R01031",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1346",
+   "note": "One question per task, 5..500 chars"
+  },
+  {
+   "id": "R01033",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1347",
+   "note": "AnswerSpec percent_composition"
+  },
+  {
+   "id": "R01033a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1347",
+   "note": "AnswerSpec kind file"
+  },
+  {
+   "id": "R01033b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1344; DATABASE.md:1347",
+   "note": "Colour/variant-level target with money_inr"
+  },
+  {
+   "id": "R01033c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1347",
+   "note": "AnswerSpec enum over gender vocabulary"
+  },
+  {
+   "id": "R01035",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1346",
+   "note": "reason"
+  },
+  {
+   "id": "R01035a",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T20; DATABASE.md:1353",
+   "note": "Affected products/variants derived from linked issues, not on the task; T20 open"
+  },
+  {
+   "id": "R01035b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1347",
+   "note": "expected_answer"
+  },
+  {
+   "id": "R01035c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1348",
+   "note": "suggestions, never ai for critical facts"
+  },
+  {
+   "id": "R01037",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1357",
+   "note": "Answer written through FactWriter, source seller"
+  },
+  {
+   "id": "R01037a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1357; AGENTS.md §3 inv 3; T51",
+   "note": "Resume = partial regeneration, re-approved by someone other than the answerer"
+  },
+  {
+   "id": "R01039",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1642",
+   "note": "Publish job via publish queue"
+  },
+  {
+   "id": "R01043",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1642",
+   "note": "Sends approved, validated listings (inv 1, 3)"
+  },
+  {
+   "id": "R01045",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:526; DATABASE.md:887",
+   "note": "Adapter drops unsupported; retries send failed fields only"
+  },
+  {
+   "id": "R01045a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:869",
+   "note": "sent_at"
+  },
+  {
+   "id": "R01045b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:857; DATABASE.md:863",
+   "note": "job_id, submission_ref"
+  },
+  {
+   "id": "R01045c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:855; DATABASE.md:860",
+   "note": "listing_version_id plus payload snapshot"
+  },
+  {
+   "id": "R01045d",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1498; AGENTS.md §5 (9 statuses); T12; T13",
+   "note": "approved to publishing to published; displayed submitting/processing"
+  },
+  {
+   "id": "R01047",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:850",
+   "note": "listing_submissions"
+  },
+  {
+   "id": "R01049",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:770",
+   "note": "listing_status_sync job"
+  },
+  {
+   "id": "R01053",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:770",
+   "note": "get_listing reads after submission"
+  },
+  {
+   "id": "R01055",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:864; DATABASE.md:756",
+   "note": "outcome accepted; marketplace_state processing"
+  },
+  {
+   "id": "R01055a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:864",
+   "note": "outcome live"
+  },
+  {
+   "id": "R01055b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:864",
+   "note": "outcome rejected"
+  },
+  {
+   "id": "R01055c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:864",
+   "note": "outcome partially_accepted"
+  },
+  {
+   "id": "R01055d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1314",
+   "note": "Rejection issues classed missing_data"
+  },
+  {
+   "id": "R01055e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1314",
+   "note": "Rejection issues classed invalid_value etc."
+  },
+  {
+   "id": "R01055f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:756",
+   "note": "marketplace_state pending_review"
+  },
+  {
+   "id": "R01055g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1314; DATABASE.md:748",
+   "note": "account_permission class; blocked/marketplace_action_required"
+  },
+  {
+   "id": "R01057",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T18; DATABASE.md:770",
+   "note": "Bounded: 9 polls over 72 h, then blocked/marketplace_action_required; T18 open"
+  },
+  {
+   "id": "R01059",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1680",
+   "note": "Error resolution loop"
+  },
+  {
+   "id": "R01063",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1680",
+   "note": "Deterministic fix, retry, correction, or one task"
+  },
+  {
+   "id": "R01065",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1318",
+   "note": "marketplace_code, raw_message"
+  },
+  {
+   "id": "R01065a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1310; DATABASE.md:1313",
+   "note": "listing_item_id, field_path"
+  },
+  {
+   "id": "R01065b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:554; T54",
+   "note": "Templated plain_text per error-map row, no LLM"
+  },
+  {
+   "id": "R01065c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1316",
+   "note": "auto_fixable from error map"
+  },
+  {
+   "id": "R01065d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1680",
+   "note": "fix_action applied once"
+  },
+  {
+   "id": "R01065e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1680",
+   "note": "Re-validate after every fix"
+  },
+  {
+   "id": "R01067",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1316",
+   "note": "fix_action remap_value"
+  },
+  {
+   "id": "R01067a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1316",
+   "note": "fix_action reformat"
+  },
+  {
+   "id": "R01067b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1316",
+   "note": "fix_action derive_field"
+  },
+  {
+   "id": "R01067c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1316",
+   "note": "fix_action rebuild_variation"
+  },
+  {
+   "id": "R01069",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1343",
+   "note": "missing_fact task"
+  },
+  {
+   "id": "R01069a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1343",
+   "note": "conflicting_facts task"
+  },
+  {
+   "id": "R01069b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1343",
+   "note": "approval_or_evidence / permission_decision tasks"
+  },
+  {
+   "id": "R01069c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1343",
+   "note": "reconnect_account task"
+  },
+  {
+   "id": "R01069d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1343",
+   "note": "unverified_declaration / approval_or_evidence tasks"
+  },
+  {
+   "id": "R01071",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1680",
+   "note": "Resubmit after fix"
+  },
+  {
+   "id": "R01075",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1642",
+   "note": "New submission row per attempt"
+  },
+  {
+   "id": "R01077",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:841",
+   "note": "seller_sku immutable once sent"
+  },
+  {
+   "id": "R01077a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:866",
+   "note": "corrections_json"
+  },
+  {
+   "id": "R01077b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:858",
+   "note": "attempt increments, max 3 per version (T19)"
+  },
+  {
+   "id": "R01077c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:823",
+   "note": "Passed validation run required before publish"
+  },
+  {
+   "id": "R01077d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:873",
+   "note": "Terminal submissions immutable; payload snapshots and versions kept"
+  },
+  {
+   "id": "R01079",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:763",
+   "note": "ck_live_minimum"
+  },
+  {
+   "id": "R01083",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:763",
+   "note": "LIVE only from marketplace confirmation (T13)"
+  },
+  {
+   "id": "R01085",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:763",
+   "note": "marketplace_state live/partially_live"
+  },
+  {
+   "id": "R01085a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:845",
+   "note": "ck_item_live_minimum requires external_id"
+  },
+  {
+   "id": "R01085b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:845",
+   "note": "seller_sku NOT NULL per item"
+  },
+  {
+   "id": "R01085c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:843",
+   "note": "listing_items.marketplace_state"
+  },
+  {
+   "id": "R01085d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:757; DATABASE.md:842",
+   "note": "live_url on listing and item"
+  },
+  {
+   "id": "R01085e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:758",
+   "note": "last_synced_at"
+  },
+  {
+   "id": "R01087",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1497",
+   "note": "Display value live"
+  },
+  {
+   "id": "R01089",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1500",
+   "note": "Display views for the dashboard"
+  },
+  {
+   "id": "R01093",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1500-1501",
+   "note": "listing_status_display and product_status_display"
+  },
+  {
+   "id": "R01095",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1501",
+   "note": "overall_status"
+  },
+  {
+   "id": "R01095a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1500",
+   "note": "display_status per listing"
+  },
+  {
+   "id": "R01095b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1500",
+   "note": "display_step"
+  },
+  {
+   "id": "R01095c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1501",
+   "note": "open_issue_count"
+  },
+  {
+   "id": "R01095d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1500",
+   "note": "human_action_required"
+  },
+  {
+   "id": "R01095e",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1500",
+   "note": "last_synced_at"
+  },
+  {
+   "id": "R01095f",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1500",
+   "note": "external_id, marketplace_sku"
+  },
+  {
+   "id": "R01095g",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1500",
+   "note": "live_url"
+  },
+  {
+   "id": "R01095h",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1608",
+   "note": "GET /api/v1/listings/{id}/submissions"
+  },
+  {
+   "id": "R01099",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1500",
+   "note": "is_live"
+  },
+  {
+   "id": "R01099a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1500",
+   "note": "display_status for non-live listings"
+  },
+  {
+   "id": "R01099b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1500; DATABASE.md:1319",
+   "note": "status_reason plus open issues' plain_message"
+  },
+  {
+   "id": "R01099c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1355; DATABASE.md:554",
+   "note": "GET /api/v1/tasks; error-map seller_action"
+  },
+  {
+   "id": "R01103",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:1489; T12; AGENTS.md §5 (9 statuses)",
+   "note": "9 stored statuses + marketplace_state/pause/archive; 14 BRD names as display"
+  },
+  {
+   "id": "R01111",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:1498; AGENTS.md §5 (9 statuses); T12",
+   "note": "created shown as draft"
+  },
+  {
+   "id": "R01115",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1338",
+   "note": "Missing info requested as human tasks"
+  },
+  {
+   "id": "R01117",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:1498; AGENTS.md §5 (9 statuses); T12",
+   "note": "generating shown as understanding"
+  },
+  {
+   "id": "R01121",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1498",
+   "note": "No seller action while generating"
+  },
+  {
+   "id": "R01123",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:1498; AGENTS.md §5 (9 statuses); T12",
+   "note": "classifying reserved, never emitted in v1 (no classify node)"
+  },
+  {
+   "id": "R01127",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "DATABASE.md:1498; VISION-ALIGNMENT.md:132",
+   "note": "No classify stage, so no ambiguous-classification question; CATEGORY_MISMATCH user_action only"
+  },
+  {
+   "id": "R01129",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:1498; AGENTS.md §5 (9 statuses); T12",
+   "note": "validated/needs_review shown as ready_for_review"
+  },
+  {
+   "id": "R01133",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "AGENTS.md §3 inv 3; ADR-0008 (proposed); T10",
+   "note": "Review always required in v1 (maker-checker)"
+  },
+  {
+   "id": "R01135",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:1498; AGENTS.md §5 (9 statuses); AGENTS.md §3 inv 3; T12; T10",
+   "note": "ready_to_list = approved, needs human approval not just validation"
+  },
+  {
+   "id": "R01139",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "AGENTS.md §3 inv 3; ADR-0008 (proposed); T10",
+   "note": "Owner/operator must trigger publish; auto_publish off"
+  },
+  {
+   "id": "R01141",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:1498; AGENTS.md §5 (9 statuses); T12",
+   "note": "publishing shown as submitting"
+  },
+  {
+   "id": "R01145",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1498",
+   "note": "No seller action while publishing"
+  },
+  {
+   "id": "R01147",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:1498; AGENTS.md §5 (9 statuses); T13",
+   "note": "published with marketplace_state processing"
+  },
+  {
+   "id": "R01151",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1498",
+   "note": "No seller action"
+  },
+  {
+   "id": "R01153",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:1497; AGENTS.md §5 (9 statuses); T13",
+   "note": "From marketplace_state live"
+  },
+  {
+   "id": "R01157",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1497",
+   "note": "No seller action"
+  },
+  {
+   "id": "R01159",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:1497; AGENTS.md §5 (9 statuses); T12; T45",
+   "note": "Derived from listing_items states"
+  },
+  {
+   "id": "R01163",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:887; DATABASE.md:1338",
+   "note": "Retry failed fields only; issues and tasks per failed portion"
+  },
+  {
+   "id": "R01165",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:1498; AGENTS.md §5 (9 statuses); T12",
+   "note": "blocked with status_reason sub-label"
+  },
+  {
+   "id": "R01169",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1338",
+   "note": "human_tasks answer flow"
+  },
+  {
+   "id": "R01171",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:1498; AGENTS.md §5 (9 statuses); T12",
+   "note": "failed shown as error"
+  },
+  {
+   "id": "R01175",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1708; AGENTS.md §3 inv 3; T41",
+   "note": "auto_resubmit only for adapter remaps of approved content"
+  },
+  {
+   "id": "R01175a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1338",
+   "note": "human_tasks"
+  },
+  {
+   "id": "R01177",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:1496; T12; AGENTS.md §5 (9 statuses)",
+   "note": "Derived from blocked + human_task_open/marketplace_action_required"
+  },
+  {
+   "id": "R01181",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1355",
+   "note": "POST /api/v1/tasks/{id}/answer; reconnect/permission tasks"
+  },
+  {
+   "id": "R01183",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:768; AGENTS.md §5 (9 statuses); T43",
+   "note": "paused_at overlay; marketplace listing untouched"
+  },
+  {
+   "id": "R01187",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:768",
+   "note": "unpause, owner or operator"
+  },
+  {
+   "id": "R01189",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:768; AGENTS.md §5 (9 statuses); T43",
+   "note": "archived_at overlay; marketplace listing untouched"
+  },
+  {
+   "id": "R01193",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:768",
+   "note": "Frozen, no action"
+  },
+  {
+   "id": "R01203",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:408",
+   "note": "products.title"
+  },
+  {
+   "id": "R01205",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:481; DATABASE.md:488",
+   "note": "images slot main, images_one_main"
+  },
+  {
+   "id": "R01207",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:407",
+   "note": "products.sku"
+  },
+  {
+   "id": "R01211",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:410",
+   "note": "products.category"
+  },
+  {
+   "id": "R01215",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1197",
+   "note": "ProductOut family {colourways, cells}"
+  },
+  {
+   "id": "R01217",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1189",
+   "note": "FamilySummary theme, colours, size_run, cells"
+  },
+  {
+   "id": "R01219",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1500",
+   "note": "display_status per listing"
+  },
+  {
+   "id": "R01219a",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "AGENTS.md §4; T9",
+   "note": "v1 Amazon + Flipkart only; BRD §25 L2233 adds adapters incrementally"
+  },
+  {
+   "id": "R01221",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:754",
+   "note": "listings.external_id (ASIN)"
+  },
+  {
+   "id": "R01223",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1500",
+   "note": "display_status per listing"
+  },
+  {
+   "id": "R01225",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:842",
+   "note": "FSN per listing_item; listing-level external_id NULL for a Flipkart family"
+  },
+  {
+   "id": "R01227",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "AGENTS.md §4; T9",
+   "note": "No Myntra/AJIO/Meesho/Nykaa adapters in v1; marketplace CHECK amazon|flipkart"
+  },
+  {
+   "id": "R01229",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "AGENTS.md §4; T9",
+   "note": "No Myntra/AJIO/Meesho/Nykaa adapters in v1; marketplace CHECK amazon|flipkart"
+  },
+  {
+   "id": "R01231",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "AGENTS.md §4; T9",
+   "note": "No Myntra/AJIO/Meesho/Nykaa adapters in v1; marketplace CHECK amazon|flipkart"
+  },
+  {
+   "id": "R01233",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "AGENTS.md §4; T9",
+   "note": "No Myntra/AJIO/Meesho/Nykaa adapters in v1; marketplace CHECK amazon|flipkart"
+  },
+  {
+   "id": "R01235",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "AGENTS.md §4; T9",
+   "note": "No Myntra/AJIO/Meesho/Nykaa adapters in v1; marketplace CHECK amazon|flipkart"
+  },
+  {
+   "id": "R01237",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "AGENTS.md §4; T9",
+   "note": "No Myntra/AJIO/Meesho/Nykaa adapters in v1; marketplace CHECK amazon|flipkart"
+  },
+  {
+   "id": "R01239",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "AGENTS.md §4; T9",
+   "note": "No Myntra/AJIO/Meesho/Nykaa adapters in v1; marketplace CHECK amazon|flipkart"
+  },
+  {
+   "id": "R01241",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "AGENTS.md §4; T9",
+   "note": "No Myntra/AJIO/Meesho/Nykaa adapters in v1; marketplace CHECK amazon|flipkart"
+  },
+  {
+   "id": "R01243",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:1501; T12; AGENTS.md §5 (9 statuses)",
+   "note": "overall_status also has archived, paused and pre-submit steps"
+  },
+  {
+   "id": "R01245",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1501",
+   "note": "live"
+  },
+  {
+   "id": "R01245a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1501",
+   "note": "partially_live"
+  },
+  {
+   "id": "R01245b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1501",
+   "note": "blocked"
+  },
+  {
+   "id": "R01245c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1501",
+   "note": "error"
+  },
+  {
+   "id": "R01245d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1501",
+   "note": "processing"
+  },
+  {
+   "id": "R01247",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1501",
+   "note": "open_issue_count"
+  },
+  {
+   "id": "R01251",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1501; DATABASE.md:749",
+   "note": "last_activity_at from last_event"
+  },
+  {
+   "id": "R01257",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "Panels are FE; backend data per panel mapped below"
+  },
+  {
+   "id": "R01259",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1197",
+   "note": "ProductOut facts and typed blocks"
+  },
+  {
+   "id": "R01259a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1169",
+   "note": "fabric_type, fiber_composition"
+  },
+  {
+   "id": "R01259b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1170",
+   "note": "weave_finish attribute"
+  },
+  {
+   "id": "R01259c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1169",
+   "note": "wash_care, iron_care"
+  },
+  {
+   "id": "R01259d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1197; DATABASE.md:1110",
+   "note": "Compliance block and Legal Metrology parties"
+  },
+  {
+   "id": "R01260",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1197",
+   "note": "family {colourways, cells}; interaction is FE"
+  },
+  {
+   "id": "R01260a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:440",
+   "note": "Full matrix per style"
+  },
+  {
+   "id": "R01260b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:426",
+   "note": "product_colourways"
+  },
+  {
+   "id": "R01260c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:447",
+   "note": "Cells incl. unavailable sizes"
+  },
+  {
+   "id": "R01261",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:481",
+   "note": "slot per image"
+  },
+  {
+   "id": "R01261a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:520",
+   "note": "image_requirement aspect_ratio"
+  },
+  {
+   "id": "R01261b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:520",
+   "note": "image_requirement background"
+  },
+  {
+   "id": "R01262",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:778",
+   "note": "content_json per marketplace listing"
+  },
+  {
+   "id": "R01262a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:778",
+   "note": "content.bullets per marketplace"
+  },
+  {
+   "id": "R01262b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:778",
+   "note": "keywords.search_terms per marketplace"
+  },
+  {
+   "id": "R01262c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:778",
+   "note": "content.description per marketplace"
+  },
+  {
+   "id": "R01263",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:835 (G11)",
+   "note": "No network-free adapter preview of mapped payloads before submission"
+  },
+  {
+   "id": "R01264",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:816",
+   "note": "ErrorReport stores failures only; no per-rule pass record for a scorecard"
+  },
+  {
+   "id": "R01264a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:816",
+   "note": "ErrorItem severity error|warning"
+  },
+  {
+   "id": "R01265",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1500",
+   "note": "display_status"
+  },
+  {
+   "id": "R01265a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:754",
+   "note": "external_id"
+  },
+  {
+   "id": "R01265b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:757",
+   "note": "live_url"
+  },
+  {
+   "id": "R01265c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:758",
+   "note": "last_synced_at"
+  },
+  {
+   "id": "R01266",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1346",
+   "note": "question plus reason"
+  },
+  {
+   "id": "R01266a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1347",
+   "note": "AnswerSpec drives the input field"
+  },
+  {
+   "id": "R01267",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1608; DATABASE.md:860",
+   "note": "Payload snapshot via short-lived signed URL"
+  },
+  {
+   "id": "R01267a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:869",
+   "note": "sent_at, responded_at, resolved_at"
+  },
+  {
+   "id": "R01267b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:868",
+   "note": "error_report_json plus raw response"
+  },
+  {
+   "id": "R01268",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:300; BACKEND-ARCHITECTURE.md:1318-1356",
+   "note": "audit_log holds the data; no tenant-facing audit read endpoint for the history panel"
+  },
+  {
+   "id": "R01278",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1314; DATABASE.md:1366",
+   "note": "ErrorClass enum, 11 BRD classes"
+  },
+  {
+   "id": "R01282",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1334; T47",
+   "note": "Ladder first; MISSING_ATTRIBUTE asks unless fact exists and isn't critical"
+  },
+  {
+   "id": "R01282a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1343",
+   "note": "missing_fact task"
+  },
+  {
+   "id": "R01284",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1314; DATABASE.md:1366",
+   "note": "ErrorClass enum, 11 BRD classes"
+  },
+  {
+   "id": "R01288",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "VALUE_NOT_ALLOWED remap_value on value_map hit"
+  },
+  {
+   "id": "R01290",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1314; DATABASE.md:1366",
+   "note": "ErrorClass enum, 11 BRD classes"
+  },
+  {
+   "id": "R01294",
+   "status": "conflict",
+   "owner": "shared",
+   "ref": "DATABASE.md:1369; T76",
+   "note": "Site: reclassify and remap; plan: CATEGORY_MISMATCH is user_action, no classify node"
+  },
+  {
+   "id": "R01294a",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T68; DATABASE.md:530",
+   "note": "No per-product remap; mismatch needs a new internal category; T68 open"
+  },
+  {
+   "id": "R01296",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1314; DATABASE.md:1366",
+   "note": "ErrorClass enum, 11 BRD classes"
+  },
+  {
+   "id": "R01300",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "VARIATION_INVALID rebuild_variation"
+  },
+  {
+   "id": "R01302",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1314; DATABASE.md:1366",
+   "note": "ErrorClass enum, 11 BRD classes"
+  },
+  {
+   "id": "R01306",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "image_requirement issue_code, IMAGE_NON_COMPLIANT"
+  },
+  {
+   "id": "R01306a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1343",
+   "note": "Only an image_replacement human task; no automatic replace or slot remap"
+  },
+  {
+   "id": "R01308",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1314; DATABASE.md:1366",
+   "note": "ErrorClass enum, 11 BRD classes"
+  },
+  {
+   "id": "R01312",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1369",
+   "note": "Content codes route to ai_correct correction node"
+  },
+  {
+   "id": "R01314",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1314; DATABASE.md:1366",
+   "note": "ErrorClass enum, 11 BRD classes"
+  },
+  {
+   "id": "R01318",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "identifier_error class; user_action items become seller tasks"
+  },
+  {
+   "id": "R01318a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1116; T39",
+   "note": "identifier_status exempt checked against account exemption"
+  },
+  {
+   "id": "R01320",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1314; DATABASE.md:1366",
+   "note": "ErrorClass enum, 11 BRD classes"
+  },
+  {
+   "id": "R01324",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1343",
+   "note": "unverified_declaration task; COMPLIANCE_DECLARATION_MISSING"
+  },
+  {
+   "id": "R01326",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1314; DATABASE.md:1366",
+   "note": "ErrorClass enum, 11 BRD classes"
+  },
+  {
+   "id": "R01330",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1343",
+   "note": "permission_decision task"
+  },
+  {
+   "id": "R01332",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1314; DATABASE.md:1366",
+   "note": "ErrorClass enum, 11 BRD classes"
+  },
+  {
+   "id": "R01336",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "marketplace_technical auto_retry with backoff"
+  },
+  {
+   "id": "R01336a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:871-872",
+   "note": "Write-ahead row, read-before-retry, one open submission"
+  },
+  {
+   "id": "R01338",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1314; DATABASE.md:1366",
+   "note": "ErrorClass enum, 11 BRD classes"
+  },
+  {
+   "id": "R01342",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:557",
+   "note": "No map row: class unknown, stop automation"
+  },
+  {
+   "id": "R01342a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1318",
+   "note": "raw_message exactly as returned"
+  },
+  {
+   "id": "R01342b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1319",
+   "note": "plain_message"
+  },
+  {
+   "id": "R01342c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:557",
+   "note": "marketplace_error_review task"
+  },
+  {
+   "id": "R01346",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1318",
+   "note": "raw_message exactly as returned"
+  },
+  {
+   "id": "R01347",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1331",
+   "note": "Error map / ERROR_CODE_META classify each item"
+  },
+  {
+   "id": "R01348",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1310; DATABASE.md:1313",
+   "note": "listing_item_id, field_path, listing_id"
+  },
+  {
+   "id": "R01349",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1316",
+   "note": "auto_fixable and fix_action"
+  },
+  {
+   "id": "R01350",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1680",
+   "note": "Deterministic fix tried once"
+  },
+  {
+   "id": "R01351",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1680",
+   "note": "Re-validate after fix"
+  },
+  {
+   "id": "R01352",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1708; AGENTS.md §3 inv 3; T41",
+   "note": "Auto-resubmit only when approved content unchanged; else re-approval"
+  },
+  {
+   "id": "R01353",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:873",
+   "note": "Max 3 per version plus anti-loop guard"
+  },
+  {
+   "id": "R01353a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:748; DATABASE.md:1680",
+   "note": "blocked publish_attempts_exhausted; task or ops alert"
+  },
+  {
+   "id": "R01354",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:554",
+   "note": "seller_action per error-map row"
+  },
+  {
+   "id": "R01358",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:873",
+   "note": "ls_guard caps attempts and demands a justification"
+  },
+  {
+   "id": "R01358a",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T71; DATABASE.md:865",
+   "note": "Adds a fourth justification human_resolution beyond the three site reasons; T71 open"
+  },
+  {
+   "id": "R01362",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "AGENTS.md §3 inv 3; ADR-0008 (proposed); T10",
+   "note": "Human approval mandatory in v1; auto_publish reserved off"
+  },
+  {
+   "id": "R01362a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md §3",
+   "note": "Deterministic validation, approval, bounded retries"
+  },
+  {
+   "id": "R01362b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "AGENTS.md §3 inv 3; ADR-0008 (proposed); T10",
+   "note": "Every listing needs a human approval in v1"
+  },
+  {
+   "id": "R01368",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1343",
+   "note": "missing_fact"
+  },
+  {
+   "id": "R01370",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1334",
+   "note": "Resolver checked before any task"
+  },
+  {
+   "id": "R01372",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1343",
+   "note": "conflicting_facts"
+  },
+  {
+   "id": "R01374",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1334",
+   "note": "Vocabulary normalization before asking"
+  },
+  {
+   "id": "R01376",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1343",
+   "note": "approval_or_evidence"
+  },
+  {
+   "id": "R01378",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1334",
+   "note": "Deterministic fix actions before asking"
+  },
+  {
+   "id": "R01380",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1343",
+   "note": "unverified_declaration"
+  },
+  {
+   "id": "R01382",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1334",
+   "note": "reformat fix, no task"
+  },
+  {
+   "id": "R01384",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1343",
+   "note": "permission_decision"
+  },
+  {
+   "id": "R01386",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1334",
+   "note": "Template value_map used, no task"
+  }
+ ]
+}

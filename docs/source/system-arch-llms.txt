@@ -1,0 +1,322 @@
+# AI Marketplace OS — Architecture Documentation
+
+> Complete technical architecture documentation and internal knowledge system for the AI Marketplace Listing Agent platform — an intelligent operating system enabling D2C brands to ingest, normalize, enrich, validate, and publish product listings across Amazon, Shopify, Walmart, and TikTok Shop.
+
+## Available Machine-Readable Formats
+
+- [Full Documentation in Markdown](https://ashishvats16.github.io/system-arch/llms-full.txt): Complete consolidated 221-page architecture document including all Mermaid diagrams, JSON schemas, and spec tables.
+- [Structured JSON API](https://ashishvats16.github.io/system-arch/content.json): Machine-readable JSON array of all pages with metadata, headings, rendered HTML, and markdown.
+- [XML Sitemap](https://ashishvats16.github.io/system-arch/sitemap.xml): Complete URL sitemap for crawlers and search indexers.
+
+## Architecture Domains & Pages
+
+### Founder's POV Doc
+
+- [★. Complete Founder BRD (End-to-End)](https://ashishvats16.github.io/system-arch/page/founders-pov-full) [MVP]: The complete, unabridged V1 Business Requirements & End-to-End Operating Model directly from the founder's specification.
+- [01. Product Vision, 19-Step Flow & Scope (§1–4)](https://ashishvats16.github.io/system-arch/page/founders-product-flow-scope) [MVP]: Executive product definition, 19-step end-to-end listing flow, scope boundaries, and marketplace multi-adapter strategy.
+- [02. Brand Onboarding & Catalog Intake (§5)](https://ashishvats16.github.io/system-arch/page/founders-brand-onboarding-intake) [MVP]: Collecting stable brand profile and marketplace account credentials once, plus multi-channel catalog intake merging.
+- [03. Master Apparel Data & Variants (§6–7)](https://ashishvats16.github.io/system-arch/page/founders-master-apparel-attributes) [MVP]: Product identity, core apparel attribute groups, category-specific fields, and the 3-level style/color/size product family model.
+- [04. Media, Content & Canonical Record (§8–10)](https://ashishvats16.github.io/system-arch/page/founders-media-content-canonical) [MVP]: Media and swatch shot rules, content generation layer with the Golden Rule against hallucinations, and canonical record schema.
+- [05. Business Data Model & 14-Step Engine (§11–12)](https://ashishvats16.github.io/system-arch/page/founders-data-model-workflow) [MVP]: Logical database schema, source-of-truth priority hierarchy, and the 14-step step-by-step autonomous listing workflow.
+- [06. Status Lifecycle & Dashboard Specs (§13–14)](https://ashishvats16.github.io/system-arch/page/founders-status-dashboard-views) [MVP]: 14-state granular listing status lifecycle and operational requirements for the Product List and Product Detail dashboard views.
+- [07. Error Management, Anti-Loop & HITL (§15–16)](https://ashishvats16.github.io/system-arch/page/founders-error-framework-hitl) [MVP]: Marketplace error taxonomy, deterministic auto-fix loop, strict anti-loop retry rules, and human-in-the-loop escalation boundaries.
+- [08. Quality Gates & Legal Metrology Matrix (§17–19)](https://ashishvats16.github.io/system-arch/page/founders-quality-compliance-matrix) [MVP]: Pre-submission quality gates, Indian Legal Metrology 2022 garment declarations, and marketplace requirement matrix.
+- [09. Master Field Dictionary & E2E Walkthrough (§20–21)](https://ashishvats16.github.io/system-arch/page/founders-master-field-dictionary) [MVP]: Complete 40+ column apparel dictionary and end-to-end walkthrough of a real product (Women's Relaxed T-Shirt FSH-TEE-001).
+- [10. Acceptance Criteria, Metrics & Lead Handoff (§22–26)](https://ashishvats16.github.io/system-arch/page/founders-acceptance-metrics-handoff) [MVP]: V1 acceptance checklist, core product operational metrics, 12 lead engineer invariants, open decisions, and reference links.
+
+### 45-Day MVP Build Plan
+
+- [01. 45-Day Plan & Definition of Done](https://ashishvats16.github.io/system-arch/page/mvp-plan-overview) [MVP]: Executive overview of the 45-Day MVP Build Plan (GCP Edition) for the AI Marketplace OS. Kickoff context, Day-45 Definition of Done, 10 Non-Negotiable Invariants, and the core operational loop.
+- [02. Phase-1 Scope Lock & Non-Goals](https://ashishvats16.github.io/system-arch/page/mvp-scope-lock) [MVP]: Strict scope boundaries for Phase 1 (Day 45). Detailed comparison table of what ships on Day 45 versus what is explicitly deferred to Phase 2, Phase 3, or Future.
+- [03. Day-by-Day Execution Plan (45 Days)](https://ashishvats16.github.io/system-arch/page/mvp-execution-roadmap) [MVP]: The complete 45-day execution schedule with interactive filters by phase and owner. Clear daily deliverables, owner tags (TL, AI, BE, FE, OPS), and definitions of done.
+- [04. Team Structure & Solo Sprint](https://ashishvats16.github.io/system-arch/page/mvp-team-model) [MVP]: Team delegation structure and execution reality check. Transitioning from solo foundation (Days 1–10) to a 5-person high-velocity team, with built-in slack buffers and ownership matrix.
+- [05. GCP Tech Stack & Architecture](https://ashishvats16.github.io/system-arch/page/mvp-gcp-architecture) [MVP]: Detailed GCP-adapted infrastructure stack and 4-layer runtime architecture. Mapping from AWS design patterns to Cloud Run, Cloud SQL pgvector, Memorystore, GCS, and Secret Manager.
+- [06. Consolidated Data Model & Schema](https://ashishvats16.github.io/system-arch/page/mvp-data-model) [MVP]: Complete PostgreSQL 16 relational and vector schema DDL for all 12 core tables. Multi-tenancy isolation, HNSW indexing, maker-checker database constraints, and Canonical Listing JSON schema.
+- [07. State Machine, LangGraph & Rules](https://ashishvats16.github.io/system-arch/page/mvp-orchestration-rules) [MVP]: LangGraph orchestration pipeline, listing lifecycle state machine, deterministic rules engine, and the unified ErrorReport contract across all error sources.
+- [08. AI Agent Layer & Brand RAG](https://ashishvats16.github.io/system-arch/page/mvp-ai-agents-rag) [MVP]: AI Agent Layer architecture and Brand Intelligence RAG pipeline. Model routing policy, token cost tracking, prompt-injection boundary defenses, and pgvector cosine retrieval.
+- [09. Image Compliance & Adapters](https://ashishvats16.github.io/system-arch/page/mvp-image-adapters) [MVP]: Image compliance pipeline (deterministic vs vision checks) and the Marketplace Adapter pattern for Amazon SP-API and Flipkart Seller API. Critical Day 1 developer application warning.
+- [10. Security, Multi-Tenancy & Reliability](https://ashishvats16.github.io/system-arch/page/mvp-security-reliability) [MVP]: Security architecture, mandatory tenant-scoped repository pattern, maker-checker authorization, async queue lifecycle (Redis+ARQ), and distributed correlation telemetry.
+- [11. Testing Strategy, Launch Gate & Risks](https://ashishvats16.github.io/system-arch/page/mvp-testing-launch-risks) [MVP]: Comprehensive testing strategy, Day-45 launch gate checklist, 10-point risk register with mitigations, and post-MVP roadmap preview.
+- [12. API Surface, Dev Setup & Appendix](https://ashishvats16.github.io/system-arch/page/mvp-dev-environment) [MVP]: Full REST API surface specification, monorepo directory tree, local docker-compose setup, core environment variables, Git workflow, and indicative GCP infrastructure costs.
+
+### Overview
+
+- [1. System Overview](https://ashishvats16.github.io/system-arch/page/system-overview) [MVP]: Complete platform overview — an AI-powered marketplace listing operator for D2C brands. Understand the four-layer architecture, core design principles, and how every component communicates.
+- [2. Architecture Principles](https://ashishvats16.github.io/system-arch/page/architecture-principles) [MVP]: The foundational principles that guide every architectural decision in the platform. These principles are invariants — they should never be violated.
+- [3. Product Scope](https://ashishvats16.github.io/system-arch/page/product-scope) [MVP]: What the platform does and does not do. Clear boundaries for MVP implementation versus future scope.
+- [4. Users & Roles](https://ashishvats16.github.io/system-arch/page/users-roles) [MVP]: User roles and permissions within the platform. RBAC model with maker-checker approval integrity.
+- [5. MVP Boundaries](https://ashishvats16.github.io/system-arch/page/mvp-boundaries) [MVP]: Explicit boundaries between MVP implementation and future phases. Every module has a clear scope designation.
+- [6. Architecture Diagram](https://ashishvats16.github.io/system-arch/page/architecture-diagram) [MVP]: The primary architecture diagram showing the complete system from brand to marketplace, including the future Marketplace OS agent ecosystem.
+
+### User & Product Flow
+
+- [7. End-to-End User Flow](https://ashishvats16.github.io/system-arch/page/e2e-user-flow) [MVP]: The complete end-to-end journey from brand sign-in to live marketplace listing, including every decision point, failure path, and data transformation.
+- [8. Product Import Flow](https://ashishvats16.github.io/system-arch/page/product-import-flow) [MVP]: How products enter the system — CSV bulk upload, manual entry, and catalog sync. Includes validation, normalization, and async processing.
+- [9. Marketplace Connection Flow](https://ashishvats16.github.io/system-arch/page/marketplace-connection-flow) [MVP]: OAuth-based marketplace connection flow for Amazon SP-API and Flipkart Seller API.
+- [10. Listing Generation Flow](https://ashishvats16.github.io/system-arch/page/listing-generation-flow) [MVP]: How AI generates a complete listing from product data — context assembly, parallel agent execution, output merging, and structured validation.
+- [11. Validation Flow](https://ashishvats16.github.io/system-arch/page/validation-flow) [MVP]: Two-stage validation: deterministic rules engine + vision model checks. Returns structured ErrorReport.
+- [12. Human Approval Flow](https://ashishvats16.github.io/system-arch/page/human-approval-flow) [MVP]: Human-in-the-loop approval with approve/reject/edit/regenerate options. Feedback loop for AI improvement.
+- [13. Publishing Flow](https://ashishvats16.github.io/system-arch/page/publishing-flow) [MVP]: How approved listings are published to marketplaces via adapters with per-field result reporting.
+- [14. Performance Feedback Loop](https://ashishvats16.github.io/system-arch/page/performance-feedback-loop) [PHASE3]: How marketplace performance data feeds back into the AI optimization loop. Phase 3 scope.
+
+### AI Listing Agent
+
+- [15. AI Listing Agent Overview](https://ashishvats16.github.io/system-arch/page/listing-agent-overview) [MVP]: Deep technical architecture of the AI Listing Agent — the core AI system that generates marketplace-optimized product listings. Covers agent input, context assembly, orchestration, output merging, validation, and correction.
+- [16. Agent Orchestration](https://ashishvats16.github.io/system-arch/page/agent-orchestration) [MVP]: How LangGraph orchestrates agent execution — graph state, nodes, edges, conditional routing, retry nodes, and human approval interrupt.
+- [17. Agent State Machine](https://ashishvats16.github.io/system-arch/page/agent-state-machine) [MVP]: The state machine governing listing lifecycle — from CREATED through PUBLISHED, including all failure states.
+- [18. Agent Execution Graph](https://ashishvats16.github.io/system-arch/page/agent-execution-graph) [MVP]: The execution graph showing how agents are dispatched, how parallelism works, and how results are merged.
+- [19. Agent Run Lifecycle](https://ashishvats16.github.io/system-arch/page/agent-run-lifecycle) [MVP]: How individual AgentRun records are created, tracked, and persisted — the observability backbone.
+- [20. Context Assembly](https://ashishvats16.github.io/system-arch/page/context-assembly) [MVP]: How the system assembles the rich context object that feeds into all AI agents — product data, brand voice, marketplace rules, category templates.
+- [21. Prompt Construction](https://ashishvats16.github.io/system-arch/page/prompt-construction) [MVP]: How prompts are constructed for each agent — system instructions, brand voice injection, marketplace rules, structured output requirements.
+- [22. Structured Output](https://ashishvats16.github.io/system-arch/page/structured-output) [MVP]: How AI agents produce structured JSON output — Pydantic schemas, JSON mode, and validation.
+- [23. AI Validation](https://ashishvats16.github.io/system-arch/page/ai-validation) [MVP]: How AI outputs are validated — JSON schema compliance, factual accuracy, and brand voice adherence.
+- [24. Correction Loop](https://ashishvats16.github.io/system-arch/page/correction-loop) [MVP]: How the correction agent fixes specific fields based on structured errors — targeted correction, not full regeneration.
+- [25. Bounded Retry System](https://ashishvats16.github.io/system-arch/page/bounded-retry-system) [MVP]: Maximum 3 agent correction attempts. After exhaustion, the job is blocked with exact failure reasons surfaced to the user.
+
+### AI Agents
+
+- [26. Content Agent](https://ashishvats16.github.io/system-arch/page/content-agent) [MVP]: The Content Agent generates marketplace-optimized titles, bullet points, and descriptions while maintaining brand voice and preventing hallucinations.
+- [27. Keyword Agent](https://ashishvats16.github.io/system-arch/page/keyword-agent) [MVP]: The Keyword Agent generates search terms and backend keywords optimized for marketplace discovery.
+- [28. Attribute Agent](https://ashishvats16.github.io/system-arch/page/attribute-agent) [MVP]: The Attribute Agent maps product information to marketplace-specific structured attributes, handling category schemas and marketplace field differences.
+- [29. Image Agent](https://ashishvats16.github.io/system-arch/page/image-agent) [MVP]: The Image Agent validates product images against marketplace requirements using both deterministic checks and vision model analysis.
+- [30. Brand Voice Agent / Retrieval](https://ashishvats16.github.io/system-arch/page/brand-voice-agent) [MVP]: Brand Voice Retrieval — how brand tone, style, glossary, and compliance rules are vectorized and injected into agent prompts.
+- [31. Optimization Agent](https://ashishvats16.github.io/system-arch/page/optimization-agent) [PHASE3]: The Optimization Agent analyzes performance data and proposes improvements to existing listings. Runs on schedule, not continuously.
+- [32. Future Agent Registry](https://ashishvats16.github.io/system-arch/page/future-agent-registry) [FUTURE]: How new agents can be registered and integrated into the platform without rewriting core infrastructure.
+- [33. Agent Responsibilities Matrix](https://ashishvats16.github.io/system-arch/page/agent-responsibilities-matrix) [MVP]: Complete matrix of all agents, their inputs, outputs, and responsibilities.
+
+### Listing Generation
+
+- [34. Listing Generation Responsibilities](https://ashishvats16.github.io/system-arch/page/listing-gen-responsibilities) [MVP]: Complete responsibilities for listing generation — which agent does what.
+- [35. Canonical Listing Model](https://ashishvats16.github.io/system-arch/page/canonical-listing-model) [MVP]: The marketplace-independent canonical listing representation — the core data contract between AI agents and marketplace adapters.
+- [36. Title Generation](https://ashishvats16.github.io/system-arch/page/title-generation) [MVP]: How titles are generated — marketplace constraints, brand requirements, SEO optimization, and character limits.
+- [37. Bullet Generation](https://ashishvats16.github.io/system-arch/page/bullet-generation) [MVP]: Bullet point generation with brand voice, feature highlighting, and marketplace formatting.
+- [38. Description Generation](https://ashishvats16.github.io/system-arch/page/description-generation) [MVP]: Product description generation — rich text, storytelling within brand voice, marketplace HTML support.
+- [39. Keyword Generation](https://ashishvats16.github.io/system-arch/page/keyword-generation) [MVP]: Search term and backend keyword generation for marketplace discovery.
+- [40. Attribute Generation](https://ashishvats16.github.io/system-arch/page/attribute-generation) [MVP]: Structured attribute generation matching marketplace category schemas.
+- [41. Category Mapping](https://ashishvats16.github.io/system-arch/page/category-mapping) [MVP]: How products are mapped to marketplace-specific category trees.
+- [42. Marketplace-specific Content](https://ashishvats16.github.io/system-arch/page/marketplace-specific-content) [MVP]: How content differs between Amazon and Flipkart — formatting, length limits, tone expectations.
+- [43. Listing Versioning](https://ashishvats16.github.io/system-arch/page/listing-versioning) [PHASE2]: Listing version history — tracking changes, comparing versions, rollback capability.
+
+### Image Compliance
+
+- [44. Image Compliance Pipeline](https://ashishvats16.github.io/system-arch/page/image-compliance-pipeline) [MVP]: The complete image compliance pipeline — from upload through deterministic checks, vision model analysis, to structured ImageReport.
+- [45. Image Processing Flow](https://ashishvats16.github.io/system-arch/page/image-processing-flow) [MVP]: Detailed step-by-step image processing from upload to final report.
+- [46. Deterministic Image Checks](https://ashishvats16.github.io/system-arch/page/deterministic-image-checks) [MVP]: Programmatic image checks — resolution, format, aspect ratio, EXIF, file size, corruption.
+- [47. Vision Model Checks](https://ashishvats16.github.io/system-arch/page/vision-model-checks) [MVP]: Vision model analysis for image compliance — background, product fill, text overlays, watermarks.
+- [48. ImageReport Schema](https://ashishvats16.github.io/system-arch/page/image-report-schema) [MVP]: The structured ImageReport schema — per image, per marketplace, with check details and suggestions.
+- [49. Image Error Taxonomy](https://ashishvats16.github.io/system-arch/page/image-error-taxonomy) [MVP]: Classification of image compliance errors — types, severities, and corrective actions.
+- [50. Image Correction Loop](https://ashishvats16.github.io/system-arch/page/image-correction-loop) [MVP]: How image compliance issues are surfaced to users and corrected through re-upload.
+- [51. Marketplace Image Rules](https://ashishvats16.github.io/system-arch/page/marketplace-image-rules) [MVP]: Marketplace-specific image requirements stored as policy configurations.
+- [52. Image Storage Lifecycle](https://ashishvats16.github.io/system-arch/page/image-storage-lifecycle) [MVP]: Image storage in S3 — upload, processing, versioning, and cleanup.
+
+### Brand Intelligence
+
+- [53. Brand Voice Architecture](https://ashishvats16.github.io/system-arch/page/brand-voice-architecture) [MVP]: Complete brand voice architecture — vectorization, chunking, embedding, retrieval, and context injection into AI agents.
+- [54. Brand Voice Vectorization](https://ashishvats16.github.io/system-arch/page/brand-voice-vectorization) [MVP]: What gets vectorized and how — chunking strategies for brand artifacts.
+- [55. Brand Chunking](https://ashishvats16.github.io/system-arch/page/brand-chunking) [MVP]: Chunking strategies for brand content — how to split documents into meaningful, retrievable chunks.
+- [56. Embedding Pipeline](https://ashishvats16.github.io/system-arch/page/embedding-pipeline) [MVP]: How brand content is embedded using text-embedding-3-small and stored in pgvector.
+- [57. Vector Retrieval](https://ashishvats16.github.io/system-arch/page/vector-retrieval) [MVP]: How pgvector cosine similarity retrieval works at generation time.
+- [58. Retrieval Context](https://ashishvats16.github.io/system-arch/page/retrieval-context) [MVP]: How retrieved brand chunks are formatted and injected into agent prompts.
+- [59. Brand Context Contract](https://ashishvats16.github.io/system-arch/page/brand-context-contract) [MVP]: The formal contract defining what brand context is passed into each agent.
+- [60. Approved Listing Memory](https://ashishvats16.github.io/system-arch/page/approved-listing-memory) [MVP]: How approved listings are stored as brand context for future generations.
+- [61. Brand Glossary](https://ashishvats16.github.io/system-arch/page/brand-glossary) [MVP]: Brand-specific terminology and naming conventions.
+- [62. Brand Compliance Rules](https://ashishvats16.github.io/system-arch/page/brand-compliance-rules) [MVP]: Brand-specific compliance rules — claims restrictions, certification requirements.
+
+### Marketplace OS
+
+- [63. AI Marketplace OS](https://ashishvats16.github.io/system-arch/page/ai-marketplace-os) [FUTURE]: The long-term vision for a full AI Marketplace OS with specialized agents across the e-commerce stack.
+- [64. Marketplace Abstraction](https://ashishvats16.github.io/system-arch/page/marketplace-abstraction) [MVP]: How marketplace differences are abstracted behind a unified interface.
+- [65. Canonical Data Model](https://ashishvats16.github.io/system-arch/page/canonical-data-model) [MVP]: The marketplace-independent data representation used throughout the core system.
+- [66. Marketplace Adapter Pattern](https://ashishvats16.github.io/system-arch/page/marketplace-adapter-pattern) [MVP]: The adapter pattern for marketplace operations — interface, responsibilities, and implementation guide.
+- [67. Amazon Adapter](https://ashishvats16.github.io/system-arch/page/amazon-adapter) [MVP]: Amazon SP-API adapter — authentication, listing operations, rate limiting, and error mapping.
+- [68. Flipkart Adapter](https://ashishvats16.github.io/system-arch/page/flipkart-adapter) [MVP]: Flipkart Seller API adapter — authentication, listing operations, and marketplace-specific handling.
+- [69. Future Marketplace Adapter](https://ashishvats16.github.io/system-arch/page/future-marketplace-adapter) [FUTURE]: How future marketplace adapters (Myntra, Ajio, Meesho) would be added.
+- [70. Marketplace Rule Registry](https://ashishvats16.github.io/system-arch/page/marketplace-rule-registry) [MVP]: How marketplace-specific rules are stored, versioned, and loaded at generation time.
+- [71. Marketplace Category Mapping](https://ashishvats16.github.io/system-arch/page/marketplace-category-mapping) [MVP]: Mapping between internal categories and marketplace-specific category trees.
+- [72. Marketplace Field Mapping](https://ashishvats16.github.io/system-arch/page/marketplace-field-mapping) [MVP]: How canonical fields map to marketplace-specific field names and formats.
+- [73. Marketplace Error Mapping](https://ashishvats16.github.io/system-arch/page/marketplace-error-mapping) [MVP]: How marketplace API errors are mapped to the unified ErrorReport taxonomy.
+
+### Agent Operating Model
+
+- [74. Catalog Agent](https://ashishvats16.github.io/system-arch/page/catalog-agent) [FUTURE]: Future Catalog Agent — automated catalog management and product data enrichment.
+- [75. Revenue Operations Agent](https://ashishvats16.github.io/system-arch/page/revenue-operations-agent) [FUTURE]: Future Revenue Operations Agent — unified revenue optimization across marketplaces.
+- [76. Pricing Agent](https://ashishvats16.github.io/system-arch/page/pricing-agent) [FUTURE]: Future Pricing Agent — dynamic pricing optimization across marketplaces.
+- [77. Ads Agent](https://ashishvats16.github.io/system-arch/page/ads-agent) [FUTURE]: Future Ads Agent — marketplace advertising optimization (Amazon PPC, Flipkart Ads).
+- [78. Ranking Agent](https://ashishvats16.github.io/system-arch/page/ranking-agent) [FUTURE]: Future Ranking Agent — search ranking optimization and competitive positioning.
+- [79. Inventory Agent](https://ashishvats16.github.io/system-arch/page/inventory-agent) [FUTURE]: Future Inventory Agent — inventory management and stock optimization across marketplaces.
+- [80. Returns Agent](https://ashishvats16.github.io/system-arch/page/returns-agent) [FUTURE]: Future Returns Agent — returns analysis and quality improvement recommendations.
+- [81. Optimization Agent (Future)](https://ashishvats16.github.io/system-arch/page/optimization-agent-future) [PHASE3]: The Optimization Agent in the context of the full Marketplace OS — expanded capabilities beyond MVP.
+- [82. Agent Dependency Graph](https://ashishvats16.github.io/system-arch/page/agent-dependency-graph) [MVP]: Visual dependency graph showing how agents relate to each other and to shared infrastructure.
+- [83. Agent Registry](https://ashishvats16.github.io/system-arch/page/agent-registry) [FUTURE]: System for registering and managing agents in the Marketplace OS.
+
+### Data Architecture
+
+- [84. Data Architecture](https://ashishvats16.github.io/system-arch/page/data-architecture-overview) [MVP]: Complete data architecture — PostgreSQL with pgvector, relational + vector data in a single database.
+- [85. Database Schema](https://ashishvats16.github.io/system-arch/page/database-schema) [MVP]: Complete database schema with all tables, columns, types, and relationships.
+- [86. Entity Relationship Diagram](https://ashishvats16.github.io/system-arch/page/entity-relationship-diagram) [MVP]: Visual ER diagram showing all entity relationships.
+- [87. Tenant Model](https://ashishvats16.github.io/system-arch/page/tenant-model) [MVP]: Tenant/Brand entity — identity, voice settings, and configuration.
+- [88. Brand Model](https://ashishvats16.github.io/system-arch/page/brand-model) [MVP]: Brand configuration — voice, style, compliance settings.
+- [89. Product Model](https://ashishvats16.github.io/system-arch/page/product-model) [MVP]: Product entity — SKU, raw data, images, attributes.
+- [90. MarketplaceAccount Model](https://ashishvats16.github.io/system-arch/page/marketplace-account-model) [MVP]: MarketplaceAccount entity — encrypted credentials and connection status.
+- [91. Listing Model](https://ashishvats16.github.io/system-arch/page/listing-model) [MVP]: Listing entity — marketplace-specific listing record with status tracking.
+- [92. ListingVersion Model](https://ashishvats16.github.io/system-arch/page/listing-version-model) [MVP]: ListingVersion entity — content snapshots for versioning and rollback.
+- [93. Rules Model](https://ashishvats16.github.io/system-arch/page/rules-model) [MVP]: Rules entity — marketplace rules stored as versioned data.
+- [94. ValidationRun Model](https://ashishvats16.github.io/system-arch/page/validation-run-model) [MVP]: ValidationRun entity — validation execution records.
+- [95. AgentRun Model](https://ashishvats16.github.io/system-arch/page/agent-run-model) [MVP]: AgentRun entity — the observability backbone for AI operations.
+- [96. Performance Model](https://ashishvats16.github.io/system-arch/page/performance-model) [MVP]: Performance entity — marketplace metrics for the optimization loop.
+- [97. AuditLog Model](https://ashishvats16.github.io/system-arch/page/audit-log-model) [MVP]: AuditLog entity — complete audit trail for compliance and debugging.
+- [98. BrandChunk Model](https://ashishvats16.github.io/system-arch/page/brand-chunk-model) [MVP]: BrandChunk entity — embedded brand voice chunks stored in pgvector.
+- [99. Image Model](https://ashishvats16.github.io/system-arch/page/image-model) [MVP]: Image entity — product images with S3 references and compliance status.
+- [100. Error Model](https://ashishvats16.github.io/system-arch/page/error-model) [MVP]: Error tracking model — persisted errors for analysis and debugging.
+- [101. Database Indexing Strategy](https://ashishvats16.github.io/system-arch/page/database-indexing-strategy) [MVP]: Indexing strategy for query performance — covering indexes for common access patterns.
+- [102. Vector Storage](https://ashishvats16.github.io/system-arch/page/vector-storage) [MVP]: pgvector configuration and scaling considerations for brand voice embeddings.
+
+### API Architecture
+
+- [103. API Architecture](https://ashishvats16.github.io/system-arch/page/api-architecture-overview) [MVP]: FastAPI-based REST API layer — async, typed, auto OpenAPI docs. Complete endpoint catalog.
+- [104. Product APIs](https://ashishvats16.github.io/system-arch/page/product-apis) [MVP]: Product CRUD APIs — create, read, update with validation.
+- [105. Bulk Import APIs](https://ashishvats16.github.io/system-arch/page/bulk-import-apis) [MVP]: CSV bulk import API — upload, parse, validate, fan-out to async processing.
+- [106. Listing Generation APIs](https://ashishvats16.github.io/system-arch/page/listing-generation-apis) [MVP]: Listing generation trigger API — initiates AI agent pipeline.
+- [107. Validation APIs](https://ashishvats16.github.io/system-arch/page/validation-apis) [MVP]: Validation API — trigger rules engine + vision checks, returns ErrorReport.
+- [108. Approval APIs](https://ashishvats16.github.io/system-arch/page/approval-apis) [MVP]: Approval API — human approval with maker-checker enforcement.
+- [109. Publishing APIs](https://ashishvats16.github.io/system-arch/page/publishing-apis) [MVP]: Publishing API — trigger marketplace adapter execution.
+- [110. Marketplace Connection APIs](https://ashishvats16.github.io/system-arch/page/marketplace-connection-apis) [MVP]: Marketplace connection API — OAuth flow initiation.
+- [111. Analytics APIs](https://ashishvats16.github.io/system-arch/page/analytics-apis) [MVP]: Analytics API — unified performance data across marketplaces.
+- [112. Image APIs](https://ashishvats16.github.io/system-arch/page/image-apis) [MVP]: Image APIs — upload, compliance check, report retrieval.
+- [113. Agent APIs](https://ashishvats16.github.io/system-arch/page/agent-apis) [MVP]: Agent APIs — agent run status, history, and management.
+- [114. Error APIs](https://ashishvats16.github.io/system-arch/page/error-apis) [MVP]: Error APIs — error report retrieval and error analytics.
+- [115. Webhook Architecture](https://ashishvats16.github.io/system-arch/page/webhook-architecture) [PHASE2]: Webhook system for async event notifications.
+- [116. API Authentication](https://ashishvats16.github.io/system-arch/page/api-authentication) [MVP]: JWT-based API authentication via NextAuth.
+- [117. API Authorization](https://ashishvats16.github.io/system-arch/page/api-authorization) [MVP]: Role-based access control for API endpoints.
+- [118. API Versioning](https://ashishvats16.github.io/system-arch/page/api-versioning) [PHASE2]: API versioning strategy for backward compatibility.
+
+### Control Plane
+
+- [119. Rules Engine](https://ashishvats16.github.io/system-arch/page/rules-engine) [MVP]: The deterministic Rules Engine — the final arbiter for all AI output. Character limits, banned terms, attribute validation, category compliance.
+- [120. Validation Architecture](https://ashishvats16.github.io/system-arch/page/validation-architecture) [MVP]: Multi-stage validation pipeline — schema, rules, vision.
+- [121. Structured Error Contract](https://ashishvats16.github.io/system-arch/page/structured-error-contract) [MVP]: The unified ErrorReport contract — machine-readable errors for AI correction, UI, logging, retry, and debugging.
+- [122. Error Source Taxonomy](https://ashishvats16.github.io/system-arch/page/error-source-taxonomy) [MVP]: Classification of error sources — rules engine, vision, adapters, auth, network, AI model.
+- [123. Retry Classification](https://ashishvats16.github.io/system-arch/page/retry-classification) [MVP]: How errors are classified for retry strategy: auto-retry vs AI-correct vs user-action vs system-failure.
+- [124. Human Approval Gate](https://ashishvats16.github.io/system-arch/page/human-approval-gate) [MVP]: The human-in-the-loop approval mechanism — approve/reject/edit/regenerate with feedback loop.
+- [125. Maker-Checker Model](https://ashishvats16.github.io/system-arch/page/maker-checker-model) [MVP]: Maker-checker principle — the generator cannot approve their own listing.
+- [126. Audit Trail](https://ashishvats16.github.io/system-arch/page/audit-trail) [MVP]: Complete audit trail for every action — who did what, when, to which entity.
+- [127. Quality Scoring](https://ashishvats16.github.io/system-arch/page/quality-scoring) [MVP]: How listing quality is calculated — rule compliance, attribute completeness, brand voice match, image compliance.
+- [128. Confidence Scoring](https://ashishvats16.github.io/system-arch/page/confidence-scoring) [MVP]: AI confidence scoring for listing quality assessment.
+
+### Execution & Reliability
+
+- [129. Async Processing](https://ashishvats16.github.io/system-arch/page/async-processing) [MVP]: Redis + ARQ architecture for async job processing — why marketplace calls never block HTTP requests.
+- [130. Queue Architecture](https://ashishvats16.github.io/system-arch/page/queue-architecture) [MVP]: Redis + ARQ queue design — job queues, workers, and concurrency.
+- [131. Job Lifecycle](https://ashishvats16.github.io/system-arch/page/job-lifecycle) [MVP]: Job states: QUEUED → RUNNING → COMPLETED/FAILED with full context preservation.
+- [132. Retry Strategy](https://ashishvats16.github.io/system-arch/page/retry-strategy) [MVP]: Retry strategies for different failure types — agent correction, backoff, user escalation.
+- [133. Exponential Backoff](https://ashishvats16.github.io/system-arch/page/exponential-backoff) [MVP]: Exponential backoff implementation for rate-limited marketplace APIs.
+- [134. Rate Limiting](https://ashishvats16.github.io/system-arch/page/rate-limiting) [MVP]: Per-marketplace rate limiting to respect API quotas.
+- [135. Marketplace Throttling](https://ashishvats16.github.io/system-arch/page/marketplace-throttling) [MVP]: How marketplace API throttling is managed per-account.
+- [136. Idempotency](https://ashishvats16.github.io/system-arch/page/idempotency) [MVP]: Idempotency keys on all marketplace mutations — never double-publish.
+- [137. Partial Failure Handling](https://ashishvats16.github.io/system-arch/page/partial-failure-handling) [MVP]: Handling partial marketplace success — retry only failed fields.
+- [138. Dead Letter / Failed Jobs](https://ashishvats16.github.io/system-arch/page/dead-letter-failed-jobs) [MVP]: How permanently failed jobs are handled — dead letter queue and reprocessing.
+- [139. Job Reprocessing](https://ashishvats16.github.io/system-arch/page/job-reprocessing) [MVP]: How failed jobs can be retried with the same input.
+- [140. Batch Processing](https://ashishvats16.github.io/system-arch/page/batch-processing) [MVP]: CSV bulk import batch processing — row-level validation, fan-out, aggregate results.
+- [141. Parallel Agent Runs](https://ashishvats16.github.io/system-arch/page/parallel-agent-runs) [MVP]: How multiple agents and multiple products are processed in parallel.
+
+### AI Model Infrastructure
+
+- [142. Model Routing](https://ashishvats16.github.io/system-arch/page/model-routing) [MVP]: Model routing architecture — cheapest model that meets quality bar, with fallback and escalation.
+- [143. Model Selection Policy](https://ashishvats16.github.io/system-arch/page/model-selection-policy) [MVP]: Rules for selecting which model to use for each task.
+- [144. Model Fallback](https://ashishvats16.github.io/system-arch/page/model-fallback) [MVP]: Fallback chain when primary model fails.
+- [145. Heavy Reasoning Escalation](https://ashishvats16.github.io/system-arch/page/heavy-reasoning-escalation) [MVP]: When and how to escalate to heavier (more expensive) models for complex corrections.
+- [146. JSON Validation](https://ashishvats16.github.io/system-arch/page/json-validation) [MVP]: How AI JSON output is validated against Pydantic schemas.
+- [147. Structured Output Repair](https://ashishvats16.github.io/system-arch/page/structured-output-repair) [MVP]: How malformed AI output is repaired before escalating to a heavier model.
+- [148. Token Management](https://ashishvats16.github.io/system-arch/page/token-management) [MVP]: Token usage tracking, limits, and optimization.
+- [149. AI Cost Optimization](https://ashishvats16.github.io/system-arch/page/ai-cost-optimization) [MVP]: Strategies for minimizing AI costs — model routing, caching, avoiding unnecessary regeneration.
+- [150. Prompt Versioning](https://ashishvats16.github.io/system-arch/page/prompt-versioning) [PHASE2]: Versioning and tracking prompts for reproducibility and A/B testing.
+- [151. Model Observability](https://ashishvats16.github.io/system-arch/page/model-observability) [MVP]: Tracking model performance — latency, token usage, cost, error rates.
+- [152. AI Evaluation](https://ashishvats16.github.io/system-arch/page/ai-evaluation) [PHASE2]: How AI output quality is evaluated — quality metrics, evaluation datasets.
+- [153. AI Quality Metrics](https://ashishvats16.github.io/system-arch/page/ai-quality-metrics) [PHASE2]: Key quality metrics for measuring AI agent performance.
+
+### Security
+
+- [154. Security Architecture](https://ashishvats16.github.io/system-arch/page/security-architecture) [MVP]: Complete security architecture — authentication, authorization, encryption, tenant isolation, audit.
+- [155. Multi-Tenancy](https://ashishvats16.github.io/system-arch/page/multi-tenancy) [MVP]: Multi-tenancy enforcement — tenant_id on every query at repository layer.
+- [156. Tenant Isolation](https://ashishvats16.github.io/system-arch/page/tenant-isolation) [MVP]: How tenant data isolation is enforced at the database level.
+- [157. Authentication](https://ashishvats16.github.io/system-arch/page/authentication) [MVP]: JWT authentication via NextAuth.
+- [158. Authorization](https://ashishvats16.github.io/system-arch/page/authorization) [MVP]: RBAC-based authorization with four roles.
+- [159. Marketplace OAuth](https://ashishvats16.github.io/system-arch/page/marketplace-oauth) [MVP]: OAuth implementation for Amazon SP-API and Flipkart Seller API.
+- [160. Token Encryption](https://ashishvats16.github.io/system-arch/page/token-encryption) [MVP]: AES-256 encryption for marketplace credentials at rest.
+- [161. Secrets Management](https://ashishvats16.github.io/system-arch/page/secrets-management) [MVP]: AWS Secrets Manager for encryption keys and sensitive configuration.
+- [162. Data Encryption](https://ashishvats16.github.io/system-arch/page/data-encryption) [MVP]: Encryption at rest and in transit for all data.
+- [163. API Security](https://ashishvats16.github.io/system-arch/page/api-security) [MVP]: API security practices — rate limiting, input validation, CORS.
+- [164. Auditability](https://ashishvats16.github.io/system-arch/page/auditability) [MVP]: Full audit trail on every action for compliance and governance.
+- [165. AI Data Security](https://ashishvats16.github.io/system-arch/page/ai-data-security) [MVP]: How brand and product data is secured when sent to AI models.
+- [166. Prompt Injection Considerations](https://ashishvats16.github.io/system-arch/page/prompt-injection) [MVP]: Prompt injection considerations and mitigations.
+- [167. Marketplace Credential Security](https://ashishvats16.github.io/system-arch/page/marketplace-credential-security) [MVP]: Security for marketplace API credentials — isolation, encryption, access control.
+
+### Observability
+
+- [168. Logging](https://ashishvats16.github.io/system-arch/page/logging) [MVP]: Structured logging throughout the platform.
+- [169. Metrics](https://ashishvats16.github.io/system-arch/page/metrics) [MVP]: Application metrics — latency, throughput, error rates.
+- [170. Tracing](https://ashishvats16.github.io/system-arch/page/tracing) [MVP]: Distributed tracing with OpenTelemetry.
+- [171. Agent Observability](https://ashishvats16.github.io/system-arch/page/agent-observability) [MVP]: AgentRun-level observability — model, tokens, cost, duration, status, errors.
+- [172. AI Cost Observability](https://ashishvats16.github.io/system-arch/page/ai-cost-observability) [MVP]: Tracking AI costs across models, agents, and tenants.
+- [173. Marketplace API Observability](https://ashishvats16.github.io/system-arch/page/marketplace-api-observability) [MVP]: Tracking marketplace API performance and errors.
+- [174. Error Monitoring](https://ashishvats16.github.io/system-arch/page/error-monitoring) [MVP]: Error monitoring and alerting with Sentry.
+- [175. Sentry](https://ashishvats16.github.io/system-arch/page/sentry) [MVP]: Sentry configuration for error tracking and performance monitoring.
+- [176. OpenTelemetry](https://ashishvats16.github.io/system-arch/page/opentelemetry) [MVP]: OpenTelemetry for distributed tracing and metrics.
+- [177. AgentRun Telemetry](https://ashishvats16.github.io/system-arch/page/agent-run-telemetry) [MVP]: Detailed telemetry for every agent execution.
+
+### Infrastructure
+
+- [178. Recommended Tech Stack](https://ashishvats16.github.io/system-arch/page/recommended-tech-stack) [MVP]: Complete recommended tech stack with rationale for each technology choice.
+- [179. Frontend Architecture](https://ashishvats16.github.io/system-arch/page/frontend-architecture) [MVP]: Next.js frontend architecture — dashboard, review UI, analytics.
+- [180. Backend Architecture](https://ashishvats16.github.io/system-arch/page/backend-architecture) [MVP]: FastAPI backend architecture — async, typed, modular.
+- [181. AI Infrastructure](https://ashishvats16.github.io/system-arch/page/ai-infrastructure) [MVP]: AI infrastructure — LangGraph, model APIs, embedding pipeline.
+- [182. PostgreSQL](https://ashishvats16.github.io/system-arch/page/postgresql) [MVP]: PostgreSQL configuration — RDS, pgvector extension, connection pooling.
+- [183. pgvector](https://ashishvats16.github.io/system-arch/page/pgvector) [MVP]: pgvector extension for vector similarity search in PostgreSQL.
+- [184. Redis](https://ashishvats16.github.io/system-arch/page/redis) [MVP]: Redis for job queues and caching.
+- [185. ARQ](https://ashishvats16.github.io/system-arch/page/arq) [MVP]: ARQ task queue framework — Python async job processing.
+- [186. S3](https://ashishvats16.github.io/system-arch/page/s3) [MVP]: S3 for image storage, CSV uploads, and batch artifacts.
+- [187. AWS Infrastructure](https://ashishvats16.github.io/system-arch/page/aws-infrastructure) [MVP]: AWS infrastructure — EC2, RDS, ElastiCache, S3.
+- [188. Deployment Architecture](https://ashishvats16.github.io/system-arch/page/deployment-architecture) [MVP]: How the application is deployed — EC2, auto-restart, blue-green deployments.
+- [189. Environment Strategy](https://ashishvats16.github.io/system-arch/page/environment-strategy) [MVP]: Environment strategy — local, staging, production.
+- [190. Local Development](https://ashishvats16.github.io/system-arch/page/local-development) [MVP]: Local development setup with Docker Compose.
+- [191. Staging](https://ashishvats16.github.io/system-arch/page/staging) [MVP]: Staging environment for pre-production testing.
+
+### Cost
+
+- [192. MVP Operating Cost](https://ashishvats16.github.io/system-arch/page/mvp-operating-cost) [MVP]: MVP monthly operating cost breakdown — infrastructure + AI.
+- [193. Infrastructure Cost](https://ashishvats16.github.io/system-arch/page/infrastructure-cost) [MVP]: AWS infrastructure cost details.
+- [194. LLM Cost](https://ashishvats16.github.io/system-arch/page/llm-cost) [MVP]: LLM API cost analysis per listing.
+- [195. Embedding Cost](https://ashishvats16.github.io/system-arch/page/embedding-cost) [MVP]: Embedding API cost for brand voice vectorization.
+- [196. Storage Cost](https://ashishvats16.github.io/system-arch/page/storage-cost) [MVP]: S3 storage costs for images and artifacts.
+- [197. Marketplace API Cost](https://ashishvats16.github.io/system-arch/page/marketplace-api-cost) [MVP]: Marketplace API costs — Amazon SP-API and Flipkart are free to use.
+- [198. Scaling Cost](https://ashishvats16.github.io/system-arch/page/scaling-cost) [MVP]: How costs scale with usage — linear LLM scaling, infrastructure step functions.
+- [199. Cost per Listing](https://ashishvats16.github.io/system-arch/page/cost-per-listing) [MVP]: Derived metric: total cost per successful listing generation.
+- [200. Cost Optimization Strategy](https://ashishvats16.github.io/system-arch/page/cost-optimization-strategy) [MVP]: Strategies for reducing operational costs over time.
+
+### Roadmap
+
+- [201. MVP Phase 1](https://ashishvats16.github.io/system-arch/page/mvp-phase-1) [MVP]: Phase 1 — Core listing pipeline with Amazon and Flipkart adapters.
+- [202. Phase 2](https://ashishvats16.github.io/system-arch/page/phase-2) [PHASE2]: Phase 2 — Version history, refined image pipeline, unified analytics, sales attribution.
+- [203. Phase 3](https://ashishvats16.github.io/system-arch/page/phase-3) [PHASE3]: Phase 3 — Optimization Agent, competitive signals, confidence-based auto-publish.
+- [204. Future Marketplace Expansion](https://ashishvats16.github.io/system-arch/page/future-marketplace-expansion) [FUTURE]: Adding new marketplaces — Myntra, Ajio, Meesho, Nykaa.
+- [205. Future Agent Expansion](https://ashishvats16.github.io/system-arch/page/future-agent-expansion) [FUTURE]: Expanding the agent ecosystem — Pricing, Ads, Inventory, Returns, Revenue Operations.
+- [206. Auto-Publish Evolution](https://ashishvats16.github.io/system-arch/page/auto-publish-evolution) [PHASE3]: Evolution from mandatory human approval to confidence-based auto-publish.
+- [207. Optimization Evolution](https://ashishvats16.github.io/system-arch/page/optimization-evolution) [PHASE3]: How the Optimization Agent evolves from basic suggestions to advanced optimization.
+- [208. AI Learning Loop](https://ashishvats16.github.io/system-arch/page/ai-learning-loop) [PHASE3]: How the platform learns and improves over time — feedback, performance, approved patterns.
+- [209. Production Readiness Checklist](https://ashishvats16.github.io/system-arch/page/production-readiness-checklist) [MVP]: Checklist for production launch readiness.
+
+### Engineering
+
+- [210. Development Plan](https://ashishvats16.github.io/system-arch/page/development-plan) [MVP]: Recommended development order — step-by-step implementation sequence.
+- [211. Module Dependency Graph](https://ashishvats16.github.io/system-arch/page/module-dependency-graph) [MVP]: Visual dependency graph showing build order and parallelizable work.
+- [212. Build Order](https://ashishvats16.github.io/system-arch/page/build-order) [MVP]: Exact recommended build order with dependencies and acceptance criteria.
+- [213. Engineering Tasks](https://ashishvats16.github.io/system-arch/page/engineering-tasks) [MVP]: Detailed engineering task breakdown by module.
+- [214. Backend Checklist](https://ashishvats16.github.io/system-arch/page/backend-checklist) [MVP]: Backend engineering checklist — everything the backend team needs to build.
+- [215. Frontend Checklist](https://ashishvats16.github.io/system-arch/page/frontend-checklist) [MVP]: Frontend engineering checklist — dashboard, review UI, analytics.
+- [216. AI Engineering Checklist](https://ashishvats16.github.io/system-arch/page/ai-engineering-checklist) [MVP]: AI engineering checklist — agents, prompts, orchestration.
+- [217. DevOps Checklist](https://ashishvats16.github.io/system-arch/page/devops-checklist) [MVP]: DevOps checklist — infrastructure, deployment, monitoring.
+- [218. QA Checklist](https://ashishvats16.github.io/system-arch/page/qa-checklist) [MVP]: QA checklist — test strategy, test cases, and coverage requirements.
+- [219. Security Checklist](https://ashishvats16.github.io/system-arch/page/security-checklist) [MVP]: Security checklist — encryption, authentication, authorization, audit.
+- [220. Production Launch Checklist](https://ashishvats16.github.io/system-arch/page/production-launch-checklist) [MVP]: Complete pre-launch checklist for production deployment.
+- [221. Architectural Invariants](https://ashishvats16.github.io/system-arch/page/architectural-invariants) [MVP]: The non-negotiable architectural rules that must never be violated.
+

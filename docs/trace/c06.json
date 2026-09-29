@@ -1,0 +1,3583 @@
+{
+ "chunk": "c06",
+ "start": 3513,
+ "end": 4428,
+ "items": [
+  {
+   "id": "R03513",
+   "lines": [
+    3513,
+    3513
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "info",
+   "text": "14. Dashboard Requirements",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03515",
+   "lines": [
+    3515,
+    3515
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "info",
+   "text": "14.1 Product List View",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03517",
+   "lines": [
+    3517,
+    3519
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "info",
+   "text": "Table header: Column | What it Should Show",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03521",
+   "lines": [
+    3521,
+    3523
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"Product\" shows: Product name."
+  },
+  {
+   "id": "R03521a",
+   "lines": [
+    3521,
+    3523
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"Product\" shows: primary image."
+  },
+  {
+   "id": "R03525",
+   "lines": [
+    3525,
+    3527
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"SKU\" shows: Seller SKU."
+  },
+  {
+   "id": "R03529",
+   "lines": [
+    3529,
+    3531
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"Category\" shows: Canonical category."
+  },
+  {
+   "id": "R03533",
+   "lines": [
+    3533,
+    3535
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"Variants\" shows: Count."
+  },
+  {
+   "id": "R03533a",
+   "lines": [
+    3533,
+    3535
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"Variants\" shows: variant summary."
+  },
+  {
+   "id": "R03537",
+   "lines": [
+    3537,
+    3539
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"Amazon\" shows: Status."
+  },
+  {
+   "id": "R03537a",
+   "lines": [
+    3537,
+    3539
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"Amazon\" shows: listing ID."
+  },
+  {
+   "id": "R03541",
+   "lines": [
+    3541,
+    3543
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"Flipkart\" shows: Status."
+  },
+  {
+   "id": "R03541a",
+   "lines": [
+    3541,
+    3543
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"Flipkart\" shows: listing ID."
+  },
+  {
+   "id": "R03545",
+   "lines": [
+    3545,
+    3547
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"Myntra\" shows: Status."
+  },
+  {
+   "id": "R03545a",
+   "lines": [
+    3545,
+    3547
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"Myntra\" shows: listing ID."
+  },
+  {
+   "id": "R03549",
+   "lines": [
+    3549,
+    3551
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"AJIO\" shows: Status."
+  },
+  {
+   "id": "R03549a",
+   "lines": [
+    3549,
+    3551
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"AJIO\" shows: listing ID."
+  },
+  {
+   "id": "R03553",
+   "lines": [
+    3553,
+    3555
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"Meesho\" shows: Status."
+  },
+  {
+   "id": "R03553a",
+   "lines": [
+    3553,
+    3555
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"Meesho\" shows: listing ID."
+  },
+  {
+   "id": "R03557",
+   "lines": [
+    3557,
+    3559
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"Nykaa Fashion\" shows: Status."
+  },
+  {
+   "id": "R03557a",
+   "lines": [
+    3557,
+    3559
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"Nykaa Fashion\" shows: listing ID."
+  },
+  {
+   "id": "R03561",
+   "lines": [
+    3561,
+    3563
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"Overall\" shows: Live / Partial / Blocked / Error / Processing."
+  },
+  {
+   "id": "R03565",
+   "lines": [
+    3565,
+    3567
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"Issues\" shows: Open issue count."
+  },
+  {
+   "id": "R03569",
+   "lines": [
+    3569,
+    3571
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "data",
+   "text": "Product List View column \"Last activity\" shows: Latest workflow event."
+  },
+  {
+   "id": "R03573",
+   "lines": [
+    3573,
+    3573
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "info",
+   "text": "14.2 Product Detail View",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03575",
+   "lines": [
+    3575,
+    3575
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "constraint",
+   "text": "The Product Detail View must render ten dedicated inspector panels."
+  },
+  {
+   "id": "R03577",
+   "lines": [
+    3577,
+    3577
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Canonical product information\": Core attributes."
+  },
+  {
+   "id": "R03577a",
+   "lines": [
+    3577,
+    3577
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Canonical product information\": fabric."
+  },
+  {
+   "id": "R03577b",
+   "lines": [
+    3577,
+    3577
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Canonical product information\": weave."
+  },
+  {
+   "id": "R03577c",
+   "lines": [
+    3577,
+    3577
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Canonical product information\": care."
+  },
+  {
+   "id": "R03577d",
+   "lines": [
+    3577,
+    3577
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Canonical product information\": legal declarations."
+  },
+  {
+   "id": "R03578",
+   "lines": [
+    3578,
+    3578
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Variants and size/color matrix\": interactive matrix of all styles, colorways, and sizes."
+  },
+  {
+   "id": "R03579",
+   "lines": [
+    3579,
+    3579
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Images and media validation\": slot mapping."
+  },
+  {
+   "id": "R03579a",
+   "lines": [
+    3579,
+    3579
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Images and media validation\": aspect ratio check."
+  },
+  {
+   "id": "R03579b",
+   "lines": [
+    3579,
+    3579
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Images and media validation\": background validation."
+  },
+  {
+   "id": "R03580",
+   "lines": [
+    3580,
+    3580
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Generated content\": Marketplace-specific title."
+  },
+  {
+   "id": "R03580a",
+   "lines": [
+    3580,
+    3580
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Generated content\": marketplace-specific bullets."
+  },
+  {
+   "id": "R03580b",
+   "lines": [
+    3580,
+    3580
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Generated content\": marketplace-specific search terms."
+  },
+  {
+   "id": "R03580c",
+   "lines": [
+    3580,
+    3580
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Generated content\": marketplace-specific description."
+  },
+  {
+   "id": "R03581",
+   "lines": [
+    3581,
+    3581
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Marketplace-specific preview/mapped fields\": side-by-side view of portal payloads."
+  },
+  {
+   "id": "R03582",
+   "lines": [
+    3582,
+    3582
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Validation results\": Rule-by-rule pass/fail scorecard."
+  },
+  {
+   "id": "R03582a",
+   "lines": [
+    3582,
+    3582
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Validation results\": scorecard with severity flags."
+  },
+  {
+   "id": "R03583",
+   "lines": [
+    3583,
+    3583
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Marketplace status cards\": Status badge."
+  },
+  {
+   "id": "R03583a",
+   "lines": [
+    3583,
+    3583
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Marketplace status cards\": external listing ID."
+  },
+  {
+   "id": "R03583b",
+   "lines": [
+    3583,
+    3583
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Marketplace status cards\": live portal link."
+  },
+  {
+   "id": "R03583c",
+   "lines": [
+    3583,
+    3583
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Marketplace status cards\": last sync."
+  },
+  {
+   "id": "R03584",
+   "lines": [
+    3584,
+    3584
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Open issues and required actions\": Human action items with exact questions."
+  },
+  {
+   "id": "R03584a",
+   "lines": [
+    3584,
+    3584
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Open issues and required actions\": human action items with input fields."
+  },
+  {
+   "id": "R03585",
+   "lines": [
+    3585,
+    3585
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Submission attempts\": Historic payload snapshots."
+  },
+  {
+   "id": "R03585a",
+   "lines": [
+    3585,
+    3585
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Submission attempts\": timestamps."
+  },
+  {
+   "id": "R03585b",
+   "lines": [
+    3585,
+    3585
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Submission attempts\": error responses."
+  },
+  {
+   "id": "R03586",
+   "lines": [
+    3586,
+    3586
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "requirement",
+   "text": "Detail panel \"Change history / audit trail\": complete record of who/what modified any field."
+  },
+  {
+   "id": "R03588",
+   "lines": [
+    3588,
+    3588
+   ],
+   "page": "[06] Status Lifecycle & Dashboard Specs (§13–14)",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03590",
+   "lines": [
+    3590,
+    3590
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "info",
+   "text": "Page title [07] Error Management, Anti-Loop & HITL (§15–16)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03592",
+   "lines": [
+    3592,
+    3592
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "info",
+   "text": "Section: Founder's POV Doc",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R03593",
+   "lines": [
+    3593,
+    3593
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "scope",
+   "text": "Page [07] Error Management, Anti-Loop & HITL (§15–16) scope: MVP."
+  },
+  {
+   "id": "R03594",
+   "lines": [
+    3594,
+    3594
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "info",
+   "text": "Page URL: https://ashishvats16.github.io/system-arch/page/founders-error-framework-hitl",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R03595",
+   "lines": [
+    3595,
+    3595
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Page [07] description: Marketplace error taxonomy."
+  },
+  {
+   "id": "R03595a",
+   "lines": [
+    3595,
+    3595
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "requirement",
+   "text": "Page [07] description: deterministic auto-fix loop."
+  },
+  {
+   "id": "R03595b",
+   "lines": [
+    3595,
+    3595
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "requirement",
+   "text": "Page [07] description: strict anti-loop retry rules."
+  },
+  {
+   "id": "R03595c",
+   "lines": [
+    3595,
+    3595
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Page [07] description: human-in-the-loop escalation boundaries."
+  },
+  {
+   "id": "R03597",
+   "lines": [
+    3597,
+    3597
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "info",
+   "text": "15. Error Management Framework",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03599",
+   "lines": [
+    3599,
+    3603
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "info",
+   "text": "Table header: Error Class | Example | Agent Behavior",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03605",
+   "lines": [
+    3605,
+    3605
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class (§15 Error Management Framework): \"Missing data\"."
+  },
+  {
+   "id": "R03607",
+   "lines": [
+    3607,
+    3607
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class \"Missing data\" example: Fabric composition absent."
+  },
+  {
+   "id": "R03609",
+   "lines": [
+    3609,
+    3609
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Missing data\": Find source."
+  },
+  {
+   "id": "R03609a",
+   "lines": [
+    3609,
+    3609
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Missing data\": if unavailable, ask seller."
+  },
+  {
+   "id": "R03611",
+   "lines": [
+    3611,
+    3611
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class (§15 Error Management Framework): \"Invalid value\"."
+  },
+  {
+   "id": "R03613",
+   "lines": [
+    3613,
+    3613
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class \"Invalid value\" example: Marketplace does not accept seller's color term."
+  },
+  {
+   "id": "R03615",
+   "lines": [
+    3615,
+    3615
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Invalid value\": Map to allowed marketplace value."
+  },
+  {
+   "id": "R03617",
+   "lines": [
+    3617,
+    3617
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class (§15 Error Management Framework): \"Category mismatch\"."
+  },
+  {
+   "id": "R03619",
+   "lines": [
+    3619,
+    3619
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class \"Category mismatch\" example: Product mapped to wrong product type."
+  },
+  {
+   "id": "R03621",
+   "lines": [
+    3621,
+    3621
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Category mismatch\": Reclassify."
+  },
+  {
+   "id": "R03621a",
+   "lines": [
+    3621,
+    3621
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Category mismatch\": remap."
+  },
+  {
+   "id": "R03623",
+   "lines": [
+    3623,
+    3623
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class (§15 Error Management Framework): \"Variation error\"."
+  },
+  {
+   "id": "R03625",
+   "lines": [
+    3625,
+    3625
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class \"Variation error\" example: Size/color relationship invalid."
+  },
+  {
+   "id": "R03627",
+   "lines": [
+    3627,
+    3627
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Variation error\": Rebuild mapping from canonical variant matrix."
+  },
+  {
+   "id": "R03629",
+   "lines": [
+    3629,
+    3629
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class (§15 Error Management Framework): \"Media error\"."
+  },
+  {
+   "id": "R03631",
+   "lines": [
+    3631,
+    3631
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class \"Media error\" example: Image not accepted."
+  },
+  {
+   "id": "R03633",
+   "lines": [
+    3633,
+    3633
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Media error\": Identify failed image rule."
+  },
+  {
+   "id": "R03633a",
+   "lines": [
+    3633,
+    3633
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Media error\": replace/remap if possible."
+  },
+  {
+   "id": "R03635",
+   "lines": [
+    3635,
+    3635
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class (§15 Error Management Framework): \"Content error\"."
+  },
+  {
+   "id": "R03637",
+   "lines": [
+    3637,
+    3637
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class \"Content error\" example: Title/field violates marketplace rule."
+  },
+  {
+   "id": "R03639",
+   "lines": [
+    3639,
+    3639
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Content error\": Rewrite using verified facts."
+  },
+  {
+   "id": "R03641",
+   "lines": [
+    3641,
+    3641
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class (§15 Error Management Framework): \"Identifier error\"."
+  },
+  {
+   "id": "R03643",
+   "lines": [
+    3643,
+    3643
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class \"Identifier error\" example: GTIN/identifier issue."
+  },
+  {
+   "id": "R03645",
+   "lines": [
+    3645,
+    3645
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Identifier error\": Ask seller."
+  },
+  {
+   "id": "R03645a",
+   "lines": [
+    3645,
+    3645
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Identifier error\": use approved exemption flow if applicable."
+  },
+  {
+   "id": "R03647",
+   "lines": [
+    3647,
+    3647
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class (§15 Error Management Framework): \"Compliance error\"."
+  },
+  {
+   "id": "R03649",
+   "lines": [
+    3649,
+    3649
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class \"Compliance error\" example: Required declaration missing."
+  },
+  {
+   "id": "R03651",
+   "lines": [
+    3651,
+    3651
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Compliance error\": Request exact compliance information."
+  },
+  {
+   "id": "R03653",
+   "lines": [
+    3653,
+    3653
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class (§15 Error Management Framework): \"Account permission\"."
+  },
+  {
+   "id": "R03655",
+   "lines": [
+    3655,
+    3655
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class \"Account permission\" example: Seller not approved for category/brand."
+  },
+  {
+   "id": "R03657",
+   "lines": [
+    3657,
+    3657
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Account permission\": Create human action task."
+  },
+  {
+   "id": "R03659",
+   "lines": [
+    3659,
+    3659
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class (§15 Error Management Framework): \"Marketplace outage/technical\"."
+  },
+  {
+   "id": "R03661",
+   "lines": [
+    3661,
+    3661
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class \"Marketplace outage/technical\" example: Submission unavailable."
+  },
+  {
+   "id": "R03663",
+   "lines": [
+    3663,
+    3663
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Marketplace outage/technical\": Retry according to safe retry policy."
+  },
+  {
+   "id": "R03663a",
+   "lines": [
+    3663,
+    3663
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Marketplace outage/technical\": do not create duplicates."
+  },
+  {
+   "id": "R03665",
+   "lines": [
+    3665,
+    3665
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class (§15 Error Management Framework): \"Unknown error\"."
+  },
+  {
+   "id": "R03667",
+   "lines": [
+    3667,
+    3667
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "data",
+   "text": "Error class \"Unknown error\" example: Unrecognized marketplace message."
+  },
+  {
+   "id": "R03669",
+   "lines": [
+    3669,
+    3669
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Unknown error\": Stop unsafe automation."
+  },
+  {
+   "id": "R03669a",
+   "lines": [
+    3669,
+    3669
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Unknown error\": show raw message."
+  },
+  {
+   "id": "R03669b",
+   "lines": [
+    3669,
+    3669
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Unknown error\": show plain-language summary (with the raw message)."
+  },
+  {
+   "id": "R03669c",
+   "lines": [
+    3669,
+    3669
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Agent behavior for \"Unknown error\": create human task."
+  },
+  {
+   "id": "R03671",
+   "lines": [
+    3671,
+    3671
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "info",
+   "text": "15.1 Error Resolution Loop",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03673",
+   "lines": [
+    3673,
+    3673
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Error resolution loop step 27: Capture error exactly as returned."
+  },
+  {
+   "id": "R03674",
+   "lines": [
+    3674,
+    3674
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Error resolution loop step 28: Normalize it into an internal error category."
+  },
+  {
+   "id": "R03675",
+   "lines": [
+    3675,
+    3675
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Error resolution loop step 29: Identify affected field/variant/listing."
+  },
+  {
+   "id": "R03676",
+   "lines": [
+    3676,
+    3676
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Error resolution loop step 30: Determine whether the error is deterministic and safely fixable."
+  },
+  {
+   "id": "R03677",
+   "lines": [
+    3677,
+    3677
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Error resolution loop step 31: Apply fix if safe."
+  },
+  {
+   "id": "R03678",
+   "lines": [
+    3678,
+    3678
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Error resolution loop step 32: Re-run validation."
+  },
+  {
+   "id": "R03679",
+   "lines": [
+    3679,
+    3679
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Error resolution loop step 33: Resubmit."
+  },
+  {
+   "id": "R03680",
+   "lines": [
+    3680,
+    3680
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Error resolution loop step 34: If still failing, stop repeated retries."
+  },
+  {
+   "id": "R03680a",
+   "lines": [
+    3680,
+    3680
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Error resolution loop step 34: If still failing, escalate."
+  },
+  {
+   "id": "R03681",
+   "lines": [
+    3681,
+    3681
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "flow",
+   "text": "Error resolution loop step 35: Show the seller the exact remaining action."
+  },
+  {
+   "id": "R03683",
+   "lines": [
+    3683,
+    3683
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "info",
+   "text": "Important Anti-Loop Rule",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03685",
+   "lines": [
+    3685,
+    3685
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "requirement",
+   "text": "The agent must never repeatedly submit the same failed listing indefinitely."
+  },
+  {
+   "id": "R03685a",
+   "lines": [
+    3685,
+    3685
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "requirement",
+   "text": "Every retry needs a changed input, a known retryable condition, or a marketplace status transition that justifies another attempt."
+  },
+  {
+   "id": "R03687",
+   "lines": [
+    3687,
+    3687
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "info",
+   "text": "16. Human-in-the-Loop Rules",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03689",
+   "lines": [
+    3689,
+    3689
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "requirement",
+   "text": "The product should be autonomous by default."
+  },
+  {
+   "id": "R03689a",
+   "lines": [
+    3689,
+    3689
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "requirement",
+   "text": "The product should not be reckless (autonomy by default, but not reckless)."
+  },
+  {
+   "id": "R03689b",
+   "lines": [
+    3689,
+    3689
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "requirement",
+   "text": "Human involvement is a controlled exception."
+  },
+  {
+   "id": "R03691",
+   "lines": [
+    3691,
+    3693
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "info",
+   "text": "Table header: Ask the Seller When | Do NOT Ask When",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03695",
+   "lines": [
+    3695,
+    3695
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "requirement",
+   "text": "Ask the seller when: A critical factual field is genuinely missing."
+  },
+  {
+   "id": "R03697",
+   "lines": [
+    3697,
+    3697
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "requirement",
+   "text": "Do NOT ask the seller when: The answer already exists in the canonical record."
+  },
+  {
+   "id": "R03699",
+   "lines": [
+    3699,
+    3699
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "requirement",
+   "text": "Ask the seller when: Two authoritative sources conflict."
+  },
+  {
+   "id": "R03701",
+   "lines": [
+    3701,
+    3701
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "requirement",
+   "text": "Do NOT ask the seller when: The value can be deterministically normalized."
+  },
+  {
+   "id": "R03703",
+   "lines": [
+    3703,
+    3703
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "requirement",
+   "text": "Ask the seller when: Marketplace requires seller-specific approval/evidence."
+  },
+  {
+   "id": "R03705",
+   "lines": [
+    3705,
+    3705
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "requirement",
+   "text": "Do NOT ask the seller when: The agent can safely transform an existing value."
+  },
+  {
+   "id": "R03707",
+   "lines": [
+    3707,
+    3707
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "requirement",
+   "text": "Ask the seller when: A compliance declaration cannot be verified."
+  },
+  {
+   "id": "R03709",
+   "lines": [
+    3709,
+    3709
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "requirement",
+   "text": "Do NOT ask the seller when: The missing value is merely a formatting variation."
+  },
+  {
+   "id": "R03711",
+   "lines": [
+    3711,
+    3711
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "requirement",
+   "text": "Ask the seller when: A category/brand permission decision is required."
+  },
+  {
+   "id": "R03713",
+   "lines": [
+    3713,
+    3713
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "requirement",
+   "text": "Do NOT ask the seller when: The marketplace has a known mapping for the category."
+  },
+  {
+   "id": "R03715",
+   "lines": [
+    3715,
+    3715
+   ],
+   "page": "[07] Error Management, Anti-Loop & HITL (§15–16)",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03717",
+   "lines": [
+    3717,
+    3717
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "info",
+   "text": "Page title [08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03719",
+   "lines": [
+    3719,
+    3719
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "info",
+   "text": "Section: Founder's POV Doc",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R03720",
+   "lines": [
+    3720,
+    3720
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "scope",
+   "text": "Page [08] Quality Gates & Legal Metrology Matrix (§17–19) scope: MVP."
+  },
+  {
+   "id": "R03721",
+   "lines": [
+    3721,
+    3721
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "info",
+   "text": "Page URL: https://ashishvats16.github.io/system-arch/page/founders-quality-compliance-matrix",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R03722",
+   "lines": [
+    3722,
+    3722
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "info",
+   "text": "Page [08] description: Pre-submission quality gates (itemised in §17).",
+   "why_not": "restatement",
+   "dup_of": "R03724"
+  },
+  {
+   "id": "R03722a",
+   "lines": [
+    3722,
+    3722
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "info",
+   "text": "Page [08] description: Indian Legal Metrology 2022 garment declarations (itemised under Legal Metrology Garment Amendment (2022)).",
+   "why_not": "restatement",
+   "dup_of": "R03844"
+  },
+  {
+   "id": "R03722b",
+   "lines": [
+    3722,
+    3722
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "info",
+   "text": "Page [08] description: marketplace requirement matrix (itemised in §19).",
+   "why_not": "restatement",
+   "dup_of": "R03848"
+  },
+  {
+   "id": "R03724",
+   "lines": [
+    3724,
+    3724
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "§17: quality gates are applied before submission."
+  },
+  {
+   "id": "R03726",
+   "lines": [
+    3726,
+    3728
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "info",
+   "text": "Table header: Gate | Pass Condition",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03730",
+   "lines": [
+    3730,
+    3732
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Quality gate \"Identity\" passes when: Brand, product type and seller SKU are coherent."
+  },
+  {
+   "id": "R03734",
+   "lines": [
+    3734,
+    3736
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Quality gate \"Classification\" passes when: Marketplace category/product type selected with sufficient confidence."
+  },
+  {
+   "id": "R03738",
+   "lines": [
+    3738,
+    3740
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Quality gate \"Attributes\" passes when: All required/conditional attributes are populated with valid values."
+  },
+  {
+   "id": "R03742",
+   "lines": [
+    3742,
+    3744
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Quality gate \"Variants\" passes when: Every sellable variant has consistent identity."
+  },
+  {
+   "id": "R03742a",
+   "lines": [
+    3742,
+    3744
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Quality gate \"Variants\" passes when: Every sellable variant has consistent size/color."
+  },
+  {
+   "id": "R03742b",
+   "lines": [
+    3742,
+    3744
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Quality gate \"Variants\" passes when: Every sellable variant has required identifiers."
+  },
+  {
+   "id": "R03746",
+   "lines": [
+    3746,
+    3748
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Quality gate \"Media\" passes when: Required media exists."
+  },
+  {
+   "id": "R03748",
+   "lines": [
+    3748,
+    3748
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Quality gate \"Media\" passes when: Required media is associated correctly."
+  },
+  {
+   "id": "R03750",
+   "lines": [
+    3750,
+    3752
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Quality gate \"Content\" passes when: Title/bullets/description/keywords are based on verified facts."
+  },
+  {
+   "id": "R03752",
+   "lines": [
+    3752,
+    3752
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Quality gate \"Content\" passes when: Title/bullets/description/keywords are based on marketplace rules."
+  },
+  {
+   "id": "R03754",
+   "lines": [
+    3754,
+    3756
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Quality gate \"Compliance\" passes when: Required product/packaging declarations are available where applicable."
+  },
+  {
+   "id": "R03756",
+   "lines": [
+    3756,
+    3756
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Quality gate \"Compliance\" passes when: Seller information is available where applicable."
+  },
+  {
+   "id": "R03758",
+   "lines": [
+    3758,
+    3760
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Quality gate \"Commercial\" passes when: MRP/price and other required commercial fields are internally consistent."
+  },
+  {
+   "id": "R03762",
+   "lines": [
+    3762,
+    3764
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Quality gate \"Submission\" passes when: No known blocking validation issue remains."
+  },
+  {
+   "id": "R03766",
+   "lines": [
+    3766,
+    3766
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "info",
+   "text": "18. Apparel Compliance Data to Capture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03768",
+   "lines": [
+    3768,
+    3768
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "scope",
+   "text": "§18 is a business-data checklist, not legal advice."
+  },
+  {
+   "id": "R03768a",
+   "lines": [
+    3768,
+    3768
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "The product should capture the compliance data listed in §18."
+  },
+  {
+   "id": "R03768b",
+   "lines": [
+    3768,
+    3768
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "The product should avoid assuming legal compliance merely because fields are populated."
+  },
+  {
+   "id": "R03770",
+   "lines": [
+    3770,
+    3774
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "info",
+   "text": "Table header: Compliance Data | Capture At | Notes",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03776",
+   "lines": [
+    3776,
+    3778
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Compliance data \"Manufacturer name/address\" captured at: Brand + product."
+  },
+  {
+   "id": "R03780",
+   "lines": [
+    3780,
+    3780
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Compliance data \"Manufacturer name/address\" note: Exact legal details where applicable."
+  },
+  {
+   "id": "R03782",
+   "lines": [
+    3782,
+    3784
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Compliance data \"Marketer/brand owner details\" captured at: Brand/product."
+  },
+  {
+   "id": "R03786",
+   "lines": [
+    3786,
+    3786
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Compliance data \"Marketer/brand owner details\" note: Where applicable."
+  },
+  {
+   "id": "R03788",
+   "lines": [
+    3788,
+    3790
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Compliance data \"Importer details\" captured at: Product."
+  },
+  {
+   "id": "R03792",
+   "lines": [
+    3792,
+    3792
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Compliance data \"Importer details\" note: For imported products where applicable."
+  },
+  {
+   "id": "R03794",
+   "lines": [
+    3794,
+    3796
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Compliance data \"Country of origin/manufacture\" captured at: Product."
+  },
+  {
+   "id": "R03798",
+   "lines": [
+    3798,
+    3798
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Compliance data \"Country of origin/manufacture\" note: Do not infer from brand location."
+  },
+  {
+   "id": "R03800",
+   "lines": [
+    3800,
+    3802
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Compliance data \"Consumer care contact\" captured at: Brand."
+  },
+  {
+   "id": "R03804",
+   "lines": [
+    3804,
+    3804
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Compliance data \"Consumer care contact\" note: Email/phone as applicable."
+  },
+  {
+   "id": "R03806",
+   "lines": [
+    3806,
+    3808
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Compliance data \"Size declaration\" captured at: Variant/product."
+  },
+  {
+   "id": "R03810",
+   "lines": [
+    3810,
+    3810
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Compliance data \"Size declaration\" note (\"International size + metric measurements where required\"): capture international size."
+  },
+  {
+   "id": "R03810a",
+   "lines": [
+    3810,
+    3810
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Compliance data \"Size declaration\" note (\"International size + metric measurements where required\"): capture metric measurements where required."
+  },
+  {
+   "id": "R03812",
+   "lines": [
+    3812,
+    3814
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Compliance data \"MRP inclusive of taxes\" captured at: Variant/product."
+  },
+  {
+   "id": "R03816",
+   "lines": [
+    3816,
+    3816
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Compliance data \"MRP inclusive of taxes\" note: Capture exact seller-declared MRP."
+  },
+  {
+   "id": "R03818",
+   "lines": [
+    3818,
+    3820
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Compliance data \"Fabric/fiber composition\" captured at: Product."
+  },
+  {
+   "id": "R03822",
+   "lines": [
+    3822,
+    3822
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Compliance data \"Fabric/fiber composition\" note: Capture exact composition rather than generic material wording."
+  },
+  {
+   "id": "R03824",
+   "lines": [
+    3824,
+    3826
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Compliance data \"Care instructions\" captured at: Product."
+  },
+  {
+   "id": "R03828",
+   "lines": [
+    3828,
+    3828
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Compliance data \"Care instructions\" note: Seller/manufacturer-provided."
+  },
+  {
+   "id": "R03830",
+   "lines": [
+    3830,
+    3832
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Compliance data \"Package declarations\" captured at: Product/package."
+  },
+  {
+   "id": "R03834",
+   "lines": [
+    3834,
+    3834
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Compliance data \"Package declarations\" note: Where applicable."
+  },
+  {
+   "id": "R03836",
+   "lines": [
+    3836,
+    3838
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Compliance data \"HSN/tax classification\" captured at: Variant/product."
+  },
+  {
+   "id": "R03840",
+   "lines": [
+    3840,
+    3840
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Compliance data \"HSN/tax classification\" note: Seller-provided/verified."
+  },
+  {
+   "id": "R03840a",
+   "lines": [
+    3840,
+    3840
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Compliance data \"HSN/tax classification\" note: do not blindly infer final tax classification."
+  },
+  {
+   "id": "R03842",
+   "lines": [
+    3842,
+    3842
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "info",
+   "text": "Legal Metrology Garment Amendment (2022)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03844",
+   "lines": [
+    3844,
+    3844
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "India's Department of Consumer Affairs has specific garment-related Legal Metrology requirements (2022 amendment)."
+  },
+  {
+   "id": "R03844a",
+   "lines": [
+    3844,
+    3844
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "2022 amendment: certain garment/hosiery sales require a declaration of manufacturer/marketer/brand owner/importer details."
+  },
+  {
+   "id": "R03844b",
+   "lines": [
+    3844,
+    3844
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "2022 amendment: certain garment/hosiery sales require a declaration of consumer-care contact."
+  },
+  {
+   "id": "R03844c",
+   "lines": [
+    3844,
+    3844
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "2022 amendment: certain garment/hosiery sales require a declaration of size."
+  },
+  {
+   "id": "R03844d",
+   "lines": [
+    3844,
+    3844
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "2022 amendment: certain garment/hosiery sales require a declaration of MRP."
+  },
+  {
+   "id": "R03844e",
+   "lines": [
+    3844,
+    3844
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "2022 amendment: the declared garment/hosiery information must be displayed on an e-commerce website."
+  },
+  {
+   "id": "R03844f",
+   "lines": [
+    3844,
+    3844
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "General packaged-commodity rules also cover the declaration: manufacturer/packer/importer."
+  },
+  {
+   "id": "R03844g",
+   "lines": [
+    3844,
+    3844
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "General packaged-commodity rules also cover the declaration: country of origin."
+  },
+  {
+   "id": "R03844h",
+   "lines": [
+    3844,
+    3844
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "General packaged-commodity rules also cover the declaration: generic name."
+  },
+  {
+   "id": "R03844i",
+   "lines": [
+    3844,
+    3844
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "General packaged-commodity rules also cover the declaration: net quantity."
+  },
+  {
+   "id": "R03844j",
+   "lines": [
+    3844,
+    3844
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "General packaged-commodity rules also cover the declaration: MRP."
+  },
+  {
+   "id": "R03844k",
+   "lines": [
+    3844,
+    3844
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "General packaged-commodity rules also cover the declaration: consumer care."
+  },
+  {
+   "id": "R03846",
+   "lines": [
+    3846,
+    3846
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "info",
+   "text": "19. Marketplace-Specific Requirement Matrix",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03848",
+   "lines": [
+    3848,
+    3848
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "decision",
+   "text": "Use the §19 marketplace matrix as the product design framework."
+  },
+  {
+   "id": "R03848a",
+   "lines": [
+    3848,
+    3848
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Exact field names should come from the current marketplace/category schema at the time of listing."
+  },
+  {
+   "id": "R03848b",
+   "lines": [
+    3848,
+    3848
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Required/conditional status should come from the current marketplace/category schema at the time of listing."
+  },
+  {
+   "id": "R03850",
+   "lines": [
+    3850,
+    3854
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "info",
+   "text": "Table header: Marketplace | Common Apparel Data to Expect | Design Requirement",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03856",
+   "lines": [
+    3856,
+    3858
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Amazon: common apparel data to expect: Product type."
+  },
+  {
+   "id": "R03858",
+   "lines": [
+    3858,
+    3858
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Amazon: common apparel data to expect: brand."
+  },
+  {
+   "id": "R03858a",
+   "lines": [
+    3858,
+    3858
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Amazon: common apparel data to expect: title."
+  },
+  {
+   "id": "R03858b",
+   "lines": [
+    3858,
+    3858
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Amazon: common apparel data to expect: identifiers/exemption."
+  },
+  {
+   "id": "R03858c",
+   "lines": [
+    3858,
+    3858
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Amazon: common apparel data to expect: color."
+  },
+  {
+   "id": "R03858d",
+   "lines": [
+    3858,
+    3858
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Amazon: common apparel data to expect: size."
+  },
+  {
+   "id": "R03858e",
+   "lines": [
+    3858,
+    3858
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Amazon: common apparel data to expect: material/fabric."
+  },
+  {
+   "id": "R03858f",
+   "lines": [
+    3858,
+    3858
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Amazon: common apparel data to expect: department/gender."
+  },
+  {
+   "id": "R03858g",
+   "lines": [
+    3858,
+    3858
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Amazon: common apparel data to expect: bullets."
+  },
+  {
+   "id": "R03858h",
+   "lines": [
+    3858,
+    3858
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Amazon: common apparel data to expect: description."
+  },
+  {
+   "id": "R03858i",
+   "lines": [
+    3858,
+    3858
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Amazon: common apparel data to expect: images."
+  },
+  {
+   "id": "R03858j",
+   "lines": [
+    3858,
+    3858
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Amazon: common apparel data to expect: variation structure."
+  },
+  {
+   "id": "R03858k",
+   "lines": [
+    3858,
+    3858
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Amazon: common apparel data to expect: compliance/product details."
+  },
+  {
+   "id": "R03860",
+   "lines": [
+    3860,
+    3860
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Amazon design requirement: Use current Product Type Definition for marketplace + product type."
+  },
+  {
+   "id": "R03860a",
+   "lines": [
+    3860,
+    3860
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "risk",
+   "text": "Amazon design requirement: Requirements can be conditional."
+  },
+  {
+   "id": "R03860b",
+   "lines": [
+    3860,
+    3860
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "risk",
+   "text": "Amazon design requirement: Requirements can change."
+  },
+  {
+   "id": "R03862",
+   "lines": [
+    3862,
+    3864
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Flipkart: common apparel data to expect: Product/vertical attributes."
+  },
+  {
+   "id": "R03864",
+   "lines": [
+    3864,
+    3864
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Flipkart: common apparel data to expect: brand."
+  },
+  {
+   "id": "R03864a",
+   "lines": [
+    3864,
+    3864
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Flipkart: common apparel data to expect: category."
+  },
+  {
+   "id": "R03864b",
+   "lines": [
+    3864,
+    3864
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Flipkart: common apparel data to expect: color/size."
+  },
+  {
+   "id": "R03864c",
+   "lines": [
+    3864,
+    3864
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Flipkart: common apparel data to expect: product description."
+  },
+  {
+   "id": "R03864d",
+   "lines": [
+    3864,
+    3864
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Flipkart: common apparel data to expect: images."
+  },
+  {
+   "id": "R03864e",
+   "lines": [
+    3864,
+    3864
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Flipkart: common apparel data to expect: MRP/selling price."
+  },
+  {
+   "id": "R03864f",
+   "lines": [
+    3864,
+    3864
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Flipkart: common apparel data to expect: package dimensions/weight."
+  },
+  {
+   "id": "R03864g",
+   "lines": [
+    3864,
+    3864
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Flipkart: common apparel data to expect: HSN."
+  },
+  {
+   "id": "R03864h",
+   "lines": [
+    3864,
+    3864
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Flipkart: common apparel data to expect: listing/fulfillment fields."
+  },
+  {
+   "id": "R03866",
+   "lines": [
+    3866,
+    3866
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Flipkart design requirement: Separate product identity from seller listing/commercial attributes."
+  },
+  {
+   "id": "R03866a",
+   "lines": [
+    3866,
+    3866
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Flipkart design requirement: Preserve listing status."
+  },
+  {
+   "id": "R03866b",
+   "lines": [
+    3866,
+    3866
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Flipkart design requirement: Preserve seller SKU mapping."
+  },
+  {
+   "id": "R03868",
+   "lines": [
+    3868,
+    3870
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Myntra: common apparel data to expect: Fashion-specific catalog/category attributes."
+  },
+  {
+   "id": "R03870",
+   "lines": [
+    3870,
+    3870
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Myntra: common apparel data to expect: brand."
+  },
+  {
+   "id": "R03870a",
+   "lines": [
+    3870,
+    3870
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Myntra: common apparel data to expect: style/product details."
+  },
+  {
+   "id": "R03870b",
+   "lines": [
+    3870,
+    3870
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Myntra: common apparel data to expect: variants."
+  },
+  {
+   "id": "R03870c",
+   "lines": [
+    3870,
+    3870
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Myntra: common apparel data to expect: size/color."
+  },
+  {
+   "id": "R03870d",
+   "lines": [
+    3870,
+    3870
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Myntra: common apparel data to expect: media."
+  },
+  {
+   "id": "R03870e",
+   "lines": [
+    3870,
+    3870
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Myntra: common apparel data to expect: descriptions."
+  },
+  {
+   "id": "R03870f",
+   "lines": [
+    3870,
+    3870
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Myntra: common apparel data to expect: seller-specific commercial/catalog information."
+  },
+  {
+   "id": "R03872",
+   "lines": [
+    3872,
+    3872
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Myntra design requirement: Maintain a marketplace-specific category template/schema."
+  },
+  {
+   "id": "R03872a",
+   "lines": [
+    3872,
+    3872
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Myntra design requirement: Do not assume Amazon/Flipkart field names are portable."
+  },
+  {
+   "id": "R03874",
+   "lines": [
+    3874,
+    3876
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "AJIO: common apparel data to expect: Fashion catalog attributes."
+  },
+  {
+   "id": "R03876",
+   "lines": [
+    3876,
+    3876
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "AJIO: common apparel data to expect: category/sub-category."
+  },
+  {
+   "id": "R03876a",
+   "lines": [
+    3876,
+    3876
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "AJIO: common apparel data to expect: brand."
+  },
+  {
+   "id": "R03876b",
+   "lines": [
+    3876,
+    3876
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "AJIO: common apparel data to expect: size/color."
+  },
+  {
+   "id": "R03876c",
+   "lines": [
+    3876,
+    3876
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "AJIO: common apparel data to expect: material."
+  },
+  {
+   "id": "R03876d",
+   "lines": [
+    3876,
+    3876
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "AJIO: common apparel data to expect: media."
+  },
+  {
+   "id": "R03876e",
+   "lines": [
+    3876,
+    3876
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "AJIO: common apparel data to expect: descriptions."
+  },
+  {
+   "id": "R03876f",
+   "lines": [
+    3876,
+    3876
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "AJIO: common apparel data to expect: seller/commercial information."
+  },
+  {
+   "id": "R03878",
+   "lines": [
+    3878,
+    3878
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "AJIO design requirement: Maintain a marketplace-specific schema."
+  },
+  {
+   "id": "R03878a",
+   "lines": [
+    3878,
+    3878
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "AJIO design requirement: Maintain a marketplace-specific validation layer."
+  },
+  {
+   "id": "R03880",
+   "lines": [
+    3880,
+    3882
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Meesho: common apparel data to expect: Catalog/product information."
+  },
+  {
+   "id": "R03882",
+   "lines": [
+    3882,
+    3882
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Meesho: common apparel data to expect: category."
+  },
+  {
+   "id": "R03882a",
+   "lines": [
+    3882,
+    3882
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Meesho: common apparel data to expect: attributes."
+  },
+  {
+   "id": "R03882b",
+   "lines": [
+    3882,
+    3882
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Meesho: common apparel data to expect: size/color/variants."
+  },
+  {
+   "id": "R03882c",
+   "lines": [
+    3882,
+    3882
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Meesho: common apparel data to expect: images."
+  },
+  {
+   "id": "R03882d",
+   "lines": [
+    3882,
+    3882
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Meesho: common apparel data to expect: pricing."
+  },
+  {
+   "id": "R03882e",
+   "lines": [
+    3882,
+    3882
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Meesho: common apparel data to expect: seller details."
+  },
+  {
+   "id": "R03884",
+   "lines": [
+    3884,
+    3884
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Meesho design requirement: Maintain marketplace-specific allowed values."
+  },
+  {
+   "id": "R03884a",
+   "lines": [
+    3884,
+    3884
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Meesho design requirement: Maintain marketplace-specific catalog rules."
+  },
+  {
+   "id": "R03886",
+   "lines": [
+    3886,
+    3888
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Nykaa Fashion: common apparel data to expect: Product/category information."
+  },
+  {
+   "id": "R03888",
+   "lines": [
+    3888,
+    3888
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Nykaa Fashion: common apparel data to expect: brand."
+  },
+  {
+   "id": "R03888a",
+   "lines": [
+    3888,
+    3888
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Nykaa Fashion: common apparel data to expect: attributes."
+  },
+  {
+   "id": "R03888b",
+   "lines": [
+    3888,
+    3888
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Nykaa Fashion: common apparel data to expect: media."
+  },
+  {
+   "id": "R03888c",
+   "lines": [
+    3888,
+    3888
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Nykaa Fashion: common apparel data to expect: size/color."
+  },
+  {
+   "id": "R03888d",
+   "lines": [
+    3888,
+    3888
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "data",
+   "text": "Nykaa Fashion: common apparel data to expect: seller/compliance information."
+  },
+  {
+   "id": "R03890",
+   "lines": [
+    3890,
+    3890
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Nykaa Fashion design requirement: Maintain marketplace-specific schema."
+  },
+  {
+   "id": "R03890a",
+   "lines": [
+    3890,
+    3890
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Nykaa Fashion design requirement: Maintain marketplace-specific content rules."
+  },
+  {
+   "id": "R03890b",
+   "lines": [
+    3890,
+    3890
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Nykaa's seller terms require listing information to be complete."
+  },
+  {
+   "id": "R03890c",
+   "lines": [
+    3890,
+    3890
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Nykaa's seller terms require listing information to be accurate."
+  },
+  {
+   "id": "R03890d",
+   "lines": [
+    3890,
+    3890
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Nykaa's seller terms require listing information to be non-misleading."
+  },
+  {
+   "id": "R03890e",
+   "lines": [
+    3890,
+    3890
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Nykaa's seller terms require listing information to be compliant with applicable laws/rules."
+  },
+  {
+   "id": "R03892",
+   "lines": [
+    3892,
+    3892
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "info",
+   "text": "Engineering & Product Invariant",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03894",
+   "lines": [
+    3894,
+    3894
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "decision",
+   "text": "Engineering & Product Invariant: the canonical product model should be broad."
+  },
+  {
+   "id": "R03894a",
+   "lines": [
+    3894,
+    3894
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "decision",
+   "text": "Engineering & Product Invariant: marketplace adapters should be narrow."
+  },
+  {
+   "id": "R03894b",
+   "lines": [
+    3894,
+    3894
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "requirement",
+   "text": "Never redesign the canonical product every time a marketplace introduces a new field."
+  },
+  {
+   "id": "R03896",
+   "lines": [
+    3896,
+    3896
+   ],
+   "page": "[08] Quality Gates & Legal Metrology Matrix (§17–19)",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03898",
+   "lines": [
+    3898,
+    3898
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "info",
+   "text": "Page title [09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R03900",
+   "lines": [
+    3900,
+    3900
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "info",
+   "text": "Section: Founder's POV Doc",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R03901",
+   "lines": [
+    3901,
+    3901
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "scope",
+   "text": "Page [09] Master Field Dictionary & E2E Walkthrough (§20–21) scope: MVP."
+  },
+  {
+   "id": "R03902",
+   "lines": [
+    3902,
+    3902
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "info",
+   "text": "Page URL: https://ashishvats16.github.io/system-arch/page/founders-master-field-dictionary",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R03903",
+   "lines": [
+    3903,
+    3903
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "constraint",
+   "text": "The master field dictionary is a complete 40+ column apparel dictionary."
+  },
+  {
+   "id": "R03903a",
+   "lines": [
+    3903,
+    3903
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "The end-to-end walkthrough uses a real product: Women's Relaxed T-Shirt FSH-TEE-001."
+  },
+  {
+   "id": "R03905",
+   "lines": [
+    3905,
+    3905
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "scope",
+   "text": "§20 Master Field Dictionary defines the minimum V1 columns."
+  },
+  {
+   "id": "R03907",
+   "lines": [
+    3907,
+    3907
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "interface",
+   "text": "The §20 column set is the recommended spreadsheet-style column set for the initial apparel catalog intake."
+  },
+  {
+   "id": "R03907a",
+   "lines": [
+    3907,
+    3907
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "requirement",
+   "text": "The §20 column set can be presented to sellers as a simple template."
+  },
+  {
+   "id": "R03907b",
+   "lines": [
+    3907,
+    3907
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "requirement",
+   "text": "The dashboard can hide fields that are not relevant to the selected category."
+  },
+  {
+   "id": "R03909",
+   "lines": [
+    3909,
+    3915
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "info",
+   "text": "Table header: Section | Column / Field | Requirement | Business Meaning",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R03917",
+   "lines": [
+    3917,
+    3923
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `seller_sku` (section identity): requirement \"Yes\"; business meaning \"Unique seller SKU\"."
+  },
+  {
+   "id": "R03925",
+   "lines": [
+    3925,
+    3931
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `parent_style_id` (section identity): requirement \"If variants\"; business meaning \"Style/family identifier\"."
+  },
+  {
+   "id": "R03933",
+   "lines": [
+    3933,
+    3939
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `product_name` (section identity): requirement \"Yes\"; business meaning \"Seller's factual product/style name\"."
+  },
+  {
+   "id": "R03941",
+   "lines": [
+    3941,
+    3947
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `brand_name` (section identity): requirement \"Yes\"; business meaning \"Brand\"."
+  },
+  {
+   "id": "R03949",
+   "lines": [
+    3949,
+    3955
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `manufacturer_name` (section identity): requirement \"Usually yes\"; business meaning \"Manufacturer\"."
+  },
+  {
+   "id": "R03957",
+   "lines": [
+    3957,
+    3963
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `manufacturer_address` (section identity): requirement \"Usually yes\"; business meaning \"Legal address\"."
+  },
+  {
+   "id": "R03965",
+   "lines": [
+    3965,
+    3971
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `product_identifier_type` (section identity): requirement \"If applicable\"; business meaning \"GTIN/EAN/UPC etc.\"."
+  },
+  {
+   "id": "R03973",
+   "lines": [
+    3973,
+    3979
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `product_identifier` (section identity): requirement \"If applicable\"; business meaning \"Identifier value\"."
+  },
+  {
+   "id": "R03981",
+   "lines": [
+    3981,
+    3987
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `gender` (section classification): requirement \"Category dependent\"; business meaning \"Men/Women/Unisex/Boys/Girls\"."
+  },
+  {
+   "id": "R03989",
+   "lines": [
+    3989,
+    3995
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `category` (section classification): requirement \"Yes\"; business meaning \"Canonical category\"."
+  },
+  {
+   "id": "R03997",
+   "lines": [
+    3997,
+    4003
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `sub_category` (section classification): requirement \"Yes\"; business meaning \"Canonical sub-category\"."
+  },
+  {
+   "id": "R04005",
+   "lines": [
+    4005,
+    4011
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `product_type` (section classification): requirement \"Yes\"; business meaning \"Specific product type\"."
+  },
+  {
+   "id": "R04013",
+   "lines": [
+    4013,
+    4019
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `color_name` (section attributes): requirement \"Yes\"; business meaning \"Seller color\"."
+  },
+  {
+   "id": "R04021",
+   "lines": [
+    4021,
+    4027
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `normalized_color` (section attributes): requirement \"System\"; business meaning \"Normalized value\"."
+  },
+  {
+   "id": "R04029",
+   "lines": [
+    4029,
+    4035
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `size_name` (section attributes): requirement \"Yes for sized apparel\"; business meaning \"Seller size\"."
+  },
+  {
+   "id": "R04037",
+   "lines": [
+    4037,
+    4043
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `normalized_size` (section attributes): requirement \"System\"; business meaning \"Normalized value\"."
+  },
+  {
+   "id": "R04045",
+   "lines": [
+    4045,
+    4051
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `size_system` (section attributes): requirement \"If applicable\"; business meaning \"Brand/marketplace size system\"."
+  },
+  {
+   "id": "R04053",
+   "lines": [
+    4053,
+    4059
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `fit` (section attributes): requirement \"Category dependent\"; business meaning \"Slim/regular/relaxed etc.\"."
+  },
+  {
+   "id": "R04061",
+   "lines": [
+    4061,
+    4067
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `pattern` (section attributes): requirement \"Category dependent\"; business meaning \"Solid/printed/etc.\"."
+  },
+  {
+   "id": "R04069",
+   "lines": [
+    4069,
+    4075
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `fabric_type` (section attributes): requirement \"Usually yes\"; business meaning \"Cotton/denim/linen etc.\"."
+  },
+  {
+   "id": "R04077",
+   "lines": [
+    4077,
+    4083
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `fiber_composition` (section attributes): requirement \"Critical\"; business meaning \"Exact composition where available\"."
+  },
+  {
+   "id": "R04085",
+   "lines": [
+    4085,
+    4091
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `lining` (section attributes): requirement \"If applicable\"; business meaning \"Lined/unlined + material\"."
+  },
+  {
+   "id": "R04093",
+   "lines": [
+    4093,
+    4099
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `stretch` (section attributes): requirement \"If applicable\"; business meaning \"Stretch/non-stretch\"."
+  },
+  {
+   "id": "R04101",
+   "lines": [
+    4101,
+    4107
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `neckline` (section attributes): requirement \"If applicable\"; business meaning \"Crew/V/etc.\"."
+  },
+  {
+   "id": "R04109",
+   "lines": [
+    4109,
+    4115
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `collar_type` (section attributes): requirement \"If applicable\"; business meaning \"Collar\"."
+  },
+  {
+   "id": "R04117",
+   "lines": [
+    4117,
+    4123
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `sleeve_type` (section attributes): requirement \"If applicable\"; business meaning \"Sleeve\"."
+  },
+  {
+   "id": "R04125",
+   "lines": [
+    4125,
+    4131
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `sleeve_length` (section attributes): requirement \"If applicable\"; business meaning \"Sleeve length\"."
+  },
+  {
+   "id": "R04133",
+   "lines": [
+    4133,
+    4139
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `garment_length` (section attributes): requirement \"If applicable\"; business meaning \"Length\"."
+  },
+  {
+   "id": "R04141",
+   "lines": [
+    4141,
+    4147
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `rise` (section attributes): requirement \"Bottomwear\"; business meaning \"High/mid/low\"."
+  },
+  {
+   "id": "R04149",
+   "lines": [
+    4149,
+    4155
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `leg_style` (section attributes): requirement \"Bottomwear\"; business meaning \"Straight/wide/tapered etc.\"."
+  },
+  {
+   "id": "R04157",
+   "lines": [
+    4157,
+    4163
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `closure` (section attributes): requirement \"If applicable\"; business meaning \"Zip/button/pull-on\"."
+  },
+  {
+   "id": "R04165",
+   "lines": [
+    4165,
+    4171
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `pocket_type` (section attributes): requirement \"If applicable\"; business meaning \"Pocket details\"."
+  },
+  {
+   "id": "R04173",
+   "lines": [
+    4173,
+    4179
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `occasion` (section attributes): requirement \"If applicable\"; business meaning \"Casual/formal/etc.\"."
+  },
+  {
+   "id": "R04181",
+   "lines": [
+    4181,
+    4187
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `season` (section attributes): requirement \"If applicable\"; business meaning \"Seasonality\"."
+  },
+  {
+   "id": "R04189",
+   "lines": [
+    4189,
+    4195
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `wash_care` (section care): requirement \"Usually yes\"; business meaning \"Care instructions\"."
+  },
+  {
+   "id": "R04197",
+   "lines": [
+    4197,
+    4203
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `iron_care` (section care): requirement \"If applicable\"; business meaning \"Ironing instructions\"."
+  },
+  {
+   "id": "R04205",
+   "lines": [
+    4205,
+    4211
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `country_of_origin` (section compliance): requirement \"Yes where applicable\"; business meaning \"Origin\"."
+  },
+  {
+   "id": "R04213",
+   "lines": [
+    4213,
+    4219
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `mrp` (section compliance): requirement \"Yes\"; business meaning \"MRP inclusive of taxes where applicable\"."
+  },
+  {
+   "id": "R04221",
+   "lines": [
+    4221,
+    4227
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `consumer_care_email` (section compliance): requirement \"Yes where applicable\"; business meaning \"Consumer care\"."
+  },
+  {
+   "id": "R04229",
+   "lines": [
+    4229,
+    4235
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `consumer_care_phone` (section compliance): requirement \"Yes where applicable\"; business meaning \"Consumer care\"."
+  },
+  {
+   "id": "R04237",
+   "lines": [
+    4237,
+    4243
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `hsn_code` (section compliance): requirement \"Marketplace dependent\"; business meaning \"Seller-provided/verified\"."
+  },
+  {
+   "id": "R04245",
+   "lines": [
+    4245,
+    4251
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `selling_price` (section commercial): requirement \"Marketplace dependent\"; business meaning \"Selling price\"."
+  },
+  {
+   "id": "R04253",
+   "lines": [
+    4253,
+    4259
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `tax_rate` (section commercial): requirement \"Marketplace dependent\"; business meaning \"Seller-provided/verified\"."
+  },
+  {
+   "id": "R04261",
+   "lines": [
+    4261,
+    4267
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `package_weight` (section commercial): requirement \"If required\"; business meaning \"Packed weight\"."
+  },
+  {
+   "id": "R04269",
+   "lines": [
+    4269,
+    4275
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `package_length_cm` (section commercial): requirement \"If required\"; business meaning \"Package length\"."
+  },
+  {
+   "id": "R04277",
+   "lines": [
+    4277,
+    4283
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `package_breadth_cm` (section commercial): requirement \"If required\"; business meaning \"Package breadth\"."
+  },
+  {
+   "id": "R04285",
+   "lines": [
+    4285,
+    4291
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `package_height_cm` (section commercial): requirement \"If required\"; business meaning \"Package height\"."
+  },
+  {
+   "id": "R04293",
+   "lines": [
+    4293,
+    4299
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `main_image` (section media): requirement \"Yes\"; business meaning \"Main image\"."
+  },
+  {
+   "id": "R04301",
+   "lines": [
+    4301,
+    4307
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `additional_images` (section media): requirement \"As available\"; business meaning \"Additional images\"."
+  },
+  {
+   "id": "R04309",
+   "lines": [
+    4309,
+    4315
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `size_chart` (section media): requirement \"If applicable\"; business meaning \"Size chart\"."
+  },
+  {
+   "id": "R04317",
+   "lines": [
+    4317,
+    4323
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `title` (section content): requirement \"System/generated + editable\"; business meaning \"Marketplace title\"."
+  },
+  {
+   "id": "R04325",
+   "lines": [
+    4325,
+    4331
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `bullet_1_to_n` (section content): requirement \"System-generated\"; business meaning \"Key features\"."
+  },
+  {
+   "id": "R04333",
+   "lines": [
+    4333,
+    4339
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `description` (section content): requirement \"System-generated\"; business meaning \"Description\"."
+  },
+  {
+   "id": "R04341",
+   "lines": [
+    4341,
+    4347
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `keywords` (section content): requirement \"System-generated\"; business meaning \"Search terms where supported\"."
+  },
+  {
+   "id": "R04349",
+   "lines": [
+    4349,
+    4355
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `marketplace_category` (section marketplace): requirement \"Per marketplace\"; business meaning \"Mapped category\"."
+  },
+  {
+   "id": "R04357",
+   "lines": [
+    4357,
+    4363
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `marketplace_product_type` (section marketplace): requirement \"Per marketplace\"; business meaning \"Mapped product type\"."
+  },
+  {
+   "id": "R04365",
+   "lines": [
+    4365,
+    4371
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `marketplace_sku` (section marketplace): requirement \"Per marketplace\"; business meaning \"External/seller marketplace SKU\"."
+  },
+  {
+   "id": "R04373",
+   "lines": [
+    4373,
+    4379
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `marketplace_listing_id` (section marketplace): requirement \"Per marketplace\"; business meaning \"External listing ID\"."
+  },
+  {
+   "id": "R04381",
+   "lines": [
+    4381,
+    4387
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `marketplace_status` (section marketplace): requirement \"Per marketplace\"; business meaning \"Current state\"."
+  },
+  {
+   "id": "R04389",
+   "lines": [
+    4389,
+    4395
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `live_url` (section marketplace): requirement \"Per marketplace\"; business meaning \"Live URL if available\"."
+  },
+  {
+   "id": "R04397",
+   "lines": [
+    4397,
+    4403
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `overall_status` (section workflow): requirement \"System\"; business meaning \"Current overall status\"."
+  },
+  {
+   "id": "R04405",
+   "lines": [
+    4405,
+    4411
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `open_issue_count` (section workflow): requirement \"System\"; business meaning \"Open issues\"."
+  },
+  {
+   "id": "R04413",
+   "lines": [
+    4413,
+    4419
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `human_action_required` (section workflow): requirement \"System\"; business meaning \"Yes/No\"."
+  },
+  {
+   "id": "R04421",
+   "lines": [
+    4421,
+    4427
+   ],
+   "page": "[09] Master Field Dictionary & E2E Walkthrough (§20–21)",
+   "kind": "data",
+   "text": "Field `last_updated` (section workflow): requirement \"System\"; business meaning \"Timestamp\"."
+  }
+ ]
+}

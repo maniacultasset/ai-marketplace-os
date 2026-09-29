@@ -1,0 +1,2217 @@
+{
+ "chunk": "c14",
+ "items": [
+  {
+   "id": "R08630",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:53-54; T12",
+   "note": "CONTEXT_LOADED is transient stage load_context in job_runs.node, never listings.status"
+  },
+  {
+   "id": "R08636",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:54; docs/canon/CANON.md:119",
+   "note": "Chunks retrieved in stage retrieve_brand via port after load_context, not during context assembly"
+  },
+  {
+   "id": "R08636a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "RuleSet pushed in GenerationContext.marketplace_rules"
+  },
+  {
+   "id": "R08638",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:53-54; T12",
+   "note": "listings.status generating; agent dispatch is transient stages, not a state"
+  },
+  {
+   "id": "R08644",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "Parallel content/keyword/attribute/image agents run inside the AI graph"
+  },
+  {
+   "id": "R08646",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:123; T12",
+   "note": "terminal_state generated maps to validated/needs_review; no GENERATED listing status"
+  },
+  {
+   "id": "R08652",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:54; docs/architecture/DATABASE.md:2124",
+   "note": "merge_outputs yields CanonicalListing stored in listing_versions.content_json"
+  },
+  {
+   "id": "R08654",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:54; T12",
+   "note": "validate_rules/correct are transient stages, not persisted states"
+  },
+  {
+   "id": "R08660",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1539; AGENTS.md:86",
+   "note": "validate_rules port returns the single ErrorReport shape"
+  },
+  {
+   "id": "R08662",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:54; T12",
+   "note": "RETRYING is the transient stage correct, not a status"
+  },
+  {
+   "id": "R08666",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:87; docs/architecture/BACKEND-ARCHITECTURE.md:1570",
+   "note": "Correction cap 3 inside the graph (invariant 9)"
+  },
+  {
+   "id": "R08668",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1785; AGENTS.md:91",
+   "note": "Correction node fixes only the failing fields"
+  },
+  {
+   "id": "R08670",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1383; T12",
+   "note": "validated/needs_review -> approved via POST /api/v1/listings/approve; no WAITING_APPROVAL value"
+  },
+  {
+   "id": "R08676",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1597",
+   "note": "audit_log listing.approved written in the approve transaction"
+  },
+  {
+   "id": "R08678",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1390",
+   "note": "publish event approved -> publishing, requires current approval"
+  },
+  {
+   "id": "R08684",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:897; AGENTS.md:82",
+   "note": "Adapter maps canonical -> marketplace format (invariant 4)"
+  },
+  {
+   "id": "R08691",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:131",
+   "note": "AI team graph; our side is the 5 seam ports"
+  },
+  {
+   "id": "R08693",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "Dispatch, parallelism and merge are internal to packages/pipeline"
+  },
+  {
+   "id": "R08693a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "Dispatch, parallelism and merge are internal to packages/pipeline"
+  },
+  {
+   "id": "R08693b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "Dispatch, parallelism and merge are internal to packages/pipeline"
+  },
+  {
+   "id": "R08698",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:691",
+   "note": "Four agents run in parallel inside the AI graph"
+  },
+  {
+   "id": "R08698a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "One pushed GenerationContext shared by all agents"
+  },
+  {
+   "id": "R08698b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:123",
+   "note": "GenerationResult.blocks[] carries per-agent output and partial success"
+  },
+  {
+   "id": "R08702",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Graph wiring internal to packages/pipeline"
+  },
+  {
+   "id": "R08703",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Graph wiring internal to packages/pipeline"
+  },
+  {
+   "id": "R08704",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Graph wiring internal to packages/pipeline"
+  },
+  {
+   "id": "R08705",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Graph wiring internal to packages/pipeline"
+  },
+  {
+   "id": "R08706",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Graph wiring internal to packages/pipeline"
+  },
+  {
+   "id": "R08707",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Graph wiring internal to packages/pipeline"
+  },
+  {
+   "id": "R08708",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Graph wiring internal to packages/pipeline"
+  },
+  {
+   "id": "R08709",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Graph wiring internal to packages/pipeline"
+  },
+  {
+   "id": "R08712",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent independence is AI graph design"
+  },
+  {
+   "id": "R08712a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent independence is AI graph design"
+  },
+  {
+   "id": "R08712b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent independence is AI graph design"
+  },
+  {
+   "id": "R08712c",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent independence is AI graph design"
+  },
+  {
+   "id": "R08718",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "Stages load_context then retrieve_brand; backend pre-loads context"
+  },
+  {
+   "id": "R08718a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:687-691",
+   "note": "retrieve_brand_chunks runs before the 4 agents are dispatched"
+  },
+  {
+   "id": "R08720",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:123",
+   "note": "merge_outputs waits for agents; failed blocks allowed as partial success"
+  },
+  {
+   "id": "R08720a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "merge_outputs -> validate_schema/validate_rules/validate_vision"
+  },
+  {
+   "id": "R08720b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "Validation stages precede quality_check"
+  },
+  {
+   "id": "R08720c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1565; docs/architecture/DATABASE.md:1383",
+   "note": "Graph ends at quality_check; approval is the approve endpoint outside the graph"
+  },
+  {
+   "id": "R08727",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:132; docs/architecture/DATABASE.md:983",
+   "note": "agent_runs in v1 (Canon 0002)"
+  },
+  {
+   "id": "R08729",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:984",
+   "note": "One agent_runs row per model call, written by the backend"
+  },
+  {
+   "id": "R08729a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:984",
+   "note": "One agent_runs row per model call, written by the backend"
+  },
+  {
+   "id": "R08729b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:113",
+   "note": "Worker inserts records in one transaction with version and job status"
+  },
+  {
+   "id": "R08729c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:85; docs/architecture/DATABASE.md:996",
+   "note": "Invariant 7; cost and error indexes on agent_runs"
+  },
+  {
+   "id": "R08734",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:984",
+   "note": "One row per model call (finer than per agent execution)"
+  },
+  {
+   "id": "R08734a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:986-995",
+   "note": "All [19] fields plus agent_name, attempt, prompt_version, input_digest; full input not stored (Q26)"
+  },
+  {
+   "id": "R08740",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21; docs/architecture/DATABASE.md:2111",
+   "note": "id uuid DEFAULT gen_random_uuid() (site DDL UUID; run_abc123 is illustrative)"
+  },
+  {
+   "id": "R08741",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:988",
+   "note": "product_id uuid -> products"
+  },
+  {
+   "id": "R08742",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:990; T89",
+   "note": "CHECK uses [06] vocabulary; [19] example user_request would be rejected"
+  },
+  {
+   "id": "R08743",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "model_used"
+  },
+  {
+   "id": "R08744",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "tokens_in"
+  },
+  {
+   "id": "R08745",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "tokens_out"
+  },
+  {
+   "id": "R08746",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:56; T25",
+   "note": "cost_usd NUMERIC(12,6), USD, instead of cost"
+  },
+  {
+   "id": "R08747",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "duration_ms"
+  },
+  {
+   "id": "R08748",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "status completed in running|completed|failed|timeout"
+  },
+  {
+   "id": "R08749",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "error_report_json nullable jsonb"
+  },
+  {
+   "id": "R08750",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21; docs/architecture/DATABASE.md:2111",
+   "note": "created_at timestamptz NOT NULL DEFAULT now() by convention"
+  },
+  {
+   "id": "R08756",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991; docs/canon/CANON.md:113",
+   "note": "Lowercase running|completed|failed|timeout; no created, rows inserted once after the call"
+  },
+  {
+   "id": "R08756a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991; docs/canon/CANON.md:113",
+   "note": "No created state; worker inserts rows after the call returns"
+  },
+  {
+   "id": "R08756b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:984; docs/canon/CANON.md:113",
+   "note": "Append-only; terminal status completed written once, no in-row transition"
+  },
+  {
+   "id": "R08756c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:984; docs/canon/CANON.md:113",
+   "note": "Append-only; terminal status failed written once, no in-row transition"
+  },
+  {
+   "id": "R08756d",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991; docs/architecture/DATABASE.md:1975",
+   "note": "Per-call timeout recorded; records lost on job timeout is open decision 19"
+  },
+  {
+   "id": "R08756e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "error_report_json per run; GIN index agent_runs_errors_gin"
+  },
+  {
+   "id": "R08756f",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1794; Q26; T80",
+   "note": "Plan replays same request with fresh context; only input_digest stored"
+  },
+  {
+   "id": "R08756g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:992; docs/architecture/DATABASE.md:996",
+   "note": "cost_usd per call; tenant, global and product cost indexes"
+  },
+  {
+   "id": "R08756h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:988",
+   "note": "listing_id and product_id on agent_runs"
+  },
+  {
+   "id": "R08756i",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:993",
+   "note": "agent_name content|keyword|attribute|image|correction|embedding|quality"
+  },
+  {
+   "id": "R08756j",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "model_used column"
+  },
+  {
+   "id": "R08763",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:133",
+   "note": "Backend worker assembles context before the pipeline"
+  },
+  {
+   "id": "R08765",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "GenerationContext pushed by the backend"
+  },
+  {
+   "id": "R08765a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "GenerationContext.product"
+  },
+  {
+   "id": "R08765b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:231; docs/architecture/BACKEND-ARCHITECTURE.md:1538",
+   "note": "brand_profile pushed; brand chunks via retrieve_brand_chunks"
+  },
+  {
+   "id": "R08765c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "marketplace_rules as typed RuleSet"
+  },
+  {
+   "id": "R08765d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "category_template as typed CategoryTemplate"
+  },
+  {
+   "id": "R08772",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:705-707",
+   "note": "Worker loads product from Postgres"
+  },
+  {
+   "id": "R08773",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:705-707",
+   "note": "Worker loads RuleSet from rules table"
+  },
+  {
+   "id": "R08774",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:705-707",
+   "note": "Worker loads CategoryTemplate"
+  },
+  {
+   "id": "R08775",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:119",
+   "note": "Chunks pulled by AI via retrieve_brand_chunks port, not pushed in context"
+  },
+  {
+   "id": "R08776",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "Single previous_version, not all versions"
+  },
+  {
+   "id": "R08777",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118; docs/architecture/DATABASE.md:806",
+   "note": "user_instructions from the regenerate request"
+  },
+  {
+   "id": "R08778",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompts built by the AI team from the context"
+  },
+  {
+   "id": "R08783",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:705-707",
+   "note": "Worker loads product before calling the pipeline"
+  },
+  {
+   "id": "R08783a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193",
+   "note": "GenerationContext.product sku"
+  },
+  {
+   "id": "R08783b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193",
+   "note": "GenerationContext.product title"
+  },
+  {
+   "id": "R08783c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193",
+   "note": "GenerationContext.product image_ids"
+  },
+  {
+   "id": "R08783d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193",
+   "note": "GenerationContext.product attributes (fact envelopes proposed)"
+  },
+  {
+   "id": "R08784",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:507",
+   "note": "RuleSetResolver by marketplace, category (or NULL), tenant"
+  },
+  {
+   "id": "R08785",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:122",
+   "note": "CategoryTemplate pushed in context"
+  },
+  {
+   "id": "R08785a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:122",
+   "note": "CategoryTemplate required_attributes, optional_attributes"
+  },
+  {
+   "id": "R08786",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1538",
+   "note": "Search embeds the query with text-embedding-3-small"
+  },
+  {
+   "id": "R08786a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "AI composes the query string passed to retrieve_brand_chunks"
+  },
+  {
+   "id": "R08787",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1073; docs/architecture/BACKEND-ARCHITECTURE.md:1538",
+   "note": "Cosine distance <=>; exact scan year 1, HNSW later (T66)"
+  },
+  {
+   "id": "R08787a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1538; docs/architecture/DATABASE.md:1073",
+   "note": "k=8 default; LIMIT 8"
+  },
+  {
+   "id": "R08787b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1067",
+   "note": "vector_cosine_ops HNSW index plus exact cosine scan"
+  },
+  {
+   "id": "R08788",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:119",
+   "note": "AI injects port-returned chunks; not in pushed context"
+  },
+  {
+   "id": "R08789",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "Single previous_version pushed, not all versions"
+  },
+  {
+   "id": "R08790",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118; docs/architecture/DATABASE.md:806",
+   "note": "GenerationContext.user_instructions"
+  },
+  {
+   "id": "R08791",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "Backend assembles GenerationContext before the pipeline runs"
+  },
+  {
+   "id": "R08798",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:134",
+   "note": "Prompts are AI team work; rule data and backstops ours"
+  },
+  {
+   "id": "R08800",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt construction is AI team work"
+  },
+  {
+   "id": "R08800a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt construction is AI team work"
+  },
+  {
+   "id": "R08800b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1538",
+   "note": "Backend serves chunks via retrieve_brand_chunks (k=8); prompt injection wording is AI team"
+  },
+  {
+   "id": "R08800c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118; docs/architecture/DATABASE.md:527",
+   "note": "RuleSet pushed in GenerationContext.marketplace_rules; prompt wording is AI team"
+  },
+  {
+   "id": "R08800d",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt construction is AI team work"
+  },
+  {
+   "id": "R08808",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt wording is AI team work"
+  },
+  {
+   "id": "R08809",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt wording is AI team work"
+  },
+  {
+   "id": "R08809a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt wording is AI team work"
+  },
+  {
+   "id": "R08809b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt wording is AI team work"
+  },
+  {
+   "id": "R08810",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt wording is AI team work"
+  },
+  {
+   "id": "R08810a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt wording is AI team work"
+  },
+  {
+   "id": "R08810b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt wording is AI team work"
+  },
+  {
+   "id": "R08812",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt wording is AI team work"
+  },
+  {
+   "id": "R08813",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:514",
+   "note": "max_length rule on content.title in pushed RuleSet"
+  },
+  {
+   "id": "R08814",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:514-515",
+   "note": "max_items/min_items on content.bullets"
+  },
+  {
+   "id": "R08814a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:497; docs/architecture/DATABASE.md:514",
+   "note": "max_length on content.bullets[*]"
+  },
+  {
+   "id": "R08815",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:514",
+   "note": "max_length on content.description"
+  },
+  {
+   "id": "R08816",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:514",
+   "note": "banned_terms rule type (platform and tenant)"
+  },
+  {
+   "id": "R08817",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:518",
+   "note": "No required-in-title rule; cross_field contains_value_of exists but unseeded (G6)"
+  },
+  {
+   "id": "R08819",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1538",
+   "note": "Chunks from retrieve_brand_chunks"
+  },
+  {
+   "id": "R08822",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193",
+   "note": "GenerationContext.product (PromptProductFacts proposed)"
+  },
+  {
+   "id": "R08822a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1080",
+   "note": "Golden Rule: facts with provenance are the source of truth"
+  },
+  {
+   "id": "R08825",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "GenerationContext.category"
+  },
+  {
+   "id": "R08827",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Output schema in prompt is AI team work"
+  },
+  {
+   "id": "R08830",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Prompt text; backend backstop claim_requires_attribute and fact_backed_attribute"
+  },
+  {
+   "id": "R08830a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Prompt text; backend backstop claim_requires_attribute and fact_backed_attribute"
+  },
+  {
+   "id": "R08830b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Prompt text; backend backstop claim_requires_attribute and fact_backed_attribute"
+  },
+  {
+   "id": "R08830c",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Prompt text; backend backstop claim_requires_attribute and fact_backed_attribute"
+  },
+  {
+   "id": "R08830d",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Prompt text; backend backstop claim_requires_attribute and fact_backed_attribute"
+  },
+  {
+   "id": "R08836",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1080; docs/architecture/DATABASE.md:519",
+   "note": "DB refuses AI-sourced critical facts; claim rules backstop content"
+  },
+  {
+   "id": "R08836a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt structure and creative copy are AI team work"
+  },
+  {
+   "id": "R08838",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1080; docs/architecture/DATABASE.md:523",
+   "note": "Facts carry source/evidence; fact_backed_attribute emits FACT_MISMATCH"
+  },
+  {
+   "id": "R08839",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt structure and creative copy are AI team work"
+  },
+  {
+   "id": "R08843",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Agent behaviour; backend backstop claim_requires_attribute (UNSUPPORTED_CLAIM)"
+  },
+  {
+   "id": "R08843a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Agent behaviour; backend backstop claim_requires_attribute (UNSUPPORTED_CLAIM)"
+  },
+  {
+   "id": "R08843b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Agent behaviour; backend backstop claim_requires_attribute (UNSUPPORTED_CLAIM)"
+  },
+  {
+   "id": "R08843c",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Agent behaviour; backend backstop claim_requires_attribute (UNSUPPORTED_CLAIM)"
+  },
+  {
+   "id": "R08843d",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Agent behaviour; backend backstop claim_requires_attribute (UNSUPPORTED_CLAIM)"
+  },
+  {
+   "id": "R08843e",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Agent behaviour; backend backstop claim_requires_attribute (UNSUPPORTED_CLAIM)"
+  },
+  {
+   "id": "R08843f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:519; docs/architecture/DATABASE.md:523; docs/architecture/DATABASE.md:527",
+   "note": "claim_requires_attribute + fact_backed_attribute; validate_rules closes over ProductFacts"
+  },
+  {
+   "id": "R08850",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:135",
+   "note": "Structured output is AI team work; contracts ours"
+  },
+  {
+   "id": "R08852",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent JSON output and JSON mode are AI team work"
+  },
+  {
+   "id": "R08852a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:120",
+   "note": "Contracts are Pydantic; CanonicalListing.model_validate"
+  },
+  {
+   "id": "R08852b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent JSON output and JSON mode are AI team work"
+  },
+  {
+   "id": "R08852c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:120; docs/architecture/BACKEND-ARCHITECTURE.md:1555",
+   "note": "validate_schema in graph; worker re-runs deterministic checks"
+  },
+  {
+   "id": "R08861",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131; T61",
+   "note": "CanonicalListing content.title (nested per [35], T61); agent output schema AI-internal"
+  },
+  {
+   "id": "R08862",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131; T61",
+   "note": "CanonicalListing content.bullets list (nested per [35], T61); count via min_items/max_items rules"
+  },
+  {
+   "id": "R08863",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Example copy only"
+  },
+  {
+   "id": "R08864",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Example copy only"
+  },
+  {
+   "id": "R08865",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Example copy only"
+  },
+  {
+   "id": "R08866",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Example copy only"
+  },
+  {
+   "id": "R08867",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Example copy only"
+  },
+  {
+   "id": "R08869",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131; T61",
+   "note": "CanonicalListing content.description (nested per [35], T61)"
+  },
+  {
+   "id": "R08875",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1786",
+   "note": "Repair and re-prompt live in the AI graph"
+  },
+  {
+   "id": "R08875a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1786",
+   "note": "Repair and re-prompt live in the AI graph"
+  },
+  {
+   "id": "R08877",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1786",
+   "note": "Repair and re-prompt live in the AI graph"
+  },
+  {
+   "id": "R08878",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1786",
+   "note": "Repair and re-prompt live in the AI graph"
+  },
+  {
+   "id": "R08879",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/review/VISION-ALIGNMENT.md:190; docs/canon/ENV.md:92; docs/architecture/BACKEND-ARCHITECTURE.md:738",
+   "note": "LLM_MODEL_ESCALATION exists; get_model_credentials has no escalation purpose"
+  },
+  {
+   "id": "R08879a",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/canon/ENV.md:92; docs/review/VISION-ALIGNMENT.md:190; docs/architecture/BACKEND-ARCHITECTURE.md:738",
+   "note": "gpt-4o escalation needs an AI-seam Canon PR for the purpose"
+  },
+  {
+   "id": "R08886",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:136; docs/architecture/DATABASE.md:523",
+   "note": "Schema, rules, vision and fact checks planned"
+  },
+  {
+   "id": "R08888",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:120",
+   "note": "CanonicalListing.model_validate"
+  },
+  {
+   "id": "R08888a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:523",
+   "note": "fact_backed_attribute (Site [23]) FACT_MISMATCH"
+  },
+  {
+   "id": "R08888b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:504",
+   "note": "quality_check node; deterministic part is tenant banned_terms"
+  },
+  {
+   "id": "R08899",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:120",
+   "note": "Pydantic CanonicalListing validation"
+  },
+  {
+   "id": "R08899a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:120",
+   "note": "Pydantic CanonicalListing validation"
+  },
+  {
+   "id": "R08899b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:120",
+   "note": "Pydantic CanonicalListing validation"
+  },
+  {
+   "id": "R08903",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:120",
+   "note": "Pydantic model_validate"
+  },
+  {
+   "id": "R08903a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:120",
+   "note": "JSON Schema generated from the same Pydantic contracts"
+  },
+  {
+   "id": "R08905",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:514",
+   "note": "max_length/min_length rules"
+  },
+  {
+   "id": "R08905a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:514",
+   "note": "banned_terms rules"
+  },
+  {
+   "id": "R08905b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:514; docs/architecture/DATABASE.md:526",
+   "note": "required_attribute + template MISSING_ATTRIBUTE"
+  },
+  {
+   "id": "R08909",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:80",
+   "note": "Rules Engine is deterministic code (invariant 2)"
+  },
+  {
+   "id": "R08911",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540; docs/architecture/DATABASE.md:525",
+   "note": "validate_images -> ImageReport; per-marketplace image rule seed"
+  },
+  {
+   "id": "R08915",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/ENV.md:91; docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "LLM_MODEL_DEFAULT gpt-4o-mini text+vision; backend makes the vision call"
+  },
+  {
+   "id": "R08915a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:129; docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "Deterministic Pillow checks before vision"
+  },
+  {
+   "id": "R08917",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:523",
+   "note": "fact_backed_attribute compares listing attributes to facts"
+  },
+  {
+   "id": "R08921",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:527",
+   "note": "validate_rules closes over ProductFacts (G9)"
+  },
+  {
+   "id": "R08928",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:137",
+   "note": "Field-only correction capped at 3"
+  },
+  {
+   "id": "R08930",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1785; AGENTS.md:91",
+   "note": "Correction node fixes only failing fields from ErrorReport"
+  },
+  {
+   "id": "R08930a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:91",
+   "note": "Partial retries touch only the failed field"
+  },
+  {
+   "id": "R08937",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Correction node internals in the AI graph"
+  },
+  {
+   "id": "R08938",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Correction node internals in the AI graph"
+  },
+  {
+   "id": "R08939",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Correction node internals in the AI graph"
+  },
+  {
+   "id": "R08940",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Correction node internals in the AI graph"
+  },
+  {
+   "id": "R08941",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:697-699",
+   "note": "Corrected fields re-validated via validate_rules port"
+  },
+  {
+   "id": "R08942",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Correction node internals in the AI graph"
+  },
+  {
+   "id": "R08943",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Correction node internals in the AI graph"
+  },
+  {
+   "id": "R08944",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Correction node internals in the AI graph"
+  },
+  {
+   "id": "R08944a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:87",
+   "note": "Cap of 3 corrections (invariant 9)"
+  },
+  {
+   "id": "R08945",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Correction node internals in the AI graph"
+  },
+  {
+   "id": "R08946",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "AGENTS.md:87; docs/architecture/DATABASE.md:1381",
+   "note": "Listing -> blocked (lowercase), corrections_exhausted, full ErrorReport; not a job state"
+  },
+  {
+   "id": "R08953",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1785; AGENTS.md:91",
+   "note": "Correction node fixes only failing fields; others untouched"
+  },
+  {
+   "id": "R08953a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Correction prompt scoping is AI work"
+  },
+  {
+   "id": "R08953b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Correction prompt scoping is AI work"
+  },
+  {
+   "id": "R08953c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:91",
+   "note": "Partial retries touch only the failed field"
+  },
+  {
+   "id": "R08953d",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Rationale for field-only correction"
+  },
+  {
+   "id": "R08953e",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Rationale for field-only correction"
+  },
+  {
+   "id": "R08953f",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Rationale for field-only correction"
+  },
+  {
+   "id": "R08960",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:138",
+   "note": "Cap 3, backoff, blocked + ErrorReport planned"
+  },
+  {
+   "id": "R08962",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:87",
+   "note": "Max 3 correction attempts"
+  },
+  {
+   "id": "R08962a",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "AGENTS.md:87; docs/canon/CANON.md:51",
+   "note": "listings.status blocked; JobState has no blocked value"
+  },
+  {
+   "id": "R08962b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1785; docs/architecture/BACKEND-ARCHITECTURE.md:1350",
+   "note": "Blocked with full ErrorReport; JobEnvelope carries it"
+  },
+  {
+   "id": "R08973",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1785",
+   "note": "3 corrections inside the graph"
+  },
+  {
+   "id": "R08977",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1785",
+   "note": "Correction node fixes failing fields, re-validates"
+  },
+  {
+   "id": "R08979",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1786",
+   "note": "Recorded; JSON retries live in the AI graph"
+  },
+  {
+   "id": "R08981",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/review/VISION-ALIGNMENT.md:190; docs/architecture/BACKEND-ARCHITECTURE.md:738",
+   "note": "Model escalation needs an escalation purpose in get_model_credentials"
+  },
+  {
+   "id": "R08983",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1786; docs/review/VISION-ALIGNMENT.md:190; docs/architecture/BACKEND-ARCHITECTURE.md:738",
+   "note": "Repair/re-prompt AI-side; escalate step lacks a seam purpose"
+  },
+  {
+   "id": "R08985",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0004-postgres-job-queue.md:42; docs/architecture/BACKEND-ARCHITECTURE.md:1784",
+   "note": "Automatic backoff retries, capped by job_runs.max_attempts (default 3)"
+  },
+  {
+   "id": "R08987",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1784",
+   "note": "Backoff 1 s doubling, jitter, 60 s cap"
+  },
+  {
+   "id": "R08989",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0004-postgres-job-queue.md:42",
+   "note": "Queue-level retry; no correction node involved"
+  },
+  {
+   "id": "R08991",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1008",
+   "note": "Adapter refreshes once on AUTH_EXPIRED"
+  },
+  {
+   "id": "R08993",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1008",
+   "note": "Failed refresh -> needs_reconnect plus reconnect task"
+  },
+  {
+   "id": "R08995",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1787",
+   "note": "Refresh once, then needs_reconnect task for the user"
+  },
+  {
+   "id": "R08999",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "AGENTS.md:87; docs/canon/CANON.md:51",
+   "note": "Lowercase listings.status blocked; job_runs has no BLOCKED"
+  },
+  {
+   "id": "R08999a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1785",
+   "note": "Blocked with the full ErrorReport"
+  },
+  {
+   "id": "R08999b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1381",
+   "note": "ErrorReport errors[].field"
+  },
+  {
+   "id": "R08999c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1384",
+   "note": "error_code per ErrorItem from codes.py"
+  },
+  {
+   "id": "R08999d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1387",
+   "note": "suggestion per ErrorItem"
+  },
+  {
+   "id": "R08999e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1339; docs/architecture/DATABASE.md:1387",
+   "note": "PATCH /api/v1/listings/{id}/content; edit from blocked"
+  },
+  {
+   "id": "R08999f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1340; docs/architecture/DATABASE.md:1607",
+   "note": "Regenerate with RegenerateItem.instructions <=2000 -> user_instructions"
+  },
+  {
+   "id": "R09006",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:139",
+   "note": "Content Agent is AI team work; seam pushes product, brand, rules"
+  },
+  {
+   "id": "R09008",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "content_agent node; output lands in content.{title,bullets,description}"
+  },
+  {
+   "id": "R09008a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "content_agent node; output lands in content.{title,bullets,description}"
+  },
+  {
+   "id": "R09008b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "content_agent node; output lands in content.{title,bullets,description}"
+  },
+  {
+   "id": "R09008c",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "content_agent node; output lands in content.{title,bullets,description}"
+  },
+  {
+   "id": "R09008d",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Agent behaviour; backstop claim_requires_attribute/fact_backed_attribute"
+  },
+  {
+   "id": "R09013",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "content_agent node; output lands in content.{title,bullets,description}"
+  },
+  {
+   "id": "R09013a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "content_agent node; output lands in content.{title,bullets,description}"
+  },
+  {
+   "id": "R09013b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "content_agent node; output lands in content.{title,bullets,description}"
+  },
+  {
+   "id": "R09013c",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "content_agent node; output lands in content.{title,bullets,description}"
+  },
+  {
+   "id": "R09013d",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "content_agent node; output lands in content.{title,bullets,description}"
+  },
+  {
+   "id": "R09013e",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Agent behaviour; backstop claim_requires_attribute/fact_backed_attribute"
+  },
+  {
+   "id": "R09015",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/ENV.md:91",
+   "note": "LLM_MODEL_DEFAULT gpt-4o-mini via get_model_credentials(generation)"
+  },
+  {
+   "id": "R09019",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Model rationale is AI team choice"
+  },
+  {
+   "id": "R09019a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Model rationale is AI team choice"
+  },
+  {
+   "id": "R09025",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:998",
+   "note": "Token size is AI; budget reservation uses per-kind ceilings"
+  },
+  {
+   "id": "R09027",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "content_agent is a v1 graph node"
+  },
+  {
+   "id": "R09031",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "content_agent is a v1 graph node"
+  },
+  {
+   "id": "R09041",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:705-707; docs/architecture/DATABASE.md:1193",
+   "note": "Product loaded from products into GenerationContext.product"
+  },
+  {
+   "id": "R09045",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193",
+   "note": "product sku"
+  },
+  {
+   "id": "R09045a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193",
+   "note": "product title (seller name)"
+  },
+  {
+   "id": "R09045b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193",
+   "note": "product image_ids"
+  },
+  {
+   "id": "R09045c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193",
+   "note": "product attributes"
+  },
+  {
+   "id": "R09045d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1080",
+   "note": "Golden Rule: product facts are the factual source"
+  },
+  {
+   "id": "R09047",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1538",
+   "note": "retrieve_brand_chunks over pgvector"
+  },
+  {
+   "id": "R09051",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1062",
+   "note": "chunk type tone_rule"
+  },
+  {
+   "id": "R09051a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1062",
+   "note": "No style type; tone_rule/example chunks carry style ([06] vocabulary)"
+  },
+  {
+   "id": "R09051b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1062",
+   "note": "chunk type glossary"
+  },
+  {
+   "id": "R09051c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1062",
+   "note": "chunk type compliance"
+  },
+  {
+   "id": "R09053",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:490; docs/architecture/DATABASE.md:527",
+   "note": "rules table resolved into pushed RuleSet"
+  },
+  {
+   "id": "R09057",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:514",
+   "note": "max_length rules"
+  },
+  {
+   "id": "R09057a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:514",
+   "note": "banned_terms rules"
+  },
+  {
+   "id": "R09057b",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:518",
+   "note": "No required-in-title rule type or seed (G6)"
+  },
+  {
+   "id": "R09059",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:530",
+   "note": "category_templates doubles as the [71] category mapping table"
+  },
+  {
+   "id": "R09063",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:539",
+   "note": "CategoryTemplate holds attribute specs only; no category content guidance"
+  },
+  {
+   "id": "R09065",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1064; docs/review/VISION-ALIGNMENT.md:184",
+   "note": "Only own previous_version pushed; no approved-example retrieval or approve->brand_embed (G13)"
+  },
+  {
+   "id": "R09069",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1064; docs/review/VISION-ALIGNMENT.md:184",
+   "note": "source_type listing_version exists; approved listings never embedded as examples (G13)"
+  },
+  {
+   "id": "R09071",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131; T61",
+   "note": "content.title"
+  },
+  {
+   "id": "R09071a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131; T61",
+   "note": "content.bullets list"
+  },
+  {
+   "id": "R09071b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131; T61",
+   "note": "content.description"
+  },
+  {
+   "id": "R09071c",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent output schema is AI internal; merged into CanonicalListing"
+  },
+  {
+   "id": "R09078",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt wording is AI team work"
+  },
+  {
+   "id": "R09079",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt wording is AI team work"
+  },
+  {
+   "id": "R09079a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:514-515",
+   "note": "num_bullets from max_items/min_items rules"
+  },
+  {
+   "id": "R09079b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt wording is AI team work"
+  },
+  {
+   "id": "R09081",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt wording is AI team work"
+  },
+  {
+   "id": "R09082",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:514",
+   "note": "max_length on content.title"
+  },
+  {
+   "id": "R09083",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:497; docs/architecture/DATABASE.md:514",
+   "note": "max_length on content.bullets[*]"
+  },
+  {
+   "id": "R09084",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:514",
+   "note": "max_length on content.description"
+  },
+  {
+   "id": "R09085",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:514",
+   "note": "banned_terms rules"
+  },
+  {
+   "id": "R09086",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:518; docs/architecture/DATABASE.md:1123",
+   "note": "brand_names exists; no title-contains-brand rule seeded (G6)"
+  },
+  {
+   "id": "R09086a",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:518",
+   "note": "No title-contains-product-type rule (G6)"
+  },
+  {
+   "id": "R09086b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Key differentiator is prompt judgment, not checkable"
+  },
+  {
+   "id": "R09088",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1538",
+   "note": "Chunks from retrieve_brand_chunks port (k=8); prompt section wording is AI team"
+  },
+  {
+   "id": "R09091",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193; docs/architecture/DATABASE.md:1080",
+   "note": "GenerationContext.product {sku,title,attributes,image_ids} is the factual source; section wording AI"
+  },
+  {
+   "id": "R09092",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193",
+   "note": "product sku"
+  },
+  {
+   "id": "R09093",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193",
+   "note": "product title"
+  },
+  {
+   "id": "R09094",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "GenerationContext.category"
+  },
+  {
+   "id": "R09095",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193",
+   "note": "material inside product attributes"
+  },
+  {
+   "id": "R09096",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193; docs/architecture/DATABASE.md:426",
+   "note": "colour in attributes; product_colourways"
+  },
+  {
+   "id": "R09097",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193",
+   "note": "product attributes"
+  },
+  {
+   "id": "R09099",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Prompt text; backstop claim rules"
+  },
+  {
+   "id": "R09099a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Prompt text; backstop claim rules"
+  },
+  {
+   "id": "R09099b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Prompt text; backstop claim rules"
+  },
+  {
+   "id": "R09099c",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Prompt text; backstop claim rules"
+  },
+  {
+   "id": "R09099d",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Prompt text; backstop claim rules"
+  },
+  {
+   "id": "R09102",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt wording is AI team work"
+  },
+  {
+   "id": "R09109",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt wording is AI team work"
+  },
+  {
+   "id": "R09111",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Agent behaviour; backstop claim_requires_attribute (e.g. organic -> gots)"
+  },
+  {
+   "id": "R09112",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Agent behaviour; backstop claim_requires_attribute (e.g. organic -> gots)"
+  },
+  {
+   "id": "R09113",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Agent behaviour; backstop claim_requires_attribute (e.g. organic -> gots)"
+  },
+  {
+   "id": "R09114",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Agent behaviour; backstop claim_requires_attribute (e.g. organic -> gots)"
+  },
+  {
+   "id": "R09115",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Agent behaviour; backstop claim_requires_attribute (e.g. organic -> gots)"
+  },
+  {
+   "id": "R09116",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/architecture/DATABASE.md:519",
+   "note": "Agent behaviour; backstop claim_requires_attribute (e.g. organic -> gots)"
+  },
+  {
+   "id": "R09126",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Example output copy only"
+  },
+  {
+   "id": "R09127",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Example output copy only"
+  },
+  {
+   "id": "R09128",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Example output copy only"
+  },
+  {
+   "id": "R09129",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Example output copy only"
+  },
+  {
+   "id": "R09130",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Example output copy only"
+  },
+  {
+   "id": "R09131",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Example output copy only"
+  },
+  {
+   "id": "R09132",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Example output copy only"
+  },
+  {
+   "id": "R09134",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Example output copy only"
+  },
+  {
+   "id": "R09143",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "ContentAgent internals in packages/pipeline"
+  },
+  {
+   "id": "R09144",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "ContentAgent internals in packages/pipeline"
+  },
+  {
+   "id": "R09148",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "ContentAgent internals in packages/pipeline"
+  },
+  {
+   "id": "R09149",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "ContentAgent internals in packages/pipeline"
+  },
+  {
+   "id": "R09152",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/review/VISION-ALIGNMENT.md:190; docs/canon/CANON.md:119",
+   "note": "Router picks model by task/complexity; get_model_credentials returns one model per purpose, no tier"
+  },
+  {
+   "id": "R09154",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "ContentAgent internals in packages/pipeline"
+  },
+  {
+   "id": "R09155",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "ContentAgent internals in packages/pipeline"
+  },
+  {
+   "id": "R09156",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "ContentAgent internals in packages/pipeline"
+  },
+  {
+   "id": "R09159",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "ContentAgent internals in packages/pipeline"
+  },
+  {
+   "id": "R09162",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "ContentAgent internals in packages/pipeline"
+  },
+  {
+   "id": "R09163",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "ContentAgent internals in packages/pipeline"
+  },
+  {
+   "id": "R09166",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "ContentAgent internals in packages/pipeline"
+  },
+  {
+   "id": "R09169",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "ContentAgent internals in packages/pipeline"
+  }
+ ]
+}

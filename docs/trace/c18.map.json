@@ -1,0 +1,2161 @@
+{
+ "chunk": "c18",
+ "items": [
+  {
+   "id": "R10869",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:402; docs/architecture/DATABASE.md:22",
+   "note": "products is std tenant: one tenant, many products"
+  },
+  {
+   "id": "R10870",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1000; docs/architecture/DATABASE.md:1015",
+   "note": "marketplace_accounts std tenant; one live account per marketplace"
+  },
+  {
+   "id": "R10871",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1057; docs/architecture/DATABASE.md:1058",
+   "note": "brand_chunks.tenant_id (site brand_id, T58)"
+  },
+  {
+   "id": "R10872",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:746",
+   "note": "listings.product_id; UNIQUE (product_id, marketplace); style/standalone grain (T45)"
+  },
+  {
+   "id": "R10873",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:479",
+   "note": "images.product_id -> products"
+  },
+  {
+   "id": "R10874",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:777",
+   "note": "listing_versions.listing_id; UNIQUE (listing_id, version)"
+  },
+  {
+   "id": "R10875",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:814",
+   "note": "validation_runs.listing_id -> listings"
+  },
+  {
+   "id": "R10876",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1021; T14",
+   "note": "performance.listing_id; family-level rows; v1 filling per T14"
+  },
+  {
+   "id": "R10877",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:988",
+   "note": "agent_runs.product_id -> products (nullable)"
+  },
+  {
+   "id": "R10878",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:495; T48",
+   "note": "rules.tenant_id nullable (NULL = platform); brand rules limited to 2 types"
+  },
+  {
+   "id": "R10879",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:291",
+   "note": "audit_log.tenant_id; NULL only for platform events"
+  },
+  {
+   "id": "R10887",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2081-2120",
+   "note": "All [85] tables and columns mapped in Appendix A.1"
+  },
+  {
+   "id": "R10889",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2081",
+   "note": "Appendix A maps every site table and column"
+  },
+  {
+   "id": "R10897",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:215",
+   "note": "tenants root table (tenant = brand workspace)"
+  },
+  {
+   "id": "R10899",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21",
+   "note": "uuid PK DEFAULT gen_random_uuid() convention"
+  },
+  {
+   "id": "R10900",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2085",
+   "note": "name text NOT NULL"
+  },
+  {
+   "id": "R10901",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:221",
+   "note": "tone text nullable"
+  },
+  {
+   "id": "R10902",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:222",
+   "note": "guidelines jsonb + CHECK jsonb_typeof = array"
+  },
+  {
+   "id": "R10903",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:222; T38",
+   "note": "glossary jsonb + CHECK object map"
+  },
+  {
+   "id": "R10904",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21",
+   "note": "created_at timestamptz NOT NULL DEFAULT now()"
+  },
+  {
+   "id": "R10907",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1057; docs/architecture/DATABASE.md:1063",
+   "note": "brand_chunks vectors in PG17 + pgvector"
+  },
+  {
+   "id": "R10908",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1057",
+   "note": "brand_chunks table"
+  },
+  {
+   "id": "R10909",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21",
+   "note": "uuid PK DEFAULT gen_random_uuid() convention"
+  },
+  {
+   "id": "R10910",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2091; docs/canon/CANON.md:47; T58",
+   "note": "tenant_id NOT NULL instead of nullable brand_id"
+  },
+  {
+   "id": "R10911",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1062",
+   "note": "type text NOT NULL"
+  },
+  {
+   "id": "R10911a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1062",
+   "note": "ck_brand_chunks_type CHECK tone_rule|glossary|compliance|example"
+  },
+  {
+   "id": "R10912",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1062",
+   "note": "text NOT NULL, ~200 words"
+  },
+  {
+   "id": "R10913",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1063",
+   "note": "embedding vector(1536), made NOT NULL"
+  },
+  {
+   "id": "R10914",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1058",
+   "note": "updated_at + set_updated_at trigger"
+  },
+  {
+   "id": "R10917",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:402",
+   "note": "products table"
+  },
+  {
+   "id": "R10919",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21",
+   "note": "uuid PK DEFAULT gen_random_uuid() convention"
+  },
+  {
+   "id": "R10920",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2094; docs/canon/CANON.md:47; T58",
+   "note": "tenant_id instead of brand_id"
+  },
+  {
+   "id": "R10921",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:407",
+   "note": "sku text NOT NULL; UNIQUE (tenant_id, sku)"
+  },
+  {
+   "id": "R10922",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:408",
+   "note": "title text NOT NULL, 1..500"
+  },
+  {
+   "id": "R10923",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:414; docs/architecture/DATABASE.md:2095; T62",
+   "note": "source_image_urls jsonb + authoritative images table"
+  },
+  {
+   "id": "R10924",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2093; docs/architecture/DATABASE.md:1099",
+   "note": "attributes jsonb (Fact envelopes)"
+  },
+  {
+   "id": "R10925",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21",
+   "note": "created_at timestamptz NOT NULL DEFAULT now()"
+  },
+  {
+   "id": "R10928",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1000",
+   "note": "marketplace_accounts table"
+  },
+  {
+   "id": "R10930",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21",
+   "note": "uuid PK DEFAULT gen_random_uuid() convention"
+  },
+  {
+   "id": "R10931",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2098; docs/canon/CANON.md:47; T58",
+   "note": "tenant_id instead of brand_id"
+  },
+  {
+   "id": "R10932",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1005",
+   "note": "marketplace text NOT NULL"
+  },
+  {
+   "id": "R10932a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:26; docs/architecture/DATABASE.md:2097",
+   "note": "CHECK marketplace IN ('amazon','flipkart')"
+  },
+  {
+   "id": "R10933",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1006; T27",
+   "note": "token_enc nullable after revoke (crypto-shred); site pages agree on NOT NULL"
+  },
+  {
+   "id": "R10933a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1006",
+   "note": "Per-write AES-256-GCM key wrapped by Cloud KMS"
+  },
+  {
+   "id": "R10934",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1008",
+   "note": "status DEFAULT 'active'; active|needs_reconnect|revoked"
+  },
+  {
+   "id": "R10935",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21",
+   "note": "created_at timestamptz NOT NULL DEFAULT now()"
+  },
+  {
+   "id": "R10938",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:741",
+   "note": "listings table (+ tenant_id, T59)"
+  },
+  {
+   "id": "R10940",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21",
+   "note": "uuid PK DEFAULT gen_random_uuid() convention"
+  },
+  {
+   "id": "R10941",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:746",
+   "note": "product_id -> products"
+  },
+  {
+   "id": "R10942",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:746",
+   "note": "marketplace text; UNIQUE (product_id, marketplace)"
+  },
+  {
+   "id": "R10943",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:747",
+   "note": "status text DEFAULT created, CHECK 9 values"
+  },
+  {
+   "id": "R10943a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:747; T12",
+   "note": "All five listed values are among our 9 stored statuses"
+  },
+  {
+   "id": "R10944",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:754",
+   "note": "external_id text nullable"
+  },
+  {
+   "id": "R10945",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21",
+   "note": "created_at timestamptz NOT NULL DEFAULT now()"
+  },
+  {
+   "id": "R10948",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:983",
+   "note": "agent_runs table, one row per model call"
+  },
+  {
+   "id": "R10950",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21",
+   "note": "uuid PK DEFAULT gen_random_uuid() convention"
+  },
+  {
+   "id": "R10951",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:988",
+   "note": "product_id -> products nullable"
+  },
+  {
+   "id": "R10952",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:990",
+   "note": "trigger text, CHECK generate|correct|embed|vision"
+  },
+  {
+   "id": "R10953",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "model_used text"
+  },
+  {
+   "id": "R10954",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "tokens_in int"
+  },
+  {
+   "id": "R10955",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "tokens_out int"
+  },
+  {
+   "id": "R10956",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:992; docs/canon/CANON.md:56; T25",
+   "note": "cost_usd numeric(12,6) instead of cost DECIMAL(10,6)"
+  },
+  {
+   "id": "R10957",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "status NOT NULL: running|completed|failed|timeout"
+  },
+  {
+   "id": "R10958",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "error_report_json jsonb nullable"
+  },
+  {
+   "id": "R10959",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21",
+   "note": "created_at timestamptz NOT NULL DEFAULT now()"
+  },
+  {
+   "id": "R10968",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2081-2120",
+   "note": "ER relationships mapped in Appendix A.1"
+  },
+  {
+   "id": "R10970",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:162",
+   "note": "Per-domain mermaid ER diagrams in §5"
+  },
+  {
+   "id": "R10977",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:402; docs/architecture/DATABASE.md:22",
+   "note": "products std tenant"
+  },
+  {
+   "id": "R10978",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1000; docs/architecture/DATABASE.md:1015",
+   "note": "marketplace_accounts std tenant"
+  },
+  {
+   "id": "R10979",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1057; docs/architecture/DATABASE.md:1058",
+   "note": "brand_chunks.tenant_id"
+  },
+  {
+   "id": "R10981",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:291",
+   "note": "audit_log.tenant_id, NULL only for platform events"
+  },
+  {
+   "id": "R10982",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:479",
+   "note": "images.product_id -> products"
+  },
+  {
+   "id": "R10983",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:746",
+   "note": "listings.product_id -> products"
+  },
+  {
+   "id": "R10984",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:988",
+   "note": "agent_runs.product_id -> products"
+  },
+  {
+   "id": "R10985",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:777",
+   "note": "listing_versions.listing_id -> listings"
+  },
+  {
+   "id": "R10986",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:814",
+   "note": "validation_runs.listing_id -> listings"
+  },
+  {
+   "id": "R10987",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1021; T14",
+   "note": "performance.listing_id -> listings; v1 filling per T14"
+  },
+  {
+   "id": "R10988",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:760; docs/architecture/DATABASE.md:2103; T44",
+   "note": "marketplace_account_id nullable, set at first submission; ER says mandatory"
+  },
+  {
+   "id": "R10991",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:22; docs/architecture/DATABASE.md:495; docs/architecture/DATABASE.md:291; T59; T48",
+   "note": "tenant_id NOT NULL on tenant tables; rules and audit_log tenant_id nullable for platform rows"
+  },
+  {
+   "id": "R10991a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:22; docs/architecture/DATABASE.md:23",
+   "note": "FKs incl. composite (tenant_id, col) tenant FKs"
+  },
+  {
+   "id": "R10991b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:22; docs/architecture/DATABASE.md:2149",
+   "note": "UNIQUE (tenant_id, id) anchor on every tenant table"
+  },
+  {
+   "id": "R10991c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:766",
+   "note": "(tenant_id, status, marketplace) on listings"
+  },
+  {
+   "id": "R10991d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:766",
+   "note": "(tenant_id, status, marketplace) plus status partial indexes"
+  },
+  {
+   "id": "R10998",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:215",
+   "note": "tenants table in 0001"
+  },
+  {
+   "id": "R11000",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:220",
+   "note": "name, slug"
+  },
+  {
+   "id": "R11000a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:221; docs/architecture/DATABASE.md:222",
+   "note": "tone, guidelines, glossary"
+  },
+  {
+   "id": "R11000b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:223-226",
+   "note": "status, plan, auto_publish, llm_daily_budget_usd"
+  },
+  {
+   "id": "R11005",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:216; T31",
+   "note": "tenant = brand workspace; brand facts in 1:1 brand_profiles"
+  },
+  {
+   "id": "R11005f",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:222; docs/architecture/DATABASE.md:2087; T64",
+   "note": "No embedding_refs column; brand_chunks.tenant_id links chunks"
+  },
+  {
+   "id": "R11005h",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:22; docs/architecture/DATABASE.md:495; ADR-0006; T23; T48",
+   "note": "users are global, linked via tenant_memberships (ADR-0006); platform rules rows have NULL tenant_id"
+  },
+  {
+   "id": "R11012",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:215",
+   "note": "voice fields on tenants"
+  },
+  {
+   "id": "R11014",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:221",
+   "note": "tone"
+  },
+  {
+   "id": "R11014a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:222; docs/architecture/DATABASE.md:1062",
+   "note": "guidelines plus tone_rule/example chunks"
+  },
+  {
+   "id": "R11014b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:495; docs/architecture/DATABASE.md:508; T48",
+   "note": "brand compliance rules (2 types) + compliance chunks"
+  },
+  {
+   "id": "R11019",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:221-222; T31",
+   "note": "voice settings on tenants; brand facts in brand_profiles"
+  },
+  {
+   "id": "R11019b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:222",
+   "note": "guidelines jsonb CHECK array of rule strings"
+  },
+  {
+   "id": "R11019c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:222; T38",
+   "note": "glossary jsonb map {term_to_avoid: preferred_term}"
+  },
+  {
+   "id": "R11019d",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2087; T64",
+   "note": "No embedding_refs column; chunks point at the tenant"
+  },
+  {
+   "id": "R11019e",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:231",
+   "note": "GenerationContext.brand_profile carries tone, guidelines, glossary"
+  },
+  {
+   "id": "R11026",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:402",
+   "note": "products table in 0001"
+  },
+  {
+   "id": "R11028",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:407",
+   "note": "sku, UNIQUE (tenant_id, sku)"
+  },
+  {
+   "id": "R11028a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:413; docs/architecture/DATABASE.md:967",
+   "note": "description + import_rows.raw_row keep seller source data"
+  },
+  {
+   "id": "R11028b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:474; docs/architecture/DATABASE.md:479; T62",
+   "note": "images table per product; raw URLs in source_image_urls"
+  },
+  {
+   "id": "R11028c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1099",
+   "note": "attributes jsonb (Fact envelopes)"
+  },
+  {
+   "id": "R11033d",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:414; docs/architecture/DATABASE.md:2095; T62",
+   "note": "source_image_urls holds raw seller URLs; images table stores keys, not S3 URLs"
+  },
+  {
+   "id": "R11033g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1080; docs/architecture/DATABASE.md:523",
+   "note": "Facts with source/confidence; fact_backed_attribute rule"
+  },
+  {
+   "id": "R11033h",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193",
+   "note": "Backend pushes PromptProductFacts in GenerationContext.product"
+  },
+  {
+   "id": "R11033i",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193",
+   "note": "Backend pushes PromptProductFacts in GenerationContext.product"
+  },
+  {
+   "id": "R11033j",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1193; docs/architecture/DATABASE.md:519",
+   "note": "PromptProductFacts; claim_requires_attribute ties claims to certifications"
+  },
+  {
+   "id": "R11040",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1000",
+   "note": "marketplace_accounts table"
+  },
+  {
+   "id": "R11042",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1006",
+   "note": "token_enc KMS-wrapped AES-256-GCM"
+  },
+  {
+   "id": "R11042a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1008",
+   "note": "status active|needs_reconnect|revoked"
+  },
+  {
+   "id": "R11047f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1006; docs/architecture/DATABASE.md:1015",
+   "note": "Encrypted tokens, one live account per marketplace"
+  },
+  {
+   "id": "R11047g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1008",
+   "note": "Adapter refreshes once on AUTH_EXPIRED; failure -> needs_reconnect"
+  },
+  {
+   "id": "R11054",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:741",
+   "note": "listings table"
+  },
+  {
+   "id": "R11056",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:741; docs/architecture/DATABASE.md:746",
+   "note": "One listing per product per marketplace"
+  },
+  {
+   "id": "R11056a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:747",
+   "note": "status column with guard"
+  },
+  {
+   "id": "R11061c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1373",
+   "note": "9 persisted values; transitions table"
+  },
+  {
+   "id": "R11061d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:754",
+   "note": "external_id = ASIN/FSN/LID"
+  },
+  {
+   "id": "R11061f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1373",
+   "note": "Lifecycle created -> ... -> published"
+  },
+  {
+   "id": "R11068",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:772",
+   "note": "listing_versions table"
+  },
+  {
+   "id": "R11070",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:772; docs/architecture/DATABASE.md:778",
+   "note": "Immutable versions with full content_json"
+  },
+  {
+   "id": "R11070a",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:772",
+   "note": "Snapshots stored in v1; rollback is on [43] Listing Versioning, Scope PHASE2 (L9856-9863)"
+  },
+  {
+   "id": "R11075",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21; docs/architecture/DATABASE.md:2104",
+   "note": "id uuid"
+  },
+  {
+   "id": "R11075a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:777",
+   "note": "listing_id -> listings"
+  },
+  {
+   "id": "R11075b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:777",
+   "note": "version int, UNIQUE (listing_id, version)"
+  },
+  {
+   "id": "R11075c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:778",
+   "note": "content_json = CanonicalListing"
+  },
+  {
+   "id": "R11075d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:778",
+   "note": "image_reports_json jsonb, immutable evidence"
+  },
+  {
+   "id": "R11075e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21; docs/architecture/DATABASE.md:2104",
+   "note": "created_at"
+  },
+  {
+   "id": "R11075f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:781; docs/architecture/BACKEND-ARCHITECTURE.md:1339",
+   "note": "origin generation|regeneration|edit|import; every edit a new version"
+  },
+  {
+   "id": "R11075g",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1336-1343",
+   "note": "Versions stored, but no endpoint reads prior versions; [43] L9867 wants simplified comparison UI in MVP"
+  },
+  {
+   "id": "R11075h",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:772",
+   "note": "Rollback to previous approved version described only on [43], Scope PHASE2 (L9856-9863)"
+  },
+  {
+   "id": "R11082",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:490",
+   "note": "rules table in 0002"
+  },
+  {
+   "id": "R11084",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:499; docs/architecture/DATABASE.md:500",
+   "note": "version + revision; new content = new version row"
+  },
+  {
+   "id": "R11089",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2107",
+   "note": "id uuid"
+  },
+  {
+   "id": "R11089a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:496",
+   "note": "marketplace text"
+  },
+  {
+   "id": "R11089b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:496",
+   "note": "category slug; NULL = all categories"
+  },
+  {
+   "id": "R11089c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:501",
+   "note": "rule_def jsonb (RuleDef, 14 types)"
+  },
+  {
+   "id": "R11089d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:499",
+   "note": "severity error|warning DEFAULT error"
+  },
+  {
+   "id": "R11089e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2107",
+   "note": "created_at"
+  },
+  {
+   "id": "R11089f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:490; AGENTS.md:80",
+   "note": "Rules are rows evaluated by deterministic Rules Engine"
+  },
+  {
+   "id": "R11089g",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:508; T29",
+   "note": "Platform rules via migrator job on a rules pack, not an image deploy"
+  },
+  {
+   "id": "R11096",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:809",
+   "note": "validation_runs table"
+  },
+  {
+   "id": "R11098",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:809",
+   "note": "One row per stage per attempt"
+  },
+  {
+   "id": "R11103",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21; docs/architecture/DATABASE.md:2109",
+   "note": "id uuid"
+  },
+  {
+   "id": "R11103a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:814",
+   "note": "listing_id -> listings"
+  },
+  {
+   "id": "R11103b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:815; docs/canon/CANON.md:58; T60",
+   "note": "7 ErrorSource values instead of rules/vision/api"
+  },
+  {
+   "id": "R11103c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:816",
+   "note": "passed boolean = no error items"
+  },
+  {
+   "id": "R11103d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:816",
+   "note": "error_report_json jsonb"
+  },
+  {
+   "id": "R11103e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21; docs/architecture/DATABASE.md:2109",
+   "note": "created_at"
+  },
+  {
+   "id": "R11103f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:810",
+   "note": "Append-only, every stage and attempt recorded"
+  },
+  {
+   "id": "R11110",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:983",
+   "note": "agent_runs table"
+  },
+  {
+   "id": "R11112",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:983; docs/architecture/DATABASE.md:984; AGENTS.md:85",
+   "note": "One row per model call, backend sole writer (invariant 7)"
+  },
+  {
+   "id": "R11117i",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "duration_ms"
+  },
+  {
+   "id": "R11117k",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:984; AGENTS.md:85",
+   "note": "Every model call persists an agent_runs row"
+  },
+  {
+   "id": "R11117l",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:988; docs/architecture/DATABASE.md:992",
+   "note": "listing_id + cost_usd per row"
+  },
+  {
+   "id": "R11117m",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:993; docs/architecture/DATABASE.md:992",
+   "note": "agent_name + cost_usd per row"
+  },
+  {
+   "id": "R11117n",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991; docs/architecture/DATABASE.md:992",
+   "note": "model_used + cost_usd per row"
+  },
+  {
+   "id": "R11117o",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991; docs/architecture/DATABASE.md:996",
+   "note": "status + errors GIN index"
+  },
+  {
+   "id": "R11124",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1020; T14; Q10",
+   "note": "Table built; site plan says performance Phase 2 (L6880), [96] says MVP"
+  },
+  {
+   "id": "R11126",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1020; docs/architecture/DATABASE.md:1021; T14",
+   "note": "performance table built in 0002; v1 filling per T14"
+  },
+  {
+   "id": "R11131",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21; docs/architecture/DATABASE.md:2116",
+   "note": "id uuid"
+  },
+  {
+   "id": "R11131a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1021",
+   "note": "listing_id; FK -> l/mkt"
+  },
+  {
+   "id": "R11131b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1021; docs/architecture/DATABASE.md:2116",
+   "note": "int NOT NULL DEFAULT 0"
+  },
+  {
+   "id": "R11131c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1021; docs/architecture/DATABASE.md:2116",
+   "note": "int NOT NULL DEFAULT 0"
+  },
+  {
+   "id": "R11131d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1021; docs/architecture/DATABASE.md:2116",
+   "note": "int NOT NULL DEFAULT 0"
+  },
+  {
+   "id": "R11131e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1021; docs/architecture/DATABASE.md:2116",
+   "note": "int NOT NULL DEFAULT 0"
+  },
+  {
+   "id": "R11131f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1021; docs/architecture/DATABASE.md:2117",
+   "note": "ranking_position int nullable"
+  },
+  {
+   "id": "R11131g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1021",
+   "note": "date date; UNIQUE (listing_id, date)"
+  },
+  {
+   "id": "R11131h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1021; docs/architecture/DATABASE.md:2117",
+   "note": "marketplace column"
+  },
+  {
+   "id": "R11131i",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1021; T14; Q10",
+   "note": "No ingestion adapter method in v1 plan; report sources open decision 16"
+  },
+  {
+   "id": "R11131j",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1021; T14; Q10",
+   "note": "No scheduled performance collection job planned pending T14"
+  },
+  {
+   "id": "R11131k",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1353; T14; Q10",
+   "note": "v1 analytics operational only; [202] L13293 puts unified analytics in Phase 2"
+  },
+  {
+   "id": "R11131l",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "AGENTS.md:122-124",
+   "note": "Site marks Optimization Agent Phase 3 (L11131)"
+  },
+  {
+   "id": "R11138",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:285",
+   "note": "audit_log table"
+  },
+  {
+   "id": "R11140",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:285; docs/architecture/DATABASE.md:301; docs/architecture/BACKEND-ARCHITECTURE.md:2239",
+   "note": "Append-only audit trail"
+  },
+  {
+   "id": "R11145",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:290",
+   "note": "id uuid"
+  },
+  {
+   "id": "R11145a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:292; T65",
+   "note": "actor_type user|system|staff + actor_user_id + actor_email"
+  },
+  {
+   "id": "R11145b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:293",
+   "note": "action text, e.g. listing.approved"
+  },
+  {
+   "id": "R11145c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:293",
+   "note": "entity_type"
+  },
+  {
+   "id": "R11145d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:293",
+   "note": "entity_id uuid"
+  },
+  {
+   "id": "R11145e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:294; docs/architecture/DATABASE.md:300",
+   "note": "before/after jsonb, allow-listed changed fields"
+  },
+  {
+   "id": "R11145f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:294; docs/architecture/DATABASE.md:300",
+   "note": "before/after jsonb, allow-listed changed fields"
+  },
+  {
+   "id": "R11145g",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:297; T65",
+   "note": "Column named occurred_at, not timestamp"
+  },
+  {
+   "id": "R11145h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2215; docs/architecture/BACKEND-ARCHITECTURE.md:2239",
+   "note": "Every important action audited"
+  },
+  {
+   "id": "R11145i",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2219; docs/architecture/DATABASE.md:300",
+   "note": "Listing creation is not named as an audited action; only status changes"
+  },
+  {
+   "id": "R11145j",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:802; docs/architecture/BACKEND-ARCHITECTURE.md:812",
+   "note": "Approval writes review_decisions + audit_log"
+  },
+  {
+   "id": "R11145k",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:792",
+   "note": "Reject writes decision + audit entry"
+  },
+  {
+   "id": "R11145l",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2219",
+   "note": "Publish is an audited state-changing action"
+  },
+  {
+   "id": "R11145m",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:508; docs/architecture/DATABASE.md:543",
+   "note": "Brand rule writes and rules.enabled audited; platform app.cli rules import not stated as audited"
+  },
+  {
+   "id": "R11145n",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:494; docs/architecture/DATABASE.md:300",
+   "note": "Connect audited; account status/settings changes audited"
+  },
+  {
+   "id": "R11152",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1057",
+   "note": "brand_chunks table"
+  },
+  {
+   "id": "R11154",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1057; docs/architecture/DATABASE.md:1063",
+   "note": "Brand voice chunks with pgvector embeddings"
+  },
+  {
+   "id": "R11159f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1063",
+   "note": "embedding vector(1536)"
+  },
+  {
+   "id": "R11159g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1073",
+   "note": "embedding <=> :q cosine distance, top 8"
+  },
+  {
+   "id": "R11166",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:474",
+   "note": "images table"
+  },
+  {
+   "id": "R11168",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:475; docs/architecture/DATABASE.md:479; T63",
+   "note": "storage_key object key; URLs signed at read, no s3_url"
+  },
+  {
+   "id": "R11168a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:484",
+   "note": "compliance_status per image"
+  },
+  {
+   "id": "R11173",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21; docs/architecture/DATABASE.md:2113",
+   "note": "id uuid"
+  },
+  {
+   "id": "R11173a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:479",
+   "note": "product_id -> products"
+  },
+  {
+   "id": "R11173b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:475; docs/architecture/DATABASE.md:2115; T63",
+   "note": "s3_url dropped; storage_key + signed URLs"
+  },
+  {
+   "id": "R11173c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:481; docs/canon/CANON.md:59; T28",
+   "note": "main|secondary|lifestyle + size_chart, packaging_label"
+  },
+  {
+   "id": "R11173d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:484",
+   "note": "pending|passed|failed worst-of rollup"
+  },
+  {
+   "id": "R11173e",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:484; T63",
+   "note": "Object keyed amazon/flipkart, each the latest ImageReport"
+  },
+  {
+   "id": "R11173f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:21; docs/architecture/DATABASE.md:2113",
+   "note": "created_at"
+  },
+  {
+   "id": "R11173g",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:484; T63",
+   "note": "Per-marketplace report object; single status is a worst-of rollup"
+  },
+  {
+   "id": "R11180",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:816; docs/architecture/DATABASE.md:991",
+   "note": "ErrorReports stored on validation_runs and agent_runs"
+  },
+  {
+   "id": "R11182",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:816; docs/architecture/DATABASE.md:991; T50",
+   "note": "JSONB evidence plus listing_issues projection"
+  },
+  {
+   "id": "R11187",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:816",
+   "note": "validation_runs.error_report_json"
+  },
+  {
+   "id": "R11187a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "agent_runs.error_report_json"
+  },
+  {
+   "id": "R11187b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:86; docs/architecture/BACKEND-ARCHITECTURE.md:1369",
+   "note": "One ErrorReport shape (invariant 8)"
+  },
+  {
+   "id": "R11187c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:822; docs/architecture/DATABASE.md:996; docs/architecture/DATABASE.md:2153",
+   "note": "GIN jsonb_path_ops on both error_report_json columns"
+  },
+  {
+   "id": "R11187d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:822; docs/architecture/DATABASE.md:996; docs/architecture/DATABASE.md:2153",
+   "note": "GIN jsonb_path_ops on both error_report_json columns"
+  },
+  {
+   "id": "R11187e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:822; docs/architecture/DATABASE.md:996; docs/architecture/DATABASE.md:2153",
+   "note": "GIN jsonb_path_ops on both error_report_json columns"
+  },
+  {
+   "id": "R11187f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:822; docs/architecture/DATABASE.md:996; docs/architecture/DATABASE.md:2153",
+   "note": "GIN jsonb_path_ops on both error_report_json columns"
+  },
+  {
+   "id": "R11187g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:822; docs/architecture/DATABASE.md:996; docs/architecture/DATABASE.md:2153",
+   "note": "GIN jsonb_path_ops on both error_report_json columns"
+  },
+  {
+   "id": "R11194",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2141",
+   "note": "Site indexes mapped in A.3"
+  },
+  {
+   "id": "R11196",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:996; docs/architecture/DATABASE.md:2141",
+   "note": "Covering INCLUDE indexes plus per-pattern indexes"
+  },
+  {
+   "id": "R11201",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:22; docs/architecture/DATABASE.md:2149",
+   "note": "UNIQUE (tenant_id, id) anchors; rules_tenant_idx"
+  },
+  {
+   "id": "R11201a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:83; docs/architecture/BACKEND-ARCHITECTURE.md:1952",
+   "note": "TenantScopedRepository adds WHERE tenant_id"
+  },
+  {
+   "id": "R11202",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:766; docs/architecture/DATABASE.md:2150",
+   "note": "(tenant_id, status, marketplace) on listings"
+  },
+  {
+   "id": "R11203",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:996; docs/architecture/DATABASE.md:2148",
+   "note": "agent_runs_product_created_idx (product_id, created_at) INCLUDE"
+  },
+  {
+   "id": "R11204",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1067; docs/architecture/DATABASE.md:1068; T66",
+   "note": "HNSW vector_cosine_ops built; year-1 search uses exact filtered scan, HNSW only past ~20k chunks"
+  },
+  {
+   "id": "R11205",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1021; docs/architecture/DATABASE.md:2152",
+   "note": "UNIQUE (listing_id, date)"
+  },
+  {
+   "id": "R11212",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1033",
+   "note": "Brand voice vectors section"
+  },
+  {
+   "id": "R11214",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1033; docs/architecture/DATABASE.md:1067",
+   "note": "pgvector config and scaling path"
+  },
+  {
+   "id": "R11219",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:31",
+   "note": "PostgreSQL + pgvector single database"
+  },
+  {
+   "id": "R11219a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:41; docs/architecture/DATABASE.md:1068",
+   "note": "~60k vectors year 1; exact filtered cosine scan"
+  },
+  {
+   "id": "R11219b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1891; AGENTS.md:122",
+   "note": "Past 5-10M chunks: halfvec or partitioning; separate vector DB is a named non-goal"
+  },
+  {
+   "id": "R11219c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:31; docs/architecture/DATABASE.md:39",
+   "note": "pgvector chosen; separate vector DB rejected"
+  },
+  {
+   "id": "R11226",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1282",
+   "note": "API surface section"
+  },
+  {
+   "id": "R11228",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:98",
+   "note": "FastAPI pinned exactly"
+  },
+  {
+   "id": "R11228a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:100",
+   "note": "SQLAlchemy asyncio on psycopg 3"
+  },
+  {
+   "id": "R11228b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:98; docs/architecture/BACKEND-ARCHITECTURE.md:1277",
+   "note": "Pydantic contracts; mypy --strict"
+  },
+  {
+   "id": "R11228c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1324",
+   "note": "GET /openapi.json and /docs"
+  },
+  {
+   "id": "R11228d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1319",
+   "note": "Endpoints by group"
+  },
+  {
+   "id": "R11228e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1284",
+   "note": "REST API under /api/v1"
+  },
+  {
+   "id": "R11239",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1332; T11; docs/canon/CANON.md:33",
+   "note": "POST /api/v1/products"
+  },
+  {
+   "id": "R11243",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1332",
+   "note": "Create one product"
+  },
+  {
+   "id": "R11243a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1334",
+   "note": "Bulk via POST /api/v1/products/bulk (site's own row)"
+  },
+  {
+   "id": "R11245",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1334; T11; docs/canon/CANON.md:33",
+   "note": "POST /api/v1/products/bulk"
+  },
+  {
+   "id": "R11249",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1334; docs/architecture/BACKEND-ARCHITECTURE.md:590",
+   "note": "CSV upload (multipart or signed URL)"
+  },
+  {
+   "id": "R11249a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:590; ADR-0004",
+   "note": "bulk_import job enqueued in same transaction"
+  },
+  {
+   "id": "R11249b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:590; docs/architecture/BACKEND-ARCHITECTURE.md:605",
+   "note": "Header check sync; per-row checks in the job"
+  },
+  {
+   "id": "R11249c",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:957; T67",
+   "note": "Import ends at ImportReport; user starts a generate batch"
+  },
+  {
+   "id": "R11251",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1336; T11; docs/canon/CANON.md:33",
+   "note": "POST /api/v1/listings/generate"
+  },
+  {
+   "id": "R11255",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1336",
+   "note": "Start AI generation for a product"
+  },
+  {
+   "id": "R11257",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1338; T11; docs/canon/CANON.md:33",
+   "note": "POST /api/v1/listings/validate"
+  },
+  {
+   "id": "R11261",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1338",
+   "note": "Rules checks"
+  },
+  {
+   "id": "R11261a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1338",
+   "note": "Vision checks"
+  },
+  {
+   "id": "R11261b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1338",
+   "note": "Returns ErrorReport; 200 with passed:false"
+  },
+  {
+   "id": "R11263",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1341; T11; docs/canon/CANON.md:33",
+   "note": "POST /api/v1/listings/approve, batch-shaped"
+  },
+  {
+   "id": "R11267",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1341; docs/architecture/DATABASE.md:1607",
+   "note": "Approve with maker-checker"
+  },
+  {
+   "id": "R11267a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1607; docs/architecture/DATABASE.md:798",
+   "note": "ApproveItem.feedback optional on approve; reject additionally needs reason_code (T40)"
+  },
+  {
+   "id": "R11269",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1342; T11; docs/canon/CANON.md:33",
+   "note": "POST /api/v1/listings/publish"
+  },
+  {
+   "id": "R11273",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1342",
+   "note": "Publish approved listings, 202 job"
+  },
+  {
+   "id": "R11273a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:840",
+   "note": "Publish worker hands approved version to adapter"
+  },
+  {
+   "id": "R11275",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1344; T11; docs/canon/CANON.md:33",
+   "note": "POST /api/v1/marketplaces/connect"
+  },
+  {
+   "id": "R11279",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1344; docs/architecture/BACKEND-ARCHITECTURE.md:452",
+   "note": "Amazon OAuth"
+  },
+  {
+   "id": "R11279a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1344; docs/architecture/BACKEND-ARCHITECTURE.md:452",
+   "note": "Flipkart OAuth"
+  },
+  {
+   "id": "R11281",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1353; T11; docs/canon/CANON.md:33",
+   "note": "GET /api/v1/analytics"
+  },
+  {
+   "id": "R11285",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1353; T14; Q10",
+   "note": "v1 operational only; [202] L13293 puts unified analytics in Phase 2"
+  },
+  {
+   "id": "R11285a",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1353; T14; Q10",
+   "note": "Sales attribution absent from v1; [202] L13293 lists it Phase 2"
+  },
+  {
+   "id": "R11287",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1348; T11; docs/canon/CANON.md:33",
+   "note": "GET /api/v1/images/{id}/report"
+  },
+  {
+   "id": "R11291",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1348",
+   "note": "Returns the ImageReport"
+  },
+  {
+   "id": "R11295",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:100",
+   "note": "Async FastAPI + SQLAlchemy asyncio"
+  },
+  {
+   "id": "R11296",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1358; docs/architecture/BACKEND-ARCHITECTURE.md:1345; AGENTS.md §5",
+   "note": "Bearer JWT on business routes; OAuth callback and probes public by design"
+  },
+  {
+   "id": "R11297",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:83; docs/architecture/BACKEND-ARCHITECTURE.md:1198",
+   "note": "TenantScopedRepository base class"
+  },
+  {
+   "id": "R11298",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1284",
+   "note": "202 with job id; poll /api/v1/jobs/{job_id}"
+  },
+  {
+   "id": "R11299",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1369; docs/architecture/BACKEND-ARCHITECTURE.md:1371",
+   "note": "One ErrorReport shape in the error envelope"
+  },
+  {
+   "id": "R11306",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1332",
+   "note": "Product endpoints planned"
+  },
+  {
+   "id": "R11308",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1332",
+   "note": "POST /api/v1/products"
+  },
+  {
+   "id": "R11308a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1333",
+   "note": "Read/update; exact paths Proposed (S3)"
+  },
+  {
+   "id": "R11308b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1333",
+   "note": "Read/update; exact paths Proposed (S3)"
+  },
+  {
+   "id": "R11308c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1402; docs/architecture/DATABASE.md:407",
+   "note": "Pydantic request validation; SKU unique + charset CHECK"
+  },
+  {
+   "id": "R11318",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1197; docs/architecture/DATABASE.md:407",
+   "note": "Site body kept: sku, unique per tenant"
+  },
+  {
+   "id": "R11319",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1197; docs/architecture/DATABASE.md:408",
+   "note": "Site body kept: title NOT NULL (seller product name)"
+  },
+  {
+   "id": "R11320",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1197; docs/architecture/DATABASE.md:414; T62",
+   "note": "Body keeps images, but as storage keys or upload ids; no s3:// URLs stored"
+  },
+  {
+   "id": "R11321",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1197; T32",
+   "note": "Site body kept; color/material resolved via input_aliases to BRD keys as seller Facts; unknown key 422"
+  },
+  {
+   "id": "R11324",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1332",
+   "note": "201 status for POST /api/v1/products not specified anywhere in plan"
+  },
+  {
+   "id": "R11326",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1197; docs/architecture/BACKEND-ARCHITECTURE.md:1332",
+   "note": "ProductOut is named but its id/sku/created_at response fields are not specified"
+  },
+  {
+   "id": "R11327",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1197; docs/architecture/BACKEND-ARCHITECTURE.md:1332",
+   "note": "ProductOut is named but its id/sku/created_at response fields are not specified"
+  },
+  {
+   "id": "R11328",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:409; T69",
+   "note": "products.status draft|active; 'created' stays a listing status"
+  },
+  {
+   "id": "R11329",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1197; docs/architecture/BACKEND-ARCHITECTURE.md:1332",
+   "note": "ProductOut is named but its id/sku/created_at response fields are not specified"
+  },
+  {
+   "id": "R11338",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:536",
+   "note": "CSV bulk import journey"
+  },
+  {
+   "id": "R11340",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:590",
+   "note": "Upload to GCS, then job"
+  },
+  {
+   "id": "R11340a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:590",
+   "note": "Worker reads CSV row by row"
+  },
+  {
+   "id": "R11340b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:590; docs/architecture/BACKEND-ARCHITECTURE.md:602; docs/architecture/BACKEND-ARCHITECTURE.md:605",
+   "note": "Header, shape, category, SKU checks"
+  },
+  {
+   "id": "R11340c",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:957; T67",
+   "note": "Rows processed async, but no fan-out to generation"
+  },
+  {
+   "id": "R11345",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1334",
+   "note": "Accepts CSV (10 MiB multipart or object key)"
+  },
+  {
+   "id": "R11345a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:590; docs/architecture/BACKEND-ARCHITECTURE.md:602",
+   "note": "HEADER_* errors, file-level ErrorReport"
+  },
+  {
+   "id": "R11345b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:605",
+   "note": "Per-row checks, source schema/rules_engine"
+  },
+  {
+   "id": "R11345c",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:957; T67",
+   "note": "No per-row generation enqueue; user starts a generate batch"
+  },
+  {
+   "id": "R11345d",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:955; T67",
+   "note": "202 job; import_id (renamed from batch_id) tracks status"
+  },
+  {
+   "id": "R11345e",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:538; T94",
+   "note": "[105] returns rows immediately; [06] L6910 queues; ours async ImportReport"
+  },
+  {
+   "id": "R11352",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:627",
+   "note": "Generation journey"
+  },
+  {
+   "id": "R11354",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:704",
+   "note": "API writes listing + listing_generate job; worker runs pipeline"
+  },
+  {
+   "id": "R11364",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1314",
+   "note": "product_id"
+  },
+  {
+   "id": "R11365",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1314",
+   "note": "marketplace"
+  },
+  {
+   "id": "R11366",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/CONTRACTS.md:539; docs/canon/CANON.md:118",
+   "note": "user_instructions optional, <=2000, into GenerationContext"
+  },
+  {
+   "id": "R11369",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1336",
+   "note": "202 with a job"
+  },
+  {
+   "id": "R11371",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1314",
+   "note": "JobAccepted carries job_id and poll_url"
+  },
+  {
+   "id": "R11372",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/CONTRACTS.md:548; docs/review/SUPERSEDED.md:27; docs/canon/CANON.md:50",
+   "note": "Draft JobAccepted defaults queued; SUPERSEDED renames draft field state to status"
+  },
+  {
+   "id": "R11373",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/CONTRACTS.md:549",
+   "note": "Only in pre-Canon CONTRACTS draft: JobAccepted.estimated_duration_seconds int = 30"
+  },
+  {
+   "id": "R11377",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:717",
+   "note": "Always async, 202"
+  },
+  {
+   "id": "R11377a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1284",
+   "note": "202 Accepted with job id right away"
+  },
+  {
+   "id": "R11377b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1350",
+   "note": "Poll GET /api/v1/jobs/{job_id}"
+  },
+  {
+   "id": "R11377c",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1355",
+   "note": "Webhooks Phase 2 per [115] L11493-11503; v1 polls"
+  }
+ ]
+}

@@ -1,0 +1,5499 @@
+{
+ "chunk": "c17",
+ "start": 10328,
+ "end": 10862,
+ "items": [
+  {
+   "id": "R10328",
+   "lines": [
+    10328,
+    10328
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "info",
+   "text": "Why pgvector",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10330",
+   "lines": [
+    10330,
+    10330
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "decision",
+   "text": "pgvector: one database for relational data AND embeddings."
+  },
+  {
+   "id": "R10331",
+   "lines": [
+    10331,
+    10331
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "decision",
+   "text": "pgvector adds zero extra operational surface for MVP."
+  },
+  {
+   "id": "R10332",
+   "lines": [
+    10332,
+    10332
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "interface",
+   "text": "Cosine similarity via the `<=>` operator."
+  },
+  {
+   "id": "R10332a",
+   "lines": [
+    10332,
+    10332
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "constraint",
+   "text": "`<=>` cosine similarity is sufficient at this scale (thousands of chunks, not millions)."
+  },
+  {
+   "id": "R10333",
+   "lines": [
+    10333,
+    10333
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "decision",
+   "text": "Migrate to a dedicated vector store only if retrieval latency demands it."
+  },
+  {
+   "id": "R10335",
+   "lines": [
+    10335,
+    10335
+   ],
+   "page": "[57] Vector Retrieval",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10337",
+   "lines": [
+    10337,
+    10337
+   ],
+   "page": "[58] Retrieval Context",
+   "kind": "info",
+   "text": "[58] Retrieval Context",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10339",
+   "lines": [
+    10339,
+    10339
+   ],
+   "page": "[58] Retrieval Context",
+   "kind": "info",
+   "text": "Section: Brand Intelligence",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10340",
+   "lines": [
+    10340,
+    10340
+   ],
+   "page": "[58] Retrieval Context",
+   "kind": "scope",
+   "text": "Page [58] Retrieval Context scope: MVP."
+  },
+  {
+   "id": "R10341",
+   "lines": [
+    10341,
+    10341
+   ],
+   "page": "[58] Retrieval Context",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/retrieval-context",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10342",
+   "lines": [
+    10342,
+    10342
+   ],
+   "page": "[58] Retrieval Context",
+   "kind": "info",
+   "text": "Description: How retrieved brand chunks are formatted and injected into agent prompts.",
+   "why_not": "restatement",
+   "dup_of": "R10347"
+  },
+  {
+   "id": "R10343",
+   "lines": [
+    10343,
+    10343
+   ],
+   "page": "[58] Retrieval Context",
+   "kind": "info",
+   "text": "Keywords: retrieval context, prompt injection, brand chunks, formatting",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10345",
+   "lines": [
+    10345,
+    10345
+   ],
+   "page": "[58] Retrieval Context",
+   "kind": "info",
+   "text": "Context Formatting",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10347",
+   "lines": [
+    10347,
+    10347
+   ],
+   "page": "[58] Retrieval Context",
+   "kind": "requirement",
+   "text": "Retrieved chunks are injected as a structured section in the agent prompt."
+  },
+  {
+   "id": "R10347a",
+   "lines": [
+    10347,
+    10347
+   ],
+   "page": "[58] Retrieval Context",
+   "kind": "data",
+   "text": "Each injected chunk includes its type (tone_rule, glossary, compliance)."
+  },
+  {
+   "id": "R10347b",
+   "lines": [
+    10347,
+    10347
+   ],
+   "page": "[58] Retrieval Context",
+   "kind": "data",
+   "text": "Each injected chunk includes its source."
+  },
+  {
+   "id": "R10347c",
+   "lines": [
+    10347,
+    10347
+   ],
+   "page": "[58] Retrieval Context",
+   "kind": "data",
+   "text": "Each injected chunk includes its similarity score."
+  },
+  {
+   "id": "R10347d",
+   "lines": [
+    10347,
+    10347
+   ],
+   "page": "[58] Retrieval Context",
+   "kind": "requirement",
+   "text": "The agent uses retrieved chunks to condition its output, matching the brand's voice."
+  },
+  {
+   "id": "R10347e",
+   "lines": [
+    10347,
+    10347
+   ],
+   "page": "[58] Retrieval Context",
+   "kind": "requirement",
+   "text": "The agent uses retrieved chunks to use correct terminology."
+  },
+  {
+   "id": "R10347f",
+   "lines": [
+    10347,
+    10347
+   ],
+   "page": "[58] Retrieval Context",
+   "kind": "requirement",
+   "text": "The agent uses retrieved chunks to respect compliance constraints."
+  },
+  {
+   "id": "R10349",
+   "lines": [
+    10349,
+    10349
+   ],
+   "page": "[58] Retrieval Context",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10351",
+   "lines": [
+    10351,
+    10351
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "info",
+   "text": "[59] Brand Context Contract",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10353",
+   "lines": [
+    10353,
+    10353
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "info",
+   "text": "Section: Brand Intelligence",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10354",
+   "lines": [
+    10354,
+    10354
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "scope",
+   "text": "Page [59] Brand Context Contract scope: MVP."
+  },
+  {
+   "id": "R10355",
+   "lines": [
+    10355,
+    10355
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/brand-context-contract",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10356",
+   "lines": [
+    10356,
+    10356
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "interface",
+   "text": "A formal contract defines what brand context is passed into each agent."
+  },
+  {
+   "id": "R10357",
+   "lines": [
+    10357,
+    10357
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "info",
+   "text": "Keywords: brand context, contract, schema, retrieval",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10359",
+   "lines": [
+    10359,
+    10359
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "info",
+   "text": "Contract Schema",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10361",
+   "lines": [
+    10361,
+    10361
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "interface",
+   "text": "Contract name: BrandContextContract."
+  },
+  {
+   "id": "R10363",
+   "lines": [
+    10363,
+    10364
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "info",
+   "text": "json code fence and opening brace",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10365",
+   "lines": [
+    10365,
+    10365
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "data",
+   "text": "BrandContextContract field \"brand_id\" (example \"brand_123\")."
+  },
+  {
+   "id": "R10366",
+   "lines": [
+    10366,
+    10366
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "data",
+   "text": "BrandContextContract field \"retrieval_query\" (example \"organic cotton ethnic wear, playful premium voice\")."
+  },
+  {
+   "id": "R10367",
+   "lines": [
+    10367,
+    10367
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "data",
+   "text": "BrandContextContract field \"retrieved_chunks\" is an array of chunk objects."
+  },
+  {
+   "id": "R10368",
+   "lines": [
+    10368,
+    10368
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "info",
+   "text": "opening brace of chunk object",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10369",
+   "lines": [
+    10369,
+    10369
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "data",
+   "text": "Retrieved chunk field \"chunk_id\" (example \"bv_01\")."
+  },
+  {
+   "id": "R10370",
+   "lines": [
+    10370,
+    10370
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "data",
+   "text": "Retrieved chunk field \"type\" (example \"tone_rule\")."
+  },
+  {
+   "id": "R10371",
+   "lines": [
+    10371,
+    10371
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "data",
+   "text": "Retrieved chunk field \"text\" (example \"Playful but premium...\")."
+  },
+  {
+   "id": "R10372",
+   "lines": [
+    10372,
+    10372
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "data",
+   "text": "Retrieved chunk field \"score\" (example 0.89)."
+  },
+  {
+   "id": "R10373",
+   "lines": [
+    10373,
+    10374
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "info",
+   "text": "closing/opening braces between chunk objects",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10375",
+   "lines": [
+    10375,
+    10375
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "data",
+   "text": "Example chunk \"chunk_id\": \"bv_12\"."
+  },
+  {
+   "id": "R10376",
+   "lines": [
+    10376,
+    10376
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "data",
+   "text": "Example chunk \"type\": \"glossary\"."
+  },
+  {
+   "id": "R10377",
+   "lines": [
+    10377,
+    10377
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "data",
+   "text": "Example glossary chunk \"text\": \"Say 'kurta set' not 'outfit'\"."
+  },
+  {
+   "id": "R10378",
+   "lines": [
+    10378,
+    10378
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "data",
+   "text": "Example chunk \"score\": 0.84."
+  },
+  {
+   "id": "R10379",
+   "lines": [
+    10379,
+    10380
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "info",
+   "text": "closing brace and array bracket",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10381",
+   "lines": [
+    10381,
+    10381
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "data",
+   "text": "BrandContextContract field \"embedding_model\": \"text-embedding-3-small\"."
+  },
+  {
+   "id": "R10381a",
+   "lines": [
+    10381,
+    10381
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "decision",
+   "text": "Embedding model: text-embedding-3-small (BrandContextContract \"embedding_model\")."
+  },
+  {
+   "id": "R10382",
+   "lines": [
+    10382,
+    10382
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "constraint",
+   "text": "BrandContextContract field \"top_k\": 8."
+  },
+  {
+   "id": "R10383",
+   "lines": [
+    10383,
+    10384
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "info",
+   "text": "closing brace and code fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10386",
+   "lines": [
+    10386,
+    10386
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "data",
+   "text": "Each chunk includes `chunk_id` for tracking."
+  },
+  {
+   "id": "R10386a",
+   "lines": [
+    10386,
+    10386
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "data",
+   "text": "Each chunk includes `type` for categorization."
+  },
+  {
+   "id": "R10386b",
+   "lines": [
+    10386,
+    10386
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "data",
+   "text": "Each chunk includes `text` content."
+  },
+  {
+   "id": "R10386c",
+   "lines": [
+    10386,
+    10386
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "data",
+   "text": "Each chunk includes `score` (cosine similarity)."
+  },
+  {
+   "id": "R10386d",
+   "lines": [
+    10386,
+    10386
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "requirement",
+   "text": "Only chunks above the relevance threshold are included, to prevent unrelated context from contaminating the prompt."
+  },
+  {
+   "id": "R10388",
+   "lines": [
+    10388,
+    10388
+   ],
+   "page": "[59] Brand Context Contract",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10390",
+   "lines": [
+    10390,
+    10390
+   ],
+   "page": "[60] Approved Listing Memory",
+   "kind": "info",
+   "text": "[60] Approved Listing Memory",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10392",
+   "lines": [
+    10392,
+    10392
+   ],
+   "page": "[60] Approved Listing Memory",
+   "kind": "info",
+   "text": "Section: Brand Intelligence",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10393",
+   "lines": [
+    10393,
+    10393
+   ],
+   "page": "[60] Approved Listing Memory",
+   "kind": "scope",
+   "text": "Page [60] Approved Listing Memory scope: MVP."
+  },
+  {
+   "id": "R10394",
+   "lines": [
+    10394,
+    10394
+   ],
+   "page": "[60] Approved Listing Memory",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/approved-listing-memory",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10395",
+   "lines": [
+    10395,
+    10395
+   ],
+   "page": "[60] Approved Listing Memory",
+   "kind": "requirement",
+   "text": "Approved listings are stored as brand context for future generations."
+  },
+  {
+   "id": "R10396",
+   "lines": [
+    10396,
+    10396
+   ],
+   "page": "[60] Approved Listing Memory",
+   "kind": "info",
+   "text": "Keywords: approved, memory, approved listings, examples",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10398",
+   "lines": [
+    10398,
+    10398
+   ],
+   "page": "[60] Approved Listing Memory",
+   "kind": "info",
+   "text": "Approved Listing Memory",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10400",
+   "lines": [
+    10400,
+    10400
+   ],
+   "page": "[60] Approved Listing Memory",
+   "kind": "flow",
+   "text": "When a listing is approved, its content is chunked."
+  },
+  {
+   "id": "R10400a",
+   "lines": [
+    10400,
+    10400
+   ],
+   "page": "[60] Approved Listing Memory",
+   "kind": "flow",
+   "text": "When a listing is approved, its content is embedded as brand context."
+  },
+  {
+   "id": "R10400b",
+   "lines": [
+    10400,
+    10400
+   ],
+   "page": "[60] Approved Listing Memory",
+   "kind": "requirement",
+   "text": "High-performing listings (based on performance data) receive higher weight."
+  },
+  {
+   "id": "R10400c",
+   "lines": [
+    10400,
+    10400
+   ],
+   "page": "[60] Approved Listing Memory",
+   "kind": "requirement",
+   "text": "This creates a natural learning loop: the AI learns from what the brand approves."
+  },
+  {
+   "id": "R10400d",
+   "lines": [
+    10400,
+    10400
+   ],
+   "page": "[60] Approved Listing Memory",
+   "kind": "requirement",
+   "text": "In the natural learning loop, the AI learns from what performs well."
+  },
+  {
+   "id": "R10402",
+   "lines": [
+    10402,
+    10402
+   ],
+   "page": "[60] Approved Listing Memory",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10404",
+   "lines": [
+    10404,
+    10404
+   ],
+   "page": "[61] Brand Glossary",
+   "kind": "info",
+   "text": "[61] Brand Glossary",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10406",
+   "lines": [
+    10406,
+    10406
+   ],
+   "page": "[61] Brand Glossary",
+   "kind": "info",
+   "text": "Section: Brand Intelligence",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10407",
+   "lines": [
+    10407,
+    10407
+   ],
+   "page": "[61] Brand Glossary",
+   "kind": "scope",
+   "text": "Page [61] Brand Glossary scope: MVP."
+  },
+  {
+   "id": "R10408",
+   "lines": [
+    10408,
+    10408
+   ],
+   "page": "[61] Brand Glossary",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/brand-glossary",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10409",
+   "lines": [
+    10409,
+    10409
+   ],
+   "page": "[61] Brand Glossary",
+   "kind": "data",
+   "text": "Brand Glossary: brand-specific terminology and naming conventions."
+  },
+  {
+   "id": "R10410",
+   "lines": [
+    10410,
+    10410
+   ],
+   "page": "[61] Brand Glossary",
+   "kind": "info",
+   "text": "Keywords: glossary, terminology, naming, conventions",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10412",
+   "lines": [
+    10412,
+    10412
+   ],
+   "page": "[61] Brand Glossary",
+   "kind": "info",
+   "text": "Brand Glossary",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10414",
+   "lines": [
+    10414,
+    10414
+   ],
+   "page": "[61] Brand Glossary",
+   "kind": "data",
+   "text": "The glossary contains brand-specific term preferences."
+  },
+  {
+   "id": "R10414a",
+   "lines": [
+    10414,
+    10414
+   ],
+   "page": "[61] Brand Glossary",
+   "kind": "data",
+   "text": "Glossary example: \"Say 'kurta set' not 'kurta outfit'\"."
+  },
+  {
+   "id": "R10414b",
+   "lines": [
+    10414,
+    10414
+   ],
+   "page": "[61] Brand Glossary",
+   "kind": "data",
+   "text": "Glossary example: \"Use 'artisan-crafted' instead of 'handmade'\"."
+  },
+  {
+   "id": "R10414c",
+   "lines": [
+    10414,
+    10414
+   ],
+   "page": "[61] Brand Glossary",
+   "kind": "data",
+   "text": "Glossary entries are stored as individual chunks."
+  },
+  {
+   "id": "R10414d",
+   "lines": [
+    10414,
+    10414
+   ],
+   "page": "[61] Brand Glossary",
+   "kind": "requirement",
+   "text": "Glossary chunks are retrieved when generating content."
+  },
+  {
+   "id": "R10414e",
+   "lines": [
+    10414,
+    10414
+   ],
+   "page": "[61] Brand Glossary",
+   "kind": "requirement",
+   "text": "The Rules Engine can also validate that generated content uses approved terminology."
+  },
+  {
+   "id": "R10416",
+   "lines": [
+    10416,
+    10416
+   ],
+   "page": "[61] Brand Glossary",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10418",
+   "lines": [
+    10418,
+    10418
+   ],
+   "page": "[62] Brand Compliance Rules",
+   "kind": "info",
+   "text": "[62] Brand Compliance Rules",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10420",
+   "lines": [
+    10420,
+    10420
+   ],
+   "page": "[62] Brand Compliance Rules",
+   "kind": "info",
+   "text": "Section: Brand Intelligence",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10421",
+   "lines": [
+    10421,
+    10421
+   ],
+   "page": "[62] Brand Compliance Rules",
+   "kind": "scope",
+   "text": "Page [62] Brand Compliance Rules scope: MVP."
+  },
+  {
+   "id": "R10422",
+   "lines": [
+    10422,
+    10422
+   ],
+   "page": "[62] Brand Compliance Rules",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/brand-compliance-rules",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10423",
+   "lines": [
+    10423,
+    10423
+   ],
+   "page": "[62] Brand Compliance Rules",
+   "kind": "data",
+   "text": "Brand-specific compliance rules cover claims restrictions."
+  },
+  {
+   "id": "R10423a",
+   "lines": [
+    10423,
+    10423
+   ],
+   "page": "[62] Brand Compliance Rules",
+   "kind": "data",
+   "text": "Brand-specific compliance rules cover certification requirements."
+  },
+  {
+   "id": "R10424",
+   "lines": [
+    10424,
+    10424
+   ],
+   "page": "[62] Brand Compliance Rules",
+   "kind": "info",
+   "text": "Keywords: compliance, rules, claims, certification, restrictions",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10426",
+   "lines": [
+    10426,
+    10426
+   ],
+   "page": "[62] Brand Compliance Rules",
+   "kind": "info",
+   "text": "Compliance Rules",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10428",
+   "lines": [
+    10428,
+    10428
+   ],
+   "page": "[62] Brand Compliance Rules",
+   "kind": "requirement",
+   "text": "Brands can define their own compliance rules."
+  },
+  {
+   "id": "R10428a",
+   "lines": [
+    10428,
+    10428
+   ],
+   "page": "[62] Brand Compliance Rules",
+   "kind": "data",
+   "text": "Compliance rule example: \"Never claim 'organic' without GOTS certification\"."
+  },
+  {
+   "id": "R10428b",
+   "lines": [
+    10428,
+    10428
+   ],
+   "page": "[62] Brand Compliance Rules",
+   "kind": "data",
+   "text": "Compliance rule example: \"Do not use competitor brand names\"."
+  },
+  {
+   "id": "R10428c",
+   "lines": [
+    10428,
+    10428
+   ],
+   "page": "[62] Brand Compliance Rules",
+   "kind": "data",
+   "text": "Compliance rule example: \"Avoid medical/health claims\"."
+  },
+  {
+   "id": "R10428d",
+   "lines": [
+    10428,
+    10428
+   ],
+   "page": "[62] Brand Compliance Rules",
+   "kind": "flow",
+   "text": "Brand compliance rules are chunked."
+  },
+  {
+   "id": "R10428e",
+   "lines": [
+    10428,
+    10428
+   ],
+   "page": "[62] Brand Compliance Rules",
+   "kind": "flow",
+   "text": "Brand compliance rules are embedded."
+  },
+  {
+   "id": "R10428f",
+   "lines": [
+    10428,
+    10428
+   ],
+   "page": "[62] Brand Compliance Rules",
+   "kind": "flow",
+   "text": "Brand compliance rules are retrieved as part of brand context."
+  },
+  {
+   "id": "R10428g",
+   "lines": [
+    10428,
+    10428
+   ],
+   "page": "[62] Brand Compliance Rules",
+   "kind": "requirement",
+   "text": "The Rules Engine validates compliance post-generation."
+  },
+  {
+   "id": "R10430",
+   "lines": [
+    10430,
+    10430
+   ],
+   "page": "[62] Brand Compliance Rules",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10432",
+   "lines": [
+    10432,
+    10432
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "info",
+   "text": "[63] AI Marketplace OS",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10434",
+   "lines": [
+    10434,
+    10434
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "info",
+   "text": "Section: Marketplace OS",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10435",
+   "lines": [
+    10435,
+    10435
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "Page [63] AI Marketplace OS scope: FUTURE."
+  },
+  {
+   "id": "R10436",
+   "lines": [
+    10436,
+    10436
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/ai-marketplace-os",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10437",
+   "lines": [
+    10437,
+    10437
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "Long-term vision: a full AI Marketplace OS with specialized agents across the e-commerce stack."
+  },
+  {
+   "id": "R10438",
+   "lines": [
+    10438,
+    10438
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "info",
+   "text": "Keywords: marketplace OS, vision, future, agents, ecosystem",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10440",
+   "lines": [
+    10440,
+    10440
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "info",
+   "text": "Vision",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10442",
+   "lines": [
+    10442,
+    10442
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "AI Marketplace OS long-term vision: a unified AI system that understands, operates, and optimizes a brand across every marketplace it sells on."
+  },
+  {
+   "id": "R10442a",
+   "lines": [
+    10442,
+    10442
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "The current MVP implements the Listing Agent, the first agent in this ecosystem."
+  },
+  {
+   "id": "R10442b",
+   "lines": [
+    10442,
+    10442
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "requirement",
+   "text": "Architecture is designed so future agents plug into the same data layer."
+  },
+  {
+   "id": "R10442c",
+   "lines": [
+    10442,
+    10442
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "requirement",
+   "text": "Architecture is designed so future agents plug into the same validation pipeline."
+  },
+  {
+   "id": "R10442d",
+   "lines": [
+    10442,
+    10442
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "requirement",
+   "text": "Architecture is designed so future agents plug into the same execution infrastructure."
+  },
+  {
+   "id": "R10444",
+   "lines": [
+    10444,
+    10444
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "info",
+   "text": "Full Agent Ecosystem",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10446",
+   "lines": [
+    10446,
+    10446
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "info",
+   "text": "Architecture Diagram: AI Marketplace OS — Future Vision",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10448",
+   "lines": [
+    10448,
+    10449
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "info",
+   "text": "mermaid graph TB fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10450",
+   "lines": [
+    10450,
+    10450
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "flow",
+   "text": "Diagram: BRAND --> Marketplaces."
+  },
+  {
+   "id": "R10451",
+   "lines": [
+    10451,
+    10451
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "info",
+   "text": "subgraph MKT[\"Marketplaces\"] (diagram subgraph label)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10452",
+   "lines": [
+    10452,
+    10452
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "Future-vision diagram Marketplaces subgraph includes Amazon."
+  },
+  {
+   "id": "R10452a",
+   "lines": [
+    10452,
+    10452
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "Future-vision diagram Marketplaces subgraph includes Flipkart."
+  },
+  {
+   "id": "R10452b",
+   "lines": [
+    10452,
+    10452
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "Future-vision diagram Marketplaces subgraph includes Myntra."
+  },
+  {
+   "id": "R10452c",
+   "lines": [
+    10452,
+    10452
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "Future-vision diagram Marketplaces subgraph includes Meesho."
+  },
+  {
+   "id": "R10452d",
+   "lines": [
+    10452,
+    10452
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "Future-vision diagram Marketplaces subgraph includes Nykaa."
+  },
+  {
+   "id": "R10452e",
+   "lines": [
+    10452,
+    10452
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "Future-vision diagram Marketplaces subgraph includes AJIO."
+  },
+  {
+   "id": "R10453",
+   "lines": [
+    10453,
+    10453
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "info",
+   "text": "subgraph end",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10454",
+   "lines": [
+    10454,
+    10454
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "flow",
+   "text": "Diagram: Marketplaces --> UNIFIED MARKETPLACE DATA LAYER."
+  },
+  {
+   "id": "R10455",
+   "lines": [
+    10455,
+    10455
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "flow",
+   "text": "Diagram: UNIFIED MARKETPLACE DATA LAYER --> AI MARKETPLACE OS."
+  },
+  {
+   "id": "R10456",
+   "lines": [
+    10456,
+    10456
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "Diagram: AI MARKETPLACE OS --> Revenue Ops Agent."
+  },
+  {
+   "id": "R10457",
+   "lines": [
+    10457,
+    10457
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "Diagram: AI MARKETPLACE OS --> Catalog Agent."
+  },
+  {
+   "id": "R10458",
+   "lines": [
+    10458,
+    10458
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "Diagram: AI MARKETPLACE OS --> \"Listing Agent ✓\" (the only agent marked ✓)."
+  },
+  {
+   "id": "R10459",
+   "lines": [
+    10459,
+    10459
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "Diagram: AI MARKETPLACE OS --> Pricing Agent."
+  },
+  {
+   "id": "R10460",
+   "lines": [
+    10460,
+    10460
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "Diagram: AI MARKETPLACE OS --> Ads Agent."
+  },
+  {
+   "id": "R10461",
+   "lines": [
+    10461,
+    10461
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "Diagram: AI MARKETPLACE OS --> Ranking Agent."
+  },
+  {
+   "id": "R10462",
+   "lines": [
+    10462,
+    10462
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "Diagram: AI MARKETPLACE OS --> Inventory Agent."
+  },
+  {
+   "id": "R10463",
+   "lines": [
+    10463,
+    10463
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "Diagram: AI MARKETPLACE OS --> Returns Agent."
+  },
+  {
+   "id": "R10464",
+   "lines": [
+    10464,
+    10464
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "flow",
+   "text": "Diagram: Listing Agent --> EXECUTION LAYER."
+  },
+  {
+   "id": "R10465",
+   "lines": [
+    10465,
+    10465
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "flow",
+   "text": "Diagram: Pricing Agent --> EXECUTION LAYER."
+  },
+  {
+   "id": "R10465a",
+   "lines": [
+    10465,
+    10465
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "flow",
+   "text": "Diagram: Ads Agent --> EXECUTION LAYER."
+  },
+  {
+   "id": "R10465b",
+   "lines": [
+    10465,
+    10465
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "flow",
+   "text": "Diagram: Inventory Agent --> EXECUTION LAYER."
+  },
+  {
+   "id": "R10465c",
+   "lines": [
+    10465,
+    10465
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "flow",
+   "text": "Diagram: Returns Agent --> EXECUTION LAYER."
+  },
+  {
+   "id": "R10466",
+   "lines": [
+    10466,
+    10466
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "info",
+   "text": "mermaid fence close",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10468",
+   "lines": [
+    10468,
+    10468
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "info",
+   "text": "MVP vs Future",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10470",
+   "lines": [
+    10470,
+    10470
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "Only the Listing Agent is MVP."
+  },
+  {
+   "id": "R10470a",
+   "lines": [
+    10470,
+    10470
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "scope",
+   "text": "All other agents are Future Marketplace OS."
+  },
+  {
+   "id": "R10470b",
+   "lines": [
+    10470,
+    10470
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "requirement",
+   "text": "The architecture supports adding other agents without platform rewrites."
+  },
+  {
+   "id": "R10470c",
+   "lines": [
+    10470,
+    10470
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "requirement",
+   "text": "Future agents reuse the same adapter pattern."
+  },
+  {
+   "id": "R10470d",
+   "lines": [
+    10470,
+    10470
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "info",
+   "text": "Future agents reuse the same data layer.",
+   "why_not": "restatement",
+   "dup_of": "R10442b"
+  },
+  {
+   "id": "R10470e",
+   "lines": [
+    10470,
+    10470
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "info",
+   "text": "Future agents reuse the same execution infrastructure.",
+   "why_not": "restatement",
+   "dup_of": "R10442d"
+  },
+  {
+   "id": "R10472",
+   "lines": [
+    10472,
+    10472
+   ],
+   "page": "[63] AI Marketplace OS",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10474",
+   "lines": [
+    10474,
+    10474
+   ],
+   "page": "[64] Marketplace Abstraction",
+   "kind": "info",
+   "text": "[64] Marketplace Abstraction",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10476",
+   "lines": [
+    10476,
+    10476
+   ],
+   "page": "[64] Marketplace Abstraction",
+   "kind": "info",
+   "text": "Section: Marketplace OS",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10477",
+   "lines": [
+    10477,
+    10477
+   ],
+   "page": "[64] Marketplace Abstraction",
+   "kind": "scope",
+   "text": "Page [64] Marketplace Abstraction scope: MVP."
+  },
+  {
+   "id": "R10478",
+   "lines": [
+    10478,
+    10478
+   ],
+   "page": "[64] Marketplace Abstraction",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/marketplace-abstraction",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10479",
+   "lines": [
+    10479,
+    10479
+   ],
+   "page": "[64] Marketplace Abstraction",
+   "kind": "requirement",
+   "text": "Marketplace differences are abstracted behind a unified interface."
+  },
+  {
+   "id": "R10480",
+   "lines": [
+    10480,
+    10480
+   ],
+   "page": "[64] Marketplace Abstraction",
+   "kind": "info",
+   "text": "Keywords: marketplace, abstraction, interface, unified",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10482",
+   "lines": [
+    10482,
+    10482
+   ],
+   "page": "[64] Marketplace Abstraction",
+   "kind": "info",
+   "text": "Marketplace Abstraction",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10484",
+   "lines": [
+    10484,
+    10484
+   ],
+   "page": "[64] Marketplace Abstraction",
+   "kind": "requirement",
+   "text": "The rest of the system never touches raw marketplace APIs."
+  },
+  {
+   "id": "R10484a",
+   "lines": [
+    10484,
+    10484
+   ],
+   "page": "[64] Marketplace Abstraction",
+   "kind": "requirement",
+   "text": "All marketplace interaction happens through the adapter interface."
+  },
+  {
+   "id": "R10484b",
+   "lines": [
+    10484,
+    10484
+   ],
+   "page": "[64] Marketplace Abstraction",
+   "kind": "requirement",
+   "text": "The canonical model is the boundary."
+  },
+  {
+   "id": "R10484c",
+   "lines": [
+    10484,
+    10484
+   ],
+   "page": "[64] Marketplace Abstraction",
+   "kind": "requirement",
+   "text": "Everything above the canonical model boundary is marketplace-independent."
+  },
+  {
+   "id": "R10484d",
+   "lines": [
+    10484,
+    10484
+   ],
+   "page": "[64] Marketplace Abstraction",
+   "kind": "requirement",
+   "text": "Everything below the canonical model boundary is marketplace-specific."
+  },
+  {
+   "id": "R10484e",
+   "lines": [
+    10484,
+    10484
+   ],
+   "page": "[64] Marketplace Abstraction",
+   "kind": "requirement",
+   "text": "Adding a new marketplace is an adapter, not a rewrite."
+  },
+  {
+   "id": "R10486",
+   "lines": [
+    10486,
+    10486
+   ],
+   "page": "[64] Marketplace Abstraction",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10488",
+   "lines": [
+    10488,
+    10488
+   ],
+   "page": "[65] Canonical Data Model",
+   "kind": "info",
+   "text": "[65] Canonical Data Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10490",
+   "lines": [
+    10490,
+    10490
+   ],
+   "page": "[65] Canonical Data Model",
+   "kind": "info",
+   "text": "Section: Marketplace OS",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10491",
+   "lines": [
+    10491,
+    10491
+   ],
+   "page": "[65] Canonical Data Model",
+   "kind": "scope",
+   "text": "Page [65] Canonical Data Model scope: MVP."
+  },
+  {
+   "id": "R10492",
+   "lines": [
+    10492,
+    10492
+   ],
+   "page": "[65] Canonical Data Model",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/canonical-data-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10493",
+   "lines": [
+    10493,
+    10493
+   ],
+   "page": "[65] Canonical Data Model",
+   "kind": "data",
+   "text": "The canonical data model is the marketplace-independent data representation used throughout the core system."
+  },
+  {
+   "id": "R10494",
+   "lines": [
+    10494,
+    10494
+   ],
+   "page": "[65] Canonical Data Model",
+   "kind": "info",
+   "text": "Keywords: canonical, data model, independent, universal",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10496",
+   "lines": [
+    10496,
+    10496
+   ],
+   "page": "[65] Canonical Data Model",
+   "kind": "info",
+   "text": "Canonical Data Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10498",
+   "lines": [
+    10498,
+    10498
+   ],
+   "page": "[65] Canonical Data Model",
+   "kind": "data",
+   "text": "The canonical model defines how products are represented before marketplace-specific transformation."
+  },
+  {
+   "id": "R10498a",
+   "lines": [
+    10498,
+    10498
+   ],
+   "page": "[65] Canonical Data Model",
+   "kind": "data",
+   "text": "The canonical model defines how listings are represented before marketplace-specific transformation."
+  },
+  {
+   "id": "R10498b",
+   "lines": [
+    10498,
+    10498
+   ],
+   "page": "[65] Canonical Data Model",
+   "kind": "data",
+   "text": "The canonical model defines how attributes are represented before marketplace-specific transformation."
+  },
+  {
+   "id": "R10498c",
+   "lines": [
+    10498,
+    10498
+   ],
+   "page": "[65] Canonical Data Model",
+   "kind": "requirement",
+   "text": "The canonical model uses generic field names."
+  },
+  {
+   "id": "R10498d",
+   "lines": [
+    10498,
+    10498
+   ],
+   "page": "[65] Canonical Data Model",
+   "kind": "requirement",
+   "text": "The canonical model uses standard value formats."
+  },
+  {
+   "id": "R10498e",
+   "lines": [
+    10498,
+    10498
+   ],
+   "page": "[65] Canonical Data Model",
+   "kind": "requirement",
+   "text": "The canonical model uses no marketplace-specific structures."
+  },
+  {
+   "id": "R10498f",
+   "lines": [
+    10498,
+    10498
+   ],
+   "page": "[65] Canonical Data Model",
+   "kind": "requirement",
+   "text": "Marketplace adapters handle the translation from canonical to marketplace-specific formats."
+  },
+  {
+   "id": "R10500",
+   "lines": [
+    10500,
+    10500
+   ],
+   "page": "[65] Canonical Data Model",
+   "kind": "info",
+   "text": "Invariant (callout label)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10502",
+   "lines": [
+    10502,
+    10502
+   ],
+   "page": "[65] Canonical Data Model",
+   "kind": "requirement",
+   "text": "Invariant: Marketplace-specific fields never appear in the canonical model."
+  },
+  {
+   "id": "R10502a",
+   "lines": [
+    10502,
+    10502
+   ],
+   "page": "[65] Canonical Data Model",
+   "kind": "interface",
+   "text": "The canonical model is the shared contract between Intelligence and Execution layers."
+  },
+  {
+   "id": "R10504",
+   "lines": [
+    10504,
+    10504
+   ],
+   "page": "[65] Canonical Data Model",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10506",
+   "lines": [
+    10506,
+    10506
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "info",
+   "text": "[66] Marketplace Adapter Pattern",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10508",
+   "lines": [
+    10508,
+    10508
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "info",
+   "text": "Section: Marketplace OS",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10509",
+   "lines": [
+    10509,
+    10509
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "scope",
+   "text": "Page [66] Marketplace Adapter Pattern scope: MVP."
+  },
+  {
+   "id": "R10510",
+   "lines": [
+    10510,
+    10510
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/marketplace-adapter-pattern",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10511",
+   "lines": [
+    10511,
+    10511
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "decision",
+   "text": "Adapter pattern for marketplace operations, with interface, responsibilities, and implementation guide."
+  },
+  {
+   "id": "R10512",
+   "lines": [
+    10512,
+    10512
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "info",
+   "text": "Keywords: adapter pattern, marketplace adapter, interface, ABC",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10514",
+   "lines": [
+    10514,
+    10514
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "info",
+   "text": "Adapter Interface",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10516",
+   "lines": [
+    10516,
+    10516
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "interface",
+   "text": "MarketplaceAdapter is an ABC (abstract base class)."
+  },
+  {
+   "id": "R10518",
+   "lines": [
+    10518,
+    10518
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "info",
+   "text": "python code fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10519",
+   "lines": [
+    10519,
+    10519
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "info",
+   "text": "class MarketplaceAdapter(ABC):",
+   "why_not": "restatement",
+   "dup_of": "R10516"
+  },
+  {
+   "id": "R10520",
+   "lines": [
+    10520,
+    10520
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "interface",
+   "text": "async def get_listing(self, sku) -> ListingResult"
+  },
+  {
+   "id": "R10521",
+   "lines": [
+    10521,
+    10521
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "interface",
+   "text": "async def create_listing(self, listing) -> ListingResult"
+  },
+  {
+   "id": "R10522",
+   "lines": [
+    10522,
+    10522
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "interface",
+   "text": "async def update_listing(self, listing) -> ListingResult"
+  },
+  {
+   "id": "R10523",
+   "lines": [
+    10523,
+    10523
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "interface",
+   "text": "async def publish_listing(self, listing) -> ListingResult"
+  },
+  {
+   "id": "R10524",
+   "lines": [
+    10524,
+    10524
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "interface",
+   "text": "async def get_performance(self, listing_id, from_date, to_date) -> PerformanceResult"
+  },
+  {
+   "id": "R10525",
+   "lines": [
+    10525,
+    10525
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "info",
+   "text": "code fence close",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10527",
+   "lines": [
+    10527,
+    10527
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "info",
+   "text": "Adapter Responsibilities",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10529",
+   "lines": [
+    10529,
+    10529
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "interface",
+   "text": "Every adapter method returns `ListingResult` with per-field success/failure, not a boolean."
+  },
+  {
+   "id": "R10530",
+   "lines": [
+    10530,
+    10530
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "requirement",
+   "text": "On partial success, return exactly which fields failed."
+  },
+  {
+   "id": "R10530a",
+   "lines": [
+    10530,
+    10530
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "requirement",
+   "text": "On partial success, return the marketplace's raw error string."
+  },
+  {
+   "id": "R10531",
+   "lines": [
+    10531,
+    10531
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "requirement",
+   "text": "Adapters own auth refresh."
+  },
+  {
+   "id": "R10531a",
+   "lines": [
+    10531,
+    10531
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "requirement",
+   "text": "Adapters own rate limiting."
+  },
+  {
+   "id": "R10531b",
+   "lines": [
+    10531,
+    10531
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "requirement",
+   "text": "Adapters own idempotency."
+  },
+  {
+   "id": "R10531c",
+   "lines": [
+    10531,
+    10531
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "requirement",
+   "text": "Adapters own error mapping to unified ErrorReport."
+  },
+  {
+   "id": "R10532",
+   "lines": [
+    10532,
+    10532
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "requirement",
+   "text": "Canonical model → marketplace-specific mapping happens inside the adapter."
+  },
+  {
+   "id": "R10533",
+   "lines": [
+    10533,
+    10533
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "info",
+   "text": "The rest of the system never touches raw marketplace APIs.",
+   "why_not": "restatement",
+   "dup_of": "R10484"
+  },
+  {
+   "id": "R10535",
+   "lines": [
+    10535,
+    10535
+   ],
+   "page": "[66] Marketplace Adapter Pattern",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10537",
+   "lines": [
+    10537,
+    10537
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "info",
+   "text": "[67] Amazon Adapter",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10539",
+   "lines": [
+    10539,
+    10539
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "info",
+   "text": "Section: Marketplace OS",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10540",
+   "lines": [
+    10540,
+    10540
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "scope",
+   "text": "Page [67] Amazon Adapter scope: MVP."
+  },
+  {
+   "id": "R10541",
+   "lines": [
+    10541,
+    10541
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/amazon-adapter",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10542",
+   "lines": [
+    10542,
+    10542
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "decision",
+   "text": "The Amazon adapter uses the Amazon SP-API."
+  },
+  {
+   "id": "R10542a",
+   "lines": [
+    10542,
+    10542
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "requirement",
+   "text": "Amazon adapter covers authentication."
+  },
+  {
+   "id": "R10542b",
+   "lines": [
+    10542,
+    10542
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "requirement",
+   "text": "Amazon adapter covers listing operations."
+  },
+  {
+   "id": "R10542c",
+   "lines": [
+    10542,
+    10542
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "requirement",
+   "text": "Amazon adapter covers rate limiting."
+  },
+  {
+   "id": "R10542d",
+   "lines": [
+    10542,
+    10542
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "requirement",
+   "text": "Amazon adapter covers error mapping."
+  },
+  {
+   "id": "R10543",
+   "lines": [
+    10543,
+    10543
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "info",
+   "text": "Keywords: Amazon, adapter, SP-API, seller API",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10545",
+   "lines": [
+    10545,
+    10545
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "info",
+   "text": "Authentication",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10547",
+   "lines": [
+    10547,
+    10547
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "decision",
+   "text": "Amazon SP-API uses OAuth 2.0 with LWA (Login with Amazon)."
+  },
+  {
+   "id": "R10547a",
+   "lines": [
+    10547,
+    10547
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "requirement",
+   "text": "The Amazon adapter manages the initial OAuth flow."
+  },
+  {
+   "id": "R10547b",
+   "lines": [
+    10547,
+    10547
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "quality",
+   "text": "The Amazon adapter manages token storage (AES-256 encrypted)."
+  },
+  {
+   "id": "R10547c",
+   "lines": [
+    10547,
+    10547
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "requirement",
+   "text": "The Amazon adapter manages automatic token refresh."
+  },
+  {
+   "id": "R10547d",
+   "lines": [
+    10547,
+    10547
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "requirement",
+   "text": "The Amazon adapter manages expiration handling."
+  },
+  {
+   "id": "R10547e",
+   "lines": [
+    10547,
+    10547
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "flow",
+   "text": "If Amazon token refresh fails, escalate to user."
+  },
+  {
+   "id": "R10549",
+   "lines": [
+    10549,
+    10549
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "info",
+   "text": "Operations",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10551",
+   "lines": [
+    10551,
+    10552
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "info",
+   "text": "mermaid graph LR fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10553",
+   "lines": [
+    10553,
+    10553
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "flow",
+   "text": "Amazon operations: Canonical Listing --> Field Mapping."
+  },
+  {
+   "id": "R10554",
+   "lines": [
+    10554,
+    10554
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "flow",
+   "text": "Amazon operations: Field Mapping --> Amazon SP-API Call."
+  },
+  {
+   "id": "R10555",
+   "lines": [
+    10555,
+    10555
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "flow",
+   "text": "Amazon operations: Amazon SP-API Call --> Per-field Response."
+  },
+  {
+   "id": "R10556",
+   "lines": [
+    10556,
+    10556
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "flow",
+   "text": "Amazon operations: Per-field Response --> ListingResult."
+  },
+  {
+   "id": "R10557",
+   "lines": [
+    10557,
+    10557
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "info",
+   "text": "mermaid fence close",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10559",
+   "lines": [
+    10559,
+    10559
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "info",
+   "text": "Rate Limiting",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10561",
+   "lines": [
+    10561,
+    10561
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "constraint",
+   "text": "Amazon SP-API has per-endpoint rate limits."
+  },
+  {
+   "id": "R10561a",
+   "lines": [
+    10561,
+    10561
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "requirement",
+   "text": "The Amazon adapter implements request throttling per marketplace account."
+  },
+  {
+   "id": "R10561b",
+   "lines": [
+    10561,
+    10561
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "requirement",
+   "text": "The Amazon adapter implements exponential backoff on 429 responses."
+  },
+  {
+   "id": "R10561c",
+   "lines": [
+    10561,
+    10561
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "requirement",
+   "text": "The Amazon adapter implements queue-based request scheduling to stay within limits."
+  },
+  {
+   "id": "R10563",
+   "lines": [
+    10563,
+    10563
+   ],
+   "page": "[67] Amazon Adapter",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10565",
+   "lines": [
+    10565,
+    10565
+   ],
+   "page": "[68] Flipkart Adapter",
+   "kind": "info",
+   "text": "[68] Flipkart Adapter",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10567",
+   "lines": [
+    10567,
+    10567
+   ],
+   "page": "[68] Flipkart Adapter",
+   "kind": "info",
+   "text": "Section: Marketplace OS",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10568",
+   "lines": [
+    10568,
+    10568
+   ],
+   "page": "[68] Flipkart Adapter",
+   "kind": "scope",
+   "text": "Page [68] Flipkart Adapter scope: MVP."
+  },
+  {
+   "id": "R10569",
+   "lines": [
+    10569,
+    10569
+   ],
+   "page": "[68] Flipkart Adapter",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/flipkart-adapter",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10570",
+   "lines": [
+    10570,
+    10570
+   ],
+   "page": "[68] Flipkart Adapter",
+   "kind": "decision",
+   "text": "The Flipkart adapter uses the Flipkart Seller API."
+  },
+  {
+   "id": "R10570a",
+   "lines": [
+    10570,
+    10570
+   ],
+   "page": "[68] Flipkart Adapter",
+   "kind": "requirement",
+   "text": "Flipkart adapter covers authentication."
+  },
+  {
+   "id": "R10570b",
+   "lines": [
+    10570,
+    10570
+   ],
+   "page": "[68] Flipkart Adapter",
+   "kind": "requirement",
+   "text": "Flipkart adapter covers listing operations."
+  },
+  {
+   "id": "R10570c",
+   "lines": [
+    10570,
+    10570
+   ],
+   "page": "[68] Flipkart Adapter",
+   "kind": "requirement",
+   "text": "Flipkart adapter covers marketplace-specific handling."
+  },
+  {
+   "id": "R10571",
+   "lines": [
+    10571,
+    10571
+   ],
+   "page": "[68] Flipkart Adapter",
+   "kind": "info",
+   "text": "Keywords: Flipkart, adapter, Seller API",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10573",
+   "lines": [
+    10573,
+    10573
+   ],
+   "page": "[68] Flipkart Adapter",
+   "kind": "info",
+   "text": "Flipkart Adapter",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10575",
+   "lines": [
+    10575,
+    10575
+   ],
+   "page": "[68] Flipkart Adapter",
+   "kind": "requirement",
+   "text": "Flipkart adapter uses the same adapter interface as Amazon."
+  },
+  {
+   "id": "R10575a",
+   "lines": [
+    10575,
+    10575
+   ],
+   "page": "[68] Flipkart Adapter",
+   "kind": "requirement",
+   "text": "Flipkart adapter has a different marketplace-specific implementation from Amazon."
+  },
+  {
+   "id": "R10575b",
+   "lines": [
+    10575,
+    10575
+   ],
+   "page": "[68] Flipkart Adapter",
+   "kind": "requirement",
+   "text": "Flipkart adapter handles Flipkart OAuth."
+  },
+  {
+   "id": "R10575c",
+   "lines": [
+    10575,
+    10575
+   ],
+   "page": "[68] Flipkart Adapter",
+   "kind": "requirement",
+   "text": "Flipkart adapter handles Flipkart-specific field mapping."
+  },
+  {
+   "id": "R10575d",
+   "lines": [
+    10575,
+    10575
+   ],
+   "page": "[68] Flipkart Adapter",
+   "kind": "requirement",
+   "text": "Flipkart adapter handles category taxonomy differences."
+  },
+  {
+   "id": "R10575e",
+   "lines": [
+    10575,
+    10575
+   ],
+   "page": "[68] Flipkart Adapter",
+   "kind": "requirement",
+   "text": "Flipkart adapter handles Flipkart's error codes."
+  },
+  {
+   "id": "R10575f",
+   "lines": [
+    10575,
+    10575
+   ],
+   "page": "[68] Flipkart Adapter",
+   "kind": "requirement",
+   "text": "The Flipkart adapter maps Flipkart errors to the unified ErrorReport taxonomy."
+  },
+  {
+   "id": "R10577",
+   "lines": [
+    10577,
+    10577
+   ],
+   "page": "[68] Flipkart Adapter",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10579",
+   "lines": [
+    10579,
+    10579
+   ],
+   "page": "[69] Future Marketplace Adapter",
+   "kind": "info",
+   "text": "[69] Future Marketplace Adapter",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10581",
+   "lines": [
+    10581,
+    10581
+   ],
+   "page": "[69] Future Marketplace Adapter",
+   "kind": "info",
+   "text": "Section: Marketplace OS",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10582",
+   "lines": [
+    10582,
+    10582
+   ],
+   "page": "[69] Future Marketplace Adapter",
+   "kind": "scope",
+   "text": "Page [69] Future Marketplace Adapter scope: FUTURE."
+  },
+  {
+   "id": "R10583",
+   "lines": [
+    10583,
+    10583
+   ],
+   "page": "[69] Future Marketplace Adapter",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/future-marketplace-adapter",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10584",
+   "lines": [
+    10584,
+    10584
+   ],
+   "page": "[69] Future Marketplace Adapter",
+   "kind": "scope",
+   "text": "Future marketplace adapter (would be added): Myntra."
+  },
+  {
+   "id": "R10584a",
+   "lines": [
+    10584,
+    10584
+   ],
+   "page": "[69] Future Marketplace Adapter",
+   "kind": "scope",
+   "text": "Future marketplace adapter (would be added): Ajio."
+  },
+  {
+   "id": "R10584b",
+   "lines": [
+    10584,
+    10584
+   ],
+   "page": "[69] Future Marketplace Adapter",
+   "kind": "scope",
+   "text": "Future marketplace adapter (would be added): Meesho."
+  },
+  {
+   "id": "R10585",
+   "lines": [
+    10585,
+    10585
+   ],
+   "page": "[69] Future Marketplace Adapter",
+   "kind": "info",
+   "text": "Keywords: future, Myntra, Ajio, Meesho, new marketplace",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10587",
+   "lines": [
+    10587,
+    10587
+   ],
+   "page": "[69] Future Marketplace Adapter",
+   "kind": "info",
+   "text": "Adding a New Marketplace",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10589",
+   "lines": [
+    10589,
+    10589
+   ],
+   "page": "[69] Future Marketplace Adapter",
+   "kind": "flow",
+   "text": "To add Myntra, Ajio, or any new marketplace: implement the `MarketplaceAdapter` interface."
+  },
+  {
+   "id": "R10589a",
+   "lines": [
+    10589,
+    10589
+   ],
+   "page": "[69] Future Marketplace Adapter",
+   "kind": "flow",
+   "text": "New marketplace: create field mapping configuration."
+  },
+  {
+   "id": "R10589b",
+   "lines": [
+    10589,
+    10589
+   ],
+   "page": "[69] Future Marketplace Adapter",
+   "kind": "flow",
+   "text": "New marketplace: define image compliance policy."
+  },
+  {
+   "id": "R10589c",
+   "lines": [
+    10589,
+    10589
+   ],
+   "page": "[69] Future Marketplace Adapter",
+   "kind": "flow",
+   "text": "New marketplace: register marketplace rules."
+  },
+  {
+   "id": "R10589d",
+   "lines": [
+    10589,
+    10589
+   ],
+   "page": "[69] Future Marketplace Adapter",
+   "kind": "flow",
+   "text": "New marketplace: test."
+  },
+  {
+   "id": "R10589e",
+   "lines": [
+    10589,
+    10589
+   ],
+   "page": "[69] Future Marketplace Adapter",
+   "kind": "requirement",
+   "text": "Adding a new marketplace requires no core platform changes."
+  },
+  {
+   "id": "R10591",
+   "lines": [
+    10591,
+    10591
+   ],
+   "page": "[69] Future Marketplace Adapter",
+   "kind": "info",
+   "text": "Non-Technical Explanation (callout label)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10593",
+   "lines": [
+    10593,
+    10593
+   ],
+   "page": "[69] Future Marketplace Adapter",
+   "kind": "info",
+   "text": "Analogy: core system speaks one \"language\" (canonical model); each marketplace adapter translates it into that marketplace's specific format.",
+   "why_not": "restatement",
+   "dup_of": "R10498f"
+  },
+  {
+   "id": "R10595",
+   "lines": [
+    10595,
+    10595
+   ],
+   "page": "[69] Future Marketplace Adapter",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10597",
+   "lines": [
+    10597,
+    10597
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "info",
+   "text": "[70] Marketplace Rule Registry",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10599",
+   "lines": [
+    10599,
+    10599
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "info",
+   "text": "Section: Marketplace OS",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10600",
+   "lines": [
+    10600,
+    10600
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "scope",
+   "text": "Page [70] Marketplace Rule Registry scope: MVP."
+  },
+  {
+   "id": "R10601",
+   "lines": [
+    10601,
+    10601
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/marketplace-rule-registry",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10602",
+   "lines": [
+    10602,
+    10602
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "info",
+   "text": "Description: marketplace-specific rules are stored.",
+   "why_not": "restatement",
+   "dup_of": "R10607"
+  },
+  {
+   "id": "R10602a",
+   "lines": [
+    10602,
+    10602
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "info",
+   "text": "Description: marketplace-specific rules are versioned.",
+   "why_not": "restatement",
+   "dup_of": "R10607e"
+  },
+  {
+   "id": "R10602b",
+   "lines": [
+    10602,
+    10602
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "info",
+   "text": "Description: marketplace-specific rules are loaded at generation time.",
+   "why_not": "restatement",
+   "dup_of": "R10607f"
+  },
+  {
+   "id": "R10603",
+   "lines": [
+    10603,
+    10603
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "info",
+   "text": "Keywords: rule registry, marketplace rules, versioned, configuration",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10605",
+   "lines": [
+    10605,
+    10605
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "info",
+   "text": "Rule Registry",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10607",
+   "lines": [
+    10607,
+    10607
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "data",
+   "text": "Marketplace rules are stored in the `Rules` table."
+  },
+  {
+   "id": "R10607a",
+   "lines": [
+    10607,
+    10607
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "data",
+   "text": "Rules table field: marketplace."
+  },
+  {
+   "id": "R10607b",
+   "lines": [
+    10607,
+    10607
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "data",
+   "text": "Rules table field: category."
+  },
+  {
+   "id": "R10607c",
+   "lines": [
+    10607,
+    10607
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "data",
+   "text": "Rules table field: rule definition (JSON)."
+  },
+  {
+   "id": "R10607d",
+   "lines": [
+    10607,
+    10607
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "data",
+   "text": "Rules table field: severity (error/warning)."
+  },
+  {
+   "id": "R10607e",
+   "lines": [
+    10607,
+    10607
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "data",
+   "text": "Rules table field: version."
+  },
+  {
+   "id": "R10607f",
+   "lines": [
+    10607,
+    10607
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "requirement",
+   "text": "Rules are loaded at generation time based on the target marketplace and selected category."
+  },
+  {
+   "id": "R10607g",
+   "lines": [
+    10607,
+    10607
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "requirement",
+   "text": "Adding or updating rules doesn't require code deployment."
+  },
+  {
+   "id": "R10607h",
+   "lines": [
+    10607,
+    10607
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "requirement",
+   "text": "Rules are data, not code."
+  },
+  {
+   "id": "R10609",
+   "lines": [
+    10609,
+    10609
+   ],
+   "page": "[70] Marketplace Rule Registry",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10611",
+   "lines": [
+    10611,
+    10611
+   ],
+   "page": "[71] Marketplace Category Mapping",
+   "kind": "info",
+   "text": "[71] Marketplace Category Mapping",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10613",
+   "lines": [
+    10613,
+    10613
+   ],
+   "page": "[71] Marketplace Category Mapping",
+   "kind": "info",
+   "text": "Section: Marketplace OS",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10614",
+   "lines": [
+    10614,
+    10614
+   ],
+   "page": "[71] Marketplace Category Mapping",
+   "kind": "scope",
+   "text": "Page [71] Marketplace Category Mapping scope: MVP."
+  },
+  {
+   "id": "R10615",
+   "lines": [
+    10615,
+    10615
+   ],
+   "page": "[71] Marketplace Category Mapping",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/marketplace-category-mapping",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10616",
+   "lines": [
+    10616,
+    10616
+   ],
+   "page": "[71] Marketplace Category Mapping",
+   "kind": "info",
+   "text": "Description: Mapping between internal categories and marketplace-specific category trees.",
+   "why_not": "restatement",
+   "dup_of": "R10621a"
+  },
+  {
+   "id": "R10617",
+   "lines": [
+    10617,
+    10617
+   ],
+   "page": "[71] Marketplace Category Mapping",
+   "kind": "info",
+   "text": "Keywords: category mapping, browse node, taxonomy, tree",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10619",
+   "lines": [
+    10619,
+    10619
+   ],
+   "page": "[71] Marketplace Category Mapping",
+   "kind": "info",
+   "text": "Category Mapping",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10621",
+   "lines": [
+    10621,
+    10621
+   ],
+   "page": "[71] Marketplace Category Mapping",
+   "kind": "data",
+   "text": "Each marketplace has its own category taxonomy."
+  },
+  {
+   "id": "R10621a",
+   "lines": [
+    10621,
+    10621
+   ],
+   "page": "[71] Marketplace Category Mapping",
+   "kind": "data",
+   "text": "The platform maintains a mapping table: internal category → Amazon browse node → Flipkart category ID."
+  },
+  {
+   "id": "R10621b",
+   "lines": [
+    10621,
+    10621
+   ],
+   "page": "[71] Marketplace Category Mapping",
+   "kind": "data",
+   "text": "Category mapping field: internal category."
+  },
+  {
+   "id": "R10621c",
+   "lines": [
+    10621,
+    10621
+   ],
+   "page": "[71] Marketplace Category Mapping",
+   "kind": "data",
+   "text": "Category mapping field: Amazon browse node."
+  },
+  {
+   "id": "R10621d",
+   "lines": [
+    10621,
+    10621
+   ],
+   "page": "[71] Marketplace Category Mapping",
+   "kind": "data",
+   "text": "Category mapping field: Flipkart category ID."
+  },
+  {
+   "id": "R10621e",
+   "lines": [
+    10621,
+    10621
+   ],
+   "page": "[71] Marketplace Category Mapping",
+   "kind": "requirement",
+   "text": "Category selection determines which rules load."
+  },
+  {
+   "id": "R10621f",
+   "lines": [
+    10621,
+    10621
+   ],
+   "page": "[71] Marketplace Category Mapping",
+   "kind": "requirement",
+   "text": "Category selection determines which attributes are required/optional."
+  },
+  {
+   "id": "R10621g",
+   "lines": [
+    10621,
+    10621
+   ],
+   "page": "[71] Marketplace Category Mapping",
+   "kind": "requirement",
+   "text": "Category selection determines which image policies apply."
+  },
+  {
+   "id": "R10623",
+   "lines": [
+    10623,
+    10623
+   ],
+   "page": "[71] Marketplace Category Mapping",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10625",
+   "lines": [
+    10625,
+    10625
+   ],
+   "page": "[72] Marketplace Field Mapping",
+   "kind": "info",
+   "text": "[72] Marketplace Field Mapping",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10627",
+   "lines": [
+    10627,
+    10627
+   ],
+   "page": "[72] Marketplace Field Mapping",
+   "kind": "info",
+   "text": "Section: Marketplace OS",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10628",
+   "lines": [
+    10628,
+    10628
+   ],
+   "page": "[72] Marketplace Field Mapping",
+   "kind": "scope",
+   "text": "Page [72] Marketplace Field Mapping scope: MVP."
+  },
+  {
+   "id": "R10629",
+   "lines": [
+    10629,
+    10629
+   ],
+   "page": "[72] Marketplace Field Mapping",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/marketplace-field-mapping",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10630",
+   "lines": [
+    10630,
+    10630
+   ],
+   "page": "[72] Marketplace Field Mapping",
+   "kind": "info",
+   "text": "Description: How canonical fields map to marketplace-specific field names and formats.",
+   "why_not": "restatement",
+   "dup_of": "R10635"
+  },
+  {
+   "id": "R10631",
+   "lines": [
+    10631,
+    10631
+   ],
+   "page": "[72] Marketplace Field Mapping",
+   "kind": "info",
+   "text": "Keywords: field mapping, canonical to marketplace, transformation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10633",
+   "lines": [
+    10633,
+    10633
+   ],
+   "page": "[72] Marketplace Field Mapping",
+   "kind": "info",
+   "text": "Field Mapping",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10635",
+   "lines": [
+    10635,
+    10635
+   ],
+   "page": "[72] Marketplace Field Mapping",
+   "kind": "requirement",
+   "text": "Inside each adapter, a mapping configuration translates canonical fields to marketplace-specific formats."
+  },
+  {
+   "id": "R10635a",
+   "lines": [
+    10635,
+    10635
+   ],
+   "page": "[72] Marketplace Field Mapping",
+   "kind": "data",
+   "text": "Field mapping example: canonical `color=\"navy blue\"` → Amazon `Color=\"Navy\"`."
+  },
+  {
+   "id": "R10635b",
+   "lines": [
+    10635,
+    10635
+   ],
+   "page": "[72] Marketplace Field Mapping",
+   "kind": "data",
+   "text": "Field mapping example: canonical `color=\"navy blue\"` → Flipkart `Colour=\"Navy Blue\"`."
+  },
+  {
+   "id": "R10635c",
+   "lines": [
+    10635,
+    10635
+   ],
+   "page": "[72] Marketplace Field Mapping",
+   "kind": "requirement",
+   "text": "Field mapping is data-driven, not hardcoded."
+  },
+  {
+   "id": "R10637",
+   "lines": [
+    10637,
+    10637
+   ],
+   "page": "[72] Marketplace Field Mapping",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10639",
+   "lines": [
+    10639,
+    10639
+   ],
+   "page": "[73] Marketplace Error Mapping",
+   "kind": "info",
+   "text": "[73] Marketplace Error Mapping",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10641",
+   "lines": [
+    10641,
+    10641
+   ],
+   "page": "[73] Marketplace Error Mapping",
+   "kind": "info",
+   "text": "Section: Marketplace OS",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10642",
+   "lines": [
+    10642,
+    10642
+   ],
+   "page": "[73] Marketplace Error Mapping",
+   "kind": "scope",
+   "text": "Page [73] Marketplace Error Mapping scope: MVP."
+  },
+  {
+   "id": "R10643",
+   "lines": [
+    10643,
+    10643
+   ],
+   "page": "[73] Marketplace Error Mapping",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/marketplace-error-mapping",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10644",
+   "lines": [
+    10644,
+    10644
+   ],
+   "page": "[73] Marketplace Error Mapping",
+   "kind": "info",
+   "text": "Description: How marketplace API errors are mapped to the unified ErrorReport taxonomy.",
+   "why_not": "restatement",
+   "dup_of": "R10649"
+  },
+  {
+   "id": "R10645",
+   "lines": [
+    10645,
+    10645
+   ],
+   "page": "[73] Marketplace Error Mapping",
+   "kind": "info",
+   "text": "Keywords: error mapping, marketplace errors, unified, taxonomy",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10647",
+   "lines": [
+    10647,
+    10647
+   ],
+   "page": "[73] Marketplace Error Mapping",
+   "kind": "info",
+   "text": "Error Mapping",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10649",
+   "lines": [
+    10649,
+    10649
+   ],
+   "page": "[73] Marketplace Error Mapping",
+   "kind": "requirement",
+   "text": "Each adapter maps marketplace-specific error codes to the unified ErrorReport taxonomy."
+  },
+  {
+   "id": "R10649a",
+   "lines": [
+    10649,
+    10649
+   ],
+   "page": "[73] Marketplace Error Mapping",
+   "kind": "interface",
+   "text": "Amazon \"IMAGE_NOT_COMPLIANT\" maps to ErrorReport `field: \"main_image\"`."
+  },
+  {
+   "id": "R10649b",
+   "lines": [
+    10649,
+    10649
+   ],
+   "page": "[73] Marketplace Error Mapping",
+   "kind": "interface",
+   "text": "Amazon \"IMAGE_NOT_COMPLIANT\" maps to `error_code: \"API_REJECTED_PARTIAL\"`."
+  },
+  {
+   "id": "R10649c",
+   "lines": [
+    10649,
+    10649
+   ],
+   "page": "[73] Marketplace Error Mapping",
+   "kind": "interface",
+   "text": "Amazon \"IMAGE_NOT_COMPLIANT\" maps to `source: \"amazon_adapter\"`."
+  },
+  {
+   "id": "R10649d",
+   "lines": [
+    10649,
+    10649
+   ],
+   "page": "[73] Marketplace Error Mapping",
+   "kind": "quality",
+   "text": "Error mapping enables consistent error handling across all marketplaces."
+  },
+  {
+   "id": "R10651",
+   "lines": [
+    10651,
+    10651
+   ],
+   "page": "[73] Marketplace Error Mapping",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10653",
+   "lines": [
+    10653,
+    10653
+   ],
+   "page": "[74] Catalog Agent",
+   "kind": "info",
+   "text": "[74] Catalog Agent",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10655",
+   "lines": [
+    10655,
+    10655
+   ],
+   "page": "[74] Catalog Agent",
+   "kind": "info",
+   "text": "Section: Agent Operating Model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10656",
+   "lines": [
+    10656,
+    10656
+   ],
+   "page": "[74] Catalog Agent",
+   "kind": "scope",
+   "text": "Page [74] Catalog Agent scope: FUTURE."
+  },
+  {
+   "id": "R10657",
+   "lines": [
+    10657,
+    10657
+   ],
+   "page": "[74] Catalog Agent",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/catalog-agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10658",
+   "lines": [
+    10658,
+    10658
+   ],
+   "page": "[74] Catalog Agent",
+   "kind": "scope",
+   "text": "Future Catalog Agent: automated catalog management."
+  },
+  {
+   "id": "R10658a",
+   "lines": [
+    10658,
+    10658
+   ],
+   "page": "[74] Catalog Agent",
+   "kind": "scope",
+   "text": "Future Catalog Agent: product data enrichment."
+  },
+  {
+   "id": "R10659",
+   "lines": [
+    10659,
+    10659
+   ],
+   "page": "[74] Catalog Agent",
+   "kind": "info",
+   "text": "Keywords: catalog agent, product data, enrichment, future",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10661",
+   "lines": [
+    10661,
+    10661
+   ],
+   "page": "[74] Catalog Agent",
+   "kind": "info",
+   "text": "Purpose",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10663",
+   "lines": [
+    10663,
+    10663
+   ],
+   "page": "[74] Catalog Agent",
+   "kind": "requirement",
+   "text": "Future Catalog Agent would automate product data enrichment across marketplaces."
+  },
+  {
+   "id": "R10663a",
+   "lines": [
+    10663,
+    10663
+   ],
+   "page": "[74] Catalog Agent",
+   "kind": "requirement",
+   "text": "Future Catalog Agent would automate deduplication across marketplaces."
+  },
+  {
+   "id": "R10663b",
+   "lines": [
+    10663,
+    10663
+   ],
+   "page": "[74] Catalog Agent",
+   "kind": "requirement",
+   "text": "Future Catalog Agent would automate catalog hygiene across marketplaces."
+  },
+  {
+   "id": "R10663c",
+   "lines": [
+    10663,
+    10663
+   ],
+   "page": "[74] Catalog Agent",
+   "kind": "requirement",
+   "text": "Future Catalog Agent would identify missing product information."
+  },
+  {
+   "id": "R10663d",
+   "lines": [
+    10663,
+    10663
+   ],
+   "page": "[74] Catalog Agent",
+   "kind": "requirement",
+   "text": "Future Catalog Agent would suggest completeness improvements."
+  },
+  {
+   "id": "R10663e",
+   "lines": [
+    10663,
+    10663
+   ],
+   "page": "[74] Catalog Agent",
+   "kind": "requirement",
+   "text": "Future Catalog Agent would maintain consistent product data across all marketplace accounts."
+  },
+  {
+   "id": "R10665",
+   "lines": [
+    10665,
+    10665
+   ],
+   "page": "[74] Catalog Agent",
+   "kind": "scope",
+   "text": "Catalog Agent status: Future — Not part of MVP or immediate phases."
+  },
+  {
+   "id": "R10665a",
+   "lines": [
+    10665,
+    10665
+   ],
+   "page": "[74] Catalog Agent",
+   "kind": "risk",
+   "text": "Catalog Agent requires a unified product data layer."
+  },
+  {
+   "id": "R10665b",
+   "lines": [
+    10665,
+    10665
+   ],
+   "page": "[74] Catalog Agent",
+   "kind": "risk",
+   "text": "Catalog Agent requires cross-marketplace catalog sync."
+  },
+  {
+   "id": "R10667",
+   "lines": [
+    10667,
+    10667
+   ],
+   "page": "[74] Catalog Agent",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10669",
+   "lines": [
+    10669,
+    10669
+   ],
+   "page": "[75] Revenue Operations Agent",
+   "kind": "info",
+   "text": "[75] Revenue Operations Agent",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10671",
+   "lines": [
+    10671,
+    10671
+   ],
+   "page": "[75] Revenue Operations Agent",
+   "kind": "info",
+   "text": "Section: Agent Operating Model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10672",
+   "lines": [
+    10672,
+    10672
+   ],
+   "page": "[75] Revenue Operations Agent",
+   "kind": "scope",
+   "text": "Page [75] Revenue Operations Agent scope: FUTURE."
+  },
+  {
+   "id": "R10673",
+   "lines": [
+    10673,
+    10673
+   ],
+   "page": "[75] Revenue Operations Agent",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/revenue-operations-agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10674",
+   "lines": [
+    10674,
+    10674
+   ],
+   "page": "[75] Revenue Operations Agent",
+   "kind": "scope",
+   "text": "Future Revenue Operations Agent: unified revenue optimization across marketplaces."
+  },
+  {
+   "id": "R10675",
+   "lines": [
+    10675,
+    10675
+   ],
+   "page": "[75] Revenue Operations Agent",
+   "kind": "info",
+   "text": "Keywords: revenue operations, revenue agent, optimization, future",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10677",
+   "lines": [
+    10677,
+    10677
+   ],
+   "page": "[75] Revenue Operations Agent",
+   "kind": "info",
+   "text": "Purpose",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10679",
+   "lines": [
+    10679,
+    10679
+   ],
+   "page": "[75] Revenue Operations Agent",
+   "kind": "requirement",
+   "text": "Future Revenue Operations Agent would provide unified revenue analytics."
+  },
+  {
+   "id": "R10679a",
+   "lines": [
+    10679,
+    10679
+   ],
+   "page": "[75] Revenue Operations Agent",
+   "kind": "requirement",
+   "text": "Future Revenue Operations Agent would identify revenue optimization opportunities."
+  },
+  {
+   "id": "R10679b",
+   "lines": [
+    10679,
+    10679
+   ],
+   "page": "[75] Revenue Operations Agent",
+   "kind": "requirement",
+   "text": "Future Revenue Operations Agent would coordinate pricing for maximum revenue impact across all marketplaces."
+  },
+  {
+   "id": "R10679c",
+   "lines": [
+    10679,
+    10679
+   ],
+   "page": "[75] Revenue Operations Agent",
+   "kind": "requirement",
+   "text": "Future Revenue Operations Agent would coordinate advertising for maximum revenue impact across all marketplaces."
+  },
+  {
+   "id": "R10679d",
+   "lines": [
+    10679,
+    10679
+   ],
+   "page": "[75] Revenue Operations Agent",
+   "kind": "requirement",
+   "text": "Future Revenue Operations Agent would coordinate listing optimization for maximum revenue impact across all marketplaces."
+  },
+  {
+   "id": "R10681",
+   "lines": [
+    10681,
+    10681
+   ],
+   "page": "[75] Revenue Operations Agent",
+   "kind": "info",
+   "text": "Revenue Operations Agent status: Future.",
+   "why_not": "restatement",
+   "dup_of": "R10672"
+  },
+  {
+   "id": "R10681a",
+   "lines": [
+    10681,
+    10681
+   ],
+   "page": "[75] Revenue Operations Agent",
+   "kind": "risk",
+   "text": "Revenue Operations Agent requires Pricing Agent."
+  },
+  {
+   "id": "R10681b",
+   "lines": [
+    10681,
+    10681
+   ],
+   "page": "[75] Revenue Operations Agent",
+   "kind": "risk",
+   "text": "Revenue Operations Agent requires Ads Agent."
+  },
+  {
+   "id": "R10681c",
+   "lines": [
+    10681,
+    10681
+   ],
+   "page": "[75] Revenue Operations Agent",
+   "kind": "risk",
+   "text": "Revenue Operations Agent requires cross-marketplace analytics."
+  },
+  {
+   "id": "R10683",
+   "lines": [
+    10683,
+    10683
+   ],
+   "page": "[75] Revenue Operations Agent",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10685",
+   "lines": [
+    10685,
+    10685
+   ],
+   "page": "[76] Pricing Agent",
+   "kind": "info",
+   "text": "[76] Pricing Agent",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10687",
+   "lines": [
+    10687,
+    10687
+   ],
+   "page": "[76] Pricing Agent",
+   "kind": "info",
+   "text": "Section: Agent Operating Model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10688",
+   "lines": [
+    10688,
+    10688
+   ],
+   "page": "[76] Pricing Agent",
+   "kind": "scope",
+   "text": "Page [76] Pricing Agent scope: FUTURE."
+  },
+  {
+   "id": "R10689",
+   "lines": [
+    10689,
+    10689
+   ],
+   "page": "[76] Pricing Agent",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/pricing-agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10690",
+   "lines": [
+    10690,
+    10690
+   ],
+   "page": "[76] Pricing Agent",
+   "kind": "scope",
+   "text": "Future Pricing Agent: dynamic pricing optimization across marketplaces."
+  },
+  {
+   "id": "R10691",
+   "lines": [
+    10691,
+    10691
+   ],
+   "page": "[76] Pricing Agent",
+   "kind": "info",
+   "text": "Keywords: pricing agent, dynamic pricing, optimization, future",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10693",
+   "lines": [
+    10693,
+    10693
+   ],
+   "page": "[76] Pricing Agent",
+   "kind": "info",
+   "text": "Purpose",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10695",
+   "lines": [
+    10695,
+    10695
+   ],
+   "page": "[76] Pricing Agent",
+   "kind": "requirement",
+   "text": "Future Pricing Agent would monitor competitive pricing."
+  },
+  {
+   "id": "R10695a",
+   "lines": [
+    10695,
+    10695
+   ],
+   "page": "[76] Pricing Agent",
+   "kind": "requirement",
+   "text": "Future Pricing Agent would monitor marketplace fee structures."
+  },
+  {
+   "id": "R10695b",
+   "lines": [
+    10695,
+    10695
+   ],
+   "page": "[76] Pricing Agent",
+   "kind": "requirement",
+   "text": "Future Pricing Agent would monitor demand signals."
+  },
+  {
+   "id": "R10695c",
+   "lines": [
+    10695,
+    10695
+   ],
+   "page": "[76] Pricing Agent",
+   "kind": "requirement",
+   "text": "Future Pricing Agent would recommend optimal pricing per marketplace."
+  },
+  {
+   "id": "R10695d",
+   "lines": [
+    10695,
+    10695
+   ],
+   "page": "[76] Pricing Agent",
+   "kind": "requirement",
+   "text": "Future Pricing Agent would respect brand pricing policies."
+  },
+  {
+   "id": "R10695e",
+   "lines": [
+    10695,
+    10695
+   ],
+   "page": "[76] Pricing Agent",
+   "kind": "requirement",
+   "text": "Future Pricing Agent would maximize revenue, while respecting brand pricing policies."
+  },
+  {
+   "id": "R10697",
+   "lines": [
+    10697,
+    10697
+   ],
+   "page": "[76] Pricing Agent",
+   "kind": "info",
+   "text": "Pricing Agent status: Future.",
+   "why_not": "restatement",
+   "dup_of": "R10688"
+  },
+  {
+   "id": "R10699",
+   "lines": [
+    10699,
+    10699
+   ],
+   "page": "[76] Pricing Agent",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10701",
+   "lines": [
+    10701,
+    10701
+   ],
+   "page": "[77] Ads Agent",
+   "kind": "info",
+   "text": "[77] Ads Agent",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10703",
+   "lines": [
+    10703,
+    10703
+   ],
+   "page": "[77] Ads Agent",
+   "kind": "info",
+   "text": "Section: Agent Operating Model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10704",
+   "lines": [
+    10704,
+    10704
+   ],
+   "page": "[77] Ads Agent",
+   "kind": "scope",
+   "text": "Page [77] Ads Agent scope: FUTURE."
+  },
+  {
+   "id": "R10705",
+   "lines": [
+    10705,
+    10705
+   ],
+   "page": "[77] Ads Agent",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/ads-agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10706",
+   "lines": [
+    10706,
+    10706
+   ],
+   "page": "[77] Ads Agent",
+   "kind": "scope",
+   "text": "Future Ads Agent: marketplace advertising optimization (Amazon PPC)."
+  },
+  {
+   "id": "R10706a",
+   "lines": [
+    10706,
+    10706
+   ],
+   "page": "[77] Ads Agent",
+   "kind": "scope",
+   "text": "Future Ads Agent: marketplace advertising optimization (Flipkart Ads)."
+  },
+  {
+   "id": "R10707",
+   "lines": [
+    10707,
+    10707
+   ],
+   "page": "[77] Ads Agent",
+   "kind": "info",
+   "text": "Keywords: ads agent, advertising, PPC, sponsored, future",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10709",
+   "lines": [
+    10709,
+    10709
+   ],
+   "page": "[77] Ads Agent",
+   "kind": "info",
+   "text": "Purpose",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10711",
+   "lines": [
+    10711,
+    10711
+   ],
+   "page": "[77] Ads Agent",
+   "kind": "requirement",
+   "text": "Future Ads Agent would manage marketplace-native advertising: Amazon Sponsored Products."
+  },
+  {
+   "id": "R10711a",
+   "lines": [
+    10711,
+    10711
+   ],
+   "page": "[77] Ads Agent",
+   "kind": "requirement",
+   "text": "Future Ads Agent would manage marketplace-native advertising: Flipkart Ads."
+  },
+  {
+   "id": "R10711b",
+   "lines": [
+    10711,
+    10711
+   ],
+   "page": "[77] Ads Agent",
+   "kind": "requirement",
+   "text": "Future Ads Agent would optimize bids."
+  },
+  {
+   "id": "R10711c",
+   "lines": [
+    10711,
+    10711
+   ],
+   "page": "[77] Ads Agent",
+   "kind": "requirement",
+   "text": "Future Ads Agent would manage campaigns."
+  },
+  {
+   "id": "R10711d",
+   "lines": [
+    10711,
+    10711
+   ],
+   "page": "[77] Ads Agent",
+   "kind": "requirement",
+   "text": "Future Ads Agent would attribute sales to advertising spend."
+  },
+  {
+   "id": "R10711e",
+   "lines": [
+    10711,
+    10711
+   ],
+   "page": "[77] Ads Agent",
+   "kind": "scope",
+   "text": "Marketplace ads are within scope because they're native marketplace advertising."
+  },
+  {
+   "id": "R10713",
+   "lines": [
+    10713,
+    10713
+   ],
+   "page": "[77] Ads Agent",
+   "kind": "info",
+   "text": "Ads Agent status: Future.",
+   "why_not": "restatement",
+   "dup_of": "R10704"
+  },
+  {
+   "id": "R10715",
+   "lines": [
+    10715,
+    10715
+   ],
+   "page": "[77] Ads Agent",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10717",
+   "lines": [
+    10717,
+    10717
+   ],
+   "page": "[78] Ranking Agent",
+   "kind": "info",
+   "text": "[78] Ranking Agent",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10719",
+   "lines": [
+    10719,
+    10719
+   ],
+   "page": "[78] Ranking Agent",
+   "kind": "info",
+   "text": "Section: Agent Operating Model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10720",
+   "lines": [
+    10720,
+    10720
+   ],
+   "page": "[78] Ranking Agent",
+   "kind": "scope",
+   "text": "Page [78] Ranking Agent scope: FUTURE."
+  },
+  {
+   "id": "R10721",
+   "lines": [
+    10721,
+    10721
+   ],
+   "page": "[78] Ranking Agent",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/ranking-agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10722",
+   "lines": [
+    10722,
+    10722
+   ],
+   "page": "[78] Ranking Agent",
+   "kind": "scope",
+   "text": "Future Ranking Agent: search ranking optimization."
+  },
+  {
+   "id": "R10722a",
+   "lines": [
+    10722,
+    10722
+   ],
+   "page": "[78] Ranking Agent",
+   "kind": "scope",
+   "text": "Future Ranking Agent: competitive positioning."
+  },
+  {
+   "id": "R10723",
+   "lines": [
+    10723,
+    10723
+   ],
+   "page": "[78] Ranking Agent",
+   "kind": "info",
+   "text": "Keywords: ranking agent, search ranking, optimization, future",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10725",
+   "lines": [
+    10725,
+    10725
+   ],
+   "page": "[78] Ranking Agent",
+   "kind": "info",
+   "text": "Purpose",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10727",
+   "lines": [
+    10727,
+    10727
+   ],
+   "page": "[78] Ranking Agent",
+   "kind": "requirement",
+   "text": "Future Ranking Agent would monitor search ranking positions."
+  },
+  {
+   "id": "R10727a",
+   "lines": [
+    10727,
+    10727
+   ],
+   "page": "[78] Ranking Agent",
+   "kind": "requirement",
+   "text": "Future Ranking Agent would identify ranking opportunities."
+  },
+  {
+   "id": "R10727b",
+   "lines": [
+    10727,
+    10727
+   ],
+   "page": "[78] Ranking Agent",
+   "kind": "requirement",
+   "text": "Future Ranking Agent would coordinate with the Listing Agent to improve organic search visibility."
+  },
+  {
+   "id": "R10727c",
+   "lines": [
+    10727,
+    10727
+   ],
+   "page": "[78] Ranking Agent",
+   "kind": "requirement",
+   "text": "Future Ranking Agent would coordinate with the Keyword Agent to improve organic search visibility."
+  },
+  {
+   "id": "R10729",
+   "lines": [
+    10729,
+    10729
+   ],
+   "page": "[78] Ranking Agent",
+   "kind": "info",
+   "text": "Ranking Agent status: Future.",
+   "why_not": "restatement",
+   "dup_of": "R10720"
+  },
+  {
+   "id": "R10731",
+   "lines": [
+    10731,
+    10731
+   ],
+   "page": "[78] Ranking Agent",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10733",
+   "lines": [
+    10733,
+    10733
+   ],
+   "page": "[79] Inventory Agent",
+   "kind": "info",
+   "text": "[79] Inventory Agent",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10735",
+   "lines": [
+    10735,
+    10735
+   ],
+   "page": "[79] Inventory Agent",
+   "kind": "info",
+   "text": "Section: Agent Operating Model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10736",
+   "lines": [
+    10736,
+    10736
+   ],
+   "page": "[79] Inventory Agent",
+   "kind": "scope",
+   "text": "Page [79] Inventory Agent scope: FUTURE."
+  },
+  {
+   "id": "R10737",
+   "lines": [
+    10737,
+    10737
+   ],
+   "page": "[79] Inventory Agent",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/inventory-agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10738",
+   "lines": [
+    10738,
+    10738
+   ],
+   "page": "[79] Inventory Agent",
+   "kind": "scope",
+   "text": "Future Inventory Agent: inventory management across marketplaces."
+  },
+  {
+   "id": "R10738a",
+   "lines": [
+    10738,
+    10738
+   ],
+   "page": "[79] Inventory Agent",
+   "kind": "scope",
+   "text": "Future Inventory Agent: stock optimization across marketplaces."
+  },
+  {
+   "id": "R10739",
+   "lines": [
+    10739,
+    10739
+   ],
+   "page": "[79] Inventory Agent",
+   "kind": "info",
+   "text": "Keywords: inventory agent, stock, fulfillment, future",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10741",
+   "lines": [
+    10741,
+    10741
+   ],
+   "page": "[79] Inventory Agent",
+   "kind": "info",
+   "text": "Purpose",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10743",
+   "lines": [
+    10743,
+    10743
+   ],
+   "page": "[79] Inventory Agent",
+   "kind": "requirement",
+   "text": "Future Inventory Agent would manage stock levels across marketplaces."
+  },
+  {
+   "id": "R10743a",
+   "lines": [
+    10743,
+    10743
+   ],
+   "page": "[79] Inventory Agent",
+   "kind": "requirement",
+   "text": "Future Inventory Agent would predict demand."
+  },
+  {
+   "id": "R10743b",
+   "lines": [
+    10743,
+    10743
+   ],
+   "page": "[79] Inventory Agent",
+   "kind": "requirement",
+   "text": "Future Inventory Agent would optimize fulfillment."
+  },
+  {
+   "id": "R10743c",
+   "lines": [
+    10743,
+    10743
+   ],
+   "page": "[79] Inventory Agent",
+   "kind": "requirement",
+   "text": "Future Inventory Agent would prevent stockouts or overstocking."
+  },
+  {
+   "id": "R10745",
+   "lines": [
+    10745,
+    10745
+   ],
+   "page": "[79] Inventory Agent",
+   "kind": "info",
+   "text": "Inventory Agent status: Future.",
+   "why_not": "restatement",
+   "dup_of": "R10736"
+  },
+  {
+   "id": "R10747",
+   "lines": [
+    10747,
+    10747
+   ],
+   "page": "[79] Inventory Agent",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10749",
+   "lines": [
+    10749,
+    10749
+   ],
+   "page": "[80] Returns Agent",
+   "kind": "info",
+   "text": "[80] Returns Agent",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10751",
+   "lines": [
+    10751,
+    10751
+   ],
+   "page": "[80] Returns Agent",
+   "kind": "info",
+   "text": "Section: Agent Operating Model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10752",
+   "lines": [
+    10752,
+    10752
+   ],
+   "page": "[80] Returns Agent",
+   "kind": "scope",
+   "text": "Page [80] Returns Agent scope: FUTURE."
+  },
+  {
+   "id": "R10753",
+   "lines": [
+    10753,
+    10753
+   ],
+   "page": "[80] Returns Agent",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/returns-agent",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10754",
+   "lines": [
+    10754,
+    10754
+   ],
+   "page": "[80] Returns Agent",
+   "kind": "scope",
+   "text": "Future Returns Agent: returns analysis."
+  },
+  {
+   "id": "R10754a",
+   "lines": [
+    10754,
+    10754
+   ],
+   "page": "[80] Returns Agent",
+   "kind": "scope",
+   "text": "Future Returns Agent: quality improvement recommendations."
+  },
+  {
+   "id": "R10755",
+   "lines": [
+    10755,
+    10755
+   ],
+   "page": "[80] Returns Agent",
+   "kind": "info",
+   "text": "Keywords: returns agent, returns, quality, future",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10757",
+   "lines": [
+    10757,
+    10757
+   ],
+   "page": "[80] Returns Agent",
+   "kind": "info",
+   "text": "Purpose",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10759",
+   "lines": [
+    10759,
+    10759
+   ],
+   "page": "[80] Returns Agent",
+   "kind": "requirement",
+   "text": "Future Returns Agent would analyze return patterns."
+  },
+  {
+   "id": "R10759a",
+   "lines": [
+    10759,
+    10759
+   ],
+   "page": "[80] Returns Agent",
+   "kind": "requirement",
+   "text": "Future Returns Agent would identify root causes of returns: size issues."
+  },
+  {
+   "id": "R10759b",
+   "lines": [
+    10759,
+    10759
+   ],
+   "page": "[80] Returns Agent",
+   "kind": "requirement",
+   "text": "Future Returns Agent would identify root causes of returns: quality mismatches."
+  },
+  {
+   "id": "R10759c",
+   "lines": [
+    10759,
+    10759
+   ],
+   "page": "[80] Returns Agent",
+   "kind": "requirement",
+   "text": "Future Returns Agent would identify root causes of returns: description inaccuracies."
+  },
+  {
+   "id": "R10759d",
+   "lines": [
+    10759,
+    10759
+   ],
+   "page": "[80] Returns Agent",
+   "kind": "requirement",
+   "text": "Future Returns Agent would recommend listing or product improvements to reduce returns."
+  },
+  {
+   "id": "R10761",
+   "lines": [
+    10761,
+    10761
+   ],
+   "page": "[80] Returns Agent",
+   "kind": "info",
+   "text": "Returns Agent status: Future.",
+   "why_not": "restatement",
+   "dup_of": "R10752"
+  },
+  {
+   "id": "R10763",
+   "lines": [
+    10763,
+    10763
+   ],
+   "page": "[80] Returns Agent",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10765",
+   "lines": [
+    10765,
+    10765
+   ],
+   "page": "[81] Optimization Agent (Future)",
+   "kind": "info",
+   "text": "[81] Optimization Agent (Future)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10767",
+   "lines": [
+    10767,
+    10767
+   ],
+   "page": "[81] Optimization Agent (Future)",
+   "kind": "info",
+   "text": "Section: Agent Operating Model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10768",
+   "lines": [
+    10768,
+    10768
+   ],
+   "page": "[81] Optimization Agent (Future)",
+   "kind": "scope",
+   "text": "Page [81] Optimization Agent (Future) scope: PHASE3."
+  },
+  {
+   "id": "R10769",
+   "lines": [
+    10769,
+    10769
+   ],
+   "page": "[81] Optimization Agent (Future)",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/optimization-agent-future",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10770",
+   "lines": [
+    10770,
+    10770
+   ],
+   "page": "[81] Optimization Agent (Future)",
+   "kind": "scope",
+   "text": "Optimization Agent in the full Marketplace OS: expanded capabilities beyond MVP."
+  },
+  {
+   "id": "R10771",
+   "lines": [
+    10771,
+    10771
+   ],
+   "page": "[81] Optimization Agent (Future)",
+   "kind": "info",
+   "text": "Keywords: optimization, future, expanded, competitive",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10773",
+   "lines": [
+    10773,
+    10773
+   ],
+   "page": "[81] Optimization Agent (Future)",
+   "kind": "info",
+   "text": "Expanded Optimization",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10775",
+   "lines": [
+    10775,
+    10775
+   ],
+   "page": "[81] Optimization Agent (Future)",
+   "kind": "scope",
+   "text": "In Phase 3 and beyond, the Optimization Agent expands from basic listing improvement suggestions."
+  },
+  {
+   "id": "R10775a",
+   "lines": [
+    10775,
+    10775
+   ],
+   "page": "[81] Optimization Agent (Future)",
+   "kind": "scope",
+   "text": "Phase 3+ Optimization Agent: competitive signal analysis."
+  },
+  {
+   "id": "R10775b",
+   "lines": [
+    10775,
+    10775
+   ],
+   "page": "[81] Optimization Agent (Future)",
+   "kind": "scope",
+   "text": "Phase 3+ Optimization Agent: A/B testing proposals."
+  },
+  {
+   "id": "R10775c",
+   "lines": [
+    10775,
+    10775
+   ],
+   "page": "[81] Optimization Agent (Future)",
+   "kind": "scope",
+   "text": "Phase 3+ Optimization Agent: seasonal optimization."
+  },
+  {
+   "id": "R10775d",
+   "lines": [
+    10775,
+    10775
+   ],
+   "page": "[81] Optimization Agent (Future)",
+   "kind": "scope",
+   "text": "Phase 3+ Optimization Agent: cross-marketplace optimization coordination."
+  },
+  {
+   "id": "R10777",
+   "lines": [
+    10777,
+    10777
+   ],
+   "page": "[81] Optimization Agent (Future)",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10779",
+   "lines": [
+    10779,
+    10779
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "info",
+   "text": "[82] Agent Dependency Graph",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10781",
+   "lines": [
+    10781,
+    10781
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "info",
+   "text": "Section: Agent Operating Model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10782",
+   "lines": [
+    10782,
+    10782
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "scope",
+   "text": "Page [82] Agent Dependency Graph scope: MVP."
+  },
+  {
+   "id": "R10783",
+   "lines": [
+    10783,
+    10783
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/agent-dependency-graph",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10784",
+   "lines": [
+    10784,
+    10784
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "info",
+   "text": "Description: Visual dependency graph showing how agents relate to each other and to shared infrastructure.",
+   "why_not": "context-prose"
+  },
+  {
+   "id": "R10785",
+   "lines": [
+    10785,
+    10785
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "info",
+   "text": "Keywords: dependency graph, agent dependencies, relationships",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10787",
+   "lines": [
+    10787,
+    10787
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "info",
+   "text": "Agent Dependency Graph",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10789",
+   "lines": [
+    10789,
+    10789
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "info",
+   "text": "Architecture Diagram: Agent Dependency Graph",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10791",
+   "lines": [
+    10791,
+    10792
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "info",
+   "text": "mermaid graph TD fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10793",
+   "lines": [
+    10793,
+    10793
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: Auth System --> Tenancy."
+  },
+  {
+   "id": "R10794",
+   "lines": [
+    10794,
+    10794
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: Tenancy --> Database."
+  },
+  {
+   "id": "R10795",
+   "lines": [
+    10795,
+    10795
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: Database --> Product Model."
+  },
+  {
+   "id": "R10796",
+   "lines": [
+    10796,
+    10796
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: Product Model --> Canonical Model."
+  },
+  {
+   "id": "R10797",
+   "lines": [
+    10797,
+    10797
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: Canonical Model --> Rules Engine."
+  },
+  {
+   "id": "R10798",
+   "lines": [
+    10798,
+    10798
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: Database --> Brand Context."
+  },
+  {
+   "id": "R10799",
+   "lines": [
+    10799,
+    10799
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: Brand Context --> AI Agents."
+  },
+  {
+   "id": "R10800",
+   "lines": [
+    10800,
+    10800
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: Rules Engine --> AI Agents."
+  },
+  {
+   "id": "R10801",
+   "lines": [
+    10801,
+    10801
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: AI Agents --> Validation."
+  },
+  {
+   "id": "R10802",
+   "lines": [
+    10802,
+    10802
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: Validation --> Approval."
+  },
+  {
+   "id": "R10803",
+   "lines": [
+    10803,
+    10803
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: Approval --> Marketplace Adapters."
+  },
+  {
+   "id": "R10804",
+   "lines": [
+    10804,
+    10804
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: Marketplace Adapters --> Publishing."
+  },
+  {
+   "id": "R10805",
+   "lines": [
+    10805,
+    10805
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: Publishing --> Analytics."
+  },
+  {
+   "id": "R10806",
+   "lines": [
+    10806,
+    10806
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "flow",
+   "text": "Dependency: Analytics --> Optimization."
+  },
+  {
+   "id": "R10806a",
+   "lines": [
+    10806,
+    10806
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "scope",
+   "text": "Optimization is Phase 3 (\"Optimization - Phase 3\")."
+  },
+  {
+   "id": "R10807",
+   "lines": [
+    10807,
+    10807
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "info",
+   "text": "mermaid fence close",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10809",
+   "lines": [
+    10809,
+    10809
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "flow",
+   "text": "The dependency graph shows the build order: each module depends on those above it."
+  },
+  {
+   "id": "R10809a",
+   "lines": [
+    10809,
+    10809
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "requirement",
+   "text": "Parallelizable work is possible for modules at the same depth level that don't share dependencies."
+  },
+  {
+   "id": "R10811",
+   "lines": [
+    10811,
+    10811
+   ],
+   "page": "[82] Agent Dependency Graph",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10813",
+   "lines": [
+    10813,
+    10813
+   ],
+   "page": "[83] Agent Registry",
+   "kind": "info",
+   "text": "[83] Agent Registry",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10815",
+   "lines": [
+    10815,
+    10815
+   ],
+   "page": "[83] Agent Registry",
+   "kind": "info",
+   "text": "Section: Agent Operating Model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10816",
+   "lines": [
+    10816,
+    10816
+   ],
+   "page": "[83] Agent Registry",
+   "kind": "scope",
+   "text": "Page [83] Agent Registry scope: FUTURE."
+  },
+  {
+   "id": "R10817",
+   "lines": [
+    10817,
+    10817
+   ],
+   "page": "[83] Agent Registry",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/agent-registry",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10818",
+   "lines": [
+    10818,
+    10818
+   ],
+   "page": "[83] Agent Registry",
+   "kind": "info",
+   "text": "Description: System for registering and managing agents in the Marketplace OS.",
+   "why_not": "restatement",
+   "dup_of": "R10823"
+  },
+  {
+   "id": "R10819",
+   "lines": [
+    10819,
+    10819
+   ],
+   "page": "[83] Agent Registry",
+   "kind": "info",
+   "text": "Keywords: agent registry, management, registration",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10821",
+   "lines": [
+    10821,
+    10821
+   ],
+   "page": "[83] Agent Registry",
+   "kind": "info",
+   "text": "Agent Registry",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10823",
+   "lines": [
+    10823,
+    10823
+   ],
+   "page": "[83] Agent Registry",
+   "kind": "scope",
+   "text": "The agent registry is a future system for managing the growing ecosystem of agents."
+  },
+  {
+   "id": "R10823a",
+   "lines": [
+    10823,
+    10823
+   ],
+   "page": "[83] Agent Registry",
+   "kind": "data",
+   "text": "Agent registry would track: agent name."
+  },
+  {
+   "id": "R10823b",
+   "lines": [
+    10823,
+    10823
+   ],
+   "page": "[83] Agent Registry",
+   "kind": "data",
+   "text": "Agent registry would track: version."
+  },
+  {
+   "id": "R10823c",
+   "lines": [
+    10823,
+    10823
+   ],
+   "page": "[83] Agent Registry",
+   "kind": "data",
+   "text": "Agent registry would track: status (active/inactive)."
+  },
+  {
+   "id": "R10823d",
+   "lines": [
+    10823,
+    10823
+   ],
+   "page": "[83] Agent Registry",
+   "kind": "data",
+   "text": "Agent registry would track: input/output schemas."
+  },
+  {
+   "id": "R10823e",
+   "lines": [
+    10823,
+    10823
+   ],
+   "page": "[83] Agent Registry",
+   "kind": "data",
+   "text": "Agent registry would track: dependencies."
+  },
+  {
+   "id": "R10823f",
+   "lines": [
+    10823,
+    10823
+   ],
+   "page": "[83] Agent Registry",
+   "kind": "data",
+   "text": "Agent registry would track: cost profile."
+  },
+  {
+   "id": "R10823g",
+   "lines": [
+    10823,
+    10823
+   ],
+   "page": "[83] Agent Registry",
+   "kind": "data",
+   "text": "Agent registry would track: execution history."
+  },
+  {
+   "id": "R10823h",
+   "lines": [
+    10823,
+    10823
+   ],
+   "page": "[83] Agent Registry",
+   "kind": "requirement",
+   "text": "Agent registry enables platform operators to manage which agents are active."
+  },
+  {
+   "id": "R10823i",
+   "lines": [
+    10823,
+    10823
+   ],
+   "page": "[83] Agent Registry",
+   "kind": "requirement",
+   "text": "Agent registry enables platform operators to monitor agent performance."
+  },
+  {
+   "id": "R10825",
+   "lines": [
+    10825,
+    10825
+   ],
+   "page": "[83] Agent Registry",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10827",
+   "lines": [
+    10827,
+    10827
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "info",
+   "text": "[84] Data Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10829",
+   "lines": [
+    10829,
+    10829
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10830",
+   "lines": [
+    10830,
+    10830
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "scope",
+   "text": "Page [84] Data Architecture scope: MVP."
+  },
+  {
+   "id": "R10831",
+   "lines": [
+    10831,
+    10831
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/data-architecture-overview",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10832",
+   "lines": [
+    10832,
+    10832
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "decision",
+   "text": "Data architecture: PostgreSQL with pgvector."
+  },
+  {
+   "id": "R10832a",
+   "lines": [
+    10832,
+    10832
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "decision",
+   "text": "Relational + vector data in a single database."
+  },
+  {
+   "id": "R10833",
+   "lines": [
+    10833,
+    10833
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "info",
+   "text": "Keywords: data architecture, PostgreSQL, pgvector, database, schema",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10835",
+   "lines": [
+    10835,
+    10835
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "info",
+   "text": "Overview",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10837",
+   "lines": [
+    10837,
+    10837
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "info",
+   "text": "The MVP uses PostgreSQL with the pgvector extension.",
+   "why_not": "restatement",
+   "dup_of": "R10832"
+  },
+  {
+   "id": "R10837a",
+   "lines": [
+    10837,
+    10837
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "One database holds relational data: products."
+  },
+  {
+   "id": "R10837b",
+   "lines": [
+    10837,
+    10837
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "One database holds relational data: listings."
+  },
+  {
+   "id": "R10837c",
+   "lines": [
+    10837,
+    10837
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "One database holds relational data: rules."
+  },
+  {
+   "id": "R10837d",
+   "lines": [
+    10837,
+    10837
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "The same database holds vector embeddings (brand chunks)."
+  },
+  {
+   "id": "R10837e",
+   "lines": [
+    10837,
+    10837
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "decision",
+   "text": "Single database eliminates the operational complexity of a separate vector database."
+  },
+  {
+   "id": "R10837f",
+   "lines": [
+    10837,
+    10837
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "quality",
+   "text": "PostgreSQL + pgvector provides sufficient performance for the MVP scale."
+  },
+  {
+   "id": "R10839",
+   "lines": [
+    10839,
+    10841
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "info",
+   "text": "Stat card: Database = PostgreSQL + pgvector.",
+   "why_not": "restatement",
+   "dup_of": "R10832"
+  },
+  {
+   "id": "R10843",
+   "lines": [
+    10843,
+    10843
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "info",
+   "text": "Single DB for relational + vector data.",
+   "why_not": "restatement",
+   "dup_of": "R10832a"
+  },
+  {
+   "id": "R10845",
+   "lines": [
+    10845,
+    10847
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "constraint",
+   "text": "Core Entities: 12 Tables."
+  },
+  {
+   "id": "R10849",
+   "lines": [
+    10849,
+    10849
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "Core entity: Tenant."
+  },
+  {
+   "id": "R10849a",
+   "lines": [
+    10849,
+    10849
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "Core entity: Product."
+  },
+  {
+   "id": "R10849b",
+   "lines": [
+    10849,
+    10849
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "Core entity: Listing."
+  },
+  {
+   "id": "R10849c",
+   "lines": [
+    10849,
+    10849
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "Core entity: AgentRun (list continues \"etc.\")."
+  },
+  {
+   "id": "R10851",
+   "lines": [
+    10851,
+    10853
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "quality",
+   "text": "Tenant Isolation: Mandatory."
+  },
+  {
+   "id": "R10855",
+   "lines": [
+    10855,
+    10855
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "quality",
+   "text": "tenant_id on every query at repository layer."
+  },
+  {
+   "id": "R10857",
+   "lines": [
+    10857,
+    10859
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "constraint",
+   "text": "Vector Dimensions: 1536."
+  },
+  {
+   "id": "R10861",
+   "lines": [
+    10861,
+    10861
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "The 1536 vector dimensions are the text-embedding-3-small output."
+  }
+ ]
+}

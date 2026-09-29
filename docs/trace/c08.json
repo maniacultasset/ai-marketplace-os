@@ -1,0 +1,5664 @@
+{
+ "chunk": "c08",
+ "start": 5253,
+ "end": 5866,
+ "items": [
+  {
+   "id": "R05253",
+   "lines": [
+    5253,
+    5253
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 29 Definition of Done: MarketplaceAdapter ABC merged."
+  },
+  {
+   "id": "R05253a",
+   "lines": [
+    5253,
+    5253
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 29 Definition of Done: 100% of adapter tests pass using FakeAdapter."
+  },
+  {
+   "id": "R05255",
+   "lines": [
+    5255,
+    5255
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 30 is Tue Oct 20, Week 5 (Adapters & Publish)."
+  },
+  {
+   "id": "R05257",
+   "lines": [
+    5257,
+    5257
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 30 work is owned by OPS and FE."
+  },
+  {
+   "id": "R05259",
+   "lines": [
+    5259,
+    5259
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 30 delivers: Amazon LWA OAuth Flow & Cloud KMS Token Encryption."
+  },
+  {
+   "id": "R05261",
+   "lines": [
+    5261,
+    5261
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "OPS: Amazon Login with Amazon (LWA) OAuth flow."
+  },
+  {
+   "id": "R05261a",
+   "lines": [
+    5261,
+    5261
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "OPS: sandbox seller account integration (Amazon)."
+  },
+  {
+   "id": "R05262",
+   "lines": [
+    5262,
+    5262
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "KMS envelope encryption for marketplace tokens."
+  },
+  {
+   "id": "R05262a",
+   "lines": [
+    5262,
+    5262
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Access tokens encrypted with AES-256 before writing to marketplace_accounts."
+  },
+  {
+   "id": "R05262b",
+   "lines": [
+    5262,
+    5262
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Refresh tokens encrypted with AES-256 before writing to marketplace_accounts."
+  },
+  {
+   "id": "R05263",
+   "lines": [
+    5263,
+    5263
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Automated background refresh-token job runs before token expiry."
+  },
+  {
+   "id": "R05264",
+   "lines": [
+    5264,
+    5264
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "FE: \"Connect Amazon Account\" UI."
+  },
+  {
+   "id": "R05264a",
+   "lines": [
+    5264,
+    5264
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "\"Connect Amazon Account\" UI shows connection status."
+  },
+  {
+   "id": "R05264b",
+   "lines": [
+    5264,
+    5264
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "\"Connect Amazon Account\" UI shows permissions breakdown."
+  },
+  {
+   "id": "R05266",
+   "lines": [
+    5266,
+    5266
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 30 DoD: Amazon sandbox account connects via OAuth."
+  },
+  {
+   "id": "R05266a",
+   "lines": [
+    5266,
+    5266
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 30 DoD: encrypted tokens stored."
+  },
+  {
+   "id": "R05266b",
+   "lines": [
+    5266,
+    5266
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 30 DoD: simulated expiry triggers automatic refresh."
+  },
+  {
+   "id": "R05268",
+   "lines": [
+    5268,
+    5268
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 31 is Wed Oct 21, Week 5 (Adapters & Publish)."
+  },
+  {
+   "id": "R05270",
+   "lines": [
+    5270,
+    5270
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 31 work is owned by OPS and BE."
+  },
+  {
+   "id": "R05272",
+   "lines": [
+    5272,
+    5272
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 31 delivers: Amazon SP-API Listings Items Integration & Partial Publish Handling."
+  },
+  {
+   "id": "R05274",
+   "lines": [
+    5274,
+    5274
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "OPS: Amazon SP-API Listings Items API adapter."
+  },
+  {
+   "id": "R05274a",
+   "lines": [
+    5274,
+    5274
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Amazon Listings Items API adapter supports create."
+  },
+  {
+   "id": "R05274b",
+   "lines": [
+    5274,
+    5274
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Amazon Listings Items API adapter supports update."
+  },
+  {
+   "id": "R05274c",
+   "lines": [
+    5274,
+    5274
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Amazon Listings Items API adapter supports publish."
+  },
+  {
+   "id": "R05275",
+   "lines": [
+    5275,
+    5275
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Category mapping for MVP launch categories (Amazon)."
+  },
+  {
+   "id": "R05275a",
+   "lines": [
+    5275,
+    5275
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Field mapping for MVP launch categories (Amazon)."
+  },
+  {
+   "id": "R05276",
+   "lines": [
+    5276,
+    5276
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Rate limiting with exponential backoff (Amazon adapter)."
+  },
+  {
+   "id": "R05276a",
+   "lines": [
+    5276,
+    5276
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Idempotency keys on mutations (Amazon adapter)."
+  },
+  {
+   "id": "R05277",
+   "lines": [
+    5277,
+    5277
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Partial-success field parsing for Amazon publish responses."
+  },
+  {
+   "id": "R05277a",
+   "lines": [
+    5277,
+    5277
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Map Amazon XML/JSON errors to field-level ErrorReport."
+  },
+  {
+   "id": "R05278",
+   "lines": [
+    5278,
+    5278
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "BE: Persist per-field publish results into listing_versions."
+  },
+  {
+   "id": "R05278a",
+   "lines": [
+    5278,
+    5278
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "BE: Persist per-field publish results into validation_runs."
+  },
+  {
+   "id": "R05280",
+   "lines": [
+    5280,
+    5280
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 31 DoD: Listing successfully publishes to Amazon sandbox."
+  },
+  {
+   "id": "R05280a",
+   "lines": [
+    5280,
+    5280
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 31 DoD: an invalid bullet returns partial success naming that exact field."
+  },
+  {
+   "id": "R05282",
+   "lines": [
+    5282,
+    5282
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 32 is Thu Oct 22, Week 5 (Adapters & Publish)."
+  },
+  {
+   "id": "R05284",
+   "lines": [
+    5284,
+    5284
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 32 work is owned by OPS and FE."
+  },
+  {
+   "id": "R05286",
+   "lines": [
+    5286,
+    5286
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 32 delivers: Flipkart Seller API OAuth & Category Mapping."
+  },
+  {
+   "id": "R05288",
+   "lines": [
+    5288,
+    5288
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "OPS: Flipkart Seller API OAuth connection."
+  },
+  {
+   "id": "R05288a",
+   "lines": [
+    5288,
+    5288
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "OPS: KMS token encryption for Flipkart tokens."
+  },
+  {
+   "id": "R05289",
+   "lines": [
+    5289,
+    5289
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Flipkart category schema mapping."
+  },
+  {
+   "id": "R05289a",
+   "lines": [
+    5289,
+    5289
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Flipkart error taxonomy definition."
+  },
+  {
+   "id": "R05290",
+   "lines": [
+    5290,
+    5290
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "FE: \"Connect Flipkart Account\" UI."
+  },
+  {
+   "id": "R05290a",
+   "lines": [
+    5290,
+    5290
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "FE: connection manager (Day 32, with \"Connect Flipkart Account\" UI)."
+  },
+  {
+   "id": "R05292",
+   "lines": [
+    5292,
+    5292
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 32 DoD: Flipkart sandbox/test account connects."
+  },
+  {
+   "id": "R05292a",
+   "lines": [
+    5292,
+    5292
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 32 DoD: credentials safely encrypted."
+  },
+  {
+   "id": "R05292b",
+   "lines": [
+    5292,
+    5292
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 32 DoD: connection status visible in dashboard."
+  },
+  {
+   "id": "R05294",
+   "lines": [
+    5294,
+    5294
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 33 is Fri Oct 23, Week 5 (Adapters & Publish)."
+  },
+  {
+   "id": "R05296",
+   "lines": [
+    5296,
+    5296
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 33 work is owned by OPS and BE."
+  },
+  {
+   "id": "R05298",
+   "lines": [
+    5298,
+    5298
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 33 delivers: Flipkart Listing Publish, Throttling & Failed-Field Retries."
+  },
+  {
+   "id": "R05300",
+   "lines": [
+    5300,
+    5300
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "OPS: Flipkart create implementation."
+  },
+  {
+   "id": "R05300a",
+   "lines": [
+    5300,
+    5300
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "OPS: Flipkart update implementation."
+  },
+  {
+   "id": "R05300b",
+   "lines": [
+    5300,
+    5300
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "OPS: Flipkart publish implementation."
+  },
+  {
+   "id": "R05300c",
+   "lines": [
+    5300,
+    5300
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "OPS: Flipkart create/update/publish implementation with client-side throttling."
+  },
+  {
+   "id": "R05300d",
+   "lines": [
+    5300,
+    5300
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "OPS: Flipkart create/update/publish implementation with idempotency."
+  },
+  {
+   "id": "R05301",
+   "lines": [
+    5301,
+    5301
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "BE: Map Flipkart-specific errors into unified ErrorReport taxonomy."
+  },
+  {
+   "id": "R05302",
+   "lines": [
+    5302,
+    5302
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Partial failure handling: retry only the failed field."
+  },
+  {
+   "id": "R05302a",
+   "lines": [
+    5302,
+    5302
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Partial failure handling: never re-push unchanged fields."
+  },
+  {
+   "id": "R05304",
+   "lines": [
+    5304,
+    5304
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 33 DoD: Sandbox listing publishes to Flipkart."
+  },
+  {
+   "id": "R05304a",
+   "lines": [
+    5304,
+    5304
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 33 DoD: partial error retry touches only the failed attribute."
+  },
+  {
+   "id": "R05306",
+   "lines": [
+    5306,
+    5306
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 34 is Sat Oct 24, Week 5 (Adapters & Publish)."
+  },
+  {
+   "id": "R05308",
+   "lines": [
+    5308,
+    5308
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 34 work is owned by FE, BE and TL."
+  },
+  {
+   "id": "R05310",
+   "lines": [
+    5310,
+    5310
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 34 delivers: Human Approval Screen, Maker-Checker Enforcement & Confidence Score."
+  },
+  {
+   "id": "R05312",
+   "lines": [
+    5312,
+    5312
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "FE: Human approval screen."
+  },
+  {
+   "id": "R05312a",
+   "lines": [
+    5312,
+    5312
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Human approval screen shows side-by-side marketplace view."
+  },
+  {
+   "id": "R05312b",
+   "lines": [
+    5312,
+    5312
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Human approval screen shows generated copy."
+  },
+  {
+   "id": "R05312c",
+   "lines": [
+    5312,
+    5312
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Human approval screen shows image compliance badges."
+  },
+  {
+   "id": "R05312d",
+   "lines": [
+    5312,
+    5312
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Human approval screen shows confidence score."
+  },
+  {
+   "id": "R05312e",
+   "lines": [
+    5312,
+    5312
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Human approval screen has Approve button."
+  },
+  {
+   "id": "R05312f",
+   "lines": [
+    5312,
+    5312
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Human approval screen has Reject button."
+  },
+  {
+   "id": "R05312g",
+   "lines": [
+    5312,
+    5312
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Human approval screen has Edit button."
+  },
+  {
+   "id": "R05312h",
+   "lines": [
+    5312,
+    5312
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Human approval screen has Regenerate button."
+  },
+  {
+   "id": "R05313",
+   "lines": [
+    5313,
+    5313
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "BE: POST /listings/approve endpoint."
+  },
+  {
+   "id": "R05313a",
+   "lines": [
+    5313,
+    5313
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "POST /listings/approve has server-side maker-checker enforcement."
+  },
+  {
+   "id": "R05313b",
+   "lines": [
+    5313,
+    5313
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Operator cannot approve own generated listing."
+  },
+  {
+   "id": "R05314",
+   "lines": [
+    5314,
+    5314
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "TL: Finalize confidence score formula as a weighted average."
+  },
+  {
+   "id": "R05314a",
+   "lines": [
+    5314,
+    5314
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Confidence score weighted average includes rules score."
+  },
+  {
+   "id": "R05314b",
+   "lines": [
+    5314,
+    5314
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Confidence score weighted average includes image compliance."
+  },
+  {
+   "id": "R05314c",
+   "lines": [
+    5314,
+    5314
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Confidence score weighted average includes attribute completeness."
+  },
+  {
+   "id": "R05316",
+   "lines": [
+    5316,
+    5316
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Day 34 DoD: A generator attempting to approve their own listing is rejected with 403 Forbidden at API level."
+  },
+  {
+   "id": "R05316a",
+   "lines": [
+    5316,
+    5316
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 34 DoD: a generator attempting to approve their own listing is rejected with 403 Forbidden at DB level too (\"both at API and DB levels\")."
+  },
+  {
+   "id": "R05318",
+   "lines": [
+    5318,
+    5318
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 35 is Sun Oct 25, Week 5 (Adapters & Publish)."
+  },
+  {
+   "id": "R05320",
+   "lines": [
+    5320,
+    5320
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 35 work is owned by TL, AI, BE, FE and OPS."
+  },
+  {
+   "id": "R05322",
+   "lines": [
+    5322,
+    5322
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 35 delivers: Week 5 Milestone Demo: End-to-End Publish Loop."
+  },
+  {
+   "id": "R05324",
+   "lines": [
+    5324,
+    5324
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "All: Full end-to-end loop step 1: product import."
+  },
+  {
+   "id": "R05324a",
+   "lines": [
+    5324,
+    5324
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "End-to-end loop step 2: generate."
+  },
+  {
+   "id": "R05324b",
+   "lines": [
+    5324,
+    5324
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "End-to-end loop step 3: validate."
+  },
+  {
+   "id": "R05324c",
+   "lines": [
+    5324,
+    5324
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "End-to-end loop step 4: human approve."
+  },
+  {
+   "id": "R05324d",
+   "lines": [
+    5324,
+    5324
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "End-to-end loop step 5: adapter publish."
+  },
+  {
+   "id": "R05324e",
+   "lines": [
+    5324,
+    5324
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "End-to-end loop step 6: per-field result recorded."
+  },
+  {
+   "id": "R05325",
+   "lines": [
+    5325,
+    5325
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Test partial publish path."
+  },
+  {
+   "id": "R05325a",
+   "lines": [
+    5325,
+    5325
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Test rate-limit backoff path."
+  },
+  {
+   "id": "R05325b",
+   "lines": [
+    5325,
+    5325
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Test auth expiry recovery path."
+  },
+  {
+   "id": "R05326",
+   "lines": [
+    5326,
+    5326
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Week 5 staging demo."
+  },
+  {
+   "id": "R05326a",
+   "lines": [
+    5326,
+    5326
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Week 5 retro."
+  },
+  {
+   "id": "R05326b",
+   "lines": [
+    5326,
+    5326
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Freeze Week 5 scope."
+  },
+  {
+   "id": "R05328",
+   "lines": [
+    5328,
+    5328
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 35 DoD: Complete import-to-publish loop functions smoothly for Amazon sandbox accounts."
+  },
+  {
+   "id": "R05328a",
+   "lines": [
+    5328,
+    5328
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 35 DoD: Complete import-to-publish loop functions smoothly for Flipkart sandbox accounts."
+  },
+  {
+   "id": "R05330",
+   "lines": [
+    5330,
+    5330
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 36 is Mon Oct 26, Week 6 (Hardening & Polish)."
+  },
+  {
+   "id": "R05332",
+   "lines": [
+    5332,
+    5332
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 36 work is owned by FE and BE."
+  },
+  {
+   "id": "R05334",
+   "lines": [
+    5334,
+    5334
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 36 delivers: Main Dashboard, Live Job Progress & Failed Job Retries."
+  },
+  {
+   "id": "R05336",
+   "lines": [
+    5336,
+    5336
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "FE: Main dashboard with products table."
+  },
+  {
+   "id": "R05336a",
+   "lines": [
+    5336,
+    5336
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Main dashboard shows listing status badges."
+  },
+  {
+   "id": "R05336b",
+   "lines": [
+    5336,
+    5336
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Main dashboard shows real-time job progress indicators."
+  },
+  {
+   "id": "R05336c",
+   "lines": [
+    5336,
+    5336
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Main dashboard has failed job drawer."
+  },
+  {
+   "id": "R05336d",
+   "lines": [
+    5336,
+    5336
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Failed job drawer has retry button."
+  },
+  {
+   "id": "R05337",
+   "lines": [
+    5337,
+    5337
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "BE: Aggregation endpoints backing dashboard metrics."
+  },
+  {
+   "id": "R05337a",
+   "lines": [
+    5337,
+    5337
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Dashboard aggregation endpoints use caching."
+  },
+  {
+   "id": "R05339",
+   "lines": [
+    5339,
+    5339
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 36 DoD: Dashboard accurately reflects live staging data."
+  },
+  {
+   "id": "R05339a",
+   "lines": [
+    5339,
+    5339
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 36 DoD: clicking retry on a failed job restarts execution from the exact point of failure."
+  },
+  {
+   "id": "R05341",
+   "lines": [
+    5341,
+    5341
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 37 is Tue Oct 27, Week 6 (Hardening & Polish)."
+  },
+  {
+   "id": "R05343",
+   "lines": [
+    5343,
+    5343
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 37 work is owned by FE and AI."
+  },
+  {
+   "id": "R05345",
+   "lines": [
+    5345,
+    5345
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 37 delivers: Side-by-Side Marketplace Comparison & Fix Copy Polish."
+  },
+  {
+   "id": "R05347",
+   "lines": [
+    5347,
+    5347
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "FE: Amazon vs Flipkart side-by-side listing comparison view."
+  },
+  {
+   "id": "R05348",
+   "lines": [
+    5348,
+    5348
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "FE: Image compliance viewer polish (Day 37)."
+  },
+  {
+   "id": "R05348a",
+   "lines": [
+    5348,
+    5348
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Image compliance viewer shows visual bounding box highlights for vision errors."
+  },
+  {
+   "id": "R05349",
+   "lines": [
+    5349,
+    5349
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "AI: Tone review of AI-generated error fix suggestions."
+  },
+  {
+   "id": "R05349a",
+   "lines": [
+    5349,
+    5349
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "AI: Clarity review of AI-generated error fix suggestions."
+  },
+  {
+   "id": "R05351",
+   "lines": [
+    5351,
+    5351
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 37 DoD: A non-technical reviewer can resolve every reported error directly from UI suggestions without checking backend logs."
+  },
+  {
+   "id": "R05353",
+   "lines": [
+    5353,
+    5353
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 38 is Wed Oct 28, Week 6 (Hardening & Polish)."
+  },
+  {
+   "id": "R05355",
+   "lines": [
+    5355,
+    5355
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 38 work is owned by FE and OPS."
+  },
+  {
+   "id": "R05357",
+   "lines": [
+    5357,
+    5357
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 38 delivers: Marketplace Reconnect UX & Auth Expiry Alerting."
+  },
+  {
+   "id": "R05359",
+   "lines": [
+    5359,
+    5359
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "FE: Marketplace connection health card."
+  },
+  {
+   "id": "R05359a",
+   "lines": [
+    5359,
+    5359
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "FE: clear banner when tokens expire or permissions change."
+  },
+  {
+   "id": "R05359b",
+   "lines": [
+    5359,
+    5359
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "FE: re-auth flow when tokens expire or permissions change."
+  },
+  {
+   "id": "R05360",
+   "lines": [
+    5360,
+    5360
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "OPS: Configure Sentry alert when a marketplace OAuth token refresh fails."
+  },
+  {
+   "id": "R05360a",
+   "lines": [
+    5360,
+    5360
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "OPS: Configure webhook alert when a marketplace OAuth token refresh fails."
+  },
+  {
+   "id": "R05362",
+   "lines": [
+    5362,
+    5362
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 38 DoD: Simulated token invalidation triggers an immediate Sentry alert."
+  },
+  {
+   "id": "R05362a",
+   "lines": [
+    5362,
+    5362
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 38 DoD: Simulated token invalidation triggers a clear reconnect prompt in the user interface."
+  },
+  {
+   "id": "R05364",
+   "lines": [
+    5364,
+    5364
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 39 is Thu Oct 29, Week 6 (Hardening & Polish)."
+  },
+  {
+   "id": "R05366",
+   "lines": [
+    5366,
+    5366
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 39 work is owned by BE and FE."
+  },
+  {
+   "id": "R05368",
+   "lines": [
+    5368,
+    5368
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 39 delivers: Operational Analytics Dashboard & Marketplace Breakdown."
+  },
+  {
+   "id": "R05370",
+   "lines": [
+    5370,
+    5370
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "BE: GET /analytics endpoint."
+  },
+  {
+   "id": "R05370a",
+   "lines": [
+    5370,
+    5370
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "GET /analytics returns generation volume."
+  },
+  {
+   "id": "R05370b",
+   "lines": [
+    5370,
+    5370
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "GET /analytics returns approval rate."
+  },
+  {
+   "id": "R05370c",
+   "lines": [
+    5370,
+    5370
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "GET /analytics returns validation pass rate."
+  },
+  {
+   "id": "R05370d",
+   "lines": [
+    5370,
+    5370
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "GET /analytics returns publish success rate."
+  },
+  {
+   "id": "R05370e",
+   "lines": [
+    5370,
+    5370
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "GET /analytics returns marketplace breakdown."
+  },
+  {
+   "id": "R05371",
+   "lines": [
+    5371,
+    5371
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "FE: Analytics page with charts."
+  },
+  {
+   "id": "R05371a",
+   "lines": [
+    5371,
+    5371
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "FE: Analytics page with trend summaries."
+  },
+  {
+   "id": "R05373",
+   "lines": [
+    5373,
+    5373
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 39 DoD: Analytics dashboard displays live, accurate metrics computed from staging validation_runs."
+  },
+  {
+   "id": "R05373a",
+   "lines": [
+    5373,
+    5373
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "data",
+   "text": "Day 39 DoD: Analytics metrics computed from staging agent_runs."
+  },
+  {
+   "id": "R05375",
+   "lines": [
+    5375,
+    5375
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 40 is Fri Oct 30, Week 6 (Hardening & Polish)."
+  },
+  {
+   "id": "R05377",
+   "lines": [
+    5377,
+    5377
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 40 work is owned by OPS and TL."
+  },
+  {
+   "id": "R05379",
+   "lines": [
+    5379,
+    5379
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 40 delivers: End-to-End Tracing, Sentry Wiring & LLM Cost Dashboard."
+  },
+  {
+   "id": "R05381",
+   "lines": [
+    5381,
+    5381
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "OPS: Sentry fully wired for Next.js frontend."
+  },
+  {
+   "id": "R05381a",
+   "lines": [
+    5381,
+    5381
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "OPS: Sentry fully wired for FastAPI backend."
+  },
+  {
+   "id": "R05381b",
+   "lines": [
+    5381,
+    5381
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Sentry uses release tagging."
+  },
+  {
+   "id": "R05382",
+   "lines": [
+    5382,
+    5382
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "OPS: OpenTelemetry spans connected through Cloud Trace."
+  },
+  {
+   "id": "R05382a",
+   "lines": [
+    5382,
+    5382
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "OpenTelemetry spans use request_id correlation."
+  },
+  {
+   "id": "R05383",
+   "lines": [
+    5383,
+    5383
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "OPS/TL: Finalize AgentRun cost telemetry dashboard."
+  },
+  {
+   "id": "R05383a",
+   "lines": [
+    5383,
+    5383
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "AgentRun cost dashboard tracks daily LLM expenditure."
+  },
+  {
+   "id": "R05383b",
+   "lines": [
+    5383,
+    5383
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "AgentRun cost dashboard tracks per-tenant LLM expenditure."
+  },
+  {
+   "id": "R05385",
+   "lines": [
+    5385,
+    5385
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 40 DoD: A single failed publish is traceable from frontend button click to marketplace API response in one Cloud Trace view."
+  },
+  {
+   "id": "R05387",
+   "lines": [
+    5387,
+    5387
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 41 is Sat Oct 31, Week 6 (Hardening & Polish)."
+  },
+  {
+   "id": "R05389",
+   "lines": [
+    5389,
+    5389
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 41 work is owned by TL, OPS and BE."
+  },
+  {
+   "id": "R05391",
+   "lines": [
+    5391,
+    5391
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 41 delivers: Security, Multi-Tenancy & Prompt Injection Audit."
+  },
+  {
+   "id": "R05393",
+   "lines": [
+    5393,
+    5393
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Comprehensive security audit: cross-tenant isolation checks."
+  },
+  {
+   "id": "R05393a",
+   "lines": [
+    5393,
+    5393
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Security audit: RBAC boundary verification."
+  },
+  {
+   "id": "R05393b",
+   "lines": [
+    5393,
+    5393
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Security audit: maker-checker DB constraints."
+  },
+  {
+   "id": "R05394",
+   "lines": [
+    5394,
+    5394
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Secret handling review: verify zero credentials in git history."
+  },
+  {
+   "id": "R05394a",
+   "lines": [
+    5394,
+    5394
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Secret handling review: verify zero credentials in logs."
+  },
+  {
+   "id": "R05394b",
+   "lines": [
+    5394,
+    5394
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Secret handling review: verify zero credentials in LLM context."
+  },
+  {
+   "id": "R05395",
+   "lines": [
+    5395,
+    5395
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Prompt-injection penetration test with malicious product titles."
+  },
+  {
+   "id": "R05395a",
+   "lines": [
+    5395,
+    5395
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Prompt-injection penetration test with malicious product descriptions."
+  },
+  {
+   "id": "R05396",
+   "lines": [
+    5396,
+    5396
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "BE: Fix all discovered findings immediately."
+  },
+  {
+   "id": "R05398",
+   "lines": [
+    5398,
+    5398
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 41 DoD: Zero open Critical or High severity security findings."
+  },
+  {
+   "id": "R05398a",
+   "lines": [
+    5398,
+    5398
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 41 DoD: prompt injection attempts fail to alter system instructions."
+  },
+  {
+   "id": "R05400",
+   "lines": [
+    5400,
+    5400
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 42 is Sun Nov 1, Week 6 (Hardening & Polish)."
+  },
+  {
+   "id": "R05402",
+   "lines": [
+    5402,
+    5402
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 42 work is owned by OPS, TL, AI, BE and FE."
+  },
+  {
+   "id": "R05404",
+   "lines": [
+    5404,
+    5404
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 42 delivers: Full Playwright Regression & Concurrency Load Test."
+  },
+  {
+   "id": "R05406",
+   "lines": [
+    5406,
+    5406
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "OPS: Full Playwright automated E2E regression suite across all critical user paths."
+  },
+  {
+   "id": "R05407",
+   "lines": [
+    5407,
+    5407
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Load testing: 1,000-row CSV bulk import."
+  },
+  {
+   "id": "R05407a",
+   "lines": [
+    5407,
+    5407
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Load testing: 20 concurrent listing generations."
+  },
+  {
+   "id": "R05407b",
+   "lines": [
+    5407,
+    5407
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Load testing uses Locust."
+  },
+  {
+   "id": "R05408",
+   "lines": [
+    5408,
+    5408
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Verify Redis queue depth under target load."
+  },
+  {
+   "id": "R05408a",
+   "lines": [
+    5408,
+    5408
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Confirm zero queue starvation under target load."
+  },
+  {
+   "id": "R05409",
+   "lines": [
+    5409,
+    5409
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "All: Resolve all open P0 and P1 issues."
+  },
+  {
+   "id": "R05411",
+   "lines": [
+    5411,
+    5411
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 42 DoD: Playwright test suite passes 100%."
+  },
+  {
+   "id": "R05411a",
+   "lines": [
+    5411,
+    5411
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 42 DoD: load test sustains 20 concurrent generations."
+  },
+  {
+   "id": "R05411b",
+   "lines": [
+    5411,
+    5411
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 42 DoD: zero dropped jobs under load test."
+  },
+  {
+   "id": "R05411c",
+   "lines": [
+    5411,
+    5411
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 42 DoD: 0 open P0/P1 bugs."
+  },
+  {
+   "id": "R05413",
+   "lines": [
+    5413,
+    5413
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 43 is Mon Nov 2, Week 7 (Launch)."
+  },
+  {
+   "id": "R05415",
+   "lines": [
+    5415,
+    5415
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 43 work is owned by OPS and TL."
+  },
+  {
+   "id": "R05417",
+   "lines": [
+    5417,
+    5417
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 43 delivers: Production Migration Rehearsal & Feature Freeze."
+  },
+  {
+   "id": "R05419",
+   "lines": [
+    5419,
+    5419
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Cut release-v1.0 branch."
+  },
+  {
+   "id": "R05419a",
+   "lines": [
+    5419,
+    5419
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Enact strict feature freeze (bug fixes only)."
+  },
+  {
+   "id": "R05420",
+   "lines": [
+    5420,
+    5420
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Production Cloud SQL migration dry run."
+  },
+  {
+   "id": "R05420a",
+   "lines": [
+    5420,
+    5420
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Backup/restore rehearsal."
+  },
+  {
+   "id": "R05421",
+   "lines": [
+    5421,
+    5421
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Verify production (non-sandbox) OAuth credentials for Amazon."
+  },
+  {
+   "id": "R05421a",
+   "lines": [
+    5421,
+    5421
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Verify production (non-sandbox) OAuth credentials for Flipkart."
+  },
+  {
+   "id": "R05422",
+   "lines": [
+    5422,
+    5422
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "TL: Formal Go / No-Go review against Launch Gate criteria (§21)."
+  },
+  {
+   "id": "R05424",
+   "lines": [
+    5424,
+    5424
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 43 DoD: Production infrastructure provisioned."
+  },
+  {
+   "id": "R05424a",
+   "lines": [
+    5424,
+    5424
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Day 43 DoD: migration applies cleanly in dry run."
+  },
+  {
+   "id": "R05424b",
+   "lines": [
+    5424,
+    5424
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 43 DoD: rollback procedure tested in < 15 minutes."
+  },
+  {
+   "id": "R05426",
+   "lines": [
+    5426,
+    5426
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 44 is Tue Nov 3, Week 7 (Launch)."
+  },
+  {
+   "id": "R05428",
+   "lines": [
+    5428,
+    5428
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 44 work is owned by TL, AI, BE, FE and OPS."
+  },
+  {
+   "id": "R05430",
+   "lines": [
+    5430,
+    5430
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 44 delivers: Full Team UAT with Realistic & Deliberately Messy Products."
+  },
+  {
+   "id": "R05432",
+   "lines": [
+    5432,
+    5432
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "User Acceptance Testing with 5 realistic products across Amazon and Flipkart."
+  },
+  {
+   "id": "R05433",
+   "lines": [
+    5433,
+    5433
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Test 1 deliberately messy product to prove failure recovery."
+  },
+  {
+   "id": "R05433a",
+   "lines": [
+    5433,
+    5433
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Messy UAT product has bad formatting."
+  },
+  {
+   "id": "R05433b",
+   "lines": [
+    5433,
+    5433
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Messy UAT product has oversized title."
+  },
+  {
+   "id": "R05433c",
+   "lines": [
+    5433,
+    5433
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Messy UAT product has invalid image."
+  },
+  {
+   "id": "R05434",
+   "lines": [
+    5434,
+    5434
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Live monitoring of Cloud Trace during tests."
+  },
+  {
+   "id": "R05434a",
+   "lines": [
+    5434,
+    5434
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Live monitoring of Sentry during tests."
+  },
+  {
+   "id": "R05434b",
+   "lines": [
+    5434,
+    5434
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Live monitoring of Cloud Logging during tests."
+  },
+  {
+   "id": "R05435",
+   "lines": [
+    5435,
+    5435
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Fix only genuine launch blockers."
+  },
+  {
+   "id": "R05435a",
+   "lines": [
+    5435,
+    5435
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Conduct final rollback rehearsal."
+  },
+  {
+   "id": "R05437",
+   "lines": [
+    5437,
+    5437
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Day 44 DoD: All UAT products either publish successfully or block with clear, human-understandable error reasons."
+  },
+  {
+   "id": "R05437a",
+   "lines": [
+    5437,
+    5437
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Day 44 DoD: zero launch blockers."
+  },
+  {
+   "id": "R05439",
+   "lines": [
+    5439,
+    5439
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 45 is Wed Nov 4, Week 7 (Launch)."
+  },
+  {
+   "id": "R05441",
+   "lines": [
+    5441,
+    5441
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 45 work is owned by TL, AI, BE, FE and OPS."
+  },
+  {
+   "id": "R05443",
+   "lines": [
+    5443,
+    5443
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Day 45 delivers: Production Deploy, Smoke Tests & Live Launch."
+  },
+  {
+   "id": "R05445",
+   "lines": [
+    5445,
+    5445
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Deploy api-prod to GCP Cloud Run."
+  },
+  {
+   "id": "R05445a",
+   "lines": [
+    5445,
+    5445
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Deploy web-prod to GCP Cloud Run."
+  },
+  {
+   "id": "R05445b",
+   "lines": [
+    5445,
+    5445
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Apply final database migrations (Day 45)."
+  },
+  {
+   "id": "R05446",
+   "lines": [
+    5446,
+    5446
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Production smoke test checklist: sign-in."
+  },
+  {
+   "id": "R05446a",
+   "lines": [
+    5446,
+    5446
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Production smoke test checklist: connect marketplace."
+  },
+  {
+   "id": "R05446b",
+   "lines": [
+    5446,
+    5446
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Production smoke test checklist: import product."
+  },
+  {
+   "id": "R05446c",
+   "lines": [
+    5446,
+    5446
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Production smoke test checklist: generate listing."
+  },
+  {
+   "id": "R05446d",
+   "lines": [
+    5446,
+    5446
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Production smoke test checklist: approve."
+  },
+  {
+   "id": "R05446e",
+   "lines": [
+    5446,
+    5446
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Production smoke test checklist: publish."
+  },
+  {
+   "id": "R05447",
+   "lines": [
+    5447,
+    5447
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Whole team on live launch-monitoring rotation."
+  },
+  {
+   "id": "R05447a",
+   "lines": [
+    5447,
+    5447
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Launch-monitoring rotation has assigned incident-response hours."
+  },
+  {
+   "id": "R05448",
+   "lines": [
+    5448,
+    5448
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Publish release notes."
+  },
+  {
+   "id": "R05448a",
+   "lines": [
+    5448,
+    5448
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Publish known-issues documentation."
+  },
+  {
+   "id": "R05448b",
+   "lines": [
+    5448,
+    5448
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Schedule post-launch retrospective."
+  },
+  {
+   "id": "R05450",
+   "lines": [
+    5450,
+    5450
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 45 DoD: A real brand user can independently sign in in production."
+  },
+  {
+   "id": "R05450a",
+   "lines": [
+    5450,
+    5450
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 45 DoD: real brand user can connect a marketplace in production."
+  },
+  {
+   "id": "R05450b",
+   "lines": [
+    5450,
+    5450
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 45 DoD: real brand user can import a product in production."
+  },
+  {
+   "id": "R05450c",
+   "lines": [
+    5450,
+    5450
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 45 DoD: real brand user can generate a listing in production."
+  },
+  {
+   "id": "R05450d",
+   "lines": [
+    5450,
+    5450
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 45 DoD: real brand user can approve a listing in production."
+  },
+  {
+   "id": "R05450e",
+   "lines": [
+    5450,
+    5450
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Day 45 DoD: real brand user can publish a listing in production."
+  },
+  {
+   "id": "R05452",
+   "lines": [
+    5452,
+    5452
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "info",
+   "text": "Sprint Phase Milestones",
+   "why_not": "heading"
+  },
+  {
+   "id": "R05454",
+   "lines": [
+    5454,
+    5458
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "info",
+   "text": "Column headers: Phase | Calendar Window | Primary Deliverable & Milestone",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05460",
+   "lines": [
+    5460,
+    5462
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Phase 0: Solo Foundation spans Days 1–10 (Sep 21 – Sep 30)."
+  },
+  {
+   "id": "R05464",
+   "lines": [
+    5464,
+    5464
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Phase 0 deliverable: GCP infrastructure live."
+  },
+  {
+   "id": "R05464a",
+   "lines": [
+    5464,
+    5464
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Phase 0 deliverable: core schema."
+  },
+  {
+   "id": "R05464b",
+   "lines": [
+    5464,
+    5464
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Phase 0 deliverable: tenant isolation."
+  },
+  {
+   "id": "R05464c",
+   "lines": [
+    5464,
+    5464
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Phase 0 deliverable: Walking Skeleton on Cloud Run."
+  },
+  {
+   "id": "R05464d",
+   "lines": [
+    5464,
+    5464
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Phase 0 deliverable: developer marketplace applications filed."
+  },
+  {
+   "id": "R05466",
+   "lines": [
+    5466,
+    5468
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Week 2: Ingestion & Rules spans Days 11–14 (Oct 1 – Oct 4)."
+  },
+  {
+   "id": "R05470",
+   "lines": [
+    5470,
+    5470
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Week 2: Team onboards."
+  },
+  {
+   "id": "R05470a",
+   "lines": [
+    5470,
+    5470
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Week 2: async Redis+ARQ CSV import."
+  },
+  {
+   "id": "R05470b",
+   "lines": [
+    5470,
+    5470
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Week 2: Flipkart deterministic rules engine."
+  },
+  {
+   "id": "R05470c",
+   "lines": [
+    5470,
+    5470
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Week 2: Amazon deterministic rules engine."
+  },
+  {
+   "id": "R05470d",
+   "lines": [
+    5470,
+    5470
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "interface",
+   "text": "Week 2: rules engine emits structured ErrorReport."
+  },
+  {
+   "id": "R05472",
+   "lines": [
+    5472,
+    5474
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Week 3: AI & Brand RAG spans Days 15–21 (Oct 5 – Oct 11)."
+  },
+  {
+   "id": "R05476",
+   "lines": [
+    5476,
+    5476
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Week 3: Brand guideline chunking."
+  },
+  {
+   "id": "R05476a",
+   "lines": [
+    5476,
+    5476
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Week 3: pgvector retrieval."
+  },
+  {
+   "id": "R05476b",
+   "lines": [
+    5476,
+    5476
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Week 3: parallel Content agent."
+  },
+  {
+   "id": "R05476c",
+   "lines": [
+    5476,
+    5476
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Week 3: parallel Keyword agent."
+  },
+  {
+   "id": "R05476d",
+   "lines": [
+    5476,
+    5476
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Week 3: parallel Attribute agent."
+  },
+  {
+   "id": "R05476e",
+   "lines": [
+    5476,
+    5476
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Week 3: canonical listing generation."
+  },
+  {
+   "id": "R05478",
+   "lines": [
+    5478,
+    5480
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Week 4: Vision & LangGraph spans Days 22–28 (Oct 12 – Oct 18)."
+  },
+  {
+   "id": "R05482",
+   "lines": [
+    5482,
+    5482
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Week 4: Deterministic image compliance checks."
+  },
+  {
+   "id": "R05482a",
+   "lines": [
+    5482,
+    5482
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Week 4: vision image compliance checks."
+  },
+  {
+   "id": "R05482b",
+   "lines": [
+    5482,
+    5482
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "decision",
+   "text": "Week 4: LangGraph orchestration pipeline."
+  },
+  {
+   "id": "R05482c",
+   "lines": [
+    5482,
+    5482
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Week 4: bounded (≤3) self-correction loop."
+  },
+  {
+   "id": "R05484",
+   "lines": [
+    5484,
+    5486
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Week 5: Adapters & Publish spans Days 29–35 (Oct 19 – Oct 25)."
+  },
+  {
+   "id": "R05488",
+   "lines": [
+    5488,
+    5488
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Week 5: Amazon SP-API adapter."
+  },
+  {
+   "id": "R05488a",
+   "lines": [
+    5488,
+    5488
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Week 5: Flipkart Seller API adapter."
+  },
+  {
+   "id": "R05488b",
+   "lines": [
+    5488,
+    5488
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Week 5: KMS OAuth token encryption."
+  },
+  {
+   "id": "R05488c",
+   "lines": [
+    5488,
+    5488
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Week 5: human approval gate."
+  },
+  {
+   "id": "R05488d",
+   "lines": [
+    5488,
+    5488
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Week 5: maker-checker integrity on approval gate."
+  },
+  {
+   "id": "R05490",
+   "lines": [
+    5490,
+    5492
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Week 6: Hardening & Analytics spans Days 36–42 (Oct 26 – Nov 1)."
+  },
+  {
+   "id": "R05494",
+   "lines": [
+    5494,
+    5494
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Week 6: Next.js dashboard polish."
+  },
+  {
+   "id": "R05494a",
+   "lines": [
+    5494,
+    5494
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "requirement",
+   "text": "Week 6: operational analytics."
+  },
+  {
+   "id": "R05494b",
+   "lines": [
+    5494,
+    5494
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Week 6: Sentry tracing."
+  },
+  {
+   "id": "R05494c",
+   "lines": [
+    5494,
+    5494
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Week 6: OpenTelemetry tracing."
+  },
+  {
+   "id": "R05494d",
+   "lines": [
+    5494,
+    5494
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Week 6: security audit."
+  },
+  {
+   "id": "R05494e",
+   "lines": [
+    5494,
+    5494
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Week 6: 1000-row load test."
+  },
+  {
+   "id": "R05496",
+   "lines": [
+    5496,
+    5498
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Week 7: Launch & Production spans Days 43–45 (Nov 2 – Nov 4)."
+  },
+  {
+   "id": "R05500",
+   "lines": [
+    5500,
+    5500
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Week 7: Release branch cut."
+  },
+  {
+   "id": "R05500a",
+   "lines": [
+    5500,
+    5500
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Week 7: migration rehearsal."
+  },
+  {
+   "id": "R05500b",
+   "lines": [
+    5500,
+    5500
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Week 7: UAT with realistic & messy products."
+  },
+  {
+   "id": "R05500c",
+   "lines": [
+    5500,
+    5500
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "scope",
+   "text": "Week 7: Day 45 live production deployment."
+  },
+  {
+   "id": "R05502",
+   "lines": [
+    5502,
+    5502
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "info",
+   "text": "Daily Standup & Integration Rhythm",
+   "why_not": "heading"
+  },
+  {
+   "id": "R05504",
+   "lines": [
+    5504,
+    5504
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "The team adheres strictly to the daily schedule to avoid integration logjams."
+  },
+  {
+   "id": "R05504a",
+   "lines": [
+    5504,
+    5504
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "5 engineers build concurrently."
+  },
+  {
+   "id": "R05506",
+   "lines": [
+    5506,
+    5508
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Standup at 09:30 AM daily."
+  },
+  {
+   "id": "R05508",
+   "lines": [
+    5508,
+    5508
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Standup lasts 15 minutes (15-Min Standup)."
+  },
+  {
+   "id": "R05510",
+   "lines": [
+    5510,
+    5510
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Standup covers what shipped to staging."
+  },
+  {
+   "id": "R05510a",
+   "lines": [
+    5510,
+    5510
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Standup covers today's critical path blocker."
+  },
+  {
+   "id": "R05512",
+   "lines": [
+    5512,
+    5514
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Deep Work Block runs 10:00 AM – 03:00 PM."
+  },
+  {
+   "id": "R05516",
+   "lines": [
+    5516,
+    5516
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Deep Work Block: uninterrupted implementation against clear interface contracts."
+  },
+  {
+   "id": "R05518",
+   "lines": [
+    5518,
+    5520
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Integration Window runs 03:00 PM – 04:30 PM."
+  },
+  {
+   "id": "R05522",
+   "lines": [
+    5522,
+    5522
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Integration Window: PR reviews."
+  },
+  {
+   "id": "R05522a",
+   "lines": [
+    5522,
+    5522
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Integration Window: cross-component wiring."
+  },
+  {
+   "id": "R05522b",
+   "lines": [
+    5522,
+    5522
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Integration Window: merge to main."
+  },
+  {
+   "id": "R05524",
+   "lines": [
+    5524,
+    5526
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Staging Deploy & Check at 05:00 PM."
+  },
+  {
+   "id": "R05528",
+   "lines": [
+    5528,
+    5528
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "quality",
+   "text": "Automated CI/CD build verified live on staging Cloud Run."
+  },
+  {
+   "id": "R05530",
+   "lines": [
+    5530,
+    5532
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Risk Check at 05:45 PM."
+  },
+  {
+   "id": "R05532",
+   "lines": [
+    5532,
+    5532
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "constraint",
+   "text": "Risk Check lasts 15 minutes (15-Min Risk Check)."
+  },
+  {
+   "id": "R05534",
+   "lines": [
+    5534,
+    5534
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Risk Check: update tickets."
+  },
+  {
+   "id": "R05534a",
+   "lines": [
+    5534,
+    5534
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "flow",
+   "text": "Risk Check: review blockers."
+  },
+  {
+   "id": "R05534b",
+   "lines": [
+    5534,
+    5534
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "risk",
+   "text": "Risk Check: verify critical path has not moved."
+  },
+  {
+   "id": "R05536",
+   "lines": [
+    5536,
+    5536
+   ],
+   "page": "[03] Day-by-Day Execution Plan (45 Days)",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05538",
+   "lines": [
+    5538,
+    5538
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "info",
+   "text": "[04] Team Structure & Solo Sprint",
+   "why_not": "heading"
+  },
+  {
+   "id": "R05540",
+   "lines": [
+    5540,
+    5540
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "info",
+   "text": "Section: 45-Day MVP Build Plan",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R05541",
+   "lines": [
+    5541,
+    5541
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "scope",
+   "text": "Page [04] Team Structure & Solo Sprint has Scope: MVP."
+  },
+  {
+   "id": "R05542",
+   "lines": [
+    5542,
+    5542
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/mvp-team-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R05543",
+   "lines": [
+    5543,
+    5543
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "constraint",
+   "text": "Transition from solo foundation (Days 1–10) to a 5-person high-velocity team."
+  },
+  {
+   "id": "R05543a",
+   "lines": [
+    5543,
+    5543
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "risk",
+   "text": "Team plan has built-in slack buffers."
+  },
+  {
+   "id": "R05543b",
+   "lines": [
+    5543,
+    5543
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "Team plan has an ownership matrix."
+  },
+  {
+   "id": "R05544",
+   "lines": [
+    5544,
+    5544
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "info",
+   "text": "Keywords: team structure, delegation, solo sprint, slack buffer, roles, tech lead, ownership matrix",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R05546",
+   "lines": [
+    5546,
+    5546
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "scope",
+   "text": "Team Ownership Matrix (Phase 1): the ownership matrix applies to Phase 1."
+  },
+  {
+   "id": "R05548",
+   "lines": [
+    5548,
+    5548
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "constraint",
+   "text": "From Day 11 onward, 5 engineers drive execution."
+  },
+  {
+   "id": "R05548a",
+   "lines": [
+    5548,
+    5548
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "Each engineer has clearly delineated primary and secondary ownership domains."
+  },
+  {
+   "id": "R05550",
+   "lines": [
+    5550,
+    5556
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "info",
+   "text": "Column headers: Tag | Role | Primary Ownership | Secondary Ownership",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05558",
+   "lines": [
+    5558,
+    5560
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "data",
+   "text": "Tag TL = Tech Lead (You)."
+  },
+  {
+   "id": "R05562",
+   "lines": [
+    5562,
+    5562
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "TL primary: Architecture."
+  },
+  {
+   "id": "R05562a",
+   "lines": [
+    5562,
+    5562
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "TL primary: orchestration integration."
+  },
+  {
+   "id": "R05562b",
+   "lines": [
+    5562,
+    5562
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "TL primary: critical AI flow."
+  },
+  {
+   "id": "R05562c",
+   "lines": [
+    5562,
+    5562
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "TL primary: code review."
+  },
+  {
+   "id": "R05562d",
+   "lines": [
+    5562,
+    5562
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "TL primary: release management."
+  },
+  {
+   "id": "R05564",
+   "lines": [
+    5564,
+    5564
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "TL secondary: Backend fallback."
+  },
+  {
+   "id": "R05564a",
+   "lines": [
+    5564,
+    5564
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "TL secondary: security audit."
+  },
+  {
+   "id": "R05566",
+   "lines": [
+    5566,
+    5568
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "data",
+   "text": "Tag AI = Engineer 2 (AI/RAG)."
+  },
+  {
+   "id": "R05570",
+   "lines": [
+    5570,
+    5570
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "AI primary: LangGraph graph."
+  },
+  {
+   "id": "R05570a",
+   "lines": [
+    5570,
+    5570
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "AI primary: Content/Keyword/Attribute agents."
+  },
+  {
+   "id": "R05570b",
+   "lines": [
+    5570,
+    5570
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "AI primary: prompt engineering."
+  },
+  {
+   "id": "R05570c",
+   "lines": [
+    5570,
+    5570
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "AI primary: ModelRouter."
+  },
+  {
+   "id": "R05570d",
+   "lines": [
+    5570,
+    5570
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "AI primary: correction node."
+  },
+  {
+   "id": "R05572",
+   "lines": [
+    5572,
+    5572
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "AI secondary: Brand RAG."
+  },
+  {
+   "id": "R05572a",
+   "lines": [
+    5572,
+    5572
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "AI secondary: AI evaluation."
+  },
+  {
+   "id": "R05572b",
+   "lines": [
+    5572,
+    5572
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "AI secondary: vision prompts."
+  },
+  {
+   "id": "R05574",
+   "lines": [
+    5574,
+    5576
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "data",
+   "text": "Tag BE = Engineer 3 (Backend)."
+  },
+  {
+   "id": "R05578",
+   "lines": [
+    5578,
+    5578
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "BE primary: FastAPI endpoints."
+  },
+  {
+   "id": "R05578a",
+   "lines": [
+    5578,
+    5578
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "BE primary: Cloud SQL repositories."
+  },
+  {
+   "id": "R05578b",
+   "lines": [
+    5578,
+    5578
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "BE primary: Rules Engine."
+  },
+  {
+   "id": "R05578c",
+   "lines": [
+    5578,
+    5578
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "BE primary: validation pipelines."
+  },
+  {
+   "id": "R05578d",
+   "lines": [
+    5578,
+    5578
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "BE primary: background jobs."
+  },
+  {
+   "id": "R05578e",
+   "lines": [
+    5578,
+    5578
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "BE primary: audit logging."
+  },
+  {
+   "id": "R05580",
+   "lines": [
+    5580,
+    5580
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "BE secondary: Performance."
+  },
+  {
+   "id": "R05580a",
+   "lines": [
+    5580,
+    5580
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "BE secondary: database indexing."
+  },
+  {
+   "id": "R05580b",
+   "lines": [
+    5580,
+    5580
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "BE secondary: RBAC."
+  },
+  {
+   "id": "R05582",
+   "lines": [
+    5582,
+    5584
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "data",
+   "text": "Tag FE = Engineer 4 (Frontend)."
+  },
+  {
+   "id": "R05586",
+   "lines": [
+    5586,
+    5586
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "FE primary: Next.js dashboard."
+  },
+  {
+   "id": "R05586a",
+   "lines": [
+    5586,
+    5586
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "FE primary: bulk import UI."
+  },
+  {
+   "id": "R05586b",
+   "lines": [
+    5586,
+    5586
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "FE primary: review & approval screens."
+  },
+  {
+   "id": "R05586c",
+   "lines": [
+    5586,
+    5586
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "FE primary: image compliance viewer."
+  },
+  {
+   "id": "R05586d",
+   "lines": [
+    5586,
+    5586
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "FE primary: marketplace status."
+  },
+  {
+   "id": "R05588",
+   "lines": [
+    5588,
+    5588
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "FE secondary: UX polish."
+  },
+  {
+   "id": "R05588a",
+   "lines": [
+    5588,
+    5588
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "FE secondary: operational analytics charts."
+  },
+  {
+   "id": "R05590",
+   "lines": [
+    5590,
+    5592
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "data",
+   "text": "Tag OPS = Engineer 5 (DevOps/QA)."
+  },
+  {
+   "id": "R05594",
+   "lines": [
+    5594,
+    5594
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "OPS primary: Amazon adapter."
+  },
+  {
+   "id": "R05594a",
+   "lines": [
+    5594,
+    5594
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "OPS primary: Flipkart adapter."
+  },
+  {
+   "id": "R05594b",
+   "lines": [
+    5594,
+    5594
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "OPS primary: OAuth flows."
+  },
+  {
+   "id": "R05594c",
+   "lines": [
+    5594,
+    5594
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "OPS primary: GCP infra."
+  },
+  {
+   "id": "R05594d",
+   "lines": [
+    5594,
+    5594
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "decision",
+   "text": "OPS primary: Redis/ARQ worker."
+  },
+  {
+   "id": "R05594e",
+   "lines": [
+    5594,
+    5594
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "OPS primary: CI/CD."
+  },
+  {
+   "id": "R05594f",
+   "lines": [
+    5594,
+    5594
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "quality",
+   "text": "OPS primary: Playwright tests."
+  },
+  {
+   "id": "R05594g",
+   "lines": [
+    5594,
+    5594
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "quality",
+   "text": "OPS primary: load tests."
+  },
+  {
+   "id": "R05596",
+   "lines": [
+    5596,
+    5596
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "OPS secondary: Sentry."
+  },
+  {
+   "id": "R05596a",
+   "lines": [
+    5596,
+    5596
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "OPS secondary: Cloud Trace."
+  },
+  {
+   "id": "R05596b",
+   "lines": [
+    5596,
+    5596
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "OPS secondary: launch ops."
+  },
+  {
+   "id": "R05598",
+   "lines": [
+    5598,
+    5598
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "scope",
+   "text": "Solo Sprint Reality Check: the solo sprint covers Days 1–10."
+  },
+  {
+   "id": "R05600",
+   "lines": [
+    5600,
+    5600
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "risk",
+   "text": "Ten days is tight for Days 1–10: it compresses roughly two weeks of 5-person work into one person."
+  },
+  {
+   "id": "R05600a",
+   "lines": [
+    5600,
+    5600
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "risk",
+   "text": "Two strict principles make the solo sprint (Days 1–10) survivable: Ruthless Scope Discipline and Never Cut Invariants."
+  },
+  {
+   "id": "R05602",
+   "lines": [
+    5602,
+    5602
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "scope",
+   "text": "Ruthless Scope Discipline: solo phase builds the thinnest possible vertical slice that proves the architecture."
+  },
+  {
+   "id": "R05602a",
+   "lines": [
+    5602,
+    5602
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "scope",
+   "text": "Solo phase covers one category."
+  },
+  {
+   "id": "R05602b",
+   "lines": [
+    5602,
+    5602
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "scope",
+   "text": "Solo phase covers one marketplace's rules."
+  },
+  {
+   "id": "R05602c",
+   "lines": [
+    5602,
+    5602
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "scope",
+   "text": "Solo phase covers a handful of rule checks."
+  },
+  {
+   "id": "R05602d",
+   "lines": [
+    5602,
+    5602
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "scope",
+   "text": "Solo phase covers one real LLM call."
+  },
+  {
+   "id": "R05602e",
+   "lines": [
+    5602,
+    5602
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "scope",
+   "text": "Breadth is added only once the team arrives."
+  },
+  {
+   "id": "R05603",
+   "lines": [
+    5603,
+    5603
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "quality",
+   "text": "Never Cut Invariants: never skip tenant isolation to hit Day 10 exactly."
+  },
+  {
+   "id": "R05603a",
+   "lines": [
+    5603,
+    5603
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "quality",
+   "text": "Never skip schema correctness to hit Day 10 exactly."
+  },
+  {
+   "id": "R05603b",
+   "lines": [
+    5603,
+    5603
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "risk",
+   "text": "Retrofitting tenant scoping under live traffic is 10x more expensive than spending an extra half-day getting it right initially."
+  },
+  {
+   "id": "R05603c",
+   "lines": [
+    5603,
+    5603
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "risk",
+   "text": "Migrating schema under live traffic is 10x more expensive than spending an extra half-day getting it right initially."
+  },
+  {
+   "id": "R05605",
+   "lines": [
+    5605,
+    5605
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "constraint",
+   "text": "Built-In Slack Buffer covers Days 11–14."
+  },
+  {
+   "id": "R05607",
+   "lines": [
+    5607,
+    5607
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "constraint",
+   "text": "4-Day Built-In Buffer."
+  },
+  {
+   "id": "R05609",
+   "lines": [
+    5609,
+    5609
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "scope",
+   "text": "Days 11–14 intentionally finish off Week-2-scope work (import and rules) rather than jumping immediately into Week 3."
+  },
+  {
+   "id": "R05609a",
+   "lines": [
+    5609,
+    5609
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "risk",
+   "text": "If the solo phase is 2–3 days behind schedule by Day 10, that slippage is safely absorbed in Days 11–14."
+  },
+  {
+   "id": "R05609b",
+   "lines": [
+    5609,
+    5609
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "constraint",
+   "text": "4 fresh engineers land on the codebase during Days 11–14 (slippage absorbed then)."
+  },
+  {
+   "id": "R05611",
+   "lines": [
+    5611,
+    5611
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "info",
+   "text": "Critical Path vs Parallel Tracks",
+   "why_not": "heading"
+  },
+  {
+   "id": "R05613",
+   "lines": [
+    5613,
+    5613
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "risk",
+   "text": "The project critical path determines launch timing."
+  },
+  {
+   "id": "R05613a",
+   "lines": [
+    5613,
+    5613
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "Work is sequenced so non-blocking tasks run in parallel."
+  },
+  {
+   "id": "R05615",
+   "lines": [
+    5615,
+    5615
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "Critical path 1: Cloud SQL & Redis Infra (Days 1–3)."
+  },
+  {
+   "id": "R05617",
+   "lines": [
+    5617,
+    5619
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "Critical path 2 (after 1): Core Tenancy & Schema (Days 4–5)."
+  },
+  {
+   "id": "R05621",
+   "lines": [
+    5621,
+    5623
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "Critical path 3: Product Ingestion & Rules Engine (Days 7–13)."
+  },
+  {
+   "id": "R05625",
+   "lines": [
+    5625,
+    5627
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "Critical path 4: Brand RAG & AI Parallel Agents (Days 15–21)."
+  },
+  {
+   "id": "R05629",
+   "lines": [
+    5629,
+    5631
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "Critical path 5: Image Compliance & LangGraph Orchestration (Days 22–27)."
+  },
+  {
+   "id": "R05633",
+   "lines": [
+    5633,
+    5635
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "Critical path 6: Marketplace Adapters & Human Approval Gate (Days 29–34)."
+  },
+  {
+   "id": "R05637",
+   "lines": [
+    5637,
+    5639
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "Critical path 7: Publish Loop, Observability & Hardening (Days 35–42)."
+  },
+  {
+   "id": "R05641",
+   "lines": [
+    5641,
+    5643
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "Critical path 8: UAT & Production Launch (Days 43–45)."
+  },
+  {
+   "id": "R05645",
+   "lines": [
+    5645,
+    5645
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "Parallel tracks run alongside the critical path."
+  },
+  {
+   "id": "R05647",
+   "lines": [
+    5647,
+    5647
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "Frontend: builds against mocked Pydantic schemas immediately."
+  },
+  {
+   "id": "R05647a",
+   "lines": [
+    5647,
+    5647
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "Frontend swaps to real API endpoints as they merge."
+  },
+  {
+   "id": "R05648",
+   "lines": [
+    5648,
+    5648
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "Brand Vectorization: AI engineer builds chunking."
+  },
+  {
+   "id": "R05648a",
+   "lines": [
+    5648,
+    5648
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "Brand Vectorization: AI engineer builds pgvector search."
+  },
+  {
+   "id": "R05648b",
+   "lines": [
+    5648,
+    5648
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "Backend engineer hardens CSV ingestion in parallel with brand vectorization."
+  },
+  {
+   "id": "R05649",
+   "lines": [
+    5649,
+    5649
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "DevOps/Infra: Engineer 5 provisions Cloud Run ahead of backend service deployments."
+  },
+  {
+   "id": "R05649a",
+   "lines": [
+    5649,
+    5649
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "DevOps/Infra: Engineer 5 provisions secrets ahead of backend service deployments."
+  },
+  {
+   "id": "R05651",
+   "lines": [
+    5651,
+    5651
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "info",
+   "text": "Team Operating Rules",
+   "why_not": "heading"
+  },
+  {
+   "id": "R05653",
+   "lines": [
+    5653,
+    5653
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "interface",
+   "text": "One Shared Schema Contract: Pydantic models in packages/schemas generate TypeScript types for frontend."
+  },
+  {
+   "id": "R05653a",
+   "lines": [
+    5653,
+    5653
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "quality",
+   "text": "Shared schema contract: zero manual drift."
+  },
+  {
+   "id": "R05654",
+   "lines": [
+    5654,
+    5654
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "flow",
+   "text": "Friday Deployable Increment: every Friday ends with a functioning, deployable vertical slice on staging Cloud Run, not just orphaned branch merges."
+  },
+  {
+   "id": "R05655",
+   "lines": [
+    5655,
+    5655
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "decision",
+   "text": "Trunk-Based Development."
+  },
+  {
+   "id": "R05655a",
+   "lines": [
+    5655,
+    5655
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "constraint",
+   "text": "Feature branches live < 24 hours."
+  },
+  {
+   "id": "R05655b",
+   "lines": [
+    5655,
+    5655
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "quality",
+   "text": "Mandatory peer review before merging to main."
+  },
+  {
+   "id": "R05657",
+   "lines": [
+    5657,
+    5657
+   ],
+   "page": "[04] Team Structure & Solo Sprint",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05659",
+   "lines": [
+    5659,
+    5659
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "[05] GCP Tech Stack & Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R05661",
+   "lines": [
+    5661,
+    5661
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "Section: 45-Day MVP Build Plan",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R05662",
+   "lines": [
+    5662,
+    5662
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "scope",
+   "text": "Page [05] GCP Tech Stack & Architecture has Scope: MVP."
+  },
+  {
+   "id": "R05663",
+   "lines": [
+    5663,
+    5663
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/mvp-gcp-architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R05664",
+   "lines": [
+    5664,
+    5664
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "GCP-adapted infrastructure stack with 4-layer runtime architecture."
+  },
+  {
+   "id": "R05664a",
+   "lines": [
+    5664,
+    5664
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "AWS design patterns map to Cloud Run."
+  },
+  {
+   "id": "R05664b",
+   "lines": [
+    5664,
+    5664
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "AWS design patterns map to Cloud SQL pgvector."
+  },
+  {
+   "id": "R05664c",
+   "lines": [
+    5664,
+    5664
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "AWS design patterns map to Memorystore."
+  },
+  {
+   "id": "R05664d",
+   "lines": [
+    5664,
+    5664
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "AWS design patterns map to GCS."
+  },
+  {
+   "id": "R05664e",
+   "lines": [
+    5664,
+    5664
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "AWS design patterns map to Secret Manager."
+  },
+  {
+   "id": "R05665",
+   "lines": [
+    5665,
+    5665
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "Keywords: gcp, tech stack, cloud run, cloud sql, pgvector, memorystore, architecture, aws translation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R05667",
+   "lines": [
+    5667,
+    5667
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "4-Layer Platform Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R05669",
+   "lines": [
+    5669,
+    5669
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "The architecture cleanly decouples presentation."
+  },
+  {
+   "id": "R05669a",
+   "lines": [
+    5669,
+    5669
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "The architecture cleanly decouples intelligence."
+  },
+  {
+   "id": "R05669b",
+   "lines": [
+    5669,
+    5669
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "The architecture cleanly decouples deterministic control."
+  },
+  {
+   "id": "R05669c",
+   "lines": [
+    5669,
+    5669
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "The architecture cleanly decouples external execution."
+  },
+  {
+   "id": "R05671",
+   "lines": [
+    5671,
+    5671
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "Architecture Diagram: GCP 4-Layer Platform Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R05673",
+   "lines": [
+    5673,
+    5674
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "```mermaid / graph TB diagram scaffolding",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05675",
+   "lines": [
+    5675,
+    5675
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "EXPERIENCE LAYER (subgraph EXP) runs Next.js 14."
+  },
+  {
+   "id": "R05675a",
+   "lines": [
+    5675,
+    5675
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "EXPERIENCE LAYER (subgraph EXP) runs on Cloud Run (\"Next.js 14 on Cloud Run\")."
+  },
+  {
+   "id": "R05676",
+   "lines": [
+    5676,
+    5676
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "direction LR",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05677",
+   "lines": [
+    5677,
+    5677
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "Experience layer node E1: \"Connect Marketplaces\"."
+  },
+  {
+   "id": "R05678",
+   "lines": [
+    5678,
+    5678
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "Experience layer node E2: \"Bulk CSV Import\"."
+  },
+  {
+   "id": "R05679",
+   "lines": [
+    5679,
+    5679
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "Experience layer node E3: \"Review & Approval Screen\"."
+  },
+  {
+   "id": "R05680",
+   "lines": [
+    5680,
+    5680
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "Experience layer node E4: \"Operational Analytics\"."
+  },
+  {
+   "id": "R05681",
+   "lines": [
+    5681,
+    5681
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "end",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05682",
+   "lines": [
+    5682,
+    5682
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "INTELLIGENCE LAYER (subgraph INT) uses LangGraph."
+  },
+  {
+   "id": "R05682a",
+   "lines": [
+    5682,
+    5682
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "INTELLIGENCE LAYER (subgraph INT) uses a Hosted LLM (\"LangGraph + Hosted LLM\")."
+  },
+  {
+   "id": "R05683",
+   "lines": [
+    5683,
+    5683
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "direction LR",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05684",
+   "lines": [
+    5684,
+    5684
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "Intelligence layer node I1: \"Content Agent\"."
+  },
+  {
+   "id": "R05685",
+   "lines": [
+    5685,
+    5685
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "Intelligence layer node I2: \"Keyword Agent\"."
+  },
+  {
+   "id": "R05686",
+   "lines": [
+    5686,
+    5686
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "Intelligence layer node I3: \"Attribute Agent\"."
+  },
+  {
+   "id": "R05687",
+   "lines": [
+    5687,
+    5687
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "Intelligence layer node I4: \"Image Agent (Vision)\"."
+  },
+  {
+   "id": "R05688",
+   "lines": [
+    5688,
+    5688
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Intelligence layer node I5: \"Brand Voice Retrieval (pgvector)\"."
+  },
+  {
+   "id": "R05689",
+   "lines": [
+    5689,
+    5689
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "end",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05690",
+   "lines": [
+    5690,
+    5690
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "CONTROL LAYER (subgraph CTR) services are Deterministic."
+  },
+  {
+   "id": "R05690a",
+   "lines": [
+    5690,
+    5690
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "CONTROL LAYER is built as FastAPI Services (\"Deterministic FastAPI Services\")."
+  },
+  {
+   "id": "R05691",
+   "lines": [
+    5691,
+    5691
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "direction LR",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05692",
+   "lines": [
+    5692,
+    5692
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "Control layer node C1: \"Rules Engine\"."
+  },
+  {
+   "id": "R05693",
+   "lines": [
+    5693,
+    5693
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "interface",
+   "text": "Control layer node C2: \"Structured ErrorReport\"."
+  },
+  {
+   "id": "R05694",
+   "lines": [
+    5694,
+    5694
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "Control layer node C3: \"Maker-Checker Gate\"."
+  },
+  {
+   "id": "R05695",
+   "lines": [
+    5695,
+    5695
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "quality",
+   "text": "Control layer node C4: \"Audit Log\"."
+  },
+  {
+   "id": "R05696",
+   "lines": [
+    5696,
+    5696
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "end",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05697",
+   "lines": [
+    5697,
+    5697
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "EXECUTION LAYER (subgraph EXE) is Marketplace Adapters."
+  },
+  {
+   "id": "R05698",
+   "lines": [
+    5698,
+    5698
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "direction LR",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05699",
+   "lines": [
+    5699,
+    5699
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "Execution layer node X1: \"Amazon SP-API Adapter\"."
+  },
+  {
+   "id": "R05700",
+   "lines": [
+    5700,
+    5700
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "Execution layer node X2: \"Flipkart Seller API Adapter\"."
+  },
+  {
+   "id": "R05701",
+   "lines": [
+    5701,
+    5701
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "Execution layer node X3: \"Canonical Field Mapping\"."
+  },
+  {
+   "id": "R05702",
+   "lines": [
+    5702,
+    5702
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "end",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05703",
+   "lines": [
+    5703,
+    5703
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "flow",
+   "text": "Diagram edge EXP --> INT: Experience layer to Intelligence layer."
+  },
+  {
+   "id": "R05704",
+   "lines": [
+    5704,
+    5704
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "flow",
+   "text": "Diagram edge INT --> CTR: Intelligence layer to Control layer."
+  },
+  {
+   "id": "R05705",
+   "lines": [
+    5705,
+    5705
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "flow",
+   "text": "Diagram edge CTR --> EXE: Control layer to Execution layer."
+  },
+  {
+   "id": "R05706",
+   "lines": [
+    5706,
+    5706
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "flow",
+   "text": "Diagram edge EXE -->|\"Per-Field Results\"| CTR: Execution layer returns Per-Field Results to Control layer."
+  },
+  {
+   "id": "R05707",
+   "lines": [
+    5707,
+    5707
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "``` end of mermaid block",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05709",
+   "lines": [
+    5709,
+    5709
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "Core Runtime Flow & Batch Behavior",
+   "why_not": "heading"
+  },
+  {
+   "id": "R05711",
+   "lines": [
+    5711,
+    5711
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "End-to-End Runtime Pipeline",
+   "why_not": "heading"
+  },
+  {
+   "id": "R05713",
+   "lines": [
+    5713,
+    5713
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "flow",
+   "text": "Runtime pipeline step 1: Request."
+  },
+  {
+   "id": "R05713a",
+   "lines": [
+    5713,
+    5713
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "flow",
+   "text": "Step 2: Context Assembly (Brand RAG + Rules)."
+  },
+  {
+   "id": "R05713b",
+   "lines": [
+    5713,
+    5713
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "flow",
+   "text": "Step 3: Parallel Agents (Content, Keyword, Attribute, Image)."
+  },
+  {
+   "id": "R05713c",
+   "lines": [
+    5713,
+    5713
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "flow",
+   "text": "Step 4: Canonical JSON."
+  },
+  {
+   "id": "R05713d",
+   "lines": [
+    5713,
+    5713
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "flow",
+   "text": "Step 5: Schema Validation."
+  },
+  {
+   "id": "R05713e",
+   "lines": [
+    5713,
+    5713
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "flow",
+   "text": "Step 6: Deterministic Rules + Vision Checks."
+  },
+  {
+   "id": "R05713f",
+   "lines": [
+    5713,
+    5713
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "flow",
+   "text": "Step 7: Structured ErrorReport."
+  },
+  {
+   "id": "R05713g",
+   "lines": [
+    5713,
+    5713
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "flow",
+   "text": "Step 8: Field Correction (≤3)."
+  },
+  {
+   "id": "R05713h",
+   "lines": [
+    5713,
+    5713
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "flow",
+   "text": "Step 9: Quality Score."
+  },
+  {
+   "id": "R05713i",
+   "lines": [
+    5713,
+    5713
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "flow",
+   "text": "Step 10: Human Approval."
+  },
+  {
+   "id": "R05713j",
+   "lines": [
+    5713,
+    5713
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "flow",
+   "text": "Step 11: Marketplace Adapter."
+  },
+  {
+   "id": "R05713k",
+   "lines": [
+    5713,
+    5713
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "flow",
+   "text": "Step 12: Per-Field Publish Result."
+  },
+  {
+   "id": "R05715",
+   "lines": [
+    5715,
+    5715
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "constraint",
+   "text": "Batch Import Resilience example: a user uploads a CSV with 500 rows."
+  },
+  {
+   "id": "R05715a",
+   "lines": [
+    5715,
+    5715
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "Each CSV row is parsed individually."
+  },
+  {
+   "id": "R05715b",
+   "lines": [
+    5715,
+    5715
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Each CSV row fans out into async jobs in Redis+ARQ."
+  },
+  {
+   "id": "R05715c",
+   "lines": [
+    5715,
+    5715
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "A malformed row never fails the batch."
+  },
+  {
+   "id": "R05715d",
+   "lines": [
+    5715,
+    5715
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "A single-item rule violation never fails the batch."
+  },
+  {
+   "id": "R05715e",
+   "lines": [
+    5715,
+    5715
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "interface",
+   "text": "The batch completes with a per-row summary report."
+  },
+  {
+   "id": "R05715f",
+   "lines": [
+    5715,
+    5715
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "constraint",
+   "text": "CSV row fan-out jobs are bounded-concurrency async jobs."
+  },
+  {
+   "id": "R05717",
+   "lines": [
+    5717,
+    5717
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "GCP-Adapted Technology Stack",
+   "why_not": "heading"
+  },
+  {
+   "id": "R05719",
+   "lines": [
+    5719,
+    5725
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "Column headers: Layer | Technology | GCP Service | Design Rationale",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05727",
+   "lines": [
+    5727,
+    5729
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Frontend: Next.js 14 (App Router)."
+  },
+  {
+   "id": "R05729",
+   "lines": [
+    5729,
+    5729
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Frontend: TypeScript."
+  },
+  {
+   "id": "R05729a",
+   "lines": [
+    5729,
+    5729
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Frontend: Tailwind."
+  },
+  {
+   "id": "R05731",
+   "lines": [
+    5731,
+    5731
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Frontend GCP service: Cloud Run (Container)."
+  },
+  {
+   "id": "R05733",
+   "lines": [
+    5733,
+    5733
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "quality",
+   "text": "Frontend rationale: serverless scaling."
+  },
+  {
+   "id": "R05733a",
+   "lines": [
+    5733,
+    5733
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "constraint",
+   "text": "Frontend rationale: zero idle cost."
+  },
+  {
+   "id": "R05733b",
+   "lines": [
+    5733,
+    5733
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "quality",
+   "text": "Frontend rationale: managed TLS certificates."
+  },
+  {
+   "id": "R05735",
+   "lines": [
+    5735,
+    5737
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Backend API: FastAPI."
+  },
+  {
+   "id": "R05737",
+   "lines": [
+    5737,
+    5737
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Backend API: async Python 3.11."
+  },
+  {
+   "id": "R05737a",
+   "lines": [
+    5737,
+    5737
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Backend API: Pydantic v2."
+  },
+  {
+   "id": "R05739",
+   "lines": [
+    5739,
+    5739
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Backend API GCP service: Cloud Run (Container)."
+  },
+  {
+   "id": "R05741",
+   "lines": [
+    5741,
+    5741
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "quality",
+   "text": "Backend rationale: high-concurrency async I/O."
+  },
+  {
+   "id": "R05741a",
+   "lines": [
+    5741,
+    5741
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "interface",
+   "text": "Backend rationale: auto-generated OpenAPI schemas."
+  },
+  {
+   "id": "R05743",
+   "lines": [
+    5743,
+    5745
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "AI Orchestration: LangGraph."
+  },
+  {
+   "id": "R05747",
+   "lines": [
+    5747,
+    5747
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "AI Orchestration runs In-process."
+  },
+  {
+   "id": "R05747a",
+   "lines": [
+    5747,
+    5747
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "AI Orchestration runs in ARQ Worker."
+  },
+  {
+   "id": "R05749",
+   "lines": [
+    5749,
+    5749
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "AI Orchestration rationale: stateful graph orchestration without microservice overhead."
+  },
+  {
+   "id": "R05751",
+   "lines": [
+    5751,
+    5753
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Database & Vectors: PostgreSQL 16."
+  },
+  {
+   "id": "R05753",
+   "lines": [
+    5753,
+    5753
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Database & Vectors: pgvector extension."
+  },
+  {
+   "id": "R05755",
+   "lines": [
+    5755,
+    5755
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Database GCP service: Cloud SQL for PostgreSQL."
+  },
+  {
+   "id": "R05757",
+   "lines": [
+    5757,
+    5757
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Unified relational + vector storage in a single database at MVP scale."
+  },
+  {
+   "id": "R05759",
+   "lines": [
+    5759,
+    5761
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Job Queue: Redis 7."
+  },
+  {
+   "id": "R05761",
+   "lines": [
+    5761,
+    5761
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Job Queue: ARQ."
+  },
+  {
+   "id": "R05763",
+   "lines": [
+    5763,
+    5763
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Job Queue GCP service: Memorystore for Redis."
+  },
+  {
+   "id": "R05765",
+   "lines": [
+    5765,
+    5765
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "quality",
+   "text": "Job Queue rationale: lightweight async job queuing with bounded concurrency."
+  },
+  {
+   "id": "R05767",
+   "lines": [
+    5767,
+    5769
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Blob Storage: Google Cloud Storage (GCS)."
+  },
+  {
+   "id": "R05771",
+   "lines": [
+    5771,
+    5771
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "Blob Storage GCP service: Cloud Storage.",
+   "why_not": "restatement",
+   "dup_of": "R05767"
+  },
+  {
+   "id": "R05773",
+   "lines": [
+    5773,
+    5773
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "data",
+   "text": "GCS stores original product images."
+  },
+  {
+   "id": "R05773a",
+   "lines": [
+    5773,
+    5773
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "data",
+   "text": "GCS stores normalized assets."
+  },
+  {
+   "id": "R05773b",
+   "lines": [
+    5773,
+    5773
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "data",
+   "text": "GCS stores CSV uploads."
+  },
+  {
+   "id": "R05775",
+   "lines": [
+    5775,
+    5777
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Secrets Management: GCP Secret Manager."
+  },
+  {
+   "id": "R05779",
+   "lines": [
+    5779,
+    5779
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "Secrets GCP service: Secret Manager.",
+   "why_not": "restatement",
+   "dup_of": "R05775"
+  },
+  {
+   "id": "R05781",
+   "lines": [
+    5781,
+    5781
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "quality",
+   "text": "Automated secret injection into Cloud Run environment variables."
+  },
+  {
+   "id": "R05783",
+   "lines": [
+    5783,
+    5785
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Token Encryption: Cloud KMS (Envelope Encryption)."
+  },
+  {
+   "id": "R05787",
+   "lines": [
+    5787,
+    5787
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "Token Encryption GCP service: Cloud KMS.",
+   "why_not": "restatement",
+   "dup_of": "R05783"
+  },
+  {
+   "id": "R05789",
+   "lines": [
+    5789,
+    5789
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "quality",
+   "text": "AES-256 encryption at rest for marketplace OAuth tokens."
+  },
+  {
+   "id": "R05791",
+   "lines": [
+    5791,
+    5793
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Observability: OpenTelemetry."
+  },
+  {
+   "id": "R05793",
+   "lines": [
+    5793,
+    5793
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Observability: Sentry."
+  },
+  {
+   "id": "R05795",
+   "lines": [
+    5795,
+    5795
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Observability GCP service: Cloud Trace."
+  },
+  {
+   "id": "R05795a",
+   "lines": [
+    5795,
+    5795
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Observability GCP service: Cloud Logging."
+  },
+  {
+   "id": "R05797",
+   "lines": [
+    5797,
+    5797
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "quality",
+   "text": "End-to-end request_id correlation from frontend to marketplace API."
+  },
+  {
+   "id": "R05799",
+   "lines": [
+    5799,
+    5799
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "AWS to GCP Service Translation Table",
+   "why_not": "heading"
+  },
+  {
+   "id": "R05801",
+   "lines": [
+    5801,
+    5801
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "For engineers familiar with the original AWS reference architecture, here is the direct infrastructure translation.",
+   "why_not": "context-prose"
+  },
+  {
+   "id": "R05803",
+   "lines": [
+    5803,
+    5807
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "Column headers: Original AWS Architecture | GCP MVP Implementation | Implementation Notes",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05809",
+   "lines": [
+    5809,
+    5811
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "RDS PostgreSQL translates to Cloud SQL for PostgreSQL 16."
+  },
+  {
+   "id": "R05813",
+   "lines": [
+    5813,
+    5813
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Enable pgvector extension."
+  },
+  {
+   "id": "R05813a",
+   "lines": [
+    5813,
+    5813
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "HNSW index on embeddings."
+  },
+  {
+   "id": "R05815",
+   "lines": [
+    5815,
+    5817
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "ElastiCache Redis translates to Memorystore for Redis."
+  },
+  {
+   "id": "R05819",
+   "lines": [
+    5819,
+    5819
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Memorystore for Redis Basic Tier is sufficient for MVP queue volume."
+  },
+  {
+   "id": "R05819a",
+   "lines": [
+    5819,
+    5819
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "constraint",
+   "text": "Memorystore capacity 1GB (Basic Tier (1GB)) is sufficient for MVP queue volume."
+  },
+  {
+   "id": "R05821",
+   "lines": [
+    5821,
+    5823
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Amazon S3 translates to Google Cloud Storage (GCS)."
+  },
+  {
+   "id": "R05825",
+   "lines": [
+    5825,
+    5825
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "Wrap GCS in generic storage abstraction in code."
+  },
+  {
+   "id": "R05827",
+   "lines": [
+    5827,
+    5829
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "EC2 / ECS Fargate translates to Cloud Run."
+  },
+  {
+   "id": "R05831",
+   "lines": [
+    5831,
+    5831
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Cloud Run: serverless containers."
+  },
+  {
+   "id": "R05831a",
+   "lines": [
+    5831,
+    5831
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Cloud Run uses VPC connector to Cloud SQL."
+  },
+  {
+   "id": "R05833",
+   "lines": [
+    5833,
+    5835
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "AWS Secrets Manager translates to GCP Secret Manager."
+  },
+  {
+   "id": "R05837",
+   "lines": [
+    5837,
+    5837
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "quality",
+   "text": "Never commit secrets."
+  },
+  {
+   "id": "R05837a",
+   "lines": [
+    5837,
+    5837
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "quality",
+   "text": "Inject secrets via env-from-secret bindings."
+  },
+  {
+   "id": "R05839",
+   "lines": [
+    5839,
+    5841
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "AWS KMS translates to Cloud KMS."
+  },
+  {
+   "id": "R05843",
+   "lines": [
+    5843,
+    5843
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "quality",
+   "text": "KMS-wrapped key for encrypting seller OAuth tokens."
+  },
+  {
+   "id": "R05845",
+   "lines": [
+    5845,
+    5847
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "AWS CloudWatch translates to Cloud Logging & Cloud Trace."
+  },
+  {
+   "id": "R05849",
+   "lines": [
+    5849,
+    5849
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "OpenTelemetry collector exports directly to Cloud Trace."
+  },
+  {
+   "id": "R05851",
+   "lines": [
+    5851,
+    5851
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "Infrastructure Design Invariants",
+   "why_not": "heading"
+  },
+  {
+   "id": "R05853",
+   "lines": [
+    5853,
+    5853
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "requirement",
+   "text": "No Cloud Leaks into Domain Code: keep GCP-specific SDKs behind abstract repository interfaces."
+  },
+  {
+   "id": "R05853a",
+   "lines": [
+    5853,
+    5853
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "interface",
+   "text": "Example abstract interface: StorageService."
+  },
+  {
+   "id": "R05853b",
+   "lines": [
+    5853,
+    5853
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "interface",
+   "text": "Example abstract interface: SecretsService."
+  },
+  {
+   "id": "R05854",
+   "lines": [
+    5854,
+    5854
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "quality",
+   "text": "Cloud Run connects to Cloud SQL over private RFC 1918 IPs."
+  },
+  {
+   "id": "R05854a",
+   "lines": [
+    5854,
+    5854
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "quality",
+   "text": "Cloud Run connects to Memorystore over private RFC 1918 IPs."
+  },
+  {
+   "id": "R05854b",
+   "lines": [
+    5854,
+    5854
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "decision",
+   "text": "Private connectivity via Serverless VPC Access Connector."
+  },
+  {
+   "id": "R05855",
+   "lines": [
+    5855,
+    5855
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "quality",
+   "text": "Dual Environment Isolation: Staging and Production run in separate GCP Cloud Run services."
+  },
+  {
+   "id": "R05855a",
+   "lines": [
+    5855,
+    5855
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "quality",
+   "text": "Staging and Production backed by dedicated database instances."
+  },
+  {
+   "id": "R05857",
+   "lines": [
+    5857,
+    5857
+   ],
+   "page": "[05] GCP Tech Stack & Architecture",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05859",
+   "lines": [
+    5859,
+    5859
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "[06] Consolidated Data Model & Schema",
+   "why_not": "heading"
+  },
+  {
+   "id": "R05861",
+   "lines": [
+    5861,
+    5861
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Section: 45-Day MVP Build Plan",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R05862",
+   "lines": [
+    5862,
+    5862
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "scope",
+   "text": "Page [06] Consolidated Data Model & Schema has Scope: MVP."
+  },
+  {
+   "id": "R05863",
+   "lines": [
+    5863,
+    5863
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/mvp-data-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R05864",
+   "lines": [
+    5864,
+    5864
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "decision",
+   "text": "Complete PostgreSQL 16 relational and vector schema DDL."
+  },
+  {
+   "id": "R05864a",
+   "lines": [
+    5864,
+    5864
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "constraint",
+   "text": "Schema has 12 core tables."
+  },
+  {
+   "id": "R05864b",
+   "lines": [
+    5864,
+    5864
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "quality",
+   "text": "Schema includes multi-tenancy isolation."
+  },
+  {
+   "id": "R05864c",
+   "lines": [
+    5864,
+    5864
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "decision",
+   "text": "Schema includes HNSW indexing."
+  },
+  {
+   "id": "R05864d",
+   "lines": [
+    5864,
+    5864
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "quality",
+   "text": "Schema includes maker-checker database constraints."
+  },
+  {
+   "id": "R05864e",
+   "lines": [
+    5864,
+    5864
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "interface",
+   "text": "Schema includes Canonical Listing JSON schema."
+  },
+  {
+   "id": "R05865",
+   "lines": [
+    5865,
+    5865
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Keywords: data model, schema, sql, ddl, postgresql, pgvector, canonical listing, tables, indices",
+   "why_not": "navigation"
+  }
+ ]
+}

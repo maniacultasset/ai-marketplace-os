@@ -1,0 +1,2287 @@
+{
+ "chunk": "c16",
+ "items": [
+  {
+   "id": "R09767",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "SPEC-TRACEABILITY.md:152; CANON.md:54",
+   "note": "keyword_agent stage in v1; 250-byte hidden_terms rule missing (R09774c)."
+  },
+  {
+   "id": "R09769",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2132",
+   "note": "Contract carries keywords.search_terms; generating them is the Keyword Agent (AI team)."
+  },
+  {
+   "id": "R09769a",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:2132; T26",
+   "note": "Backend keywords carried as keywords.hidden_terms (T26 open)."
+  },
+  {
+   "id": "R09774",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:2132; T26",
+   "note": "Two lists: search_terms + hidden_terms (renamed from backend_keywords, T26)."
+  },
+  {
+   "id": "R09774a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Keyword Agent weaves search terms into content; contract field search_terms exists."
+  },
+  {
+   "id": "R09774b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "TEAM-QUESTIONS.md:44; T26",
+   "note": "Generic hidden_terms; Amazon adapter maps to backend search terms, Flipkart adapter drops it."
+  },
+  {
+   "id": "R09774c",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:514; DATABASE.md:1369",
+   "note": "max_length (unit bytes) expressible; no Amazon keywords.hidden_terms 250-byte row seeded."
+  },
+  {
+   "id": "R09774d",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "DATABASE.md:1369",
+   "note": "Keyword Agent job; KEYWORD_DUPLICATE code exists but no rule type enforces \"not in listing\"."
+  },
+  {
+   "id": "R09774e",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Keyword Agent prompt; no deterministic stuffing check planned."
+  },
+  {
+   "id": "R09774f",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Keyword Agent prompt concern."
+  },
+  {
+   "id": "R09781",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "SPEC-TRACEABILITY.md:153; DATABASE.md:529-542",
+   "note": "attribute_agent in v1; templates carry required/optional specs."
+  },
+  {
+   "id": "R09783",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:527; DATABASE.md:542",
+   "note": "GenerationContext carries the pinned CategoryTemplate (for_generation) for attribute generation."
+  },
+  {
+   "id": "R09788",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:542; T49",
+   "note": "AI emits canonical keys/values; adapter applies value_map to marketplace fields (T49 open)."
+  },
+  {
+   "id": "R09788a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:539; DATABASE.md:541",
+   "note": "attributes.required_attributes/optional_attributes; AttributeSpec.requirement."
+  },
+  {
+   "id": "R09788b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:516; DATABASE.md:541",
+   "note": "AttributeSpec.allowed_values + allowed_values rule (VALUE_NOT_ALLOWED)."
+  },
+  {
+   "id": "R09788c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:526; T47",
+   "note": "Template required/conditional attributes raise MISSING_ATTRIBUTE in the Rules Engine."
+  },
+  {
+   "id": "R09795",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "SPEC-TRACEABILITY.md:154; DATABASE.md:530",
+   "note": "In v1 via category_templates."
+  },
+  {
+   "id": "R09797",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:530",
+   "note": "Current category_templates row per (marketplace, category) gives external_category_id + product_type."
+  },
+  {
+   "id": "R09802",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:530",
+   "note": "One template row set per marketplace."
+  },
+  {
+   "id": "R09802a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:530",
+   "note": "external_category_id = Amazon browse node ([71] mapping table)."
+  },
+  {
+   "id": "R09802b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:530",
+   "note": "external_category_id = Flipkart category ID / vertical."
+  },
+  {
+   "id": "R09802c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:530",
+   "note": "Internal category slug -> marketplace category; per-product override not in v1 (T68)."
+  },
+  {
+   "id": "R09802d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:507",
+   "note": "Rules resolved per (marketplace, category OR NULL)."
+  },
+  {
+   "id": "R09802e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:530; DATABASE.md:541",
+   "note": "Template specs chosen by (marketplace, category)."
+  },
+  {
+   "id": "R09809",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "SPEC-TRACEABILITY.md:155",
+   "note": "In v1; description HTML format is a gap (R09834)."
+  },
+  {
+   "id": "R09811",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "DATABASE.md:496",
+   "note": "Per-marketplace listings and rules exist; no per-marketplace formatting spec (description markup)."
+  },
+  {
+   "id": "R09811a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:496; DATABASE.md:514; BUILD-SEQUENCE.md:235",
+   "note": "Per-marketplace max_length rows, e.g. Amazon title <=200, Flipkart <=150 seed."
+  },
+  {
+   "id": "R09811b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Per-marketplace tone lives in prompts."
+  },
+  {
+   "id": "R09822",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Title composition is the Content Agent prompt."
+  },
+  {
+   "id": "R09826",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Content Agent prompt; category-specific limits via rules rows."
+  },
+  {
+   "id": "R09828",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:515",
+   "note": "min_items seed: Amazon bullets min 5 (warning)."
+  },
+  {
+   "id": "R09832",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:496; DATABASE.md:515",
+   "note": "Flipkart bullet counts set per category via min_items/max_items rows."
+  },
+  {
+   "id": "R09834",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:222; SPEC-TRACEABILITY.md:155",
+   "note": "Canonical description is a plain <=5000 string; no HTML subset or adapter formatting defined."
+  },
+  {
+   "id": "R09838",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T92",
+   "note": "\"Specific formatting\" is undefined."
+  },
+  {
+   "id": "R09840",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:514; DATABASE.md:525",
+   "note": "No 250-byte hidden_terms rule seeded; BYTE_BUDGET_EXCEEDED code exists."
+  },
+  {
+   "id": "R09840a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2028; T26",
+   "note": "hidden_terms = non-visible search metadata."
+  },
+  {
+   "id": "R09844",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:227-231; T26",
+   "note": "Flipkart adapter drops hidden_terms."
+  },
+  {
+   "id": "R09846",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Image seed: Amazon main pure white."
+  },
+  {
+   "id": "R09850",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Image seed: Flipkart main white or light."
+  },
+  {
+   "id": "R09857",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "SPEC-TRACEABILITY.md:156",
+   "note": "Page scope PHASE2 (L9856); MVP version storage is built."
+  },
+  {
+   "id": "R09859",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:772-785",
+   "note": "Immutable listing_versions with origin, parent_version_id, changed_paths."
+  },
+  {
+   "id": "R09859a",
+   "status": "later-phase",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "Version comparison Phase 2 (L9866-9868)."
+  },
+  {
+   "id": "R09859b",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Rollback: Phase 2 page (L9856); versions retained immutably."
+  },
+  {
+   "id": "R09864",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:781",
+   "note": "Generation, regeneration, edit and import each write a new immutable version."
+  },
+  {
+   "id": "R09864a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:778",
+   "note": "content_json = full CanonicalListing."
+  },
+  {
+   "id": "R09864b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:778",
+   "note": "image_reports_json per version."
+  },
+  {
+   "id": "R09864c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:814",
+   "note": "validation_runs rows keyed by listing_version_id, not inline."
+  },
+  {
+   "id": "R09864d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:781-785",
+   "note": "origin, changed_paths, locale, rules_version, category_template_id, job_id, attempts_used."
+  },
+  {
+   "id": "R09864e",
+   "status": "later-phase",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "Comparison Phase 2 (L9866)."
+  },
+  {
+   "id": "R09864f",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Rollback to approved version Phase 2 (L9856)."
+  },
+  {
+   "id": "R09864g",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2047; T45",
+   "note": "Phase 2; v1 performance rows are family-level, not per version (T45)."
+  },
+  {
+   "id": "R09866",
+   "status": "later-phase",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "Full version history UI Phase 2 (L9866)."
+  },
+  {
+   "id": "R09868",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:772",
+   "note": "listing_versions stored in MVP."
+  },
+  {
+   "id": "R09868a",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:1336-1345",
+   "note": "MVP simplified compare UI needs a listing-versions read endpoint; listings endpoints have none."
+  },
+  {
+   "id": "R09875",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "SPEC-TRACEABILITY.md:157; BACKEND-ARCHITECTURE.md:1540",
+   "note": "In v1; image thresholds now data (image_requirement)."
+  },
+  {
+   "id": "R09877",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1347",
+   "note": "POST /api/v1/images/upload starts the checks."
+  },
+  {
+   "id": "R09877a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:129; BACKEND-ARCHITECTURE.md:1540",
+   "note": "Backend-owned Pillow checks."
+  },
+  {
+   "id": "R09877b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:1540",
+   "note": "Vision call via app/services/vision.py; prompt content by AI team."
+  },
+  {
+   "id": "R09877c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:119; BACKEND-ARCHITECTURE.md:1348",
+   "note": "validate_images -> list[ImageReport]; GET /api/v1/images/{id}/report."
+  },
+  {
+   "id": "R09882",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520; DATABASE.md:525",
+   "note": "Seeded image rules catch these before publish."
+  },
+  {
+   "id": "R09882a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "background check."
+  },
+  {
+   "id": "R09882b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "min_resolution / recommended_resolution checks."
+  },
+  {
+   "id": "R09882c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "text_overlay check."
+  },
+  {
+   "id": "R09882d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "watermark check."
+  },
+  {
+   "id": "R09882e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:713-714; DATABASE.md:1336",
+   "note": "validate_images runs before review; an image task blocks the listing."
+  },
+  {
+   "id": "R09882f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:54; BACKEND-ARCHITECTURE.md:1347; DATABASE.md:933",
+   "note": "image_agent runs beside text agents; upload also starts the image_compliance job."
+  },
+  {
+   "id": "R09882g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1336",
+   "note": "Image failures block before approval and publish."
+  },
+  {
+   "id": "R09890",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:258; ADR-0001",
+   "note": "GCS through the S3-API StorageAdapter, not S3."
+  },
+  {
+   "id": "R09891",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1347; DATABASE.md:933",
+   "note": "Upload enqueues the image_compliance job."
+  },
+  {
+   "id": "R09892",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1540",
+   "note": "Pillow checks, then the vision call."
+  },
+  {
+   "id": "R09892a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "min_resolution check."
+  },
+  {
+   "id": "R09892b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520; DATABASE.md:525",
+   "note": "format check: jpeg/png/tiff."
+  },
+  {
+   "id": "R09892c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "aspect_ratio check."
+  },
+  {
+   "id": "R09892d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:392-394; DATABASE.md:483",
+   "note": "exif_orientation CheckName; EXIF subset in images.metadata."
+  },
+  {
+   "id": "R09893",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:119",
+   "note": "validate_images returns ImageReports."
+  },
+  {
+   "id": "R09893a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "background check."
+  },
+  {
+   "id": "R09893b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "fill_ratio check."
+  },
+  {
+   "id": "R09893c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "text_overlay check."
+  },
+  {
+   "id": "R09893d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "watermark check."
+  },
+  {
+   "id": "R09894",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:484",
+   "note": "images.compliance_status is pending|passed|failed; no explicit warn outcome."
+  },
+  {
+   "id": "R09894a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:484; CONTRACTS.md:420",
+   "note": "ImageReport.pass bool + issue severity; tri-state Pass/Warn/Fail not modelled."
+  },
+  {
+   "id": "R09895",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2134",
+   "note": "ImageRef{image_id, slot, position} in CanonicalListing.images."
+  },
+  {
+   "id": "R09896",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1348; DATABASE.md:1319",
+   "note": "ImageIssue detail via report endpoint and listing_issues."
+  },
+  {
+   "id": "R09896a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:410; DATABASE.md:1319",
+   "note": "ImageIssue.suggestion required; listing_issues.suggestion."
+  },
+  {
+   "id": "R09897",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1336",
+   "note": "image_replacement human task; FE shows the report."
+  },
+  {
+   "id": "R09898",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1347",
+   "note": "Re-upload re-runs the checks."
+  },
+  {
+   "id": "R09899",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1325; DATABASE.md:1328",
+   "note": "Warning issue dismissed as accepted_warning, audited; errors never dismissable."
+  },
+  {
+   "id": "R09904",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520; DATABASE.md:525",
+   "note": "image_requirement rule rows per marketplace."
+  },
+  {
+   "id": "R09904a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "\"the vision agent holds no thresholds\"."
+  },
+  {
+   "id": "R09904b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:508; DATABASE.md:525",
+   "note": "Per-marketplace rows in a versioned rules pack."
+  },
+  {
+   "id": "R09904c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Backend evaluates checks against the rule rows."
+  },
+  {
+   "id": "R09904d",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:508; DATABASE.md:26; T29; T9",
+   "note": "Image rules are a rules-pack import; a new marketplace also needs the marketplace CHECK and an adapter (T9)."
+  },
+  {
+   "id": "R09906",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Image rules are rows, not code."
+  },
+  {
+   "id": "R09908",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:525",
+   "note": "Backend evaluates vision findings against loaded rule rows ([47] L10007); vision agent holds no thresholds."
+  },
+  {
+   "id": "R09915",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "SPEC-TRACEABILITY.md:158; BACKEND-ARCHITECTURE.md:1540",
+   "note": "In v1; tenant key layout and EXIF rotation are gaps."
+  },
+  {
+   "id": "R09917",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1540",
+   "note": "Upload -> Pillow -> vision -> ImageReport."
+  },
+  {
+   "id": "R09922",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1347",
+   "note": "POST /api/v1/images/upload."
+  },
+  {
+   "id": "R09922a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:258; ADR-0001",
+   "note": "GCS through the S3-API StorageAdapter."
+  },
+  {
+   "id": "R09922b",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:479; G12",
+   "note": "Tenant prefix implied by purge (DATABASE.md:1869); image key convention unstated (G12)."
+  },
+  {
+   "id": "R09923",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Seed formats jpeg/png/tiff."
+  },
+  {
+   "id": "R09923a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:392; CONTRACTS.md:200",
+   "note": "corruption CheckName; CORRUPT code."
+  },
+  {
+   "id": "R09923b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:483",
+   "note": "EXIF subset stored in images.metadata."
+  },
+  {
+   "id": "R09924",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "min_resolution check."
+  },
+  {
+   "id": "R09924a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "aspect_ratio check."
+  },
+  {
+   "id": "R09924b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:486",
+   "note": "width_px / height_px typed columns."
+  },
+  {
+   "id": "R09924c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:486; DATABASE.md:520",
+   "note": "bytes column + max_bytes check."
+  },
+  {
+   "id": "R09925",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "background check."
+  },
+  {
+   "id": "R09925a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "fill_ratio check."
+  },
+  {
+   "id": "R09925b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "text_overlay check."
+  },
+  {
+   "id": "R09925c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "watermark check."
+  },
+  {
+   "id": "R09925d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520; DATABASE.md:525",
+   "note": "logo check: product logo only."
+  },
+  {
+   "id": "R09926",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Results evaluated against per-marketplace rows."
+  },
+  {
+   "id": "R09927",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:119",
+   "note": "ImageReport produced by validate_images."
+  },
+  {
+   "id": "R09927a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:397-403; CONTRACTS.md:421",
+   "note": "ImageReport.checks[] ImageCheck{check, method, passed}."
+  },
+  {
+   "id": "R09928",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:484",
+   "note": "pass bool + severities; no explicit warn outcome."
+  },
+  {
+   "id": "R09928a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:410",
+   "note": "suggestion required on every ImageIssue."
+  },
+  {
+   "id": "R09935",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "SPEC-TRACEABILITY.md:159; CANON.md:129",
+   "note": "In v1."
+  },
+  {
+   "id": "R09937",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:129",
+   "note": "Backend-owned deterministic Pillow checks."
+  },
+  {
+   "id": "R09937a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:392-394",
+   "note": "resolution CheckName."
+  },
+  {
+   "id": "R09937b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:392-394",
+   "note": "format CheckName."
+  },
+  {
+   "id": "R09937c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:392-394",
+   "note": "aspect_ratio CheckName."
+  },
+  {
+   "id": "R09937d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:392-394",
+   "note": "exif_orientation CheckName."
+  },
+  {
+   "id": "R09937e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:392-394",
+   "note": "file_size CheckName."
+  },
+  {
+   "id": "R09937f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:392-394",
+   "note": "corruption CheckName."
+  },
+  {
+   "id": "R09948",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:129",
+   "note": "Pillow."
+  },
+  {
+   "id": "R09952",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Amazon main min 1000 px, error."
+  },
+  {
+   "id": "R09952a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Flipkart min 500 px, error."
+  },
+  {
+   "id": "R09954",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Format check method (header/magic bytes vs extension) not specified."
+  },
+  {
+   "id": "R09958",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "formats jpeg/png/tiff."
+  },
+  {
+   "id": "R09960",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:486; DATABASE.md:520",
+   "note": "aspect_ratio from width_px/height_px."
+  },
+  {
+   "id": "R09964",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "1:1 main."
+  },
+  {
+   "id": "R09964a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "image_requirement rows carry a slot."
+  },
+  {
+   "id": "R09966",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:486",
+   "note": "bytes column."
+  },
+  {
+   "id": "R09970",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "<= 10 MB."
+  },
+  {
+   "id": "R09972",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:392",
+   "note": "Corruption check exists; Pillow open + verify method not specified."
+  },
+  {
+   "id": "R09976",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:200; CONTRACTS.md:392",
+   "note": "CORRUPT code when the file fails to load."
+  },
+  {
+   "id": "R09978",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:483; CONTRACTS.md:393",
+   "note": "EXIF read into metadata; exif_orientation check."
+  },
+  {
+   "id": "R09982",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "G12",
+   "note": "No EXIF auto-rotate or processed-derivative storage planned."
+  },
+  {
+   "id": "R09984",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1540",
+   "note": "Deterministic checks run first."
+  },
+  {
+   "id": "R09984a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1540",
+   "note": "Local Pillow checks, no model call."
+  },
+  {
+   "id": "R09984b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:129",
+   "note": "Deterministic Pillow checks."
+  },
+  {
+   "id": "R09984c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1540",
+   "note": "Pillow checks, then the vision call."
+  },
+  {
+   "id": "R09984d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1540",
+   "note": "Vision is the only model call in the image path."
+  },
+  {
+   "id": "R09991",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "SPEC-TRACEABILITY.md:160; BACKEND-ARCHITECTURE.md:1540",
+   "note": "In v1."
+  },
+  {
+   "id": "R09993",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:1540",
+   "note": "Vision call in validate_images."
+  },
+  {
+   "id": "R09993a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "background check."
+  },
+  {
+   "id": "R09993b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "fill_ratio check."
+  },
+  {
+   "id": "R09993c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "text_overlay check."
+  },
+  {
+   "id": "R09993d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "watermark check."
+  },
+  {
+   "id": "R09998",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "ENV.md:91",
+   "note": "LLM_MODEL_DEFAULT gpt-4o-mini for text + vision."
+  },
+  {
+   "id": "R09998a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:119",
+   "note": "validate_images returns one ImageReport per image."
+  },
+  {
+   "id": "R10000",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Amazon pure white."
+  },
+  {
+   "id": "R10000a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Flipkart white or light."
+  },
+  {
+   "id": "R10001",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Amazon fill 0.85, warning."
+  },
+  {
+   "id": "R10002",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520; DATABASE.md:525",
+   "note": "text_overlay on main."
+  },
+  {
+   "id": "R10003",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "watermark prohibited on both."
+  },
+  {
+   "id": "R10004",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "logo product-only on both."
+  },
+  {
+   "id": "R10005",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "DATABASE.md:520; CONTRACTS.md:394",
+   "note": "product_visibility is a CheckName but not an image_requirement check; no seed row."
+  },
+  {
+   "id": "R10005a",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "DATABASE.md:520; CONTRACTS.md:394",
+   "note": "\"Well-lit\" not a check or seed row."
+  },
+  {
+   "id": "R10007",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CONTRACTS.md:405-412",
+   "note": "Structured ImageIssue findings."
+  },
+  {
+   "id": "R10007a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Backend evaluates findings against rule rows."
+  },
+  {
+   "id": "R10014",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "SPEC-TRACEABILITY.md:161; CONTRACTS.md:415-426",
+   "note": "In v1."
+  },
+  {
+   "id": "R10016",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:417",
+   "note": "One report per image_id."
+  },
+  {
+   "id": "R10016a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:418; DATABASE.md:484",
+   "note": "Report per marketplace; images.image_report_json keyed by marketplace."
+  },
+  {
+   "id": "R10016b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:421-422",
+   "note": "checks[] + issues[]."
+  },
+  {
+   "id": "R10016c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:410",
+   "note": "suggestion per issue."
+  },
+  {
+   "id": "R10025",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:417",
+   "note": "image_id (UUID)."
+  },
+  {
+   "id": "R10026",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:418",
+   "note": "marketplace."
+  },
+  {
+   "id": "R10027",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:419",
+   "note": "slot."
+  },
+  {
+   "id": "R10028",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:420; KNOWN-ISSUES.md:55",
+   "note": "pass_ with alias \"pass\"; serialize-by-alias fix due in S2."
+  },
+  {
+   "id": "R10029",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:422",
+   "note": "issues: list[ImageIssue]."
+  },
+  {
+   "id": "R10031",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:406-407; T84",
+   "note": "Draft drops \"type\" for code (ImageIssueCode) + check (CheckName)."
+  },
+  {
+   "id": "R10032",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:408",
+   "note": "severity."
+  },
+  {
+   "id": "R10033",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:409",
+   "note": "detail."
+  },
+  {
+   "id": "R10034",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:410",
+   "note": "suggestion."
+  },
+  {
+   "id": "R10037",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:392",
+   "note": "\"resolution\" is a CheckName value (field named check, see R10031)."
+  },
+  {
+   "id": "R10038",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Resolution rows are errors."
+  },
+  {
+   "id": "R10039",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:409",
+   "note": "Free-text detail; observed/expected added."
+  },
+  {
+   "id": "R10039a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Amazon min 1000 px."
+  },
+  {
+   "id": "R10040",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:410",
+   "note": "Free-text suggestion."
+  },
+  {
+   "id": "R10043",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:393",
+   "note": "\"text_overlay\" is a CheckName value."
+  },
+  {
+   "id": "R10044",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T52",
+   "note": "Sample shows Amazon text as warning; our default is Amazon error, Flipkart warning."
+  },
+  {
+   "id": "R10045",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:409",
+   "note": "Free-text detail."
+  },
+  {
+   "id": "R10046",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:410",
+   "note": "Free-text suggestion."
+  },
+  {
+   "id": "R10049",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:423",
+   "note": "confidence 0..1, optional."
+  },
+  {
+   "id": "R10050",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:426",
+   "note": "processed_at datetime."
+  },
+  {
+   "id": "R10051",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:424",
+   "note": "model_used; null for deterministic-only reports."
+  },
+  {
+   "id": "R10055",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:415-426",
+   "note": "All top-level fields kept, plus schema_version, checks, agent_run_id; issue type replaced (R10031)."
+  },
+  {
+   "id": "R10055a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:417",
+   "note": "image_id."
+  },
+  {
+   "id": "R10055b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:418",
+   "note": "marketplace."
+  },
+  {
+   "id": "R10055c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:419",
+   "note": "slot."
+  },
+  {
+   "id": "R10055d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:420; DATABASE.md:484",
+   "note": "pass; compliance_status rollup for filtering."
+  },
+  {
+   "id": "R10055e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:422",
+   "note": "issues[]."
+  },
+  {
+   "id": "R10055f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:423",
+   "note": "confidence."
+  },
+  {
+   "id": "R10055g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:424",
+   "note": "model_used."
+  },
+  {
+   "id": "R10062",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "SPEC-TRACEABILITY.md:162; CONTRACTS.md:194-200",
+   "note": "In v1."
+  },
+  {
+   "id": "R10064",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:194-200",
+   "note": "ImageIssueCode enum."
+  },
+  {
+   "id": "R10064a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:408; DATABASE.md:499",
+   "note": "Severity per issue and per rule row."
+  },
+  {
+   "id": "R10064b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:410; DATABASE.md:510",
+   "note": "suggestion on every ImageIssue and rule row."
+  },
+  {
+   "id": "R10075",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:196; DATABASE.md:520",
+   "note": "BACKGROUND_OFF in ImageIssueCode; rows carry issue_code."
+  },
+  {
+   "id": "R10077",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:499; DATABASE.md:525",
+   "note": "Background rows default severity error."
+  },
+  {
+   "id": "R10079",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:510; DATABASE.md:525",
+   "note": "Rule suggestion field exists; image seed lists thresholds, no corrective text."
+  },
+  {
+   "id": "R10081",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:196; DATABASE.md:520",
+   "note": "RESOLUTION_LOW in ImageIssueCode."
+  },
+  {
+   "id": "R10083",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Min resolution rows are errors."
+  },
+  {
+   "id": "R10085",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:510; DATABASE.md:525",
+   "note": "Corrective text not in the image seed."
+  },
+  {
+   "id": "R10087",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:197; DATABASE.md:520",
+   "note": "TEXT_DETECTED in ImageIssueCode."
+  },
+  {
+   "id": "R10089",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T52",
+   "note": "Default: Amazon error, Flipkart warning (DATABASE.md:525)."
+  },
+  {
+   "id": "R10091",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:510; DATABASE.md:525",
+   "note": "Corrective text not in the image seed."
+  },
+  {
+   "id": "R10093",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:197; DATABASE.md:520",
+   "note": "WATERMARK in ImageIssueCode."
+  },
+  {
+   "id": "R10095",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Watermark prohibited: error."
+  },
+  {
+   "id": "R10097",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:510; DATABASE.md:525",
+   "note": "Corrective text not in the image seed."
+  },
+  {
+   "id": "R10099",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:198; DATABASE.md:520",
+   "note": "FILL_RATIO_LOW in ImageIssueCode."
+  },
+  {
+   "id": "R10101",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Fill 0.85 warning."
+  },
+  {
+   "id": "R10103",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:510; DATABASE.md:525",
+   "note": "Corrective text not in the image seed."
+  },
+  {
+   "id": "R10105",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:198; DATABASE.md:520",
+   "note": "WRONG_ASPECT in ImageIssueCode."
+  },
+  {
+   "id": "R10107",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:499; DATABASE.md:525",
+   "note": "Aspect rows default severity error."
+  },
+  {
+   "id": "R10109",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:510; DATABASE.md:525",
+   "note": "Corrective text not in the image seed."
+  },
+  {
+   "id": "R10116",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "SPEC-TRACEABILITY.md:163; DATABASE.md:1336",
+   "note": "In v1."
+  },
+  {
+   "id": "R10118",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1348; DATABASE.md:1336",
+   "note": "Report endpoint + image_replacement task."
+  },
+  {
+   "id": "R10118a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1347",
+   "note": "Re-upload re-runs the checks."
+  },
+  {
+   "id": "R10123",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:719",
+   "note": "Text self-correction, at most 3 attempts (invariant 9)."
+  },
+  {
+   "id": "R10123a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1336; DATABASE.md:1369",
+   "note": "IMAGE_NON_COMPLIANT -> media_error; image_replacement human task."
+  },
+  {
+   "id": "R10123b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:406-409",
+   "note": "code, check and detail per issue."
+  },
+  {
+   "id": "R10123c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:408",
+   "note": "severity."
+  },
+  {
+   "id": "R10123d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CONTRACTS.md:410",
+   "note": "suggestion."
+  },
+  {
+   "id": "R10123e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1347",
+   "note": "Upload endpoint."
+  },
+  {
+   "id": "R10123f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1325; DATABASE.md:1328",
+   "note": "Dismiss warning as accepted_warning (POST /api/v1/issues/{id}/dismiss)."
+  },
+  {
+   "id": "R10123g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1347; DATABASE.md:1336",
+   "note": "Upload a new image into the slot."
+  },
+  {
+   "id": "R10123h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1347; DATABASE.md:933",
+   "note": "Every upload runs image_compliance."
+  },
+  {
+   "id": "R10130",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "SPEC-TRACEABILITY.md:164; DATABASE.md:525",
+   "note": "In v1."
+  },
+  {
+   "id": "R10132",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520; DATABASE.md:525",
+   "note": "image_requirement rule rows."
+  },
+  {
+   "id": "R10143",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Amazon pure white."
+  },
+  {
+   "id": "R10147",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Flipkart white or light."
+  },
+  {
+   "id": "R10149",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Amazon min 1000 px."
+  },
+  {
+   "id": "R10153",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Flipkart min 500, error."
+  },
+  {
+   "id": "R10153a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Flipkart recommended 1000, warning."
+  },
+  {
+   "id": "R10155",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Amazon 1:1."
+  },
+  {
+   "id": "R10159",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Flipkart 1:1 or 3:4."
+  },
+  {
+   "id": "R10159a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Flipkart 1:1 or 3:4."
+  },
+  {
+   "id": "R10161",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Amazon text prohibited."
+  },
+  {
+   "id": "R10165",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T52",
+   "note": "\"Restricted\" undefined; default Flipkart text = warning."
+  },
+  {
+   "id": "R10167",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Watermark prohibited on both."
+  },
+  {
+   "id": "R10171",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Watermark prohibited on both."
+  },
+  {
+   "id": "R10173",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Logo product-only."
+  },
+  {
+   "id": "R10177",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Logo product-only on both."
+  },
+  {
+   "id": "R10186",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "SPEC-TRACEABILITY.md:165; DATABASE.md:474-488",
+   "note": "In v1; versions, derivatives, key layout and archiving are gaps."
+  },
+  {
+   "id": "R10188",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:258; ADR-0001",
+   "note": "GCS through the S3-API StorageAdapter."
+  },
+  {
+   "id": "R10188a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1347",
+   "note": "Upload endpoint."
+  },
+  {
+   "id": "R10188b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:933",
+   "note": "image_compliance job."
+  },
+  {
+   "id": "R10188c",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "G12",
+   "note": "No image object versioning planned."
+  },
+  {
+   "id": "R10188d",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:485; DATABASE.md:1869",
+   "note": "Soft delete + tenant purge only; no per-image object cleanup."
+  },
+  {
+   "id": "R10193",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:479; G12",
+   "note": "Tenant prefix implied by purge; image key convention unstated."
+  },
+  {
+   "id": "R10193a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:479; G12",
+   "note": "Key {tenant_id}/{product_id}/images/{image_id} not specified."
+  },
+  {
+   "id": "R10193b",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "G12",
+   "note": "No retained image versions for audit."
+  },
+  {
+   "id": "R10193c",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "G12",
+   "note": "No thumbnails planned."
+  },
+  {
+   "id": "R10193d",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "G12",
+   "note": "No processed derivatives planned."
+  },
+  {
+   "id": "R10193e",
+   "status": "gap",
+   "owner": "ops",
+   "ref": "ADR-0001",
+   "note": "GCS lifecycle rules cover CSVs (30 days) only, not image versions."
+  },
+  {
+   "id": "R10200",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "SPEC-TRACEABILITY.md:166; DATABASE.md:1033-1077",
+   "note": "In v1."
+  },
+  {
+   "id": "R10202",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1057-1065",
+   "note": "brand_chunks vector(1536)."
+  },
+  {
+   "id": "R10202a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:129",
+   "note": "Backend owns brand-document chunking."
+  },
+  {
+   "id": "R10202b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:446",
+   "note": "Backend embeds with text-embedding-3-small."
+  },
+  {
+   "id": "R10202c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:119",
+   "note": "retrieve_brand_chunks port."
+  },
+  {
+   "id": "R10202d",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "BACKEND-ARCHITECTURE.md:1538",
+   "note": "Prompt injection by AI team; backend returns BrandChunkDTOs."
+  },
+  {
+   "id": "R10207",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Brand-voice fidelity is the AI team; backend supplies retrieval."
+  },
+  {
+   "id": "R10207a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1062",
+   "note": "tone_rule chunks."
+  },
+  {
+   "id": "R10207b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1062; DATABASE.md:222",
+   "note": "glossary chunks."
+  },
+  {
+   "id": "R10207c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:508; DATABASE.md:1062",
+   "note": "compliance chunks."
+  },
+  {
+   "id": "R10207d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1538",
+   "note": "retrieve_brand_chunks at generation time."
+  },
+  {
+   "id": "R10213",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:446; DATABASE.md:1054",
+   "note": "Brand documents upload -> chunk."
+  },
+  {
+   "id": "R10214",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:446; DATABASE.md:1054",
+   "note": "Brand documents upload -> chunk."
+  },
+  {
+   "id": "R10215",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:222",
+   "note": "brand_embed derives glossary chunks."
+  },
+  {
+   "id": "R10216",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "VISION-ALIGNMENT.md:184; G13",
+   "note": "No approve -> brand_embed trigger; source_type listing_version allowed but unwired."
+  },
+  {
+   "id": "R10217",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:508",
+   "note": "Brand rule text chunked as compliance."
+  },
+  {
+   "id": "R10218",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1063",
+   "note": "Chunks embedded."
+  },
+  {
+   "id": "R10218a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "ENV.md:93; DATABASE.md:1063",
+   "note": "text-embedding-3-small."
+  },
+  {
+   "id": "R10219",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1063",
+   "note": "vector(1536) in brand_chunks."
+  },
+  {
+   "id": "R10220",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1067-1074",
+   "note": "Cosine (<=>) exact scan; HNSW vector_cosine_ops."
+  },
+  {
+   "id": "R10221",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt injection is AI team."
+  },
+  {
+   "id": "R10226",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1538",
+   "note": "Port embeds the query string."
+  },
+  {
+   "id": "R10226a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:119",
+   "note": "AI composes the query string."
+  },
+  {
+   "id": "R10226b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1068-1074",
+   "note": "pgvector cosine over the tenant chunks."
+  },
+  {
+   "id": "R10226c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:119; DATABASE.md:1068-1074",
+   "note": "k=8."
+  },
+  {
+   "id": "R10226d",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "\"Brand Voice Context\" prompt section is AI team."
+  },
+  {
+   "id": "R10237",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "SPEC-TRACEABILITY.md:167; DATABASE.md:1057",
+   "note": "In v1."
+  },
+  {
+   "id": "R10239",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1035; G13",
+   "note": "No per-artifact chunking strategy; plan uses ~200-word chunks."
+  },
+  {
+   "id": "R10244",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:222; G13",
+   "note": "tenants.tone/guidelines not chunked; approved listings not embedded."
+  },
+  {
+   "id": "R10244a",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1035; DATABASE.md:1062; T90",
+   "note": "Plan splits into ~200-word chunks, not per rule/tone clause."
+  },
+  {
+   "id": "R10244b",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1035; DATABASE.md:1062; T90",
+   "note": "~200-word chunks, not per guideline."
+  },
+  {
+   "id": "R10244c",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:222; DATABASE.md:1064; T38",
+   "note": "Glossary chunks derived from tenants.glossary; per-term split not stated."
+  },
+  {
+   "id": "R10244d",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "VISION-ALIGNMENT.md:184; G13",
+   "note": "Approved listings not embedded; no per-field chunking."
+  },
+  {
+   "id": "R10244e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:508",
+   "note": "Each brand rule text chunked as compliance."
+  },
+  {
+   "id": "R10244f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1057-1065",
+   "note": "brand_chunks rows."
+  },
+  {
+   "id": "R10244g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1062",
+   "note": "text column."
+  },
+  {
+   "id": "R10244h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1063",
+   "note": "embedding vector(1536) NOT NULL."
+  },
+  {
+   "id": "R10251",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "SPEC-TRACEABILITY.md:168; CANON.md:129",
+   "note": "In v1; backend owns chunking."
+  },
+  {
+   "id": "R10253",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1035; DATABASE.md:1062; T90",
+   "note": "~200-word windows, not meaningful units."
+  },
+  {
+   "id": "R10253a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1063; DATABASE.md:1067",
+   "note": "Embedding NOT NULL and indexed, so retrievable."
+  },
+  {
+   "id": "R10264",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1035; DATABASE.md:1062; T90",
+   "note": "~200-word chunks, not per rule / tone clause."
+  },
+  {
+   "id": "R10268",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1035; DATABASE.md:1062; T90",
+   "note": "Example is one clause; ours would be a ~200-word window."
+  },
+  {
+   "id": "R10270",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1035; DATABASE.md:1062; T90",
+   "note": "~200-word chunks, not per guideline."
+  },
+  {
+   "id": "R10274",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1035; DATABASE.md:1062; T90",
+   "note": "Example is one guideline; ours would be a ~200-word window."
+  },
+  {
+   "id": "R10276",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:222; DATABASE.md:1064; T38",
+   "note": "brand_embed derives glossary chunks from tenants.glossary; one chunk per term not stated."
+  },
+  {
+   "id": "R10280",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:222; DATABASE.md:1064; T38",
+   "note": "Map pair {\"kurta outfit\": \"kurta set\"} exists; per-term glossary chunk text not specified."
+  },
+  {
+   "id": "R10282",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "VISION-ALIGNMENT.md:184; G13",
+   "note": "Approved listings not chunked per field; no approve trigger."
+  },
+  {
+   "id": "R10286",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "VISION-ALIGNMENT.md:184; G13",
+   "note": "No high-performer selection or weight for example chunks."
+  },
+  {
+   "id": "R10288",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:508",
+   "note": "One compliance chunk per brand rule."
+  },
+  {
+   "id": "R10292",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:508; DATABASE.md:519",
+   "note": "claim_requires_attribute: organic -> certifications (gots)."
+  },
+  {
+   "id": "R10299",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "SPEC-TRACEABILITY.md:169; ENV.md:93",
+   "note": "In v1."
+  },
+  {
+   "id": "R10301",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "ENV.md:93",
+   "note": "EMBEDDING_MODEL text-embedding-3-small."
+  },
+  {
+   "id": "R10301a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1063",
+   "note": "pgvector vector(1536)."
+  },
+  {
+   "id": "R10306",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "ENV.md:93",
+   "note": "Default text-embedding-3-small."
+  },
+  {
+   "id": "R10306a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "ENV.md:93",
+   "note": "EMBEDDING_MODEL setting."
+  },
+  {
+   "id": "R10306b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "ENV.md:93-94; DATABASE.md:1063",
+   "note": "embedding_model per row, queries filter on it; dims fixed at 1536."
+  },
+  {
+   "id": "R10306c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:446; DATABASE.md:933",
+   "note": "POST /api/v1/brand/documents -> brand_embed job."
+  },
+  {
+   "id": "R10306d",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1065",
+   "note": "Re-chunk deactivates old rows; no trigger stated for glossary/guidelines edits."
+  },
+  {
+   "id": "R10306e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1063",
+   "note": "brand_chunks.embedding."
+  },
+  {
+   "id": "R10306f",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Batch embedding for initial brand setup not specified."
+  },
+  {
+   "id": "R10306g",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1063",
+   "note": "Incremental (content_hash skip) embedding not specified."
+  },
+  {
+   "id": "R10313",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "SPEC-TRACEABILITY.md:170; CANON.md:119",
+   "note": "In v1."
+  },
+  {
+   "id": "R10315",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1538",
+   "note": "retrieve_brand_chunks at generation time."
+  },
+  {
+   "id": "R10322",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:119",
+   "note": "Port takes a free query string; AI builds product+brand+marketplace+tone."
+  },
+  {
+   "id": "R10322a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1538",
+   "note": "Port embeds the query."
+  },
+  {
+   "id": "R10323",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1068-1074",
+   "note": "Cosine search."
+  },
+  {
+   "id": "R10323a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:119",
+   "note": "k=8."
+  },
+  {
+   "id": "R10324",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:122; VISION-ALIGNMENT.md:422",
+   "note": "BrandChunkDTO.similarity returned; threshold value owed by AI team."
+  },
+  {
+   "id": "R10325",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt assembly is AI team."
+  }
+ ]
+}

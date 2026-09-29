@@ -1,0 +1,5351 @@
+{
+ "chunk": "c18",
+ "start": 10863,
+ "end": 11380,
+ "items": [
+  {
+   "id": "R10863",
+   "lines": [
+    10863,
+    10863
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "info",
+   "text": "## Entity Relationships",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10865",
+   "lines": [
+    10865,
+    10865
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "info",
+   "text": "Architecture Diagram: Entity Relationship Diagram",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10867",
+   "lines": [
+    10867,
+    10868
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "info",
+   "text": "```mermaid fence and erDiagram declaration.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10869",
+   "lines": [
+    10869,
+    10869
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "Tenant ||--o{ Product : has (one Tenant has zero or many Products)."
+  },
+  {
+   "id": "R10870",
+   "lines": [
+    10870,
+    10870
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "Tenant ||--o{ MarketplaceAccount : has (one Tenant has zero or many MarketplaceAccounts)."
+  },
+  {
+   "id": "R10871",
+   "lines": [
+    10871,
+    10871
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "Tenant ||--o{ BrandChunk : has (one Tenant has zero or many BrandChunks)."
+  },
+  {
+   "id": "R10872",
+   "lines": [
+    10872,
+    10872
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "Product ||--o{ Listing : has (one Product has zero or many Listings)."
+  },
+  {
+   "id": "R10873",
+   "lines": [
+    10873,
+    10873
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "Product ||--o{ Image : has (one Product has zero or many Images)."
+  },
+  {
+   "id": "R10874",
+   "lines": [
+    10874,
+    10874
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "Listing ||--o{ ListingVersion : has (one Listing has zero or many ListingVersions)."
+  },
+  {
+   "id": "R10875",
+   "lines": [
+    10875,
+    10875
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "Listing ||--o{ ValidationRun : has (one Listing has zero or many ValidationRuns)."
+  },
+  {
+   "id": "R10876",
+   "lines": [
+    10876,
+    10876
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "Listing ||--o{ Performance : has (one Listing has zero or many Performance records)."
+  },
+  {
+   "id": "R10877",
+   "lines": [
+    10877,
+    10877
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "Product ||--o{ AgentRun : has (one Product has zero or many AgentRuns)."
+  },
+  {
+   "id": "R10878",
+   "lines": [
+    10878,
+    10878
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "Tenant ||--o{ Rules : configures (one Tenant configures zero or many Rules)."
+  },
+  {
+   "id": "R10879",
+   "lines": [
+    10879,
+    10879
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "data",
+   "text": "Tenant ||--o{ AuditLog : tracks (one Tenant tracks zero or many AuditLog entries)."
+  },
+  {
+   "id": "R10880",
+   "lines": [
+    10880,
+    10880
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "info",
+   "text": "Closing ``` of mermaid diagram.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10882",
+   "lines": [
+    10882,
+    10882
+   ],
+   "page": "[84] Data Architecture",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10884",
+   "lines": [
+    10884,
+    10884
+   ],
+   "page": "[85] Database Schema",
+   "kind": "info",
+   "text": "[85] Database Schema",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10886",
+   "lines": [
+    10886,
+    10886
+   ],
+   "page": "[85] Database Schema",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10887",
+   "lines": [
+    10887,
+    10887
+   ],
+   "page": "[85] Database Schema",
+   "kind": "scope",
+   "text": "Page [85] Database Schema scope: MVP."
+  },
+  {
+   "id": "R10888",
+   "lines": [
+    10888,
+    10888
+   ],
+   "page": "[85] Database Schema",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/database-schema",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10889",
+   "lines": [
+    10889,
+    10889
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "Database Schema page is described as the complete database schema with all tables, columns, types, and relationships."
+  },
+  {
+   "id": "R10890",
+   "lines": [
+    10890,
+    10890
+   ],
+   "page": "[85] Database Schema",
+   "kind": "info",
+   "text": "Keywords: database schema, tables, columns, SQL",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10892",
+   "lines": [
+    10892,
+    10892
+   ],
+   "page": "[85] Database Schema",
+   "kind": "info",
+   "text": "## Core Schema",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10894",
+   "lines": [
+    10894,
+    10894
+   ],
+   "page": "[85] Database Schema",
+   "kind": "info",
+   "text": "Core Tables",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10896",
+   "lines": [
+    10896,
+    10896
+   ],
+   "page": "[85] Database Schema",
+   "kind": "info",
+   "text": "Opening ```sql code fence.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10897",
+   "lines": [
+    10897,
+    10898
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "Table `tenants` (comment: Tenant / Brand)."
+  },
+  {
+   "id": "R10899",
+   "lines": [
+    10899,
+    10899
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "tenants.id UUID PRIMARY KEY DEFAULT gen_random_uuid()."
+  },
+  {
+   "id": "R10900",
+   "lines": [
+    10900,
+    10900
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "tenants.name TEXT NOT NULL."
+  },
+  {
+   "id": "R10901",
+   "lines": [
+    10901,
+    10901
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "tenants.tone TEXT."
+  },
+  {
+   "id": "R10902",
+   "lines": [
+    10902,
+    10902
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "tenants.guidelines JSONB."
+  },
+  {
+   "id": "R10903",
+   "lines": [
+    10903,
+    10903
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "tenants.glossary JSONB."
+  },
+  {
+   "id": "R10904",
+   "lines": [
+    10904,
+    10904
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "tenants.created_at TIMESTAMPTZ DEFAULT now()."
+  },
+  {
+   "id": "R10905",
+   "lines": [
+    10905,
+    10905
+   ],
+   "page": "[85] Database Schema",
+   "kind": "info",
+   "text": "Closing ); of tenants table.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10907",
+   "lines": [
+    10907,
+    10907
+   ],
+   "page": "[85] Database Schema",
+   "kind": "decision",
+   "text": "Brand Chunks are stored with pgvector (comment: -- Brand Chunks (pgvector))."
+  },
+  {
+   "id": "R10908",
+   "lines": [
+    10908,
+    10908
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "Table `brand_chunks`."
+  },
+  {
+   "id": "R10909",
+   "lines": [
+    10909,
+    10909
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "brand_chunks.id UUID PRIMARY KEY DEFAULT gen_random_uuid()."
+  },
+  {
+   "id": "R10910",
+   "lines": [
+    10910,
+    10910
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "brand_chunks.brand_id UUID REFERENCES tenants(id)."
+  },
+  {
+   "id": "R10911",
+   "lines": [
+    10911,
+    10911
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "brand_chunks.type TEXT NOT NULL."
+  },
+  {
+   "id": "R10911a",
+   "lines": [
+    10911,
+    10911
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "brand_chunks.type values (comment): tone_rule, glossary, compliance, example."
+  },
+  {
+   "id": "R10912",
+   "lines": [
+    10912,
+    10912
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "brand_chunks.text TEXT NOT NULL."
+  },
+  {
+   "id": "R10913",
+   "lines": [
+    10913,
+    10913
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "brand_chunks.embedding vector(1536)."
+  },
+  {
+   "id": "R10914",
+   "lines": [
+    10914,
+    10914
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "brand_chunks.updated_at TIMESTAMPTZ DEFAULT now()."
+  },
+  {
+   "id": "R10915",
+   "lines": [
+    10915,
+    10915
+   ],
+   "page": "[85] Database Schema",
+   "kind": "info",
+   "text": "Closing ); of brand_chunks table.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10917",
+   "lines": [
+    10917,
+    10918
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "Table `products` (comment: -- Products)."
+  },
+  {
+   "id": "R10919",
+   "lines": [
+    10919,
+    10919
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "products.id UUID PRIMARY KEY DEFAULT gen_random_uuid()."
+  },
+  {
+   "id": "R10920",
+   "lines": [
+    10920,
+    10920
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "products.brand_id UUID REFERENCES tenants(id)."
+  },
+  {
+   "id": "R10921",
+   "lines": [
+    10921,
+    10921
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "products.sku TEXT NOT NULL."
+  },
+  {
+   "id": "R10922",
+   "lines": [
+    10922,
+    10922
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "products.title TEXT NOT NULL."
+  },
+  {
+   "id": "R10923",
+   "lines": [
+    10923,
+    10923
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "products.images JSONB."
+  },
+  {
+   "id": "R10924",
+   "lines": [
+    10924,
+    10924
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "products.attributes JSONB."
+  },
+  {
+   "id": "R10925",
+   "lines": [
+    10925,
+    10925
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "products.created_at TIMESTAMPTZ DEFAULT now()."
+  },
+  {
+   "id": "R10926",
+   "lines": [
+    10926,
+    10926
+   ],
+   "page": "[85] Database Schema",
+   "kind": "info",
+   "text": "Closing ); of products table.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10928",
+   "lines": [
+    10928,
+    10929
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "Table `marketplace_accounts` (comment: -- Marketplace Accounts)."
+  },
+  {
+   "id": "R10930",
+   "lines": [
+    10930,
+    10930
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "marketplace_accounts.id UUID PRIMARY KEY DEFAULT gen_random_uuid()."
+  },
+  {
+   "id": "R10931",
+   "lines": [
+    10931,
+    10931
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "marketplace_accounts.brand_id UUID REFERENCES tenants(id)."
+  },
+  {
+   "id": "R10932",
+   "lines": [
+    10932,
+    10932
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "marketplace_accounts.marketplace TEXT NOT NULL."
+  },
+  {
+   "id": "R10932a",
+   "lines": [
+    10932,
+    10932
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "marketplace_accounts.marketplace values (comment): amazon, flipkart."
+  },
+  {
+   "id": "R10933",
+   "lines": [
+    10933,
+    10933
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "marketplace_accounts.token_enc BYTEA NOT NULL."
+  },
+  {
+   "id": "R10933a",
+   "lines": [
+    10933,
+    10933
+   ],
+   "page": "[85] Database Schema",
+   "kind": "quality",
+   "text": "marketplace_accounts.token_enc is AES-256 encrypted (comment)."
+  },
+  {
+   "id": "R10934",
+   "lines": [
+    10934,
+    10934
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "marketplace_accounts.status TEXT DEFAULT 'active'."
+  },
+  {
+   "id": "R10935",
+   "lines": [
+    10935,
+    10935
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "marketplace_accounts.created_at TIMESTAMPTZ DEFAULT now()."
+  },
+  {
+   "id": "R10936",
+   "lines": [
+    10936,
+    10936
+   ],
+   "page": "[85] Database Schema",
+   "kind": "info",
+   "text": "Closing ); of marketplace_accounts table.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10938",
+   "lines": [
+    10938,
+    10939
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "Table `listings` (comment: -- Listings)."
+  },
+  {
+   "id": "R10940",
+   "lines": [
+    10940,
+    10940
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "listings.id UUID PRIMARY KEY DEFAULT gen_random_uuid()."
+  },
+  {
+   "id": "R10941",
+   "lines": [
+    10941,
+    10941
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "listings.product_id UUID REFERENCES products(id)."
+  },
+  {
+   "id": "R10942",
+   "lines": [
+    10942,
+    10942
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "listings.marketplace TEXT NOT NULL."
+  },
+  {
+   "id": "R10943",
+   "lines": [
+    10943,
+    10943
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "listings.status TEXT NOT NULL."
+  },
+  {
+   "id": "R10943a",
+   "lines": [
+    10943,
+    10943
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "listings.status values (comment): created, generating, validated, approved, published."
+  },
+  {
+   "id": "R10944",
+   "lines": [
+    10944,
+    10944
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "listings.external_id TEXT."
+  },
+  {
+   "id": "R10945",
+   "lines": [
+    10945,
+    10945
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "listings.created_at TIMESTAMPTZ DEFAULT now()."
+  },
+  {
+   "id": "R10946",
+   "lines": [
+    10946,
+    10946
+   ],
+   "page": "[85] Database Schema",
+   "kind": "info",
+   "text": "Closing ); of listings table.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10948",
+   "lines": [
+    10948,
+    10949
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "Table `agent_runs` (comment: -- Agent Runs)."
+  },
+  {
+   "id": "R10950",
+   "lines": [
+    10950,
+    10950
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "agent_runs.id UUID PRIMARY KEY DEFAULT gen_random_uuid()."
+  },
+  {
+   "id": "R10951",
+   "lines": [
+    10951,
+    10951
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "agent_runs.product_id UUID REFERENCES products(id)."
+  },
+  {
+   "id": "R10952",
+   "lines": [
+    10952,
+    10952
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "agent_runs.trigger TEXT NOT NULL."
+  },
+  {
+   "id": "R10953",
+   "lines": [
+    10953,
+    10953
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "agent_runs.model_used TEXT."
+  },
+  {
+   "id": "R10954",
+   "lines": [
+    10954,
+    10954
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "agent_runs.tokens_in INTEGER."
+  },
+  {
+   "id": "R10955",
+   "lines": [
+    10955,
+    10955
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "agent_runs.tokens_out INTEGER."
+  },
+  {
+   "id": "R10956",
+   "lines": [
+    10956,
+    10956
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "agent_runs.cost DECIMAL(10,6)."
+  },
+  {
+   "id": "R10957",
+   "lines": [
+    10957,
+    10957
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "agent_runs.status TEXT NOT NULL."
+  },
+  {
+   "id": "R10958",
+   "lines": [
+    10958,
+    10958
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "agent_runs.error_report_json JSONB."
+  },
+  {
+   "id": "R10959",
+   "lines": [
+    10959,
+    10959
+   ],
+   "page": "[85] Database Schema",
+   "kind": "data",
+   "text": "agent_runs.created_at TIMESTAMPTZ DEFAULT now()."
+  },
+  {
+   "id": "R10960",
+   "lines": [
+    10960,
+    10960
+   ],
+   "page": "[85] Database Schema",
+   "kind": "info",
+   "text": "Closing ); of agent_runs table.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10961",
+   "lines": [
+    10961,
+    10961
+   ],
+   "page": "[85] Database Schema",
+   "kind": "info",
+   "text": "Closing ``` code fence of the SQL DDL.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10963",
+   "lines": [
+    10963,
+    10963
+   ],
+   "page": "[85] Database Schema",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10965",
+   "lines": [
+    10965,
+    10965
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "info",
+   "text": "[86] Entity Relationship Diagram",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10967",
+   "lines": [
+    10967,
+    10967
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10968",
+   "lines": [
+    10968,
+    10968
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "scope",
+   "text": "Page [86] Entity Relationship Diagram scope: MVP."
+  },
+  {
+   "id": "R10969",
+   "lines": [
+    10969,
+    10969
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/entity-relationship-diagram",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10970",
+   "lines": [
+    10970,
+    10970
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "data",
+   "text": "Entity Relationship Diagram page is described as a visual ER diagram showing all entity relationships."
+  },
+  {
+   "id": "R10971",
+   "lines": [
+    10971,
+    10971
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "info",
+   "text": "Keywords: ER diagram, entity relationship, visual",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10973",
+   "lines": [
+    10973,
+    10973
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "info",
+   "text": "## Entity Relationship Diagram",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10975",
+   "lines": [
+    10975,
+    10976
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "info",
+   "text": "```mermaid fence and erDiagram declaration.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10977",
+   "lines": [
+    10977,
+    10977
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "data",
+   "text": "Tenant ||--o{ Product : owns (one Tenant owns zero or many Products)."
+  },
+  {
+   "id": "R10978",
+   "lines": [
+    10978,
+    10978
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "data",
+   "text": "Tenant ||--o{ MarketplaceAccount : connects (one Tenant connects zero or many MarketplaceAccounts)."
+  },
+  {
+   "id": "R10979",
+   "lines": [
+    10979,
+    10979
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "data",
+   "text": "Tenant ||--o{ BrandChunk : defines (one Tenant defines zero or many BrandChunks)."
+  },
+  {
+   "id": "R10980",
+   "lines": [
+    10980,
+    10980
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "info",
+   "text": "Tenant ||--o{ Rules : configures",
+   "why_not": "restatement",
+   "dup_of": "R10878"
+  },
+  {
+   "id": "R10981",
+   "lines": [
+    10981,
+    10981
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "data",
+   "text": "Tenant ||--o{ AuditLog : generates (one Tenant generates zero or many AuditLog entries)."
+  },
+  {
+   "id": "R10982",
+   "lines": [
+    10982,
+    10982
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "data",
+   "text": "Product ||--o{ Image : contains (one Product contains zero or many Images)."
+  },
+  {
+   "id": "R10983",
+   "lines": [
+    10983,
+    10983
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "data",
+   "text": "Product ||--o{ Listing : generates (one Product generates zero or many Listings)."
+  },
+  {
+   "id": "R10984",
+   "lines": [
+    10984,
+    10984
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "data",
+   "text": "Product ||--o{ AgentRun : triggers (one Product triggers zero or many AgentRuns)."
+  },
+  {
+   "id": "R10985",
+   "lines": [
+    10985,
+    10985
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "data",
+   "text": "Listing ||--o{ ListingVersion : versions (one Listing has zero or many ListingVersions)."
+  },
+  {
+   "id": "R10986",
+   "lines": [
+    10986,
+    10986
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "data",
+   "text": "Listing ||--o{ ValidationRun : validates (one Listing is validated by zero or many ValidationRuns)."
+  },
+  {
+   "id": "R10987",
+   "lines": [
+    10987,
+    10987
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "data",
+   "text": "Listing ||--o{ Performance : tracks (one Listing tracks zero or many Performance records)."
+  },
+  {
+   "id": "R10988",
+   "lines": [
+    10988,
+    10988
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "data",
+   "text": "Listing }o--|| MarketplaceAccount : targets (many Listings target exactly one MarketplaceAccount)."
+  },
+  {
+   "id": "R10989",
+   "lines": [
+    10989,
+    10989
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "info",
+   "text": "Closing ``` of mermaid diagram.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R10991",
+   "lines": [
+    10991,
+    10991
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "requirement",
+   "text": "Every entity has `brand_id` (tenant_id) for mandatory tenant isolation."
+  },
+  {
+   "id": "R10991a",
+   "lines": [
+    10991,
+    10991
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "requirement",
+   "text": "Foreign keys enforce referential integrity."
+  },
+  {
+   "id": "R10991b",
+   "lines": [
+    10991,
+    10991
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "quality",
+   "text": "Index on frequently queried column brand_id."
+  },
+  {
+   "id": "R10991c",
+   "lines": [
+    10991,
+    10991
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "quality",
+   "text": "Index on frequently queried column marketplace."
+  },
+  {
+   "id": "R10991d",
+   "lines": [
+    10991,
+    10991
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "quality",
+   "text": "Index on frequently queried column status."
+  },
+  {
+   "id": "R10993",
+   "lines": [
+    10993,
+    10993
+   ],
+   "page": "[86] Entity Relationship Diagram",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10995",
+   "lines": [
+    10995,
+    10995
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "info",
+   "text": "[87] Tenant Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R10997",
+   "lines": [
+    10997,
+    10997
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R10998",
+   "lines": [
+    10998,
+    10998
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "scope",
+   "text": "Page [87] Tenant Model scope: MVP."
+  },
+  {
+   "id": "R10999",
+   "lines": [
+    10999,
+    10999
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/tenant-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11000",
+   "lines": [
+    11000,
+    11000
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "data",
+   "text": "Tenant/Brand entity covers identity."
+  },
+  {
+   "id": "R11000a",
+   "lines": [
+    11000,
+    11000
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "data",
+   "text": "Tenant/Brand entity covers voice settings."
+  },
+  {
+   "id": "R11000b",
+   "lines": [
+    11000,
+    11000
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "data",
+   "text": "Tenant/Brand entity covers configuration."
+  },
+  {
+   "id": "R11001",
+   "lines": [
+    11001,
+    11001
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "info",
+   "text": "Keywords: tenant, brand, model, entity",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11003",
+   "lines": [
+    11003,
+    11003
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "info",
+   "text": "## Tenant Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11005",
+   "lines": [
+    11005,
+    11005
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "data",
+   "text": "Tenant is the primary entity representing a brand."
+  },
+  {
+   "id": "R11005a",
+   "lines": [
+    11005,
+    11005
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "info",
+   "text": "Tenant field: id.",
+   "why_not": "restatement",
+   "dup_of": "R10899"
+  },
+  {
+   "id": "R11005b",
+   "lines": [
+    11005,
+    11005
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "info",
+   "text": "Tenant field: name.",
+   "why_not": "restatement",
+   "dup_of": "R10900"
+  },
+  {
+   "id": "R11005c",
+   "lines": [
+    11005,
+    11005
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "info",
+   "text": "Tenant field: tone.",
+   "why_not": "restatement",
+   "dup_of": "R10901"
+  },
+  {
+   "id": "R11005d",
+   "lines": [
+    11005,
+    11005
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "info",
+   "text": "Tenant field: guidelines (JSONB).",
+   "why_not": "restatement",
+   "dup_of": "R10902"
+  },
+  {
+   "id": "R11005e",
+   "lines": [
+    11005,
+    11005
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "info",
+   "text": "Tenant field: glossary (JSONB).",
+   "why_not": "restatement",
+   "dup_of": "R10903"
+  },
+  {
+   "id": "R11005f",
+   "lines": [
+    11005,
+    11005
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "data",
+   "text": "Tenant field: embedding_refs."
+  },
+  {
+   "id": "R11005g",
+   "lines": [
+    11005,
+    11005
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "info",
+   "text": "Tenant field: created_at.",
+   "why_not": "restatement",
+   "dup_of": "R10904"
+  },
+  {
+   "id": "R11005h",
+   "lines": [
+    11005,
+    11005
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "requirement",
+   "text": "All other entities reference the tenant for isolation."
+  },
+  {
+   "id": "R11007",
+   "lines": [
+    11007,
+    11007
+   ],
+   "page": "[87] Tenant Model",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11009",
+   "lines": [
+    11009,
+    11009
+   ],
+   "page": "[88] Brand Model",
+   "kind": "info",
+   "text": "[88] Brand Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11011",
+   "lines": [
+    11011,
+    11011
+   ],
+   "page": "[88] Brand Model",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11012",
+   "lines": [
+    11012,
+    11012
+   ],
+   "page": "[88] Brand Model",
+   "kind": "scope",
+   "text": "Page [88] Brand Model scope: MVP."
+  },
+  {
+   "id": "R11013",
+   "lines": [
+    11013,
+    11013
+   ],
+   "page": "[88] Brand Model",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/brand-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11014",
+   "lines": [
+    11014,
+    11014
+   ],
+   "page": "[88] Brand Model",
+   "kind": "data",
+   "text": "Brand configuration covers voice."
+  },
+  {
+   "id": "R11014a",
+   "lines": [
+    11014,
+    11014
+   ],
+   "page": "[88] Brand Model",
+   "kind": "data",
+   "text": "Brand configuration covers style."
+  },
+  {
+   "id": "R11014b",
+   "lines": [
+    11014,
+    11014
+   ],
+   "page": "[88] Brand Model",
+   "kind": "data",
+   "text": "Brand configuration covers compliance settings."
+  },
+  {
+   "id": "R11015",
+   "lines": [
+    11015,
+    11015
+   ],
+   "page": "[88] Brand Model",
+   "kind": "info",
+   "text": "Keywords: brand, model, voice, configuration",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11017",
+   "lines": [
+    11017,
+    11017
+   ],
+   "page": "[88] Brand Model",
+   "kind": "info",
+   "text": "## Brand Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11019",
+   "lines": [
+    11019,
+    11019
+   ],
+   "page": "[88] Brand Model",
+   "kind": "data",
+   "text": "The brand model extends tenant with voice-specific settings."
+  },
+  {
+   "id": "R11019a",
+   "lines": [
+    11019,
+    11019
+   ],
+   "page": "[88] Brand Model",
+   "kind": "info",
+   "text": "Brand setting: tone (text).",
+   "why_not": "restatement",
+   "dup_of": "R10901"
+  },
+  {
+   "id": "R11019b",
+   "lines": [
+    11019,
+    11019
+   ],
+   "page": "[88] Brand Model",
+   "kind": "data",
+   "text": "Brand setting: guidelines (JSONB array of rules)."
+  },
+  {
+   "id": "R11019c",
+   "lines": [
+    11019,
+    11019
+   ],
+   "page": "[88] Brand Model",
+   "kind": "data",
+   "text": "Brand setting: glossary (JSONB map of preferred terms)."
+  },
+  {
+   "id": "R11019d",
+   "lines": [
+    11019,
+    11019
+   ],
+   "page": "[88] Brand Model",
+   "kind": "data",
+   "text": "Brand setting: embedding_refs linking to BrandChunk records."
+  },
+  {
+   "id": "R11019e",
+   "lines": [
+    11019,
+    11019
+   ],
+   "page": "[88] Brand Model",
+   "kind": "requirement",
+   "text": "Brand settings drive how AI agents generate content."
+  },
+  {
+   "id": "R11021",
+   "lines": [
+    11021,
+    11021
+   ],
+   "page": "[88] Brand Model",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11023",
+   "lines": [
+    11023,
+    11023
+   ],
+   "page": "[89] Product Model",
+   "kind": "info",
+   "text": "[89] Product Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11025",
+   "lines": [
+    11025,
+    11025
+   ],
+   "page": "[89] Product Model",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11026",
+   "lines": [
+    11026,
+    11026
+   ],
+   "page": "[89] Product Model",
+   "kind": "scope",
+   "text": "Page [89] Product Model scope: MVP."
+  },
+  {
+   "id": "R11027",
+   "lines": [
+    11027,
+    11027
+   ],
+   "page": "[89] Product Model",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/product-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11028",
+   "lines": [
+    11028,
+    11028
+   ],
+   "page": "[89] Product Model",
+   "kind": "data",
+   "text": "Product entity covers SKU."
+  },
+  {
+   "id": "R11028a",
+   "lines": [
+    11028,
+    11028
+   ],
+   "page": "[89] Product Model",
+   "kind": "data",
+   "text": "Product entity covers raw data."
+  },
+  {
+   "id": "R11028b",
+   "lines": [
+    11028,
+    11028
+   ],
+   "page": "[89] Product Model",
+   "kind": "data",
+   "text": "Product entity covers images."
+  },
+  {
+   "id": "R11028c",
+   "lines": [
+    11028,
+    11028
+   ],
+   "page": "[89] Product Model",
+   "kind": "data",
+   "text": "Product entity covers attributes."
+  },
+  {
+   "id": "R11029",
+   "lines": [
+    11029,
+    11029
+   ],
+   "page": "[89] Product Model",
+   "kind": "info",
+   "text": "Keywords: product, model, SKU, entity",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11031",
+   "lines": [
+    11031,
+    11031
+   ],
+   "page": "[89] Product Model",
+   "kind": "info",
+   "text": "## Product Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11033",
+   "lines": [
+    11033,
+    11033
+   ],
+   "page": "[89] Product Model",
+   "kind": "info",
+   "text": "Product field: id.",
+   "why_not": "restatement",
+   "dup_of": "R10919"
+  },
+  {
+   "id": "R11033a",
+   "lines": [
+    11033,
+    11033
+   ],
+   "page": "[89] Product Model",
+   "kind": "info",
+   "text": "Product field: brand_id.",
+   "why_not": "restatement",
+   "dup_of": "R10920"
+  },
+  {
+   "id": "R11033b",
+   "lines": [
+    11033,
+    11033
+   ],
+   "page": "[89] Product Model",
+   "kind": "info",
+   "text": "Product field: sku.",
+   "why_not": "restatement",
+   "dup_of": "R10921"
+  },
+  {
+   "id": "R11033c",
+   "lines": [
+    11033,
+    11033
+   ],
+   "page": "[89] Product Model",
+   "kind": "info",
+   "text": "Product field: title.",
+   "why_not": "restatement",
+   "dup_of": "R10922"
+  },
+  {
+   "id": "R11033d",
+   "lines": [
+    11033,
+    11033
+   ],
+   "page": "[89] Product Model",
+   "kind": "data",
+   "text": "Product field: images (JSONB array of S3 URLs)."
+  },
+  {
+   "id": "R11033e",
+   "lines": [
+    11033,
+    11033
+   ],
+   "page": "[89] Product Model",
+   "kind": "info",
+   "text": "Product field: attributes (JSONB).",
+   "why_not": "restatement",
+   "dup_of": "R10924"
+  },
+  {
+   "id": "R11033f",
+   "lines": [
+    11033,
+    11033
+   ],
+   "page": "[89] Product Model",
+   "kind": "info",
+   "text": "Product field: created_at.",
+   "why_not": "restatement",
+   "dup_of": "R10925"
+  },
+  {
+   "id": "R11033g",
+   "lines": [
+    11033,
+    11033
+   ],
+   "page": "[89] Product Model",
+   "kind": "requirement",
+   "text": "The product is the source of truth for factual claims."
+  },
+  {
+   "id": "R11033h",
+   "lines": [
+    11033,
+    11033
+   ],
+   "page": "[89] Product Model",
+   "kind": "requirement",
+   "text": "AI agents reference product data for materials."
+  },
+  {
+   "id": "R11033i",
+   "lines": [
+    11033,
+    11033
+   ],
+   "page": "[89] Product Model",
+   "kind": "requirement",
+   "text": "AI agents reference product data for specs."
+  },
+  {
+   "id": "R11033j",
+   "lines": [
+    11033,
+    11033
+   ],
+   "page": "[89] Product Model",
+   "kind": "requirement",
+   "text": "AI agents reference product data for certifications."
+  },
+  {
+   "id": "R11035",
+   "lines": [
+    11035,
+    11035
+   ],
+   "page": "[89] Product Model",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11037",
+   "lines": [
+    11037,
+    11037
+   ],
+   "page": "[90] MarketplaceAccount Model",
+   "kind": "info",
+   "text": "[90] MarketplaceAccount Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11039",
+   "lines": [
+    11039,
+    11039
+   ],
+   "page": "[90] MarketplaceAccount Model",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11040",
+   "lines": [
+    11040,
+    11040
+   ],
+   "page": "[90] MarketplaceAccount Model",
+   "kind": "scope",
+   "text": "Page [90] MarketplaceAccount Model scope: MVP."
+  },
+  {
+   "id": "R11041",
+   "lines": [
+    11041,
+    11041
+   ],
+   "page": "[90] MarketplaceAccount Model",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/marketplace-account-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11042",
+   "lines": [
+    11042,
+    11042
+   ],
+   "page": "[90] MarketplaceAccount Model",
+   "kind": "data",
+   "text": "MarketplaceAccount entity holds encrypted credentials."
+  },
+  {
+   "id": "R11042a",
+   "lines": [
+    11042,
+    11042
+   ],
+   "page": "[90] MarketplaceAccount Model",
+   "kind": "data",
+   "text": "MarketplaceAccount entity holds connection status."
+  },
+  {
+   "id": "R11043",
+   "lines": [
+    11043,
+    11043
+   ],
+   "page": "[90] MarketplaceAccount Model",
+   "kind": "info",
+   "text": "Keywords: marketplace account, model, credentials, OAuth",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11045",
+   "lines": [
+    11045,
+    11045
+   ],
+   "page": "[90] MarketplaceAccount Model",
+   "kind": "info",
+   "text": "## MarketplaceAccount Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11047",
+   "lines": [
+    11047,
+    11047
+   ],
+   "page": "[90] MarketplaceAccount Model",
+   "kind": "info",
+   "text": "MarketplaceAccount field: id.",
+   "why_not": "restatement",
+   "dup_of": "R10930"
+  },
+  {
+   "id": "R11047a",
+   "lines": [
+    11047,
+    11047
+   ],
+   "page": "[90] MarketplaceAccount Model",
+   "kind": "info",
+   "text": "MarketplaceAccount field: brand_id.",
+   "why_not": "restatement",
+   "dup_of": "R10931"
+  },
+  {
+   "id": "R11047b",
+   "lines": [
+    11047,
+    11047
+   ],
+   "page": "[90] MarketplaceAccount Model",
+   "kind": "info",
+   "text": "MarketplaceAccount field: marketplace.",
+   "why_not": "restatement",
+   "dup_of": "R10932"
+  },
+  {
+   "id": "R11047c",
+   "lines": [
+    11047,
+    11047
+   ],
+   "page": "[90] MarketplaceAccount Model",
+   "kind": "info",
+   "text": "MarketplaceAccount field: token_enc (BYTEA, AES-256 encrypted).",
+   "why_not": "restatement",
+   "dup_of": "R10933"
+  },
+  {
+   "id": "R11047d",
+   "lines": [
+    11047,
+    11047
+   ],
+   "page": "[90] MarketplaceAccount Model",
+   "kind": "info",
+   "text": "MarketplaceAccount field: status.",
+   "why_not": "restatement",
+   "dup_of": "R10934"
+  },
+  {
+   "id": "R11047e",
+   "lines": [
+    11047,
+    11047
+   ],
+   "page": "[90] MarketplaceAccount Model",
+   "kind": "info",
+   "text": "MarketplaceAccount field: created_at.",
+   "why_not": "restatement",
+   "dup_of": "R10935"
+  },
+  {
+   "id": "R11047f",
+   "lines": [
+    11047,
+    11047
+   ],
+   "page": "[90] MarketplaceAccount Model",
+   "kind": "requirement",
+   "text": "MarketplaceAccount stores encrypted OAuth tokens for each connected marketplace."
+  },
+  {
+   "id": "R11047g",
+   "lines": [
+    11047,
+    11047
+   ],
+   "page": "[90] MarketplaceAccount Model",
+   "kind": "requirement",
+   "text": "Token refresh handled by adapters."
+  },
+  {
+   "id": "R11049",
+   "lines": [
+    11049,
+    11049
+   ],
+   "page": "[90] MarketplaceAccount Model",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11051",
+   "lines": [
+    11051,
+    11051
+   ],
+   "page": "[91] Listing Model",
+   "kind": "info",
+   "text": "[91] Listing Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11053",
+   "lines": [
+    11053,
+    11053
+   ],
+   "page": "[91] Listing Model",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11054",
+   "lines": [
+    11054,
+    11054
+   ],
+   "page": "[91] Listing Model",
+   "kind": "scope",
+   "text": "Page [91] Listing Model scope: MVP."
+  },
+  {
+   "id": "R11055",
+   "lines": [
+    11055,
+    11055
+   ],
+   "page": "[91] Listing Model",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/listing-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11056",
+   "lines": [
+    11056,
+    11056
+   ],
+   "page": "[91] Listing Model",
+   "kind": "data",
+   "text": "Listing entity is a marketplace-specific listing record."
+  },
+  {
+   "id": "R11056a",
+   "lines": [
+    11056,
+    11056
+   ],
+   "page": "[91] Listing Model",
+   "kind": "requirement",
+   "text": "Listing entity provides status tracking."
+  },
+  {
+   "id": "R11057",
+   "lines": [
+    11057,
+    11057
+   ],
+   "page": "[91] Listing Model",
+   "kind": "info",
+   "text": "Keywords: listing, model, status, entity",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11059",
+   "lines": [
+    11059,
+    11059
+   ],
+   "page": "[91] Listing Model",
+   "kind": "info",
+   "text": "## Listing Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11061",
+   "lines": [
+    11061,
+    11061
+   ],
+   "page": "[91] Listing Model",
+   "kind": "info",
+   "text": "Listing field: id.",
+   "why_not": "restatement",
+   "dup_of": "R10940"
+  },
+  {
+   "id": "R11061a",
+   "lines": [
+    11061,
+    11061
+   ],
+   "page": "[91] Listing Model",
+   "kind": "info",
+   "text": "Listing field: product_id.",
+   "why_not": "restatement",
+   "dup_of": "R10941"
+  },
+  {
+   "id": "R11061b",
+   "lines": [
+    11061,
+    11061
+   ],
+   "page": "[91] Listing Model",
+   "kind": "info",
+   "text": "Listing field: marketplace.",
+   "why_not": "restatement",
+   "dup_of": "R10942"
+  },
+  {
+   "id": "R11061c",
+   "lines": [
+    11061,
+    11061
+   ],
+   "page": "[91] Listing Model",
+   "kind": "data",
+   "text": "Listing field: status (state machine value)."
+  },
+  {
+   "id": "R11061d",
+   "lines": [
+    11061,
+    11061
+   ],
+   "page": "[91] Listing Model",
+   "kind": "data",
+   "text": "Listing field: external_id (marketplace's listing ID)."
+  },
+  {
+   "id": "R11061e",
+   "lines": [
+    11061,
+    11061
+   ],
+   "page": "[91] Listing Model",
+   "kind": "info",
+   "text": "Listing field: created_at.",
+   "why_not": "restatement",
+   "dup_of": "R10945"
+  },
+  {
+   "id": "R11061f",
+   "lines": [
+    11061,
+    11061
+   ],
+   "page": "[91] Listing Model",
+   "kind": "flow",
+   "text": "Status tracks the listing through the complete lifecycle from CREATED to PUBLISHED."
+  },
+  {
+   "id": "R11063",
+   "lines": [
+    11063,
+    11063
+   ],
+   "page": "[91] Listing Model",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11065",
+   "lines": [
+    11065,
+    11065
+   ],
+   "page": "[92] ListingVersion Model",
+   "kind": "info",
+   "text": "[92] ListingVersion Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11067",
+   "lines": [
+    11067,
+    11067
+   ],
+   "page": "[92] ListingVersion Model",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11068",
+   "lines": [
+    11068,
+    11068
+   ],
+   "page": "[92] ListingVersion Model",
+   "kind": "scope",
+   "text": "Page [92] ListingVersion Model scope: MVP."
+  },
+  {
+   "id": "R11069",
+   "lines": [
+    11069,
+    11069
+   ],
+   "page": "[92] ListingVersion Model",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/listing-version-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11070",
+   "lines": [
+    11070,
+    11070
+   ],
+   "page": "[92] ListingVersion Model",
+   "kind": "requirement",
+   "text": "ListingVersion entity holds content snapshots for versioning."
+  },
+  {
+   "id": "R11070a",
+   "lines": [
+    11070,
+    11070
+   ],
+   "page": "[92] ListingVersion Model",
+   "kind": "requirement",
+   "text": "ListingVersion content snapshots are for rollback."
+  },
+  {
+   "id": "R11071",
+   "lines": [
+    11071,
+    11071
+   ],
+   "page": "[92] ListingVersion Model",
+   "kind": "info",
+   "text": "Keywords: listing version, version, snapshot, rollback",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11073",
+   "lines": [
+    11073,
+    11073
+   ],
+   "page": "[92] ListingVersion Model",
+   "kind": "info",
+   "text": "## ListingVersion Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11075",
+   "lines": [
+    11075,
+    11075
+   ],
+   "page": "[92] ListingVersion Model",
+   "kind": "data",
+   "text": "ListingVersion field: id."
+  },
+  {
+   "id": "R11075a",
+   "lines": [
+    11075,
+    11075
+   ],
+   "page": "[92] ListingVersion Model",
+   "kind": "data",
+   "text": "ListingVersion field: listing_id."
+  },
+  {
+   "id": "R11075b",
+   "lines": [
+    11075,
+    11075
+   ],
+   "page": "[92] ListingVersion Model",
+   "kind": "data",
+   "text": "ListingVersion field: version (integer)."
+  },
+  {
+   "id": "R11075c",
+   "lines": [
+    11075,
+    11075
+   ],
+   "page": "[92] ListingVersion Model",
+   "kind": "data",
+   "text": "ListingVersion field: content_json (JSONB — full listing content)."
+  },
+  {
+   "id": "R11075d",
+   "lines": [
+    11075,
+    11075
+   ],
+   "page": "[92] ListingVersion Model",
+   "kind": "data",
+   "text": "ListingVersion field: image_reports_json (JSONB)."
+  },
+  {
+   "id": "R11075e",
+   "lines": [
+    11075,
+    11075
+   ],
+   "page": "[92] ListingVersion Model",
+   "kind": "data",
+   "text": "ListingVersion field: created_at."
+  },
+  {
+   "id": "R11075f",
+   "lines": [
+    11075,
+    11075
+   ],
+   "page": "[92] ListingVersion Model",
+   "kind": "requirement",
+   "text": "Every change creates a new version."
+  },
+  {
+   "id": "R11075g",
+   "lines": [
+    11075,
+    11075
+   ],
+   "page": "[92] ListingVersion Model",
+   "kind": "requirement",
+   "text": "ListingVersion enables comparison."
+  },
+  {
+   "id": "R11075h",
+   "lines": [
+    11075,
+    11075
+   ],
+   "page": "[92] ListingVersion Model",
+   "kind": "requirement",
+   "text": "ListingVersion enables rollback."
+  },
+  {
+   "id": "R11077",
+   "lines": [
+    11077,
+    11077
+   ],
+   "page": "[92] ListingVersion Model",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11079",
+   "lines": [
+    11079,
+    11079
+   ],
+   "page": "[93] Rules Model",
+   "kind": "info",
+   "text": "[93] Rules Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11081",
+   "lines": [
+    11081,
+    11081
+   ],
+   "page": "[93] Rules Model",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11082",
+   "lines": [
+    11082,
+    11082
+   ],
+   "page": "[93] Rules Model",
+   "kind": "scope",
+   "text": "Page [93] Rules Model scope: MVP."
+  },
+  {
+   "id": "R11083",
+   "lines": [
+    11083,
+    11083
+   ],
+   "page": "[93] Rules Model",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/rules-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11084",
+   "lines": [
+    11084,
+    11084
+   ],
+   "page": "[93] Rules Model",
+   "kind": "requirement",
+   "text": "Rules entity: marketplace rules stored as versioned data."
+  },
+  {
+   "id": "R11085",
+   "lines": [
+    11085,
+    11085
+   ],
+   "page": "[93] Rules Model",
+   "kind": "info",
+   "text": "Keywords: rules, model, marketplace rules, entity",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11087",
+   "lines": [
+    11087,
+    11087
+   ],
+   "page": "[93] Rules Model",
+   "kind": "info",
+   "text": "## Rules Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11089",
+   "lines": [
+    11089,
+    11089
+   ],
+   "page": "[93] Rules Model",
+   "kind": "data",
+   "text": "Rules field: id."
+  },
+  {
+   "id": "R11089a",
+   "lines": [
+    11089,
+    11089
+   ],
+   "page": "[93] Rules Model",
+   "kind": "data",
+   "text": "Rules field: marketplace."
+  },
+  {
+   "id": "R11089b",
+   "lines": [
+    11089,
+    11089
+   ],
+   "page": "[93] Rules Model",
+   "kind": "data",
+   "text": "Rules field: category."
+  },
+  {
+   "id": "R11089c",
+   "lines": [
+    11089,
+    11089
+   ],
+   "page": "[93] Rules Model",
+   "kind": "data",
+   "text": "Rules field: rule_def (JSONB — rule definition)."
+  },
+  {
+   "id": "R11089d",
+   "lines": [
+    11089,
+    11089
+   ],
+   "page": "[93] Rules Model",
+   "kind": "data",
+   "text": "Rules field: severity (error/warning)."
+  },
+  {
+   "id": "R11089e",
+   "lines": [
+    11089,
+    11089
+   ],
+   "page": "[93] Rules Model",
+   "kind": "data",
+   "text": "Rules field: created_at."
+  },
+  {
+   "id": "R11089f",
+   "lines": [
+    11089,
+    11089
+   ],
+   "page": "[93] Rules Model",
+   "kind": "decision",
+   "text": "Rules are data, not code."
+  },
+  {
+   "id": "R11089g",
+   "lines": [
+    11089,
+    11089
+   ],
+   "page": "[93] Rules Model",
+   "kind": "requirement",
+   "text": "Updating rules doesn't require deployment."
+  },
+  {
+   "id": "R11091",
+   "lines": [
+    11091,
+    11091
+   ],
+   "page": "[93] Rules Model",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11093",
+   "lines": [
+    11093,
+    11093
+   ],
+   "page": "[94] ValidationRun Model",
+   "kind": "info",
+   "text": "[94] ValidationRun Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11095",
+   "lines": [
+    11095,
+    11095
+   ],
+   "page": "[94] ValidationRun Model",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11096",
+   "lines": [
+    11096,
+    11096
+   ],
+   "page": "[94] ValidationRun Model",
+   "kind": "scope",
+   "text": "Page [94] ValidationRun Model scope: MVP."
+  },
+  {
+   "id": "R11097",
+   "lines": [
+    11097,
+    11097
+   ],
+   "page": "[94] ValidationRun Model",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/validation-run-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11098",
+   "lines": [
+    11098,
+    11098
+   ],
+   "page": "[94] ValidationRun Model",
+   "kind": "data",
+   "text": "ValidationRun entity holds validation execution records."
+  },
+  {
+   "id": "R11099",
+   "lines": [
+    11099,
+    11099
+   ],
+   "page": "[94] ValidationRun Model",
+   "kind": "info",
+   "text": "Keywords: validation run, model, validation, entity",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11101",
+   "lines": [
+    11101,
+    11101
+   ],
+   "page": "[94] ValidationRun Model",
+   "kind": "info",
+   "text": "## ValidationRun Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11103",
+   "lines": [
+    11103,
+    11103
+   ],
+   "page": "[94] ValidationRun Model",
+   "kind": "data",
+   "text": "ValidationRun field: id."
+  },
+  {
+   "id": "R11103a",
+   "lines": [
+    11103,
+    11103
+   ],
+   "page": "[94] ValidationRun Model",
+   "kind": "data",
+   "text": "ValidationRun field: listing_id."
+  },
+  {
+   "id": "R11103b",
+   "lines": [
+    11103,
+    11103
+   ],
+   "page": "[94] ValidationRun Model",
+   "kind": "data",
+   "text": "ValidationRun field: source (rules/vision/api)."
+  },
+  {
+   "id": "R11103c",
+   "lines": [
+    11103,
+    11103
+   ],
+   "page": "[94] ValidationRun Model",
+   "kind": "data",
+   "text": "ValidationRun field: passed (boolean)."
+  },
+  {
+   "id": "R11103d",
+   "lines": [
+    11103,
+    11103
+   ],
+   "page": "[94] ValidationRun Model",
+   "kind": "data",
+   "text": "ValidationRun field: error_report_json (JSONB)."
+  },
+  {
+   "id": "R11103e",
+   "lines": [
+    11103,
+    11103
+   ],
+   "page": "[94] ValidationRun Model",
+   "kind": "data",
+   "text": "ValidationRun field: created_at."
+  },
+  {
+   "id": "R11103f",
+   "lines": [
+    11103,
+    11103
+   ],
+   "page": "[94] ValidationRun Model",
+   "kind": "quality",
+   "text": "ValidationRun tracks every validation execution for audit and debugging."
+  },
+  {
+   "id": "R11105",
+   "lines": [
+    11105,
+    11105
+   ],
+   "page": "[94] ValidationRun Model",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11107",
+   "lines": [
+    11107,
+    11107
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "info",
+   "text": "[95] AgentRun Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11109",
+   "lines": [
+    11109,
+    11109
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11110",
+   "lines": [
+    11110,
+    11110
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "scope",
+   "text": "Page [95] AgentRun Model scope: MVP."
+  },
+  {
+   "id": "R11111",
+   "lines": [
+    11111,
+    11111
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/agent-run-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11112",
+   "lines": [
+    11112,
+    11112
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "quality",
+   "text": "AgentRun entity is the observability backbone for AI operations."
+  },
+  {
+   "id": "R11113",
+   "lines": [
+    11113,
+    11113
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "info",
+   "text": "Keywords: agent run, model, observability, cost",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11115",
+   "lines": [
+    11115,
+    11115
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "info",
+   "text": "## AgentRun Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11117",
+   "lines": [
+    11117,
+    11117
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "info",
+   "text": "AgentRun field: id.",
+   "why_not": "restatement",
+   "dup_of": "R10950"
+  },
+  {
+   "id": "R11117a",
+   "lines": [
+    11117,
+    11117
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "info",
+   "text": "AgentRun field: product_id.",
+   "why_not": "restatement",
+   "dup_of": "R10951"
+  },
+  {
+   "id": "R11117b",
+   "lines": [
+    11117,
+    11117
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "info",
+   "text": "AgentRun field: trigger.",
+   "why_not": "restatement",
+   "dup_of": "R10952"
+  },
+  {
+   "id": "R11117c",
+   "lines": [
+    11117,
+    11117
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "info",
+   "text": "AgentRun field: model_used.",
+   "why_not": "restatement",
+   "dup_of": "R10953"
+  },
+  {
+   "id": "R11117d",
+   "lines": [
+    11117,
+    11117
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "info",
+   "text": "AgentRun field: tokens_in.",
+   "why_not": "restatement",
+   "dup_of": "R10954"
+  },
+  {
+   "id": "R11117e",
+   "lines": [
+    11117,
+    11117
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "info",
+   "text": "AgentRun field: tokens_out.",
+   "why_not": "restatement",
+   "dup_of": "R10955"
+  },
+  {
+   "id": "R11117f",
+   "lines": [
+    11117,
+    11117
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "info",
+   "text": "AgentRun field: cost (decimal).",
+   "why_not": "restatement",
+   "dup_of": "R10956"
+  },
+  {
+   "id": "R11117g",
+   "lines": [
+    11117,
+    11117
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "info",
+   "text": "AgentRun field: status.",
+   "why_not": "restatement",
+   "dup_of": "R10957"
+  },
+  {
+   "id": "R11117h",
+   "lines": [
+    11117,
+    11117
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "info",
+   "text": "AgentRun field: error_report_json (JSONB).",
+   "why_not": "restatement",
+   "dup_of": "R10958"
+  },
+  {
+   "id": "R11117i",
+   "lines": [
+    11117,
+    11117
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "data",
+   "text": "AgentRun field: duration_ms."
+  },
+  {
+   "id": "R11117j",
+   "lines": [
+    11117,
+    11117
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "info",
+   "text": "AgentRun field: created_at.",
+   "why_not": "restatement",
+   "dup_of": "R10959"
+  },
+  {
+   "id": "R11117k",
+   "lines": [
+    11117,
+    11117
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "requirement",
+   "text": "Every agent execution is recorded (AgentRun)."
+  },
+  {
+   "id": "R11117l",
+   "lines": [
+    11117,
+    11117
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "quality",
+   "text": "AgentRun enables cost per listing."
+  },
+  {
+   "id": "R11117m",
+   "lines": [
+    11117,
+    11117
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "quality",
+   "text": "AgentRun enables cost per agent."
+  },
+  {
+   "id": "R11117n",
+   "lines": [
+    11117,
+    11117
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "quality",
+   "text": "AgentRun enables cost per model."
+  },
+  {
+   "id": "R11117o",
+   "lines": [
+    11117,
+    11117
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "quality",
+   "text": "AgentRun enables error rate tracking."
+  },
+  {
+   "id": "R11119",
+   "lines": [
+    11119,
+    11119
+   ],
+   "page": "[95] AgentRun Model",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11121",
+   "lines": [
+    11121,
+    11121
+   ],
+   "page": "[96] Performance Model",
+   "kind": "info",
+   "text": "[96] Performance Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11123",
+   "lines": [
+    11123,
+    11123
+   ],
+   "page": "[96] Performance Model",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11124",
+   "lines": [
+    11124,
+    11124
+   ],
+   "page": "[96] Performance Model",
+   "kind": "scope",
+   "text": "Page [96] Performance Model scope: MVP."
+  },
+  {
+   "id": "R11125",
+   "lines": [
+    11125,
+    11125
+   ],
+   "page": "[96] Performance Model",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/performance-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11126",
+   "lines": [
+    11126,
+    11126
+   ],
+   "page": "[96] Performance Model",
+   "kind": "data",
+   "text": "Performance entity holds marketplace metrics for the optimization loop."
+  },
+  {
+   "id": "R11127",
+   "lines": [
+    11127,
+    11127
+   ],
+   "page": "[96] Performance Model",
+   "kind": "info",
+   "text": "Keywords: performance, model, metrics, impressions, clicks",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11129",
+   "lines": [
+    11129,
+    11129
+   ],
+   "page": "[96] Performance Model",
+   "kind": "info",
+   "text": "## Performance Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11131",
+   "lines": [
+    11131,
+    11131
+   ],
+   "page": "[96] Performance Model",
+   "kind": "data",
+   "text": "Performance field: id."
+  },
+  {
+   "id": "R11131a",
+   "lines": [
+    11131,
+    11131
+   ],
+   "page": "[96] Performance Model",
+   "kind": "data",
+   "text": "Performance field: listing_id."
+  },
+  {
+   "id": "R11131b",
+   "lines": [
+    11131,
+    11131
+   ],
+   "page": "[96] Performance Model",
+   "kind": "data",
+   "text": "Performance field: impressions."
+  },
+  {
+   "id": "R11131c",
+   "lines": [
+    11131,
+    11131
+   ],
+   "page": "[96] Performance Model",
+   "kind": "data",
+   "text": "Performance field: clicks."
+  },
+  {
+   "id": "R11131d",
+   "lines": [
+    11131,
+    11131
+   ],
+   "page": "[96] Performance Model",
+   "kind": "data",
+   "text": "Performance field: orders."
+  },
+  {
+   "id": "R11131e",
+   "lines": [
+    11131,
+    11131
+   ],
+   "page": "[96] Performance Model",
+   "kind": "data",
+   "text": "Performance field: returns."
+  },
+  {
+   "id": "R11131f",
+   "lines": [
+    11131,
+    11131
+   ],
+   "page": "[96] Performance Model",
+   "kind": "data",
+   "text": "Performance field: ranking_position."
+  },
+  {
+   "id": "R11131g",
+   "lines": [
+    11131,
+    11131
+   ],
+   "page": "[96] Performance Model",
+   "kind": "data",
+   "text": "Performance field: date."
+  },
+  {
+   "id": "R11131h",
+   "lines": [
+    11131,
+    11131
+   ],
+   "page": "[96] Performance Model",
+   "kind": "data",
+   "text": "Performance field: marketplace."
+  },
+  {
+   "id": "R11131i",
+   "lines": [
+    11131,
+    11131
+   ],
+   "page": "[96] Performance Model",
+   "kind": "requirement",
+   "text": "Performance data collected via marketplace APIs."
+  },
+  {
+   "id": "R11131j",
+   "lines": [
+    11131,
+    11131
+   ],
+   "page": "[96] Performance Model",
+   "kind": "requirement",
+   "text": "Performance data collected on schedule."
+  },
+  {
+   "id": "R11131k",
+   "lines": [
+    11131,
+    11131
+   ],
+   "page": "[96] Performance Model",
+   "kind": "requirement",
+   "text": "Performance data powers the analytics dashboard."
+  },
+  {
+   "id": "R11131l",
+   "lines": [
+    11131,
+    11131
+   ],
+   "page": "[96] Performance Model",
+   "kind": "scope",
+   "text": "Performance data powers (Phase 3) the Optimization Agent."
+  },
+  {
+   "id": "R11133",
+   "lines": [
+    11133,
+    11133
+   ],
+   "page": "[96] Performance Model",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11135",
+   "lines": [
+    11135,
+    11135
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "info",
+   "text": "[97] AuditLog Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11137",
+   "lines": [
+    11137,
+    11137
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11138",
+   "lines": [
+    11138,
+    11138
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "scope",
+   "text": "Page [97] AuditLog Model scope: MVP."
+  },
+  {
+   "id": "R11139",
+   "lines": [
+    11139,
+    11139
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/audit-log-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11140",
+   "lines": [
+    11140,
+    11140
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "quality",
+   "text": "AuditLog entity is the complete audit trail for compliance and debugging."
+  },
+  {
+   "id": "R11141",
+   "lines": [
+    11141,
+    11141
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "info",
+   "text": "Keywords: audit log, model, audit trail, compliance",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11143",
+   "lines": [
+    11143,
+    11143
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "info",
+   "text": "## AuditLog Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11145",
+   "lines": [
+    11145,
+    11145
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "data",
+   "text": "AuditLog field: id."
+  },
+  {
+   "id": "R11145a",
+   "lines": [
+    11145,
+    11145
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "data",
+   "text": "AuditLog field: actor (user/system)."
+  },
+  {
+   "id": "R11145b",
+   "lines": [
+    11145,
+    11145
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "data",
+   "text": "AuditLog field: action."
+  },
+  {
+   "id": "R11145c",
+   "lines": [
+    11145,
+    11145
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "data",
+   "text": "AuditLog field: entity_type."
+  },
+  {
+   "id": "R11145d",
+   "lines": [
+    11145,
+    11145
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "data",
+   "text": "AuditLog field: entity_id."
+  },
+  {
+   "id": "R11145e",
+   "lines": [
+    11145,
+    11145
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "data",
+   "text": "AuditLog field: before (JSONB)."
+  },
+  {
+   "id": "R11145f",
+   "lines": [
+    11145,
+    11145
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "data",
+   "text": "AuditLog field: after (JSONB)."
+  },
+  {
+   "id": "R11145g",
+   "lines": [
+    11145,
+    11145
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "data",
+   "text": "AuditLog field: timestamp."
+  },
+  {
+   "id": "R11145h",
+   "lines": [
+    11145,
+    11145
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "quality",
+   "text": "Every important action is logged (AuditLog)."
+  },
+  {
+   "id": "R11145i",
+   "lines": [
+    11145,
+    11145
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "quality",
+   "text": "Audit-logged action: listing creation."
+  },
+  {
+   "id": "R11145j",
+   "lines": [
+    11145,
+    11145
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "quality",
+   "text": "Audit-logged action: approval."
+  },
+  {
+   "id": "R11145k",
+   "lines": [
+    11145,
+    11145
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "quality",
+   "text": "Audit-logged action: rejection."
+  },
+  {
+   "id": "R11145l",
+   "lines": [
+    11145,
+    11145
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "quality",
+   "text": "Audit-logged action: publishing."
+  },
+  {
+   "id": "R11145m",
+   "lines": [
+    11145,
+    11145
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "quality",
+   "text": "Audit-logged action: rule changes."
+  },
+  {
+   "id": "R11145n",
+   "lines": [
+    11145,
+    11145
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "quality",
+   "text": "Audit-logged action: credential updates."
+  },
+  {
+   "id": "R11147",
+   "lines": [
+    11147,
+    11147
+   ],
+   "page": "[97] AuditLog Model",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11149",
+   "lines": [
+    11149,
+    11149
+   ],
+   "page": "[98] BrandChunk Model",
+   "kind": "info",
+   "text": "[98] BrandChunk Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11151",
+   "lines": [
+    11151,
+    11151
+   ],
+   "page": "[98] BrandChunk Model",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11152",
+   "lines": [
+    11152,
+    11152
+   ],
+   "page": "[98] BrandChunk Model",
+   "kind": "scope",
+   "text": "Page [98] BrandChunk Model scope: MVP."
+  },
+  {
+   "id": "R11153",
+   "lines": [
+    11153,
+    11153
+   ],
+   "page": "[98] BrandChunk Model",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/brand-chunk-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11154",
+   "lines": [
+    11154,
+    11154
+   ],
+   "page": "[98] BrandChunk Model",
+   "kind": "data",
+   "text": "BrandChunk entity: embedded brand voice chunks stored in pgvector."
+  },
+  {
+   "id": "R11155",
+   "lines": [
+    11155,
+    11155
+   ],
+   "page": "[98] BrandChunk Model",
+   "kind": "info",
+   "text": "Keywords: brand chunk, model, vector, embedding",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11157",
+   "lines": [
+    11157,
+    11157
+   ],
+   "page": "[98] BrandChunk Model",
+   "kind": "info",
+   "text": "## BrandChunk Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11159",
+   "lines": [
+    11159,
+    11159
+   ],
+   "page": "[98] BrandChunk Model",
+   "kind": "info",
+   "text": "BrandChunk field: id.",
+   "why_not": "restatement",
+   "dup_of": "R10909"
+  },
+  {
+   "id": "R11159a",
+   "lines": [
+    11159,
+    11159
+   ],
+   "page": "[98] BrandChunk Model",
+   "kind": "info",
+   "text": "BrandChunk field: brand_id.",
+   "why_not": "restatement",
+   "dup_of": "R10910"
+  },
+  {
+   "id": "R11159b",
+   "lines": [
+    11159,
+    11159
+   ],
+   "page": "[98] BrandChunk Model",
+   "kind": "info",
+   "text": "BrandChunk field: type (tone_rule/glossary/compliance/example).",
+   "why_not": "restatement",
+   "dup_of": "R10911a"
+  },
+  {
+   "id": "R11159c",
+   "lines": [
+    11159,
+    11159
+   ],
+   "page": "[98] BrandChunk Model",
+   "kind": "info",
+   "text": "BrandChunk field: text.",
+   "why_not": "restatement",
+   "dup_of": "R10912"
+  },
+  {
+   "id": "R11159d",
+   "lines": [
+    11159,
+    11159
+   ],
+   "page": "[98] BrandChunk Model",
+   "kind": "info",
+   "text": "BrandChunk field: embedding (vector(1536)).",
+   "why_not": "restatement",
+   "dup_of": "R10913"
+  },
+  {
+   "id": "R11159e",
+   "lines": [
+    11159,
+    11159
+   ],
+   "page": "[98] BrandChunk Model",
+   "kind": "info",
+   "text": "BrandChunk field: updated_at.",
+   "why_not": "restatement",
+   "dup_of": "R10914"
+  },
+  {
+   "id": "R11159f",
+   "lines": [
+    11159,
+    11159
+   ],
+   "page": "[98] BrandChunk Model",
+   "kind": "decision",
+   "text": "The embedding column uses pgvector's vector type."
+  },
+  {
+   "id": "R11159g",
+   "lines": [
+    11159,
+    11159
+   ],
+   "page": "[98] BrandChunk Model",
+   "kind": "interface",
+   "text": "Cosine similarity search via the `<=>` operator."
+  },
+  {
+   "id": "R11161",
+   "lines": [
+    11161,
+    11161
+   ],
+   "page": "[98] BrandChunk Model",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11163",
+   "lines": [
+    11163,
+    11163
+   ],
+   "page": "[99] Image Model",
+   "kind": "info",
+   "text": "[99] Image Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11165",
+   "lines": [
+    11165,
+    11165
+   ],
+   "page": "[99] Image Model",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11166",
+   "lines": [
+    11166,
+    11166
+   ],
+   "page": "[99] Image Model",
+   "kind": "scope",
+   "text": "Page [99] Image Model scope: MVP."
+  },
+  {
+   "id": "R11167",
+   "lines": [
+    11167,
+    11167
+   ],
+   "page": "[99] Image Model",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/image-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11168",
+   "lines": [
+    11168,
+    11168
+   ],
+   "page": "[99] Image Model",
+   "kind": "data",
+   "text": "Image entity: product images with S3 references."
+  },
+  {
+   "id": "R11168a",
+   "lines": [
+    11168,
+    11168
+   ],
+   "page": "[99] Image Model",
+   "kind": "data",
+   "text": "Image entity: product images with compliance status."
+  },
+  {
+   "id": "R11169",
+   "lines": [
+    11169,
+    11169
+   ],
+   "page": "[99] Image Model",
+   "kind": "info",
+   "text": "Keywords: image, model, S3, entity",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11171",
+   "lines": [
+    11171,
+    11171
+   ],
+   "page": "[99] Image Model",
+   "kind": "info",
+   "text": "## Image Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11173",
+   "lines": [
+    11173,
+    11173
+   ],
+   "page": "[99] Image Model",
+   "kind": "data",
+   "text": "Image field: id."
+  },
+  {
+   "id": "R11173a",
+   "lines": [
+    11173,
+    11173
+   ],
+   "page": "[99] Image Model",
+   "kind": "data",
+   "text": "Image field: product_id."
+  },
+  {
+   "id": "R11173b",
+   "lines": [
+    11173,
+    11173
+   ],
+   "page": "[99] Image Model",
+   "kind": "data",
+   "text": "Image field: s3_url."
+  },
+  {
+   "id": "R11173c",
+   "lines": [
+    11173,
+    11173
+   ],
+   "page": "[99] Image Model",
+   "kind": "data",
+   "text": "Image field: slot (main/secondary/lifestyle)."
+  },
+  {
+   "id": "R11173d",
+   "lines": [
+    11173,
+    11173
+   ],
+   "page": "[99] Image Model",
+   "kind": "data",
+   "text": "Image field: compliance_status."
+  },
+  {
+   "id": "R11173e",
+   "lines": [
+    11173,
+    11173
+   ],
+   "page": "[99] Image Model",
+   "kind": "data",
+   "text": "Image field: image_report_json (JSONB)."
+  },
+  {
+   "id": "R11173f",
+   "lines": [
+    11173,
+    11173
+   ],
+   "page": "[99] Image Model",
+   "kind": "data",
+   "text": "Image field: created_at."
+  },
+  {
+   "id": "R11173g",
+   "lines": [
+    11173,
+    11173
+   ],
+   "page": "[99] Image Model",
+   "kind": "requirement",
+   "text": "Image tracks compliance status per image per marketplace."
+  },
+  {
+   "id": "R11175",
+   "lines": [
+    11175,
+    11175
+   ],
+   "page": "[99] Image Model",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11177",
+   "lines": [
+    11177,
+    11177
+   ],
+   "page": "[100] Error Model",
+   "kind": "info",
+   "text": "[100] Error Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11179",
+   "lines": [
+    11179,
+    11179
+   ],
+   "page": "[100] Error Model",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11180",
+   "lines": [
+    11180,
+    11180
+   ],
+   "page": "[100] Error Model",
+   "kind": "scope",
+   "text": "Page [100] Error Model scope: MVP."
+  },
+  {
+   "id": "R11181",
+   "lines": [
+    11181,
+    11181
+   ],
+   "page": "[100] Error Model",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/error-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11182",
+   "lines": [
+    11182,
+    11182
+   ],
+   "page": "[100] Error Model",
+   "kind": "requirement",
+   "text": "Error tracking model: persisted errors for analysis and debugging."
+  },
+  {
+   "id": "R11183",
+   "lines": [
+    11183,
+    11183
+   ],
+   "page": "[100] Error Model",
+   "kind": "info",
+   "text": "Keywords: error, model, tracking, persisted",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11185",
+   "lines": [
+    11185,
+    11185
+   ],
+   "page": "[100] Error Model",
+   "kind": "info",
+   "text": "## Error Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11187",
+   "lines": [
+    11187,
+    11187
+   ],
+   "page": "[100] Error Model",
+   "kind": "data",
+   "text": "Errors are stored as JSONB within ValidationRun records."
+  },
+  {
+   "id": "R11187a",
+   "lines": [
+    11187,
+    11187
+   ],
+   "page": "[100] Error Model",
+   "kind": "data",
+   "text": "Errors are stored as JSONB within AgentRun records."
+  },
+  {
+   "id": "R11187b",
+   "lines": [
+    11187,
+    11187
+   ],
+   "page": "[100] Error Model",
+   "kind": "interface",
+   "text": "Stored errors use the unified ErrorReport schema."
+  },
+  {
+   "id": "R11187c",
+   "lines": [
+    11187,
+    11187
+   ],
+   "page": "[100] Error Model",
+   "kind": "requirement",
+   "text": "Stored errors are queryable by field across all operations."
+  },
+  {
+   "id": "R11187d",
+   "lines": [
+    11187,
+    11187
+   ],
+   "page": "[100] Error Model",
+   "kind": "requirement",
+   "text": "Stored errors are queryable by error code across all operations."
+  },
+  {
+   "id": "R11187e",
+   "lines": [
+    11187,
+    11187
+   ],
+   "page": "[100] Error Model",
+   "kind": "requirement",
+   "text": "Stored errors are queryable by source across all operations."
+  },
+  {
+   "id": "R11187f",
+   "lines": [
+    11187,
+    11187
+   ],
+   "page": "[100] Error Model",
+   "kind": "requirement",
+   "text": "Stored errors are queryable by marketplace across all operations."
+  },
+  {
+   "id": "R11187g",
+   "lines": [
+    11187,
+    11187
+   ],
+   "page": "[100] Error Model",
+   "kind": "requirement",
+   "text": "Stored errors are queryable by retryability across all operations."
+  },
+  {
+   "id": "R11189",
+   "lines": [
+    11189,
+    11189
+   ],
+   "page": "[100] Error Model",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11191",
+   "lines": [
+    11191,
+    11191
+   ],
+   "page": "[101] Database Indexing Strategy",
+   "kind": "info",
+   "text": "[101] Database Indexing Strategy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11193",
+   "lines": [
+    11193,
+    11193
+   ],
+   "page": "[101] Database Indexing Strategy",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11194",
+   "lines": [
+    11194,
+    11194
+   ],
+   "page": "[101] Database Indexing Strategy",
+   "kind": "scope",
+   "text": "Page [101] Database Indexing Strategy scope: MVP."
+  },
+  {
+   "id": "R11195",
+   "lines": [
+    11195,
+    11195
+   ],
+   "page": "[101] Database Indexing Strategy",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/database-indexing-strategy",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11196",
+   "lines": [
+    11196,
+    11196
+   ],
+   "page": "[101] Database Indexing Strategy",
+   "kind": "quality",
+   "text": "Indexing strategy for query performance: covering indexes for common access patterns."
+  },
+  {
+   "id": "R11197",
+   "lines": [
+    11197,
+    11197
+   ],
+   "page": "[101] Database Indexing Strategy",
+   "kind": "info",
+   "text": "Keywords: indexing, strategy, performance, query",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11199",
+   "lines": [
+    11199,
+    11199
+   ],
+   "page": "[101] Database Indexing Strategy",
+   "kind": "info",
+   "text": "## Indexing Strategy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11201",
+   "lines": [
+    11201,
+    11201
+   ],
+   "page": "[101] Database Indexing Strategy",
+   "kind": "quality",
+   "text": "tenant_id is indexed on every table."
+  },
+  {
+   "id": "R11201a",
+   "lines": [
+    11201,
+    11201
+   ],
+   "page": "[101] Database Indexing Strategy",
+   "kind": "requirement",
+   "text": "tenant_id is a mandatory filter."
+  },
+  {
+   "id": "R11202",
+   "lines": [
+    11202,
+    11202
+   ],
+   "page": "[101] Database Indexing Strategy",
+   "kind": "quality",
+   "text": "Composite index marketplace + status on listings for dashboard queries."
+  },
+  {
+   "id": "R11203",
+   "lines": [
+    11203,
+    11203
+   ],
+   "page": "[101] Database Indexing Strategy",
+   "kind": "quality",
+   "text": "Index product_id + created_at for agent run history."
+  },
+  {
+   "id": "R11204",
+   "lines": [
+    11204,
+    11204
+   ],
+   "page": "[101] Database Indexing Strategy",
+   "kind": "decision",
+   "text": "embedding: pgvector IVFFlat or HNSW index on brand_chunks for similarity search."
+  },
+  {
+   "id": "R11205",
+   "lines": [
+    11205,
+    11205
+   ],
+   "page": "[101] Database Indexing Strategy",
+   "kind": "quality",
+   "text": "Index listing_id + date for performance data time-series queries."
+  },
+  {
+   "id": "R11207",
+   "lines": [
+    11207,
+    11207
+   ],
+   "page": "[101] Database Indexing Strategy",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11209",
+   "lines": [
+    11209,
+    11209
+   ],
+   "page": "[102] Vector Storage",
+   "kind": "info",
+   "text": "[102] Vector Storage",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11211",
+   "lines": [
+    11211,
+    11211
+   ],
+   "page": "[102] Vector Storage",
+   "kind": "info",
+   "text": "Section: Data Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11212",
+   "lines": [
+    11212,
+    11212
+   ],
+   "page": "[102] Vector Storage",
+   "kind": "scope",
+   "text": "Page [102] Vector Storage scope: MVP."
+  },
+  {
+   "id": "R11213",
+   "lines": [
+    11213,
+    11213
+   ],
+   "page": "[102] Vector Storage",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/vector-storage",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11214",
+   "lines": [
+    11214,
+    11214
+   ],
+   "page": "[102] Vector Storage",
+   "kind": "decision",
+   "text": "Vector Storage page covers pgvector configuration and scaling considerations for brand voice embeddings."
+  },
+  {
+   "id": "R11215",
+   "lines": [
+    11215,
+    11215
+   ],
+   "page": "[102] Vector Storage",
+   "kind": "info",
+   "text": "Keywords: vector storage, pgvector, embeddings, scaling",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11217",
+   "lines": [
+    11217,
+    11217
+   ],
+   "page": "[102] Vector Storage",
+   "kind": "info",
+   "text": "## Vector Storage",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11219",
+   "lines": [
+    11219,
+    11219
+   ],
+   "page": "[102] Vector Storage",
+   "kind": "decision",
+   "text": "pgvector stores brand voice embeddings alongside relational data."
+  },
+  {
+   "id": "R11219a",
+   "lines": [
+    11219,
+    11219
+   ],
+   "page": "[102] Vector Storage",
+   "kind": "constraint",
+   "text": "At MVP scale (thousands of chunks), cosine similarity search is fast."
+  },
+  {
+   "id": "R11219b",
+   "lines": [
+    11219,
+    11219
+   ],
+   "page": "[102] Vector Storage",
+   "kind": "risk",
+   "text": "If retrieval latency becomes an issue at scale (millions of chunks), migrate to a dedicated vector store (Pinecone, Weaviate)."
+  },
+  {
+   "id": "R11219c",
+   "lines": [
+    11219,
+    11219
+   ],
+   "page": "[102] Vector Storage",
+   "kind": "decision",
+   "text": "For now, pgvector eliminates operational complexity."
+  },
+  {
+   "id": "R11221",
+   "lines": [
+    11221,
+    11221
+   ],
+   "page": "[102] Vector Storage",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11223",
+   "lines": [
+    11223,
+    11223
+   ],
+   "page": "[103] API Architecture",
+   "kind": "info",
+   "text": "[103] API Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11225",
+   "lines": [
+    11225,
+    11225
+   ],
+   "page": "[103] API Architecture",
+   "kind": "info",
+   "text": "Section: API Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11226",
+   "lines": [
+    11226,
+    11226
+   ],
+   "page": "[103] API Architecture",
+   "kind": "scope",
+   "text": "Page [103] API Architecture scope: MVP."
+  },
+  {
+   "id": "R11227",
+   "lines": [
+    11227,
+    11227
+   ],
+   "page": "[103] API Architecture",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/api-architecture-overview",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11228",
+   "lines": [
+    11228,
+    11228
+   ],
+   "page": "[103] API Architecture",
+   "kind": "decision",
+   "text": "API layer is FastAPI-based."
+  },
+  {
+   "id": "R11228a",
+   "lines": [
+    11228,
+    11228
+   ],
+   "page": "[103] API Architecture",
+   "kind": "requirement",
+   "text": "API layer is async."
+  },
+  {
+   "id": "R11228b",
+   "lines": [
+    11228,
+    11228
+   ],
+   "page": "[103] API Architecture",
+   "kind": "requirement",
+   "text": "API layer is typed."
+  },
+  {
+   "id": "R11228c",
+   "lines": [
+    11228,
+    11228
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "API layer has auto OpenAPI docs."
+  },
+  {
+   "id": "R11228d",
+   "lines": [
+    11228,
+    11228
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "API Architecture page provides the complete endpoint catalog."
+  },
+  {
+   "id": "R11228e",
+   "lines": [
+    11228,
+    11228
+   ],
+   "page": "[103] API Architecture",
+   "kind": "decision",
+   "text": "API layer is REST."
+  },
+  {
+   "id": "R11229",
+   "lines": [
+    11229,
+    11229
+   ],
+   "page": "[103] API Architecture",
+   "kind": "info",
+   "text": "Keywords: API, architecture, FastAPI, REST, endpoints",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11231",
+   "lines": [
+    11231,
+    11231
+   ],
+   "page": "[103] API Architecture",
+   "kind": "info",
+   "text": "## Endpoint Catalog",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11233",
+   "lines": [
+    11233,
+    11237
+   ],
+   "page": "[103] API Architecture",
+   "kind": "info",
+   "text": "Column headers: Endpoint | Method | Purpose",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11239",
+   "lines": [
+    11239,
+    11241
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "Endpoint `/products`, method POST."
+  },
+  {
+   "id": "R11243",
+   "lines": [
+    11243,
+    11243
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "`/products` POST purpose: Create product (manual)."
+  },
+  {
+   "id": "R11243a",
+   "lines": [
+    11243,
+    11243
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "`/products` POST purpose: Create product (bulk)."
+  },
+  {
+   "id": "R11245",
+   "lines": [
+    11245,
+    11247
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "Endpoint `/products/bulk`, method POST."
+  },
+  {
+   "id": "R11249",
+   "lines": [
+    11249,
+    11249
+   ],
+   "page": "[103] API Architecture",
+   "kind": "flow",
+   "text": "`/products/bulk` POST step 1: CSV upload."
+  },
+  {
+   "id": "R11249a",
+   "lines": [
+    11249,
+    11249
+   ],
+   "page": "[103] API Architecture",
+   "kind": "flow",
+   "text": "`/products/bulk` POST step 2 (after CSV upload): queue."
+  },
+  {
+   "id": "R11249b",
+   "lines": [
+    11249,
+    11249
+   ],
+   "page": "[103] API Architecture",
+   "kind": "flow",
+   "text": "`/products/bulk` POST step 3 (after queue): validate."
+  },
+  {
+   "id": "R11249c",
+   "lines": [
+    11249,
+    11249
+   ],
+   "page": "[103] API Architecture",
+   "kind": "flow",
+   "text": "`/products/bulk` POST step 4 (after validate): generate."
+  },
+  {
+   "id": "R11251",
+   "lines": [
+    11251,
+    11253
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "Endpoint `/listings/generate`, method POST."
+  },
+  {
+   "id": "R11255",
+   "lines": [
+    11255,
+    11255
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "`/listings/generate` POST purpose: Trigger AI generation for a product."
+  },
+  {
+   "id": "R11257",
+   "lines": [
+    11257,
+    11259
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "Endpoint `/listings/validate`, method POST."
+  },
+  {
+   "id": "R11261",
+   "lines": [
+    11261,
+    11261
+   ],
+   "page": "[103] API Architecture",
+   "kind": "requirement",
+   "text": "`/listings/validate` POST runs the rules engine."
+  },
+  {
+   "id": "R11261a",
+   "lines": [
+    11261,
+    11261
+   ],
+   "page": "[103] API Architecture",
+   "kind": "requirement",
+   "text": "`/listings/validate` POST runs vision."
+  },
+  {
+   "id": "R11261b",
+   "lines": [
+    11261,
+    11261
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "`/listings/validate` POST returns ErrorReport."
+  },
+  {
+   "id": "R11263",
+   "lines": [
+    11263,
+    11265
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "Endpoint `/listings/approve`, method POST."
+  },
+  {
+   "id": "R11267",
+   "lines": [
+    11267,
+    11267
+   ],
+   "page": "[103] API Architecture",
+   "kind": "flow",
+   "text": "`/listings/approve` POST purpose: Human approval."
+  },
+  {
+   "id": "R11267a",
+   "lines": [
+    11267,
+    11267
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "`/listings/approve` POST: approval with optional feedback."
+  },
+  {
+   "id": "R11269",
+   "lines": [
+    11269,
+    11271
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "Endpoint `/listings/publish`, method POST."
+  },
+  {
+   "id": "R11273",
+   "lines": [
+    11273,
+    11273
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "`/listings/publish` POST purpose: Push to marketplace(s)."
+  },
+  {
+   "id": "R11273a",
+   "lines": [
+    11273,
+    11273
+   ],
+   "page": "[103] API Architecture",
+   "kind": "requirement",
+   "text": "`/listings/publish` POST pushes to marketplace(s) via adapter."
+  },
+  {
+   "id": "R11275",
+   "lines": [
+    11275,
+    11277
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "Endpoint `/marketplaces/connect`, method POST."
+  },
+  {
+   "id": "R11279",
+   "lines": [
+    11279,
+    11279
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "`/marketplaces/connect` POST purpose: OAuth connect Amazon."
+  },
+  {
+   "id": "R11279a",
+   "lines": [
+    11279,
+    11279
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "`/marketplaces/connect` POST purpose: OAuth connect Flipkart."
+  },
+  {
+   "id": "R11281",
+   "lines": [
+    11281,
+    11283
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "Endpoint `/analytics`, method GET."
+  },
+  {
+   "id": "R11285",
+   "lines": [
+    11285,
+    11285
+   ],
+   "page": "[103] API Architecture",
+   "kind": "requirement",
+   "text": "`/analytics` GET purpose: unified performance."
+  },
+  {
+   "id": "R11285a",
+   "lines": [
+    11285,
+    11285
+   ],
+   "page": "[103] API Architecture",
+   "kind": "requirement",
+   "text": "`/analytics` GET purpose: sales attribution (unified with performance)."
+  },
+  {
+   "id": "R11287",
+   "lines": [
+    11287,
+    11289
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "Endpoint `/images/:id/report`, method GET."
+  },
+  {
+   "id": "R11291",
+   "lines": [
+    11291,
+    11291
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "`/images/:id/report` GET purpose: Fetch ImageReport for review."
+  },
+  {
+   "id": "R11293",
+   "lines": [
+    11293,
+    11293
+   ],
+   "page": "[103] API Architecture",
+   "kind": "info",
+   "text": "## Design Principles",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11295",
+   "lines": [
+    11295,
+    11295
+   ],
+   "page": "[103] API Architecture",
+   "kind": "requirement",
+   "text": "All endpoints are async (FastAPI + Python async/await)."
+  },
+  {
+   "id": "R11296",
+   "lines": [
+    11296,
+    11296
+   ],
+   "page": "[103] API Architecture",
+   "kind": "quality",
+   "text": "JWT authentication on every endpoint."
+  },
+  {
+   "id": "R11297",
+   "lines": [
+    11297,
+    11297
+   ],
+   "page": "[103] API Architecture",
+   "kind": "quality",
+   "text": "Tenant isolation enforced at repository layer."
+  },
+  {
+   "id": "R11298",
+   "lines": [
+    11298,
+    11298
+   ],
+   "page": "[103] API Architecture",
+   "kind": "requirement",
+   "text": "Long-running operations return job IDs immediately."
+  },
+  {
+   "id": "R11299",
+   "lines": [
+    11299,
+    11299
+   ],
+   "page": "[103] API Architecture",
+   "kind": "interface",
+   "text": "Consistent error response format using ErrorReport."
+  },
+  {
+   "id": "R11301",
+   "lines": [
+    11301,
+    11301
+   ],
+   "page": "[103] API Architecture",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11303",
+   "lines": [
+    11303,
+    11303
+   ],
+   "page": "[104] Product APIs",
+   "kind": "info",
+   "text": "[104] Product APIs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11305",
+   "lines": [
+    11305,
+    11305
+   ],
+   "page": "[104] Product APIs",
+   "kind": "info",
+   "text": "Section: API Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11306",
+   "lines": [
+    11306,
+    11306
+   ],
+   "page": "[104] Product APIs",
+   "kind": "scope",
+   "text": "Page [104] Product APIs scope: MVP."
+  },
+  {
+   "id": "R11307",
+   "lines": [
+    11307,
+    11307
+   ],
+   "page": "[104] Product APIs",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/product-apis",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11308",
+   "lines": [
+    11308,
+    11308
+   ],
+   "page": "[104] Product APIs",
+   "kind": "interface",
+   "text": "Product APIs: create."
+  },
+  {
+   "id": "R11308a",
+   "lines": [
+    11308,
+    11308
+   ],
+   "page": "[104] Product APIs",
+   "kind": "interface",
+   "text": "Product APIs: read."
+  },
+  {
+   "id": "R11308b",
+   "lines": [
+    11308,
+    11308
+   ],
+   "page": "[104] Product APIs",
+   "kind": "interface",
+   "text": "Product APIs: update."
+  },
+  {
+   "id": "R11308c",
+   "lines": [
+    11308,
+    11308
+   ],
+   "page": "[104] Product APIs",
+   "kind": "requirement",
+   "text": "Product CRUD APIs operate with validation."
+  },
+  {
+   "id": "R11309",
+   "lines": [
+    11309,
+    11309
+   ],
+   "page": "[104] Product APIs",
+   "kind": "info",
+   "text": "Keywords: product API, CRUD, create, read",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11311",
+   "lines": [
+    11311,
+    11311
+   ],
+   "page": "[104] Product APIs",
+   "kind": "info",
+   "text": "## Product APIs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11313",
+   "lines": [
+    11313,
+    11313
+   ],
+   "page": "[104] Product APIs",
+   "kind": "info",
+   "text": "POST /products (example heading).",
+   "why_not": "restatement",
+   "dup_of": "R11239"
+  },
+  {
+   "id": "R11315",
+   "lines": [
+    11315,
+    11315
+   ],
+   "page": "[104] Product APIs",
+   "kind": "info",
+   "text": "Opening ```text code fence.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11316",
+   "lines": [
+    11316,
+    11317
+   ],
+   "page": "[104] Product APIs",
+   "kind": "info",
+   "text": "'Request:' label and '{'.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11318",
+   "lines": [
+    11318,
+    11318
+   ],
+   "page": "[104] Product APIs",
+   "kind": "data",
+   "text": "POST /products request field \"sku\" (example \"KS-001\")."
+  },
+  {
+   "id": "R11319",
+   "lines": [
+    11319,
+    11319
+   ],
+   "page": "[104] Product APIs",
+   "kind": "data",
+   "text": "POST /products request field \"title\" (example \"Organic Cotton Kurta Set\")."
+  },
+  {
+   "id": "R11320",
+   "lines": [
+    11320,
+    11320
+   ],
+   "page": "[104] Product APIs",
+   "kind": "data",
+   "text": "POST /products request field \"images\": array of URIs (example [\"s3://bucket/img1.jpg\"])."
+  },
+  {
+   "id": "R11321",
+   "lines": [
+    11321,
+    11321
+   ],
+   "page": "[104] Product APIs",
+   "kind": "data",
+   "text": "POST /products request field \"attributes\": object (example { \"color\": \"navy blue\", \"material\": \"organic cotton\" })."
+  },
+  {
+   "id": "R11322",
+   "lines": [
+    11322,
+    11322
+   ],
+   "page": "[104] Product APIs",
+   "kind": "info",
+   "text": "Closing '}' of request.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11324",
+   "lines": [
+    11324,
+    11324
+   ],
+   "page": "[104] Product APIs",
+   "kind": "interface",
+   "text": "POST /products returns Response (201)."
+  },
+  {
+   "id": "R11325",
+   "lines": [
+    11325,
+    11325
+   ],
+   "page": "[104] Product APIs",
+   "kind": "info",
+   "text": "Opening '{' of response.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11326",
+   "lines": [
+    11326,
+    11326
+   ],
+   "page": "[104] Product APIs",
+   "kind": "data",
+   "text": "POST /products response field \"id\" (example \"prod_456\")."
+  },
+  {
+   "id": "R11327",
+   "lines": [
+    11327,
+    11327
+   ],
+   "page": "[104] Product APIs",
+   "kind": "data",
+   "text": "POST /products response field \"sku\" (example \"KS-001\")."
+  },
+  {
+   "id": "R11328",
+   "lines": [
+    11328,
+    11328
+   ],
+   "page": "[104] Product APIs",
+   "kind": "data",
+   "text": "POST /products response field \"status\": \"created\"."
+  },
+  {
+   "id": "R11329",
+   "lines": [
+    11329,
+    11329
+   ],
+   "page": "[104] Product APIs",
+   "kind": "data",
+   "text": "POST /products response field \"created_at\" (example \"2024-01-15T10:30:00Z\")."
+  },
+  {
+   "id": "R11330",
+   "lines": [
+    11330,
+    11331
+   ],
+   "page": "[104] Product APIs",
+   "kind": "info",
+   "text": "Closing '}' and ``` code fence.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11333",
+   "lines": [
+    11333,
+    11333
+   ],
+   "page": "[104] Product APIs",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11335",
+   "lines": [
+    11335,
+    11335
+   ],
+   "page": "[105] Bulk Import APIs",
+   "kind": "info",
+   "text": "[105] Bulk Import APIs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11337",
+   "lines": [
+    11337,
+    11337
+   ],
+   "page": "[105] Bulk Import APIs",
+   "kind": "info",
+   "text": "Section: API Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11338",
+   "lines": [
+    11338,
+    11338
+   ],
+   "page": "[105] Bulk Import APIs",
+   "kind": "scope",
+   "text": "Page [105] Bulk Import APIs scope: MVP."
+  },
+  {
+   "id": "R11339",
+   "lines": [
+    11339,
+    11339
+   ],
+   "page": "[105] Bulk Import APIs",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/bulk-import-apis",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11340",
+   "lines": [
+    11340,
+    11340
+   ],
+   "page": "[105] Bulk Import APIs",
+   "kind": "flow",
+   "text": "CSV bulk import API step: upload."
+  },
+  {
+   "id": "R11340a",
+   "lines": [
+    11340,
+    11340
+   ],
+   "page": "[105] Bulk Import APIs",
+   "kind": "flow",
+   "text": "CSV bulk import API step: parse."
+  },
+  {
+   "id": "R11340b",
+   "lines": [
+    11340,
+    11340
+   ],
+   "page": "[105] Bulk Import APIs",
+   "kind": "flow",
+   "text": "CSV bulk import API step: validate."
+  },
+  {
+   "id": "R11340c",
+   "lines": [
+    11340,
+    11340
+   ],
+   "page": "[105] Bulk Import APIs",
+   "kind": "flow",
+   "text": "CSV bulk import API step: fan-out to async processing."
+  },
+  {
+   "id": "R11341",
+   "lines": [
+    11341,
+    11341
+   ],
+   "page": "[105] Bulk Import APIs",
+   "kind": "info",
+   "text": "Keywords: bulk import, CSV, upload, async",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11343",
+   "lines": [
+    11343,
+    11343
+   ],
+   "page": "[105] Bulk Import APIs",
+   "kind": "info",
+   "text": "## Bulk Import API",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11345",
+   "lines": [
+    11345,
+    11345
+   ],
+   "page": "[105] Bulk Import APIs",
+   "kind": "interface",
+   "text": "`POST /products/bulk` accepts a CSV file."
+  },
+  {
+   "id": "R11345a",
+   "lines": [
+    11345,
+    11345
+   ],
+   "page": "[105] Bulk Import APIs",
+   "kind": "requirement",
+   "text": "POST /products/bulk validates headers."
+  },
+  {
+   "id": "R11345b",
+   "lines": [
+    11345,
+    11345
+   ],
+   "page": "[105] Bulk Import APIs",
+   "kind": "requirement",
+   "text": "POST /products/bulk validates rows."
+  },
+  {
+   "id": "R11345c",
+   "lines": [
+    11345,
+    11345
+   ],
+   "page": "[105] Bulk Import APIs",
+   "kind": "flow",
+   "text": "POST /products/bulk then enqueues each valid row for async agent generation."
+  },
+  {
+   "id": "R11345d",
+   "lines": [
+    11345,
+    11345
+   ],
+   "page": "[105] Bulk Import APIs",
+   "kind": "interface",
+   "text": "POST /products/bulk returns a batch ID for status tracking."
+  },
+  {
+   "id": "R11345e",
+   "lines": [
+    11345,
+    11345
+   ],
+   "page": "[105] Bulk Import APIs",
+   "kind": "interface",
+   "text": "Invalid rows are returned immediately with per-row errors."
+  },
+  {
+   "id": "R11347",
+   "lines": [
+    11347,
+    11347
+   ],
+   "page": "[105] Bulk Import APIs",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11349",
+   "lines": [
+    11349,
+    11349
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "info",
+   "text": "[106] Listing Generation APIs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11351",
+   "lines": [
+    11351,
+    11351
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "info",
+   "text": "Section: API Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11352",
+   "lines": [
+    11352,
+    11352
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "scope",
+   "text": "Page [106] Listing Generation APIs scope: MVP."
+  },
+  {
+   "id": "R11353",
+   "lines": [
+    11353,
+    11353
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/listing-generation-apis",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11354",
+   "lines": [
+    11354,
+    11354
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "flow",
+   "text": "Listing generation trigger API initiates AI agent pipeline."
+  },
+  {
+   "id": "R11355",
+   "lines": [
+    11355,
+    11355
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "info",
+   "text": "Keywords: listing generation, API, trigger, generate",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11357",
+   "lines": [
+    11357,
+    11357
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "info",
+   "text": "## Listing Generation API",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11359",
+   "lines": [
+    11359,
+    11359
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "info",
+   "text": "POST /listings/generate (example heading).",
+   "why_not": "restatement",
+   "dup_of": "R11251"
+  },
+  {
+   "id": "R11361",
+   "lines": [
+    11361,
+    11361
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "info",
+   "text": "Opening ```text code fence.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11362",
+   "lines": [
+    11362,
+    11363
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "info",
+   "text": "'Request:' label and '{'.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11364",
+   "lines": [
+    11364,
+    11364
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "data",
+   "text": "POST /listings/generate request field \"product_id\" (example \"prod_456\")."
+  },
+  {
+   "id": "R11365",
+   "lines": [
+    11365,
+    11365
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "data",
+   "text": "POST /listings/generate request field \"marketplace\" (example \"amazon\")."
+  },
+  {
+   "id": "R11366",
+   "lines": [
+    11366,
+    11366
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "data",
+   "text": "POST /listings/generate request field \"user_instructions\" is optional (example \"Focus on organic certifications\")."
+  },
+  {
+   "id": "R11367",
+   "lines": [
+    11367,
+    11367
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "info",
+   "text": "Closing '}' of request.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11369",
+   "lines": [
+    11369,
+    11369
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "interface",
+   "text": "POST /listings/generate returns Response (202 Accepted)."
+  },
+  {
+   "id": "R11370",
+   "lines": [
+    11370,
+    11370
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "info",
+   "text": "Opening '{' of response.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11371",
+   "lines": [
+    11371,
+    11371
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "data",
+   "text": "POST /listings/generate response field \"job_id\" (example \"job_789\")."
+  },
+  {
+   "id": "R11372",
+   "lines": [
+    11372,
+    11372
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "data",
+   "text": "POST /listings/generate response field \"status\": \"queued\"."
+  },
+  {
+   "id": "R11373",
+   "lines": [
+    11373,
+    11373
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "data",
+   "text": "POST /listings/generate response field \"estimated_duration_seconds\" (example 30)."
+  },
+  {
+   "id": "R11374",
+   "lines": [
+    11374,
+    11375
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "info",
+   "text": "Closing '}' and ``` code fence.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11377",
+   "lines": [
+    11377,
+    11377
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "requirement",
+   "text": "Generation is always async."
+  },
+  {
+   "id": "R11377a",
+   "lines": [
+    11377,
+    11377
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "interface",
+   "text": "The generation API returns immediately with a job ID."
+  },
+  {
+   "id": "R11377b",
+   "lines": [
+    11377,
+    11377
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "interface",
+   "text": "The client polls for status (generation job)."
+  },
+  {
+   "id": "R11377c",
+   "lines": [
+    11377,
+    11377
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "interface",
+   "text": "The client receives a webhook callback (generation job, alternative to polling)."
+  },
+  {
+   "id": "R11379",
+   "lines": [
+    11379,
+    11379
+   ],
+   "page": "[106] Listing Generation APIs",
+   "kind": "info",
+   "text": "--- page separator",
+   "why_not": "navigation"
+  }
+ ]
+}

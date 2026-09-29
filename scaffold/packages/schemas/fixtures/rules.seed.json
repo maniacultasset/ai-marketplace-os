@@ -1,0 +1,77 @@
+[
+  {
+    "id": "3f0a7c11-9d24-4a8b-8f31-0a1b2c3d4e01",
+    "tenant_id": null,
+    "marketplace": "amazon",
+    "category": null,
+    "field": "content.title",
+    "severity": "error",
+    "version": 1,
+    "enabled": true,
+    "rule_def": {
+      "type": "max_length",
+      "limit": 200,
+      "unit": "chars",
+      "error_code": "FIELD_TOO_LONG",
+      "message": "Amazon titles are capped at 200 characters; this one is {value} characters.",
+      "suggestion": "Rewrite the title to 200 characters or fewer. Keep the brand name first, keep the size and colour, and drop repeated keywords."
+    }
+  },
+  {
+    "id": "3f0a7c11-9d24-4a8b-8f31-0a1b2c3d4e02",
+    "tenant_id": null,
+    "marketplace": "flipkart",
+    "category": null,
+    "field": "content.title",
+    "severity": "error",
+    "version": 1,
+    "enabled": true,
+    "rule_def": {
+      "type": "max_length",
+      "limit": 150,
+      "unit": "chars",
+      "error_code": "FIELD_TOO_LONG",
+      "message": "Flipkart titles are capped at 150 characters; this one is {value} characters.",
+      "suggestion": "Shorten to 150 characters or fewer, leading with brand and product type."
+    }
+  },
+  {
+    "id": "3f0a7c11-9d24-4a8b-8f31-0a1b2c3d4e03",
+    "tenant_id": null,
+    "marketplace": "amazon",
+    "category": null,
+    "field": "*",
+    "severity": "error",
+    "version": 1,
+    "enabled": true,
+    "rule_def": {
+      "type": "banned_terms",
+      "terms": ["best seller", "bestseller", "#1", "number 1", "100% guaranteed",
+                "free shipping", "cure", "cures", "doctor recommended", "fda approved",
+                "sale", "discount", "cheapest"],
+      "match": "word",
+      "case_sensitive": false,
+      "error_code": "BANNED_TERM",
+      "message": "'{term}' is a prohibited claim or promotional phrase on Amazon.",
+      "suggestion": "Remove '{term}' and describe a verifiable product attribute instead. Do not substitute a synonym for the same claim."
+    }
+  },
+  {
+    "id": "3f0a7c11-9d24-4a8b-8f31-0a1b2c3d4e04",
+    "tenant_id": null,
+    "marketplace": "amazon",
+    "category": "ethnic_wear_kurta_sets",
+    "field": "attributes",
+    "severity": "error",
+    "version": 1,
+    "enabled": true,
+    "rule_def": {
+      "type": "required_attribute",
+      "attribute": "fabric",
+      "allowed_values": ["cotton", "silk", "rayon", "linen", "georgette", "blended"],
+      "error_code": "MISSING_ATTRIBUTE",
+      "message": "Kurta sets require a 'fabric' attribute, one of: {allowed_values}.",
+      "suggestion": "Set attributes.fabric from the product data. If the source does not state the fabric, leave it unset and flag the row rather than guessing."
+    }
+  }
+]

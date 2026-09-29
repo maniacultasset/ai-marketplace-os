@@ -1,0 +1,5596 @@
+{
+ "chunk": "c19",
+ "start": 11381,
+ "end": 11962,
+ "items": [
+  {
+   "id": "R11381",
+   "lines": [
+    11381,
+    11381
+   ],
+   "page": "[107] Validation APIs",
+   "kind": "info",
+   "text": "Page title [107] Validation APIs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11383",
+   "lines": [
+    11383,
+    11383
+   ],
+   "page": "[107] Validation APIs",
+   "kind": "info",
+   "text": "Section: API Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11384",
+   "lines": [
+    11384,
+    11384
+   ],
+   "page": "[107] Validation APIs",
+   "kind": "scope",
+   "text": "Page [107] Validation APIs scope: MVP."
+  },
+  {
+   "id": "R11385",
+   "lines": [
+    11385,
+    11385
+   ],
+   "page": "[107] Validation APIs",
+   "kind": "info",
+   "text": "Page URL .../page/validation-apis",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11386",
+   "lines": [
+    11386,
+    11386
+   ],
+   "page": "[107] Validation APIs",
+   "kind": "requirement",
+   "text": "Validation API triggers rules engine + vision checks."
+  },
+  {
+   "id": "R11386a",
+   "lines": [
+    11386,
+    11386
+   ],
+   "page": "[107] Validation APIs",
+   "kind": "interface",
+   "text": "Validation API returns ErrorReport."
+  },
+  {
+   "id": "R11387",
+   "lines": [
+    11387,
+    11387
+   ],
+   "page": "[107] Validation APIs",
+   "kind": "info",
+   "text": "Keywords: validation, API, rules engine, ErrorReport",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11389",
+   "lines": [
+    11389,
+    11389
+   ],
+   "page": "[107] Validation APIs",
+   "kind": "info",
+   "text": "Validation API",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11391",
+   "lines": [
+    11391,
+    11391
+   ],
+   "page": "[107] Validation APIs",
+   "kind": "interface",
+   "text": "Endpoint `POST /listings/validate`."
+  },
+  {
+   "id": "R11391a",
+   "lines": [
+    11391,
+    11391
+   ],
+   "page": "[107] Validation APIs",
+   "kind": "requirement",
+   "text": "`POST /listings/validate` runs the full validation pipeline (schema + rules + vision)."
+  },
+  {
+   "id": "R11391b",
+   "lines": [
+    11391,
+    11391
+   ],
+   "page": "[107] Validation APIs",
+   "kind": "info",
+   "text": "`POST /listings/validate` returns a structured ErrorReport.",
+   "why_not": "restatement",
+   "dup_of": "R11386a"
+  },
+  {
+   "id": "R11391c",
+   "lines": [
+    11391,
+    11391
+   ],
+   "page": "[107] Validation APIs",
+   "kind": "requirement",
+   "text": "`POST /listings/validate` can be called independently of generation for manual edits."
+  },
+  {
+   "id": "R11393",
+   "lines": [
+    11393,
+    11393
+   ],
+   "page": "[107] Validation APIs",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11395",
+   "lines": [
+    11395,
+    11395
+   ],
+   "page": "[108] Approval APIs",
+   "kind": "info",
+   "text": "Page title [108] Approval APIs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11397",
+   "lines": [
+    11397,
+    11397
+   ],
+   "page": "[108] Approval APIs",
+   "kind": "info",
+   "text": "Section: API Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11398",
+   "lines": [
+    11398,
+    11398
+   ],
+   "page": "[108] Approval APIs",
+   "kind": "scope",
+   "text": "Page [108] Approval APIs scope: MVP."
+  },
+  {
+   "id": "R11399",
+   "lines": [
+    11399,
+    11399
+   ],
+   "page": "[108] Approval APIs",
+   "kind": "info",
+   "text": "Page URL .../page/approval-apis",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11400",
+   "lines": [
+    11400,
+    11400
+   ],
+   "page": "[108] Approval APIs",
+   "kind": "requirement",
+   "text": "Approval API provides human approval with maker-checker enforcement."
+  },
+  {
+   "id": "R11401",
+   "lines": [
+    11401,
+    11401
+   ],
+   "page": "[108] Approval APIs",
+   "kind": "info",
+   "text": "Keywords: approval, API, approve, reject",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11403",
+   "lines": [
+    11403,
+    11403
+   ],
+   "page": "[108] Approval APIs",
+   "kind": "info",
+   "text": "Approval API",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11405",
+   "lines": [
+    11405,
+    11405
+   ],
+   "page": "[108] Approval APIs",
+   "kind": "interface",
+   "text": "Endpoint `POST /listings/approve`."
+  },
+  {
+   "id": "R11405a",
+   "lines": [
+    11405,
+    11405
+   ],
+   "page": "[108] Approval APIs",
+   "kind": "data",
+   "text": "`POST /listings/approve` includes approval decision (approve/reject)."
+  },
+  {
+   "id": "R11405b",
+   "lines": [
+    11405,
+    11405
+   ],
+   "page": "[108] Approval APIs",
+   "kind": "data",
+   "text": "`POST /listings/approve` includes optional feedback."
+  },
+  {
+   "id": "R11405c",
+   "lines": [
+    11405,
+    11405
+   ],
+   "page": "[108] Approval APIs",
+   "kind": "data",
+   "text": "`POST /listings/approve` includes reviewer ID."
+  },
+  {
+   "id": "R11405d",
+   "lines": [
+    11405,
+    11405
+   ],
+   "page": "[108] Approval APIs",
+   "kind": "requirement",
+   "text": "The approval API enforces maker-checker: the generator cannot approve their own listing."
+  },
+  {
+   "id": "R11405e",
+   "lines": [
+    11405,
+    11405
+   ],
+   "page": "[108] Approval APIs",
+   "kind": "interface",
+   "text": "`POST /listings/approve` returns updated listing status."
+  },
+  {
+   "id": "R11407",
+   "lines": [
+    11407,
+    11407
+   ],
+   "page": "[108] Approval APIs",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11409",
+   "lines": [
+    11409,
+    11409
+   ],
+   "page": "[109] Publishing APIs",
+   "kind": "info",
+   "text": "Page title [109] Publishing APIs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11411",
+   "lines": [
+    11411,
+    11411
+   ],
+   "page": "[109] Publishing APIs",
+   "kind": "info",
+   "text": "Section: API Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11412",
+   "lines": [
+    11412,
+    11412
+   ],
+   "page": "[109] Publishing APIs",
+   "kind": "scope",
+   "text": "Page [109] Publishing APIs scope: MVP."
+  },
+  {
+   "id": "R11413",
+   "lines": [
+    11413,
+    11413
+   ],
+   "page": "[109] Publishing APIs",
+   "kind": "info",
+   "text": "Page URL .../page/publishing-apis",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11414",
+   "lines": [
+    11414,
+    11414
+   ],
+   "page": "[109] Publishing APIs",
+   "kind": "requirement",
+   "text": "Publishing API triggers marketplace adapter execution."
+  },
+  {
+   "id": "R11415",
+   "lines": [
+    11415,
+    11415
+   ],
+   "page": "[109] Publishing APIs",
+   "kind": "info",
+   "text": "Keywords: publishing, API, publish, marketplace",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11417",
+   "lines": [
+    11417,
+    11417
+   ],
+   "page": "[109] Publishing APIs",
+   "kind": "info",
+   "text": "Publishing API",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11419",
+   "lines": [
+    11419,
+    11419
+   ],
+   "page": "[109] Publishing APIs",
+   "kind": "interface",
+   "text": "Endpoint `POST /listings/publish`."
+  },
+  {
+   "id": "R11419a",
+   "lines": [
+    11419,
+    11419
+   ],
+   "page": "[109] Publishing APIs",
+   "kind": "requirement",
+   "text": "`POST /listings/publish` only works on approved listings."
+  },
+  {
+   "id": "R11419b",
+   "lines": [
+    11419,
+    11419
+   ],
+   "page": "[109] Publishing APIs",
+   "kind": "flow",
+   "text": "`POST /listings/publish` enqueues the publish job."
+  },
+  {
+   "id": "R11419c",
+   "lines": [
+    11419,
+    11419
+   ],
+   "page": "[109] Publishing APIs",
+   "kind": "interface",
+   "text": "`POST /listings/publish` returns job ID."
+  },
+  {
+   "id": "R11419d",
+   "lines": [
+    11419,
+    11419
+   ],
+   "page": "[109] Publishing APIs",
+   "kind": "requirement",
+   "text": "The adapter handles marketplace-specific mapping."
+  },
+  {
+   "id": "R11419e",
+   "lines": [
+    11419,
+    11419
+   ],
+   "page": "[109] Publishing APIs",
+   "kind": "requirement",
+   "text": "The adapter handles auth."
+  },
+  {
+   "id": "R11419f",
+   "lines": [
+    11419,
+    11419
+   ],
+   "page": "[109] Publishing APIs",
+   "kind": "requirement",
+   "text": "The adapter handles rate limiting."
+  },
+  {
+   "id": "R11421",
+   "lines": [
+    11421,
+    11421
+   ],
+   "page": "[109] Publishing APIs",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11423",
+   "lines": [
+    11423,
+    11423
+   ],
+   "page": "[110] Marketplace Connection APIs",
+   "kind": "info",
+   "text": "Page title [110] Marketplace Connection APIs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11425",
+   "lines": [
+    11425,
+    11425
+   ],
+   "page": "[110] Marketplace Connection APIs",
+   "kind": "info",
+   "text": "Section: API Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11426",
+   "lines": [
+    11426,
+    11426
+   ],
+   "page": "[110] Marketplace Connection APIs",
+   "kind": "scope",
+   "text": "Page [110] Marketplace Connection APIs scope: MVP."
+  },
+  {
+   "id": "R11427",
+   "lines": [
+    11427,
+    11427
+   ],
+   "page": "[110] Marketplace Connection APIs",
+   "kind": "info",
+   "text": "Page URL .../page/marketplace-connection-apis",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11428",
+   "lines": [
+    11428,
+    11428
+   ],
+   "page": "[110] Marketplace Connection APIs",
+   "kind": "requirement",
+   "text": "Marketplace connection API provides OAuth flow initiation."
+  },
+  {
+   "id": "R11429",
+   "lines": [
+    11429,
+    11429
+   ],
+   "page": "[110] Marketplace Connection APIs",
+   "kind": "info",
+   "text": "Keywords: marketplace connection, API, OAuth, connect",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11431",
+   "lines": [
+    11431,
+    11431
+   ],
+   "page": "[110] Marketplace Connection APIs",
+   "kind": "info",
+   "text": "Connection API",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11433",
+   "lines": [
+    11433,
+    11433
+   ],
+   "page": "[110] Marketplace Connection APIs",
+   "kind": "interface",
+   "text": "Endpoint `POST /marketplaces/connect`."
+  },
+  {
+   "id": "R11433a",
+   "lines": [
+    11433,
+    11433
+   ],
+   "page": "[110] Marketplace Connection APIs",
+   "kind": "flow",
+   "text": "`POST /marketplaces/connect` initiates OAuth flow for the specified marketplace."
+  },
+  {
+   "id": "R11433b",
+   "lines": [
+    11433,
+    11433
+   ],
+   "page": "[110] Marketplace Connection APIs",
+   "kind": "interface",
+   "text": "`POST /marketplaces/connect` returns redirect URL for OAuth consent."
+  },
+  {
+   "id": "R11433c",
+   "lines": [
+    11433,
+    11433
+   ],
+   "page": "[110] Marketplace Connection APIs",
+   "kind": "flow",
+   "text": "Connection API handles the OAuth callback."
+  },
+  {
+   "id": "R11433d",
+   "lines": [
+    11433,
+    11433
+   ],
+   "page": "[110] Marketplace Connection APIs",
+   "kind": "flow",
+   "text": "Connection API handles token exchange."
+  },
+  {
+   "id": "R11433e",
+   "lines": [
+    11433,
+    11433
+   ],
+   "page": "[110] Marketplace Connection APIs",
+   "kind": "quality",
+   "text": "`POST /marketplaces/connect` handles encrypted storage."
+  },
+  {
+   "id": "R11435",
+   "lines": [
+    11435,
+    11435
+   ],
+   "page": "[110] Marketplace Connection APIs",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11437",
+   "lines": [
+    11437,
+    11437
+   ],
+   "page": "[111] Analytics APIs",
+   "kind": "info",
+   "text": "Page title [111] Analytics APIs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11439",
+   "lines": [
+    11439,
+    11439
+   ],
+   "page": "[111] Analytics APIs",
+   "kind": "info",
+   "text": "Section: API Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11440",
+   "lines": [
+    11440,
+    11440
+   ],
+   "page": "[111] Analytics APIs",
+   "kind": "scope",
+   "text": "Page [111] Analytics APIs scope: MVP."
+  },
+  {
+   "id": "R11441",
+   "lines": [
+    11441,
+    11441
+   ],
+   "page": "[111] Analytics APIs",
+   "kind": "info",
+   "text": "Page URL .../page/analytics-apis",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11442",
+   "lines": [
+    11442,
+    11442
+   ],
+   "page": "[111] Analytics APIs",
+   "kind": "requirement",
+   "text": "Analytics API provides unified performance data across marketplaces."
+  },
+  {
+   "id": "R11443",
+   "lines": [
+    11443,
+    11443
+   ],
+   "page": "[111] Analytics APIs",
+   "kind": "info",
+   "text": "Keywords: analytics, API, performance, metrics",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11445",
+   "lines": [
+    11445,
+    11445
+   ],
+   "page": "[111] Analytics APIs",
+   "kind": "info",
+   "text": "Analytics API",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11447",
+   "lines": [
+    11447,
+    11447
+   ],
+   "page": "[111] Analytics APIs",
+   "kind": "interface",
+   "text": "Endpoint `GET /analytics`."
+  },
+  {
+   "id": "R11447a",
+   "lines": [
+    11447,
+    11447
+   ],
+   "page": "[111] Analytics APIs",
+   "kind": "info",
+   "text": "`GET /analytics` returns unified performance metrics across all marketplaces.",
+   "why_not": "restatement",
+   "dup_of": "R11442"
+  },
+  {
+   "id": "R11447b",
+   "lines": [
+    11447,
+    11447
+   ],
+   "page": "[111] Analytics APIs",
+   "kind": "requirement",
+   "text": "`GET /analytics` supports date range filtering."
+  },
+  {
+   "id": "R11447c",
+   "lines": [
+    11447,
+    11447
+   ],
+   "page": "[111] Analytics APIs",
+   "kind": "requirement",
+   "text": "`GET /analytics` supports marketplace filtering."
+  },
+  {
+   "id": "R11447d",
+   "lines": [
+    11447,
+    11447
+   ],
+   "page": "[111] Analytics APIs",
+   "kind": "requirement",
+   "text": "`GET /analytics` supports product-level drill-down."
+  },
+  {
+   "id": "R11447e",
+   "lines": [
+    11447,
+    11447
+   ],
+   "page": "[111] Analytics APIs",
+   "kind": "requirement",
+   "text": "`GET /analytics` powers the dashboard analytics view."
+  },
+  {
+   "id": "R11449",
+   "lines": [
+    11449,
+    11449
+   ],
+   "page": "[111] Analytics APIs",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11451",
+   "lines": [
+    11451,
+    11451
+   ],
+   "page": "[112] Image APIs",
+   "kind": "info",
+   "text": "Page title [112] Image APIs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11453",
+   "lines": [
+    11453,
+    11453
+   ],
+   "page": "[112] Image APIs",
+   "kind": "info",
+   "text": "Section: API Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11454",
+   "lines": [
+    11454,
+    11454
+   ],
+   "page": "[112] Image APIs",
+   "kind": "scope",
+   "text": "Page [112] Image APIs scope: MVP."
+  },
+  {
+   "id": "R11455",
+   "lines": [
+    11455,
+    11455
+   ],
+   "page": "[112] Image APIs",
+   "kind": "info",
+   "text": "Page URL .../page/image-apis",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11456",
+   "lines": [
+    11456,
+    11456
+   ],
+   "page": "[112] Image APIs",
+   "kind": "requirement",
+   "text": "Image APIs provide upload."
+  },
+  {
+   "id": "R11456a",
+   "lines": [
+    11456,
+    11456
+   ],
+   "page": "[112] Image APIs",
+   "kind": "requirement",
+   "text": "Image APIs provide compliance check."
+  },
+  {
+   "id": "R11456b",
+   "lines": [
+    11456,
+    11456
+   ],
+   "page": "[112] Image APIs",
+   "kind": "requirement",
+   "text": "Image APIs provide report retrieval."
+  },
+  {
+   "id": "R11457",
+   "lines": [
+    11457,
+    11457
+   ],
+   "page": "[112] Image APIs",
+   "kind": "info",
+   "text": "Keywords: image, API, upload, compliance",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11459",
+   "lines": [
+    11459,
+    11459
+   ],
+   "page": "[112] Image APIs",
+   "kind": "info",
+   "text": "Image APIs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11461",
+   "lines": [
+    11461,
+    11461
+   ],
+   "page": "[112] Image APIs",
+   "kind": "interface",
+   "text": "Endpoint `POST /images/upload` uploads a product image."
+  },
+  {
+   "id": "R11461a",
+   "lines": [
+    11461,
+    11461
+   ],
+   "page": "[112] Image APIs",
+   "kind": "decision",
+   "text": "Product images are uploaded to S3."
+  },
+  {
+   "id": "R11461b",
+   "lines": [
+    11461,
+    11461
+   ],
+   "page": "[112] Image APIs",
+   "kind": "flow",
+   "text": "`POST /images/upload` triggers the compliance pipeline."
+  },
+  {
+   "id": "R11461c",
+   "lines": [
+    11461,
+    11461
+   ],
+   "page": "[112] Image APIs",
+   "kind": "interface",
+   "text": "Endpoint `GET /images/:id/report` fetches ImageReport for review."
+  },
+  {
+   "id": "R11461d",
+   "lines": [
+    11461,
+    11461
+   ],
+   "page": "[112] Image APIs",
+   "kind": "interface",
+   "text": "Image report returns structured compliance results with per-check details."
+  },
+  {
+   "id": "R11461e",
+   "lines": [
+    11461,
+    11461
+   ],
+   "page": "[112] Image APIs",
+   "kind": "interface",
+   "text": "Image report compliance results include suggestions."
+  },
+  {
+   "id": "R11463",
+   "lines": [
+    11463,
+    11463
+   ],
+   "page": "[112] Image APIs",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11465",
+   "lines": [
+    11465,
+    11465
+   ],
+   "page": "[113] Agent APIs",
+   "kind": "info",
+   "text": "Page title [113] Agent APIs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11467",
+   "lines": [
+    11467,
+    11467
+   ],
+   "page": "[113] Agent APIs",
+   "kind": "info",
+   "text": "Section: API Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11468",
+   "lines": [
+    11468,
+    11468
+   ],
+   "page": "[113] Agent APIs",
+   "kind": "scope",
+   "text": "Page [113] Agent APIs scope: MVP."
+  },
+  {
+   "id": "R11469",
+   "lines": [
+    11469,
+    11469
+   ],
+   "page": "[113] Agent APIs",
+   "kind": "info",
+   "text": "Page URL .../page/agent-apis",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11470",
+   "lines": [
+    11470,
+    11470
+   ],
+   "page": "[113] Agent APIs",
+   "kind": "requirement",
+   "text": "Agent APIs provide agent run status."
+  },
+  {
+   "id": "R11470a",
+   "lines": [
+    11470,
+    11470
+   ],
+   "page": "[113] Agent APIs",
+   "kind": "requirement",
+   "text": "Agent APIs provide agent run history."
+  },
+  {
+   "id": "R11470b",
+   "lines": [
+    11470,
+    11470
+   ],
+   "page": "[113] Agent APIs",
+   "kind": "requirement",
+   "text": "Agent APIs provide agent run management."
+  },
+  {
+   "id": "R11471",
+   "lines": [
+    11471,
+    11471
+   ],
+   "page": "[113] Agent APIs",
+   "kind": "info",
+   "text": "Keywords: agent, API, run status, history",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11473",
+   "lines": [
+    11473,
+    11473
+   ],
+   "page": "[113] Agent APIs",
+   "kind": "info",
+   "text": "Agent APIs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11475",
+   "lines": [
+    11475,
+    11475
+   ],
+   "page": "[113] Agent APIs",
+   "kind": "interface",
+   "text": "Internal agent run management APIs support status polling."
+  },
+  {
+   "id": "R11475a",
+   "lines": [
+    11475,
+    11475
+   ],
+   "page": "[113] Agent APIs",
+   "kind": "info",
+   "text": "Agent APIs support history retrieval.",
+   "why_not": "restatement",
+   "dup_of": "R11470a"
+  },
+  {
+   "id": "R11475b",
+   "lines": [
+    11475,
+    11475
+   ],
+   "page": "[113] Agent APIs",
+   "kind": "interface",
+   "text": "Agent APIs support run cancellation."
+  },
+  {
+   "id": "R11475c",
+   "lines": [
+    11475,
+    11475
+   ],
+   "page": "[113] Agent APIs",
+   "kind": "scope",
+   "text": "Agent APIs are internal; not typically exposed to end users."
+  },
+  {
+   "id": "R11475d",
+   "lines": [
+    11475,
+    11475
+   ],
+   "page": "[113] Agent APIs",
+   "kind": "requirement",
+   "text": "Agent APIs are used by the frontend for generation status tracking."
+  },
+  {
+   "id": "R11477",
+   "lines": [
+    11477,
+    11477
+   ],
+   "page": "[113] Agent APIs",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11479",
+   "lines": [
+    11479,
+    11479
+   ],
+   "page": "[114] Error APIs",
+   "kind": "info",
+   "text": "Page title [114] Error APIs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11481",
+   "lines": [
+    11481,
+    11481
+   ],
+   "page": "[114] Error APIs",
+   "kind": "info",
+   "text": "Section: API Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11482",
+   "lines": [
+    11482,
+    11482
+   ],
+   "page": "[114] Error APIs",
+   "kind": "scope",
+   "text": "Page [114] Error APIs scope: MVP."
+  },
+  {
+   "id": "R11483",
+   "lines": [
+    11483,
+    11483
+   ],
+   "page": "[114] Error APIs",
+   "kind": "info",
+   "text": "Page URL .../page/error-apis",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11484",
+   "lines": [
+    11484,
+    11484
+   ],
+   "page": "[114] Error APIs",
+   "kind": "requirement",
+   "text": "Error APIs provide error report retrieval."
+  },
+  {
+   "id": "R11484a",
+   "lines": [
+    11484,
+    11484
+   ],
+   "page": "[114] Error APIs",
+   "kind": "requirement",
+   "text": "Error APIs provide error analytics."
+  },
+  {
+   "id": "R11485",
+   "lines": [
+    11485,
+    11485
+   ],
+   "page": "[114] Error APIs",
+   "kind": "info",
+   "text": "Keywords: error, API, report, analytics",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11487",
+   "lines": [
+    11487,
+    11487
+   ],
+   "page": "[114] Error APIs",
+   "kind": "info",
+   "text": "Error APIs",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11489",
+   "lines": [
+    11489,
+    11489
+   ],
+   "page": "[114] Error APIs",
+   "kind": "info",
+   "text": "APIs for retrieving error reports.",
+   "why_not": "restatement",
+   "dup_of": "R11484"
+  },
+  {
+   "id": "R11489a",
+   "lines": [
+    11489,
+    11489
+   ],
+   "page": "[114] Error APIs",
+   "kind": "requirement",
+   "text": "Error APIs support querying error patterns."
+  },
+  {
+   "id": "R11489b",
+   "lines": [
+    11489,
+    11489
+   ],
+   "page": "[114] Error APIs",
+   "kind": "requirement",
+   "text": "Error APIs support analyzing error rates."
+  },
+  {
+   "id": "R11489c",
+   "lines": [
+    11489,
+    11489
+   ],
+   "page": "[114] Error APIs",
+   "kind": "requirement",
+   "text": "Error APIs support filtering by error code."
+  },
+  {
+   "id": "R11489d",
+   "lines": [
+    11489,
+    11489
+   ],
+   "page": "[114] Error APIs",
+   "kind": "requirement",
+   "text": "Error APIs support filtering by source."
+  },
+  {
+   "id": "R11489e",
+   "lines": [
+    11489,
+    11489
+   ],
+   "page": "[114] Error APIs",
+   "kind": "requirement",
+   "text": "Error APIs support filtering by marketplace."
+  },
+  {
+   "id": "R11489f",
+   "lines": [
+    11489,
+    11489
+   ],
+   "page": "[114] Error APIs",
+   "kind": "requirement",
+   "text": "Error APIs support filtering by date range."
+  },
+  {
+   "id": "R11491",
+   "lines": [
+    11491,
+    11491
+   ],
+   "page": "[114] Error APIs",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11493",
+   "lines": [
+    11493,
+    11493
+   ],
+   "page": "[115] Webhook Architecture",
+   "kind": "info",
+   "text": "Page title [115] Webhook Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11495",
+   "lines": [
+    11495,
+    11495
+   ],
+   "page": "[115] Webhook Architecture",
+   "kind": "info",
+   "text": "Section: API Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11496",
+   "lines": [
+    11496,
+    11496
+   ],
+   "page": "[115] Webhook Architecture",
+   "kind": "scope",
+   "text": "Page [115] Webhook Architecture scope: PHASE2."
+  },
+  {
+   "id": "R11497",
+   "lines": [
+    11497,
+    11497
+   ],
+   "page": "[115] Webhook Architecture",
+   "kind": "info",
+   "text": "Page URL .../page/webhook-architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11498",
+   "lines": [
+    11498,
+    11498
+   ],
+   "page": "[115] Webhook Architecture",
+   "kind": "requirement",
+   "text": "Webhook system for async event notifications."
+  },
+  {
+   "id": "R11499",
+   "lines": [
+    11499,
+    11499
+   ],
+   "page": "[115] Webhook Architecture",
+   "kind": "info",
+   "text": "Keywords: webhook, events, notifications, async",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11501",
+   "lines": [
+    11501,
+    11501
+   ],
+   "page": "[115] Webhook Architecture",
+   "kind": "info",
+   "text": "Webhook Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11503",
+   "lines": [
+    11503,
+    11503
+   ],
+   "page": "[115] Webhook Architecture",
+   "kind": "scope",
+   "text": "Phase 2: Webhook system for notifying external systems of events."
+  },
+  {
+   "id": "R11503a",
+   "lines": [
+    11503,
+    11503
+   ],
+   "page": "[115] Webhook Architecture",
+   "kind": "interface",
+   "text": "Webhook event: listing published."
+  },
+  {
+   "id": "R11503b",
+   "lines": [
+    11503,
+    11503
+   ],
+   "page": "[115] Webhook Architecture",
+   "kind": "interface",
+   "text": "Webhook event: generation complete."
+  },
+  {
+   "id": "R11503c",
+   "lines": [
+    11503,
+    11503
+   ],
+   "page": "[115] Webhook Architecture",
+   "kind": "interface",
+   "text": "Webhook event: validation failed."
+  },
+  {
+   "id": "R11503d",
+   "lines": [
+    11503,
+    11503
+   ],
+   "page": "[115] Webhook Architecture",
+   "kind": "interface",
+   "text": "Webhook event: approval required."
+  },
+  {
+   "id": "R11503e",
+   "lines": [
+    11503,
+    11503
+   ],
+   "page": "[115] Webhook Architecture",
+   "kind": "requirement",
+   "text": "Standard webhook pattern with retry."
+  },
+  {
+   "id": "R11503f",
+   "lines": [
+    11503,
+    11503
+   ],
+   "page": "[115] Webhook Architecture",
+   "kind": "quality",
+   "text": "Webhooks use signature verification."
+  },
+  {
+   "id": "R11503g",
+   "lines": [
+    11503,
+    11503
+   ],
+   "page": "[115] Webhook Architecture",
+   "kind": "requirement",
+   "text": "Webhooks have delivery tracking."
+  },
+  {
+   "id": "R11505",
+   "lines": [
+    11505,
+    11505
+   ],
+   "page": "[115] Webhook Architecture",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11507",
+   "lines": [
+    11507,
+    11507
+   ],
+   "page": "[116] API Authentication",
+   "kind": "info",
+   "text": "Page title [116] API Authentication",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11509",
+   "lines": [
+    11509,
+    11509
+   ],
+   "page": "[116] API Authentication",
+   "kind": "info",
+   "text": "Section: API Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11510",
+   "lines": [
+    11510,
+    11510
+   ],
+   "page": "[116] API Authentication",
+   "kind": "scope",
+   "text": "Page [116] API Authentication scope: MVP."
+  },
+  {
+   "id": "R11511",
+   "lines": [
+    11511,
+    11511
+   ],
+   "page": "[116] API Authentication",
+   "kind": "info",
+   "text": "Page URL .../page/api-authentication",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11512",
+   "lines": [
+    11512,
+    11512
+   ],
+   "page": "[116] API Authentication",
+   "kind": "decision",
+   "text": "JWT-based API authentication via NextAuth."
+  },
+  {
+   "id": "R11513",
+   "lines": [
+    11513,
+    11513
+   ],
+   "page": "[116] API Authentication",
+   "kind": "info",
+   "text": "Keywords: authentication, JWT, NextAuth, tokens",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11515",
+   "lines": [
+    11515,
+    11515
+   ],
+   "page": "[116] API Authentication",
+   "kind": "info",
+   "text": "API Authentication",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11517",
+   "lines": [
+    11517,
+    11517
+   ],
+   "page": "[116] API Authentication",
+   "kind": "info",
+   "text": "JWT via NextAuth.",
+   "why_not": "restatement",
+   "dup_of": "R11512"
+  },
+  {
+   "id": "R11517a",
+   "lines": [
+    11517,
+    11517
+   ],
+   "page": "[116] API Authentication",
+   "kind": "decision",
+   "text": "NextAuth is self-hosted."
+  },
+  {
+   "id": "R11517b",
+   "lines": [
+    11517,
+    11517
+   ],
+   "page": "[116] API Authentication",
+   "kind": "quality",
+   "text": "Every API request must include a valid JWT."
+  },
+  {
+   "id": "R11517c",
+   "lines": [
+    11517,
+    11517
+   ],
+   "page": "[116] API Authentication",
+   "kind": "data",
+   "text": "JWT tokens contain: user_id."
+  },
+  {
+   "id": "R11517d",
+   "lines": [
+    11517,
+    11517
+   ],
+   "page": "[116] API Authentication",
+   "kind": "data",
+   "text": "JWT tokens contain: tenant_id."
+  },
+  {
+   "id": "R11517e",
+   "lines": [
+    11517,
+    11517
+   ],
+   "page": "[116] API Authentication",
+   "kind": "data",
+   "text": "JWT tokens contain: roles."
+  },
+  {
+   "id": "R11517f",
+   "lines": [
+    11517,
+    11517
+   ],
+   "page": "[116] API Authentication",
+   "kind": "quality",
+   "text": "Token validation happens in middleware before any handler executes."
+  },
+  {
+   "id": "R11519",
+   "lines": [
+    11519,
+    11519
+   ],
+   "page": "[116] API Authentication",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11521",
+   "lines": [
+    11521,
+    11521
+   ],
+   "page": "[117] API Authorization",
+   "kind": "info",
+   "text": "Page title [117] API Authorization",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11523",
+   "lines": [
+    11523,
+    11523
+   ],
+   "page": "[117] API Authorization",
+   "kind": "info",
+   "text": "Section: API Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11524",
+   "lines": [
+    11524,
+    11524
+   ],
+   "page": "[117] API Authorization",
+   "kind": "scope",
+   "text": "Page [117] API Authorization scope: MVP."
+  },
+  {
+   "id": "R11525",
+   "lines": [
+    11525,
+    11525
+   ],
+   "page": "[117] API Authorization",
+   "kind": "info",
+   "text": "Page URL .../page/api-authorization",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11526",
+   "lines": [
+    11526,
+    11526
+   ],
+   "page": "[117] API Authorization",
+   "kind": "quality",
+   "text": "Role-based access control for API endpoints."
+  },
+  {
+   "id": "R11527",
+   "lines": [
+    11527,
+    11527
+   ],
+   "page": "[117] API Authorization",
+   "kind": "info",
+   "text": "Keywords: authorization, RBAC, roles, permissions",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11529",
+   "lines": [
+    11529,
+    11529
+   ],
+   "page": "[117] API Authorization",
+   "kind": "info",
+   "text": "API Authorization",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11531",
+   "lines": [
+    11531,
+    11531
+   ],
+   "page": "[117] API Authorization",
+   "kind": "constraint",
+   "text": "RBAC with four roles."
+  },
+  {
+   "id": "R11531a",
+   "lines": [
+    11531,
+    11531
+   ],
+   "page": "[117] API Authorization",
+   "kind": "data",
+   "text": "Role Owner (full access)."
+  },
+  {
+   "id": "R11531b",
+   "lines": [
+    11531,
+    11531
+   ],
+   "page": "[117] API Authorization",
+   "kind": "data",
+   "text": "Role Operator (import/generate)."
+  },
+  {
+   "id": "R11531c",
+   "lines": [
+    11531,
+    11531
+   ],
+   "page": "[117] API Authorization",
+   "kind": "data",
+   "text": "Role Reviewer (approve/reject)."
+  },
+  {
+   "id": "R11531d",
+   "lines": [
+    11531,
+    11531
+   ],
+   "page": "[117] API Authorization",
+   "kind": "data",
+   "text": "Role Admin (settings)."
+  },
+  {
+   "id": "R11531e",
+   "lines": [
+    11531,
+    11531
+   ],
+   "page": "[117] API Authorization",
+   "kind": "requirement",
+   "text": "Each endpoint has required roles."
+  },
+  {
+   "id": "R11531f",
+   "lines": [
+    11531,
+    11531
+   ],
+   "page": "[117] API Authorization",
+   "kind": "quality",
+   "text": "Authorization middleware checks user roles from JWT claims."
+  },
+  {
+   "id": "R11533",
+   "lines": [
+    11533,
+    11533
+   ],
+   "page": "[117] API Authorization",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11535",
+   "lines": [
+    11535,
+    11535
+   ],
+   "page": "[118] API Versioning",
+   "kind": "info",
+   "text": "Page title [118] API Versioning",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11537",
+   "lines": [
+    11537,
+    11537
+   ],
+   "page": "[118] API Versioning",
+   "kind": "info",
+   "text": "Section: API Architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11538",
+   "lines": [
+    11538,
+    11538
+   ],
+   "page": "[118] API Versioning",
+   "kind": "scope",
+   "text": "Page [118] API Versioning scope: PHASE2."
+  },
+  {
+   "id": "R11539",
+   "lines": [
+    11539,
+    11539
+   ],
+   "page": "[118] API Versioning",
+   "kind": "info",
+   "text": "Page URL .../page/api-versioning",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11540",
+   "lines": [
+    11540,
+    11540
+   ],
+   "page": "[118] API Versioning",
+   "kind": "requirement",
+   "text": "API versioning strategy for backward compatibility."
+  },
+  {
+   "id": "R11541",
+   "lines": [
+    11541,
+    11541
+   ],
+   "page": "[118] API Versioning",
+   "kind": "info",
+   "text": "Keywords: versioning, API version, backward compatibility",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11543",
+   "lines": [
+    11543,
+    11543
+   ],
+   "page": "[118] API Versioning",
+   "kind": "info",
+   "text": "API Versioning",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11545",
+   "lines": [
+    11545,
+    11545
+   ],
+   "page": "[118] API Versioning",
+   "kind": "scope",
+   "text": "Phase 2: URL-based versioning (`/v1/`, `/v2/`)."
+  },
+  {
+   "id": "R11545a",
+   "lines": [
+    11545,
+    11545
+   ],
+   "page": "[118] API Versioning",
+   "kind": "scope",
+   "text": "MVP operates without versioning."
+  },
+  {
+   "id": "R11545b",
+   "lines": [
+    11545,
+    11545
+   ],
+   "page": "[118] API Versioning",
+   "kind": "requirement",
+   "text": "When breaking changes are needed, introduce v2."
+  },
+  {
+   "id": "R11545c",
+   "lines": [
+    11545,
+    11545
+   ],
+   "page": "[118] API Versioning",
+   "kind": "requirement",
+   "text": "When v2 is introduced, maintain v1 with a deprecation timeline."
+  },
+  {
+   "id": "R11547",
+   "lines": [
+    11547,
+    11547
+   ],
+   "page": "[118] API Versioning",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11549",
+   "lines": [
+    11549,
+    11549
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "info",
+   "text": "Page title [119] Rules Engine",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11551",
+   "lines": [
+    11551,
+    11551
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "info",
+   "text": "Section: Control Plane",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11552",
+   "lines": [
+    11552,
+    11552
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "scope",
+   "text": "Page [119] Rules Engine scope: MVP."
+  },
+  {
+   "id": "R11553",
+   "lines": [
+    11553,
+    11553
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "info",
+   "text": "Page URL .../page/rules-engine",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11554",
+   "lines": [
+    11554,
+    11554
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "requirement",
+   "text": "The deterministic Rules Engine is the final arbiter for all AI output."
+  },
+  {
+   "id": "R11554a",
+   "lines": [
+    11554,
+    11554
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "requirement",
+   "text": "Rules Engine covers character limits."
+  },
+  {
+   "id": "R11554b",
+   "lines": [
+    11554,
+    11554
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "requirement",
+   "text": "Rules Engine covers banned terms."
+  },
+  {
+   "id": "R11554c",
+   "lines": [
+    11554,
+    11554
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "requirement",
+   "text": "Rules Engine covers attribute validation."
+  },
+  {
+   "id": "R11554d",
+   "lines": [
+    11554,
+    11554
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "requirement",
+   "text": "Rules Engine covers category compliance."
+  },
+  {
+   "id": "R11555",
+   "lines": [
+    11555,
+    11555
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "info",
+   "text": "Keywords: rules engine, deterministic, validation, character limits, banned terms",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11557",
+   "lines": [
+    11557,
+    11557
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "info",
+   "text": "Purpose",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11559",
+   "lines": [
+    11559,
+    11559
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "requirement",
+   "text": "The Rules Engine is deterministic: it evaluates marketplace constraints with certainty."
+  },
+  {
+   "id": "R11559a",
+   "lines": [
+    11559,
+    11559
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "requirement",
+   "text": "The Rules Engine is NEVER an LLM."
+  },
+  {
+   "id": "R11559b",
+   "lines": [
+    11559,
+    11559
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "requirement",
+   "text": "Rules Engine checks character counts exactly, not approximately."
+  },
+  {
+   "id": "R11559c",
+   "lines": [
+    11559,
+    11559
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "requirement",
+   "text": "Rules Engine checks banned terms by exact match, not semantic."
+  },
+  {
+   "id": "R11559d",
+   "lines": [
+    11559,
+    11559
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "requirement",
+   "text": "Rules Engine checks missing required attributes (present/absent check)."
+  },
+  {
+   "id": "R11559e",
+   "lines": [
+    11559,
+    11559
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "info",
+   "text": "Rules Engine checks category schema compliance.",
+   "why_not": "restatement",
+   "dup_of": "R11554d"
+  },
+  {
+   "id": "R11561",
+   "lines": [
+    11561,
+    11561
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "info",
+   "text": "Rule Types",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11563",
+   "lines": [
+    11563,
+    11567
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "info",
+   "text": "Table header: Rule Type | Example | Method",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11569",
+   "lines": [
+    11569,
+    11569
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "data",
+   "text": "Rule type: Field length."
+  },
+  {
+   "id": "R11571",
+   "lines": [
+    11571,
+    11571
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "constraint",
+   "text": "Field length rule example: Title ≤ 200 chars."
+  },
+  {
+   "id": "R11573",
+   "lines": [
+    11573,
+    11573
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "data",
+   "text": "Field length rule method: Character count."
+  },
+  {
+   "id": "R11575",
+   "lines": [
+    11575,
+    11575
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "data",
+   "text": "Rule type: Banned terms."
+  },
+  {
+   "id": "R11577",
+   "lines": [
+    11577,
+    11577
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "data",
+   "text": "Banned terms example: \"best\"."
+  },
+  {
+   "id": "R11577a",
+   "lines": [
+    11577,
+    11577
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "data",
+   "text": "Banned terms example: \"guaranteed\"."
+  },
+  {
+   "id": "R11577b",
+   "lines": [
+    11577,
+    11577
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "data",
+   "text": "Banned terms example: medical claims."
+  },
+  {
+   "id": "R11579",
+   "lines": [
+    11579,
+    11579
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "data",
+   "text": "Banned terms rule method: String matching."
+  },
+  {
+   "id": "R11581",
+   "lines": [
+    11581,
+    11581
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "data",
+   "text": "Rule type: Required attributes."
+  },
+  {
+   "id": "R11583",
+   "lines": [
+    11583,
+    11583
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "data",
+   "text": "Required attributes example: Color required for apparel."
+  },
+  {
+   "id": "R11583a",
+   "lines": [
+    11583,
+    11583
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "data",
+   "text": "Required attributes example: material required for apparel."
+  },
+  {
+   "id": "R11585",
+   "lines": [
+    11585,
+    11585
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "data",
+   "text": "Required attributes rule method: Presence check."
+  },
+  {
+   "id": "R11587",
+   "lines": [
+    11587,
+    11587
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "data",
+   "text": "Rule type: Category compliance."
+  },
+  {
+   "id": "R11589",
+   "lines": [
+    11589,
+    11589
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "requirement",
+   "text": "Category compliance example: Product fits selected category schema."
+  },
+  {
+   "id": "R11591",
+   "lines": [
+    11591,
+    11591
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "data",
+   "text": "Category compliance rule method: Schema validation."
+  },
+  {
+   "id": "R11593",
+   "lines": [
+    11593,
+    11593
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "data",
+   "text": "Rule type: Image compliance."
+  },
+  {
+   "id": "R11595",
+   "lines": [
+    11595,
+    11595
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "requirement",
+   "text": "Image compliance example: Main image white background."
+  },
+  {
+   "id": "R11597",
+   "lines": [
+    11597,
+    11597
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "decision",
+   "text": "Image compliance rule method: Pixel analysis."
+  },
+  {
+   "id": "R11597a",
+   "lines": [
+    11597,
+    11597
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "decision",
+   "text": "Image compliance rule method: + vision model."
+  },
+  {
+   "id": "R11599",
+   "lines": [
+    11599,
+    11599
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "info",
+   "text": "Invariant",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11601",
+   "lines": [
+    11601,
+    11601
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "info",
+   "text": "Architectural Invariant (callout title)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11603",
+   "lines": [
+    11603,
+    11603
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "info",
+   "text": "The Rules Engine is deterministic — never an LLM.",
+   "why_not": "restatement",
+   "dup_of": "R11559a"
+  },
+  {
+   "id": "R11603a",
+   "lines": [
+    11603,
+    11603
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "requirement",
+   "text": "No LLM output ships without passing the Rules Engine."
+  },
+  {
+   "id": "R11603b",
+   "lines": [
+    11603,
+    11603
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "decision",
+   "text": "Rules are data (stored in DB), not code."
+  },
+  {
+   "id": "R11603c",
+   "lines": [
+    11603,
+    11603
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "requirement",
+   "text": "Updating rules does not require deployment."
+  },
+  {
+   "id": "R11605",
+   "lines": [
+    11605,
+    11605
+   ],
+   "page": "[119] Rules Engine",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11607",
+   "lines": [
+    11607,
+    11607
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "info",
+   "text": "Page title [120] Validation Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11609",
+   "lines": [
+    11609,
+    11609
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "info",
+   "text": "Section: Control Plane",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11610",
+   "lines": [
+    11610,
+    11610
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "scope",
+   "text": "Page [120] Validation Architecture scope: MVP."
+  },
+  {
+   "id": "R11611",
+   "lines": [
+    11611,
+    11611
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "info",
+   "text": "Page URL .../page/validation-architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11612",
+   "lines": [
+    11612,
+    11612
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "flow",
+   "text": "Multi-stage validation pipeline — schema, rules, vision."
+  },
+  {
+   "id": "R11613",
+   "lines": [
+    11613,
+    11613
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "info",
+   "text": "Keywords: validation, architecture, pipeline, multi-stage",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11615",
+   "lines": [
+    11615,
+    11615
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "info",
+   "text": "Validation Stages",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11617",
+   "lines": [
+    11617,
+    11617
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "flow",
+   "text": "Validation stage 1: Schema Validation."
+  },
+  {
+   "id": "R11617a",
+   "lines": [
+    11617,
+    11617
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "requirement",
+   "text": "Schema Validation checks JSON structure."
+  },
+  {
+   "id": "R11617b",
+   "lines": [
+    11617,
+    11617
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "requirement",
+   "text": "Schema Validation checks required fields."
+  },
+  {
+   "id": "R11617c",
+   "lines": [
+    11617,
+    11617
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "requirement",
+   "text": "Schema Validation checks data types."
+  },
+  {
+   "id": "R11617d",
+   "lines": [
+    11617,
+    11617
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "decision",
+   "text": "Schema Validation uses Pydantic."
+  },
+  {
+   "id": "R11618",
+   "lines": [
+    11618,
+    11618
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "flow",
+   "text": "Validation stage 2: Rules Engine — Marketplace-specific constraints."
+  },
+  {
+   "id": "R11618a",
+   "lines": [
+    11618,
+    11618
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "info",
+   "text": "Rules Engine stage is deterministic.",
+   "why_not": "restatement",
+   "dup_of": "R11559"
+  },
+  {
+   "id": "R11619",
+   "lines": [
+    11619,
+    11619
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "flow",
+   "text": "Validation stage 3: Vision Validation — Image compliance."
+  },
+  {
+   "id": "R11619a",
+   "lines": [
+    11619,
+    11619
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "decision",
+   "text": "Vision Validation is deterministic + vision model."
+  },
+  {
+   "id": "R11621",
+   "lines": [
+    11621,
+    11621
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "requirement",
+   "text": "Each validation stage produces structured errors."
+  },
+  {
+   "id": "R11621a",
+   "lines": [
+    11621,
+    11621
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "flow",
+   "text": "Structured errors from each stage feed into the correction loop."
+  },
+  {
+   "id": "R11623",
+   "lines": [
+    11623,
+    11623
+   ],
+   "page": "[120] Validation Architecture",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11625",
+   "lines": [
+    11625,
+    11625
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "info",
+   "text": "Page title [121] Structured Error Contract",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11627",
+   "lines": [
+    11627,
+    11627
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "info",
+   "text": "Section: Control Plane",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11628",
+   "lines": [
+    11628,
+    11628
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "scope",
+   "text": "Page [121] Structured Error Contract scope: MVP."
+  },
+  {
+   "id": "R11629",
+   "lines": [
+    11629,
+    11629
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "info",
+   "text": "Page URL .../page/structured-error-contract",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11630",
+   "lines": [
+    11630,
+    11630
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "interface",
+   "text": "The unified ErrorReport contract — machine-readable errors."
+  },
+  {
+   "id": "R11630a",
+   "lines": [
+    11630,
+    11630
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "requirement",
+   "text": "ErrorReport serves AI correction."
+  },
+  {
+   "id": "R11630b",
+   "lines": [
+    11630,
+    11630
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "requirement",
+   "text": "ErrorReport serves UI."
+  },
+  {
+   "id": "R11630c",
+   "lines": [
+    11630,
+    11630
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "requirement",
+   "text": "ErrorReport serves logging."
+  },
+  {
+   "id": "R11630d",
+   "lines": [
+    11630,
+    11630
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "requirement",
+   "text": "ErrorReport serves retry."
+  },
+  {
+   "id": "R11630e",
+   "lines": [
+    11630,
+    11630
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "requirement",
+   "text": "ErrorReport serves debugging."
+  },
+  {
+   "id": "R11631",
+   "lines": [
+    11631,
+    11631
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "info",
+   "text": "Keywords: structured error, ErrorReport, contract, machine-readable, error handling",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11633",
+   "lines": [
+    11633,
+    11633
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "info",
+   "text": "ErrorReport Schema",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11635",
+   "lines": [
+    11635,
+    11635
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "info",
+   "text": "Unified ErrorReport (code block caption)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11637",
+   "lines": [
+    11637,
+    11638
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "info",
+   "text": "```json {",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11639",
+   "lines": [
+    11639,
+    11639
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "ErrorReport field `status`, example \"failed\"."
+  },
+  {
+   "id": "R11640",
+   "lines": [
+    11640,
+    11640
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "ErrorReport field `error_code`, example \"VALIDATION_FAILED\"."
+  },
+  {
+   "id": "R11641",
+   "lines": [
+    11641,
+    11641
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "ErrorReport field `retryable`, example true."
+  },
+  {
+   "id": "R11642",
+   "lines": [
+    11642,
+    11642
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "ErrorReport field `attempts_used`, example 1."
+  },
+  {
+   "id": "R11643",
+   "lines": [
+    11643,
+    11643
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "constraint",
+   "text": "ErrorReport field `max_attempts`, example 3."
+  },
+  {
+   "id": "R11644",
+   "lines": [
+    11644,
+    11644
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "ErrorReport field `errors`: array of per-field error objects."
+  },
+  {
+   "id": "R11645",
+   "lines": [
+    11645,
+    11645
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "info",
+   "text": "{",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11646",
+   "lines": [
+    11646,
+    11646
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "Error item field `field`, example \"title\"."
+  },
+  {
+   "id": "R11647",
+   "lines": [
+    11647,
+    11647
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "Error item field `error_code`, example \"TITLE_TOO_LONG\"."
+  },
+  {
+   "id": "R11648",
+   "lines": [
+    11648,
+    11648
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "Error item field `message`, example \"Title is 221 chars; Amazon limit is 200\"."
+  },
+  {
+   "id": "R11648a",
+   "lines": [
+    11648,
+    11648
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "constraint",
+   "text": "Amazon title limit is 200 chars (example message: \"Title is 221 chars; Amazon limit is 200\")."
+  },
+  {
+   "id": "R11649",
+   "lines": [
+    11649,
+    11649
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "Error item field `value_submitted`, example \"Organic Cotton Kurta Set... (221 chars)\"."
+  },
+  {
+   "id": "R11650",
+   "lines": [
+    11650,
+    11650
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "Error item field `suggestion`, example \"Shorten to <= 200 chars; move detail to bullets\"."
+  },
+  {
+   "id": "R11651",
+   "lines": [
+    11651,
+    11651
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "Error item field `source`, example \"rules_engine\"."
+  },
+  {
+   "id": "R11652",
+   "lines": [
+    11652,
+    11652
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "Error item field `retryable`, example true."
+  },
+  {
+   "id": "R11653",
+   "lines": [
+    11653,
+    11653
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "Error item field `marketplace`, example \"amazon\"."
+  },
+  {
+   "id": "R11654",
+   "lines": [
+    11654,
+    11657
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "info",
+   "text": "Closing brackets and code fence",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11659",
+   "lines": [
+    11659,
+    11659
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "info",
+   "text": "Error Lifecycle",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11661",
+   "lines": [
+    11661,
+    11662
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "info",
+   "text": "```mermaid graph LR",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11663",
+   "lines": [
+    11663,
+    11663
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "flow",
+   "text": "Rule/Vision/API Failure --> ErrorReport."
+  },
+  {
+   "id": "R11664",
+   "lines": [
+    11664,
+    11664
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "flow",
+   "text": "ErrorReport --> Correction Agent."
+  },
+  {
+   "id": "R11665",
+   "lines": [
+    11665,
+    11665
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "flow",
+   "text": "Correction Agent --> Targeted field correction."
+  },
+  {
+   "id": "R11666",
+   "lines": [
+    11666,
+    11666
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "flow",
+   "text": "Targeted field correction --> Re-validate."
+  },
+  {
+   "id": "R11667",
+   "lines": [
+    11667,
+    11667
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "flow",
+   "text": "Re-validate --> Pass? check."
+  },
+  {
+   "id": "R11668",
+   "lines": [
+    11668,
+    11668
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "flow",
+   "text": "Pass? \"No\" --> ErrorReport (loop)."
+  },
+  {
+   "id": "R11669",
+   "lines": [
+    11669,
+    11669
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "flow",
+   "text": "Pass? \"Yes\" --> Continue pipeline."
+  },
+  {
+   "id": "R11670",
+   "lines": [
+    11670,
+    11670
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "info",
+   "text": "```",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11672",
+   "lines": [
+    11672,
+    11672
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "requirement",
+   "text": "Errors are machine-readable so the correction agent can act on them without ambiguity."
+  },
+  {
+   "id": "R11672a",
+   "lines": [
+    11672,
+    11672
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "Each error includes: field."
+  },
+  {
+   "id": "R11672b",
+   "lines": [
+    11672,
+    11672
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "Each error includes: error_code."
+  },
+  {
+   "id": "R11672c",
+   "lines": [
+    11672,
+    11672
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "Each error includes: message."
+  },
+  {
+   "id": "R11672d",
+   "lines": [
+    11672,
+    11672
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "Each error includes: value_submitted."
+  },
+  {
+   "id": "R11672e",
+   "lines": [
+    11672,
+    11672
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "Each error includes: suggestion."
+  },
+  {
+   "id": "R11672f",
+   "lines": [
+    11672,
+    11672
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "Each error includes: source."
+  },
+  {
+   "id": "R11672g",
+   "lines": [
+    11672,
+    11672
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "Each error includes: retryable."
+  },
+  {
+   "id": "R11672h",
+   "lines": [
+    11672,
+    11672
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "Each error includes: marketplace."
+  },
+  {
+   "id": "R11672i",
+   "lines": [
+    11672,
+    11672
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "data",
+   "text": "Each error includes: api_error_detail."
+  },
+  {
+   "id": "R11674",
+   "lines": [
+    11674,
+    11674
+   ],
+   "page": "[121] Structured Error Contract",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11676",
+   "lines": [
+    11676,
+    11676
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "info",
+   "text": "Page title [122] Error Source Taxonomy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11678",
+   "lines": [
+    11678,
+    11678
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "info",
+   "text": "Section: Control Plane",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11679",
+   "lines": [
+    11679,
+    11679
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "scope",
+   "text": "Page [122] Error Source Taxonomy scope: MVP."
+  },
+  {
+   "id": "R11680",
+   "lines": [
+    11680,
+    11680
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "info",
+   "text": "Page URL .../page/error-source-taxonomy",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11681",
+   "lines": [
+    11681,
+    11681
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "data",
+   "text": "Error source classification: rules engine."
+  },
+  {
+   "id": "R11681a",
+   "lines": [
+    11681,
+    11681
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "data",
+   "text": "Error source classification: vision."
+  },
+  {
+   "id": "R11681b",
+   "lines": [
+    11681,
+    11681
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "data",
+   "text": "Error source classification: adapters."
+  },
+  {
+   "id": "R11681c",
+   "lines": [
+    11681,
+    11681
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "data",
+   "text": "Error source classification: auth."
+  },
+  {
+   "id": "R11681d",
+   "lines": [
+    11681,
+    11681
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "data",
+   "text": "Error source classification: network."
+  },
+  {
+   "id": "R11681e",
+   "lines": [
+    11681,
+    11681
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "data",
+   "text": "Error source classification: AI model."
+  },
+  {
+   "id": "R11682",
+   "lines": [
+    11682,
+    11682
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "info",
+   "text": "Keywords: error taxonomy, error source, classification, retryable",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11684",
+   "lines": [
+    11684,
+    11684
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "info",
+   "text": "Source Taxonomy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11686",
+   "lines": [
+    11686,
+    11692
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "info",
+   "text": "Table header: Source | Example Codes | Retryable? | Corrective Action",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11694",
+   "lines": [
+    11694,
+    11694
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "data",
+   "text": "Error source `rules_engine`."
+  },
+  {
+   "id": "R11696",
+   "lines": [
+    11696,
+    11696
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "interface",
+   "text": "`rules_engine` example error code: FIELD_TOO_LONG."
+  },
+  {
+   "id": "R11696a",
+   "lines": [
+    11696,
+    11696
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "interface",
+   "text": "`rules_engine` example error code: BANNED_TERM."
+  },
+  {
+   "id": "R11696b",
+   "lines": [
+    11696,
+    11696
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "interface",
+   "text": "`rules_engine` example error code: MISSING_ATTRIBUTE."
+  },
+  {
+   "id": "R11698",
+   "lines": [
+    11698,
+    11698
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "data",
+   "text": "`rules_engine` retryable: Yes — agent can correct."
+  },
+  {
+   "id": "R11700",
+   "lines": [
+    11700,
+    11700
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "flow",
+   "text": "`rules_engine` corrective action: AI correction agent."
+  },
+  {
+   "id": "R11702",
+   "lines": [
+    11702,
+    11702
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "data",
+   "text": "Error source `vision_model`."
+  },
+  {
+   "id": "R11704",
+   "lines": [
+    11704,
+    11704
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "interface",
+   "text": "`vision_model` example error code: BACKGROUND_OFF."
+  },
+  {
+   "id": "R11704a",
+   "lines": [
+    11704,
+    11704
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "interface",
+   "text": "`vision_model` example error code: RESOLUTION_LOW."
+  },
+  {
+   "id": "R11704b",
+   "lines": [
+    11704,
+    11704
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "interface",
+   "text": "`vision_model` example error code: TEXT_DETECTED."
+  },
+  {
+   "id": "R11706",
+   "lines": [
+    11706,
+    11706
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "data",
+   "text": "`vision_model` retryable: Yes — image reprocessable."
+  },
+  {
+   "id": "R11708",
+   "lines": [
+    11708,
+    11708
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "flow",
+   "text": "`vision_model` corrective action: User re-upload."
+  },
+  {
+   "id": "R11710",
+   "lines": [
+    11710,
+    11710
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "data",
+   "text": "Error source `amazon_adapter`."
+  },
+  {
+   "id": "R11712",
+   "lines": [
+    11712,
+    11712
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "interface",
+   "text": "`amazon_adapter` example error code: API_REJECTED_PARTIAL."
+  },
+  {
+   "id": "R11712a",
+   "lines": [
+    11712,
+    11712
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "interface",
+   "text": "`amazon_adapter` example error code: RATE_LIMITED."
+  },
+  {
+   "id": "R11712b",
+   "lines": [
+    11712,
+    11712
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "interface",
+   "text": "`amazon_adapter` example error code: AUTH_EXPIRED."
+  },
+  {
+   "id": "R11714",
+   "lines": [
+    11714,
+    11714
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "data",
+   "text": "`amazon_adapter` retryable: Depends."
+  },
+  {
+   "id": "R11716",
+   "lines": [
+    11716,
+    11716
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "flow",
+   "text": "`amazon_adapter` corrective action: Auto-retry or user action."
+  },
+  {
+   "id": "R11718",
+   "lines": [
+    11718,
+    11718
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "data",
+   "text": "Error source `flipkart_adapter`."
+  },
+  {
+   "id": "R11720",
+   "lines": [
+    11720,
+    11720
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "interface",
+   "text": "`flipkart_adapter` example error code: API_REJECTED_PARTIAL."
+  },
+  {
+   "id": "R11720a",
+   "lines": [
+    11720,
+    11720
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "interface",
+   "text": "`flipkart_adapter` example error code: CATEGORY_NOT_MAPPED."
+  },
+  {
+   "id": "R11722",
+   "lines": [
+    11722,
+    11722
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "data",
+   "text": "`flipkart_adapter` retryable: Depends."
+  },
+  {
+   "id": "R11724",
+   "lines": [
+    11724,
+    11724
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "flow",
+   "text": "`flipkart_adapter` corrective action: Auto-retry or user action."
+  },
+  {
+   "id": "R11726",
+   "lines": [
+    11726,
+    11726
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "data",
+   "text": "Error source `ai_model`."
+  },
+  {
+   "id": "R11728",
+   "lines": [
+    11728,
+    11728
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "interface",
+   "text": "`ai_model` example error code: JSON_INVALID."
+  },
+  {
+   "id": "R11728a",
+   "lines": [
+    11728,
+    11728
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "interface",
+   "text": "`ai_model` example error code: TIMEOUT."
+  },
+  {
+   "id": "R11728b",
+   "lines": [
+    11728,
+    11728
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "interface",
+   "text": "`ai_model` example error code: TOKEN_LIMIT."
+  },
+  {
+   "id": "R11730",
+   "lines": [
+    11730,
+    11730
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "data",
+   "text": "`ai_model` retryable: Yes — repair or escalate."
+  },
+  {
+   "id": "R11732",
+   "lines": [
+    11732,
+    11732
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "flow",
+   "text": "`ai_model` corrective action: Output repair."
+  },
+  {
+   "id": "R11732a",
+   "lines": [
+    11732,
+    11732
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "flow",
+   "text": "`ai_model` corrective action: model escalation."
+  },
+  {
+   "id": "R11734",
+   "lines": [
+    11734,
+    11734
+   ],
+   "page": "[122] Error Source Taxonomy",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11736",
+   "lines": [
+    11736,
+    11736
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "info",
+   "text": "Page title [123] Retry Classification",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11738",
+   "lines": [
+    11738,
+    11738
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "info",
+   "text": "Section: Control Plane",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11739",
+   "lines": [
+    11739,
+    11739
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "scope",
+   "text": "Page [123] Retry Classification scope: MVP."
+  },
+  {
+   "id": "R11740",
+   "lines": [
+    11740,
+    11740
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "info",
+   "text": "Page URL .../page/retry-classification",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11741",
+   "lines": [
+    11741,
+    11741
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "data",
+   "text": "Errors are classified for retry strategy: auto-retry vs AI-correct vs user-action vs system-failure."
+  },
+  {
+   "id": "R11742",
+   "lines": [
+    11742,
+    11742
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "info",
+   "text": "Keywords: retry classification, auto retry, AI correct, user action",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11744",
+   "lines": [
+    11744,
+    11744
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "info",
+   "text": "Retry Classification",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11746",
+   "lines": [
+    11746,
+    11750
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "info",
+   "text": "Table header: Category | Example | Action",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11752",
+   "lines": [
+    11752,
+    11752
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "data",
+   "text": "Retry category **AUTO-RETRY**."
+  },
+  {
+   "id": "R11754",
+   "lines": [
+    11754,
+    11754
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "data",
+   "text": "AUTO-RETRY example: Rate limit."
+  },
+  {
+   "id": "R11754a",
+   "lines": [
+    11754,
+    11754
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "data",
+   "text": "AUTO-RETRY example: network timeout."
+  },
+  {
+   "id": "R11756",
+   "lines": [
+    11756,
+    11756
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "flow",
+   "text": "AUTO-RETRY action: Exponential backoff."
+  },
+  {
+   "id": "R11756a",
+   "lines": [
+    11756,
+    11756
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "flow",
+   "text": "AUTO-RETRY action: no human/AI involvement."
+  },
+  {
+   "id": "R11758",
+   "lines": [
+    11758,
+    11758
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "data",
+   "text": "Retry category **AI-CORRECT**."
+  },
+  {
+   "id": "R11760",
+   "lines": [
+    11760,
+    11760
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "data",
+   "text": "AI-CORRECT example: Title too long."
+  },
+  {
+   "id": "R11760a",
+   "lines": [
+    11760,
+    11760
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "data",
+   "text": "AI-CORRECT example: banned term."
+  },
+  {
+   "id": "R11762",
+   "lines": [
+    11762,
+    11762
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "flow",
+   "text": "AI-CORRECT action: Correction agent fixes specific field."
+  },
+  {
+   "id": "R11764",
+   "lines": [
+    11764,
+    11764
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "data",
+   "text": "Retry category **USER-ACTION**."
+  },
+  {
+   "id": "R11766",
+   "lines": [
+    11766,
+    11766
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "data",
+   "text": "USER-ACTION example: Image non-compliant."
+  },
+  {
+   "id": "R11766a",
+   "lines": [
+    11766,
+    11766
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "data",
+   "text": "USER-ACTION example: auth expired."
+  },
+  {
+   "id": "R11768",
+   "lines": [
+    11768,
+    11768
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "flow",
+   "text": "USER-ACTION action: Surface to user with suggestions."
+  },
+  {
+   "id": "R11770",
+   "lines": [
+    11770,
+    11770
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "data",
+   "text": "Retry category **SYSTEM-FAILURE**."
+  },
+  {
+   "id": "R11772",
+   "lines": [
+    11772,
+    11772
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "data",
+   "text": "SYSTEM-FAILURE example: Database error."
+  },
+  {
+   "id": "R11772a",
+   "lines": [
+    11772,
+    11772
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "data",
+   "text": "SYSTEM-FAILURE example: queue failure."
+  },
+  {
+   "id": "R11774",
+   "lines": [
+    11774,
+    11774
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "flow",
+   "text": "SYSTEM-FAILURE action: Alert ops team."
+  },
+  {
+   "id": "R11774a",
+   "lines": [
+    11774,
+    11774
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "flow",
+   "text": "SYSTEM-FAILURE action: auto-recovery."
+  },
+  {
+   "id": "R11776",
+   "lines": [
+    11776,
+    11776
+   ],
+   "page": "[123] Retry Classification",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11778",
+   "lines": [
+    11778,
+    11778
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "info",
+   "text": "Page title [124] Human Approval Gate",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11780",
+   "lines": [
+    11780,
+    11780
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "info",
+   "text": "Section: Control Plane",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11781",
+   "lines": [
+    11781,
+    11781
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "scope",
+   "text": "Page [124] Human Approval Gate scope: MVP."
+  },
+  {
+   "id": "R11782",
+   "lines": [
+    11782,
+    11782
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "info",
+   "text": "Page URL .../page/human-approval-gate",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11783",
+   "lines": [
+    11783,
+    11783
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "flow",
+   "text": "Human approval gate is the human-in-the-loop approval mechanism — approve/reject/edit/regenerate."
+  },
+  {
+   "id": "R11783a",
+   "lines": [
+    11783,
+    11783
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "flow",
+   "text": "Human approval gate has a feedback loop."
+  },
+  {
+   "id": "R11784",
+   "lines": [
+    11784,
+    11784
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "info",
+   "text": "Keywords: human approval, gate, approve, reject, feedback",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11786",
+   "lines": [
+    11786,
+    11786
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "info",
+   "text": "Approval Gate",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11788",
+   "lines": [
+    11788,
+    11788
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "flow",
+   "text": "The pipeline pauses at the human approval gate for human review."
+  },
+  {
+   "id": "R11788a",
+   "lines": [
+    11788,
+    11788
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "requirement",
+   "text": "The reviewer sees: generated content."
+  },
+  {
+   "id": "R11788b",
+   "lines": [
+    11788,
+    11788
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "requirement",
+   "text": "The reviewer sees: validation results."
+  },
+  {
+   "id": "R11788c",
+   "lines": [
+    11788,
+    11788
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "requirement",
+   "text": "The reviewer sees: warnings."
+  },
+  {
+   "id": "R11788d",
+   "lines": [
+    11788,
+    11788
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "requirement",
+   "text": "The reviewer sees: errors."
+  },
+  {
+   "id": "R11788e",
+   "lines": [
+    11788,
+    11788
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "requirement",
+   "text": "The reviewer sees: confidence score."
+  },
+  {
+   "id": "R11788f",
+   "lines": [
+    11788,
+    11788
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "requirement",
+   "text": "The reviewer sees: marketplace-specific differences."
+  },
+  {
+   "id": "R11788g",
+   "lines": [
+    11788,
+    11788
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "flow",
+   "text": "Approval gate action: Approve."
+  },
+  {
+   "id": "R11788h",
+   "lines": [
+    11788,
+    11788
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "flow",
+   "text": "Approval gate action: Reject (with feedback)."
+  },
+  {
+   "id": "R11788i",
+   "lines": [
+    11788,
+    11788
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "flow",
+   "text": "Approval gate action: Edit (inline)."
+  },
+  {
+   "id": "R11788j",
+   "lines": [
+    11788,
+    11788
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "flow",
+   "text": "Approval gate action: Regenerate (with instructions)."
+  },
+  {
+   "id": "R11788k",
+   "lines": [
+    11788,
+    11788
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "scope",
+   "text": "In MVP, approval is always required."
+  },
+  {
+   "id": "R11788l",
+   "lines": [
+    11788,
+    11788
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "scope",
+   "text": "In Phase 3, confidence-based auto-approval may relax this for consistently passing listings."
+  },
+  {
+   "id": "R11790",
+   "lines": [
+    11790,
+    11790
+   ],
+   "page": "[124] Human Approval Gate",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11792",
+   "lines": [
+    11792,
+    11792
+   ],
+   "page": "[125] Maker-Checker Model",
+   "kind": "info",
+   "text": "Page title [125] Maker-Checker Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11794",
+   "lines": [
+    11794,
+    11794
+   ],
+   "page": "[125] Maker-Checker Model",
+   "kind": "info",
+   "text": "Section: Control Plane",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11795",
+   "lines": [
+    11795,
+    11795
+   ],
+   "page": "[125] Maker-Checker Model",
+   "kind": "scope",
+   "text": "Page [125] Maker-Checker Model scope: MVP."
+  },
+  {
+   "id": "R11796",
+   "lines": [
+    11796,
+    11796
+   ],
+   "page": "[125] Maker-Checker Model",
+   "kind": "info",
+   "text": "Page URL .../page/maker-checker-model",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11797",
+   "lines": [
+    11797,
+    11797
+   ],
+   "page": "[125] Maker-Checker Model",
+   "kind": "info",
+   "text": "Maker-checker principle — the generator cannot approve their own listing.",
+   "why_not": "restatement",
+   "dup_of": "R11405d"
+  },
+  {
+   "id": "R11798",
+   "lines": [
+    11798,
+    11798
+   ],
+   "page": "[125] Maker-Checker Model",
+   "kind": "info",
+   "text": "Keywords: maker checker, separation of duties, approval integrity",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11800",
+   "lines": [
+    11800,
+    11800
+   ],
+   "page": "[125] Maker-Checker Model",
+   "kind": "info",
+   "text": "Maker-Checker",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11802",
+   "lines": [
+    11802,
+    11802
+   ],
+   "page": "[125] Maker-Checker Model",
+   "kind": "info",
+   "text": "Maker-Checker Rule (callout title)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11804",
+   "lines": [
+    11804,
+    11804
+   ],
+   "page": "[125] Maker-Checker Model",
+   "kind": "info",
+   "text": "The generator cannot approve their own listing.",
+   "why_not": "restatement",
+   "dup_of": "R11405d"
+  },
+  {
+   "id": "R11804a",
+   "lines": [
+    11804,
+    11804
+   ],
+   "page": "[125] Maker-Checker Model",
+   "kind": "requirement",
+   "text": "Maker-checker is enforced at the API level: the approval endpoint checks that the approver is different from the generator."
+  },
+  {
+   "id": "R11804b",
+   "lines": [
+    11804,
+    11804
+   ],
+   "page": "[125] Maker-Checker Model",
+   "kind": "quality",
+   "text": "Maker-checker prevents a single actor from pushing unreviewed content live."
+  },
+  {
+   "id": "R11806",
+   "lines": [
+    11806,
+    11806
+   ],
+   "page": "[125] Maker-Checker Model",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11808",
+   "lines": [
+    11808,
+    11808
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "info",
+   "text": "Page title [126] Audit Trail",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11810",
+   "lines": [
+    11810,
+    11810
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "info",
+   "text": "Section: Control Plane",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11811",
+   "lines": [
+    11811,
+    11811
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "scope",
+   "text": "Page [126] Audit Trail scope: MVP."
+  },
+  {
+   "id": "R11812",
+   "lines": [
+    11812,
+    11812
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "info",
+   "text": "Page URL .../page/audit-trail",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11813",
+   "lines": [
+    11813,
+    11813
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "requirement",
+   "text": "Complete audit trail for every action — who did what, when, to which entity."
+  },
+  {
+   "id": "R11814",
+   "lines": [
+    11814,
+    11814
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "info",
+   "text": "Keywords: audit trail, logging, compliance, who what when",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11816",
+   "lines": [
+    11816,
+    11816
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "info",
+   "text": "Audit Trail",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11818",
+   "lines": [
+    11818,
+    11818
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "requirement",
+   "text": "Every important action creates an AuditLog record."
+  },
+  {
+   "id": "R11818a",
+   "lines": [
+    11818,
+    11818
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "data",
+   "text": "AuditLog record field: actor."
+  },
+  {
+   "id": "R11818b",
+   "lines": [
+    11818,
+    11818
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "data",
+   "text": "AuditLog record field: action."
+  },
+  {
+   "id": "R11818c",
+   "lines": [
+    11818,
+    11818
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "data",
+   "text": "AuditLog record field: entity."
+  },
+  {
+   "id": "R11818d",
+   "lines": [
+    11818,
+    11818
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "data",
+   "text": "AuditLog record field: timestamp."
+  },
+  {
+   "id": "R11818e",
+   "lines": [
+    11818,
+    11818
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "data",
+   "text": "AuditLog record field: before state."
+  },
+  {
+   "id": "R11818f",
+   "lines": [
+    11818,
+    11818
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "data",
+   "text": "AuditLog record field: after state."
+  },
+  {
+   "id": "R11818g",
+   "lines": [
+    11818,
+    11818
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "quality",
+   "text": "Audit trail provides complete traceability for compliance."
+  },
+  {
+   "id": "R11818h",
+   "lines": [
+    11818,
+    11818
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "quality",
+   "text": "Audit trail provides complete traceability for debugging."
+  },
+  {
+   "id": "R11818i",
+   "lines": [
+    11818,
+    11818
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "quality",
+   "text": "Audit trail provides complete traceability for governance."
+  },
+  {
+   "id": "R11818j",
+   "lines": [
+    11818,
+    11818
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "requirement",
+   "text": "The audit trail is append-only."
+  },
+  {
+   "id": "R11818k",
+   "lines": [
+    11818,
+    11818
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "requirement",
+   "text": "Audit records are never modified or deleted."
+  },
+  {
+   "id": "R11820",
+   "lines": [
+    11820,
+    11820
+   ],
+   "page": "[126] Audit Trail",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11822",
+   "lines": [
+    11822,
+    11822
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "info",
+   "text": "Page title [127] Quality Scoring",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11824",
+   "lines": [
+    11824,
+    11824
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "info",
+   "text": "Section: Control Plane",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11825",
+   "lines": [
+    11825,
+    11825
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "scope",
+   "text": "Page [127] Quality Scoring scope: MVP."
+  },
+  {
+   "id": "R11826",
+   "lines": [
+    11826,
+    11826
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "info",
+   "text": "Page URL .../page/quality-scoring",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11827",
+   "lines": [
+    11827,
+    11827
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "requirement",
+   "text": "Listing quality is calculated from rule compliance, attribute completeness, brand voice match, image compliance."
+  },
+  {
+   "id": "R11828",
+   "lines": [
+    11828,
+    11828
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "info",
+   "text": "Keywords: quality scoring, confidence, completeness, compliance score",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11830",
+   "lines": [
+    11830,
+    11830
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "info",
+   "text": "Quality Scoring Components",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11832",
+   "lines": [
+    11832,
+    11832
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "data",
+   "text": "Quality scoring component: Rule compliance (all rules pass)."
+  },
+  {
+   "id": "R11833",
+   "lines": [
+    11833,
+    11833
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "data",
+   "text": "Quality scoring component: Attribute completeness (all required attributes filled)."
+  },
+  {
+   "id": "R11834",
+   "lines": [
+    11834,
+    11834
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "data",
+   "text": "Quality scoring component: Brand voice match (retrieved chunk relevance scores)."
+  },
+  {
+   "id": "R11835",
+   "lines": [
+    11835,
+    11835
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "data",
+   "text": "Quality scoring component: Content quality (length)."
+  },
+  {
+   "id": "R11835a",
+   "lines": [
+    11835,
+    11835
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "data",
+   "text": "Quality scoring component: Content quality (readability)."
+  },
+  {
+   "id": "R11836",
+   "lines": [
+    11836,
+    11836
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "data",
+   "text": "Quality scoring component: Image compliance (all images pass)."
+  },
+  {
+   "id": "R11837",
+   "lines": [
+    11837,
+    11837
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "data",
+   "text": "Quality scoring component: Marketplace completeness (all required fields filled)."
+  },
+  {
+   "id": "R11839",
+   "lines": [
+    11839,
+    11839
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "info",
+   "text": "Invariant (callout title)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11841",
+   "lines": [
+    11841,
+    11841
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "requirement",
+   "text": "Confidence scoring does NOT bypass deterministic rules."
+  },
+  {
+   "id": "R11841a",
+   "lines": [
+    11841,
+    11841
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "requirement",
+   "text": "Rules must pass regardless of confidence score."
+  },
+  {
+   "id": "R11841b",
+   "lines": [
+    11841,
+    11841
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "requirement",
+   "text": "Confidence is advisory."
+  },
+  {
+   "id": "R11841c",
+   "lines": [
+    11841,
+    11841
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "requirement",
+   "text": "Rules are authoritative."
+  },
+  {
+   "id": "R11843",
+   "lines": [
+    11843,
+    11843
+   ],
+   "page": "[127] Quality Scoring",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11845",
+   "lines": [
+    11845,
+    11845
+   ],
+   "page": "[128] Confidence Scoring",
+   "kind": "info",
+   "text": "Page title [128] Confidence Scoring",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11847",
+   "lines": [
+    11847,
+    11847
+   ],
+   "page": "[128] Confidence Scoring",
+   "kind": "info",
+   "text": "Section: Control Plane",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11848",
+   "lines": [
+    11848,
+    11848
+   ],
+   "page": "[128] Confidence Scoring",
+   "kind": "scope",
+   "text": "Page [128] Confidence Scoring scope: MVP."
+  },
+  {
+   "id": "R11849",
+   "lines": [
+    11849,
+    11849
+   ],
+   "page": "[128] Confidence Scoring",
+   "kind": "info",
+   "text": "Page URL .../page/confidence-scoring",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11850",
+   "lines": [
+    11850,
+    11850
+   ],
+   "page": "[128] Confidence Scoring",
+   "kind": "requirement",
+   "text": "AI confidence scoring for listing quality assessment."
+  },
+  {
+   "id": "R11851",
+   "lines": [
+    11851,
+    11851
+   ],
+   "page": "[128] Confidence Scoring",
+   "kind": "info",
+   "text": "Keywords: confidence, scoring, AI confidence, quality",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11853",
+   "lines": [
+    11853,
+    11853
+   ],
+   "page": "[128] Confidence Scoring",
+   "kind": "info",
+   "text": "Confidence Scoring",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11855",
+   "lines": [
+    11855,
+    11855
+   ],
+   "page": "[128] Confidence Scoring",
+   "kind": "data",
+   "text": "Confidence score is a composite metric."
+  },
+  {
+   "id": "R11855a",
+   "lines": [
+    11855,
+    11855
+   ],
+   "page": "[128] Confidence Scoring",
+   "kind": "data",
+   "text": "Confidence score combines: rule pass rate."
+  },
+  {
+   "id": "R11855b",
+   "lines": [
+    11855,
+    11855
+   ],
+   "page": "[128] Confidence Scoring",
+   "kind": "data",
+   "text": "Confidence score combines: attribute completeness."
+  },
+  {
+   "id": "R11855c",
+   "lines": [
+    11855,
+    11855
+   ],
+   "page": "[128] Confidence Scoring",
+   "kind": "data",
+   "text": "Confidence score combines: brand voice similarity scores."
+  },
+  {
+   "id": "R11855d",
+   "lines": [
+    11855,
+    11855
+   ],
+   "page": "[128] Confidence Scoring",
+   "kind": "data",
+   "text": "Confidence score combines: historical performance of similar listings."
+  },
+  {
+   "id": "R11855e",
+   "lines": [
+    11855,
+    11855
+   ],
+   "page": "[128] Confidence Scoring",
+   "kind": "requirement",
+   "text": "Confidence score is displayed to reviewers to help prioritize review effort."
+  },
+  {
+   "id": "R11855f",
+   "lines": [
+    11855,
+    11855
+   ],
+   "page": "[128] Confidence Scoring",
+   "kind": "info",
+   "text": "Confidence score never bypasses rules.",
+   "why_not": "restatement",
+   "dup_of": "R11841"
+  },
+  {
+   "id": "R11857",
+   "lines": [
+    11857,
+    11857
+   ],
+   "page": "[128] Confidence Scoring",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11859",
+   "lines": [
+    11859,
+    11859
+   ],
+   "page": "[129] Async Processing",
+   "kind": "info",
+   "text": "Page title [129] Async Processing",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11861",
+   "lines": [
+    11861,
+    11861
+   ],
+   "page": "[129] Async Processing",
+   "kind": "info",
+   "text": "Section: Execution & Reliability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11862",
+   "lines": [
+    11862,
+    11862
+   ],
+   "page": "[129] Async Processing",
+   "kind": "scope",
+   "text": "Page [129] Async Processing scope: MVP."
+  },
+  {
+   "id": "R11863",
+   "lines": [
+    11863,
+    11863
+   ],
+   "page": "[129] Async Processing",
+   "kind": "info",
+   "text": "Page URL .../page/async-processing",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11864",
+   "lines": [
+    11864,
+    11864
+   ],
+   "page": "[129] Async Processing",
+   "kind": "decision",
+   "text": "Redis + ARQ architecture for async job processing."
+  },
+  {
+   "id": "R11864a",
+   "lines": [
+    11864,
+    11864
+   ],
+   "page": "[129] Async Processing",
+   "kind": "requirement",
+   "text": "Marketplace calls never block HTTP requests."
+  },
+  {
+   "id": "R11865",
+   "lines": [
+    11865,
+    11865
+   ],
+   "page": "[129] Async Processing",
+   "kind": "info",
+   "text": "Keywords: async, processing, Redis, ARQ, queue, background",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11867",
+   "lines": [
+    11867,
+    11867
+   ],
+   "page": "[129] Async Processing",
+   "kind": "info",
+   "text": "Why Async",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11869",
+   "lines": [
+    11869,
+    11869
+   ],
+   "page": "[129] Async Processing",
+   "kind": "constraint",
+   "text": "Marketplace API calls are slow (seconds to minutes)."
+  },
+  {
+   "id": "R11869a",
+   "lines": [
+    11869,
+    11869
+   ],
+   "page": "[129] Async Processing",
+   "kind": "constraint",
+   "text": "AI generation takes 5-30 seconds."
+  },
+  {
+   "id": "R11869b",
+   "lines": [
+    11869,
+    11869
+   ],
+   "page": "[129] Async Processing",
+   "kind": "constraint",
+   "text": "Bulk imports process hundreds of products."
+  },
+  {
+   "id": "R11869c",
+   "lines": [
+    11869,
+    11869
+   ],
+   "page": "[129] Async Processing",
+   "kind": "info",
+   "text": "Marketplace API calls should not block the HTTP request cycle.",
+   "why_not": "restatement",
+   "dup_of": "R11864a"
+  },
+  {
+   "id": "R11869d",
+   "lines": [
+    11869,
+    11869
+   ],
+   "page": "[129] Async Processing",
+   "kind": "requirement",
+   "text": "AI generation should not block the HTTP request cycle."
+  },
+  {
+   "id": "R11869e",
+   "lines": [
+    11869,
+    11869
+   ],
+   "page": "[129] Async Processing",
+   "kind": "requirement",
+   "text": "Bulk imports should not block the HTTP request cycle."
+  },
+  {
+   "id": "R11869f",
+   "lines": [
+    11869,
+    11869
+   ],
+   "page": "[129] Async Processing",
+   "kind": "decision",
+   "text": "The async architecture uses Redis as a message broker."
+  },
+  {
+   "id": "R11869g",
+   "lines": [
+    11869,
+    11869
+   ],
+   "page": "[129] Async Processing",
+   "kind": "decision",
+   "text": "The async architecture uses ARQ as the task queue framework."
+  },
+  {
+   "id": "R11871",
+   "lines": [
+    11871,
+    11871
+   ],
+   "page": "[129] Async Processing",
+   "kind": "info",
+   "text": "Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11873",
+   "lines": [
+    11873,
+    11874
+   ],
+   "page": "[129] Async Processing",
+   "kind": "info",
+   "text": "```mermaid graph LR",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11875",
+   "lines": [
+    11875,
+    11875
+   ],
+   "page": "[129] Async Processing",
+   "kind": "flow",
+   "text": "API Request --> Create Job."
+  },
+  {
+   "id": "R11876",
+   "lines": [
+    11876,
+    11876
+   ],
+   "page": "[129] Async Processing",
+   "kind": "flow",
+   "text": "Create Job --> Redis Queue."
+  },
+  {
+   "id": "R11877",
+   "lines": [
+    11877,
+    11877
+   ],
+   "page": "[129] Async Processing",
+   "kind": "flow",
+   "text": "Redis Queue --> ARQ Worker."
+  },
+  {
+   "id": "R11878",
+   "lines": [
+    11878,
+    11878
+   ],
+   "page": "[129] Async Processing",
+   "kind": "flow",
+   "text": "ARQ Worker --> Agent Execution / Adapter Call."
+  },
+  {
+   "id": "R11879",
+   "lines": [
+    11879,
+    11879
+   ],
+   "page": "[129] Async Processing",
+   "kind": "flow",
+   "text": "Agent Execution / Adapter Call --> Update Database."
+  },
+  {
+   "id": "R11880",
+   "lines": [
+    11880,
+    11880
+   ],
+   "page": "[129] Async Processing",
+   "kind": "flow",
+   "text": "Update Database --> UI Status Update."
+  },
+  {
+   "id": "R11881",
+   "lines": [
+    11881,
+    11881
+   ],
+   "page": "[129] Async Processing",
+   "kind": "info",
+   "text": "```",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11883",
+   "lines": [
+    11883,
+    11883
+   ],
+   "page": "[129] Async Processing",
+   "kind": "interface",
+   "text": "The API returns immediately with a job ID."
+  },
+  {
+   "id": "R11883a",
+   "lines": [
+    11883,
+    11883
+   ],
+   "page": "[129] Async Processing",
+   "kind": "interface",
+   "text": "The immediate job-ID response uses HTTP 202."
+  },
+  {
+   "id": "R11883b",
+   "lines": [
+    11883,
+    11883
+   ],
+   "page": "[129] Async Processing",
+   "kind": "flow",
+   "text": "The client polls for status."
+  },
+  {
+   "id": "R11883c",
+   "lines": [
+    11883,
+    11883
+   ],
+   "page": "[129] Async Processing",
+   "kind": "flow",
+   "text": "The client may instead receive webhook notifications."
+  },
+  {
+   "id": "R11885",
+   "lines": [
+    11885,
+    11885
+   ],
+   "page": "[129] Async Processing",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11887",
+   "lines": [
+    11887,
+    11887
+   ],
+   "page": "[130] Queue Architecture",
+   "kind": "info",
+   "text": "Page title [130] Queue Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11889",
+   "lines": [
+    11889,
+    11889
+   ],
+   "page": "[130] Queue Architecture",
+   "kind": "info",
+   "text": "Section: Execution & Reliability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11890",
+   "lines": [
+    11890,
+    11890
+   ],
+   "page": "[130] Queue Architecture",
+   "kind": "scope",
+   "text": "Page [130] Queue Architecture scope: MVP."
+  },
+  {
+   "id": "R11891",
+   "lines": [
+    11891,
+    11891
+   ],
+   "page": "[130] Queue Architecture",
+   "kind": "info",
+   "text": "Page URL .../page/queue-architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11892",
+   "lines": [
+    11892,
+    11892
+   ],
+   "page": "[130] Queue Architecture",
+   "kind": "decision",
+   "text": "Redis + ARQ queue design — job queues, workers, and concurrency."
+  },
+  {
+   "id": "R11893",
+   "lines": [
+    11893,
+    11893
+   ],
+   "page": "[130] Queue Architecture",
+   "kind": "info",
+   "text": "Keywords: queue, Redis, ARQ, workers, concurrency",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11895",
+   "lines": [
+    11895,
+    11895
+   ],
+   "page": "[130] Queue Architecture",
+   "kind": "info",
+   "text": "Queue Design",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11897",
+   "lines": [
+    11897,
+    11897
+   ],
+   "page": "[130] Queue Architecture",
+   "kind": "decision",
+   "text": "Redis serves as the message broker (ARQ queues)."
+  },
+  {
+   "id": "R11897a",
+   "lines": [
+    11897,
+    11897
+   ],
+   "page": "[130] Queue Architecture",
+   "kind": "decision",
+   "text": "Redis serves as cache."
+  },
+  {
+   "id": "R11897b",
+   "lines": [
+    11897,
+    11897
+   ],
+   "page": "[130] Queue Architecture",
+   "kind": "requirement",
+   "text": "ARQ workers process jobs with bounded concurrency."
+  },
+  {
+   "id": "R11897c",
+   "lines": [
+    11897,
+    11897
+   ],
+   "page": "[130] Queue Architecture",
+   "kind": "data",
+   "text": "Separate queue for: listing generation."
+  },
+  {
+   "id": "R11897d",
+   "lines": [
+    11897,
+    11897
+   ],
+   "page": "[130] Queue Architecture",
+   "kind": "data",
+   "text": "Separate queue for: marketplace publishing."
+  },
+  {
+   "id": "R11897e",
+   "lines": [
+    11897,
+    11897
+   ],
+   "page": "[130] Queue Architecture",
+   "kind": "data",
+   "text": "Separate queue for: image processing."
+  },
+  {
+   "id": "R11897f",
+   "lines": [
+    11897,
+    11897
+   ],
+   "page": "[130] Queue Architecture",
+   "kind": "constraint",
+   "text": "Per-marketplace concurrency limits respect rate limits."
+  },
+  {
+   "id": "R11899",
+   "lines": [
+    11899,
+    11899
+   ],
+   "page": "[130] Queue Architecture",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11901",
+   "lines": [
+    11901,
+    11901
+   ],
+   "page": "[131] Job Lifecycle",
+   "kind": "info",
+   "text": "Page title [131] Job Lifecycle",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11903",
+   "lines": [
+    11903,
+    11903
+   ],
+   "page": "[131] Job Lifecycle",
+   "kind": "info",
+   "text": "Section: Execution & Reliability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11904",
+   "lines": [
+    11904,
+    11904
+   ],
+   "page": "[131] Job Lifecycle",
+   "kind": "scope",
+   "text": "Page [131] Job Lifecycle scope: MVP."
+  },
+  {
+   "id": "R11905",
+   "lines": [
+    11905,
+    11905
+   ],
+   "page": "[131] Job Lifecycle",
+   "kind": "info",
+   "text": "Page URL .../page/job-lifecycle",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11906",
+   "lines": [
+    11906,
+    11906
+   ],
+   "page": "[131] Job Lifecycle",
+   "kind": "flow",
+   "text": "Job states: QUEUED → RUNNING → COMPLETED/FAILED."
+  },
+  {
+   "id": "R11906a",
+   "lines": [
+    11906,
+    11906
+   ],
+   "page": "[131] Job Lifecycle",
+   "kind": "requirement",
+   "text": "Jobs have full context preservation."
+  },
+  {
+   "id": "R11907",
+   "lines": [
+    11907,
+    11907
+   ],
+   "page": "[131] Job Lifecycle",
+   "kind": "info",
+   "text": "Keywords: job, lifecycle, states, QUEUED, RUNNING, COMPLETED",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11909",
+   "lines": [
+    11909,
+    11909
+   ],
+   "page": "[131] Job Lifecycle",
+   "kind": "info",
+   "text": "Job Lifecycle",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11911",
+   "lines": [
+    11911,
+    11911
+   ],
+   "page": "[131] Job Lifecycle",
+   "kind": "flow",
+   "text": "Job lifecycle: QUEUED → RUNNING → COMPLETED | FAILED | TIMEOUT."
+  },
+  {
+   "id": "R11911a",
+   "lines": [
+    11911,
+    11911
+   ],
+   "page": "[131] Job Lifecycle",
+   "kind": "data",
+   "text": "Job state TIMEOUT."
+  },
+  {
+   "id": "R11911b",
+   "lines": [
+    11911,
+    11911
+   ],
+   "page": "[131] Job Lifecycle",
+   "kind": "data",
+   "text": "Every job preserves its full context: input."
+  },
+  {
+   "id": "R11911c",
+   "lines": [
+    11911,
+    11911
+   ],
+   "page": "[131] Job Lifecycle",
+   "kind": "data",
+   "text": "Every job preserves its full context: output."
+  },
+  {
+   "id": "R11911d",
+   "lines": [
+    11911,
+    11911
+   ],
+   "page": "[131] Job Lifecycle",
+   "kind": "data",
+   "text": "Every job preserves its full context: errors."
+  },
+  {
+   "id": "R11911e",
+   "lines": [
+    11911,
+    11911
+   ],
+   "page": "[131] Job Lifecycle",
+   "kind": "requirement",
+   "text": "Failed jobs are re-runnable with the same input."
+  },
+  {
+   "id": "R11911f",
+   "lines": [
+    11911,
+    11911
+   ],
+   "page": "[131] Job Lifecycle",
+   "kind": "requirement",
+   "text": "Timeout jobs are automatically cleaned up."
+  },
+  {
+   "id": "R11911g",
+   "lines": [
+    11911,
+    11911
+   ],
+   "page": "[131] Job Lifecycle",
+   "kind": "requirement",
+   "text": "Timeout job cleanup gives clear error messages."
+  },
+  {
+   "id": "R11913",
+   "lines": [
+    11913,
+    11913
+   ],
+   "page": "[131] Job Lifecycle",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11915",
+   "lines": [
+    11915,
+    11915
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "info",
+   "text": "Page title [132] Retry Strategy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11917",
+   "lines": [
+    11917,
+    11917
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "info",
+   "text": "Section: Execution & Reliability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11918",
+   "lines": [
+    11918,
+    11918
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "scope",
+   "text": "Page [132] Retry Strategy scope: MVP."
+  },
+  {
+   "id": "R11919",
+   "lines": [
+    11919,
+    11919
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "info",
+   "text": "Page URL .../page/retry-strategy",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11920",
+   "lines": [
+    11920,
+    11920
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "flow",
+   "text": "Retry strategy for failure types: agent correction."
+  },
+  {
+   "id": "R11920a",
+   "lines": [
+    11920,
+    11920
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "flow",
+   "text": "Retry strategy for failure types: backoff."
+  },
+  {
+   "id": "R11920b",
+   "lines": [
+    11920,
+    11920
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "flow",
+   "text": "Retry strategy for failure types: user escalation."
+  },
+  {
+   "id": "R11921",
+   "lines": [
+    11921,
+    11921
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "info",
+   "text": "Keywords: retry, strategy, exponential backoff, correction",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R11923",
+   "lines": [
+    11923,
+    11923
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "info",
+   "text": "Retry Strategy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R11925",
+   "lines": [
+    11925,
+    11929
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "info",
+   "text": "Table header: Failure | Strategy | Max Retries",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R11931",
+   "lines": [
+    11931,
+    11931
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "data",
+   "text": "Retry failure type: Rules engine."
+  },
+  {
+   "id": "R11933",
+   "lines": [
+    11933,
+    11933
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "flow",
+   "text": "Rules engine retry strategy: Agent correction → re-validate."
+  },
+  {
+   "id": "R11935",
+   "lines": [
+    11935,
+    11935
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "constraint",
+   "text": "Rules engine max retries: 3."
+  },
+  {
+   "id": "R11937",
+   "lines": [
+    11937,
+    11937
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "data",
+   "text": "Retry failure type: Rate limit."
+  },
+  {
+   "id": "R11939",
+   "lines": [
+    11939,
+    11939
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "flow",
+   "text": "Rate limit retry strategy: Exponential backoff."
+  },
+  {
+   "id": "R11941",
+   "lines": [
+    11941,
+    11941
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "constraint",
+   "text": "Rate limit max retries: Automatic."
+  },
+  {
+   "id": "R11943",
+   "lines": [
+    11943,
+    11943
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "data",
+   "text": "Retry failure type: Auth failure."
+  },
+  {
+   "id": "R11945",
+   "lines": [
+    11945,
+    11945
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "flow",
+   "text": "Auth failure retry strategy: Refresh once → user escalation."
+  },
+  {
+   "id": "R11947",
+   "lines": [
+    11947,
+    11947
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "constraint",
+   "text": "Auth failure max retries: 1."
+  },
+  {
+   "id": "R11949",
+   "lines": [
+    11949,
+    11949
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "data",
+   "text": "Retry failure type: Partial API success."
+  },
+  {
+   "id": "R11951",
+   "lines": [
+    11951,
+    11951
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "flow",
+   "text": "Partial API success retry strategy: Retry only failed fields."
+  },
+  {
+   "id": "R11953",
+   "lines": [
+    11953,
+    11953
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "constraint",
+   "text": "Partial API success max retries: 3."
+  },
+  {
+   "id": "R11955",
+   "lines": [
+    11955,
+    11955
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "data",
+   "text": "Retry failure type: JSON schema failure."
+  },
+  {
+   "id": "R11957",
+   "lines": [
+    11957,
+    11957
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "flow",
+   "text": "JSON schema failure retry strategy: Repair → re-prompt → escalate model."
+  },
+  {
+   "id": "R11959",
+   "lines": [
+    11959,
+    11959
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "constraint",
+   "text": "JSON schema failure max retries: 2 then escalate."
+  },
+  {
+   "id": "R11961",
+   "lines": [
+    11961,
+    11961
+   ],
+   "page": "[132] Retry Strategy",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  }
+ ]
+}

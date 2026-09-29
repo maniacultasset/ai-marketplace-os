@@ -1,0 +1,2469 @@
+{
+ "chunk": "c19",
+ "items": [
+  {
+   "id": "R11384",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1338",
+   "note": "Validate endpoint is planned for v1."
+  },
+  {
+   "id": "R11386",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1338",
+   "note": "Runs schema, rules and vision checks in one call."
+  },
+  {
+   "id": "R11386a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1338; AGENTS.md:86",
+   "note": "Returns an ErrorReport; 200 with passed:false on rule failures (proposed)."
+  },
+  {
+   "id": "R11391",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1338; CANON.md:33; TEAM-QUESTIONS.md:59 (T11)",
+   "note": "Path is /api/v1/listings/validate."
+  },
+  {
+   "id": "R11391a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1338",
+   "note": "Schema + rules + vision."
+  },
+  {
+   "id": "R11391c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1338",
+   "note": "Callable on its own after a manual edit."
+  },
+  {
+   "id": "R11398",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1341",
+   "note": "Approve endpoint planned for v1."
+  },
+  {
+   "id": "R11400",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2038; AGENTS.md:81",
+   "note": "API check plus lv_guard DB trigger."
+  },
+  {
+   "id": "R11405",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1341; CANON.md:33; TEAM-QUESTIONS.md:59 (T11); TEAM-QUESTIONS.md:76 (T42)",
+   "note": "Path /api/v1/listings/approve; batch-shaped items[1..200] (T42)."
+  },
+  {
+   "id": "R11405a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1607",
+   "note": "ApproveItem.decision approve|reject."
+  },
+  {
+   "id": "R11405b",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "TEAM-QUESTIONS.md:74 (T40)",
+   "note": "Plan requires reason_code + feedback on reject, following [12] over [108] \"optional\"."
+  },
+  {
+   "id": "R11405c",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1607; BACKEND-ARCHITECTURE.md:818; TEAM-QUESTIONS.md:76 (T42)",
+   "note": "No reviewer_id in body (extra=forbid); approver is the JWT sub."
+  },
+  {
+   "id": "R11405d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2038; CANON.md:152",
+   "note": "Generator and editor both barred; API + trigger."
+  },
+  {
+   "id": "R11405e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1607",
+   "note": "BatchItemResult carries listing_status per item."
+  },
+  {
+   "id": "R11412",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1342",
+   "note": "Publish endpoint planned for v1."
+  },
+  {
+   "id": "R11414",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1813",
+   "note": "Publish worker calls the adapter; per-field ListingResult."
+  },
+  {
+   "id": "R11419",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1342; CANON.md:33; TEAM-QUESTIONS.md:59 (T11)",
+   "note": "Path /api/v1/listings/publish; batch-shaped items with one job per item (T42)."
+  },
+  {
+   "id": "R11419a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1342; DATABASE.md:947",
+   "note": "Gate also admits failed (retry) or blocked (resume) with the approved version current."
+  },
+  {
+   "id": "R11419b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1342; ADR-0004",
+   "note": "Publish job on the publish queue, transactional enqueue."
+  },
+  {
+   "id": "R11419c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1342; TEAM-QUESTIONS.md:80 (T46)",
+   "note": "202 with a job id per item (BatchAccepted)."
+  },
+  {
+   "id": "R11419d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82; BACKEND-ARCHITECTURE.md:1204",
+   "note": "Adapters map canonical to marketplace fields."
+  },
+  {
+   "id": "R11419e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204",
+   "note": "Adapter owns auth refresh."
+  },
+  {
+   "id": "R11419f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1204",
+   "note": "Adapter owns rate limiting; per-account limiter is G17."
+  },
+  {
+   "id": "R11426",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1344",
+   "note": "Connect endpoint planned for v1."
+  },
+  {
+   "id": "R11428",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1344",
+   "note": "Starts OAuth."
+  },
+  {
+   "id": "R11433",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1344; CANON.md:33; TEAM-QUESTIONS.md:59 (T11)",
+   "note": "Path /api/v1/marketplaces/connect; request shape not specified."
+  },
+  {
+   "id": "R11433a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:516",
+   "note": "Whether marketplace goes in path or body is not specified."
+  },
+  {
+   "id": "R11433b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1344",
+   "note": "Returns the consent URL."
+  },
+  {
+   "id": "R11433c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1345; CANON.md:36",
+   "note": "Separate GET /api/v1/marketplaces/{marketplace}/callback; state in Postgres, consumed once."
+  },
+  {
+   "id": "R11433d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:490",
+   "note": "Callback exchanges code for tokens (PKCE)."
+  },
+  {
+   "id": "R11433e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:522; AGENTS.md:84",
+   "note": "KMS envelope-encrypted token_enc."
+  },
+  {
+   "id": "R11440",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "TEAM-QUESTIONS.md:62 (T14)",
+   "note": "v1 default: operational metrics; marketplace performance Phase 2 (C9/Q10)."
+  },
+  {
+   "id": "R11442",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "TEAM-QUESTIONS.md:62 (T14)",
+   "note": "Unified performance data deferred to Phase 2 by default."
+  },
+  {
+   "id": "R11447",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1353; CANON.md:33; TEAM-QUESTIONS.md:62 (T14)",
+   "note": "GET /api/v1/analytics, operational metrics only in v1."
+  },
+  {
+   "id": "R11447b",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md:48",
+   "note": "Analytics sub-routes named (timeseries); date-range parameters not specified."
+  },
+  {
+   "id": "R11447c",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md:48",
+   "note": "marketplace-breakdown route only; marketplace filter parameter not specified."
+  },
+  {
+   "id": "R11447d",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md:48",
+   "note": "No product-level analytics drill-down route planned."
+  },
+  {
+   "id": "R11447e",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:1353; TEAM-QUESTIONS.md:62 (T14)",
+   "note": "Backs the dashboard analytics view with operational metrics."
+  },
+  {
+   "id": "R11454",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1347",
+   "note": "Image endpoints planned for v1."
+  },
+  {
+   "id": "R11456",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1347",
+   "note": "Upload endpoint."
+  },
+  {
+   "id": "R11456a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1347; DATABASE.md:933",
+   "note": "Upload starts an image_compliance job."
+  },
+  {
+   "id": "R11456b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1348",
+   "note": "Report endpoint."
+  },
+  {
+   "id": "R11461",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1347; CANON.md:33",
+   "note": "/api/v1/images/upload, plus a proposed signed upload-url step."
+  },
+  {
+   "id": "R11461a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0001; TEAM-QUESTIONS.md:32 (T6)",
+   "note": "GCS behind StorageAdapter (S3 API), not AWS S3."
+  },
+  {
+   "id": "R11461b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1347; DATABASE.md:933",
+   "note": "Triggers image_compliance job."
+  },
+  {
+   "id": "R11461c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1348; CANON.md:33",
+   "note": "GET /api/v1/images/{id}/report."
+  },
+  {
+   "id": "R11461d",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1348; CONTRACTS.md:397-426 (pre-Canon draft only)",
+   "note": "ImageReport per-check shape (checks[], issues[].detail) only in pre-Canon CONTRACTS draft; aligned plan names the type only."
+  },
+  {
+   "id": "R11461e",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1348; CONTRACTS.md:410 (pre-Canon draft only)",
+   "note": "ImageIssue.suggestion exists only in pre-Canon CONTRACTS draft; DATABASE/BACKEND never define ImageReport fields."
+  },
+  {
+   "id": "R11468",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1350-1351",
+   "note": "Job polling and cancel planned; history is a gap (R11470a)."
+  },
+  {
+   "id": "R11470",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1350; CANON.md:60",
+   "note": "GET /api/v1/jobs/{job_id} JobEnvelope with status and stage."
+  },
+  {
+   "id": "R11470a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1350",
+   "note": "No job/agent-run history list endpoint; only a (tenant_id, queued_at) index."
+  },
+  {
+   "id": "R11470b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1351-1352",
+   "note": "Cancel and dead-letter requeue (proposed paths)."
+  },
+  {
+   "id": "R11475",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1350; CANON.md:60",
+   "note": "Polling reads job_runs."
+  },
+  {
+   "id": "R11475b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1351",
+   "note": "Cancel for queued jobs only (proposed)."
+  },
+  {
+   "id": "R11475c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1350",
+   "note": "JWT-scoped, consumed by the dashboard."
+  },
+  {
+   "id": "R11475d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:1284",
+   "note": "Dashboard polls the jobs endpoint for generation status."
+  },
+  {
+   "id": "R11482",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1327; BACKEND-ARCHITECTURE.md:1354",
+   "note": "GET /api/v1/issues planned; error analytics (GET /api/v1/errors) deferred after S14."
+  },
+  {
+   "id": "R11484",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1327; BACKEND-ARCHITECTURE.md:1350",
+   "note": "Issues list + ErrorReport in JobEnvelope; ai_model/system excluded from issues (T56)."
+  },
+  {
+   "id": "R11484a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1354",
+   "note": "Error analytics endpoint deferred after S14."
+  },
+  {
+   "id": "R11489a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1354",
+   "note": "No error-pattern query in v1."
+  },
+  {
+   "id": "R11489b",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1354",
+   "note": "No error-rate endpoint in v1; only an (tenant_id, error_code, created_at) index."
+  },
+  {
+   "id": "R11489c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1327",
+   "note": "GET /api/v1/issues filters by code."
+  },
+  {
+   "id": "R11489d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1327; TEAM-QUESTIONS.md:90 (T56)",
+   "note": "Filters by source; issues exclude ai_model/system."
+  },
+  {
+   "id": "R11489e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1327",
+   "note": "Filters by marketplace."
+  },
+  {
+   "id": "R11489f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1327",
+   "note": "Filters by date."
+  },
+  {
+   "id": "R11496",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1355",
+   "note": "Site marks webhooks Phase 2 (L11496); v1 polls job_runs."
+  },
+  {
+   "id": "R11498",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1355",
+   "note": "Site marks webhooks Phase 2 (L11496); v1 polls job_runs."
+  },
+  {
+   "id": "R11503",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1355",
+   "note": "Site marks webhooks Phase 2 (L11496); v1 polls job_runs."
+  },
+  {
+   "id": "R11503a",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1355",
+   "note": "Site marks webhooks Phase 2 (L11496); v1 polls job_runs."
+  },
+  {
+   "id": "R11503b",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1355",
+   "note": "Site marks webhooks Phase 2 (L11496); v1 polls job_runs."
+  },
+  {
+   "id": "R11503c",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1355",
+   "note": "Site marks webhooks Phase 2 (L11496); v1 polls job_runs."
+  },
+  {
+   "id": "R11503d",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1355",
+   "note": "Site marks webhooks Phase 2 (L11496); v1 polls job_runs."
+  },
+  {
+   "id": "R11503e",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1355",
+   "note": "Site marks webhooks Phase 2 (L11496); v1 polls job_runs."
+  },
+  {
+   "id": "R11503f",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1355",
+   "note": "Site marks webhooks Phase 2 (L11496); v1 polls job_runs."
+  },
+  {
+   "id": "R11503g",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1355",
+   "note": "Site marks webhooks Phase 2 (L11496); v1 polls job_runs."
+  },
+  {
+   "id": "R11510",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1977; CANON.md:152 (D6); TEAM-QUESTIONS.md:33 (T7)",
+   "note": "FastAPI issues the JWT; NextAuth only holds the session."
+  },
+  {
+   "id": "R11512",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2004; CANON.md:152 (D6); TEAM-QUESTIONS.md:33 (T7)",
+   "note": "FastAPI is the sole issuer, not NextAuth."
+  },
+  {
+   "id": "R11517a",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "BACKEND-ARCHITECTURE.md:2004",
+   "note": "NextAuth lives in apps/web as a session holder only (T7)."
+  },
+  {
+   "id": "R11517b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1358",
+   "note": "Bearer JWT on business routes; health and OAuth callback are public."
+  },
+  {
+   "id": "R11517c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2007; CANON.md:152 (D6); TEAM-QUESTIONS.md:33 (T7)",
+   "note": "Claim is sub (user id), not user_id."
+  },
+  {
+   "id": "R11517d",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2007; CANON.md:152 (D6); TEAM-QUESTIONS.md:33 (T7)",
+   "note": "Claim is tid (active brand), not tenant_id."
+  },
+  {
+   "id": "R11517e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2007",
+   "note": "roles[] claim."
+  },
+  {
+   "id": "R11517f",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1196; BUILD-SEQUENCE.md S10 (draft); T95",
+   "note": "Per-route dependency, not middleware; public routes need no exclusion list."
+  },
+  {
+   "id": "R11524",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1360",
+   "note": "RBAC planned for v1."
+  },
+  {
+   "id": "R11526",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1360-1363",
+   "note": "require_role dependency; endpoint-role matrix in S10."
+  },
+  {
+   "id": "R11531",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1360",
+   "note": "owner, operator, reviewer, admin."
+  },
+  {
+   "id": "R11531a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2025",
+   "note": "Owner does everything, still bound by maker-checker."
+  },
+  {
+   "id": "R11531b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2026; CANON.md:152 (D13); Q17",
+   "note": "Operator may also publish; cannot approve."
+  },
+  {
+   "id": "R11531c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2027; CANON.md:152 (D13); Q17",
+   "note": "Reviewer may also regenerate existing listings."
+  },
+  {
+   "id": "R11531d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2028",
+   "note": "Admin: settings, connections, roles; ADR-0008 admin-as-approver open."
+  },
+  {
+   "id": "R11531e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1363",
+   "note": "Every route declares a role or is explicitly public (S10 test)."
+  },
+  {
+   "id": "R11531f",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1196; DATABASE.md:311; T95",
+   "note": "Proposed per-request membership probe overrides JWT roles (up to 30 min stale)."
+  },
+  {
+   "id": "R11538",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1438; CANON.md:33; TEAM-QUESTIONS.md:59 (T11)",
+   "note": "Versioned /api/v1 from v1; site defers versioning to Phase 2."
+  },
+  {
+   "id": "R11540",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1438; CANON.md:33; TEAM-QUESTIONS.md:59 (T11)",
+   "note": "/api/v1 plus oasdiff breaking-change check and MAJOR windows."
+  },
+  {
+   "id": "R11545",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1438; CANON.md:33; TEAM-QUESTIONS.md:59 (T11)",
+   "note": "/api/v1 prefix from day one, not /v1/ in Phase 2."
+  },
+  {
+   "id": "R11545a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "CANON.md:33; TEAM-QUESTIONS.md:59 (T11)",
+   "note": "MVP is versioned under /api/v1."
+  },
+  {
+   "id": "R11545b",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1452",
+   "note": "Page [118] is Phase 2; when /api/v2 appears is not specified."
+  },
+  {
+   "id": "R11545c",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1452",
+   "note": "Page [118] is Phase 2; deprecation timeline not specified."
+  },
+  {
+   "id": "R11552",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:80",
+   "note": "Rules Engine in v1."
+  },
+  {
+   "id": "R11554",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:80",
+   "note": "Invariant 2: final arbiter."
+  },
+  {
+   "id": "R11554a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON-ADDENDUM.md:355; DATABASE.md:514",
+   "note": "max_length / min_length."
+  },
+  {
+   "id": "R11554b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON-ADDENDUM.md:355; DATABASE.md:514",
+   "note": "banned_terms."
+  },
+  {
+   "id": "R11554c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:514-517",
+   "note": "required_attribute, allowed_values, conditional_required."
+  },
+  {
+   "id": "R11554d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:526",
+   "note": "Template checks derived from category_templates."
+  },
+  {
+   "id": "R11559",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:80",
+   "note": "Deterministic code."
+  },
+  {
+   "id": "R11559a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:80",
+   "note": "Never an LLM call."
+  },
+  {
+   "id": "R11559b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON-ADDENDUM.md:355; BACKEND-ARCHITECTURE.md:1200",
+   "note": "max_length counts characters deterministically."
+  },
+  {
+   "id": "R11559c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON-ADDENDUM.md:355; DATABASE.md:504; scaffold/packages/schemas/fixtures/rules.seed.json",
+   "note": "banned_terms string match (word; regex platform-only); no semantic match."
+  },
+  {
+   "id": "R11559d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON-ADDENDUM.md:355",
+   "note": "required_attribute presence check."
+  },
+  {
+   "id": "R11569",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON-ADDENDUM.md:355",
+   "note": "max_length rule type."
+  },
+  {
+   "id": "R11571",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md:255; BACKEND-ARCHITECTURE.md:1387",
+   "note": "Amazon title <= 200 seeded as a rules row."
+  },
+  {
+   "id": "R11573",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON-ADDENDUM.md:355",
+   "note": "Character count."
+  },
+  {
+   "id": "R11575",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON-ADDENDUM.md:355",
+   "note": "banned_terms rule type."
+  },
+  {
+   "id": "R11577",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "scaffold/packages/schemas/fixtures/rules.seed.json",
+   "note": "Seed bans \"best seller\"/\"bestseller\"; bare \"best\" not listed."
+  },
+  {
+   "id": "R11577a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "scaffold/packages/schemas/fixtures/rules.seed.json",
+   "note": "Seed bans \"100% guaranteed\"; bare \"guaranteed\" not listed."
+  },
+  {
+   "id": "R11577b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "scaffold/packages/schemas/fixtures/rules.seed.json; TEAM-QUESTIONS.md:82 (T48)",
+   "note": "Seed bans cure, doctor recommended, fda approved."
+  },
+  {
+   "id": "R11579",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON-ADDENDUM.md:355",
+   "note": "String matching."
+  },
+  {
+   "id": "R11581",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON-ADDENDUM.md:355",
+   "note": "required_attribute rule type."
+  },
+  {
+   "id": "R11583",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "TEAM-QUESTIONS.md:66 (T32)",
+   "note": "Apparel seed rule requires color (key unchanged)."
+  },
+  {
+   "id": "R11583a",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "TEAM-QUESTIONS.md:66 (T32)",
+   "note": "material becomes an input alias of fabric_type; rule requires fabric_type."
+  },
+  {
+   "id": "R11585",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON-ADDENDUM.md:355",
+   "note": "Presence check."
+  },
+  {
+   "id": "R11587",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:526",
+   "note": "Category compliance via category_templates checks."
+  },
+  {
+   "id": "R11589",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:526",
+   "note": "Template required/enum checks (MISSING_ATTRIBUTE, VALUE_NOT_ALLOWED)."
+  },
+  {
+   "id": "R11591",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:526",
+   "note": "Checked against the versioned category template."
+  },
+  {
+   "id": "R11593",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520",
+   "note": "image_requirement RuleDef type."
+  },
+  {
+   "id": "R11595",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525",
+   "note": "Amazon main pure white seeded; Flipkart white or light."
+  },
+  {
+   "id": "R11597",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:525; AGENTS.md §1",
+   "note": "Backend Pillow checks."
+  },
+  {
+   "id": "R11597a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:525; CANON.md:119",
+   "note": "Vision findings via validate_images, judged against rules rows."
+  },
+  {
+   "id": "R11603a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:80; DATABASE.md:1582",
+   "note": "Approve needs validated/needs_review and a current validation run."
+  },
+  {
+   "id": "R11603b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:490; CANON-ADDENDUM.md:92",
+   "note": "rules table with rule_def JSONB."
+  },
+  {
+   "id": "R11603c",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:508; TEAM-QUESTIONS.md:47 (T29)",
+   "note": "Platform rules via a migrator job run on a rules pack, not an image deploy."
+  },
+  {
+   "id": "R11610",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:119-120",
+   "note": "Three-stage validation in v1."
+  },
+  {
+   "id": "R11612",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1338; CANON.md:119",
+   "note": "Schema, validate_rules, validate_images."
+  },
+  {
+   "id": "R11617",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:120",
+   "note": "Schema stage is CanonicalListing.model_validate."
+  },
+  {
+   "id": "R11617a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:120",
+   "note": "Pydantic model validation."
+  },
+  {
+   "id": "R11617b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:120",
+   "note": "Pydantic model validation."
+  },
+  {
+   "id": "R11617c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:120",
+   "note": "Pydantic model validation."
+  },
+  {
+   "id": "R11617d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:120",
+   "note": "Pure pydantic, no port."
+  },
+  {
+   "id": "R11618",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:119; AGENTS.md:80",
+   "note": "validate_rules over the pushed RuleSet."
+  },
+  {
+   "id": "R11619",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:119",
+   "note": "validate_images returns ImageReports."
+  },
+  {
+   "id": "R11619a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:525",
+   "note": "Pillow checks + vision model findings against rules rows."
+  },
+  {
+   "id": "R11621",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:86",
+   "note": "One ErrorReport shape per stage."
+  },
+  {
+   "id": "R11621a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:119; AGENTS.md:87",
+   "note": "validate_rules returns ErrorReport to the graph correction loop."
+  },
+  {
+   "id": "R11628",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:86",
+   "note": "ErrorReport in v1."
+  },
+  {
+   "id": "R11630",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1367; AGENTS.md:86",
+   "note": "One shape for every failure."
+  },
+  {
+   "id": "R11630a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:1367; CANON.md:119",
+   "note": "ErrorReport returned to the graph for correction."
+  },
+  {
+   "id": "R11630b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1400",
+   "note": "error_report inside the HTTP error envelope."
+  },
+  {
+   "id": "R11630c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:941",
+   "note": "Persisted as error_report_json on job and run rows."
+  },
+  {
+   "id": "R11630d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1792",
+   "note": "retryable drives queue retry and correction."
+  },
+  {
+   "id": "R11630e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1367",
+   "note": "Stored evidence plus request_id correlation."
+  },
+  {
+   "id": "R11639",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1376",
+   "note": "status."
+  },
+  {
+   "id": "R11640",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1377",
+   "note": "error_code VALIDATION_FAILED."
+  },
+  {
+   "id": "R11641",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1378",
+   "note": "retryable."
+  },
+  {
+   "id": "R11642",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1379",
+   "note": "attempts_used."
+  },
+  {
+   "id": "R11643",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1380; AGENTS.md:87",
+   "note": "max_attempts 3."
+  },
+  {
+   "id": "R11644",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1381",
+   "note": "errors array."
+  },
+  {
+   "id": "R11646",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1383",
+   "note": "field present; path spelled content.title under nested listing (T61)."
+  },
+  {
+   "id": "R11647",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369; BUILD-SEQUENCE.md:31; CONTRACTS.md:914; SPEC-TRACEABILITY.md:124 (C5)",
+   "note": "Site self-conflict: [121] TITLE_TOO_LONG vs [122] FIELD_TOO_LONG; plan uses FIELD_TOO_LONG, field names which."
+  },
+  {
+   "id": "R11648",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1385",
+   "note": "message."
+  },
+  {
+   "id": "R11648a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BUILD-SEQUENCE.md:255",
+   "note": "Amazon title <= 200 seed rule."
+  },
+  {
+   "id": "R11649",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1386",
+   "note": "value_submitted."
+  },
+  {
+   "id": "R11650",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1387",
+   "note": "suggestion."
+  },
+  {
+   "id": "R11651",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1388",
+   "note": "source."
+  },
+  {
+   "id": "R11652",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1389",
+   "note": "retryable."
+  },
+  {
+   "id": "R11653",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1390",
+   "note": "marketplace."
+  },
+  {
+   "id": "R11663",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:86",
+   "note": "Rule, vision, model and marketplace failures share ErrorReport."
+  },
+  {
+   "id": "R11664",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:123",
+   "note": "Correction node is in the AI graph."
+  },
+  {
+   "id": "R11665",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "AGENTS.md:91",
+   "note": "Targeted field fix in the graph; invariant 10."
+  },
+  {
+   "id": "R11666",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:119",
+   "note": "Re-validation via validate_rules / validate_images ports."
+  },
+  {
+   "id": "R11667",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:119",
+   "note": "Port returns the pass/fail ErrorReport."
+  },
+  {
+   "id": "R11668",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:87",
+   "note": "Loop capped at 3, then blocked."
+  },
+  {
+   "id": "R11669",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:124",
+   "note": "Graph continues to quality_check."
+  },
+  {
+   "id": "R11672",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1396",
+   "note": "Frozen ErrorSource and codes.py vocabularies."
+  },
+  {
+   "id": "R11672a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1383",
+   "note": "field."
+  },
+  {
+   "id": "R11672b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1384",
+   "note": "error_code."
+  },
+  {
+   "id": "R11672c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1385",
+   "note": "message."
+  },
+  {
+   "id": "R11672d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1386",
+   "note": "value_submitted."
+  },
+  {
+   "id": "R11672e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1387",
+   "note": "suggestion."
+  },
+  {
+   "id": "R11672f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1388",
+   "note": "source."
+  },
+  {
+   "id": "R11672g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1389",
+   "note": "retryable."
+  },
+  {
+   "id": "R11672h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1390",
+   "note": "marketplace."
+  },
+  {
+   "id": "R11672i",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1381; DATABASE.md:1367 (T21); CONTRACTS.md:351 (pre-Canon draft only)",
+   "note": "api_error_detail absent from BACKEND §5.3 schema and T21 ErrorItem additions (raw_code only); only the pre-Canon draft has it."
+  },
+  {
+   "id": "R11679",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:57",
+   "note": "ErrorSource frozen in v1."
+  },
+  {
+   "id": "R11681",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:57",
+   "note": "rules_engine."
+  },
+  {
+   "id": "R11681a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:57",
+   "note": "vision_model."
+  },
+  {
+   "id": "R11681b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:57",
+   "note": "amazon_adapter, flipkart_adapter."
+  },
+  {
+   "id": "R11681c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "CANON.md:57; CONTRACTS.md:186",
+   "note": "No auth source; AUTH_EXPIRED under *_adapter."
+  },
+  {
+   "id": "R11681d",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "CANON.md:57; ADR-0004",
+   "note": "No network source; transport errors retried, reported as adapter or system."
+  },
+  {
+   "id": "R11681e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:57",
+   "note": "ai_model."
+  },
+  {
+   "id": "R11694",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:57",
+   "note": "rules_engine."
+  },
+  {
+   "id": "R11696",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369; CONTRACTS.md:168",
+   "note": "FIELD_TOO_LONG."
+  },
+  {
+   "id": "R11696a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369; CONTRACTS.md:170",
+   "note": "BANNED_TERM."
+  },
+  {
+   "id": "R11696b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369; CONTRACTS.md:171",
+   "note": "MISSING_ATTRIBUTE."
+  },
+  {
+   "id": "R11698",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "TEAM-QUESTIONS.md:81 (T47)",
+   "note": "MISSING_ATTRIBUTE defaults to user_action; length and banned terms are ai_correct."
+  },
+  {
+   "id": "R11700",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "TEAM-QUESTIONS.md:81 (T47)",
+   "note": "AI correction only when the fact exists and is not critical."
+  },
+  {
+   "id": "R11702",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:57",
+   "note": "vision_model."
+  },
+  {
+   "id": "R11704",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520; DATABASE.md:1318; T84",
+   "note": "Plan emits error_code IMAGE_NON_COMPLIANT; BACKGROUND_OFF survives only as ImageIssueCode/raw code (draft), no ruling."
+  },
+  {
+   "id": "R11704a",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520; DATABASE.md:1318; T84",
+   "note": "Plan emits IMAGE_NON_COMPLIANT; RESOLUTION_LOW only as ImageIssueCode/raw code (pre-Canon draft), no ruling."
+  },
+  {
+   "id": "R11704b",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520; DATABASE.md:1318; TEAM-QUESTIONS.md:86 (T52); T84",
+   "note": "Plan emits IMAGE_NON_COMPLIANT; TEXT_DETECTED only as ImageIssueCode; Flipkart main-image text is a warning (T52)."
+  },
+  {
+   "id": "R11706",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "TEAM-QUESTIONS.md:39 (T21); T85",
+   "note": "T21 derives retryable=false for user_action items."
+  },
+  {
+   "id": "R11708",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1359",
+   "note": "image_replacement human task, satisfied by re-upload."
+  },
+  {
+   "id": "R11710",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:57",
+   "note": "amazon_adapter."
+  },
+  {
+   "id": "R11712",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369; CONTRACTS.md:184",
+   "note": "API_REJECTED_PARTIAL."
+  },
+  {
+   "id": "R11712a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369; CONTRACTS.md:185",
+   "note": "RATE_LIMITED."
+  },
+  {
+   "id": "R11712b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369; CONTRACTS.md:186",
+   "note": "AUTH_EXPIRED."
+  },
+  {
+   "id": "R11714",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "Retry class per code in ERROR_CODE_META."
+  },
+  {
+   "id": "R11716",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "auto_retry or user_action per code."
+  },
+  {
+   "id": "R11718",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:57",
+   "note": "flipkart_adapter."
+  },
+  {
+   "id": "R11720",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369; CONTRACTS.md:184",
+   "note": "API_REJECTED_PARTIAL."
+  },
+  {
+   "id": "R11720a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369; CANON-ADDENDUM.md:420 (§19)",
+   "note": "Code exists, but Addendum §19 binds CATEGORY_NOT_MAPPED to source rules_engine (import lookup), not flipkart_adapter; class system_failure."
+  },
+  {
+   "id": "R11722",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "Retry class per code."
+  },
+  {
+   "id": "R11724",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "auto_retry or user_action per code."
+  },
+  {
+   "id": "R11726",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:57",
+   "note": "ai_model."
+  },
+  {
+   "id": "R11728",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369; CONTRACTS.md:177",
+   "note": "JSON_INVALID."
+  },
+  {
+   "id": "R11728a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369; CANON-ADDENDUM.md:434 (§20); CONTRACTS.md:178",
+   "note": "TIMEOUT (model call), distinct from JOB_TIMEOUT."
+  },
+  {
+   "id": "R11728b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369; CONTRACTS.md:179",
+   "note": "TOKEN_LIMIT."
+  },
+  {
+   "id": "R11730",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "JSON_INVALID, TIMEOUT, TOKEN_LIMIT are auto_retry."
+  },
+  {
+   "id": "R11732",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "BACKEND-ARCHITECTURE.md:1786",
+   "note": "Output repair lives in the AI graph."
+  },
+  {
+   "id": "R11732a",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "CANON.md:119; BACKEND-ARCHITECTURE.md:738",
+   "note": "get_model_credentials purposes lack an escalation model; plan lists it as a known seam gap."
+  },
+  {
+   "id": "R11739",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1366-1369",
+   "note": "Retry classification in v1 contracts."
+  },
+  {
+   "id": "R11741",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1366-1369; BACKEND-ARCHITECTURE.md:1792",
+   "note": "RetryClass on ErrorItem (T21) + ERROR_CODE_META."
+  },
+  {
+   "id": "R11752",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "auto_retry."
+  },
+  {
+   "id": "R11754",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "RATE_LIMITED is auto_retry."
+  },
+  {
+   "id": "R11754a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1784; ADR-0004",
+   "note": "Transport errors retried with backoff."
+  },
+  {
+   "id": "R11756",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1784",
+   "note": "1 s doubling with jitter, 60 s cap."
+  },
+  {
+   "id": "R11756a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1784",
+   "note": "Queue retries only, no human or AI."
+  },
+  {
+   "id": "R11758",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "ai_correct."
+  },
+  {
+   "id": "R11760",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "FIELD_TOO_LONG is ai_correct."
+  },
+  {
+   "id": "R11760a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "BANNED_TERM is ai_correct."
+  },
+  {
+   "id": "R11762",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1367; AGENTS.md:91",
+   "note": "Correction node routes only ai_correct items, per field."
+  },
+  {
+   "id": "R11764",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "user_action."
+  },
+  {
+   "id": "R11766",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369; DATABASE.md:1336",
+   "note": "ERROR_CODE_META gives IMAGE_NON_COMPLIANT class media_error but no retry_class; user_action only implied by image_replacement task."
+  },
+  {
+   "id": "R11766a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1008; DATABASE.md:1369",
+   "note": "AUTH_EXPIRED after one refresh opens reconnect_account task."
+  },
+  {
+   "id": "R11768",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1348",
+   "note": "human_tasks carry question and suggestions."
+  },
+  {
+   "id": "R11770",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "system_failure."
+  },
+  {
+   "id": "R11772",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1369",
+   "note": "INTERNAL_ERROR is system_failure."
+  },
+  {
+   "id": "R11772a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1799; DATABASE.md:1369",
+   "note": "Dead letters in job_runs; system_failure codes."
+  },
+  {
+   "id": "R11774",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2770; TEAM-QUESTIONS.md:90 (T56)",
+   "note": "Sentry alert rules; who runs ops is open (Q18)."
+  },
+  {
+   "id": "R11774a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1776",
+   "note": "Lease reaper requeues or dead-letters stalled jobs."
+  },
+  {
+   "id": "R11781",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:81",
+   "note": "Mandatory approval in v1."
+  },
+  {
+   "id": "R11783",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1339-1341",
+   "note": "Approve/reject, PATCH content, regenerate endpoints."
+  },
+  {
+   "id": "R11783a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:791; TEAM-QUESTIONS.md:74 (T40)",
+   "note": "review_decisions stores feedback; fed as regenerate instructions."
+  },
+  {
+   "id": "R11788",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "CANON.md:124",
+   "note": "No approval node; graph ends at quality_check, listing waits in the review queue."
+  },
+  {
+   "id": "R11788a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:796",
+   "note": "Review queue shows content."
+  },
+  {
+   "id": "R11788b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:796",
+   "note": "Validation results shown."
+  },
+  {
+   "id": "R11788c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:796",
+   "note": "Warnings shown."
+  },
+  {
+   "id": "R11788d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:796",
+   "note": "Errors shown."
+  },
+  {
+   "id": "R11788e",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2136",
+   "note": "confidence_score stored on the listing for display."
+  },
+  {
+   "id": "R11788f",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:835",
+   "note": "Per-marketplace adapter preview is gap G11."
+  },
+  {
+   "id": "R11788g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1341",
+   "note": "Approve."
+  },
+  {
+   "id": "R11788h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1567; TEAM-QUESTIONS.md:74 (T40)",
+   "note": "Reject needs reason_code + feedback."
+  },
+  {
+   "id": "R11788i",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1339",
+   "note": "PATCH content creates a new version; editor cannot approve."
+  },
+  {
+   "id": "R11788j",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1340; DATABASE.md:1607",
+   "note": "RegenerateItem.instructions <= 2000."
+  },
+  {
+   "id": "R11788k",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:81; ADR-0008",
+   "note": "auto_publish reserved and off (T10)."
+  },
+  {
+   "id": "R11788l",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "ADR-0008",
+   "note": "Site marks confidence-based auto-approval Phase 3 (L11788)."
+  },
+  {
+   "id": "R11795",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2038",
+   "note": "Maker-checker in v1."
+  },
+  {
+   "id": "R11804a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2038",
+   "note": "API check plus DB trigger re-check."
+  },
+  {
+   "id": "R11804b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2038; TEAM-QUESTIONS.md:63 (T15)",
+   "note": "One-person brands need a second reviewer (T15)."
+  },
+  {
+   "id": "R11811",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2213",
+   "note": "audit_log in v1."
+  },
+  {
+   "id": "R11813",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2213",
+   "note": "Who, what, when, which entity."
+  },
+  {
+   "id": "R11818",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:285; BACKEND-ARCHITECTURE.md:2213",
+   "note": "audit() on every important action."
+  },
+  {
+   "id": "R11818a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:292; CANON.md:94; TEAM-QUESTIONS.md:99 (T65)",
+   "note": "actor split into actor_type, actor_user_id, actor_email (Canon)."
+  },
+  {
+   "id": "R11818b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:293",
+   "note": "action."
+  },
+  {
+   "id": "R11818c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:293",
+   "note": "entity_type + entity_id, as site [97]."
+  },
+  {
+   "id": "R11818d",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:297; CANON.md:94; TEAM-QUESTIONS.md:99 (T65)",
+   "note": "Column named occurred_at (Canon)."
+  },
+  {
+   "id": "R11818e",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:294; DATABASE.md:300",
+   "note": "before holds changed, allow-listed non-personal fields only."
+  },
+  {
+   "id": "R11818f",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:294; DATABASE.md:300",
+   "note": "after holds changed, allow-listed non-personal fields only."
+  },
+  {
+   "id": "R11818g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:285; BACKEND-ARCHITECTURE.md:2213",
+   "note": "Append-only trail."
+  },
+  {
+   "id": "R11818h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2213",
+   "note": "request_id links entries to logs and traces."
+  },
+  {
+   "id": "R11818i",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:2213",
+   "note": "Role changes and approvals audited."
+  },
+  {
+   "id": "R11818j",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:301",
+   "note": "REVOKE UPDATE/DELETE/TRUNCATE plus trigger."
+  },
+  {
+   "id": "R11818k",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "DATABASE.md:1906; T96",
+   "note": "Plan prunes after 24 months and redacts actor PII via migrator."
+  },
+  {
+   "id": "R11825",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CONTRACTS.md:34",
+   "note": "quality_check node and formula are the AI team's."
+  },
+  {
+   "id": "R11827",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CONTRACTS.md:34",
+   "note": "Formula owned by the AI team (Day-21 ADR)."
+  },
+  {
+   "id": "R11832",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CONTRACTS.md:34",
+   "note": "Formula owned by the AI team (Day-21 ADR)."
+  },
+  {
+   "id": "R11833",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CONTRACTS.md:34",
+   "note": "Formula owned by the AI team (Day-21 ADR)."
+  },
+  {
+   "id": "R11834",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:122",
+   "note": "BrandChunkDTO.similarity supplied by backend search."
+  },
+  {
+   "id": "R11835",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CONTRACTS.md:34",
+   "note": "Formula owned by the AI team (Day-21 ADR)."
+  },
+  {
+   "id": "R11835a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CONTRACTS.md:34",
+   "note": "Formula owned by the AI team (Day-21 ADR)."
+  },
+  {
+   "id": "R11836",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CANON.md:119",
+   "note": "Computed in graph from validate_images results."
+  },
+  {
+   "id": "R11837",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CONTRACTS.md:34",
+   "note": "Formula owned by the AI team (Day-21 ADR)."
+  },
+  {
+   "id": "R11841",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:80; CONTRACTS.md:34",
+   "note": "Advisory; rules and approval ignore it."
+  },
+  {
+   "id": "R11841a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:80",
+   "note": "Rules must pass regardless."
+  },
+  {
+   "id": "R11841b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CONTRACTS.md:34",
+   "note": "confidence_score advisory only."
+  },
+  {
+   "id": "R11841c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:80",
+   "note": "Rules are authoritative."
+  },
+  {
+   "id": "R11848",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CONTRACTS.md:34",
+   "note": "Formula owned by the AI team."
+  },
+  {
+   "id": "R11850",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CONTRACTS.md:34",
+   "note": "Backend stores advisory confidence_score 0..1."
+  },
+  {
+   "id": "R11855",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CONTRACTS.md:34",
+   "note": "Composite formula owned by the AI team."
+  },
+  {
+   "id": "R11855a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CONTRACTS.md:34",
+   "note": "Composite formula owned by the AI team."
+  },
+  {
+   "id": "R11855b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "CONTRACTS.md:34",
+   "note": "Composite formula owned by the AI team."
+  },
+  {
+   "id": "R11855c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:122",
+   "note": "BrandChunkDTO.similarity supplied by backend."
+  },
+  {
+   "id": "R11855d",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "TEAM-QUESTIONS.md:62 (T14)",
+   "note": "Historical performance input depends on performance data in v1 (C9/Q10)."
+  },
+  {
+   "id": "R11855e",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2136",
+   "note": "confidence_score stored for reviewer display."
+  },
+  {
+   "id": "R11862",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; TEAM-QUESTIONS.md:29 (T3)",
+   "note": "Async via procrastinate on Postgres."
+  },
+  {
+   "id": "R11864",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; CANON.md:19; TEAM-QUESTIONS.md:29 (T3)",
+   "note": "procrastinate on Postgres, no Redis/ARQ (spike-gated)."
+  },
+  {
+   "id": "R11864a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1284",
+   "note": "Slow work returns 202 + job."
+  },
+  {
+   "id": "R11869",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1783",
+   "note": "Publish runs async, 600 s limit."
+  },
+  {
+   "id": "R11869a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1783",
+   "note": "Generation async, 300 s limit."
+  },
+  {
+   "id": "R11869b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1783; ADR-0004",
+   "note": "Import 1800 s limit; spike tests 1,000-row import."
+  },
+  {
+   "id": "R11869d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1336",
+   "note": "Generate returns 202 with a job."
+  },
+  {
+   "id": "R11869e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1334",
+   "note": "Bulk import returns 202 with a job."
+  },
+  {
+   "id": "R11869f",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; TEAM-QUESTIONS.md:29 (T3)",
+   "note": "Postgres is the broker; no Redis."
+  },
+  {
+   "id": "R11869g",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; TEAM-QUESTIONS.md:29 (T3)",
+   "note": "procrastinate replaces ARQ."
+  },
+  {
+   "id": "R11875",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1721",
+   "note": "Job row + queue entry in one transaction."
+  },
+  {
+   "id": "R11876",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; TEAM-QUESTIONS.md:29 (T3)",
+   "note": "Queue entry in Postgres (procrastinate)."
+  },
+  {
+   "id": "R11877",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; TEAM-QUESTIONS.md:29 (T3)",
+   "note": "procrastinate worker on the Cloud Run worker pool."
+  },
+  {
+   "id": "R11878",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1721",
+   "note": "Worker runs pipeline or adapter call."
+  },
+  {
+   "id": "R11879",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1721",
+   "note": "Results + end status in one short transaction."
+  },
+  {
+   "id": "R11880",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "CANON.md:60",
+   "note": "Dashboard polls job_runs via GET /api/v1/jobs/{job_id}."
+  },
+  {
+   "id": "R11883",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1284",
+   "note": "Returns a job id immediately."
+  },
+  {
+   "id": "R11883a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1284",
+   "note": "202 Accepted."
+  },
+  {
+   "id": "R11883b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:60",
+   "note": "Polling endpoint."
+  },
+  {
+   "id": "R11883c",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1355",
+   "note": "Webhooks are Phase 2 per [115] (L11496); v1 polls."
+  },
+  {
+   "id": "R11890",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; CANON.md:62; TEAM-QUESTIONS.md:29 (T3)",
+   "note": "Two procrastinate queues on Postgres."
+  },
+  {
+   "id": "R11892",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; TEAM-QUESTIONS.md:29 (T3)",
+   "note": "procrastinate replaces Redis + ARQ."
+  },
+  {
+   "id": "R11897",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; TEAM-QUESTIONS.md:29 (T3)",
+   "note": "Postgres is the broker."
+  },
+  {
+   "id": "R11897a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; CANON.md:21; TEAM-QUESTIONS.md:29 (T3)",
+   "note": "No Redis cache; state kept in Postgres."
+  },
+  {
+   "id": "R11897b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0001:32; ADR-0004",
+   "note": "Separate per-queue concurrency; numbers not specified."
+  },
+  {
+   "id": "R11897c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "CANON.md:62; ADR-0004",
+   "note": "Generation shares queue default with images, imports, embeddings."
+  },
+  {
+   "id": "R11897d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON.md:62; ADR-0004",
+   "note": "Dedicated publish queue."
+  },
+  {
+   "id": "R11897e",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "CANON.md:62; ADR-0004",
+   "note": "Image processing runs on queue default."
+  },
+  {
+   "id": "R11897f",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1773; VISION-ALIGNMENT.md G17",
+   "note": "Per-marketplace/account outbound limiter only proposed (G17), not designed."
+  },
+  {
+   "id": "R11904",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "CANON.md:51",
+   "note": "JobState vocabulary in v1."
+  },
+  {
+   "id": "R11906",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "CANON.md:51; BACKEND-ARCHITECTURE.md:1670",
+   "note": "queued|running|succeeded|partial|failed|cancelled|dead_letter; no COMPLETED."
+  },
+  {
+   "id": "R11906a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:941; VISION-ALIGNMENT.md Q26",
+   "note": "payload_json holds ids only; resolved input context is not persisted."
+  },
+  {
+   "id": "R11911",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "CANON.md:51",
+   "note": "TIMEOUT becomes JOB_TIMEOUT on a failed row, not a state."
+  },
+  {
+   "id": "R11911a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "CANON.md:51; CANON-ADDENDUM.md:434",
+   "note": "JOB_TIMEOUT error code on a failed row."
+  },
+  {
+   "id": "R11911b",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:941; VISION-ALIGNMENT.md Q26",
+   "note": "Input stored as ids only (<= 64 KiB)."
+  },
+  {
+   "id": "R11911c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:941",
+   "note": "result_json."
+  },
+  {
+   "id": "R11911d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:941",
+   "note": "error_report_json, required on failure."
+  },
+  {
+   "id": "R11911e",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1794; VISION-ALIGNMENT.md:271 (Q26, no T-row); T80",
+   "note": "Retry/requeue inserts a new row: same request, fresh context; payload_json holds ids only."
+  },
+  {
+   "id": "R11911f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1783; BACKEND-ARCHITECTURE.md:1776",
+   "note": "asyncio.timeout plus lease reaper."
+  },
+  {
+   "id": "R11911g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "CANON-ADDENDUM.md:434",
+   "note": "JOB_TIMEOUT, source=system."
+  },
+  {
+   "id": "R11918",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1779",
+   "note": "Retry table in v1."
+  },
+  {
+   "id": "R11920",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:87",
+   "note": "In-graph correction, cap 3."
+  },
+  {
+   "id": "R11920a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1784",
+   "note": "Backoff retries."
+  },
+  {
+   "id": "R11920b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1787",
+   "note": "needs_reconnect plus reconnect task."
+  },
+  {
+   "id": "R11931",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1785",
+   "note": "Rules failure row."
+  },
+  {
+   "id": "R11933",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "BACKEND-ARCHITECTURE.md:1785",
+   "note": "Correction node fixes failing fields, then re-validates."
+  },
+  {
+   "id": "R11935",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:87",
+   "note": "Cap of 3, then blocked."
+  },
+  {
+   "id": "R11937",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1784",
+   "note": "429 rate limit row."
+  },
+  {
+   "id": "R11939",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1784",
+   "note": "Backoff 1 s doubling, 60 s cap."
+  },
+  {
+   "id": "R11941",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "ADR-0004; DATABASE.md:937",
+   "note": "Auto-retries capped by job_runs.max_attempts (<= 3), then dead_letter."
+  },
+  {
+   "id": "R11943",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1787",
+   "note": "Auth failure row."
+  },
+  {
+   "id": "R11945",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1008; BACKEND-ARCHITECTURE.md:1787",
+   "note": "Refresh once, then needs_reconnect."
+  },
+  {
+   "id": "R11947",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1008",
+   "note": "One refresh."
+  },
+  {
+   "id": "R11949",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "BACKEND-ARCHITECTURE.md:1788",
+   "note": "Partial publish row."
+  },
+  {
+   "id": "R11951",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:91; BACKEND-ARCHITECTURE.md:1813",
+   "note": "Resend failed fields only."
+  },
+  {
+   "id": "R11953",
+   "status": "needs-client",
+   "owner": "backend-db",
+   "ref": "TEAM-QUESTIONS.md:37 (T19)",
+   "note": "Cap is 3 submissions per approved version incl. the first, vs 3 retries."
+  },
+  {
+   "id": "R11955",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "BACKEND-ARCHITECTURE.md:1786",
+   "note": "JSON repair lives in the AI graph."
+  },
+  {
+   "id": "R11957",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "CANON.md:119; BACKEND-ARCHITECTURE.md:738; BACKEND-ARCHITECTURE.md:1786",
+   "note": "Model escalation has no get_model_credentials purpose."
+  },
+  {
+   "id": "R11959",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "BACKEND-ARCHITECTURE.md:1786",
+   "note": "Cap lives in the AI graph."
+  }
+ ]
+}

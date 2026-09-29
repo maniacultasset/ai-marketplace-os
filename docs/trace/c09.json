@@ -1,0 +1,4442 @@
+{
+ "chunk": "c09",
+ "start": 5867,
+ "end": 6334,
+ "items": [
+  {
+   "id": "R05867",
+   "lines": [
+    5867,
+    5867
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "decision",
+   "text": "PostgreSQL 16 Schema (Full DDL): the database is PostgreSQL 16."
+  },
+  {
+   "id": "R05869",
+   "lines": [
+    5869,
+    5869
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "This is the consolidated database schema."
+  },
+  {
+   "id": "R05869a",
+   "lines": [
+    5869,
+    5869
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Every multi-tenant table carries `tenant_id` or `brand_id`."
+  },
+  {
+   "id": "R05869b",
+   "lines": [
+    5869,
+    5869
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "The multi-tenant `tenant_id`/`brand_id` column is a foreign key to `tenants.id`."
+  },
+  {
+   "id": "R05871",
+   "lines": [
+    5871,
+    5871
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "interface",
+   "text": "Schema file name: database_schema_v1.sql."
+  },
+  {
+   "id": "R05873",
+   "lines": [
+    5873,
+    5873
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Opening ```sql code fence.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05874",
+   "lines": [
+    5874,
+    5874
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "DDL section 1: Tenants / Brands (tenants table represents tenants/brands)."
+  },
+  {
+   "id": "R05875",
+   "lines": [
+    5875,
+    5875
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Table `tenants` is created (CREATE TABLE tenants)."
+  },
+  {
+   "id": "R05876",
+   "lines": [
+    5876,
+    5876
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "tenants.id UUID PRIMARY KEY DEFAULT gen_random_uuid()"
+  },
+  {
+   "id": "R05877",
+   "lines": [
+    5877,
+    5877
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "tenants.name TEXT NOT NULL"
+  },
+  {
+   "id": "R05878",
+   "lines": [
+    5878,
+    5878
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "tenants.tone TEXT"
+  },
+  {
+   "id": "R05879",
+   "lines": [
+    5879,
+    5879
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "tenants.guidelines JSONB"
+  },
+  {
+   "id": "R05880",
+   "lines": [
+    5880,
+    5880
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "tenants.glossary JSONB"
+  },
+  {
+   "id": "R05881",
+   "lines": [
+    5881,
+    5881
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "tenants.created_at TIMESTAMPTZ DEFAULT now()"
+  },
+  {
+   "id": "R05882",
+   "lines": [
+    5882,
+    5882
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing ');' of CREATE TABLE tenants.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05884",
+   "lines": [
+    5884,
+    5884
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "DDL section 2: Users / RBAC Roles (users table carries RBAC roles)."
+  },
+  {
+   "id": "R05885",
+   "lines": [
+    5885,
+    5885
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Table `users` is created (CREATE TABLE users)."
+  },
+  {
+   "id": "R05886",
+   "lines": [
+    5886,
+    5886
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "users.id UUID PRIMARY KEY DEFAULT gen_random_uuid()"
+  },
+  {
+   "id": "R05887",
+   "lines": [
+    5887,
+    5887
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "users.tenant_id UUID REFERENCES tenants(id) NOT NULL"
+  },
+  {
+   "id": "R05888",
+   "lines": [
+    5888,
+    5888
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "users.email TEXT NOT NULL"
+  },
+  {
+   "id": "R05889",
+   "lines": [
+    5889,
+    5889
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "users.hashed_password TEXT (nullable)"
+  },
+  {
+   "id": "R05890",
+   "lines": [
+    5890,
+    5890
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "users.role TEXT NOT NULL"
+  },
+  {
+   "id": "R05890a",
+   "lines": [
+    5890,
+    5890
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "users.role CHECK (role IN ('owner','operator','reviewer','admin'))."
+  },
+  {
+   "id": "R05891",
+   "lines": [
+    5891,
+    5891
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "users.created_at TIMESTAMPTZ DEFAULT now()"
+  },
+  {
+   "id": "R05892",
+   "lines": [
+    5892,
+    5892
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "users has UNIQUE (tenant_id, email)."
+  },
+  {
+   "id": "R05893",
+   "lines": [
+    5893,
+    5893
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing ');' of CREATE TABLE users.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05895",
+   "lines": [
+    5895,
+    5895
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "decision",
+   "text": "DDL section 3: Brand Chunks is the pgvector RAG Store."
+  },
+  {
+   "id": "R05896",
+   "lines": [
+    5896,
+    5896
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "decision",
+   "text": "CREATE EXTENSION IF NOT EXISTS vector; (pgvector extension enabled)."
+  },
+  {
+   "id": "R05897",
+   "lines": [
+    5897,
+    5897
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Table `brand_chunks` is created (CREATE TABLE brand_chunks)."
+  },
+  {
+   "id": "R05898",
+   "lines": [
+    5898,
+    5898
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "brand_chunks.id UUID PRIMARY KEY DEFAULT gen_random_uuid()"
+  },
+  {
+   "id": "R05899",
+   "lines": [
+    5899,
+    5899
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "brand_chunks.brand_id UUID REFERENCES tenants(id) NOT NULL"
+  },
+  {
+   "id": "R05900",
+   "lines": [
+    5900,
+    5900
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "brand_chunks.type TEXT NOT NULL"
+  },
+  {
+   "id": "R05900a",
+   "lines": [
+    5900,
+    5900
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "brand_chunks.type values: tone_rule | glossary | compliance | example."
+  },
+  {
+   "id": "R05901",
+   "lines": [
+    5901,
+    5901
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "brand_chunks.text TEXT NOT NULL"
+  },
+  {
+   "id": "R05902",
+   "lines": [
+    5902,
+    5902
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "brand_chunks.embedding vector(1536)"
+  },
+  {
+   "id": "R05902a",
+   "lines": [
+    5902,
+    5902
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "constraint",
+   "text": "brand_chunks embedding dimension is 1536."
+  },
+  {
+   "id": "R05903",
+   "lines": [
+    5903,
+    5903
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "brand_chunks.updated_at TIMESTAMPTZ DEFAULT now()"
+  },
+  {
+   "id": "R05904",
+   "lines": [
+    5904,
+    5904
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing ');' of CREATE TABLE brand_chunks.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05905",
+   "lines": [
+    5905,
+    5906
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Index brand_chunks_embedding_idx ON brand_chunks (embedding)."
+  },
+  {
+   "id": "R05905a",
+   "lines": [
+    5905,
+    5906
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "decision",
+   "text": "brand_chunks_embedding_idx uses hnsw with vector_cosine_ops."
+  },
+  {
+   "id": "R05908",
+   "lines": [
+    5908,
+    5908
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "DDL section 4: Products (Canonical Input)."
+  },
+  {
+   "id": "R05909",
+   "lines": [
+    5909,
+    5909
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Table `products` is created (CREATE TABLE products)."
+  },
+  {
+   "id": "R05910",
+   "lines": [
+    5910,
+    5910
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "products.id UUID PRIMARY KEY DEFAULT gen_random_uuid()"
+  },
+  {
+   "id": "R05911",
+   "lines": [
+    5911,
+    5911
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "products.brand_id UUID REFERENCES tenants(id) NOT NULL"
+  },
+  {
+   "id": "R05912",
+   "lines": [
+    5912,
+    5912
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "products.sku TEXT NOT NULL"
+  },
+  {
+   "id": "R05913",
+   "lines": [
+    5913,
+    5913
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "products.title TEXT NOT NULL"
+  },
+  {
+   "id": "R05914",
+   "lines": [
+    5914,
+    5914
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "products.images JSONB"
+  },
+  {
+   "id": "R05915",
+   "lines": [
+    5915,
+    5915
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "products.attributes JSONB"
+  },
+  {
+   "id": "R05916",
+   "lines": [
+    5916,
+    5916
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "products.status TEXT DEFAULT 'draft'"
+  },
+  {
+   "id": "R05917",
+   "lines": [
+    5917,
+    5917
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "products.created_at TIMESTAMPTZ DEFAULT now()"
+  },
+  {
+   "id": "R05918",
+   "lines": [
+    5918,
+    5918
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "products.updated_at TIMESTAMPTZ DEFAULT now()"
+  },
+  {
+   "id": "R05919",
+   "lines": [
+    5919,
+    5919
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "products has UNIQUE (brand_id, sku)."
+  },
+  {
+   "id": "R05920",
+   "lines": [
+    5920,
+    5920
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing ');' of CREATE TABLE products.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05922",
+   "lines": [
+    5922,
+    5922
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "quality",
+   "text": "DDL section 5: Marketplace Accounts hold Encrypted Credentials."
+  },
+  {
+   "id": "R05923",
+   "lines": [
+    5923,
+    5923
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Table `marketplace_accounts` is created (CREATE TABLE marketplace_accounts)."
+  },
+  {
+   "id": "R05924",
+   "lines": [
+    5924,
+    5924
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "marketplace_accounts.id UUID PRIMARY KEY DEFAULT gen_random_uuid()"
+  },
+  {
+   "id": "R05925",
+   "lines": [
+    5925,
+    5925
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "marketplace_accounts.brand_id UUID REFERENCES tenants(id) NOT NULL"
+  },
+  {
+   "id": "R05926",
+   "lines": [
+    5926,
+    5926
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "marketplace_accounts.marketplace TEXT NOT NULL"
+  },
+  {
+   "id": "R05926a",
+   "lines": [
+    5926,
+    5926
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "marketplace_accounts.marketplace values: amazon | flipkart."
+  },
+  {
+   "id": "R05927",
+   "lines": [
+    5927,
+    5927
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "marketplace_accounts.token_enc BYTEA NOT NULL"
+  },
+  {
+   "id": "R05927a",
+   "lines": [
+    5927,
+    5927
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "quality",
+   "text": "marketplace_accounts.token_enc holds KMS-wrapped AES-256 ciphertext."
+  },
+  {
+   "id": "R05928",
+   "lines": [
+    5928,
+    5928
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "marketplace_accounts.status TEXT DEFAULT 'active'"
+  },
+  {
+   "id": "R05929",
+   "lines": [
+    5929,
+    5929
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "marketplace_accounts.created_at TIMESTAMPTZ DEFAULT now()"
+  },
+  {
+   "id": "R05930",
+   "lines": [
+    5930,
+    5930
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing ');' of CREATE TABLE marketplace_accounts.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05932",
+   "lines": [
+    5932,
+    5932
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "DDL section 6: Listings (Marketplace Entity)."
+  },
+  {
+   "id": "R05933",
+   "lines": [
+    5933,
+    5933
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Table `listings` is created (CREATE TABLE listings)."
+  },
+  {
+   "id": "R05934",
+   "lines": [
+    5934,
+    5934
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "listings.id UUID PRIMARY KEY DEFAULT gen_random_uuid()"
+  },
+  {
+   "id": "R05935",
+   "lines": [
+    5935,
+    5935
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "listings.product_id UUID REFERENCES products(id) NOT NULL"
+  },
+  {
+   "id": "R05936",
+   "lines": [
+    5936,
+    5936
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "listings.marketplace TEXT NOT NULL"
+  },
+  {
+   "id": "R05937",
+   "lines": [
+    5937,
+    5937
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "listings.status TEXT NOT NULL"
+  },
+  {
+   "id": "R05937a",
+   "lines": [
+    5937,
+    5937
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "listings.status values: created|generating|validated|needs_review|approved|publishing|published|blocked|failed."
+  },
+  {
+   "id": "R05938",
+   "lines": [
+    5938,
+    5938
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "listings.external_id TEXT"
+  },
+  {
+   "id": "R05939",
+   "lines": [
+    5939,
+    5939
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "listings.created_at TIMESTAMPTZ DEFAULT now()"
+  },
+  {
+   "id": "R05940",
+   "lines": [
+    5940,
+    5940
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing ');' of CREATE TABLE listings.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05942",
+   "lines": [
+    5942,
+    5942
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "requirement",
+   "text": "DDL section 7: Listing Versions provide Maker-Checker Integrity."
+  },
+  {
+   "id": "R05943",
+   "lines": [
+    5943,
+    5943
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Table `listing_versions` is created (CREATE TABLE listing_versions)."
+  },
+  {
+   "id": "R05944",
+   "lines": [
+    5944,
+    5944
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "listing_versions.id UUID PRIMARY KEY DEFAULT gen_random_uuid()"
+  },
+  {
+   "id": "R05945",
+   "lines": [
+    5945,
+    5945
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "listing_versions.listing_id UUID REFERENCES listings(id) NOT NULL"
+  },
+  {
+   "id": "R05946",
+   "lines": [
+    5946,
+    5946
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "listing_versions.version INT NOT NULL"
+  },
+  {
+   "id": "R05947",
+   "lines": [
+    5947,
+    5947
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "listing_versions.content_json JSONB NOT NULL"
+  },
+  {
+   "id": "R05948",
+   "lines": [
+    5948,
+    5948
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "listing_versions.image_reports_json JSONB"
+  },
+  {
+   "id": "R05949",
+   "lines": [
+    5949,
+    5949
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "listing_versions.generated_by_user_id UUID REFERENCES users(id)"
+  },
+  {
+   "id": "R05950",
+   "lines": [
+    5950,
+    5950
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "listing_versions.approved_by_user_id UUID REFERENCES users(id)"
+  },
+  {
+   "id": "R05951",
+   "lines": [
+    5951,
+    5951
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "listing_versions.created_at TIMESTAMPTZ DEFAULT now()"
+  },
+  {
+   "id": "R05952",
+   "lines": [
+    5952,
+    5952
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "requirement",
+   "text": "Architectural Invariant: Creator cannot approve own listing."
+  },
+  {
+   "id": "R05953",
+   "lines": [
+    5953,
+    5953
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "listing_versions CHECK (approved_by_user_id IS NULL OR approved_by_user_id <> generated_by_user_id)."
+  },
+  {
+   "id": "R05954",
+   "lines": [
+    5954,
+    5954
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing ');' of CREATE TABLE listing_versions.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05956",
+   "lines": [
+    5956,
+    5956
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "requirement",
+   "text": "DDL section 8: Deterministic Rules (rules table)."
+  },
+  {
+   "id": "R05957",
+   "lines": [
+    5957,
+    5957
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Table `rules` is created (CREATE TABLE rules)."
+  },
+  {
+   "id": "R05958",
+   "lines": [
+    5958,
+    5958
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "rules.id UUID PRIMARY KEY DEFAULT gen_random_uuid()"
+  },
+  {
+   "id": "R05959",
+   "lines": [
+    5959,
+    5959
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "rules.marketplace TEXT NOT NULL"
+  },
+  {
+   "id": "R05960",
+   "lines": [
+    5960,
+    5960
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "rules.category TEXT"
+  },
+  {
+   "id": "R05961",
+   "lines": [
+    5961,
+    5961
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "rules.field TEXT NOT NULL"
+  },
+  {
+   "id": "R05962",
+   "lines": [
+    5962,
+    5962
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "rules.rule_def JSONB NOT NULL"
+  },
+  {
+   "id": "R05963",
+   "lines": [
+    5963,
+    5963
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "rules.severity TEXT NOT NULL"
+  },
+  {
+   "id": "R05963a",
+   "lines": [
+    5963,
+    5963
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "rules.severity CHECK (severity IN ('error','warning'))."
+  },
+  {
+   "id": "R05964",
+   "lines": [
+    5964,
+    5964
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "rules.version INT DEFAULT 1"
+  },
+  {
+   "id": "R05965",
+   "lines": [
+    5965,
+    5965
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "rules.created_at TIMESTAMPTZ DEFAULT now()"
+  },
+  {
+   "id": "R05966",
+   "lines": [
+    5966,
+    5966
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing ');' of CREATE TABLE rules.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05968",
+   "lines": [
+    5968,
+    5968
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "DDL section 9: Validation Runs."
+  },
+  {
+   "id": "R05969",
+   "lines": [
+    5969,
+    5969
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Table `validation_runs` is created (CREATE TABLE validation_runs)."
+  },
+  {
+   "id": "R05970",
+   "lines": [
+    5970,
+    5970
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "validation_runs.id UUID PRIMARY KEY DEFAULT gen_random_uuid()"
+  },
+  {
+   "id": "R05971",
+   "lines": [
+    5971,
+    5971
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "validation_runs.listing_id UUID REFERENCES listings(id) NOT NULL"
+  },
+  {
+   "id": "R05972",
+   "lines": [
+    5972,
+    5972
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "validation_runs.source TEXT NOT NULL"
+  },
+  {
+   "id": "R05972a",
+   "lines": [
+    5972,
+    5972
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "validation_runs.source values: rules | vision | marketplace_api."
+  },
+  {
+   "id": "R05973",
+   "lines": [
+    5973,
+    5973
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "validation_runs.passed BOOLEAN NOT NULL"
+  },
+  {
+   "id": "R05974",
+   "lines": [
+    5974,
+    5974
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "validation_runs.error_report_json JSONB"
+  },
+  {
+   "id": "R05975",
+   "lines": [
+    5975,
+    5975
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "validation_runs.created_at TIMESTAMPTZ DEFAULT now()"
+  },
+  {
+   "id": "R05976",
+   "lines": [
+    5976,
+    5976
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing ');' of CREATE TABLE validation_runs.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05978",
+   "lines": [
+    5978,
+    5978
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "quality",
+   "text": "DDL section 10: Agent Runs provide Full AI Observability & Cost Tracking."
+  },
+  {
+   "id": "R05979",
+   "lines": [
+    5979,
+    5979
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Table `agent_runs` is created (CREATE TABLE agent_runs)."
+  },
+  {
+   "id": "R05980",
+   "lines": [
+    5980,
+    5980
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "agent_runs.id UUID PRIMARY KEY DEFAULT gen_random_uuid()"
+  },
+  {
+   "id": "R05981",
+   "lines": [
+    5981,
+    5981
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "agent_runs.product_id UUID REFERENCES products(id) (nullable)"
+  },
+  {
+   "id": "R05982",
+   "lines": [
+    5982,
+    5982
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "agent_runs.trigger TEXT NOT NULL"
+  },
+  {
+   "id": "R05982a",
+   "lines": [
+    5982,
+    5982
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "agent_runs.trigger values: generate | correct | embed | vision."
+  },
+  {
+   "id": "R05983",
+   "lines": [
+    5983,
+    5983
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "agent_runs.model_used TEXT"
+  },
+  {
+   "id": "R05984",
+   "lines": [
+    5984,
+    5984
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "agent_runs.tokens_in INT"
+  },
+  {
+   "id": "R05985",
+   "lines": [
+    5985,
+    5985
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "agent_runs.tokens_out INT"
+  },
+  {
+   "id": "R05986",
+   "lines": [
+    5986,
+    5986
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "agent_runs.cost DECIMAL(10,6)"
+  },
+  {
+   "id": "R05987",
+   "lines": [
+    5987,
+    5987
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "agent_runs.duration_ms INT"
+  },
+  {
+   "id": "R05988",
+   "lines": [
+    5988,
+    5988
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "agent_runs.status TEXT NOT NULL"
+  },
+  {
+   "id": "R05989",
+   "lines": [
+    5989,
+    5989
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "agent_runs.error_report_json JSONB"
+  },
+  {
+   "id": "R05990",
+   "lines": [
+    5990,
+    5990
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "agent_runs.created_at TIMESTAMPTZ DEFAULT now()"
+  },
+  {
+   "id": "R05991",
+   "lines": [
+    5991,
+    5991
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing ');' of CREATE TABLE agent_runs.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R05993",
+   "lines": [
+    5993,
+    5993
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "DDL section 11: Images (Upload & Storage Metadata)."
+  },
+  {
+   "id": "R05994",
+   "lines": [
+    5994,
+    5994
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Table `images` is created (CREATE TABLE images)."
+  },
+  {
+   "id": "R05995",
+   "lines": [
+    5995,
+    5995
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "images.id UUID PRIMARY KEY DEFAULT gen_random_uuid()"
+  },
+  {
+   "id": "R05996",
+   "lines": [
+    5996,
+    5996
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "images.tenant_id UUID REFERENCES tenants(id) NOT NULL"
+  },
+  {
+   "id": "R05997",
+   "lines": [
+    5997,
+    5997
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "images.product_id UUID REFERENCES products(id) NOT NULL"
+  },
+  {
+   "id": "R05998",
+   "lines": [
+    5998,
+    5998
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "images.storage_key TEXT NOT NULL"
+  },
+  {
+   "id": "R05999",
+   "lines": [
+    5999,
+    5999
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "images.metadata JSONB"
+  },
+  {
+   "id": "R06000",
+   "lines": [
+    6000,
+    6000
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "images.status TEXT DEFAULT 'uploaded'"
+  },
+  {
+   "id": "R06001",
+   "lines": [
+    6001,
+    6001
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "images.created_at TIMESTAMPTZ DEFAULT now()"
+  },
+  {
+   "id": "R06002",
+   "lines": [
+    6002,
+    6002
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing ');' of CREATE TABLE images.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06004",
+   "lines": [
+    6004,
+    6004
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "DDL section 12: Performance holds Basic Post-Publish Metrics."
+  },
+  {
+   "id": "R06005",
+   "lines": [
+    6005,
+    6005
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Table `performance` is created (CREATE TABLE performance)."
+  },
+  {
+   "id": "R06006",
+   "lines": [
+    6006,
+    6006
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "performance.id UUID PRIMARY KEY DEFAULT gen_random_uuid()"
+  },
+  {
+   "id": "R06007",
+   "lines": [
+    6007,
+    6007
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "performance.listing_id UUID REFERENCES listings(id) NOT NULL"
+  },
+  {
+   "id": "R06008",
+   "lines": [
+    6008,
+    6008
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "performance.impressions INT DEFAULT 0"
+  },
+  {
+   "id": "R06009",
+   "lines": [
+    6009,
+    6009
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "performance.clicks INT DEFAULT 0"
+  },
+  {
+   "id": "R06010",
+   "lines": [
+    6010,
+    6010
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "performance.orders INT DEFAULT 0"
+  },
+  {
+   "id": "R06011",
+   "lines": [
+    6011,
+    6011
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "performance.returns INT DEFAULT 0"
+  },
+  {
+   "id": "R06012",
+   "lines": [
+    6012,
+    6012
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "performance.date DATE NOT NULL"
+  },
+  {
+   "id": "R06013",
+   "lines": [
+    6013,
+    6013
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing ');' of CREATE TABLE performance.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06015",
+   "lines": [
+    6015,
+    6015
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "requirement",
+   "text": "DDL section 13: Audit Log is Append-Only."
+  },
+  {
+   "id": "R06016",
+   "lines": [
+    6016,
+    6016
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Table `audit_log` is created (CREATE TABLE audit_log)."
+  },
+  {
+   "id": "R06017",
+   "lines": [
+    6017,
+    6017
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "audit_log.id UUID PRIMARY KEY DEFAULT gen_random_uuid()"
+  },
+  {
+   "id": "R06018",
+   "lines": [
+    6018,
+    6018
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "audit_log.actor UUID REFERENCES users(id)"
+  },
+  {
+   "id": "R06019",
+   "lines": [
+    6019,
+    6019
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "audit_log.action TEXT NOT NULL"
+  },
+  {
+   "id": "R06020",
+   "lines": [
+    6020,
+    6020
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "audit_log.entity TEXT NOT NULL"
+  },
+  {
+   "id": "R06021",
+   "lines": [
+    6021,
+    6021
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "audit_log.before JSONB"
+  },
+  {
+   "id": "R06022",
+   "lines": [
+    6022,
+    6022
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "audit_log.after JSONB"
+  },
+  {
+   "id": "R06023",
+   "lines": [
+    6023,
+    6023
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "audit_log.timestamp TIMESTAMPTZ DEFAULT now()"
+  },
+  {
+   "id": "R06024",
+   "lines": [
+    6024,
+    6024
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing ');' of CREATE TABLE audit_log.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06025",
+   "lines": [
+    6025,
+    6025
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing ``` code fence of the SQL DDL.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06027",
+   "lines": [
+    6027,
+    6027
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "## Core Table Descriptions",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06029",
+   "lines": [
+    6029,
+    6029
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "quality",
+   "text": "The schema supports complete tenant isolation."
+  },
+  {
+   "id": "R06029a",
+   "lines": [
+    6029,
+    6029
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "The schema supports versioning."
+  },
+  {
+   "id": "R06029b",
+   "lines": [
+    6029,
+    6029
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "quality",
+   "text": "The schema supports AI cost tracking."
+  },
+  {
+   "id": "R06029c",
+   "lines": [
+    6029,
+    6029
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "requirement",
+   "text": "The schema supports maker-checker validation integrity."
+  },
+  {
+   "id": "R06031",
+   "lines": [
+    6031,
+    6031
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "requirement",
+   "text": "`listing_versions.CHECK (approved_by <> generated_by)`: Database-level enforcement of the maker-checker rule."
+  },
+  {
+   "id": "R06032",
+   "lines": [
+    6032,
+    6032
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "quality",
+   "text": "`agent_runs` records token usage per AI call."
+  },
+  {
+   "id": "R06032a",
+   "lines": [
+    6032,
+    6032
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "quality",
+   "text": "`agent_runs` records cost per AI call."
+  },
+  {
+   "id": "R06032b",
+   "lines": [
+    6032,
+    6032
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "quality",
+   "text": "`agent_runs` records latency per AI call."
+  },
+  {
+   "id": "R06032c",
+   "lines": [
+    6032,
+    6032
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "quality",
+   "text": "`agent_runs` records model per AI call, for complete cost observability."
+  },
+  {
+   "id": "R06033",
+   "lines": [
+    6033,
+    6033
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "decision",
+   "text": "`brand_chunks`: Vector store powered by pgvector."
+  },
+  {
+   "id": "R06033a",
+   "lines": [
+    6033,
+    6033
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "decision",
+   "text": "`brand_chunks` uses an HNSW index."
+  },
+  {
+   "id": "R06033b",
+   "lines": [
+    6033,
+    6033
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "requirement",
+   "text": "The `brand_chunks` HNSW index is for ultra-fast cosine similarity retrieval."
+  },
+  {
+   "id": "R06035",
+   "lines": [
+    6035,
+    6035
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "## Day 5 Database Indexing Checklist (Day 5 indexing restated in R06037a).",
+   "why_not": "restatement",
+   "dup_of": "R06037a"
+  },
+  {
+   "id": "R06037",
+   "lines": [
+    6037,
+    6037
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "requirement",
+   "text": "Mandatory Indices to Apply on Day 5 (the listed indices are mandatory)."
+  },
+  {
+   "id": "R06037a",
+   "lines": [
+    6037,
+    6037
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "constraint",
+   "text": "The mandatory indices are applied on Day 5."
+  },
+  {
+   "id": "R06039",
+   "lines": [
+    6039,
+    6039
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Mandatory index `brand_chunks_embedding_idx`: HNSW cosine index (`vector_cosine_ops`)."
+  },
+  {
+   "id": "R06040",
+   "lines": [
+    6040,
+    6040
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Mandatory index `products_brand_sku_idx`: Unique B-Tree index on `(brand_id, sku)`."
+  },
+  {
+   "id": "R06041",
+   "lines": [
+    6041,
+    6041
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Mandatory index `listing_versions_listing_version_idx`: Unique index on `(listing_id, version)`."
+  },
+  {
+   "id": "R06042",
+   "lines": [
+    6042,
+    6042
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Mandatory index `agent_runs_product_created_idx`: Covering index on `(product_id, created_at)`."
+  },
+  {
+   "id": "R06042a",
+   "lines": [
+    6042,
+    6042
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "quality",
+   "text": "`agent_runs_product_created_idx` exists for fast analytics queries."
+  },
+  {
+   "id": "R06043",
+   "lines": [
+    6043,
+    6043
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "`tenant_id` / `brand_id` B-Tree indices on all multi-tenant tables."
+  },
+  {
+   "id": "R06045",
+   "lines": [
+    6045,
+    6045
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "## Canonical Listing JSON Schema",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06047",
+   "lines": [
+    6047,
+    6047
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "flow",
+   "text": "The Canonical Listing is what AI agents produce."
+  },
+  {
+   "id": "R06047a",
+   "lines": [
+    6047,
+    6047
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "flow",
+   "text": "The Canonical Listing is what the Rules Engine validates."
+  },
+  {
+   "id": "R06047b",
+   "lines": [
+    6047,
+    6047
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "requirement",
+   "text": "The Canonical Listing never contains raw marketplace structures."
+  },
+  {
+   "id": "R06049",
+   "lines": [
+    6049,
+    6049
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "interface",
+   "text": "Canonical listing file/contract name: CanonicalListing.json."
+  },
+  {
+   "id": "R06051",
+   "lines": [
+    6051,
+    6052
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Opening ```json code fence and '{'.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06053",
+   "lines": [
+    6053,
+    6053
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "CanonicalListing field \"product_id\" (example \"prod_9f21\")."
+  },
+  {
+   "id": "R06054",
+   "lines": [
+    6054,
+    6054
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "CanonicalListing field \"marketplace\" (example \"amazon\")."
+  },
+  {
+   "id": "R06055",
+   "lines": [
+    6055,
+    6055
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "CanonicalListing field \"title\" (example \"Organic Cotton Kurta Set — Women's Ethnic Wear, Playful Premium\")."
+  },
+  {
+   "id": "R06056",
+   "lines": [
+    6056,
+    6056
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "CanonicalListing field \"bullets\": array of strings."
+  },
+  {
+   "id": "R06057",
+   "lines": [
+    6057,
+    6057
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Example bullet 1: \"Breathable 100% organic cotton, GOTS-certified fabric\"."
+  },
+  {
+   "id": "R06058",
+   "lines": [
+    6058,
+    6058
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Example bullet 2: \"Relaxed fit designed for all-day comfort and movement\"."
+  },
+  {
+   "id": "R06059",
+   "lines": [
+    6059,
+    6059
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Example bullet 3: \"Hand-block print crafted by verified artisan cooperatives\"."
+  },
+  {
+   "id": "R06060",
+   "lines": [
+    6060,
+    6060
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing '],' of bullets array.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06061",
+   "lines": [
+    6061,
+    6061
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "CanonicalListing field \"description\": string (example \"Experience effortless elegance with our pure organic cotton kurta set...\")."
+  },
+  {
+   "id": "R06062",
+   "lines": [
+    6062,
+    6062
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "CanonicalListing field \"keywords\": object."
+  },
+  {
+   "id": "R06063",
+   "lines": [
+    6063,
+    6063
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "keywords.\"search_terms\": array of strings."
+  },
+  {
+   "id": "R06064",
+   "lines": [
+    6064,
+    6064
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Example search_terms value: \"organic cotton kurta\"."
+  },
+  {
+   "id": "R06065",
+   "lines": [
+    6065,
+    6065
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Example search_terms value: \"ethnic wear women\"."
+  },
+  {
+   "id": "R06066",
+   "lines": [
+    6066,
+    6066
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Example search_terms value: \"block print suit\"."
+  },
+  {
+   "id": "R06067",
+   "lines": [
+    6067,
+    6067
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing '],' of search_terms array.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06068",
+   "lines": [
+    6068,
+    6068
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "keywords.\"backend_keywords\": array of strings."
+  },
+  {
+   "id": "R06069",
+   "lines": [
+    6069,
+    6069
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Example backend_keywords value: \"cotton kurta set\"."
+  },
+  {
+   "id": "R06070",
+   "lines": [
+    6070,
+    6070
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Example backend_keywords value: \"indigo kurta\"."
+  },
+  {
+   "id": "R06071",
+   "lines": [
+    6071,
+    6071
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Example backend_keywords value: \"artisan ethnic\"."
+  },
+  {
+   "id": "R06072",
+   "lines": [
+    6072,
+    6072
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing ']' of backend_keywords array.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06073",
+   "lines": [
+    6073,
+    6073
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing '},' of keywords object.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06074",
+   "lines": [
+    6074,
+    6074
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "CanonicalListing field \"attributes\": object of key/value attributes."
+  },
+  {
+   "id": "R06075",
+   "lines": [
+    6075,
+    6075
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "attributes.\"size\" (example \"M\")."
+  },
+  {
+   "id": "R06076",
+   "lines": [
+    6076,
+    6076
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "attributes.\"color\" (example \"Indigo\")."
+  },
+  {
+   "id": "R06077",
+   "lines": [
+    6077,
+    6077
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "attributes.\"material\" (example \"Organic Cotton\")."
+  },
+  {
+   "id": "R06078",
+   "lines": [
+    6078,
+    6078
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "attributes.\"fit\" (example \"Relaxed\")."
+  },
+  {
+   "id": "R06079",
+   "lines": [
+    6079,
+    6079
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "attributes.\"sleeve_length\" (example \"Three-Quarter\")."
+  },
+  {
+   "id": "R06080",
+   "lines": [
+    6080,
+    6080
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing '},' of attributes object.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06081",
+   "lines": [
+    6081,
+    6081
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "CanonicalListing field \"images\": array of image references."
+  },
+  {
+   "id": "R06082",
+   "lines": [
+    6082,
+    6082
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Opening '{' of first images[] item.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06083",
+   "lines": [
+    6083,
+    6083
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "images[].\"image_id\" (example \"img_123\")."
+  },
+  {
+   "id": "R06084",
+   "lines": [
+    6084,
+    6084
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "images[].\"slot\" (example \"main\")."
+  },
+  {
+   "id": "R06085",
+   "lines": [
+    6085,
+    6086
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing '},' of first images[] item and opening '{' of second.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06087",
+   "lines": [
+    6087,
+    6087
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Second images[] item \"image_id\" (example \"img_124\")."
+  },
+  {
+   "id": "R06088",
+   "lines": [
+    6088,
+    6088
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "Second images[] item \"slot\" (example \"secondary\")."
+  },
+  {
+   "id": "R06089",
+   "lines": [
+    6089,
+    6089
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing '}' of second images[] item.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06090",
+   "lines": [
+    6090,
+    6090
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing '],' of images array.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06091",
+   "lines": [
+    6091,
+    6091
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "CanonicalListing field \"confidence_score\" (example 0.91)."
+  },
+  {
+   "id": "R06092",
+   "lines": [
+    6092,
+    6092
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "CanonicalListing field \"generated_by\" (example \"agent_run_552\")."
+  },
+  {
+   "id": "R06093",
+   "lines": [
+    6093,
+    6093
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "data",
+   "text": "CanonicalListing field \"schema_version\" (example \"1.0\")."
+  },
+  {
+   "id": "R06094",
+   "lines": [
+    6094,
+    6095
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Closing '}' and ``` code fence.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06097",
+   "lines": [
+    6097,
+    6097
+   ],
+   "page": "[06] Consolidated Data Model & Schema",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06099",
+   "lines": [
+    6099,
+    6099
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "# [07] State Machine, LangGraph & Rules",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06101",
+   "lines": [
+    6101,
+    6101
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Section: 45-Day MVP Build Plan.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06102",
+   "lines": [
+    6102,
+    6102
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "scope",
+   "text": "Page [07] Scope: MVP."
+  },
+  {
+   "id": "R06103",
+   "lines": [
+    6103,
+    6103
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/mvp-orchestration-rules",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06104",
+   "lines": [
+    6104,
+    6104
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "decision",
+   "text": "Page [07] covers the LangGraph orchestration pipeline."
+  },
+  {
+   "id": "R06104a",
+   "lines": [
+    6104,
+    6104
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "Page [07] covers the listing lifecycle state machine."
+  },
+  {
+   "id": "R06104b",
+   "lines": [
+    6104,
+    6104
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "Page [07] covers the deterministic rules engine."
+  },
+  {
+   "id": "R06104c",
+   "lines": [
+    6104,
+    6104
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "Page [07] covers the unified ErrorReport contract across all error sources."
+  },
+  {
+   "id": "R06105",
+   "lines": [
+    6105,
+    6105
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Keywords: orchestration, state machine, langgraph, rules engine, error report, correction loop, validation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06107",
+   "lines": [
+    6107,
+    6107
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "## Listing Lifecycle State Machine",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06109",
+   "lines": [
+    6109,
+    6109
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "Every listing moves through a strictly bounded state machine."
+  },
+  {
+   "id": "R06109a",
+   "lines": [
+    6109,
+    6109
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "constraint",
+   "text": "Self-correction retries are bounded (max 3)."
+  },
+  {
+   "id": "R06111",
+   "lines": [
+    6111,
+    6111
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Architecture Diagram: Listing Lifecycle State Machine",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06113",
+   "lines": [
+    6113,
+    6114
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "```mermaid fence and stateDiagram-v2 declaration.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06115",
+   "lines": [
+    6115,
+    6115
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "[*] --> QUEUED (initial state QUEUED)."
+  },
+  {
+   "id": "R06116",
+   "lines": [
+    6116,
+    6116
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "QUEUED --> LOADING_CONTEXT."
+  },
+  {
+   "id": "R06117",
+   "lines": [
+    6117,
+    6117
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "LOADING_CONTEXT --> GENERATING."
+  },
+  {
+   "id": "R06118",
+   "lines": [
+    6118,
+    6118
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "GENERATING --> SCHEMA_VALIDATING."
+  },
+  {
+   "id": "R06119",
+   "lines": [
+    6119,
+    6119
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "SCHEMA_VALIDATING --> RULE_VALIDATING."
+  },
+  {
+   "id": "R06120",
+   "lines": [
+    6120,
+    6120
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "RULE_VALIDATING --> VISION_VALIDATING."
+  },
+  {
+   "id": "R06121",
+   "lines": [
+    6121,
+    6121
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "VISION_VALIDATING --> CORRECTING : validation failed."
+  },
+  {
+   "id": "R06122",
+   "lines": [
+    6122,
+    6122
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "CORRECTING --> SCHEMA_VALIDATING : retry attempt (max 3)."
+  },
+  {
+   "id": "R06123",
+   "lines": [
+    6123,
+    6123
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "CORRECTING --> BLOCKED : 3 attempts exhausted."
+  },
+  {
+   "id": "R06124",
+   "lines": [
+    6124,
+    6124
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "VISION_VALIDATING --> QUALITY_CHECK : all checks passed."
+  },
+  {
+   "id": "R06125",
+   "lines": [
+    6125,
+    6125
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "QUALITY_CHECK --> NEEDS_APPROVAL."
+  },
+  {
+   "id": "R06126",
+   "lines": [
+    6126,
+    6126
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "NEEDS_APPROVAL --> APPROVED : human approved."
+  },
+  {
+   "id": "R06127",
+   "lines": [
+    6127,
+    6127
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "NEEDS_APPROVAL --> CORRECTING : rejected with feedback."
+  },
+  {
+   "id": "R06128",
+   "lines": [
+    6128,
+    6128
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "APPROVED --> PUBLISHING."
+  },
+  {
+   "id": "R06129",
+   "lines": [
+    6129,
+    6129
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "PUBLISHING --> PUBLISHED : adapter success."
+  },
+  {
+   "id": "R06130",
+   "lines": [
+    6130,
+    6130
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "PUBLISHING --> FAILED : unrecoverable adapter error."
+  },
+  {
+   "id": "R06131",
+   "lines": [
+    6131,
+    6131
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "BLOCKED --> [*] (BLOCKED is terminal)."
+  },
+  {
+   "id": "R06132",
+   "lines": [
+    6132,
+    6132
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "FAILED --> [*] (FAILED is terminal)."
+  },
+  {
+   "id": "R06133",
+   "lines": [
+    6133,
+    6133
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "PUBLISHED --> [*] (PUBLISHED is terminal)."
+  },
+  {
+   "id": "R06134",
+   "lines": [
+    6134,
+    6134
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Closing ``` of mermaid diagram.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06136",
+   "lines": [
+    6136,
+    6136
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "## LangGraph Execution Graph",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06138",
+   "lines": [
+    6138,
+    6138
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "decision",
+   "text": "Orchestration uses a LangGraph graph."
+  },
+  {
+   "id": "R06138a",
+   "lines": [
+    6138,
+    6138
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "The LangGraph graph executes in-process on the background worker."
+  },
+  {
+   "id": "R06140",
+   "lines": [
+    6140,
+    6140
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "Graph step 1: load_context fetches the product."
+  },
+  {
+   "id": "R06140a",
+   "lines": [
+    6140,
+    6140
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "load_context fetches marketplace rules."
+  },
+  {
+   "id": "R06140b",
+   "lines": [
+    6140,
+    6140
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "load_context fetches the tenant profile."
+  },
+  {
+   "id": "R06142",
+   "lines": [
+    6142,
+    6142
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Down-arrow connector between graph nodes (order captured in node items).",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06144",
+   "lines": [
+    6144,
+    6144
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "Graph step 2: retrieve_brand_voice runs a pgvector cosine search over brand_chunks."
+  },
+  {
+   "id": "R06144a",
+   "lines": [
+    6144,
+    6144
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "constraint",
+   "text": "retrieve_brand_voice uses top-k=8."
+  },
+  {
+   "id": "R06146",
+   "lines": [
+    6146,
+    6146
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Down-arrow connector between graph nodes (order captured in node items).",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06148",
+   "lines": [
+    6148,
+    6148
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "Graph step 3: parallel_agents runs the agents in parallel."
+  },
+  {
+   "id": "R06148a",
+   "lines": [
+    6148,
+    6148
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "parallel_agents includes the Content agent."
+  },
+  {
+   "id": "R06148b",
+   "lines": [
+    6148,
+    6148
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "parallel_agents includes the Keyword agent."
+  },
+  {
+   "id": "R06148c",
+   "lines": [
+    6148,
+    6148
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "parallel_agents includes the Attribute agent."
+  },
+  {
+   "id": "R06148d",
+   "lines": [
+    6148,
+    6148
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "parallel_agents includes the Image Analyzers."
+  },
+  {
+   "id": "R06150",
+   "lines": [
+    6150,
+    6150
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Down-arrow connector between graph nodes (order captured in node items).",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06152",
+   "lines": [
+    6152,
+    6152
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "Graph step 4: merge_outputs assembles the Canonical Listing JSON."
+  },
+  {
+   "id": "R06154",
+   "lines": [
+    6154,
+    6154
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Down-arrow connector between graph nodes (order captured in node items).",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06156",
+   "lines": [
+    6156,
+    6156
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "Graph step 5: validate_schema performs a structural check."
+  },
+  {
+   "id": "R06156a",
+   "lines": [
+    6156,
+    6156
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "decision",
+   "text": "validate_schema uses Pydantic."
+  },
+  {
+   "id": "R06158",
+   "lines": [
+    6158,
+    6158
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Down-arrow connector between graph nodes (order captured in node items).",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06160",
+   "lines": [
+    6160,
+    6160
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "Graph step 6: validate_rules runs the Deterministic Rules Engine check."
+  },
+  {
+   "id": "R06162",
+   "lines": [
+    6162,
+    6162
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Down-arrow connector between graph nodes (order captured in node items).",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06164",
+   "lines": [
+    6164,
+    6164
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "Graph step 7: validate_vision runs a Vision model image compliance check."
+  },
+  {
+   "id": "R06166",
+   "lines": [
+    6166,
+    6166
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Down-arrow connector between graph nodes (order captured in node items).",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06168",
+   "lines": [
+    6168,
+    6168
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "Graph step 8 node: classify_errors (listed as \"classify_errors & correct_fields\")."
+  },
+  {
+   "id": "R06168a",
+   "lines": [
+    6168,
+    6168
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "Graph step 8 node: correct_fields performs Bounded self-correction."
+  },
+  {
+   "id": "R06168b",
+   "lines": [
+    6168,
+    6168
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "constraint",
+   "text": "Self-correction is bounded to <= 3 retries."
+  },
+  {
+   "id": "R06170",
+   "lines": [
+    6170,
+    6170
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Down-arrow connector between graph nodes (order captured in node items).",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06172",
+   "lines": [
+    6172,
+    6172
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "Graph step 9: quality_score computes the confidence score."
+  },
+  {
+   "id": "R06174",
+   "lines": [
+    6174,
+    6174
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Down-arrow connector between graph nodes (order captured in node items).",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06176",
+   "lines": [
+    6176,
+    6176
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "Graph step 10: human_approval_interrupt pauses for human review."
+  },
+  {
+   "id": "R06176a",
+   "lines": [
+    6176,
+    6176
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "human_approval_interrupt pauses for maker-checker (human review & maker-checker)."
+  },
+  {
+   "id": "R06178",
+   "lines": [
+    6178,
+    6178
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Down-arrow connector between graph nodes (order captured in node items).",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06180",
+   "lines": [
+    6180,
+    6180
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "Graph step 11: publish — Adapter executes marketplace mutation."
+  },
+  {
+   "id": "R06182",
+   "lines": [
+    6182,
+    6182
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "Publish Authority Invariant: the rule that the graph never holds publish authority is an architectural invariant (callout title)."
+  },
+  {
+   "id": "R06184",
+   "lines": [
+    6184,
+    6184
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "The LangGraph graph never possesses publish authority."
+  },
+  {
+   "id": "R06184a",
+   "lines": [
+    6184,
+    6184
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "Even if an AI agent prompts to publish, the FastAPI publishing router validates human approval server-side."
+  },
+  {
+   "id": "R06184b",
+   "lines": [
+    6184,
+    6184
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "The FastAPI publishing router validates human approval before invoking the adapter."
+  },
+  {
+   "id": "R06186",
+   "lines": [
+    6186,
+    6186
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "## Deterministic Rules Engine",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06188",
+   "lines": [
+    6188,
+    6188
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "decision",
+   "text": "The Rules Engine is plain Python code."
+  },
+  {
+   "id": "R06188a",
+   "lines": [
+    6188,
+    6188
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "quality",
+   "text": "The Rules Engine is unit-testable."
+  },
+  {
+   "id": "R06188b",
+   "lines": [
+    6188,
+    6188
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "The Rules Engine is never an LLM call."
+  },
+  {
+   "id": "R06188c",
+   "lines": [
+    6188,
+    6188
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "The Rules Engine enforces marketplace rules deterministically."
+  },
+  {
+   "id": "R06190",
+   "lines": [
+    6190,
+    6190
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "Length Boundaries: enforce strict character caps."
+  },
+  {
+   "id": "R06190a",
+   "lines": [
+    6190,
+    6190
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "constraint",
+   "text": "Amazon title ≤ 200 chars."
+  },
+  {
+   "id": "R06190b",
+   "lines": [
+    6190,
+    6190
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "constraint",
+   "text": "Flipkart title ≤ 150 chars."
+  },
+  {
+   "id": "R06191",
+   "lines": [
+    6191,
+    6191
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "Banned Term Filtering: reject banned claims."
+  },
+  {
+   "id": "R06191a",
+   "lines": [
+    6191,
+    6191
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "Banned term: \"best seller\"."
+  },
+  {
+   "id": "R06191b",
+   "lines": [
+    6191,
+    6191
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "Banned term: \"free shipping\"."
+  },
+  {
+   "id": "R06191c",
+   "lines": [
+    6191,
+    6191
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "Banned term: \"guaranteed cure\"."
+  },
+  {
+   "id": "R06191d",
+   "lines": [
+    6191,
+    6191
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "Reject competitor trademarks."
+  },
+  {
+   "id": "R06192",
+   "lines": [
+    6192,
+    6192
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "Required Category Attributes: ensure mandatory fields are present."
+  },
+  {
+   "id": "R06192a",
+   "lines": [
+    6192,
+    6192
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "Mandatory field: size."
+  },
+  {
+   "id": "R06192b",
+   "lines": [
+    6192,
+    6192
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "Mandatory field: color."
+  },
+  {
+   "id": "R06192c",
+   "lines": [
+    6192,
+    6192
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "Mandatory field: material."
+  },
+  {
+   "id": "R06192d",
+   "lines": [
+    6192,
+    6192
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "Mandatory field: care instructions."
+  },
+  {
+   "id": "R06194",
+   "lines": [
+    6194,
+    6194
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "## Unified ErrorReport Contract",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06196",
+   "lines": [
+    6196,
+    6196
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "Every error returns this identical JSON shape (Unified ErrorReport)."
+  },
+  {
+   "id": "R06196a",
+   "lines": [
+    6196,
+    6196
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "Errors from rules return the identical ErrorReport JSON shape."
+  },
+  {
+   "id": "R06196b",
+   "lines": [
+    6196,
+    6196
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "Errors from vision models return the identical ErrorReport JSON shape."
+  },
+  {
+   "id": "R06196c",
+   "lines": [
+    6196,
+    6196
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "Errors from marketplace APIs return the identical ErrorReport JSON shape."
+  },
+  {
+   "id": "R06198",
+   "lines": [
+    6198,
+    6198
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "ErrorReport contract file name: UnifiedErrorReport.json."
+  },
+  {
+   "id": "R06200",
+   "lines": [
+    6200,
+    6201
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Opening ```json code fence and '{'.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06202",
+   "lines": [
+    6202,
+    6202
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "ErrorReport \"status\" (example \"failed\")."
+  },
+  {
+   "id": "R06203",
+   "lines": [
+    6203,
+    6203
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "ErrorReport top-level \"error_code\" (example \"VALIDATION_FAILED\")."
+  },
+  {
+   "id": "R06204",
+   "lines": [
+    6204,
+    6204
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "ErrorReport top-level \"retryable\": boolean (example true)."
+  },
+  {
+   "id": "R06205",
+   "lines": [
+    6205,
+    6205
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "ErrorReport \"attempts_used\" (example 1)."
+  },
+  {
+   "id": "R06206",
+   "lines": [
+    6206,
+    6206
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "ErrorReport \"max_attempts\" field."
+  },
+  {
+   "id": "R06206a",
+   "lines": [
+    6206,
+    6206
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "constraint",
+   "text": "max_attempts value is 3."
+  },
+  {
+   "id": "R06207",
+   "lines": [
+    6207,
+    6207
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "ErrorReport \"errors\": array of per-field error objects."
+  },
+  {
+   "id": "R06208",
+   "lines": [
+    6208,
+    6208
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Opening '{' of errors[] item.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06209",
+   "lines": [
+    6209,
+    6209
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "errors[].\"field\" (example \"title\")."
+  },
+  {
+   "id": "R06210",
+   "lines": [
+    6210,
+    6210
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "errors[].\"error_code\" (example \"TITLE_TOO_LONG\")."
+  },
+  {
+   "id": "R06211",
+   "lines": [
+    6211,
+    6211
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "errors[].\"message\" (example \"Title is 221 chars; Amazon maximum allowed is 200 chars\")."
+  },
+  {
+   "id": "R06212",
+   "lines": [
+    6212,
+    6212
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "errors[].\"value_submitted\" (example \"Organic Cotton Kurta Set — Women's Ethnic Wear, Playful Premium Luxury Hand-Block Print...\")."
+  },
+  {
+   "id": "R06213",
+   "lines": [
+    6213,
+    6213
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "errors[].\"suggestion\" (example \"Shorten title to <= 200 chars; move secondary features into bullet points\")."
+  },
+  {
+   "id": "R06214",
+   "lines": [
+    6214,
+    6214
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "errors[].\"source\" (example \"rules_engine\")."
+  },
+  {
+   "id": "R06215",
+   "lines": [
+    6215,
+    6215
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "errors[].\"retryable\": boolean (example true)."
+  },
+  {
+   "id": "R06216",
+   "lines": [
+    6216,
+    6216
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "errors[].\"marketplace\" (example \"amazon\")."
+  },
+  {
+   "id": "R06217",
+   "lines": [
+    6217,
+    6220
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Closing '}', ']', '}' and ``` code fence.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06222",
+   "lines": [
+    6222,
+    6222
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "## Error Source Taxonomy & Retryability",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06224",
+   "lines": [
+    6224,
+    6230
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Table header: Source | Example Error Codes | Retryable by AI? | Handling Strategy.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06232",
+   "lines": [
+    6232,
+    6232
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "Error source `rules_engine`."
+  },
+  {
+   "id": "R06234",
+   "lines": [
+    6234,
+    6234
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "rules_engine error code `FIELD_TOO_LONG`."
+  },
+  {
+   "id": "R06234a",
+   "lines": [
+    6234,
+    6234
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "rules_engine error code `BANNED_TERM`."
+  },
+  {
+   "id": "R06234b",
+   "lines": [
+    6234,
+    6234
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "rules_engine error code `MISSING_ATTRIBUTE`."
+  },
+  {
+   "id": "R06236",
+   "lines": [
+    6236,
+    6236
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "rules_engine errors: Retryable by AI? Yes."
+  },
+  {
+   "id": "R06238",
+   "lines": [
+    6238,
+    6238
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "rules_engine: Correction node regenerates only the failed field."
+  },
+  {
+   "id": "R06238a",
+   "lines": [
+    6238,
+    6238
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "rules_engine: correction uses rule feedback."
+  },
+  {
+   "id": "R06240",
+   "lines": [
+    6240,
+    6240
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "Error source `vision_model`."
+  },
+  {
+   "id": "R06242",
+   "lines": [
+    6242,
+    6242
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "vision_model error code `BACKGROUND_OFF`."
+  },
+  {
+   "id": "R06242a",
+   "lines": [
+    6242,
+    6242
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "vision_model error code `RESOLUTION_LOW`."
+  },
+  {
+   "id": "R06242b",
+   "lines": [
+    6242,
+    6242
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "vision_model error code `TEXT_DETECTED`."
+  },
+  {
+   "id": "R06244",
+   "lines": [
+    6244,
+    6244
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "vision_model errors: Retryable by AI? Conditional."
+  },
+  {
+   "id": "R06246",
+   "lines": [
+    6246,
+    6246
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "vision_model: Deterministic issues prompt user for new asset."
+  },
+  {
+   "id": "R06246a",
+   "lines": [
+    6246,
+    6246
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "vision_model: fixable issues route to repair."
+  },
+  {
+   "id": "R06248",
+   "lines": [
+    6248,
+    6248
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "Error source `amazon_adapter`."
+  },
+  {
+   "id": "R06250",
+   "lines": [
+    6250,
+    6250
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "amazon_adapter error code `RATE_LIMITED`."
+  },
+  {
+   "id": "R06250a",
+   "lines": [
+    6250,
+    6250
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "amazon_adapter error code `AUTH_EXPIRED`."
+  },
+  {
+   "id": "R06250b",
+   "lines": [
+    6250,
+    6250
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "amazon_adapter error code `SKU_CONFLICT`."
+  },
+  {
+   "id": "R06252",
+   "lines": [
+    6252,
+    6252
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "amazon_adapter errors: Retryable by AI? No (Auth/Rate: Auto)."
+  },
+  {
+   "id": "R06254",
+   "lines": [
+    6254,
+    6254
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "amazon_adapter: Rate limits backoff automatically."
+  },
+  {
+   "id": "R06254a",
+   "lines": [
+    6254,
+    6254
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "amazon_adapter: SKU conflicts require human operator resolution."
+  },
+  {
+   "id": "R06256",
+   "lines": [
+    6256,
+    6256
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "data",
+   "text": "Error source `flipkart_adapter`."
+  },
+  {
+   "id": "R06258",
+   "lines": [
+    6258,
+    6258
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "flipkart_adapter error code `CATEGORY_NOT_MAPPED`."
+  },
+  {
+   "id": "R06258a",
+   "lines": [
+    6258,
+    6258
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "interface",
+   "text": "flipkart_adapter error code `API_REJECTED_PARTIAL`."
+  },
+  {
+   "id": "R06260",
+   "lines": [
+    6260,
+    6260
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "requirement",
+   "text": "flipkart_adapter errors: Retryable by AI? Partial."
+  },
+  {
+   "id": "R06262",
+   "lines": [
+    6262,
+    6262
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "flipkart_adapter: Partial success retries only failed fields."
+  },
+  {
+   "id": "R06262a",
+   "lines": [
+    6262,
+    6262
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "flow",
+   "text": "flipkart_adapter: unmapped categories flag admin."
+  },
+  {
+   "id": "R06264",
+   "lines": [
+    6264,
+    6264
+   ],
+   "page": "[07] State Machine, LangGraph & Rules",
+   "kind": "info",
+   "text": "Page separator '---'.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06266",
+   "lines": [
+    6266,
+    6266
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "info",
+   "text": "# [08] AI Agent Layer & Brand RAG",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06268",
+   "lines": [
+    6268,
+    6268
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "info",
+   "text": "Section: 45-Day MVP Build Plan.",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06269",
+   "lines": [
+    6269,
+    6269
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "scope",
+   "text": "Page [08] Scope: MVP."
+  },
+  {
+   "id": "R06270",
+   "lines": [
+    6270,
+    6270
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "info",
+   "text": "URL: https://ashishvats16.github.io/system-arch/page/mvp-ai-agents-rag",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06271",
+   "lines": [
+    6271,
+    6271
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "decision",
+   "text": "Page [08] covers the AI Agent Layer architecture."
+  },
+  {
+   "id": "R06271a",
+   "lines": [
+    6271,
+    6271
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "decision",
+   "text": "Page [08] covers the Brand Intelligence RAG pipeline."
+  },
+  {
+   "id": "R06271b",
+   "lines": [
+    6271,
+    6271
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "requirement",
+   "text": "Page [08] covers the model routing policy."
+  },
+  {
+   "id": "R06271c",
+   "lines": [
+    6271,
+    6271
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "quality",
+   "text": "Page [08] covers token cost tracking."
+  },
+  {
+   "id": "R06271d",
+   "lines": [
+    6271,
+    6271
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "quality",
+   "text": "Page [08] covers prompt-injection boundary defenses."
+  },
+  {
+   "id": "R06271e",
+   "lines": [
+    6271,
+    6271
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "decision",
+   "text": "Page [08] covers pgvector cosine retrieval."
+  },
+  {
+   "id": "R06272",
+   "lines": [
+    6272,
+    6272
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "info",
+   "text": "Keywords: ai agents, content agent, keyword agent, attribute agent, brand rag, pgvector, model router, prompt injection",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R06274",
+   "lines": [
+    6274,
+    6274
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "scope",
+   "text": "The AI Agent Roster below is Phase-1."
+  },
+  {
+   "id": "R06276",
+   "lines": [
+    6276,
+    6276
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "constraint",
+   "text": "The Intelligence Layer employs 5 specialized agents."
+  },
+  {
+   "id": "R06276a",
+   "lines": [
+    6276,
+    6276
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "requirement",
+   "text": "The agents generate compliant listings."
+  },
+  {
+   "id": "R06276b",
+   "lines": [
+    6276,
+    6276
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "requirement",
+   "text": "The agents generate brand-consistent listings."
+  },
+  {
+   "id": "R06278",
+   "lines": [
+    6278,
+    6284
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "info",
+   "text": "Table header: Agent | Input Data | Generated Output | Operational Notes.",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R06286",
+   "lines": [
+    6286,
+    6286
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Agent: Content Agent."
+  },
+  {
+   "id": "R06288",
+   "lines": [
+    6288,
+    6288
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Content Agent input: Product data."
+  },
+  {
+   "id": "R06288a",
+   "lines": [
+    6288,
+    6288
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "constraint",
+   "text": "Content Agent input: top-8 brand chunks."
+  },
+  {
+   "id": "R06288b",
+   "lines": [
+    6288,
+    6288
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Content Agent input: rules."
+  },
+  {
+   "id": "R06290",
+   "lines": [
+    6290,
+    6290
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Content Agent output: Title."
+  },
+  {
+   "id": "R06290a",
+   "lines": [
+    6290,
+    6290
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Content Agent output: bullet points."
+  },
+  {
+   "id": "R06290b",
+   "lines": [
+    6290,
+    6290
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Content Agent output: long description."
+  },
+  {
+   "id": "R06292",
+   "lines": [
+    6292,
+    6292
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "constraint",
+   "text": "Content Agent has the highest token expenditure."
+  },
+  {
+   "id": "R06292a",
+   "lines": [
+    6292,
+    6292
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "requirement",
+   "text": "Content Agent: structured JSON output mode enforced."
+  },
+  {
+   "id": "R06294",
+   "lines": [
+    6294,
+    6294
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Agent: Keyword Agent."
+  },
+  {
+   "id": "R06296",
+   "lines": [
+    6296,
+    6296
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Keyword Agent input: Category."
+  },
+  {
+   "id": "R06296a",
+   "lines": [
+    6296,
+    6296
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Keyword Agent input: product context."
+  },
+  {
+   "id": "R06298",
+   "lines": [
+    6298,
+    6298
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Keyword Agent output: Search terms."
+  },
+  {
+   "id": "R06298a",
+   "lines": [
+    6298,
+    6298
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Keyword Agent output: backend search keywords."
+  },
+  {
+   "id": "R06300",
+   "lines": [
+    6300,
+    6300
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "requirement",
+   "text": "Keyword Agent optimizes discoverability."
+  },
+  {
+   "id": "R06300a",
+   "lines": [
+    6300,
+    6300
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "requirement",
+   "text": "Keyword Agent adheres to character limits."
+  },
+  {
+   "id": "R06302",
+   "lines": [
+    6302,
+    6302
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Agent: Attribute Agent."
+  },
+  {
+   "id": "R06304",
+   "lines": [
+    6304,
+    6304
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Attribute Agent input: Product context."
+  },
+  {
+   "id": "R06304a",
+   "lines": [
+    6304,
+    6304
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Attribute Agent input: category schema."
+  },
+  {
+   "id": "R06306",
+   "lines": [
+    6306,
+    6306
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Attribute Agent output: Structured attributes."
+  },
+  {
+   "id": "R06306a",
+   "lines": [
+    6306,
+    6306
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Attribute Agent structured attribute: size."
+  },
+  {
+   "id": "R06306b",
+   "lines": [
+    6306,
+    6306
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Attribute Agent structured attribute: color."
+  },
+  {
+   "id": "R06306c",
+   "lines": [
+    6306,
+    6306
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Attribute Agent structured attribute: material."
+  },
+  {
+   "id": "R06308",
+   "lines": [
+    6308,
+    6308
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "requirement",
+   "text": "Attribute Agent validates against target marketplace category requirements."
+  },
+  {
+   "id": "R06310",
+   "lines": [
+    6310,
+    6310
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Agent: Image Agent."
+  },
+  {
+   "id": "R06312",
+   "lines": [
+    6312,
+    6312
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Image Agent input: Image metadata."
+  },
+  {
+   "id": "R06312a",
+   "lines": [
+    6312,
+    6312
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Image Agent input: binary file."
+  },
+  {
+   "id": "R06314",
+   "lines": [
+    6314,
+    6314
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "interface",
+   "text": "Image Agent output: Structured ImageReport per slot."
+  },
+  {
+   "id": "R06316",
+   "lines": [
+    6316,
+    6316
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "flow",
+   "text": "Image Agent runs deterministic pixel checks first."
+  },
+  {
+   "id": "R06316a",
+   "lines": [
+    6316,
+    6316
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "flow",
+   "text": "Image Agent runs vision model analysis second."
+  },
+  {
+   "id": "R06318",
+   "lines": [
+    6318,
+    6318
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Agent: Brand Voice Retrieval."
+  },
+  {
+   "id": "R06320",
+   "lines": [
+    6320,
+    6320
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Brand Voice Retrieval input: Product."
+  },
+  {
+   "id": "R06320a",
+   "lines": [
+    6320,
+    6320
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Brand Voice Retrieval input: marketplace."
+  },
+  {
+   "id": "R06320b",
+   "lines": [
+    6320,
+    6320
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "data",
+   "text": "Brand Voice Retrieval input: brand_id."
+  },
+  {
+   "id": "R06322",
+   "lines": [
+    6322,
+    6322
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "decision",
+   "text": "Brand Voice Retrieval output: Top-k brand chunks (pgvector)."
+  },
+  {
+   "id": "R06324",
+   "lines": [
+    6324,
+    6324
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "requirement",
+   "text": "Brand Voice Retrieval is a pure retrieval component."
+  },
+  {
+   "id": "R06324a",
+   "lines": [
+    6324,
+    6324
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "flow",
+   "text": "Brand Voice Retrieval feeds context to generation agents."
+  },
+  {
+   "id": "R06326",
+   "lines": [
+    6326,
+    6326
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "info",
+   "text": "## Model Routing & Cost Observability Policy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R06328",
+   "lines": [
+    6328,
+    6328
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "risk",
+   "text": "Risk addressed: silent LLM bill creep."
+  },
+  {
+   "id": "R06328a",
+   "lines": [
+    6328,
+    6328
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "requirement",
+   "text": "Model invocation follows a strict economic policy."
+  },
+  {
+   "id": "R06330",
+   "lines": [
+    6330,
+    6330
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "requirement",
+   "text": "Cheapest Default Route: route text generation to the most cost-effective model meeting the quality bar."
+  },
+  {
+   "id": "R06330a",
+   "lines": [
+    6330,
+    6330
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "requirement",
+   "text": "Cheapest Default Route: route vision generation to the most cost-effective model meeting the quality bar."
+  },
+  {
+   "id": "R06331",
+   "lines": [
+    6331,
+    6331
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "constraint",
+   "text": "Escalation trigger: structured JSON output validation fails twice on a run."
+  },
+  {
+   "id": "R06331a",
+   "lines": [
+    6331,
+    6331
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "requirement",
+   "text": "On repeated failure, escalate only that run to a stronger reasoning model tier."
+  },
+  {
+   "id": "R06332",
+   "lines": [
+    6332,
+    6332
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "decision",
+   "text": "Embeddings always use a lightweight text-embedding model."
+  },
+  {
+   "id": "R06332a",
+   "lines": [
+    6332,
+    6332
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "requirement",
+   "text": "Never use the generation model for embeddings."
+  },
+  {
+   "id": "R06333",
+   "lines": [
+    6333,
+    6333
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "quality",
+   "text": "Mandatory Telemetry: every single call logs `model_used` into `agent_runs`."
+  },
+  {
+   "id": "R06333a",
+   "lines": [
+    6333,
+    6333
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "quality",
+   "text": "Every call logs `tokens_in` into `agent_runs`."
+  },
+  {
+   "id": "R06333b",
+   "lines": [
+    6333,
+    6333
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "quality",
+   "text": "Every call logs `tokens_out` into `agent_runs`."
+  },
+  {
+   "id": "R06333c",
+   "lines": [
+    6333,
+    6333
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "quality",
+   "text": "Every call logs `cost` into `agent_runs`."
+  },
+  {
+   "id": "R06334",
+   "lines": [
+    6334,
+    6334
+   ],
+   "page": "[08] AI Agent Layer & Brand RAG",
+   "kind": "info",
+   "text": "## Prompt Injection Defense Boundary",
+   "why_not": "heading"
+  }
+ ]
+}

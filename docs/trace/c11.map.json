@@ -1,0 +1,3078 @@
+{
+ "chunk": "c11",
+ "items": [
+  {
+   "id": "R06992",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2417-2425; docs/canon/CANON-ADDENDUM.md:8-24",
+   "note": "Local stack from docker-compose (Postgres + MinIO); Addendum §1 fixes the postgres service"
+  },
+  {
+   "id": "R06994",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2417 (§10.3)",
+   "note": "Compose `version: '3.8'` not specified; the key is obsolete and ignored by Compose v2"
+  },
+  {
+   "id": "R06996",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON-ADDENDUM.md:11",
+   "note": "compose service `postgres`"
+  },
+  {
+   "id": "R06998",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2424; ADR-0003; T2",
+   "note": "image pgvector/pgvector:0.8.5-pg17, pinned; not pg16"
+  },
+  {
+   "id": "R06998a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2424; ADR-0003; T2",
+   "note": "local PostgreSQL 17 + pgvector 0.8.5, not PostgreSQL 16"
+  },
+  {
+   "id": "R06999",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON-ADDENDUM.md:14",
+   "note": "POSTGRES_USER postgres"
+  },
+  {
+   "id": "R07001",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON-ADDENDUM.md:15; docs/canon/CANON.md:65",
+   "note": "POSTGRES_PASSWORD postgres; Canon forbids postgres_dev_password (no T-row)"
+  },
+  {
+   "id": "R07002",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON-ADDENDUM.md:16; docs/canon/CANON.md:65",
+   "note": "POSTGRES_DB marketplace_os"
+  },
+  {
+   "id": "R07003",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON-ADDENDUM.md:17; docs/architecture/BACKEND-ARCHITECTURE.md:2424",
+   "note": "ports 5432:5432"
+  },
+  {
+   "id": "R07005",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON-ADDENDUM.md:19",
+   "note": "pgdata:/var/lib/postgresql/data, plus the 0000_bootstrap.sql mount"
+  },
+  {
+   "id": "R07008",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2426; ADR-0004; T3",
+   "note": "No Redis container; Postgres queue (procrastinate)"
+  },
+  {
+   "id": "R07009",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2426; ADR-0004; T3",
+   "note": "No redis:7-alpine service"
+  },
+  {
+   "id": "R07010",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2426; ADR-0004; T3",
+   "note": "No Redis, so no 6379 mapping"
+  },
+  {
+   "id": "R07013",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2425; ADR-0001",
+   "note": "MinIO behind the S3-API StorageAdapter; compose creates buckets"
+  },
+  {
+   "id": "R07014",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2425",
+   "note": "MinIO image tag not specified; site uses floating :latest, plan pins only the Postgres image"
+  },
+  {
+   "id": "R07015",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2425",
+   "note": "MinIO `server /data --console-address :9001` command not specified"
+  },
+  {
+   "id": "R07016",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:58",
+   "note": "MINIO_ROOT_USER minioadmin = S3_ACCESS_KEY"
+  },
+  {
+   "id": "R07018",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:59; docs/canon/CANON.md:157 (R1-8)",
+   "note": "MINIO_ROOT_PASSWORD minioadmin; minioadmin_dev_password forbidden by Canon (no T-row)"
+  },
+  {
+   "id": "R07019",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:57",
+   "note": "S3_ENDPOINT_URL http://localhost:9000"
+  },
+  {
+   "id": "R07021",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2425",
+   "note": "MinIO console port 9001 not specified"
+  },
+  {
+   "id": "R07022",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2425",
+   "note": "MinIO volume miniodata:/data not specified"
+  },
+  {
+   "id": "R07025",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON-ADDENDUM.md:19",
+   "note": "named volume pgdata used by the postgres service"
+  },
+  {
+   "id": "R07027",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2425",
+   "note": "named volume miniodata not specified"
+  },
+  {
+   "id": "R07032",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:64; AGENTS.md:157",
+   "note": "one .env.example at the repo root"
+  },
+  {
+   "id": "R07034",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:20; docs/canon/CANON.md:65; ADR-0004; T4",
+   "note": "psycopg 3 and postgres:postgres per Canon amendment; ENV.md:35 still says asyncpg (stale)"
+  },
+  {
+   "id": "R07035",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:20; ADR-0004; T4",
+   "note": "psycopg 3 (postgresql+psycopg); asyncpg banned"
+  },
+  {
+   "id": "R07036",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:21; ADR-0004; T3",
+   "note": "REDIS_URL removed; no Redis"
+  },
+  {
+   "id": "R07036a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:21; ADR-0004; T3",
+   "note": "App never connects to Redis; queue, OAuth state, revocation in Postgres"
+  },
+  {
+   "id": "R07037",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:55; docs/canon/CANON.md:66",
+   "note": "local marketplace-images, staging aimos-images-staging; site value forbidden locally (no T-row)"
+  },
+  {
+   "id": "R07037a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:35; docs/canon/ENV.md:55",
+   "note": "images in GCS via StorageAdapter"
+  },
+  {
+   "id": "R07038",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:56; docs/canon/CANON.md:66",
+   "note": "local marketplace-csv, staging aimos-csv-staging; site value forbidden locally (no T-row)"
+  },
+  {
+   "id": "R07038a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:35; docs/canon/ENV.md:56",
+   "note": "CSVs in GCS, 30-day lifecycle"
+  },
+  {
+   "id": "R07039",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:76",
+   "note": "JWT_SECRET; dev placeholder differs; must differ per environment"
+  },
+  {
+   "id": "R07039a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:76; docs/architecture/BACKEND-ARCHITECTURE.md:2005",
+   "note": "HS256 with JWT_SECRET; FastAPI is issuer (T7)"
+  },
+  {
+   "id": "R07040",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:89; docs/canon/CANON.md:71 (D14)",
+   "note": "OPENAI_API_KEY; LLM_API_KEY forbidden by Canon (no T-row)"
+  },
+  {
+   "id": "R07040a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:260; docs/canon/ENV.md:89",
+   "note": "hosted OpenAI API via get_model_credentials"
+  },
+  {
+   "id": "R07041",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/ENV.md:91",
+   "note": "LLM_MODEL_DEFAULT gpt-4o-mini"
+  },
+  {
+   "id": "R07041a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/ENV.md:91-92",
+   "note": "gpt-4o-mini default; LLM_MODEL_ESCALATION gpt-4o"
+  },
+  {
+   "id": "R07042",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:93",
+   "note": "EMBEDDING_MODEL text-embedding-3-small"
+  },
+  {
+   "id": "R07042a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1538; docs/canon/ENV.md:93",
+   "note": "text-embedding-3-small, 1536 dims"
+  },
+  {
+   "id": "R07043",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:105",
+   "note": "AMAZON_CLIENT_ID (LWA)"
+  },
+  {
+   "id": "R07044",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:106",
+   "note": "AMAZON_CLIENT_SECRET, Secret Manager only"
+  },
+  {
+   "id": "R07045",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:117",
+   "note": "FLIPKART_CLIENT_ID"
+  },
+  {
+   "id": "R07046",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:118",
+   "note": "FLIPKART_CLIENT_SECRET, Secret Manager only"
+  },
+  {
+   "id": "R07047",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:127",
+   "note": "SENTRY_DSN; empty locally, required outside local"
+  },
+  {
+   "id": "R07047a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2756",
+   "note": "Sentry on the backend, env tag from APP_ENV"
+  },
+  {
+   "id": "R07048",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:130; docs/canon/CANON.md:151 (R0-4)",
+   "note": "OTLP endpoint empty by default; localhost:4317 only with own collector"
+  },
+  {
+   "id": "R07048a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2748; docs/canon/ENV.md:130; docs/canon/CANON.md:151; ADR-0001",
+   "note": "OTLP to Cloud Trace; compose ships no collector, localhost:4317 only with own Jaeger"
+  },
+  {
+   "id": "R07053",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2567",
+   "note": "trunk-based, short-lived branches; folder not yet a git repo (STATE)"
+  },
+  {
+   "id": "R07053a",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2564-2565; AGENTS.md:218",
+   "note": "typed branches off main, squash-merged"
+  },
+  {
+   "id": "R07053b",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2505; docs/architecture/BACKEND-ARCHITECTURE.md:2565-2566",
+   "note": "PR must pass 12 required checks, then user approves merge"
+  },
+  {
+   "id": "R07054",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "AGENTS.md:219; docs/architecture/BACKEND-ARCHITECTURE.md:2564",
+   "note": "PR titles are Conventional Commits; commit-lint check"
+  },
+  {
+   "id": "R07054a",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "AGENTS.md:219",
+   "note": "type allowed (feat|fix|chore|docs|refactor|test|perf)"
+  },
+  {
+   "id": "R07054b",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "AGENTS.md:219",
+   "note": "type allowed (feat|fix|chore|docs|refactor|test|perf)"
+  },
+  {
+   "id": "R07054c",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "AGENTS.md:219",
+   "note": "type allowed (feat|fix|chore|docs|refactor|test|perf)"
+  },
+  {
+   "id": "R07054d",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "AGENTS.md:219",
+   "note": "type allowed (feat|fix|chore|docs|refactor|test|perf)"
+  },
+  {
+   "id": "R07054e",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "AGENTS.md:219",
+   "note": "type allowed (feat|fix|chore|docs|refactor|test|perf)"
+  },
+  {
+   "id": "R07055",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "AGENTS.md:206; docs/architecture/BACKEND-ARCHITECTURE.md:2567",
+   "note": "ADRs in docs/adr; agents write them as proposed"
+  },
+  {
+   "id": "R07055a",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "AGENTS.md:206",
+   "note": "docs/adr/NNNN-title.md, template 0000"
+  },
+  {
+   "id": "R07061",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2343; docs/adr/0001-hosting-gcp.md:33",
+   "note": "Cloud SQL db-custom-1-3840, PG17 Enterprise"
+  },
+  {
+   "id": "R07061a",
+   "status": "covered-changed",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2495; ADR-0004; T3",
+   "note": "No Memorystore; Postgres queue"
+  },
+  {
+   "id": "R07061b",
+   "status": "covered-changed",
+   "owner": "ops",
+   "ref": "docs/adr/0001-hosting-gcp.md:31-32; docs/architecture/BACKEND-ARCHITECTURE.md:251",
+   "note": "Cloud Run API prod min 1 plus always-on worker pool; not purely pay-per-use"
+  },
+  {
+   "id": "R07061c",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/adr/0001-hosting-gcp.md:35; docs/architecture/BACKEND-ARCHITECTURE.md:258",
+   "note": "GCS for images and CSVs"
+  },
+  {
+   "id": "R07061d",
+   "status": "covered-changed",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2450; ADR-0001; T6",
+   "note": "~$195-205/mo prod+staging without Memorystore; inside $150-250"
+  },
+  {
+   "id": "R07061e",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2445",
+   "note": "LLM tokens volume-dependent, excluded from infra cost"
+  },
+  {
+   "id": "R07061f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2481; docs/canon/ENV.md:97-98",
+   "note": "daily cost alerts and USD caps computed from agent_runs"
+  },
+  {
+   "id": "R07068",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:135-172",
+   "note": "overview in v1: safety chain, two adapters, canonical model"
+  },
+  {
+   "id": "R07070",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:7-15; docs/architecture/BACKEND-ARCHITECTURE.md:137",
+   "note": "AI listing operator for Indian D2C brands"
+  },
+  {
+   "id": "R07070a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/ARCHITECTURE.md:39-46; docs/review/VISION-ALIGNMENT.md:138",
+   "note": "four layers in ARCHITECTURE.md (pre-Canon intent); VISION marks 4 layers aligned"
+  },
+  {
+   "id": "R07075",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:7-15",
+   "note": "same product definition"
+  },
+  {
+   "id": "R07075a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1336",
+   "note": "listings created via POST /api/v1/listings/generate"
+  },
+  {
+   "id": "R07075b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1338",
+   "note": "POST /api/v1/listings/validate"
+  },
+  {
+   "id": "R07075c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1342; docs/architecture/BACKEND-ARCHITECTURE.md:157",
+   "note": "one API publishes to Amazon.in and Flipkart"
+  },
+  {
+   "id": "R07075d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:162-172",
+   "note": "AI drafts and self-corrects, vision checks images; publish itself is adapter-only (inv 1)"
+  },
+  {
+   "id": "R07077",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131",
+   "note": "content.title per marketplace listing"
+  },
+  {
+   "id": "R07077a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131",
+   "note": "content.bullets per marketplace listing"
+  },
+  {
+   "id": "R07077b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131",
+   "note": "content.description per marketplace listing"
+  },
+  {
+   "id": "R07077c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2132",
+   "note": "keywords.search_terms (+ hidden_terms, T26)"
+  },
+  {
+   "id": "R07077d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2133",
+   "note": "attributes map + attribute_sources"
+  },
+  {
+   "id": "R07077e",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "AI team agents; backend pushes RuleSet and CategoryTemplate in GenerationContext"
+  },
+  {
+   "id": "R07077f",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1538; docs/architecture/DATABASE.md:1057",
+   "note": "brand_chunks retrieval (top 8) + brand_profile in context"
+  },
+  {
+   "id": "R07077g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1539; docs/architecture/DATABASE.md:490",
+   "note": "Rules Engine + category templates enforce marketplace rules"
+  },
+  {
+   "id": "R07079",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:157; AGENTS.md:122",
+   "note": "Amazon.in in v1 (T9 concerns only the site intro)"
+  },
+  {
+   "id": "R07079a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:157; AGENTS.md:122",
+   "note": "Flipkart in v1"
+  },
+  {
+   "id": "R07083",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "two adapters behind one MarketplaceAdapter ABC"
+  },
+  {
+   "id": "R07085",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "5 MVP agents in the pipeline; Optimization Agent Phase 3 (L7561)"
+  },
+  {
+   "id": "R07089",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "content_agent node"
+  },
+  {
+   "id": "R07089a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "keyword_agent node"
+  },
+  {
+   "id": "R07089b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "attribute_agent node"
+  },
+  {
+   "id": "R07089c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "image_agent is AI team; backend validate_images: Pillow then vision"
+  },
+  {
+   "id": "R07089d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1538; docs/architecture/DATABASE.md:1057",
+   "note": "retrieve_brand_chunks port over brand_chunks"
+  },
+  {
+   "id": "R07089e",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "site L7561; AGENTS.md:123-124",
+   "note": "Optimization Agent is Phase 3 (site L7561)"
+  },
+  {
+   "id": "R07095",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/ARCHITECTURE.md:41-44; docs/architecture/BACKEND-ARCHITECTURE.md:162",
+   "note": "Experience, Intelligence, Control, Execution in this order"
+  },
+  {
+   "id": "R07097",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:186; docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "canonical listing + adapter mapping"
+  },
+  {
+   "id": "R07101",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:186",
+   "note": "canonical listing holds no marketplace-specific fields"
+  },
+  {
+   "id": "R07101a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "adapters map canonical to marketplace fields"
+  },
+  {
+   "id": "R07107",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:168",
+   "note": "AI proposes a draft"
+  },
+  {
+   "id": "R07107a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:169",
+   "note": "deterministic Rules Engine validates"
+  },
+  {
+   "id": "R07107b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:170",
+   "note": "human approves, maker-checker"
+  },
+  {
+   "id": "R07107c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:171",
+   "note": "adapters publish on publish queue"
+  },
+  {
+   "id": "R07107d",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "T14; docs/architecture/BACKEND-ARCHITECTURE.md:172",
+   "note": "default: v1 operational metrics only, marketplace performance Phase 2; not a ruling, T14 open"
+  },
+  {
+   "id": "R07109",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:164; docs/architecture/BACKEND-ARCHITECTURE.md:183",
+   "note": "AI never has publish authority"
+  },
+  {
+   "id": "R07109a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1539; docs/architecture/BACKEND-ARCHITECTURE.md:708",
+   "note": "validate_rules in graph; worker re-runs deterministic checks"
+  },
+  {
+   "id": "R07109b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:170; docs/architecture/BACKEND-ARCHITECTURE.md:711",
+   "note": "validated/needs_review go to review queue"
+  },
+  {
+   "id": "R07109c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1342; docs/architecture/DATABASE.md:823",
+   "note": "publish only approved listings; passed-rules precondition (G9, Proposed)"
+  },
+  {
+   "id": "R07109d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:162-164",
+   "note": "chain called the foundation of the system"
+  },
+  {
+   "id": "R07111",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:185",
+   "note": "mandatory human approval with maker-checker"
+  },
+  {
+   "id": "R07112",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:184",
+   "note": "Rules Engine deterministic, never an LLM"
+  },
+  {
+   "id": "R07113",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2075; ADR-0008",
+   "note": "human approval in v1; auto_publish reserved off (T10)"
+  },
+  {
+   "id": "R07114",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "T14",
+   "note": "Performance feedback: MVP here, Optimization Agent Phase 3 (L7561); default Phase 2+"
+  },
+  {
+   "id": "R07122",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "Next.js dashboard in apps/web"
+  },
+  {
+   "id": "R07125",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1344-1346",
+   "note": "connect, callback, accounts endpoints for the FE"
+  },
+  {
+   "id": "R07126",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1332-1335",
+   "note": "products, bulk CSV and import report endpoints"
+  },
+  {
+   "id": "R07127",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1339-1341",
+   "note": "edit, regenerate, approve/reject endpoints"
+  },
+  {
+   "id": "R07128",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1353; T14",
+   "note": "GET /api/v1/analytics, operational metrics only"
+  },
+  {
+   "id": "R07130",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "content_agent node"
+  },
+  {
+   "id": "R07133",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "keyword_agent node"
+  },
+  {
+   "id": "R07134",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "attribute_agent node"
+  },
+  {
+   "id": "R07135",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "backend validate_images port: Pillow then vision"
+  },
+  {
+   "id": "R07136",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1538; docs/architecture/DATABASE.md:1057",
+   "note": "BrandChunkRepository.search behind retrieve_brand_chunks"
+  },
+  {
+   "id": "R07137",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "site L7561; AGENTS.md:123-124",
+   "note": "Optimization Agent Phase 3 (site L7561)"
+  },
+  {
+   "id": "R07139",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1200",
+   "note": "Rules Engine component"
+  },
+  {
+   "id": "R07142",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1367-1369",
+   "note": "one ErrorReport shape"
+  },
+  {
+   "id": "R07143",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1338; docs/architecture/DATABASE.md:809",
+   "note": "validate endpoint + validation_runs"
+  },
+  {
+   "id": "R07144",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2038-2040",
+   "note": "approval gate in API and DB trigger"
+  },
+  {
+   "id": "R07146",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204; docs/architecture/BACKEND-ARCHITECTURE.md:261",
+   "note": "Amazon SP-API adapter"
+  },
+  {
+   "id": "R07149",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204; docs/architecture/BACKEND-ARCHITECTURE.md:261",
+   "note": "Flipkart Seller API adapter"
+  },
+  {
+   "id": "R07150",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204; docs/architecture/DATABASE.md:529",
+   "note": "adapter mapping + category_templates value maps"
+  },
+  {
+   "id": "R07152",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:194-236",
+   "note": "dashboard → API → worker → AI pipeline"
+  },
+  {
+   "id": "R07153",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1539-1540",
+   "note": "pipeline calls validate_rules and validate_images ports"
+  },
+  {
+   "id": "R07154",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1342",
+   "note": "approved listings go to the adapters"
+  },
+  {
+   "id": "R07155",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "T14",
+   "note": "Performance ingestion not in v1 by default (G14)"
+  },
+  {
+   "id": "R07164",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "user-facing dashboard is apps/web"
+  },
+  {
+   "id": "R07168",
+   "status": "other-team",
+   "owner": "fe-team",
+   "ref": "",
+   "note": "Next.js app in apps/web"
+  },
+  {
+   "id": "R07168a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1344-1346",
+   "note": "connect endpoints the FE calls"
+  },
+  {
+   "id": "R07168b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1332-1335",
+   "note": "import endpoints"
+  },
+  {
+   "id": "R07168c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:744; docs/architecture/BACKEND-ARCHITECTURE.md:1413",
+   "note": "review queue with check results; keyset listing"
+  },
+  {
+   "id": "R07168d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1341",
+   "note": "POST /api/v1/listings/approve"
+  },
+  {
+   "id": "R07168e",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1353; T14",
+   "note": "GET /api/v1/analytics, operational only"
+  },
+  {
+   "id": "R07170",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1538",
+   "note": "generation is AI team; retrieval port and store are ours"
+  },
+  {
+   "id": "R07174",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "LangGraph graph in packages/pipeline"
+  },
+  {
+   "id": "R07174a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "LangGraph node; backend supplies ports only"
+  },
+  {
+   "id": "R07174b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "LangGraph node; backend supplies ports only"
+  },
+  {
+   "id": "R07174c",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "LangGraph node; backend supplies ports only"
+  },
+  {
+   "id": "R07174d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "image_agent node is AI team; backend validate_images port: Pillow then vision call"
+  },
+  {
+   "id": "R07174e",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1538; docs/architecture/DATABASE.md:1057",
+   "note": "brand-voice node is AI team; backend retrieve_brand_chunks over brand_chunks, top 8"
+  },
+  {
+   "id": "R07176",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:169-170",
+   "note": "deterministic validation then approval"
+  },
+  {
+   "id": "R07180",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1200",
+   "note": "Rules Engine"
+  },
+  {
+   "id": "R07180a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1367",
+   "note": "ErrorReport contract"
+  },
+  {
+   "id": "R07180b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2038",
+   "note": "human approval gate"
+  },
+  {
+   "id": "R07182",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "adapters own marketplace operations"
+  },
+  {
+   "id": "R07186",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:261; docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "Amazon SP-API adapter"
+  },
+  {
+   "id": "R07186a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:261; docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "Flipkart Seller API adapter"
+  },
+  {
+   "id": "R07192",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:176",
+   "note": "brand = tenant (T31)"
+  },
+  {
+   "id": "R07194",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1000",
+   "note": "marketplace_accounts"
+  },
+  {
+   "id": "R07196",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1000",
+   "note": "marketplace amazon"
+  },
+  {
+   "id": "R07196a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1000",
+   "note": "marketplace flipkart"
+  },
+  {
+   "id": "R07198",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:402; docs/architecture/BACKEND-ARCHITECTURE.md:1332-1334",
+   "note": "products via CSV and manual entry; Sync open (Q20)"
+  },
+  {
+   "id": "R07200",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:536; docs/architecture/BACKEND-ARCHITECTURE.md:1334",
+   "note": "async CSV bulk import"
+  },
+  {
+   "id": "R07200a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1332",
+   "note": "POST /api/v1/products"
+  },
+  {
+   "id": "R07200b",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "VISION Q20; T75",
+   "note": "Site contradicts itself; default Phase 2, no sync source planned"
+  },
+  {
+   "id": "R07202",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:402; docs/architecture/DATABASE.md:1188",
+   "note": "products + resolved ProductFacts read model"
+  },
+  {
+   "id": "R07206",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1512-1516",
+   "note": "GenerationContext pushed by the backend"
+  },
+  {
+   "id": "R07208",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1513; docs/architecture/BACKEND-ARCHITECTURE.md:1538",
+   "note": "brand_profile + retrieve_brand_chunks"
+  },
+  {
+   "id": "R07208a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1514",
+   "note": "marketplace_rules RuleSet in context"
+  },
+  {
+   "id": "R07208b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1514; docs/architecture/BACKEND-ARCHITECTURE.md:1516",
+   "note": "category_template + category in context"
+  },
+  {
+   "id": "R07210",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "four parallel agents in the pipeline"
+  },
+  {
+   "id": "R07212",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "pipeline agent node"
+  },
+  {
+   "id": "R07212a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "pipeline agent node"
+  },
+  {
+   "id": "R07212b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "pipeline agent node"
+  },
+  {
+   "id": "R07212c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "backend validate_images: Pillow then vision"
+  },
+  {
+   "id": "R07214",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2124-2137",
+   "note": "CanonicalListing in listing_versions.content_json"
+  },
+  {
+   "id": "R07216",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:44; docs/canon/CANON.md:138",
+   "note": "CanonicalListing Pydantic model emitted as jsonschema/*.schema.json + TS types"
+  },
+  {
+   "id": "R07218",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1200",
+   "note": "deterministic Rules Engine"
+  },
+  {
+   "id": "R07222",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "Pillow checks then vision model, ImageReport"
+  },
+  {
+   "id": "R07226",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2136; docs/architecture/BACKEND-ARCHITECTURE.md:1565",
+   "note": "confidence_score 0..1; graph ends at quality_check; formula owed by AI team"
+  },
+  {
+   "id": "R07230",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2038",
+   "note": "human approval gate"
+  },
+  {
+   "id": "R07234",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "marketplace adapter"
+  },
+  {
+   "id": "R07236",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "Amazon SP-API adapter"
+  },
+  {
+   "id": "R07236a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "Flipkart adapter"
+  },
+  {
+   "id": "R07238",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "T13; docs/architecture/DATABASE.md:1489",
+   "note": "default: Submitted until marketplace confirms, then live; site flow implies live on adapter success"
+  },
+  {
+   "id": "R07242",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "T14",
+   "note": "performance table exists (DATABASE.md:1020); ingestion Phase 2 by default (G14)"
+  },
+  {
+   "id": "R07244",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "T14",
+   "note": "CTR not stored; derivable from performance.impressions/clicks"
+  },
+  {
+   "id": "R07244a",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "T14",
+   "note": "performance.orders stored; no conversions column"
+  },
+  {
+   "id": "R07244b",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "T14",
+   "note": "performance.returns int stored"
+  },
+  {
+   "id": "R07246",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "site L7561; AGENTS.md:123-124",
+   "note": "Optimization Agent Phase 3 (site L7561)"
+  },
+  {
+   "id": "R07254",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:162-172",
+   "note": "rules engine and human approval contain probabilistic output"
+  },
+  {
+   "id": "R07254a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:185",
+   "note": "human approval catches hallucinations"
+  },
+  {
+   "id": "R07254b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:184",
+   "note": "Rules Engine catches violations"
+  },
+  {
+   "id": "R07254c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1538; docs/architecture/BACKEND-ARCHITECTURE.md:185",
+   "note": "brand retrieval + human review; no deterministic voice check"
+  },
+  {
+   "id": "R07254d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:184",
+   "note": "deterministic Rules Engine"
+  },
+  {
+   "id": "R07254e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "adapters are marketplace-specific"
+  },
+  {
+   "id": "R07254f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "adapter is the only code calling the marketplace"
+  },
+  {
+   "id": "R07254g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204; docs/architecture/BACKEND-ARCHITECTURE.md:452",
+   "note": "OAuth and auth refresh in adapters"
+  },
+  {
+   "id": "R07254h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204; docs/architecture/BACKEND-ARCHITECTURE.md:2177",
+   "note": "adapters pace calls; outbound token bucket Proposed (G17)"
+  },
+  {
+   "id": "R07254i",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "content quality is the AI team pipeline"
+  },
+  {
+   "id": "R07254j",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:184",
+   "note": "Rules Engine final arbiter"
+  },
+  {
+   "id": "R07258",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1541; docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "model comes from settings via get_model_credentials; adapters separate"
+  },
+  {
+   "id": "R07259",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:186; docs/architecture/BACKEND-ARCHITECTURE.md:178-179",
+   "note": "canonical model; site inv 14 kept as design principle"
+  },
+  {
+   "id": "R07260",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:508; T29",
+   "note": "rules as data, app.cli rules import job; no agent redeploy"
+  },
+  {
+   "id": "R07261",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1628",
+   "note": "FakeAdapter + stub pipeline test each side alone"
+  },
+  {
+   "id": "R07261a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2745; docs/architecture/BACKEND-ARCHITECTURE.md:2762",
+   "note": "adapter call logs, agent_runs, validation_runs"
+  },
+  {
+   "id": "R07261b",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/adr/0001-hosting-gcp.md:31-32; docs/architecture/BACKEND-ARCHITECTURE.md:253",
+   "note": "API and worker pool scale apart; pipeline runs in-process in the worker"
+  },
+  {
+   "id": "R07265",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:162",
+   "note": "safety chain exists because AI is non-deterministic"
+  },
+  {
+   "id": "R07265a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:241; docs/drafts/BUILD-SEQUENCE.md:255; docs/architecture/BACKEND-ARCHITECTURE.md:1385; docs/architecture/DATABASE.md:514",
+   "note": "max_length rule seeded with Amazon title <=200 (S14 fixture)"
+  },
+  {
+   "id": "R07265b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:504; docs/architecture/DATABASE.md:519; T48",
+   "note": "brand banned_terms / claim rules (avoid medical claims)"
+  },
+  {
+   "id": "R07265c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:504; T48",
+   "note": "brand banned_terms (no competitor brand names)"
+  },
+  {
+   "id": "R07265d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:169",
+   "note": "rules validate between AI and adapters"
+  },
+  {
+   "id": "R07267",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:514",
+   "note": "max_length/min_length rules in code"
+  },
+  {
+   "id": "R07268",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:514",
+   "note": "banned_terms rule"
+  },
+  {
+   "id": "R07269",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:526",
+   "note": "template checks derived from category_templates"
+  },
+  {
+   "id": "R07270",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "Pillow pixel checks"
+  },
+  {
+   "id": "R07270a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "vision model via app/services/vision.py"
+  },
+  {
+   "id": "R07274",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:183",
+   "note": "invariant 1"
+  },
+  {
+   "id": "R07274a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:184",
+   "note": "invariant 2"
+  },
+  {
+   "id": "R07274b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2075; ADR-0008",
+   "note": "human approval in v1"
+  },
+  {
+   "id": "R07274c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:77",
+   "note": "invariants never traded for speed"
+  },
+  {
+   "id": "R07280",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:162-172",
+   "note": "same sequence"
+  },
+  {
+   "id": "R07280a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1513; docs/architecture/BACKEND-ARCHITECTURE.md:1538",
+   "note": "brand profile + voice chunks in context"
+  },
+  {
+   "id": "R07280e",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "T14",
+   "note": "learning from performance: MVP here, Phase 3 loop (L7561); default not v1"
+  },
+  {
+   "id": "R07280f",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1514",
+   "note": "RuleSet pushed in GenerationContext"
+  },
+  {
+   "id": "R07288",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1217-1280",
+   "note": "layer boundaries enforced by lint-imports and ruff bans"
+  },
+  {
+   "id": "R07289",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1539; docs/architecture/DATABASE.md:823",
+   "note": "rules run before review; approve needs passed rules run (G9)"
+  },
+  {
+   "id": "R07290",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:186",
+   "note": "invariant 4"
+  },
+  {
+   "id": "R07291",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:186; docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "invariant 4"
+  },
+  {
+   "id": "R07292",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "T14",
+   "note": "Performance loop deferred by default; when built it feeds Intelligence"
+  },
+  {
+   "id": "R07296",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:124",
+   "note": "graph has no publish or approval node"
+  },
+  {
+   "id": "R07297",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:186; T26",
+   "note": "hidden_terms replaces backend_keywords"
+  },
+  {
+   "id": "R07298",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "adapters are the only marketplace callers; FE calls our API"
+  },
+  {
+   "id": "R07299",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "ADR-0008; docs/architecture/BACKEND-ARCHITECTURE.md:2075",
+   "note": "human approval kept in v1"
+  },
+  {
+   "id": "R07306",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:174-192",
+   "note": "principles and invariants in v1"
+  },
+  {
+   "id": "R07308",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:77",
+   "note": "invariants guide every decision"
+  },
+  {
+   "id": "R07308a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:77; docs/architecture/BACKEND-ARCHITECTURE.md:176-179",
+   "note": "site 14 invariants mapped onto our 10"
+  },
+  {
+   "id": "R07315",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "T14; docs/architecture/BACKEND-ARCHITECTURE.md:162-172",
+   "note": "chain matches; \"feeds back into optimization\" deferred by default (Optimization Agent Phase 3, L7561)"
+  },
+  {
+   "id": "R07317",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:77",
+   "note": "never traded for speed"
+  },
+  {
+   "id": "R07319",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:168",
+   "note": "AI drafts, decides nothing"
+  },
+  {
+   "id": "R07321",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:168",
+   "note": "pipeline writes a draft"
+  },
+  {
+   "id": "R07321b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:168",
+   "note": "draft only, no publish or approval step"
+  },
+  {
+   "id": "R07321c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:169; docs/architecture/DATABASE.md:823",
+   "note": "rules gate before publish"
+  },
+  {
+   "id": "R07321d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:170",
+   "note": "human approval before publish"
+  },
+  {
+   "id": "R07323",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:184",
+   "note": "Rules Engine final say"
+  },
+  {
+   "id": "R07325",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:184",
+   "note": "deterministic checks"
+  },
+  {
+   "id": "R07325a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:823",
+   "note": "approve/publish need passed rules run for that version (Proposed)"
+  },
+  {
+   "id": "R07325b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:510-523",
+   "note": "RuleDef, 14 types, stored as data"
+  },
+  {
+   "id": "R07325c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:499; docs/architecture/DATABASE.md:507",
+   "note": "rules.version + revision; highest enabled wins"
+  },
+  {
+   "id": "R07325d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:496",
+   "note": "rules.marketplace + category"
+  },
+  {
+   "id": "R07325e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:514",
+   "note": "max_length / min_length"
+  },
+  {
+   "id": "R07325f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:514",
+   "note": "banned_terms"
+  },
+  {
+   "id": "R07325g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:514; docs/architecture/DATABASE.md:517",
+   "note": "required_attribute, conditional_required"
+  },
+  {
+   "id": "R07325h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:520",
+   "note": "image_requirement rules"
+  },
+  {
+   "id": "R07327",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:186",
+   "note": "invariant 4"
+  },
+  {
+   "id": "R07329",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:186",
+   "note": "canonical listing marketplace-neutral"
+  },
+  {
+   "id": "R07329a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204; T26",
+   "note": "adapters map hidden_terms to Amazon backend terms"
+  },
+  {
+   "id": "R07329b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "Flipkart mapping in its adapter"
+  },
+  {
+   "id": "R07329c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204; docs/architecture/BACKEND-ARCHITECTURE.md:179",
+   "note": "future adapters same pattern"
+  },
+  {
+   "id": "R07329d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:186",
+   "note": "no marketplace structures in canonical"
+  },
+  {
+   "id": "R07331",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "adapter pattern"
+  },
+  {
+   "id": "R07333",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:3106",
+   "note": "MarketplaceAdapter ABC; freeze with preview() Proposed (G11)"
+  },
+  {
+   "id": "R07333a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:178-179; docs/architecture/DATABASE.md:2165; T22",
+   "note": "new adapter; marketplace stays TEXT + CHECK, widened additively (T22)"
+  },
+  {
+   "id": "R07333b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "adapter owns auth refresh"
+  },
+  {
+   "id": "R07333c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204; docs/architecture/BACKEND-ARCHITECTURE.md:2177",
+   "note": "outbound token bucket per (marketplace, account, operation) Proposed (G17)"
+  },
+  {
+   "id": "R07333d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204; docs/architecture/BACKEND-ARCHITECTURE.md:1807",
+   "note": "per-submission idempotency key"
+  },
+  {
+   "id": "R07333e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204; docs/architecture/DATABASE.md:546",
+   "note": "marketplace_error_map"
+  },
+  {
+   "id": "R07335",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:187",
+   "note": "invariant 5"
+  },
+  {
+   "id": "R07337",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:187; docs/architecture/BACKEND-ARCHITECTURE.md:1198",
+   "note": "TenantScopedRepository + query guard"
+  },
+  {
+   "id": "R07337a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1359",
+   "note": "tenant only from JWT tid claim"
+  },
+  {
+   "id": "R07337b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:984",
+   "note": "agent_runs is a standard tenant table"
+  },
+  {
+   "id": "R07337c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1278",
+   "note": "tenant-isolation required check on every table"
+  },
+  {
+   "id": "R07337d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1198",
+   "note": "repository base class filters by tenant_id"
+  },
+  {
+   "id": "R07339",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1367-1371",
+   "note": "invariant 8"
+  },
+  {
+   "id": "R07341",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1369",
+   "note": "one shape for every failure"
+  },
+  {
+   "id": "R07341a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1397",
+   "note": "source rules_engine"
+  },
+  {
+   "id": "R07341b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1397",
+   "note": "source vision_model"
+  },
+  {
+   "id": "R07341c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1397",
+   "note": "source amazon_adapter / flipkart_adapter"
+  },
+  {
+   "id": "R07341d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1785",
+   "note": "correction node fixes failing fields from the ErrorReport"
+  },
+  {
+   "id": "R07341e",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1401",
+   "note": "HTTP envelope carries error_report for UI"
+  },
+  {
+   "id": "R07341f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:816",
+   "note": "validation_runs.error_report_json, job_runs"
+  },
+  {
+   "id": "R07341g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1792",
+   "note": "retryable flag; 4-class retry map Proposed (G18)"
+  },
+  {
+   "id": "R07341h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2699; docs/architecture/BACKEND-ARCHITECTURE.md:1365",
+   "note": "correlation id across logs, traces, errors"
+  },
+  {
+   "id": "R07343",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1779",
+   "note": "bounded retries table"
+  },
+  {
+   "id": "R07345",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1781-1790",
+   "note": "every retry path capped"
+  },
+  {
+   "id": "R07345a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:87",
+   "note": "invariant 9, 3 corrections"
+  },
+  {
+   "id": "R07345b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:87-91",
+   "note": "no infinite loops"
+  },
+  {
+   "id": "R07345c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1785; docs/architecture/BACKEND-ARCHITECTURE.md:1799",
+   "note": "blocked with full ErrorReport; dead letters in job_runs"
+  },
+  {
+   "id": "R07347",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2697",
+   "note": "observability section"
+  },
+  {
+   "id": "R07349",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "agent_runs.model_used"
+  },
+  {
+   "id": "R07349a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "agent_runs.tokens_in"
+  },
+  {
+   "id": "R07349b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "agent_runs.tokens_out"
+  },
+  {
+   "id": "R07349c",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:992; docs/canon/CANON.md naming register (agent_runs cost column); T25",
+   "note": "cost_usd numeric(12,6), not cost DECIMAL(10,6)"
+  },
+  {
+   "id": "R07349d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "duration_ms"
+  },
+  {
+   "id": "R07349e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:991",
+   "note": "status running|completed|failed|timeout"
+  },
+  {
+   "id": "R07349f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2745",
+   "note": "each adapter call logged with rate-limit remaining"
+  },
+  {
+   "id": "R07349g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:809-810",
+   "note": "validation_runs append-only, one row per stage per attempt"
+  },
+  {
+   "id": "R07349h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:285; docs/architecture/BACKEND-ARCHITECTURE.md:2213",
+   "note": "append-only audit_log"
+  },
+  {
+   "id": "R07349i",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2762-2764; docs/architecture/BACKEND-ARCHITECTURE.md:2481",
+   "note": "cost rollups per listing, brand, model; daily alerts"
+  },
+  {
+   "id": "R07353",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:77",
+   "note": "invariants never traded"
+  },
+  {
+   "id": "R07355",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:183",
+   "note": "our invariant 1"
+  },
+  {
+   "id": "R07356",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:184",
+   "note": "our invariant 2"
+  },
+  {
+   "id": "R07357",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:185",
+   "note": "our invariant 3"
+  },
+  {
+   "id": "R07358",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:186",
+   "note": "our invariant 4"
+  },
+  {
+   "id": "R07359",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:186; docs/architecture/BACKEND-ARCHITECTURE.md:177",
+   "note": "folded into our invariant 4"
+  },
+  {
+   "id": "R07360",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:187",
+   "note": "our invariant 5"
+  },
+  {
+   "id": "R07361",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:188",
+   "note": "our invariant 6, KMS envelope"
+  },
+  {
+   "id": "R07361a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2125; docs/architecture/DATABASE.md:1006",
+   "note": "AES-256-GCM per write, KMS-wrapped key"
+  },
+  {
+   "id": "R07362",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:189",
+   "note": "our invariant 7"
+  },
+  {
+   "id": "R07363",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:190",
+   "note": "our invariant 8"
+  },
+  {
+   "id": "R07364",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:191",
+   "note": "our invariant 9"
+  },
+  {
+   "id": "R07365",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:192; docs/architecture/BACKEND-ARCHITECTURE.md:1420",
+   "note": "idempotency key on every marketplace write"
+  },
+  {
+   "id": "R07366",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:192; docs/architecture/BACKEND-ARCHITECTURE.md:1813",
+   "note": "per-field publish retry"
+  },
+  {
+   "id": "R07367",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "site L7561; docs/architecture/BACKEND-ARCHITECTURE.md:178",
+   "note": "site inv 13; Optimization Agent Phase 3 (L7561)"
+  },
+  {
+   "id": "R07368",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:178-179",
+   "note": "kept as design principle"
+  },
+  {
+   "id": "R07372",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:184; docs/canon/CANON.md:124",
+   "note": "no path from graph to publish"
+  },
+  {
+   "id": "R07372a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1367-1398",
+   "note": "ErrorReport with field, code, suggestion, retryable"
+  },
+  {
+   "id": "R07373",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/review/VISION-ALIGNMENT.md:184 (G13); docs/architecture/DATABASE.md:1064",
+   "note": "listing_version chunk source Proposed only; no approve -> brand_embed trigger, so vectors never grow"
+  },
+  {
+   "id": "R07373a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:772",
+   "note": "frozen listing_versions kept"
+  },
+  {
+   "id": "R07373b",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "T14",
+   "note": "performance loop not in v1 by default"
+  },
+  {
+   "id": "R07374",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:186; docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "canonical model + adapters"
+  },
+  {
+   "id": "R07375",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1336; T67",
+   "note": "generation only on request; import does not auto-generate (T67)"
+  },
+  {
+   "id": "R07375a",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:738-739; docs/review/VISION-ALIGNMENT.md:190; docs/canon/ENV.md:92",
+   "note": "LLM_MODEL_ESCALATION exists, but get_model_credentials has no escalation purpose; seam change needed"
+  },
+  {
+   "id": "R07382",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:7-15; docs/architecture/BACKEND-ARCHITECTURE.md:135",
+   "note": "product scope in v1"
+  },
+  {
+   "id": "R07384",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:122",
+   "note": "non-goals mirror the not-in-MVP list"
+  },
+  {
+   "id": "R07389",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:137-142",
+   "note": "one interface, Amazon + Flipkart"
+  },
+  {
+   "id": "R07391",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:452; docs/architecture/BACKEND-ARCHITECTURE.md:261",
+   "note": "Amazon SP-API OAuth (LWA)"
+  },
+  {
+   "id": "R07391a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:452; docs/architecture/BACKEND-ARCHITECTURE.md:261",
+   "note": "Flipkart Seller API OAuth"
+  },
+  {
+   "id": "R07392",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:536; docs/architecture/BACKEND-ARCHITECTURE.md:1334",
+   "note": "bulk CSV import"
+  },
+  {
+   "id": "R07392a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1332",
+   "note": "manual single-product create"
+  },
+  {
+   "id": "R07392b",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "VISION Q20; T75",
+   "note": "Site contradicts itself; default Phase 2"
+  },
+  {
+   "id": "R07393",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131",
+   "note": "content.title per marketplace"
+  },
+  {
+   "id": "R07393a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131",
+   "note": "content.bullets per marketplace"
+  },
+  {
+   "id": "R07393b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131",
+   "note": "content.description per marketplace"
+  },
+  {
+   "id": "R07393c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2132",
+   "note": "keywords per marketplace"
+  },
+  {
+   "id": "R07393d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2133",
+   "note": "attributes per marketplace"
+  },
+  {
+   "id": "R07394",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1200; docs/architecture/BACKEND-ARCHITECTURE.md:1338",
+   "note": "Rules Engine"
+  },
+  {
+   "id": "R07394a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "vision model after Pillow checks"
+  },
+  {
+   "id": "R07395",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:742-747",
+   "note": "review journey"
+  },
+  {
+   "id": "R07395a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1341",
+   "note": "approve"
+  },
+  {
+   "id": "R07395b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1341; docs/architecture/DATABASE.md:797-798",
+   "note": "reject with reason and feedback (T40)"
+  },
+  {
+   "id": "R07395c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1339",
+   "note": "PATCH content creates a new version"
+  },
+  {
+   "id": "R07395d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1340",
+   "note": "POST /api/v1/listings/{id}/regenerate"
+  },
+  {
+   "id": "R07396",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1342",
+   "note": "publish via adapters, approved only"
+  },
+  {
+   "id": "R07396a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1852; docs/architecture/DATABASE.md:883",
+   "note": "ListingResult per field; publish_field_results ledger (Proposed)"
+  },
+  {
+   "id": "R07397",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "T14",
+   "note": "Learn step: plan puts performance Phase 2, Optimization Phase 3"
+  },
+  {
+   "id": "R07401",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "site L7401; L7581",
+   "note": "site marks Future (Pricing Agent)"
+  },
+  {
+   "id": "R07402",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "site L7402; L7585",
+   "note": "site marks Future (Ads Agent)"
+  },
+  {
+   "id": "R07403",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "site L7403; L7589",
+   "note": "site marks Future (Inventory Agent)"
+  },
+  {
+   "id": "R07404",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "site L7404; L7597",
+   "note": "site marks Future (Returns Agent)"
+  },
+  {
+   "id": "R07405",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "ADR-0008",
+   "note": "site marks Phase 3; auto_publish reserved, CHECK false in v1"
+  },
+  {
+   "id": "R07406",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "AGENTS.md:122",
+   "note": "site marks Phase 3; competitor scraping a named non-goal"
+  },
+  {
+   "id": "R07407",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "T9; AGENTS.md:122",
+   "note": "site marks Future; v1 Amazon + Flipkart only"
+  },
+  {
+   "id": "R07407a",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "T9; AGENTS.md:122",
+   "note": "site marks Future; v1 Amazon + Flipkart only"
+  },
+  {
+   "id": "R07407b",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "T9; AGENTS.md:122",
+   "note": "site marks Future; v1 Amazon + Flipkart only"
+  },
+  {
+   "id": "R07407c",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "T9; AGENTS.md:122",
+   "note": "site marks Future; v1 Amazon + Flipkart only"
+  },
+  {
+   "id": "R07417",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:252; docs/architecture/BACKEND-ARCHITECTURE.md:2025",
+   "note": "owner role per brand"
+  },
+  {
+   "id": "R07419",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:169",
+   "note": "AI drafts, Rules Engine enforces marketplace rules"
+  },
+  {
+   "id": "R07421",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "content generation is the AI pipeline"
+  },
+  {
+   "id": "R07421a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1200",
+   "note": "Rules Engine"
+  },
+  {
+   "id": "R07423",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2026",
+   "note": "operator role"
+  },
+  {
+   "id": "R07425",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:536; docs/architecture/BACKEND-ARCHITECTURE.md:155-156",
+   "note": "async CSV import, 1,000-row imports"
+  },
+  {
+   "id": "R07425a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:536; docs/architecture/BACKEND-ARCHITECTURE.md:1200",
+   "note": "every row goes through one pipeline and rule set"
+  },
+  {
+   "id": "R07425b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1334",
+   "note": "row validation isolates bad rows"
+  },
+  {
+   "id": "R07427",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1334",
+   "note": "POST /api/v1/products/bulk"
+  },
+  {
+   "id": "R07427a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:155-156; docs/architecture/DATABASE.md:831-832",
+   "note": "batch generate (Proposed, <=200 items), 20 concurrent; import does not auto-start it (T67 open)"
+  },
+  {
+   "id": "R07427b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1341; docs/architecture/DATABASE.md:831; T42",
+   "note": "approve is per item (batch of one); batch-shaped approve contract proposed in T42"
+  },
+  {
+   "id": "R07429",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2027",
+   "note": "reviewer role"
+  },
+  {
+   "id": "R07431",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2040",
+   "note": "maker-checker"
+  },
+  {
+   "id": "R07431a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:285; docs/architecture/BACKEND-ARCHITECTURE.md:2213",
+   "note": "append-only audit_log"
+  },
+  {
+   "id": "R07431b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2075",
+   "note": "nothing goes live without approval"
+  },
+  {
+   "id": "R07433",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2038",
+   "note": "approval gate"
+  },
+  {
+   "id": "R07433a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2213; docs/architecture/DATABASE.md:285",
+   "note": "full audit trail"
+  },
+  {
+   "id": "R07440",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2021-2028",
+   "note": "four roles in v1"
+  },
+  {
+   "id": "R07442",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2021; docs/architecture/BACKEND-ARCHITECTURE.md:1196",
+   "note": "require_role dependency per route"
+  },
+  {
+   "id": "R07442a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2038",
+   "note": "maker-checker in API and DB trigger"
+  },
+  {
+   "id": "R07453",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:252",
+   "note": "tenant_memberships.role owner"
+  },
+  {
+   "id": "R07455",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2025",
+   "note": "owner: everything"
+  },
+  {
+   "id": "R07455a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2025",
+   "note": "owner connects marketplaces"
+  },
+  {
+   "id": "R07455b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2025",
+   "note": "owner imports"
+  },
+  {
+   "id": "R07455c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2025",
+   "note": "owner generates"
+  },
+  {
+   "id": "R07455d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2025; docs/architecture/BACKEND-ARCHITECTURE.md:1361",
+   "note": "approver = reviewer or owner"
+  },
+  {
+   "id": "R07455e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1342",
+   "note": "publish needs owner or operator"
+  },
+  {
+   "id": "R07455f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2025; docs/architecture/BACKEND-ARCHITECTURE.md:1331",
+   "note": "members and invitations"
+  },
+  {
+   "id": "R07457",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2025",
+   "note": "no role limits; maker-checker still applies (site L7481)"
+  },
+  {
+   "id": "R07459",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:252",
+   "note": "tenant_memberships.role operator"
+  },
+  {
+   "id": "R07461",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2026",
+   "note": "operator imports"
+  },
+  {
+   "id": "R07461a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2026",
+   "note": "operator triggers generation"
+  },
+  {
+   "id": "R07461b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2026; docs/architecture/BACKEND-ARCHITECTURE.md:1339",
+   "note": "operator edits (new version)"
+  },
+  {
+   "id": "R07463",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2026; docs/canon/CANON.md:152 (D13); VISION Q17",
+   "note": "stricter: operator cannot approve at all (approver = reviewer/owner); client confirmation pending Q17"
+  },
+  {
+   "id": "R07465",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:252",
+   "note": "tenant_memberships.role reviewer"
+  },
+  {
+   "id": "R07467",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2027",
+   "note": "reviewer reviews"
+  },
+  {
+   "id": "R07467a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1341",
+   "note": "approve"
+  },
+  {
+   "id": "R07467b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1341; docs/architecture/DATABASE.md:797",
+   "note": "reject decision row"
+  },
+  {
+   "id": "R07467c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:798",
+   "note": "review_decisions.feedback <= 2000"
+  },
+  {
+   "id": "R07469",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2027; docs/canon/CANON.md:152 (D13); VISION Q17",
+   "note": "reviewer may regenerate an existing listing; VISION Q17 unconfirmed"
+  },
+  {
+   "id": "R07469a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2027",
+   "note": "reviewer cannot import"
+  },
+  {
+   "id": "R07471",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:252",
+   "note": "tenant_memberships.role admin"
+  },
+  {
+   "id": "R07473",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2028",
+   "note": "admin: brand settings"
+  },
+  {
+   "id": "R07473a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2028; docs/architecture/BACKEND-ARCHITECTURE.md:516-518",
+   "note": "admin connects accounts; route-role matrix still to write (S10)"
+  },
+  {
+   "id": "R07473b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2028; docs/architecture/BACKEND-ARCHITECTURE.md:1331",
+   "note": "admin manages team roles"
+  },
+  {
+   "id": "R07475",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2258; docs/adr/0008-human-approval-v1.md:20; T88",
+   "note": "proposed ADR-0008 lists admin as approver; Canon 0004 and site do not; no T-row"
+  },
+  {
+   "id": "R07475a",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2258; docs/adr/0008-human-approval-v1.md:20; T88",
+   "note": "approving is a data change; proposed ADR-0008 admin-as-approver contradicts; no T-row"
+  },
+  {
+   "id": "R07481",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2068",
+   "note": "generator or editor cannot approve"
+  },
+  {
+   "id": "R07481a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2068; docs/architecture/BACKEND-ARCHITECTURE.md:734",
+   "note": "generated_by_user_id = person who triggered generation"
+  },
+  {
+   "id": "R07481b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2040",
+   "note": "no single person pushes content alone"
+  },
+  {
+   "id": "R07483",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2040",
+   "note": "maker-checker rationale"
+  },
+  {
+   "id": "R07483a",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T15",
+   "note": "Default: a second member must review, so a one-login brand cannot publish"
+  },
+  {
+   "id": "R07483b",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "ADR-0008",
+   "note": "site marks auto-publish Phase 3 (L7405, L7569); auto_publish reserved off"
+  },
+  {
+   "id": "R07483c",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "ADR-0008",
+   "note": "Phase 3 track-record unlock"
+  },
+  {
+   "id": "R07490",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:122; docs/architecture/BACKEND-ARCHITECTURE.md:135",
+   "note": "MVP boundaries mirrored in non-goals"
+  },
+  {
+   "id": "R07492",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:122",
+   "note": "named non-goals and later phases"
+  },
+  {
+   "id": "R07492a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/review/SPEC-TRACEABILITY.md:110-117",
+   "note": "every site page mapped with scope and status"
+  },
+  {
+   "id": "R07495",
+   "status": "covered",
+   "owner": "ops",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:3113; docs/drafts/BUILD-SEQUENCE.md:1-6",
+   "note": "v1 builds to the plan's Phase-1 scope lock, steps S1-S14"
+  },
+  {
+   "id": "R07497",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:7-15; docs/architecture/BACKEND-ARCHITECTURE.md:157",
+   "note": "generation + publishing pipeline, two adapters"
+  },
+  {
+   "id": "R07497a",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T16",
+   "note": "Plan adds variants, memberships, tenant lifecycle beyond scope lock (VISION Q14)"
+  },
+  {
+   "id": "R07497b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:157",
+   "note": "Amazon.in + Flipkart only"
+  },
+  {
+   "id": "R07505",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "Amazon adapter in v1"
+  },
+  {
+   "id": "R07509",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1204",
+   "note": "Flipkart adapter in v1"
+  },
+  {
+   "id": "R07513",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "AI team agent in MVP pipeline"
+  },
+  {
+   "id": "R07517",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "AI team agent in MVP pipeline"
+  },
+  {
+   "id": "R07521",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "docs/canon/CANON.md:54",
+   "note": "AI team agent in MVP pipeline"
+  },
+  {
+   "id": "R07525",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "backend image checks port in v1"
+  },
+  {
+   "id": "R07529",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1538; docs/architecture/DATABASE.md:1057",
+   "note": "brand retrieval in v1"
+  },
+  {
+   "id": "R07533",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1200",
+   "note": "Rules Engine in v1"
+  },
+  {
+   "id": "R07537",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "ADR-0008; docs/architecture/BACKEND-ARCHITECTURE.md:2038",
+   "note": "human approval in v1"
+  },
+  {
+   "id": "R07541",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:536",
+   "note": "CSV bulk import in v1"
+  },
+  {
+   "id": "R07545",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1353; T14",
+   "note": "operational analytics in v1; screen contents unspecified"
+  },
+  {
+   "id": "R07549",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:772",
+   "note": "site Phase 2; version storage already in v1"
+  },
+  {
+   "id": "R07553",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "site Phase 2"
+  },
+  {
+   "id": "R07557",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "",
+   "note": "site Phase 2"
+  },
+  {
+   "id": "R07561",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "site L7561; AGENTS.md:123-124",
+   "note": "site Phase 3"
+  },
+  {
+   "id": "R07565",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "site L7565; AGENTS.md:123-124",
+   "note": "site Phase 3"
+  },
+  {
+   "id": "R07569",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "ADR-0008",
+   "note": "site Phase 3; auto_publish reserved off"
+  },
+  {
+   "id": "R07573",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "T9",
+   "note": "site Future; v1 Amazon + Flipkart only"
+  },
+  {
+   "id": "R07577",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "T9",
+   "note": "site Future; v1 Amazon + Flipkart only"
+  },
+  {
+   "id": "R07581",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "site L7581",
+   "note": "site marks Future"
+  },
+  {
+   "id": "R07585",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "site L7585",
+   "note": "site marks Future"
+  },
+  {
+   "id": "R07589",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "site L7589",
+   "note": "site marks Future"
+  },
+  {
+   "id": "R07593",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "site L7593",
+   "note": "site marks Future"
+  },
+  {
+   "id": "R07597",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "site L7597",
+   "note": "site marks Future"
+  },
+  {
+   "id": "R07601",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "site L7601",
+   "note": "site marks Future"
+  },
+  {
+   "id": "R07605",
+   "status": "later-phase",
+   "owner": "shared",
+   "ref": "site L7605",
+   "note": "site marks Future"
+  }
+ ]
+}

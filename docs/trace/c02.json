@@ -1,0 +1,6231 @@
+{
+ "chunk": "c02",
+ "start": 693,
+ "end": 1387,
+ "items": [
+  {
+   "id": "R00693",
+   "lines": [
+    693,
+    693
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "## 9. Content Intelligence Layer",
+   "why_not": "heading"
+  },
+  {
+   "id": "R00695",
+   "lines": [
+    695,
+    695
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "The agent should not generate copy from images alone when authoritative product facts are available elsewhere (content layer shown in the reference architecture)."
+  },
+  {
+   "id": "R00697",
+   "lines": [
+    697,
+    701
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "Table header: Content Object | Purpose | Source / Rule",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R00703",
+   "lines": [
+    703,
+    705
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Content object 'Marketplace title': purpose 'Customer-facing product title'."
+  },
+  {
+   "id": "R00707",
+   "lines": [
+    707,
+    707
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "'Marketplace title' source/rule: Canonical facts."
+  },
+  {
+   "id": "R00707a",
+   "lines": [
+    707,
+    707
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "'Marketplace title' source/rule: marketplace title rules."
+  },
+  {
+   "id": "R00709",
+   "lines": [
+    709,
+    711
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Content object 'Key features / bullets': purpose 'Fast communication of product benefits/features'."
+  },
+  {
+   "id": "R00713",
+   "lines": [
+    713,
+    713
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "'Key features / bullets' source/rule: Verified product facts only."
+  },
+  {
+   "id": "R00715",
+   "lines": [
+    715,
+    717
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Content object 'Description': purpose 'Detailed customer-facing description'."
+  },
+  {
+   "id": "R00719",
+   "lines": [
+    719,
+    719
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "'Description' source/rule: Canonical facts."
+  },
+  {
+   "id": "R00719a",
+   "lines": [
+    719,
+    719
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "'Description' source/rule: category context."
+  },
+  {
+   "id": "R00721",
+   "lines": [
+    721,
+    723
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Content object 'Search keywords': purpose 'Search discoverability'."
+  },
+  {
+   "id": "R00725",
+   "lines": [
+    725,
+    725
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "'Search keywords' source/rule: Relevant terms grounded in product/category."
+  },
+  {
+   "id": "R00725a",
+   "lines": [
+    725,
+    725
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "'Search keywords' source/rule: avoid unsupported claims."
+  },
+  {
+   "id": "R00727",
+   "lines": [
+    727,
+    729
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Content object 'Backend/search fields': purpose 'Marketplace-specific search metadata'."
+  },
+  {
+   "id": "R00731",
+   "lines": [
+    731,
+    731
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "'Backend/search fields' source/rule: Marketplace schema."
+  },
+  {
+   "id": "R00733",
+   "lines": [
+    733,
+    735
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Content object 'Size/fit information': purpose 'Reduce size uncertainty'."
+  },
+  {
+   "id": "R00737",
+   "lines": [
+    737,
+    737
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "'Size/fit information' source/rule: Brand size data."
+  },
+  {
+   "id": "R00737a",
+   "lines": [
+    737,
+    737
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "'Size/fit information' source/rule: never invent measurements."
+  },
+  {
+   "id": "R00739",
+   "lines": [
+    739,
+    741
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Content object 'Care instructions': purpose 'Set expectations'."
+  },
+  {
+   "id": "R00743",
+   "lines": [
+    743,
+    743
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "'Care instructions' source/rule: Seller/manufacturer data."
+  },
+  {
+   "id": "R00745",
+   "lines": [
+    745,
+    747
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Content object 'Material/fabric content': purpose 'Explain construction'."
+  },
+  {
+   "id": "R00749",
+   "lines": [
+    749,
+    749
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "'Material/fabric content' source/rule: Seller/manufacturer data."
+  },
+  {
+   "id": "R00751",
+   "lines": [
+    751,
+    753
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Content object 'Occasion/style terms': purpose 'Discovery/context'."
+  },
+  {
+   "id": "R00755",
+   "lines": [
+    755,
+    755
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "'Occasion/style terms' source/rule: Derived only when supported."
+  },
+  {
+   "id": "R00757",
+   "lines": [
+    757,
+    759
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Content object 'Claims': purpose 'USP/performance statements'."
+  },
+  {
+   "id": "R00761",
+   "lines": [
+    761,
+    761
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "'Claims' source/rule: Must be supported by seller-provided evidence."
+  },
+  {
+   "id": "R00763",
+   "lines": [
+    763,
+    763
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "Golden Rule for AI Content (callout title)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R00765",
+   "lines": [
+    765,
+    765
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent may transform verified information."
+  },
+  {
+   "id": "R00765a",
+   "lines": [
+    765,
+    765
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent may structure verified information."
+  },
+  {
+   "id": "R00765b",
+   "lines": [
+    765,
+    765
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent may improve verified information."
+  },
+  {
+   "id": "R00765c",
+   "lines": [
+    765,
+    765
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent must not invent fabric composition simply to complete a listing."
+  },
+  {
+   "id": "R00765d",
+   "lines": [
+    765,
+    765
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent must not invent measurements simply to complete a listing."
+  },
+  {
+   "id": "R00765e",
+   "lines": [
+    765,
+    765
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent must not invent certifications simply to complete a listing."
+  },
+  {
+   "id": "R00765f",
+   "lines": [
+    765,
+    765
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent must not invent performance claims simply to complete a listing."
+  },
+  {
+   "id": "R00765g",
+   "lines": [
+    765,
+    765
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent must not invent care instructions simply to complete a listing."
+  },
+  {
+   "id": "R00765h",
+   "lines": [
+    765,
+    765
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent must not invent country of origin simply to complete a listing."
+  },
+  {
+   "id": "R00765i",
+   "lines": [
+    765,
+    765
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent must not invent tax information simply to complete a listing."
+  },
+  {
+   "id": "R00765j",
+   "lines": [
+    765,
+    765
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Golden Rule: the agent must not invent other factual attributes simply to complete a listing."
+  },
+  {
+   "id": "R00767",
+   "lines": [
+    767,
+    767
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "## 10. Canonical Product Intelligence Layer",
+   "why_not": "heading"
+  },
+  {
+   "id": "R00769",
+   "lines": [
+    769,
+    769
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "For every product, maintain one canonical record."
+  },
+  {
+   "id": "R00769a",
+   "lines": [
+    769,
+    769
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "The canonical record becomes the source of truth before any marketplace-specific output is created."
+  },
+  {
+   "id": "R00771",
+   "lines": [
+    771,
+    773
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "Table header: Canonical Section | Must Contain",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R00775",
+   "lines": [
+    775,
+    775
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical record section 'Identity'."
+  },
+  {
+   "id": "R00777",
+   "lines": [
+    777,
+    777
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Identity' must contain: Internal product ID."
+  },
+  {
+   "id": "R00777a",
+   "lines": [
+    777,
+    777
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Identity' must contain: seller SKU."
+  },
+  {
+   "id": "R00777b",
+   "lines": [
+    777,
+    777
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Identity' must contain: parent SKU."
+  },
+  {
+   "id": "R00777c",
+   "lines": [
+    777,
+    777
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Identity' must contain: brand."
+  },
+  {
+   "id": "R00777d",
+   "lines": [
+    777,
+    777
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Identity' must contain: product/style name."
+  },
+  {
+   "id": "R00777e",
+   "lines": [
+    777,
+    777
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Identity' must contain: model/style number."
+  },
+  {
+   "id": "R00777f",
+   "lines": [
+    777,
+    777
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Identity' must contain: identifiers."
+  },
+  {
+   "id": "R00779",
+   "lines": [
+    779,
+    779
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical record section 'Classification'."
+  },
+  {
+   "id": "R00781",
+   "lines": [
+    781,
+    781
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Classification' must contain: Category."
+  },
+  {
+   "id": "R00781a",
+   "lines": [
+    781,
+    781
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Classification' must contain: sub-category."
+  },
+  {
+   "id": "R00781b",
+   "lines": [
+    781,
+    781
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Classification' must contain: product type."
+  },
+  {
+   "id": "R00781c",
+   "lines": [
+    781,
+    781
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Classification' must contain: gender/audience."
+  },
+  {
+   "id": "R00781d",
+   "lines": [
+    781,
+    781
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Classification' must contain: taxonomy confidence."
+  },
+  {
+   "id": "R00783",
+   "lines": [
+    783,
+    783
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical record section 'Attributes'."
+  },
+  {
+   "id": "R00785",
+   "lines": [
+    785,
+    785
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Attributes' must contain: All normalized apparel attributes."
+  },
+  {
+   "id": "R00785a",
+   "lines": [
+    785,
+    785
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Attributes' must contain: seller-provided values."
+  },
+  {
+   "id": "R00787",
+   "lines": [
+    787,
+    787
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical record section 'Variants'."
+  },
+  {
+   "id": "R00789",
+   "lines": [
+    789,
+    789
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Variants' must contain: Parent-child relationships."
+  },
+  {
+   "id": "R00789a",
+   "lines": [
+    789,
+    789
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Variants' must contain: colors."
+  },
+  {
+   "id": "R00789b",
+   "lines": [
+    789,
+    789
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Variants' must contain: sizes."
+  },
+  {
+   "id": "R00789c",
+   "lines": [
+    789,
+    789
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Variants' must contain: variant-level identifiers."
+  },
+  {
+   "id": "R00791",
+   "lines": [
+    791,
+    791
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical record section 'Dimensions'."
+  },
+  {
+   "id": "R00793",
+   "lines": [
+    793,
+    793
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Dimensions' must contain: Product dimensions."
+  },
+  {
+   "id": "R00793a",
+   "lines": [
+    793,
+    793
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Dimensions' must contain: package dimensions."
+  },
+  {
+   "id": "R00793b",
+   "lines": [
+    793,
+    793
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Dimensions' must contain: product/package weight where required."
+  },
+  {
+   "id": "R00795",
+   "lines": [
+    795,
+    795
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical record section 'Material'."
+  },
+  {
+   "id": "R00797",
+   "lines": [
+    797,
+    797
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Material' must contain: Fabric/material composition."
+  },
+  {
+   "id": "R00797a",
+   "lines": [
+    797,
+    797
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Material' must contain: lining."
+  },
+  {
+   "id": "R00797b",
+   "lines": [
+    797,
+    797
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Material' must contain: construction."
+  },
+  {
+   "id": "R00799",
+   "lines": [
+    799,
+    799
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical record section 'Compliance'."
+  },
+  {
+   "id": "R00801",
+   "lines": [
+    801,
+    801
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Compliance' must contain: Manufacturer/packer/importer."
+  },
+  {
+   "id": "R00801a",
+   "lines": [
+    801,
+    801
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Compliance' must contain: origin."
+  },
+  {
+   "id": "R00801b",
+   "lines": [
+    801,
+    801
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Compliance' must contain: MRP."
+  },
+  {
+   "id": "R00801c",
+   "lines": [
+    801,
+    801
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Compliance' must contain: consumer care."
+  },
+  {
+   "id": "R00801d",
+   "lines": [
+    801,
+    801
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Compliance' must contain: size declarations."
+  },
+  {
+   "id": "R00801e",
+   "lines": [
+    801,
+    801
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Compliance' must contain: applicable regulatory data."
+  },
+  {
+   "id": "R00803",
+   "lines": [
+    803,
+    803
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical record section 'Media'."
+  },
+  {
+   "id": "R00805",
+   "lines": [
+    805,
+    805
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Media' must contain: Images."
+  },
+  {
+   "id": "R00805a",
+   "lines": [
+    805,
+    805
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Media' must contain: image roles."
+  },
+  {
+   "id": "R00805b",
+   "lines": [
+    805,
+    805
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Media' must contain: size chart."
+  },
+  {
+   "id": "R00805c",
+   "lines": [
+    805,
+    805
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Media' must contain: media validation state."
+  },
+  {
+   "id": "R00807",
+   "lines": [
+    807,
+    807
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical record section 'Content'."
+  },
+  {
+   "id": "R00809",
+   "lines": [
+    809,
+    809
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Content' must contain: Title."
+  },
+  {
+   "id": "R00809a",
+   "lines": [
+    809,
+    809
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Content' must contain: bullets."
+  },
+  {
+   "id": "R00809b",
+   "lines": [
+    809,
+    809
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Content' must contain: description."
+  },
+  {
+   "id": "R00809c",
+   "lines": [
+    809,
+    809
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Content' must contain: keywords."
+  },
+  {
+   "id": "R00809d",
+   "lines": [
+    809,
+    809
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Content' must contain: content source."
+  },
+  {
+   "id": "R00809e",
+   "lines": [
+    809,
+    809
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Content' must contain: content confidence."
+  },
+  {
+   "id": "R00811",
+   "lines": [
+    811,
+    811
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical record section 'Marketplace mappings'."
+  },
+  {
+   "id": "R00813",
+   "lines": [
+    813,
+    813
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Marketplace mappings' must contain: Marketplace category."
+  },
+  {
+   "id": "R00813a",
+   "lines": [
+    813,
+    813
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Marketplace mappings' must contain: product type."
+  },
+  {
+   "id": "R00813b",
+   "lines": [
+    813,
+    813
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Marketplace mappings' must contain: field mappings."
+  },
+  {
+   "id": "R00813c",
+   "lines": [
+    813,
+    813
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Marketplace mappings' must contain: external identifiers."
+  },
+  {
+   "id": "R00815",
+   "lines": [
+    815,
+    815
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical record section 'Listing status'."
+  },
+  {
+   "id": "R00817",
+   "lines": [
+    817,
+    817
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Listing status' must contain: Per-marketplace state."
+  },
+  {
+   "id": "R00817a",
+   "lines": [
+    817,
+    817
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Listing status' must contain: overall state."
+  },
+  {
+   "id": "R00819",
+   "lines": [
+    819,
+    819
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical record section 'Issues'."
+  },
+  {
+   "id": "R00821",
+   "lines": [
+    821,
+    821
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Issues' must contain: Validation/submission errors."
+  },
+  {
+   "id": "R00821a",
+   "lines": [
+    821,
+    821
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Issues' must contain: severity."
+  },
+  {
+   "id": "R00821b",
+   "lines": [
+    821,
+    821
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Issues' must contain: owner."
+  },
+  {
+   "id": "R00821c",
+   "lines": [
+    821,
+    821
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'Issues' must contain: resolution."
+  },
+  {
+   "id": "R00823",
+   "lines": [
+    823,
+    823
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical record section 'History'."
+  },
+  {
+   "id": "R00825",
+   "lines": [
+    825,
+    825
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'History' must contain: who/what changed it."
+  },
+  {
+   "id": "R00825a",
+   "lines": [
+    825,
+    825
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'History' must contain: what was changed."
+  },
+  {
+   "id": "R00825b",
+   "lines": [
+    825,
+    825
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Canonical section 'History' must contain: when it was changed."
+  },
+  {
+   "id": "R00827",
+   "lines": [
+    827,
+    827
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "## 11. Business Database / Data Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R00829",
+   "lines": [
+    829,
+    829
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "decision",
+   "text": "The Section 11 table is the business-level schema."
+  },
+  {
+   "id": "R00829a",
+   "lines": [
+    829,
+    829
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "decision",
+   "text": "The business-level schema is not an implementation prescription."
+  },
+  {
+   "id": "R00829b",
+   "lines": [
+    829,
+    829
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "decision",
+   "text": "The engineering team can choose the underlying storage model."
+  },
+  {
+   "id": "R00829c",
+   "lines": [
+    829,
+    829
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "The product must preserve these logical records."
+  },
+  {
+   "id": "R00829d",
+   "lines": [
+    829,
+    829
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "The product must preserve these relationships."
+  },
+  {
+   "id": "R00831",
+   "lines": [
+    831,
+    835
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "Table header: Record | Key Fields / Columns | Relationship",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R00837",
+   "lines": [
+    837,
+    837
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Business record 'Brand'."
+  },
+  {
+   "id": "R00839",
+   "lines": [
+    839,
+    839
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Brand' key field: Brand ID."
+  },
+  {
+   "id": "R00839a",
+   "lines": [
+    839,
+    839
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Brand' key field: legal name."
+  },
+  {
+   "id": "R00839b",
+   "lines": [
+    839,
+    839
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Brand' key field: display name."
+  },
+  {
+   "id": "R00839c",
+   "lines": [
+    839,
+    839
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Brand' key field: owner type."
+  },
+  {
+   "id": "R00839d",
+   "lines": [
+    839,
+    839
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Brand' key field: website."
+  },
+  {
+   "id": "R00839e",
+   "lines": [
+    839,
+    839
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Brand' key field: logo."
+  },
+  {
+   "id": "R00839f",
+   "lines": [
+    839,
+    839
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Brand' key field: manufacturer/marketer details."
+  },
+  {
+   "id": "R00839g",
+   "lines": [
+    839,
+    839
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Brand' key field: customer care."
+  },
+  {
+   "id": "R00841",
+   "lines": [
+    841,
+    841
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Brand' relationship: One brand → many products."
+  },
+  {
+   "id": "R00843",
+   "lines": [
+    843,
+    843
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Business record 'Seller Account'."
+  },
+  {
+   "id": "R00845",
+   "lines": [
+    845,
+    845
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Seller Account' key field: Seller ID."
+  },
+  {
+   "id": "R00845a",
+   "lines": [
+    845,
+    845
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Seller Account' key field: brand ID."
+  },
+  {
+   "id": "R00845b",
+   "lines": [
+    845,
+    845
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Seller Account' key field: marketplace."
+  },
+  {
+   "id": "R00845c",
+   "lines": [
+    845,
+    845
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Seller Account' key field: account/store ID."
+  },
+  {
+   "id": "R00845d",
+   "lines": [
+    845,
+    845
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Seller Account' key field: status."
+  },
+  {
+   "id": "R00845e",
+   "lines": [
+    845,
+    845
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Seller Account' key field: locations."
+  },
+  {
+   "id": "R00845f",
+   "lines": [
+    845,
+    845
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Seller Account' key field: permissions."
+  },
+  {
+   "id": "R00847",
+   "lines": [
+    847,
+    847
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Seller Account' relationship: One seller → many marketplace accounts."
+  },
+  {
+   "id": "R00849",
+   "lines": [
+    849,
+    849
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Business record 'Marketplace'."
+  },
+  {
+   "id": "R00851",
+   "lines": [
+    851,
+    851
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace' key field: Marketplace ID."
+  },
+  {
+   "id": "R00851a",
+   "lines": [
+    851,
+    851
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace' key field: name."
+  },
+  {
+   "id": "R00851b",
+   "lines": [
+    851,
+    851
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace' key field: country."
+  },
+  {
+   "id": "R00851c",
+   "lines": [
+    851,
+    851
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace' key field: active status."
+  },
+  {
+   "id": "R00851d",
+   "lines": [
+    851,
+    851
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace' key field: supported categories."
+  },
+  {
+   "id": "R00853",
+   "lines": [
+    853,
+    853
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace' relationship: One marketplace → many schemas."
+  },
+  {
+   "id": "R00855",
+   "lines": [
+    855,
+    855
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Business record 'Marketplace Schema'."
+  },
+  {
+   "id": "R00857",
+   "lines": [
+    857,
+    857
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace Schema' key field: Marketplace."
+  },
+  {
+   "id": "R00857a",
+   "lines": [
+    857,
+    857
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace Schema' key field: category/product type."
+  },
+  {
+   "id": "R00857b",
+   "lines": [
+    857,
+    857
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace Schema' key field: version."
+  },
+  {
+   "id": "R00857c",
+   "lines": [
+    857,
+    857
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace Schema' key field: required fields."
+  },
+  {
+   "id": "R00857d",
+   "lines": [
+    857,
+    857
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace Schema' key field: conditional rules."
+  },
+  {
+   "id": "R00857e",
+   "lines": [
+    857,
+    857
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace Schema' key field: allowed values."
+  },
+  {
+   "id": "R00857f",
+   "lines": [
+    857,
+    857
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace Schema' key field: media rules."
+  },
+  {
+   "id": "R00857g",
+   "lines": [
+    857,
+    857
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace Schema' key field: variation rules."
+  },
+  {
+   "id": "R00857h",
+   "lines": [
+    857,
+    857
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace Schema' key field: last updated."
+  },
+  {
+   "id": "R00859",
+   "lines": [
+    859,
+    859
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace Schema' relationship: One marketplace/category → current schema."
+  },
+  {
+   "id": "R00859a",
+   "lines": [
+    859,
+    859
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace Schema' relationship: One marketplace/category → historical schemas (kept with the current one)."
+  },
+  {
+   "id": "R00861",
+   "lines": [
+    861,
+    861
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Business record 'Product'."
+  },
+  {
+   "id": "R00863",
+   "lines": [
+    863,
+    863
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Product' key field: Product ID."
+  },
+  {
+   "id": "R00863a",
+   "lines": [
+    863,
+    863
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Product' key field: brand ID."
+  },
+  {
+   "id": "R00863b",
+   "lines": [
+    863,
+    863
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Product' key field: parent SKU."
+  },
+  {
+   "id": "R00863c",
+   "lines": [
+    863,
+    863
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Product' key field: product name."
+  },
+  {
+   "id": "R00863d",
+   "lines": [
+    863,
+    863
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Product' key field: product type."
+  },
+  {
+   "id": "R00863e",
+   "lines": [
+    863,
+    863
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Product' key field: category."
+  },
+  {
+   "id": "R00863f",
+   "lines": [
+    863,
+    863
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Product' key field: status."
+  },
+  {
+   "id": "R00865",
+   "lines": [
+    865,
+    865
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Product' relationship: One product → many variants."
+  },
+  {
+   "id": "R00867",
+   "lines": [
+    867,
+    867
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Business record 'Product Attribute'."
+  },
+  {
+   "id": "R00869",
+   "lines": [
+    869,
+    869
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Product Attribute' key field: Product ID."
+  },
+  {
+   "id": "R00869a",
+   "lines": [
+    869,
+    869
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Product Attribute' key field: attribute name."
+  },
+  {
+   "id": "R00869b",
+   "lines": [
+    869,
+    869
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Product Attribute' key field: value."
+  },
+  {
+   "id": "R00869c",
+   "lines": [
+    869,
+    869
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Product Attribute' key field: normalized value."
+  },
+  {
+   "id": "R00869d",
+   "lines": [
+    869,
+    869
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Product Attribute' key field: source."
+  },
+  {
+   "id": "R00869e",
+   "lines": [
+    869,
+    869
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Product Attribute' key field: confidence."
+  },
+  {
+   "id": "R00869f",
+   "lines": [
+    869,
+    869
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Product Attribute' key field: evidence."
+  },
+  {
+   "id": "R00869g",
+   "lines": [
+    869,
+    869
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Product Attribute' key field: last updated."
+  },
+  {
+   "id": "R00871",
+   "lines": [
+    871,
+    871
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Product Attribute' relationship: Many attributes per product."
+  },
+  {
+   "id": "R00873",
+   "lines": [
+    873,
+    873
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Business record 'Variant'."
+  },
+  {
+   "id": "R00875",
+   "lines": [
+    875,
+    875
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Variant' key field: Variant ID."
+  },
+  {
+   "id": "R00875a",
+   "lines": [
+    875,
+    875
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Variant' key field: product ID."
+  },
+  {
+   "id": "R00875b",
+   "lines": [
+    875,
+    875
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Variant' key field: seller SKU."
+  },
+  {
+   "id": "R00875c",
+   "lines": [
+    875,
+    875
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Variant' key field: color."
+  },
+  {
+   "id": "R00875d",
+   "lines": [
+    875,
+    875
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Variant' key field: size."
+  },
+  {
+   "id": "R00875e",
+   "lines": [
+    875,
+    875
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Variant' key field: identifier."
+  },
+  {
+   "id": "R00875f",
+   "lines": [
+    875,
+    875
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Variant' key field: stock reference."
+  },
+  {
+   "id": "R00875g",
+   "lines": [
+    875,
+    875
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Variant' key field: status."
+  },
+  {
+   "id": "R00877",
+   "lines": [
+    877,
+    877
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "Variant relationship: One product → many variants (same as Product row).",
+   "why_not": "restatement",
+   "dup_of": "R00865"
+  },
+  {
+   "id": "R00879",
+   "lines": [
+    879,
+    879
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Business record 'Media Asset'."
+  },
+  {
+   "id": "R00881",
+   "lines": [
+    881,
+    881
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Media Asset' key field: Asset ID."
+  },
+  {
+   "id": "R00881a",
+   "lines": [
+    881,
+    881
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Media Asset' key field: product/variant ID."
+  },
+  {
+   "id": "R00881b",
+   "lines": [
+    881,
+    881
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Media Asset' key field: type."
+  },
+  {
+   "id": "R00881c",
+   "lines": [
+    881,
+    881
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Media Asset' key field: URL/reference."
+  },
+  {
+   "id": "R00881d",
+   "lines": [
+    881,
+    881
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Media Asset' key field: role."
+  },
+  {
+   "id": "R00881e",
+   "lines": [
+    881,
+    881
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Media Asset' key field: dimensions."
+  },
+  {
+   "id": "R00881f",
+   "lines": [
+    881,
+    881
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Media Asset' key field: validation state."
+  },
+  {
+   "id": "R00883",
+   "lines": [
+    883,
+    883
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Media Asset' relationship: Many assets per product/variant."
+  },
+  {
+   "id": "R00885",
+   "lines": [
+    885,
+    885
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Business record 'Content Asset'."
+  },
+  {
+   "id": "R00887",
+   "lines": [
+    887,
+    887
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Content Asset' key field: Content ID."
+  },
+  {
+   "id": "R00887a",
+   "lines": [
+    887,
+    887
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Content Asset' key field: product/variant ID."
+  },
+  {
+   "id": "R00887b",
+   "lines": [
+    887,
+    887
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Content Asset' key field: type."
+  },
+  {
+   "id": "R00887c",
+   "lines": [
+    887,
+    887
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Content Asset' key field: text."
+  },
+  {
+   "id": "R00887d",
+   "lines": [
+    887,
+    887
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Content Asset' key field: source."
+  },
+  {
+   "id": "R00887e",
+   "lines": [
+    887,
+    887
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Content Asset' key field: confidence."
+  },
+  {
+   "id": "R00887f",
+   "lines": [
+    887,
+    887
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Content Asset' key field: approval state."
+  },
+  {
+   "id": "R00889",
+   "lines": [
+    889,
+    889
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Content Asset' relationship: Many content objects per product."
+  },
+  {
+   "id": "R00891",
+   "lines": [
+    891,
+    891
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Business record 'Marketplace Mapping'."
+  },
+  {
+   "id": "R00893",
+   "lines": [
+    893,
+    893
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace Mapping' key field: Product ID."
+  },
+  {
+   "id": "R00893a",
+   "lines": [
+    893,
+    893
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace Mapping' key field: marketplace."
+  },
+  {
+   "id": "R00893b",
+   "lines": [
+    893,
+    893
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace Mapping' key field: marketplace category."
+  },
+  {
+   "id": "R00893c",
+   "lines": [
+    893,
+    893
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace Mapping' key field: product type."
+  },
+  {
+   "id": "R00893d",
+   "lines": [
+    893,
+    893
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace Mapping' key field: mapped fields."
+  },
+  {
+   "id": "R00893e",
+   "lines": [
+    893,
+    893
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace Mapping' key field: external IDs."
+  },
+  {
+   "id": "R00895",
+   "lines": [
+    895,
+    895
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Marketplace Mapping' relationship: One canonical product → many marketplace mappings."
+  },
+  {
+   "id": "R00897",
+   "lines": [
+    897,
+    897
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Business record 'Listing Job'."
+  },
+  {
+   "id": "R00899",
+   "lines": [
+    899,
+    899
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Listing Job' key field: Job ID."
+  },
+  {
+   "id": "R00899a",
+   "lines": [
+    899,
+    899
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Listing Job' key field: product ID."
+  },
+  {
+   "id": "R00899b",
+   "lines": [
+    899,
+    899
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Listing Job' key field: marketplace."
+  },
+  {
+   "id": "R00899c",
+   "lines": [
+    899,
+    899
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Listing Job' key field: requested action."
+  },
+  {
+   "id": "R00899d",
+   "lines": [
+    899,
+    899
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Listing Job' key field: started time."
+  },
+  {
+   "id": "R00899e",
+   "lines": [
+    899,
+    899
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Listing Job' key field: current stage."
+  },
+  {
+   "id": "R00899f",
+   "lines": [
+    899,
+    899
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Listing Job' key field: status."
+  },
+  {
+   "id": "R00901",
+   "lines": [
+    901,
+    901
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Listing Job' relationship: One product → many jobs."
+  },
+  {
+   "id": "R00903",
+   "lines": [
+    903,
+    903
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Business record 'Listing'."
+  },
+  {
+   "id": "R00905",
+   "lines": [
+    905,
+    905
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Listing' key field: Listing ID."
+  },
+  {
+   "id": "R00905a",
+   "lines": [
+    905,
+    905
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Listing' key field: product ID."
+  },
+  {
+   "id": "R00905b",
+   "lines": [
+    905,
+    905
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Listing' key field: marketplace."
+  },
+  {
+   "id": "R00905c",
+   "lines": [
+    905,
+    905
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Listing' key field: marketplace SKU/ID."
+  },
+  {
+   "id": "R00905d",
+   "lines": [
+    905,
+    905
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Listing' key field: parent/child relationship."
+  },
+  {
+   "id": "R00905e",
+   "lines": [
+    905,
+    905
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Listing' key field: live URL if available."
+  },
+  {
+   "id": "R00905f",
+   "lines": [
+    905,
+    905
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Listing' key field: current status."
+  },
+  {
+   "id": "R00907",
+   "lines": [
+    907,
+    907
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Listing' relationship: One product → many marketplace listings."
+  },
+  {
+   "id": "R00909",
+   "lines": [
+    909,
+    909
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Business record 'Validation Result'."
+  },
+  {
+   "id": "R00911",
+   "lines": [
+    911,
+    911
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Validation Result' key field: Listing/job ID."
+  },
+  {
+   "id": "R00911a",
+   "lines": [
+    911,
+    911
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Validation Result' key field: field."
+  },
+  {
+   "id": "R00911b",
+   "lines": [
+    911,
+    911
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Validation Result' key field: rule."
+  },
+  {
+   "id": "R00911c",
+   "lines": [
+    911,
+    911
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Validation Result' key field: severity."
+  },
+  {
+   "id": "R00911d",
+   "lines": [
+    911,
+    911
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Validation Result' key field: message."
+  },
+  {
+   "id": "R00911e",
+   "lines": [
+    911,
+    911
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Validation Result' key field: source."
+  },
+  {
+   "id": "R00911f",
+   "lines": [
+    911,
+    911
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Validation Result' key field: resolution state."
+  },
+  {
+   "id": "R00913",
+   "lines": [
+    913,
+    913
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Validation Result' relationship: Many validations per job."
+  },
+  {
+   "id": "R00915",
+   "lines": [
+    915,
+    915
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Business record 'Issue'."
+  },
+  {
+   "id": "R00917",
+   "lines": [
+    917,
+    917
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Issue' key field: Issue ID."
+  },
+  {
+   "id": "R00917a",
+   "lines": [
+    917,
+    917
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Issue' key field: listing/job ID."
+  },
+  {
+   "id": "R00917b",
+   "lines": [
+    917,
+    917
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Issue' key field: issue type."
+  },
+  {
+   "id": "R00917c",
+   "lines": [
+    917,
+    917
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Issue' key field: marketplace code."
+  },
+  {
+   "id": "R00917d",
+   "lines": [
+    917,
+    917
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Issue' key field: message."
+  },
+  {
+   "id": "R00917e",
+   "lines": [
+    917,
+    917
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Issue' key field: severity."
+  },
+  {
+   "id": "R00917f",
+   "lines": [
+    917,
+    917
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Issue' key field: auto-fixable flag."
+  },
+  {
+   "id": "R00917g",
+   "lines": [
+    917,
+    917
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Issue' key field: action taken."
+  },
+  {
+   "id": "R00917h",
+   "lines": [
+    917,
+    917
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Issue' key field: status."
+  },
+  {
+   "id": "R00919",
+   "lines": [
+    919,
+    919
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Issue' relationship: Many issues per listing."
+  },
+  {
+   "id": "R00921",
+   "lines": [
+    921,
+    921
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Business record 'Human Task'."
+  },
+  {
+   "id": "R00923",
+   "lines": [
+    923,
+    923
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Human Task' key field: Task ID."
+  },
+  {
+   "id": "R00923a",
+   "lines": [
+    923,
+    923
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Human Task' key field: issue ID."
+  },
+  {
+   "id": "R00923b",
+   "lines": [
+    923,
+    923
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Human Task' key field: question."
+  },
+  {
+   "id": "R00923c",
+   "lines": [
+    923,
+    923
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Human Task' key field: missing field."
+  },
+  {
+   "id": "R00923d",
+   "lines": [
+    923,
+    923
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Human Task' key field: evidence."
+  },
+  {
+   "id": "R00923e",
+   "lines": [
+    923,
+    923
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Human Task' key field: requested response."
+  },
+  {
+   "id": "R00923f",
+   "lines": [
+    923,
+    923
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Human Task' key field: status."
+  },
+  {
+   "id": "R00923g",
+   "lines": [
+    923,
+    923
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Human Task' key field: timestamp."
+  },
+  {
+   "id": "R00925",
+   "lines": [
+    925,
+    925
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Human Task records are created only when agent cannot safely proceed."
+  },
+  {
+   "id": "R00927",
+   "lines": [
+    927,
+    927
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Business record 'Audit Event'."
+  },
+  {
+   "id": "R00929",
+   "lines": [
+    929,
+    929
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Audit Event' key field: Event ID."
+  },
+  {
+   "id": "R00929a",
+   "lines": [
+    929,
+    929
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Audit Event' key field: entity."
+  },
+  {
+   "id": "R00929b",
+   "lines": [
+    929,
+    929
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Audit Event' key field: action."
+  },
+  {
+   "id": "R00929c",
+   "lines": [
+    929,
+    929
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Audit Event' key field: old value."
+  },
+  {
+   "id": "R00929d",
+   "lines": [
+    929,
+    929
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Audit Event' key field: new value."
+  },
+  {
+   "id": "R00929e",
+   "lines": [
+    929,
+    929
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Audit Event' key field: actor."
+  },
+  {
+   "id": "R00929f",
+   "lines": [
+    929,
+    929
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Audit Event' key field: reason."
+  },
+  {
+   "id": "R00929g",
+   "lines": [
+    929,
+    929
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Record 'Audit Event' key field: timestamp."
+  },
+  {
+   "id": "R00931",
+   "lines": [
+    931,
+    931
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Audit Event records cover all important changes."
+  },
+  {
+   "id": "R00933",
+   "lines": [
+    933,
+    933
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "### 11.1 Source-of-Truth Priority",
+   "why_not": "heading"
+  },
+  {
+   "id": "R00935",
+   "lines": [
+    935,
+    935
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Source-of-truth priority 1 (rendered '20.'): Seller-provided structured data."
+  },
+  {
+   "id": "R00936",
+   "lines": [
+    936,
+    936
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Source-of-truth priority 2 (rendered '21.'): Seller-provided documents/labels/size charts."
+  },
+  {
+   "id": "R00936a",
+   "lines": [
+    936,
+    936
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Source-of-truth priority 2 (rendered '21.'): authoritative product assets."
+  },
+  {
+   "id": "R00937",
+   "lines": [
+    937,
+    937
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Source-of-truth priority 3 (rendered '22.'): Connected catalog/PIM/ERP data."
+  },
+  {
+   "id": "R00937a",
+   "lines": [
+    937,
+    937
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Connected catalog/PIM/ERP data is used only if explicitly connected."
+  },
+  {
+   "id": "R00937b",
+   "lines": [
+    937,
+    937
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Connected catalog/PIM/ERP data is used only if trusted."
+  },
+  {
+   "id": "R00938",
+   "lines": [
+    938,
+    938
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Source-of-truth priority 4 (rendered '23.'): Existing marketplace data."
+  },
+  {
+   "id": "R00938a",
+   "lines": [
+    938,
+    938
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Existing marketplace data is used only when it is the seller's own authoritative listing data."
+  },
+  {
+   "id": "R00939",
+   "lines": [
+    939,
+    939
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Source-of-truth priority 5 (rendered '24.'): Derived values from deterministic normalization or category rules."
+  },
+  {
+   "id": "R00940",
+   "lines": [
+    940,
+    940
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Source-of-truth priority 6 (rendered '25.'): AI-generated inference."
+  },
+  {
+   "id": "R00940a",
+   "lines": [
+    940,
+    940
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "AI-generated inference only when the field is non-critical."
+  },
+  {
+   "id": "R00940b",
+   "lines": [
+    940,
+    940
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "AI-generated inference only when the inference is clearly permitted."
+  },
+  {
+   "id": "R00941",
+   "lines": [
+    941,
+    941
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Never use an AI guess to fill a critical factual/compliance field (rendered '26.')."
+  },
+  {
+   "id": "R00943",
+   "lines": [
+    943,
+    943
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "## 12. Step-by-Step Autonomous Listing Workflow",
+   "why_not": "heading"
+  },
+  {
+   "id": "R00945",
+   "lines": [
+    945,
+    947
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Workflow STEP 1: UNDERSTAND PRODUCT."
+  },
+  {
+   "id": "R00949",
+   "lines": [
+    949,
+    949
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 1 goal: build a complete understanding of the product before generating a marketplace listing."
+  },
+  {
+   "id": "R00951",
+   "lines": [
+    951,
+    951
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "interface",
+   "text": "Step 1 input: Seller form."
+  },
+  {
+   "id": "R00951a",
+   "lines": [
+    951,
+    951
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "interface",
+   "text": "Step 1 input: Spreadsheet."
+  },
+  {
+   "id": "R00951b",
+   "lines": [
+    951,
+    951
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "interface",
+   "text": "Step 1 input: Images."
+  },
+  {
+   "id": "R00951c",
+   "lines": [
+    951,
+    951
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "interface",
+   "text": "Step 1 input: Website/catalog data."
+  },
+  {
+   "id": "R00951d",
+   "lines": [
+    951,
+    951
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "interface",
+   "text": "Step 1 input: Size chart."
+  },
+  {
+   "id": "R00951e",
+   "lines": [
+    951,
+    951
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "interface",
+   "text": "Step 1 input: Product documents."
+  },
+  {
+   "id": "R00951f",
+   "lines": [
+    951,
+    951
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "interface",
+   "text": "Step 1 input: Connected systems."
+  },
+  {
+   "id": "R00953",
+   "lines": [
+    953,
+    953
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 1 action: Identify product and variants."
+  },
+  {
+   "id": "R00953a",
+   "lines": [
+    953,
+    953
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 1 action: Separate facts from marketing language."
+  },
+  {
+   "id": "R00953b",
+   "lines": [
+    953,
+    953
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 1 action: Detect missing data."
+  },
+  {
+   "id": "R00953c",
+   "lines": [
+    953,
+    953
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 1 action: Detect conflicting data."
+  },
+  {
+   "id": "R00953d",
+   "lines": [
+    953,
+    953
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 1 action: Detect duplicate data."
+  },
+  {
+   "id": "R00953e",
+   "lines": [
+    953,
+    953
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 1 action: Determine reliable vs confirmation-needed facts."
+  },
+  {
+   "id": "R00955",
+   "lines": [
+    955,
+    955
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 1 output: Structured product facts, each with source."
+  },
+  {
+   "id": "R00955a",
+   "lines": [
+    955,
+    955
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 1 output: Structured product facts, each with confidence."
+  },
+  {
+   "id": "R00957",
+   "lines": [
+    957,
+    959
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Workflow STEP 2: CLASSIFY."
+  },
+  {
+   "id": "R00961",
+   "lines": [
+    961,
+    961
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 2 goal: decide the correct product category and sub-category for each marketplace."
+  },
+  {
+   "id": "R00963",
+   "lines": [
+    963,
+    963
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 2 action: Identify product type (T-shirt, shirt, dress, jeans, etc.)."
+  },
+  {
+   "id": "R00963a",
+   "lines": [
+    963,
+    963
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 2 action: Identify audience/gender."
+  },
+  {
+   "id": "R00963b",
+   "lines": [
+    963,
+    963
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 2 action: Map canonical product to marketplace taxonomy."
+  },
+  {
+   "id": "R00963c",
+   "lines": [
+    963,
+    963
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 2 action: Verify seller category eligibility."
+  },
+  {
+   "id": "R00963d",
+   "lines": [
+    963,
+    963
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 2 action: Use evidence & rules (no random guesses)."
+  },
+  {
+   "id": "R00965",
+   "lines": [
+    965,
+    965
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 2 output: Canonical category."
+  },
+  {
+   "id": "R00965a",
+   "lines": [
+    965,
+    965
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 2 output: Marketplace-specific category/product type."
+  },
+  {
+   "id": "R00965b",
+   "lines": [
+    965,
+    965
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 2 output: Confidence."
+  },
+  {
+   "id": "R00967",
+   "lines": [
+    967,
+    969
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Workflow STEP 3: EXTRACT ATTRIBUTES."
+  },
+  {
+   "id": "R00971",
+   "lines": [
+    971,
+    971
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 3 goal: populate all product attributes from the available evidence."
+  },
+  {
+   "id": "R00973",
+   "lines": [
+    973,
+    973
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 3 extract attribute: color"
+  },
+  {
+   "id": "R00973a",
+   "lines": [
+    973,
+    973
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 3 extract attribute: size"
+  },
+  {
+   "id": "R00973b",
+   "lines": [
+    973,
+    973
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 3 extract attribute: fabric"
+  },
+  {
+   "id": "R00973c",
+   "lines": [
+    973,
+    973
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 3 extract attribute: fit"
+  },
+  {
+   "id": "R00973d",
+   "lines": [
+    973,
+    973
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 3 extract attribute: pattern"
+  },
+  {
+   "id": "R00973e",
+   "lines": [
+    973,
+    973
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 3 extract attribute: neckline"
+  },
+  {
+   "id": "R00973f",
+   "lines": [
+    973,
+    973
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 3 extract attribute: sleeve"
+  },
+  {
+   "id": "R00973g",
+   "lines": [
+    973,
+    973
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 3 extract attribute: length"
+  },
+  {
+   "id": "R00973h",
+   "lines": [
+    973,
+    973
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 3 extract attribute: closure"
+  },
+  {
+   "id": "R00973i",
+   "lines": [
+    973,
+    973
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 3 extract attribute: occasion"
+  },
+  {
+   "id": "R00973j",
+   "lines": [
+    973,
+    973
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 3 action: Normalize synonyms into controlled values."
+  },
+  {
+   "id": "R00973k",
+   "lines": [
+    973,
+    973
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 3 action: Preserve original seller value."
+  },
+  {
+   "id": "R00973l",
+   "lines": [
+    973,
+    973
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 3 action: Preserve normalized value (alongside original seller value)."
+  },
+  {
+   "id": "R00973m",
+   "lines": [
+    973,
+    973
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 3 action: Track source."
+  },
+  {
+   "id": "R00973n",
+   "lines": [
+    973,
+    973
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 3 action: Detect contradictions (e.g., '100% cotton' vs 'cotton-poly blend')."
+  },
+  {
+   "id": "R00975",
+   "lines": [
+    975,
+    975
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 3 output: Complete canonical attribute set."
+  },
+  {
+   "id": "R00975a",
+   "lines": [
+    975,
+    975
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 3 output: missing/conflicting fields identified."
+  },
+  {
+   "id": "R00977",
+   "lines": [
+    977,
+    979
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Workflow STEP 4: FILL MARKETPLACE SCHEMA."
+  },
+  {
+   "id": "R00981",
+   "lines": [
+    981,
+    981
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 4 goal: transform the canonical product into the exact field structure expected by each selected marketplace."
+  },
+  {
+   "id": "R00983",
+   "lines": [
+    983,
+    983
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 4 action: Load current marketplace/category schema."
+  },
+  {
+   "id": "R00983a",
+   "lines": [
+    983,
+    983
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 4 action: Map canonical fields to portal fields."
+  },
+  {
+   "id": "R00983b",
+   "lines": [
+    983,
+    983
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 4 action: Apply allowed-value enums."
+  },
+  {
+   "id": "R00983c",
+   "lines": [
+    983,
+    983
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 4 action: Mark fields as required."
+  },
+  {
+   "id": "R00983d",
+   "lines": [
+    983,
+    983
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 4 action: Mark fields as conditional."
+  },
+  {
+   "id": "R00983e",
+   "lines": [
+    983,
+    983
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 4 action: Mark fields as optional."
+  },
+  {
+   "id": "R00983f",
+   "lines": [
+    983,
+    983
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 4 action: Mark fields as unsupported."
+  },
+  {
+   "id": "R00983g",
+   "lines": [
+    983,
+    983
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 4 action: Build parent/child variation structure."
+  },
+  {
+   "id": "R00983h",
+   "lines": [
+    983,
+    983
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 4 action: Map media roles."
+  },
+  {
+   "id": "R00983i",
+   "lines": [
+    983,
+    983
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 4 action: Map content fields."
+  },
+  {
+   "id": "R00985",
+   "lines": [
+    985,
+    985
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 4 output: Marketplace-ready draft for each marketplace."
+  },
+  {
+   "id": "R00987",
+   "lines": [
+    987,
+    989
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Workflow STEP 5: GENERATE CONTENT."
+  },
+  {
+   "id": "R00991",
+   "lines": [
+    991,
+    991
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 5 goal: create customer-facing listing content from verified product facts."
+  },
+  {
+   "id": "R00993",
+   "lines": [
+    993,
+    993
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 5 creates: Title."
+  },
+  {
+   "id": "R00993a",
+   "lines": [
+    993,
+    993
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 5 creates: Bullets/key features."
+  },
+  {
+   "id": "R00993b",
+   "lines": [
+    993,
+    993
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 5 creates: Description."
+  },
+  {
+   "id": "R00993c",
+   "lines": [
+    993,
+    993
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 5 creates: Search keywords."
+  },
+  {
+   "id": "R00993d",
+   "lines": [
+    993,
+    993
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 5 creates: Size/fit copy."
+  },
+  {
+   "id": "R00993e",
+   "lines": [
+    993,
+    993
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 5 creates: Portal-specific content fields."
+  },
+  {
+   "id": "R00995",
+   "lines": [
+    995,
+    995
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 5 rule: No unsupported claims."
+  },
+  {
+   "id": "R00995a",
+   "lines": [
+    995,
+    995
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 5 rule: No invented specs."
+  },
+  {
+   "id": "R00995b",
+   "lines": [
+    995,
+    995
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 5 rule: Do not copy prohibited content."
+  },
+  {
+   "id": "R00995c",
+   "lines": [
+    995,
+    995
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 5 rule: Keep consistent factual identity."
+  },
+  {
+   "id": "R00995d",
+   "lines": [
+    995,
+    995
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 5 rule: Adapt tone/format to marketplace rules."
+  },
+  {
+   "id": "R00997",
+   "lines": [
+    997,
+    997
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 5 output: Content package with source traceability."
+  },
+  {
+   "id": "R00999",
+   "lines": [
+    999,
+    1001
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Workflow STEP 6: VALIDATE."
+  },
+  {
+   "id": "R01003",
+   "lines": [
+    1003,
+    1003
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 6 goal: catch problems before marketplace submission."
+  },
+  {
+   "id": "R01005",
+   "lines": [
+    1005,
+    1005
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 6 validate checklist: Required fields present."
+  },
+  {
+   "id": "R01005a",
+   "lines": [
+    1005,
+    1005
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 6 validate checklist: Allowed values."
+  },
+  {
+   "id": "R01005b",
+   "lines": [
+    1005,
+    1005
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 6 validate checklist: Parent/child relationship valid."
+  },
+  {
+   "id": "R01005c",
+   "lines": [
+    1005,
+    1005
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 6 validate checklist: Color consistency (color & size consistency)."
+  },
+  {
+   "id": "R01005d",
+   "lines": [
+    1005,
+    1005
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 6 validate checklist: Size consistency (color & size consistency)."
+  },
+  {
+   "id": "R01005e",
+   "lines": [
+    1005,
+    1005
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 6 validate checklist: Image presence."
+  },
+  {
+   "id": "R01005f",
+   "lines": [
+    1005,
+    1005
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 6 validate checklist: Image association."
+  },
+  {
+   "id": "R01005g",
+   "lines": [
+    1005,
+    1005
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 6 validate checklist: Price/MRP consistency."
+  },
+  {
+   "id": "R01005h",
+   "lines": [
+    1005,
+    1005
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 6 validate checklist: Product identifier rules."
+  },
+  {
+   "id": "R01005i",
+   "lines": [
+    1005,
+    1005
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 6 validate checklist: HSN/tax fields."
+  },
+  {
+   "id": "R01005j",
+   "lines": [
+    1005,
+    1005
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 6 validate checklist: Country of origin."
+  },
+  {
+   "id": "R01005k",
+   "lines": [
+    1005,
+    1005
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 6 validate checklist: Manufacturer details."
+  },
+  {
+   "id": "R01005l",
+   "lines": [
+    1005,
+    1005
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 6 validate checklist: Content policy checks."
+  },
+  {
+   "id": "R01005m",
+   "lines": [
+    1005,
+    1005
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 6 validate checklist: No conflicting facts."
+  },
+  {
+   "id": "R01007",
+   "lines": [
+    1007,
+    1007
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 6 output value: `PASS`."
+  },
+  {
+   "id": "R01007a",
+   "lines": [
+    1007,
+    1007
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 6 output value: `BLOCKED`."
+  },
+  {
+   "id": "R01007b",
+   "lines": [
+    1007,
+    1007
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 6 output value: `NEEDS HUMAN INPUT`."
+  },
+  {
+   "id": "R01007c",
+   "lines": [
+    1007,
+    1007
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 6 output carries field-level reasons."
+  },
+  {
+   "id": "R01009",
+   "lines": [
+    1009,
+    1011
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Workflow STEP 7: FIND MISSING DATA."
+  },
+  {
+   "id": "R01013",
+   "lines": [
+    1013,
+    1013
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 7 goal: determine whether missing information can be recovered automatically."
+  },
+  {
+   "id": "R01015",
+   "lines": [
+    1015,
+    1015
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 7: try missing-data sources in this strict hierarchy (order below)."
+  },
+  {
+   "id": "R01017",
+   "lines": [
+    1017,
+    1017
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 7 hierarchy 1: Existing canonical product record."
+  },
+  {
+   "id": "R01018",
+   "lines": [
+    1018,
+    1018
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 7 hierarchy 2: Same brand's trusted catalog conventions."
+  },
+  {
+   "id": "R01019",
+   "lines": [
+    1019,
+    1019
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 7 hierarchy 3: Connected PIM/ERP/catalog."
+  },
+  {
+   "id": "R01020",
+   "lines": [
+    1020,
+    1020
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 7 hierarchy 4: Existing marketplace listing owned by the seller."
+  },
+  {
+   "id": "R01021",
+   "lines": [
+    1021,
+    1021
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 7 hierarchy 5: Seller-provided files/assets."
+  },
+  {
+   "id": "R01022",
+   "lines": [
+    1022,
+    1022
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 7 hierarchy 6: Deterministic category mapping."
+  },
+  {
+   "id": "R01023",
+   "lines": [
+    1023,
+    1023
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 7 hierarchy 7: Ask seller."
+  },
+  {
+   "id": "R01025",
+   "lines": [
+    1025,
+    1025
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 7 output: Missing fields reduced to the smallest set genuinely required."
+  },
+  {
+   "id": "R01027",
+   "lines": [
+    1027,
+    1029
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Workflow STEP 8: ASK HUMAN ONLY WHEN NECESSARY."
+  },
+  {
+   "id": "R01031",
+   "lines": [
+    1031,
+    1031
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 8 goal: ask the seller one clear question instead of sending them back to a large form."
+  },
+  {
+   "id": "R01033",
+   "lines": [
+    1033,
+    1033
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "interface",
+   "text": "Step 8 example question: 'What is the fabric composition: 100% cotton or 95% cotton / 5% elastane?'"
+  },
+  {
+   "id": "R01033a",
+   "lines": [
+    1033,
+    1033
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "interface",
+   "text": "Step 8 example question: 'Please provide the size chart for this product.'"
+  },
+  {
+   "id": "R01033b",
+   "lines": [
+    1033,
+    1033
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "interface",
+   "text": "Step 8 example question: 'Which MRP should be used for the black variant?'"
+  },
+  {
+   "id": "R01033c",
+   "lines": [
+    1033,
+    1033
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "interface",
+   "text": "Step 8 example question: 'Please confirm whether this is a women's or unisex product.'"
+  },
+  {
+   "id": "R01035",
+   "lines": [
+    1035,
+    1035
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 8 question must include: Why information is required."
+  },
+  {
+   "id": "R01035a",
+   "lines": [
+    1035,
+    1035
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 8 question must include: Which products/variants it affects."
+  },
+  {
+   "id": "R01035b",
+   "lines": [
+    1035,
+    1035
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 8 question must include: Exact expected answer."
+  },
+  {
+   "id": "R01035c",
+   "lines": [
+    1035,
+    1035
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 8 question must include: Optional safe suggestions."
+  },
+  {
+   "id": "R01037",
+   "lines": [
+    1037,
+    1037
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 8 post-response: update canonical record."
+  },
+  {
+   "id": "R01037a",
+   "lines": [
+    1037,
+    1037
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 8 post-response: resume automatically from blocked step."
+  },
+  {
+   "id": "R01039",
+   "lines": [
+    1039,
+    1041
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Workflow STEP 9: SUBMIT."
+  },
+  {
+   "id": "R01043",
+   "lines": [
+    1043,
+    1043
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 9 goal: send the validated listing to the selected marketplace(s)."
+  },
+  {
+   "id": "R01045",
+   "lines": [
+    1045,
+    1045
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 9 action: Submit only required and permitted fields."
+  },
+  {
+   "id": "R01045a",
+   "lines": [
+    1045,
+    1045
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 9 action: Record submission time."
+  },
+  {
+   "id": "R01045b",
+   "lines": [
+    1045,
+    1045
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 9 action: Record job ID/reference."
+  },
+  {
+   "id": "R01045c",
+   "lines": [
+    1045,
+    1045
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 9 action: Store exact version submitted."
+  },
+  {
+   "id": "R01045d",
+   "lines": [
+    1045,
+    1045
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 9 action: Update status from Draft/Ready to Submitted/Pending."
+  },
+  {
+   "id": "R01047",
+   "lines": [
+    1047,
+    1047
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 9 output: Marketplace submission record."
+  },
+  {
+   "id": "R01049",
+   "lines": [
+    1049,
+    1051
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Workflow STEP 10: CHECK STATUS."
+  },
+  {
+   "id": "R01053",
+   "lines": [
+    1053,
+    1053
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 10 goal: determine what happened after submission."
+  },
+  {
+   "id": "R01055",
+   "lines": [
+    1055,
+    1055
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 10 possible outcome: Accepted/processing."
+  },
+  {
+   "id": "R01055a",
+   "lines": [
+    1055,
+    1055
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 10 possible outcome: Active/live."
+  },
+  {
+   "id": "R01055b",
+   "lines": [
+    1055,
+    1055
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 10 possible outcome: Rejected."
+  },
+  {
+   "id": "R01055c",
+   "lines": [
+    1055,
+    1055
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 10 possible outcome: Partially accepted."
+  },
+  {
+   "id": "R01055d",
+   "lines": [
+    1055,
+    1055
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 10 possible outcome: Missing information."
+  },
+  {
+   "id": "R01055e",
+   "lines": [
+    1055,
+    1055
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 10 possible outcome: Validation failure."
+  },
+  {
+   "id": "R01055f",
+   "lines": [
+    1055,
+    1055
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 10 possible outcome: Pending marketplace review."
+  },
+  {
+   "id": "R01055g",
+   "lines": [
+    1055,
+    1055
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 10 possible outcome: Account/category permission issue."
+  },
+  {
+   "id": "R01057",
+   "lines": [
+    1057,
+    1057
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 10 rule: keep checking until a terminal state is reached or a human action is required."
+  },
+  {
+   "id": "R01059",
+   "lines": [
+    1059,
+    1061
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Workflow STEP 11: FIX ERRORS."
+  },
+  {
+   "id": "R01063",
+   "lines": [
+    1063,
+    1063
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 11 goal: diagnose and resolve errors without making the seller repeat the process."
+  },
+  {
+   "id": "R01065",
+   "lines": [
+    1065,
+    1065
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 11, for every error: Capture error code/message."
+  },
+  {
+   "id": "R01065a",
+   "lines": [
+    1065,
+    1065
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 11, for every error: Identify affected SKU/field."
+  },
+  {
+   "id": "R01065b",
+   "lines": [
+    1065,
+    1065
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 11, for every error: Translate to plain language."
+  },
+  {
+   "id": "R01065c",
+   "lines": [
+    1065,
+    1065
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 11, for every error: Determine if auto-fixable."
+  },
+  {
+   "id": "R01065d",
+   "lines": [
+    1065,
+    1065
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 11, for every error: Apply deterministic fix."
+  },
+  {
+   "id": "R01065e",
+   "lines": [
+    1065,
+    1065
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 11, for every error: Revalidate."
+  },
+  {
+   "id": "R01067",
+   "lines": [
+    1067,
+    1067
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 11 auto-fixable class: Wrong portal enum mapped from known canonical value."
+  },
+  {
+   "id": "R01067a",
+   "lines": [
+    1067,
+    1067
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 11 auto-fixable class: Formatting issue."
+  },
+  {
+   "id": "R01067b",
+   "lines": [
+    1067,
+    1067
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 11 auto-fixable class: Safely calculable derived field."
+  },
+  {
+   "id": "R01067c",
+   "lines": [
+    1067,
+    1067
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 11 auto-fixable class: Incorrect parent/child mapping."
+  },
+  {
+   "id": "R01069",
+   "lines": [
+    1069,
+    1069
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 11 human-required class: Missing factual product info."
+  },
+  {
+   "id": "R01069a",
+   "lines": [
+    1069,
+    1069
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 11 human-required class: Conflicting seller data."
+  },
+  {
+   "id": "R01069b",
+   "lines": [
+    1069,
+    1069
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 11 human-required class: Brand authorization/approval."
+  },
+  {
+   "id": "R01069c",
+   "lines": [
+    1069,
+    1069
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 11 human-required class: Account issue."
+  },
+  {
+   "id": "R01069d",
+   "lines": [
+    1069,
+    1069
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 11 human-required class: Compliance evidence request."
+  },
+  {
+   "id": "R01071",
+   "lines": [
+    1071,
+    1073
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Workflow STEP 12: RESUBMIT."
+  },
+  {
+   "id": "R01075",
+   "lines": [
+    1075,
+    1075
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 12 goal: send the corrected listing back to the marketplace."
+  },
+  {
+   "id": "R01077",
+   "lines": [
+    1077,
+    1077
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 12 action: Keep same seller SKU/identity."
+  },
+  {
+   "id": "R01077a",
+   "lines": [
+    1077,
+    1077
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 12 action: Record correction made."
+  },
+  {
+   "id": "R01077b",
+   "lines": [
+    1077,
+    1077
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 12 action: Increment submission attempt count."
+  },
+  {
+   "id": "R01077c",
+   "lines": [
+    1077,
+    1077
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 12 action: Submit only after validation passes."
+  },
+  {
+   "id": "R01077d",
+   "lines": [
+    1077,
+    1077
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 12 action: Preserve failed versions for audit."
+  },
+  {
+   "id": "R01079",
+   "lines": [
+    1079,
+    1081
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Workflow STEP 13: CONFIRM LIVE."
+  },
+  {
+   "id": "R01083",
+   "lines": [
+    1083,
+    1083
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Step 13 goal: confirm the product is genuinely sellable/live."
+  },
+  {
+   "id": "R01085",
+   "lines": [
+    1085,
+    1085
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 13 minimum confirmation: Status = live/active."
+  },
+  {
+   "id": "R01085a",
+   "lines": [
+    1085,
+    1085
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 13 minimum confirmation: Marketplace ID captured."
+  },
+  {
+   "id": "R01085b",
+   "lines": [
+    1085,
+    1085
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 13 minimum confirmation: Seller SKU mapped."
+  },
+  {
+   "id": "R01085c",
+   "lines": [
+    1085,
+    1085
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 13 minimum confirmation: Variant status captured."
+  },
+  {
+   "id": "R01085d",
+   "lines": [
+    1085,
+    1085
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 13 minimum confirmation: Live URL captured where available."
+  },
+  {
+   "id": "R01085e",
+   "lines": [
+    1085,
+    1085
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 13 minimum confirmation: Latest successful sync timestamp recorded."
+  },
+  {
+   "id": "R01087",
+   "lines": [
+    1087,
+    1087
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Step 13 output: `LIVE` status."
+  },
+  {
+   "id": "R01089",
+   "lines": [
+    1089,
+    1091
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Workflow STEP 14: SHOW DASHBOARD STATUS."
+  },
+  {
+   "id": "R01093",
+   "lines": [
+    1093,
+    1093
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 14 goal: give the seller a simple operational view."
+  },
+  {
+   "id": "R01095",
+   "lines": [
+    1095,
+    1095
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 14 show: Overall status."
+  },
+  {
+   "id": "R01095a",
+   "lines": [
+    1095,
+    1095
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 14 show: Per-marketplace status."
+  },
+  {
+   "id": "R01095b",
+   "lines": [
+    1095,
+    1095
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 14 show: Current step."
+  },
+  {
+   "id": "R01095c",
+   "lines": [
+    1095,
+    1095
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 14 show: Issue count."
+  },
+  {
+   "id": "R01095d",
+   "lines": [
+    1095,
+    1095
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 14 show: Human actions required."
+  },
+  {
+   "id": "R01095e",
+   "lines": [
+    1095,
+    1095
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 14 show: Last sync."
+  },
+  {
+   "id": "R01095f",
+   "lines": [
+    1095,
+    1095
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 14 show: Marketplace listing ID/SKU."
+  },
+  {
+   "id": "R01095g",
+   "lines": [
+    1095,
+    1095
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 14 show: Live URL."
+  },
+  {
+   "id": "R01095h",
+   "lines": [
+    1095,
+    1095
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Step 14 show: Attempt history."
+  },
+  {
+   "id": "R01097",
+   "lines": [
+    1097,
+    1097
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "Core Dashboard Mandate (callout title)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R01099",
+   "lines": [
+    1099,
+    1099
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Dashboard should answer: 'What is live'."
+  },
+  {
+   "id": "R01099a",
+   "lines": [
+    1099,
+    1099
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Dashboard should answer: 'what is not live'."
+  },
+  {
+   "id": "R01099b",
+   "lines": [
+    1099,
+    1099
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Dashboard should answer: 'why'."
+  },
+  {
+   "id": "R01099c",
+   "lines": [
+    1099,
+    1099
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Dashboard should answer: 'what do I need to do?'"
+  },
+  {
+   "id": "R01101",
+   "lines": [
+    1101,
+    1101
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "## 13. Listing Status Model",
+   "why_not": "heading"
+  },
+  {
+   "id": "R01103",
+   "lines": [
+    1103,
+    1103
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "The product tracks granular operational status across all lifecycle phases."
+  },
+  {
+   "id": "R01105",
+   "lines": [
+    1105,
+    1109
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "Table header: Status | Meaning | Seller Action",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R01111",
+   "lines": [
+    1111,
+    1113
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Listing status `DRAFT`: Product information has been started but is not ready."
+  },
+  {
+   "id": "R01115",
+   "lines": [
+    1115,
+    1115
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Seller action for `DRAFT`: Provide missing information if shown."
+  },
+  {
+   "id": "R01117",
+   "lines": [
+    1117,
+    1119
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Listing status `UNDERSTANDING`: Agent is interpreting product inputs."
+  },
+  {
+   "id": "R01121",
+   "lines": [
+    1121,
+    1121
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Seller action for `UNDERSTANDING`: None"
+  },
+  {
+   "id": "R01123",
+   "lines": [
+    1123,
+    1125
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Listing status `CLASSIFYING`: Agent is selecting category/product type."
+  },
+  {
+   "id": "R01127",
+   "lines": [
+    1127,
+    1127
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Seller action for `CLASSIFYING`: None unless ambiguous."
+  },
+  {
+   "id": "R01129",
+   "lines": [
+    1129,
+    1131
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Listing status `READY_FOR_REVIEW`: Draft is structurally ready but requires seller confirmation."
+  },
+  {
+   "id": "R01133",
+   "lines": [
+    1133,
+    1133
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Seller action for `READY_FOR_REVIEW`: Review only if requested by workflow."
+  },
+  {
+   "id": "R01135",
+   "lines": [
+    1135,
+    1137
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Listing status `READY_TO_LIST`: Validation passed for selected marketplace(s)."
+  },
+  {
+   "id": "R01139",
+   "lines": [
+    1139,
+    1139
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Seller action for `READY_TO_LIST`: None"
+  },
+  {
+   "id": "R01141",
+   "lines": [
+    1141,
+    1143
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Listing status `SUBMITTING`: Listing is being sent."
+  },
+  {
+   "id": "R01145",
+   "lines": [
+    1145,
+    1145
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Seller action for `SUBMITTING`: None"
+  },
+  {
+   "id": "R01147",
+   "lines": [
+    1147,
+    1149
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Listing status `PROCESSING`: Marketplace is processing the submission."
+  },
+  {
+   "id": "R01151",
+   "lines": [
+    1151,
+    1151
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Seller action for `PROCESSING`: None"
+  },
+  {
+   "id": "R01153",
+   "lines": [
+    1153,
+    1155
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Listing status `LIVE`: Marketplace confirmed the listing is active/live."
+  },
+  {
+   "id": "R01157",
+   "lines": [
+    1157,
+    1157
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Seller action for `LIVE`: None"
+  },
+  {
+   "id": "R01159",
+   "lines": [
+    1159,
+    1161
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Listing status `PARTIALLY_LIVE`: Some variants/marketplaces are live while others are not."
+  },
+  {
+   "id": "R01163",
+   "lines": [
+    1163,
+    1163
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Seller action for `PARTIALLY_LIVE`: Resolve failed portions if needed."
+  },
+  {
+   "id": "R01165",
+   "lines": [
+    1165,
+    1167
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Listing status `BLOCKED`: Required information/permission/compliance issue prevents progress."
+  },
+  {
+   "id": "R01169",
+   "lines": [
+    1169,
+    1169
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Seller action for `BLOCKED`: Complete the displayed task."
+  },
+  {
+   "id": "R01171",
+   "lines": [
+    1171,
+    1173
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Listing status `ERROR`: Submission/validation failed."
+  },
+  {
+   "id": "R01175",
+   "lines": [
+    1175,
+    1175
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Seller action for `ERROR`: Usually none if auto-fix is possible."
+  },
+  {
+   "id": "R01175a",
+   "lines": [
+    1175,
+    1175
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Seller action for `ERROR`: otherwise resolve task."
+  },
+  {
+   "id": "R01177",
+   "lines": [
+    1177,
+    1179
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Listing status `HUMAN_ACTION_REQUIRED`: Agent cannot safely proceed without seller input/action."
+  },
+  {
+   "id": "R01181",
+   "lines": [
+    1181,
+    1181
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Seller action for `HUMAN_ACTION_REQUIRED`: Answer the exact question or perform the requested marketplace action."
+  },
+  {
+   "id": "R01183",
+   "lines": [
+    1183,
+    1185
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Listing status `PAUSED`: Seller or system intentionally paused the listing."
+  },
+  {
+   "id": "R01187",
+   "lines": [
+    1187,
+    1187
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Seller action for `PAUSED`: Resume when ready."
+  },
+  {
+   "id": "R01189",
+   "lines": [
+    1189,
+    1191
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Listing status `ARCHIVED`: Listing workflow is closed."
+  },
+  {
+   "id": "R01193",
+   "lines": [
+    1193,
+    1193
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Seller action for `ARCHIVED`: None"
+  },
+  {
+   "id": "R01195",
+   "lines": [
+    1195,
+    1195
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "## 14. Dashboard Requirements",
+   "why_not": "heading"
+  },
+  {
+   "id": "R01197",
+   "lines": [
+    1197,
+    1197
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "### 14.1 Product List View",
+   "why_not": "heading"
+  },
+  {
+   "id": "R01199",
+   "lines": [
+    1199,
+    1201
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "Table header: Column | What it Should Show",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R01203",
+   "lines": [
+    1203,
+    1205
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'Product' shows product name."
+  },
+  {
+   "id": "R01205",
+   "lines": [
+    1205,
+    1205
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'Product' shows primary image."
+  },
+  {
+   "id": "R01207",
+   "lines": [
+    1207,
+    1209
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'SKU' shows Seller SKU."
+  },
+  {
+   "id": "R01211",
+   "lines": [
+    1211,
+    1213
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'Category' shows canonical category."
+  },
+  {
+   "id": "R01215",
+   "lines": [
+    1215,
+    1217
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'Variants' shows count."
+  },
+  {
+   "id": "R01217",
+   "lines": [
+    1217,
+    1217
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'Variants' shows variant summary."
+  },
+  {
+   "id": "R01219",
+   "lines": [
+    1219,
+    1221
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'Amazon' shows status."
+  },
+  {
+   "id": "R01219a",
+   "lines": [
+    1219,
+    1241
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "scope",
+   "text": "Product List View has a status + listing ID column per marketplace: Amazon, Flipkart, Myntra, AJIO, Meesho, Nykaa Fashion."
+  },
+  {
+   "id": "R01221",
+   "lines": [
+    1221,
+    1221
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'Amazon' shows listing ID."
+  },
+  {
+   "id": "R01223",
+   "lines": [
+    1223,
+    1225
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'Flipkart' shows status."
+  },
+  {
+   "id": "R01225",
+   "lines": [
+    1225,
+    1225
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'Flipkart' shows listing ID."
+  },
+  {
+   "id": "R01227",
+   "lines": [
+    1227,
+    1229
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'Myntra' shows status."
+  },
+  {
+   "id": "R01229",
+   "lines": [
+    1229,
+    1229
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'Myntra' shows listing ID."
+  },
+  {
+   "id": "R01231",
+   "lines": [
+    1231,
+    1233
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'AJIO' shows status."
+  },
+  {
+   "id": "R01233",
+   "lines": [
+    1233,
+    1233
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'AJIO' shows listing ID."
+  },
+  {
+   "id": "R01235",
+   "lines": [
+    1235,
+    1237
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'Meesho' shows status."
+  },
+  {
+   "id": "R01237",
+   "lines": [
+    1237,
+    1237
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'Meesho' shows listing ID."
+  },
+  {
+   "id": "R01239",
+   "lines": [
+    1239,
+    1241
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'Nykaa Fashion' shows status."
+  },
+  {
+   "id": "R01241",
+   "lines": [
+    1241,
+    1241
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'Nykaa Fashion' shows listing ID."
+  },
+  {
+   "id": "R01243",
+   "lines": [
+    1243,
+    1245
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'Overall' shows: Live / Partial / Blocked / Error / Processing."
+  },
+  {
+   "id": "R01245",
+   "lines": [
+    1245,
+    1245
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Product List 'Overall' value: Live."
+  },
+  {
+   "id": "R01245a",
+   "lines": [
+    1245,
+    1245
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Product List 'Overall' value: Partial."
+  },
+  {
+   "id": "R01245b",
+   "lines": [
+    1245,
+    1245
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Product List 'Overall' value: Blocked."
+  },
+  {
+   "id": "R01245c",
+   "lines": [
+    1245,
+    1245
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Product List 'Overall' value: Error."
+  },
+  {
+   "id": "R01245d",
+   "lines": [
+    1245,
+    1245
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Product List 'Overall' value: Processing."
+  },
+  {
+   "id": "R01247",
+   "lines": [
+    1247,
+    1249
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'Issues' shows open issue count."
+  },
+  {
+   "id": "R01251",
+   "lines": [
+    1251,
+    1253
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Product List column 'Last activity' shows latest workflow event."
+  },
+  {
+   "id": "R01255",
+   "lines": [
+    1255,
+    1255
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "### 14.2 Product Detail View",
+   "why_not": "heading"
+  },
+  {
+   "id": "R01257",
+   "lines": [
+    1257,
+    1257
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "constraint",
+   "text": "The detail view must render ten dedicated inspector panels."
+  },
+  {
+   "id": "R01259",
+   "lines": [
+    1259,
+    1259
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Canonical product information' shows: core attributes."
+  },
+  {
+   "id": "R01259a",
+   "lines": [
+    1259,
+    1259
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Canonical product information' shows: fabric."
+  },
+  {
+   "id": "R01259b",
+   "lines": [
+    1259,
+    1259
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Canonical product information' shows: weave."
+  },
+  {
+   "id": "R01259c",
+   "lines": [
+    1259,
+    1259
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Canonical product information' shows: care."
+  },
+  {
+   "id": "R01259d",
+   "lines": [
+    1259,
+    1259
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Canonical product information' shows: legal declarations."
+  },
+  {
+   "id": "R01260",
+   "lines": [
+    1260,
+    1260
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Variants and size/color matrix': interactive matrix."
+  },
+  {
+   "id": "R01260a",
+   "lines": [
+    1260,
+    1260
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Variants and size/color matrix': matrix of all styles."
+  },
+  {
+   "id": "R01260b",
+   "lines": [
+    1260,
+    1260
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Variants and size/color matrix': matrix of all colorways."
+  },
+  {
+   "id": "R01260c",
+   "lines": [
+    1260,
+    1260
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Variants and size/color matrix': matrix of all sizes."
+  },
+  {
+   "id": "R01261",
+   "lines": [
+    1261,
+    1261
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Images and media validation': slot mapping."
+  },
+  {
+   "id": "R01261a",
+   "lines": [
+    1261,
+    1261
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Images and media validation': aspect ratio check."
+  },
+  {
+   "id": "R01261b",
+   "lines": [
+    1261,
+    1261
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Images and media validation': background validation."
+  },
+  {
+   "id": "R01262",
+   "lines": [
+    1262,
+    1262
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Generated content' shows marketplace-specific title."
+  },
+  {
+   "id": "R01262a",
+   "lines": [
+    1262,
+    1262
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Generated content' shows marketplace-specific bullets."
+  },
+  {
+   "id": "R01262b",
+   "lines": [
+    1262,
+    1262
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Generated content' shows marketplace-specific search terms."
+  },
+  {
+   "id": "R01262c",
+   "lines": [
+    1262,
+    1262
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Generated content' shows marketplace-specific description."
+  },
+  {
+   "id": "R01263",
+   "lines": [
+    1263,
+    1263
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Marketplace-specific preview/mapped fields': side-by-side view of portal payloads."
+  },
+  {
+   "id": "R01264",
+   "lines": [
+    1264,
+    1264
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Validation results': rule-by-rule pass/fail scorecard."
+  },
+  {
+   "id": "R01264a",
+   "lines": [
+    1264,
+    1264
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Validation results': severity flags."
+  },
+  {
+   "id": "R01265",
+   "lines": [
+    1265,
+    1265
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Marketplace status cards': status badge."
+  },
+  {
+   "id": "R01265a",
+   "lines": [
+    1265,
+    1265
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Marketplace status cards': external listing ID."
+  },
+  {
+   "id": "R01265b",
+   "lines": [
+    1265,
+    1265
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Marketplace status cards': live portal link."
+  },
+  {
+   "id": "R01265c",
+   "lines": [
+    1265,
+    1265
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Marketplace status cards': last sync."
+  },
+  {
+   "id": "R01266",
+   "lines": [
+    1266,
+    1266
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Open issues and required actions': human action items with exact questions."
+  },
+  {
+   "id": "R01266a",
+   "lines": [
+    1266,
+    1266
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Open issues and required actions': human action items with input fields."
+  },
+  {
+   "id": "R01267",
+   "lines": [
+    1267,
+    1267
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Submission attempts': historic payload snapshots."
+  },
+  {
+   "id": "R01267a",
+   "lines": [
+    1267,
+    1267
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Submission attempts': timestamps."
+  },
+  {
+   "id": "R01267b",
+   "lines": [
+    1267,
+    1267
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Submission attempts': error responses."
+  },
+  {
+   "id": "R01268",
+   "lines": [
+    1268,
+    1268
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Detail panel 'Change history / audit trail': complete record of who/what modified any field."
+  },
+  {
+   "id": "R01270",
+   "lines": [
+    1270,
+    1270
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "## 15. Error Management Framework",
+   "why_not": "heading"
+  },
+  {
+   "id": "R01272",
+   "lines": [
+    1272,
+    1276
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "Table header: Error Class | Example | Agent Behavior",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R01278",
+   "lines": [
+    1278,
+    1280
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Error class 'Missing data' (example: Fabric composition absent)."
+  },
+  {
+   "id": "R01282",
+   "lines": [
+    1282,
+    1282
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Missing data': Find source."
+  },
+  {
+   "id": "R01282a",
+   "lines": [
+    1282,
+    1282
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Missing data': if source unavailable, ask seller."
+  },
+  {
+   "id": "R01284",
+   "lines": [
+    1284,
+    1286
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Error class 'Invalid value' (example: Marketplace does not accept seller's color term)."
+  },
+  {
+   "id": "R01288",
+   "lines": [
+    1288,
+    1288
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Invalid value': Map to allowed marketplace value."
+  },
+  {
+   "id": "R01290",
+   "lines": [
+    1290,
+    1292
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Error class 'Category mismatch' (example: Product mapped to wrong product type)."
+  },
+  {
+   "id": "R01294",
+   "lines": [
+    1294,
+    1294
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Category mismatch': Reclassify."
+  },
+  {
+   "id": "R01294a",
+   "lines": [
+    1294,
+    1294
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Category mismatch': Remap."
+  },
+  {
+   "id": "R01296",
+   "lines": [
+    1296,
+    1298
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Error class 'Variation error' (example: Size/color relationship invalid)."
+  },
+  {
+   "id": "R01300",
+   "lines": [
+    1300,
+    1300
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Variation error': Rebuild mapping from canonical variant matrix."
+  },
+  {
+   "id": "R01302",
+   "lines": [
+    1302,
+    1304
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Error class 'Media error' (example: Image not accepted)."
+  },
+  {
+   "id": "R01306",
+   "lines": [
+    1306,
+    1306
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Media error': Identify failed image rule."
+  },
+  {
+   "id": "R01306a",
+   "lines": [
+    1306,
+    1306
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Media error': Replace/remap if possible."
+  },
+  {
+   "id": "R01308",
+   "lines": [
+    1308,
+    1310
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Error class 'Content error' (example: Title/field violates marketplace rule)."
+  },
+  {
+   "id": "R01312",
+   "lines": [
+    1312,
+    1312
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Content error': Rewrite using verified facts."
+  },
+  {
+   "id": "R01314",
+   "lines": [
+    1314,
+    1316
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Error class 'Identifier error' (example: GTIN/identifier issue)."
+  },
+  {
+   "id": "R01318",
+   "lines": [
+    1318,
+    1318
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Identifier error': Ask seller."
+  },
+  {
+   "id": "R01318a",
+   "lines": [
+    1318,
+    1318
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Identifier error': Use approved exemption flow if applicable."
+  },
+  {
+   "id": "R01320",
+   "lines": [
+    1320,
+    1322
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Error class 'Compliance error' (example: Required declaration missing)."
+  },
+  {
+   "id": "R01324",
+   "lines": [
+    1324,
+    1324
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Compliance error': Request exact compliance information."
+  },
+  {
+   "id": "R01326",
+   "lines": [
+    1326,
+    1328
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Error class 'Account permission' (example: Seller not approved for category/brand)."
+  },
+  {
+   "id": "R01330",
+   "lines": [
+    1330,
+    1330
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Account permission': Create human action task."
+  },
+  {
+   "id": "R01332",
+   "lines": [
+    1332,
+    1334
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Error class 'Marketplace outage/technical' (example: Submission unavailable)."
+  },
+  {
+   "id": "R01336",
+   "lines": [
+    1336,
+    1336
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Marketplace outage/technical': Retry according to safe retry policy."
+  },
+  {
+   "id": "R01336a",
+   "lines": [
+    1336,
+    1336
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Marketplace outage/technical': Do not create duplicates."
+  },
+  {
+   "id": "R01338",
+   "lines": [
+    1338,
+    1340
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "data",
+   "text": "Error class 'Unknown error' (example: Unrecognized marketplace message)."
+  },
+  {
+   "id": "R01342",
+   "lines": [
+    1342,
+    1342
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Unknown error': Stop unsafe automation."
+  },
+  {
+   "id": "R01342a",
+   "lines": [
+    1342,
+    1342
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Unknown error': Show raw message."
+  },
+  {
+   "id": "R01342b",
+   "lines": [
+    1342,
+    1342
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Unknown error': Show plain-language summary."
+  },
+  {
+   "id": "R01342c",
+   "lines": [
+    1342,
+    1342
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Agent behavior for 'Unknown error': Create human task."
+  },
+  {
+   "id": "R01344",
+   "lines": [
+    1344,
+    1344
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "### 15.1 Error Resolution Loop",
+   "why_not": "heading"
+  },
+  {
+   "id": "R01346",
+   "lines": [
+    1346,
+    1346
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Error resolution loop step 1 (rendered '27.'): Capture error exactly as returned."
+  },
+  {
+   "id": "R01347",
+   "lines": [
+    1347,
+    1347
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Error resolution loop step 2 (rendered '28.'): Normalize it into an internal error category."
+  },
+  {
+   "id": "R01348",
+   "lines": [
+    1348,
+    1348
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Error resolution loop step 3 (rendered '29.'): Identify affected field/variant/listing."
+  },
+  {
+   "id": "R01349",
+   "lines": [
+    1349,
+    1349
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Error resolution loop step 4 (rendered '30.'): Determine whether the error is deterministic and safely fixable."
+  },
+  {
+   "id": "R01350",
+   "lines": [
+    1350,
+    1350
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Error resolution loop step 5 (rendered '31.'): Apply fix if safe."
+  },
+  {
+   "id": "R01351",
+   "lines": [
+    1351,
+    1351
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Error resolution loop step 6 (rendered '32.'): Re-run validation."
+  },
+  {
+   "id": "R01352",
+   "lines": [
+    1352,
+    1352
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Error resolution loop step 7 (rendered '33.'): Resubmit."
+  },
+  {
+   "id": "R01353",
+   "lines": [
+    1353,
+    1353
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Error resolution loop step 8 (rendered '34.'): If still failing, stop repeated retries."
+  },
+  {
+   "id": "R01353a",
+   "lines": [
+    1353,
+    1353
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Error resolution loop step 8 (rendered '34.'): If still failing, escalate."
+  },
+  {
+   "id": "R01354",
+   "lines": [
+    1354,
+    1354
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "flow",
+   "text": "Error resolution loop step 9 (rendered '35.'): Show the seller the exact remaining action."
+  },
+  {
+   "id": "R01356",
+   "lines": [
+    1356,
+    1356
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "Important Anti-Loop Rule (callout title)",
+   "why_not": "heading"
+  },
+  {
+   "id": "R01358",
+   "lines": [
+    1358,
+    1358
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "The agent must never repeatedly submit the same failed listing indefinitely."
+  },
+  {
+   "id": "R01358a",
+   "lines": [
+    1358,
+    1358
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Every retry needs a changed input, a known retryable condition, or a marketplace status transition that justifies another attempt."
+  },
+  {
+   "id": "R01360",
+   "lines": [
+    1360,
+    1360
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "## 16. Human-in-the-Loop Rules",
+   "why_not": "heading"
+  },
+  {
+   "id": "R01362",
+   "lines": [
+    1362,
+    1362
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "The product should be autonomous by default."
+  },
+  {
+   "id": "R01362a",
+   "lines": [
+    1362,
+    1362
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "The product should not be reckless (autonomous by default, but not reckless)."
+  },
+  {
+   "id": "R01362b",
+   "lines": [
+    1362,
+    1362
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Human involvement is a controlled exception."
+  },
+  {
+   "id": "R01364",
+   "lines": [
+    1364,
+    1366
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "info",
+   "text": "Table header: Ask the Seller When | Do NOT Ask When",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R01368",
+   "lines": [
+    1368,
+    1368
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Ask the seller when: A critical factual field is genuinely missing."
+  },
+  {
+   "id": "R01370",
+   "lines": [
+    1370,
+    1370
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Do NOT ask the seller when: The answer already exists in the canonical record."
+  },
+  {
+   "id": "R01372",
+   "lines": [
+    1372,
+    1372
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Ask the seller when: Two authoritative sources conflict."
+  },
+  {
+   "id": "R01374",
+   "lines": [
+    1374,
+    1374
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Do NOT ask the seller when: The value can be deterministically normalized."
+  },
+  {
+   "id": "R01376",
+   "lines": [
+    1376,
+    1376
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Ask the seller when: Marketplace requires seller-specific approval/evidence."
+  },
+  {
+   "id": "R01378",
+   "lines": [
+    1378,
+    1378
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Do NOT ask the seller when: The agent can safely transform an existing value."
+  },
+  {
+   "id": "R01380",
+   "lines": [
+    1380,
+    1380
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Ask the seller when: A compliance declaration cannot be verified."
+  },
+  {
+   "id": "R01382",
+   "lines": [
+    1382,
+    1382
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Do NOT ask the seller when: The missing value is merely a formatting variation."
+  },
+  {
+   "id": "R01384",
+   "lines": [
+    1384,
+    1384
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Ask the seller when: A category/brand permission decision is required."
+  },
+  {
+   "id": "R01386",
+   "lines": [
+    1386,
+    1386
+   ],
+   "page": "[★] Complete Founder BRD (End-to-End)",
+   "kind": "requirement",
+   "text": "Do NOT ask the seller when: The marketplace has a known mapping for the category."
+  }
+ ]
+}

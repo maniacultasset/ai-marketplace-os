@@ -1,0 +1,1755 @@
+{
+ "chunk": "c03",
+ "items": [
+  {
+   "id": "R01388",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:823",
+   "note": "Approve/publish require a passed rules_engine run for the current version (G9)."
+  },
+  {
+   "id": "R01394",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:411; DATABASE.md:421",
+   "note": "brand_name must be in brand_names (Identity gate); SKU unique per tenant; product_type style-owned."
+  },
+  {
+   "id": "R01394a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1193; VISION-ALIGNMENT G9",
+   "note": "Only 6 gates named; no explicit gate-to-RuleDef mapping for Media, Content, Submission."
+  },
+  {
+   "id": "R01398",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:530-536",
+   "note": "Current category_templates row per (marketplace, category) gives product_type/external id; else CATEGORY_NOT_MAPPED."
+  },
+  {
+   "id": "R01398a",
+   "status": "needs-client",
+   "owner": "shared",
+   "ref": "DATABASE.md:530; DATABASE.md:1167; TEAM-QUESTIONS T68",
+   "note": "No marketplace-side confidence; only internal category confidence (min 0.80) gates it. T68 open."
+  },
+  {
+   "id": "R01402",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:526; DATABASE.md:517",
+   "note": "Template required/conditional checks raise MISSING_ATTRIBUTE; conditional_required RuleDef."
+  },
+  {
+   "id": "R01402a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:516; DATABASE.md:526",
+   "note": "allowed_values RuleDef and template enum checks (VALUE_NOT_ALLOWED)."
+  },
+  {
+   "id": "R01406",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:423; DATABASE.md:841",
+   "note": "Variant guard, unique variant_key per style, one seller_sku identity per marketplace."
+  },
+  {
+   "id": "R01406a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:452",
+   "note": "variant_matrix_guard ties each child to its size x colour cell (VAR01/VAR02)."
+  },
+  {
+   "id": "R01406b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1111; DATABASE.md:1116",
+   "note": "Per-variant identifier_type/value/status with GTIN check digit; exemption location per T39 (open)."
+  },
+  {
+   "id": "R01410",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:520; BACKEND-ARCHITECTURE.md:616",
+   "note": "image_requirement checks quality only; no rule requires a main image to exist (row model to-do)."
+  },
+  {
+   "id": "R01410a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:480-481",
+   "note": "Colour-keyed images via composite FK; slot guards (size_chart on style; packaging_label never published)."
+  },
+  {
+   "id": "R01414",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:523; DATABASE.md:519",
+   "note": "fact_backed_attribute and claim_requires_attribute check content against resolved facts."
+  },
+  {
+   "id": "R01414a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:490-526",
+   "note": "Per-marketplace rules rows (length, banned terms, allowed values) plus template checks."
+  },
+  {
+   "id": "R01418",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "TEAM-QUESTIONS T36; Q8",
+   "note": "Which Legal Metrology declarations block approval is open; default error/warning list in legal_metrology pack."
+  },
+  {
+   "id": "R01418a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1126",
+   "note": "Seller legal entity stored, but no Compliance-gate rule checks seller information; T36 list omits seller."
+  },
+  {
+   "id": "R01422",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1108; DATABASE.md:518",
+   "note": "ck_price_le_mrp on the row plus cross_field price_lte_mrp for child vs style."
+  },
+  {
+   "id": "R01426",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:823; DATABASE.md:947",
+   "note": "Passed run required; publish gate refuses open user_action error issues on approved version."
+  },
+  {
+   "id": "R01432",
+   "status": "covered",
+   "owner": "client",
+   "ref": "TEAM-QUESTIONS.md:70 (T36)",
+   "note": "Schema stores declarations; client adviser signs legal_metrology rule text."
+  },
+  {
+   "id": "R01432a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1078-1150",
+   "note": "Typed compliance columns, parties address book and brand defaults (section 5.6)."
+  },
+  {
+   "id": "R01432b",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "DATABASE.md:1343",
+   "note": "No stated rule or UI copy that populated declarations do not imply legal compliance."
+  },
+  {
+   "id": "R01440",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1110; DATABASE.md:1127",
+   "note": "manufacturer_party_id on products plus brand_profiles default manufacturer party."
+  },
+  {
+   "id": "R01444",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1142-1143",
+   "note": "business_parties legal_name and address; imported address kept whole, never invented."
+  },
+  {
+   "id": "R01446",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1110; DATABASE.md:1124; DATABASE.md:1127",
+   "note": "marketer_party_id on product and brand default; brand_owner_type on brand_profiles."
+  },
+  {
+   "id": "R01450",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1110; DATABASE.md:1127",
+   "note": "Marketer party per product or brand default, nullable where not applicable."
+  },
+  {
+   "id": "R01452",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1110",
+   "note": "importer_party_id on products; brand default importer also allowed."
+  },
+  {
+   "id": "R01456",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1110; TEAM-QUESTIONS T36",
+   "note": "Importer party captured; T36 default makes importer an error only when imported."
+  },
+  {
+   "id": "R01458",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "DATABASE.md:1128; TEAM-QUESTIONS T35",
+   "note": "Product column exists, but plan lets product inherit seller-set brand default origin."
+  },
+  {
+   "id": "R01462",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1167; DATABASE.md:1128",
+   "note": "country_of_origin never derived (L1462); never inferred from registered address."
+  },
+  {
+   "id": "R01464",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1127",
+   "note": "brand_profiles.consumer_care_party_id."
+  },
+  {
+   "id": "R01468",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1144; DATABASE.md:1149",
+   "note": "Party email/phone; consumer_care party CHECK needs email or phone."
+  },
+  {
+   "id": "R01470",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169",
+   "note": "size and size_measurements are variant-level critical attributes."
+  },
+  {
+   "id": "R01474",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169-1170",
+   "note": "attributes.size plus size_system; severity per T36 default (size = error)."
+  },
+  {
+   "id": "R01474a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169",
+   "note": "size_measurements object in cm; T36 default makes it a warning unless template requires."
+  },
+  {
+   "id": "R01476",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1108; DATABASE.md:1114",
+   "note": "products.mrp numeric(12,2) INR on each variant row."
+  },
+  {
+   "id": "R01480",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1167",
+   "note": "mrp critical; sources seller/document/pim only, never ai."
+  },
+  {
+   "id": "R01482",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169",
+   "note": "attributes.fiber_composition, critical."
+  },
+  {
+   "id": "R01486",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169; TEAM-QUESTIONS T32",
+   "note": "fiber_composition as [{fibre, percent}] summing 100; material aliases fabric_type only (T32 open)."
+  },
+  {
+   "id": "R01488",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169",
+   "note": "attributes.wash_care and iron_care."
+  },
+  {
+   "id": "R01492",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169",
+   "note": "Care keys critical: never ai; seller/document sources."
+  },
+  {
+   "id": "R01494",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1109-1110; DATABASE.md:481",
+   "note": "generic_name, net_quantity, packer party; packaging_label image as evidence."
+  },
+  {
+   "id": "R01498",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1109",
+   "note": "Package declaration columns nullable; captured where applicable."
+  },
+  {
+   "id": "R01500",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1108",
+   "note": "products.hsn_code (4/6/8 digits) at variant or style."
+  },
+  {
+   "id": "R01504",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1167",
+   "note": "hsn_code critical; sources seller/document/pim."
+  },
+  {
+   "id": "R01504a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1167; DATABASE.md:1013",
+   "note": "Never ai; never filled from account commercial defaults (T37)."
+  },
+  {
+   "id": "R01508",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:510; TEAM-QUESTIONS T36",
+   "note": "legal_metrology rule pack with PolicyRef; blocking list open (T36)."
+  },
+  {
+   "id": "R01508a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1110; DATABASE.md:1127",
+   "note": "Manufacturer, marketer, importer parties plus brand_owner_type; T36 default errors on them."
+  },
+  {
+   "id": "R01508b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1110; DATABASE.md:1127",
+   "note": "consumer_care party on product and brand."
+  },
+  {
+   "id": "R01508c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169",
+   "note": "size and size_measurements attributes."
+  },
+  {
+   "id": "R01508d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1108",
+   "note": "products.mrp."
+  },
+  {
+   "id": "R01508e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1150; DATABASE.md:1193",
+   "note": "Adapters send parties and origin to the marketplace (Legal Metrology display)."
+  },
+  {
+   "id": "R01508f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1110",
+   "note": "Manufacturer, packer, importer party FKs."
+  },
+  {
+   "id": "R01508g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1109",
+   "note": "products.country_of_origin ISO alpha-2."
+  },
+  {
+   "id": "R01508h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1109",
+   "note": "products.generic_name; T36 default = warning."
+  },
+  {
+   "id": "R01508i",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1109",
+   "note": "net_quantity + net_quantity_unit; T36 default = warning."
+  },
+  {
+   "id": "R01508j",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1108",
+   "note": "products.mrp."
+  },
+  {
+   "id": "R01508k",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1110; DATABASE.md:1127",
+   "note": "consumer_care party."
+  },
+  {
+   "id": "R01512",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:529-541",
+   "note": "Per-marketplace versioned category_templates with canonical specs; adapters map."
+  },
+  {
+   "id": "R01512a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541; DATABASE.md:535",
+   "note": "specs.marketplace_field from the is_current template version."
+  },
+  {
+   "id": "R01512b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541",
+   "note": "AttributeSpec.requirement required|conditional|optional|unsupported from current template."
+  },
+  {
+   "id": "R01520",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:536",
+   "note": "Held as product type; adapter maps to Amazon field."
+  },
+  {
+   "id": "R01520a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:411",
+   "note": "Held as brand_name; adapter maps to Amazon field."
+  },
+  {
+   "id": "R01520b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2194",
+   "note": "Held as generated title in content_json; adapter maps to Amazon field."
+  },
+  {
+   "id": "R01520c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1111; DATABASE.md:1012",
+   "note": "identifier_type/value/status per variant; account exemption per T39 (open)."
+  },
+  {
+   "id": "R01520d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189",
+   "note": "Held as attributes.color; adapter maps to Amazon field."
+  },
+  {
+   "id": "R01520e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189",
+   "note": "Held as attributes.size; adapter maps to Amazon field."
+  },
+  {
+   "id": "R01520f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1169",
+   "note": "Held as fabric_type (alias material); adapter maps to Amazon field."
+  },
+  {
+   "id": "R01520g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:411",
+   "note": "Held as gender men|women|unisex|boys|girls; adapter maps to Amazon field."
+  },
+  {
+   "id": "R01520h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2194",
+   "note": "Held as content bullets; adapter maps to Amazon field."
+  },
+  {
+   "id": "R01520i",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2194",
+   "note": "Held as content description; adapter maps to Amazon field."
+  },
+  {
+   "id": "R01520j",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:474-481",
+   "note": "Held as images table, slots; adapter maps to Amazon field."
+  },
+  {
+   "id": "R01520k",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:416; DATABASE.md:840",
+   "note": "variation_theme + listing_items parent/child rows; grain per T45 (open)."
+  },
+  {
+   "id": "R01520l",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1193",
+   "note": "Adapter input carries full ProductFacts incl. origin and Legal Metrology parties."
+  },
+  {
+   "id": "R01520m",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:122; site L4749-4751, L7407",
+   "note": "v1 Amazon + Flipkart = site MVP scope; site itself defers Myntra/AJIO/Meesho/Nykaa."
+  },
+  {
+   "id": "R01524",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:537; TEAM-QUESTIONS T53",
+   "note": "category_templates source ptd, is_current; refresh cadence T53 (open)."
+  },
+  {
+   "id": "R01524a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:517; DATABASE.md:541",
+   "note": "conditional_required RuleDef and AttributeSpec conditional with when-conditions."
+  },
+  {
+   "id": "R01524b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:535-537",
+   "note": "Versioned templates with digest-based refresh and promotion (T53)."
+  },
+  {
+   "id": "R01526",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:536-537",
+   "note": "Flipkart vertical as product_type, source fk_vertical (manual until API access, T53)."
+  },
+  {
+   "id": "R01526a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:411",
+   "note": "Held as brand_name; adapter maps to Flipkart field."
+  },
+  {
+   "id": "R01526b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:536",
+   "note": "Held as category_templates.external_category_id; adapter maps to Flipkart field."
+  },
+  {
+   "id": "R01526c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189",
+   "note": "Held as color/size attributes; adapter maps to Flipkart field."
+  },
+  {
+   "id": "R01526d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2194",
+   "note": "Held as content description; adapter maps to Flipkart field."
+  },
+  {
+   "id": "R01526e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:474-481",
+   "note": "Held as images table; adapter maps to Flipkart field."
+  },
+  {
+   "id": "R01526f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1108; DATABASE.md:1193",
+   "note": "mrp and selling_price per variant; Flipkart adapter input gets them."
+  },
+  {
+   "id": "R01526g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1112",
+   "note": "Held as package_*_cm and package_weight_g; adapter maps to Flipkart field."
+  },
+  {
+   "id": "R01526h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1108",
+   "note": "Held as products.hsn_code; adapter maps to Flipkart field."
+  },
+  {
+   "id": "R01526i",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1012",
+   "note": "marketplace_accounts.settings fulfilment (channel, handling_days, shipping_template), locations."
+  },
+  {
+   "id": "R01530",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "DATABASE.md:1108; TEAM-QUESTIONS T37",
+   "note": "Commercial facts sit on the variant product row, one price for all marketplaces; listing tables hold state only."
+  },
+  {
+   "id": "R01530a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:756; DATABASE.md:843",
+   "note": "marketplace_state on listings and per SKU on listing_items."
+  },
+  {
+   "id": "R01530b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:841",
+   "note": "listing_items.seller_sku = products.sku, UNIQUE (tenant, marketplace, seller_sku)."
+  },
+  {
+   "id": "R01532",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01532a",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01532b",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01532c",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01532d",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01532e",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01532f",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01532g",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01536",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01536a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:541",
+   "note": "Canonical keys are never marketplace field names; marketplace_field per template. Myntra itself Future (L7407)."
+  },
+  {
+   "id": "R01538",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01538a",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01538b",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01538c",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01538d",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01538e",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01538f",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01538g",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01542",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01542a",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01544",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01544a",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01544b",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01544c",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01544d",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01544e",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01544f",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01548",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01548a",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01550",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01550a",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01550b",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01550c",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01550d",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01550e",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01554",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01554a",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01554b",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01554c",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01554d",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01554e",
+   "status": "later-phase",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Site marks Myntra/AJIO/Meesho/Nykaa adapters Future (L4751, L6882, L7407)."
+  },
+  {
+   "id": "R01558",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1152-1170; DATABASE.md:2200",
+   "note": "Broad dictionary (attribute_definitions) plus attributes JSON; no master column dropped."
+  },
+  {
+   "id": "R01558a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82; DATABASE.md:541",
+   "note": "Invariant 4; adapters only apply template value_map and marketplace_field."
+  },
+  {
+   "id": "R01558b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1152-1153; DATABASE.md:541",
+   "note": "New keys are dictionary data rows; marketplace fields live in template specs, not product columns."
+  },
+  {
+   "id": "R01560",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2181-2196",
+   "note": "Appendix A.6 maps all 64 BRD columns to storage."
+  },
+  {
+   "id": "R01562",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:970; DATABASE.md:2183",
+   "note": "Import headers are BRD names verbatim; BACKEND-ARCHITECTURE.md:621 still says JSON cell (stale C4)."
+  },
+  {
+   "id": "R01562a",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "DATABASE.md:970; DATABASE.md:2183",
+   "note": "Headers = BRD names, but no downloadable seller template (endpoint or static file) specified."
+  },
+  {
+   "id": "R01562b",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "DATABASE.md:1176; BACKEND-ARCHITECTURE.md:1319",
+   "note": "category_attributes relevance stored; no API or contract exposes it to the FE."
+  },
+  {
+   "id": "R01572",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187",
+   "note": "seller_sku -> products.sku, UNIQUE (tenant_id, sku)."
+  },
+  {
+   "id": "R01572a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2185-2196",
+   "note": "A.6 rows follow the same ten sections."
+  },
+  {
+   "id": "R01580",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187",
+   "note": "parent_style_id -> parent_product_id (alias parent_sku)."
+  },
+  {
+   "id": "R01588",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187",
+   "note": "product_name -> products.title (seller factual name)."
+  },
+  {
+   "id": "R01596",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187",
+   "note": "brand_name -> brand_name, style level, in brand_names."
+  },
+  {
+   "id": "R01604",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187",
+   "note": "manufacturer_name -> business_parties via manufacturer_party_id."
+  },
+  {
+   "id": "R01612",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187",
+   "note": "manufacturer_address -> business_parties.address_line1, kept whole."
+  },
+  {
+   "id": "R01620",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187",
+   "note": "product_identifier_type -> identifier_type gtin|ean|upc."
+  },
+  {
+   "id": "R01628",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187",
+   "note": "product_identifier -> identifier_value, GTIN check digit."
+  },
+  {
+   "id": "R01636",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2188; DATABASE.md:411",
+   "note": "gender column men|women|unisex|boys|girls."
+  },
+  {
+   "id": "R01644",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2188; DATABASE.md:411",
+   "note": "category internal slug column."
+  },
+  {
+   "id": "R01652",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:411",
+   "note": "sub_category column exists but nullable; no rule enforces BRD requirement \"Yes\"."
+  },
+  {
+   "id": "R01660",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:411",
+   "note": "product_type column exists but nullable; no rule enforces BRD requirement \"Yes\"."
+  },
+  {
+   "id": "R01668",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; TEAM-QUESTIONS T32",
+   "note": "Header color_name kept; stored as attributes.color.value (key color, not color_name); T32 open."
+  },
+  {
+   "id": "R01676",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; TEAM-QUESTIONS T32",
+   "note": "Stored as attributes.color.normalized (+normalized_by, confidence), no normalized_color key; T32 open."
+  },
+  {
+   "id": "R01684",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189",
+   "note": "size_name -> attributes.size.value on the variant."
+  },
+  {
+   "id": "R01692",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189",
+   "note": "normalized_size -> attributes.size.normalized = matrix cell size_key."
+  },
+  {
+   "id": "R01700",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189",
+   "note": "size_system -> attributes.size_system (style)."
+  },
+  {
+   "id": "R01708",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; DATABASE.md:1169-1170",
+   "note": "Header -> products.attributes.<same key>; seeded in attribute_definitions."
+  },
+  {
+   "id": "R01716",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; DATABASE.md:1169-1170",
+   "note": "Header -> products.attributes.<same key>; seeded in attribute_definitions."
+  },
+  {
+   "id": "R01724",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; DATABASE.md:1169-1170",
+   "note": "Header -> products.attributes.<same key>; seeded in attribute_definitions."
+  },
+  {
+   "id": "R01732",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; DATABASE.md:1169",
+   "note": "fiber_composition attribute, critical, [{fibre, percent}] summing 100."
+  },
+  {
+   "id": "R01740",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; DATABASE.md:1169",
+   "note": "lining as {lined, material}, critical."
+  },
+  {
+   "id": "R01748",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; DATABASE.md:1169-1170",
+   "note": "Header -> products.attributes.<same key>; seeded in attribute_definitions."
+  },
+  {
+   "id": "R01756",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; DATABASE.md:1169-1170",
+   "note": "Header -> products.attributes.<same key>; seeded in attribute_definitions."
+  },
+  {
+   "id": "R01764",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; DATABASE.md:1169-1170",
+   "note": "Header -> products.attributes.<same key>; seeded in attribute_definitions."
+  },
+  {
+   "id": "R01772",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; DATABASE.md:1169-1170",
+   "note": "Header -> products.attributes.<same key>; seeded in attribute_definitions."
+  },
+  {
+   "id": "R01780",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; DATABASE.md:1169-1170",
+   "note": "Header -> products.attributes.<same key>; seeded in attribute_definitions."
+  },
+  {
+   "id": "R01788",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; DATABASE.md:1169-1170",
+   "note": "Header -> products.attributes.<same key>; seeded in attribute_definitions."
+  },
+  {
+   "id": "R01796",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; DATABASE.md:1169-1170",
+   "note": "Header -> products.attributes.<same key>; seeded in attribute_definitions."
+  },
+  {
+   "id": "R01804",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; DATABASE.md:1169-1170",
+   "note": "Header -> products.attributes.<same key>; seeded in attribute_definitions."
+  },
+  {
+   "id": "R01812",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; DATABASE.md:1169-1170",
+   "note": "Header -> products.attributes.<same key>; seeded in attribute_definitions."
+  },
+  {
+   "id": "R01820",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; DATABASE.md:1169-1170",
+   "note": "Header -> products.attributes.<same key>; seeded in attribute_definitions."
+  },
+  {
+   "id": "R01828",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; DATABASE.md:1169-1170",
+   "note": "Header -> products.attributes.<same key>; seeded in attribute_definitions."
+  },
+  {
+   "id": "R01836",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2189; DATABASE.md:1169-1170",
+   "note": "Header -> products.attributes.<same key>; seeded in attribute_definitions."
+  },
+  {
+   "id": "R01844",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2190",
+   "note": "wash_care -> attributes.wash_care, critical."
+  },
+  {
+   "id": "R01852",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2190",
+   "note": "iron_care -> attributes.iron_care, critical."
+  },
+  {
+   "id": "R01860",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2191",
+   "note": "country_of_origin column, ISO alpha-2."
+  },
+  {
+   "id": "R01868",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2191; DATABASE.md:1108",
+   "note": "mrp column numeric(12,2), INR."
+  },
+  {
+   "id": "R01876",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2191",
+   "note": "consumer_care_email -> brand default or nameless consumer-care party."
+  },
+  {
+   "id": "R01884",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2191",
+   "note": "consumer_care_phone -> brand default or nameless consumer-care party."
+  },
+  {
+   "id": "R01892",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2191",
+   "note": "hsn_code column."
+  },
+  {
+   "id": "R01900",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2192; TEAM-QUESTIONS T37",
+   "note": "selling_price column, one per variant for all marketplaces (T37 open)."
+  },
+  {
+   "id": "R01908",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2192",
+   "note": "tax_rate column numeric(5,2), 0..100."
+  },
+  {
+   "id": "R01916",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2192",
+   "note": "package_weight -> package_weight_g; cell needs g/kg suffix."
+  },
+  {
+   "id": "R01924",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2192; DATABASE.md:1112",
+   "note": "Same-named column numeric(7,2); three dims all-or-none."
+  },
+  {
+   "id": "R01932",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2192; DATABASE.md:1112",
+   "note": "Same-named column numeric(7,2); three dims all-or-none."
+  },
+  {
+   "id": "R01940",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2192; DATABASE.md:1112",
+   "note": "Same-named column numeric(7,2); three dims all-or-none."
+  },
+  {
+   "id": "R01948",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2193; BACKEND-ARCHITECTURE.md:616",
+   "note": "Stored as images slot main; BRD \"Yes\" not enforced, no main-image presence rule (see R01410)."
+  },
+  {
+   "id": "R01956",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2193",
+   "note": "additional_images -> secondary/lifestyle slots by position."
+  },
+  {
+   "id": "R01964",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2193",
+   "note": "size_chart -> images slot size_chart on the style (T28)."
+  },
+  {
+   "id": "R01972",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2194; DATABASE.md:781",
+   "note": "listing_versions.content_json; edits create origin=edit versions."
+  },
+  {
+   "id": "R01980",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2194",
+   "note": "content bullets in listing_versions.content_json."
+  },
+  {
+   "id": "R01988",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2194",
+   "note": "content description in listing_versions.content_json."
+  },
+  {
+   "id": "R01996",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2194",
+   "note": "keywords.search_terms + hidden_terms (T26)."
+  },
+  {
+   "id": "R02004",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2195; DATABASE.md:530; TEAM-QUESTIONS T68",
+   "note": "Derived from internal category via category_templates; no per-product value; seller value only warns (T68)."
+  },
+  {
+   "id": "R02012",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2195; DATABASE.md:530; TEAM-QUESTIONS T68",
+   "note": "category_templates.product_type from internal category; no per-product value; seller value only warns (T68)."
+  },
+  {
+   "id": "R02020",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2195",
+   "note": "listings.marketplace_sku / listing_items.seller_sku."
+  },
+  {
+   "id": "R02028",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2195; DATABASE.md:754",
+   "note": "external_id on listings and listing_items."
+  },
+  {
+   "id": "R02036",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2195; DATABASE.md:756",
+   "note": "marketplace_state (not_submitted..removed)."
+  },
+  {
+   "id": "R02044",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2195; DATABASE.md:757",
+   "note": "live_url, https, adapter-built."
+  },
+  {
+   "id": "R02052",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2196; DATABASE.md:1501",
+   "note": "overall_status derived in product_status_display view, not stored."
+  },
+  {
+   "id": "R02060",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2196; DATABASE.md:1501",
+   "note": "open_issue_count derived in product_status_display view, not stored."
+  },
+  {
+   "id": "R02068",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2196; DATABASE.md:1501",
+   "note": "human_action_required derived in product_status_display view, not stored."
+  },
+  {
+   "id": "R02076",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2196; DATABASE.md:1501",
+   "note": "last_updated as last_activity_at derived in product_status_display view, not stored."
+  },
+  {
+   "id": "R02088",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1224",
+   "note": "Seed/E2E fixture: FSH-TEE-001 women relaxed-fit cotton tee, Jet Black, s/m/l/xl."
+  },
+  {
+   "id": "R02088a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1224",
+   "note": "Seed/E2E fixture: FSH-TEE-001 women relaxed-fit cotton tee, Jet Black, s/m/l/xl."
+  },
+  {
+   "id": "R02088b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1224",
+   "note": "Seed/E2E fixture: FSH-TEE-001 women relaxed-fit cotton tee, Jet Black, s/m/l/xl."
+  },
+  {
+   "id": "R02088c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1224",
+   "note": "Seed/E2E fixture: FSH-TEE-001 women relaxed-fit cotton tee, Jet Black, s/m/l/xl."
+  },
+  {
+   "id": "R02094",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187-2193; DATABASE.md:1224",
+   "note": "Intake via CSV/API: seller_sku header."
+  },
+  {
+   "id": "R02094a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187-2193; DATABASE.md:1224",
+   "note": "Intake via CSV/API: images upload / main_image, additional_images."
+  },
+  {
+   "id": "R02094b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187-2193; DATABASE.md:1224",
+   "note": "Intake via CSV/API: product_name header."
+  },
+  {
+   "id": "R02094c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187-2193; DATABASE.md:1224",
+   "note": "Intake via CSV/API: brand_name header."
+  },
+  {
+   "id": "R02094d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187-2193; DATABASE.md:1224",
+   "note": "Intake via CSV/API: fiber_composition header."
+  },
+  {
+   "id": "R02094e",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187-2193; DATABASE.md:1224",
+   "note": "Intake via CSV/API: color_name / colourways."
+  },
+  {
+   "id": "R02094f",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187-2193; DATABASE.md:1224",
+   "note": "Intake via CSV/API: size_name / size_run."
+  },
+  {
+   "id": "R02094g",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187-2193; DATABASE.md:1224",
+   "note": "Intake via CSV/API: mrp header."
+  },
+  {
+   "id": "R02094h",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187-2193; DATABASE.md:1224",
+   "note": "Intake via CSV/API: wash_care, iron_care headers."
+  },
+  {
+   "id": "R02094i",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2187-2193; DATABASE.md:1224",
+   "note": "Intake via CSV/API: size_chart slot."
+  },
+  {
+   "id": "R02094j",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "AGENTS.md:81; ADR-0008; DATABASE.md:1498; TEAM-QUESTIONS T68",
+   "note": "Human approval inserted before Submit (inv 3, ADR-0008); no classify node in v1 (T68)."
+  },
+  {
+   "id": "R02098",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1193; VISION-ALIGNMENT.md:420",
+   "note": "Understand node is AI team; backend pushes seller facts as PromptProductFacts in GenerationContext.product."
+  },
+  {
+   "id": "R02098a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1193; VISION-ALIGNMENT.md:420",
+   "note": "Understand node is AI team; backend pushes seller facts as PromptProductFacts in GenerationContext.product."
+  },
+  {
+   "id": "R02098b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1193; VISION-ALIGNMENT.md:420",
+   "note": "Understand node is AI team; backend pushes seller facts as PromptProductFacts in GenerationContext.product."
+  },
+  {
+   "id": "R02098c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1193; VISION-ALIGNMENT.md:420",
+   "note": "Understand node is AI team; backend pushes seller facts as PromptProductFacts in GenerationContext.product."
+  },
+  {
+   "id": "R02098d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1193; VISION-ALIGNMENT.md:420",
+   "note": "Understand node is AI team; backend pushes seller facts as PromptProductFacts in GenerationContext.product."
+  },
+  {
+   "id": "R02102",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:530; DATABASE.md:1498; TEAM-QUESTIONS T68",
+   "note": "No classify agent in v1; marketplace category = current template of internal category (T68 open)."
+  },
+  {
+   "id": "R02106",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "DATABASE.md:1224; DATABASE.md:541-542; TEAM-QUESTIONS T49",
+   "note": "Vocabulary normalizes Jet Black to black; adapter value_map, not the agent, sets marketplace value (T49)."
+  },
+  {
+   "id": "R02106a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1082; DATABASE.md:433",
+   "note": "Fact envelope keeps value and normalized; colour_key from seller value."
+  },
+  {
+   "id": "R02110",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1189",
+   "note": "ProductFacts resolved model carries identity."
+  },
+  {
+   "id": "R02110a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1189",
+   "note": "ProductFacts resolved model carries attributes."
+  },
+  {
+   "id": "R02110b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1189",
+   "note": "ProductFacts resolved model carries family variants."
+  },
+  {
+   "id": "R02110c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:474-481",
+   "note": "Media in images table keyed to product and colourway."
+  },
+  {
+   "id": "R02110d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1189",
+   "note": "ProductFacts resolved model carries compliance parties."
+  },
+  {
+   "id": "R02110e",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:2171; Canon 0002 listing_versions",
+   "note": "Content lives per listing version (per marketplace), not on the product record."
+  },
+  {
+   "id": "R02114",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2194; DATABASE.md:2131",
+   "note": "Generation is AI team; backend stores content.title/bullets/description, keywords in listing_versions.content_json."
+  },
+  {
+   "id": "R02114a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2194; DATABASE.md:2131",
+   "note": "Generation is AI team; backend stores content.title/bullets/description, keywords in listing_versions.content_json."
+  },
+  {
+   "id": "R02114b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2194; DATABASE.md:2131",
+   "note": "Generation is AI team; backend stores content.title/bullets/description, keywords in listing_versions.content_json."
+  },
+  {
+   "id": "R02114c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:2194; DATABASE.md:2131",
+   "note": "Generation is AI team; backend stores content.title/bullets/description, keywords in listing_versions.content_json."
+  },
+  {
+   "id": "R02114d",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:523; DATABASE.md:1191",
+   "note": "fact_backed_attribute rule; AI sees only PromptProductFacts."
+  },
+  {
+   "id": "R02118",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:526",
+   "note": "Template required/conditional checks per marketplace."
+  },
+  {
+   "id": "R02118a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:452; DATABASE.md:520",
+   "note": "Variant guards plus image_requirement rules; no main-image presence rule (see R01410)."
+  },
+  {
+   "id": "R02122",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1228; DATABASE.md:1338; DATABASE.md:1224",
+   "note": "One human_task per missing fact; fixture omits lining to exercise it."
+  },
+  {
+   "id": "R02126",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:79,81; STATE.md:63",
+   "note": "Adapter submits only after human approval; walkthrough has no approval step."
+  },
+  {
+   "id": "R02130",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:883-885",
+   "note": "publish_field_results per child SKU and field; partially_accepted submission."
+  },
+  {
+   "id": "R02130a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1692; DATABASE.md:1708; TEAM-QUESTIONS T49; T41",
+   "note": "Deterministic adapter remap_value, not an agent; auto_resubmit only under T41 conditions (open)."
+  },
+  {
+   "id": "R02130b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1680-1706",
+   "note": "Deterministic fix then re-validate in the error resolution loop."
+  },
+  {
+   "id": "R02134",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:1708; TEAM-QUESTIONS T41",
+   "note": "auto_resubmit if content unchanged, payload changed, attempts remain (T41 default)."
+  },
+  {
+   "id": "R02138",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:763; TEAM-QUESTIONS T13",
+   "note": "LIVE only from marketplace_state after confirmation (ck_live_minimum)."
+  },
+  {
+   "id": "R02138a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:754; DATABASE.md:842",
+   "note": "external_id on listing and per SKU."
+  },
+  {
+   "id": "R02138b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "DATABASE.md:757; DATABASE.md:842",
+   "note": "live_url on listing and per SKU."
+  },
+  {
+   "id": "R02142",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1500",
+   "note": "listing_status_display shows live per marketplace listing."
+  },
+  {
+   "id": "R02142a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "DATABASE.md:1500-1501",
+   "note": "Per-listing display per marketplace; product view shows partially_live/processing."
+  }
+ ]
+}

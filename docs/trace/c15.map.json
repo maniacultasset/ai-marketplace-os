@@ -1,0 +1,1888 @@
+{
+ "chunk": "c15",
+ "items": [
+  {
+   "id": "R09181",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1564; docs/review/SPEC-TRACEABILITY.md:140",
+   "note": "keyword_agent is a v1 stage; 250-byte and no-overlap rules are gaps"
+  },
+  {
+   "id": "R09183",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2132",
+   "note": "AI generates; contract field keywords.search_terms"
+  },
+  {
+   "id": "R09183a",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2132; T26",
+   "note": "Generated as keywords.hidden_terms, not backend_keywords"
+  },
+  {
+   "id": "R09188a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt behaviour of the Keyword Agent"
+  },
+  {
+   "id": "R09188b",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2132; T26",
+   "note": "hidden_terms; adapter maps to Amazon backend terms, drops for Flipkart"
+  },
+  {
+   "id": "R09188c",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Generation behaviour; deterministic no-overlap check is the gap at R09221"
+  },
+  {
+   "id": "R09188d",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Descriptive; generation concern"
+  },
+  {
+   "id": "R09196",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118; docs/architecture/DATABASE.md:530",
+   "note": "ctx.category + category_template pushed; template = [71] category mapping"
+  },
+  {
+   "id": "R09200",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118; docs/architecture/DATABASE.md:1193",
+   "note": "ctx.product (PromptProductFacts) from products facts"
+  },
+  {
+   "id": "R09204",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "GenerationContext.marketplace pushed by backend"
+  },
+  {
+   "id": "R09208",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Site marks performance-data search signals Phase 3 (L9210)"
+  },
+  {
+   "id": "R09210",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Site marks performance-data search signals Phase 3 (L9210)"
+  },
+  {
+   "id": "R09212",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1062; docs/architecture/DATABASE.md:1064",
+   "note": "brand_chunks type glossary; retrieve_brand_chunks(types=...)"
+  },
+  {
+   "id": "R09216",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2132",
+   "note": "keywords.search_terms list[str]"
+  },
+  {
+   "id": "R09216a",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2132; T26",
+   "note": "keywords.hidden_terms list[str], renamed from backend_keywords"
+  },
+  {
+   "id": "R09216b",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2132",
+   "note": "No keyword_recommendations field in ListingKeywords or GenerationResult"
+  },
+  {
+   "id": "R09220",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1369",
+   "note": "KEYWORD_DUPLICATE code exists (DATABASE.md:1369); no rule type or seed emits it"
+  },
+  {
+   "id": "R09220a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Semantic distinctness not deterministic; exact dupes are R09220"
+  },
+  {
+   "id": "R09221",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:518; G6",
+   "note": "No rule: hidden_terms must not repeat visible content; cross_field not_contains_value_of unseeded"
+  },
+  {
+   "id": "R09222",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:495; T48",
+   "note": "Only via brand-defined banned_terms tenant rules; no platform competitor list"
+  },
+  {
+   "id": "R09223",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:497; docs/architecture/DATABASE.md:514",
+   "note": "max_length/max_items on keywords.* paths exist; limit values are rules-pack data, unlisted"
+  },
+  {
+   "id": "R09224",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:514; docs/architecture/DATABASE.md:1369; docs/drafts/BUILD-SEQUENCE.md:235",
+   "note": "BYTE_BUDGET_EXCEEDED code exists; no byte-unit max_length rule, no Amazon hidden_terms 250-byte seed"
+  },
+  {
+   "id": "R09228a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt behaviour; no-stuffing check is R09220"
+  },
+  {
+   "id": "R09235",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1564; docs/review/SPEC-TRACEABILITY.md:141",
+   "note": "Page in v1; AI emits canonical attributes, adapters map"
+  },
+  {
+   "id": "R09237",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:541-542; T49",
+   "note": "AI emits canonical values; adapter applies template value_map (inv 4)"
+  },
+  {
+   "id": "R09237a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118; docs/architecture/DATABASE.md:542",
+   "note": "CategoryTemplate pushed in ctx via for_generation()"
+  },
+  {
+   "id": "R09237b",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:541; T49",
+   "note": "Field differences (marketplace_field) handled in adapter, not agent"
+  },
+  {
+   "id": "R09242a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:529; docs/architecture/DATABASE.md:536",
+   "note": "category_templates per (marketplace, category), versioned"
+  },
+  {
+   "id": "R09242b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541",
+   "note": "AttributeSpec.marketplace_field per canonical key"
+  },
+  {
+   "id": "R09242c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541",
+   "note": "allowed_values + value_map per spec"
+  },
+  {
+   "id": "R09242d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541",
+   "note": "requirement required|conditional|optional|unsupported"
+  },
+  {
+   "id": "R09252",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1170; T32",
+   "note": "Canonical key color (color_name value, normalized_color)"
+  },
+  {
+   "id": "R09254",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541; T49",
+   "note": "Template marketplace_field + value_map applied by adapter"
+  },
+  {
+   "id": "R09256",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541; T49",
+   "note": "Template marketplace_field + value_map applied by adapter"
+  },
+  {
+   "id": "R09258",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1169; T32",
+   "note": "material is an input alias of canonical key fabric_type"
+  },
+  {
+   "id": "R09260",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541; T32; T49",
+   "note": "Adapter maps fabric_type via marketplace_field/value_map"
+  },
+  {
+   "id": "R09262",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541; T32; T49",
+   "note": "Adapter maps fabric_type via marketplace_field/value_map"
+  },
+  {
+   "id": "R09264",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1169",
+   "note": "Canonical key size (critical: seller-sourced, T34)"
+  },
+  {
+   "id": "R09266",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541; T49",
+   "note": "Size value_map in template, applied by adapter"
+  },
+  {
+   "id": "R09268",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541; T49",
+   "note": "Size value_map in template, applied by adapter"
+  },
+  {
+   "id": "R09274",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82; docs/architecture/DATABASE.md:541-542",
+   "note": "Invariant 4; value_map/marketplace_field adapter-only"
+  },
+  {
+   "id": "R09274a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:542",
+   "note": "for_generation() strips marketplace fields so AI emits canonical only"
+  },
+  {
+   "id": "R09274b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:541; T49",
+   "note": "Adapters apply value_map and marketplace_field"
+  },
+  {
+   "id": "R09274c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82; docs/architecture/DATABASE.md:541-542",
+   "note": "Invariant 4; value_map/marketplace_field adapter-only"
+  },
+  {
+   "id": "R09276",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:526",
+   "note": "Template required/conditional checks emit MISSING_ATTRIBUTE, source rules_engine"
+  },
+  {
+   "id": "R09276a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:526; docs/architecture/DATABASE.md:1369",
+   "note": "MISSING_ATTRIBUTE; retry class per T47"
+  },
+  {
+   "id": "R09276b",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1369",
+   "note": "CATEGORY_MISMATCH code + meta exist (DATABASE.md:1369); no rule or check detects it"
+  },
+  {
+   "id": "R09283",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1564; docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "Page in v1; two-stage checks via validate_images"
+  },
+  {
+   "id": "R09285",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540; docs/architecture/DATABASE.md:520",
+   "note": "validate_images + image_requirement rules per marketplace"
+  },
+  {
+   "id": "R09285a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:129; docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "Backend Pillow checks"
+  },
+  {
+   "id": "R09285b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "Vision call via app/services/vision.py; prompt is AI team"
+  },
+  {
+   "id": "R09290",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1347; docs/architecture/DATABASE.md:933",
+   "note": "Upload starts compliance checks; job kind image_compliance"
+  },
+  {
+   "id": "R09290a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "Pillow checks, then vision model"
+  },
+  {
+   "id": "R09294",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1347; ADR-0001",
+   "note": "Stored in GCS (S3-API StorageAdapter), then checks"
+  },
+  {
+   "id": "R09294a",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1347; ADR-0001",
+   "note": "Stored in GCS (S3-API StorageAdapter), then checks"
+  },
+  {
+   "id": "R09295",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1347; ADR-0001",
+   "note": "Stored in GCS (S3-API StorageAdapter), then checks"
+  },
+  {
+   "id": "R09296",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "Pillow checks, then vision model"
+  },
+  {
+   "id": "R09297",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:481; docs/architecture/DATABASE.md:484",
+   "note": "ImageReport per image (slot on row), keyed per marketplace (T63)"
+  },
+  {
+   "id": "R09297a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:481; docs/architecture/DATABASE.md:484; docs/drafts/CONTRACTS.md:415",
+   "note": "ImageReport{image_id, marketplace, slot, pass}; stored per marketplace (T63)"
+  },
+  {
+   "id": "R09298",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:484",
+   "note": "ImageReport pass + compliance_status rollup"
+  },
+  {
+   "id": "R09298a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:484; docs/architecture/DATABASE.md:1325",
+   "note": "passed|failed rollup; warnings as warning-severity issues, dismissable"
+  },
+  {
+   "id": "R09299",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2134; docs/architecture/DATABASE.md:1336",
+   "note": "Attach-only-on-pass unstated; images[] set at generation, failures open image_replacement task instead"
+  },
+  {
+   "id": "R09300",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1304",
+   "note": "listing_issues (source vision_model) with message + suggestion"
+  },
+  {
+   "id": "R09313",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:525",
+   "note": "Image seed rows match site thresholds"
+  },
+  {
+   "id": "R09317",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:525",
+   "note": "Image seed rows match site thresholds"
+  },
+  {
+   "id": "R09319",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/drafts/ARCHITECTURE.md:55; docs/architecture/DATABASE.md:525; docs/drafts/CONTRACTS.md:401",
+   "note": "No Pillow pixel background check planned; pre-Canon draft assigns background to vision only"
+  },
+  {
+   "id": "R09319a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/ARCHITECTURE.md:55",
+   "note": "Vision checks background"
+  },
+  {
+   "id": "R09321",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:525",
+   "note": "Image seed rows match site thresholds"
+  },
+  {
+   "id": "R09325",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:525",
+   "note": "Image seed rows match site thresholds"
+  },
+  {
+   "id": "R09325a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:525",
+   "note": "Image seed rows match site thresholds"
+  },
+  {
+   "id": "R09327",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/ARCHITECTURE.md:55; docs/canon/CANON.md:129",
+   "note": "Pillow resolution + EXIF checks (pre-Canon draft)"
+  },
+  {
+   "id": "R09329",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:525",
+   "note": "Image seed rows match site thresholds"
+  },
+  {
+   "id": "R09333",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:525",
+   "note": "Image seed rows match site thresholds"
+  },
+  {
+   "id": "R09335",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/ARCHITECTURE.md:55",
+   "note": "Vision checks fill ratio"
+  },
+  {
+   "id": "R09337",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:525",
+   "note": "Image seed rows match site thresholds"
+  },
+  {
+   "id": "R09341",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:525; T52",
+   "note": "Flipkart main text overlay: restricted = warning"
+  },
+  {
+   "id": "R09343",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/drafts/ARCHITECTURE.md:55",
+   "note": "Vision checks text overlays and watermarks"
+  },
+  {
+   "id": "R09345",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:525",
+   "note": "Image seed rows match site thresholds"
+  },
+  {
+   "id": "R09349",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:525",
+   "note": "Image seed rows match site thresholds"
+  },
+  {
+   "id": "R09351",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:520; docs/drafts/ARCHITECTURE.md:55",
+   "note": "logo check row exists; stage running it (vision) unstated"
+  },
+  {
+   "id": "R09353",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:525",
+   "note": "Image seed rows match site thresholds"
+  },
+  {
+   "id": "R09355",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:520",
+   "note": "image_requirement per slot; site gives no other-slot values"
+  },
+  {
+   "id": "R09357",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:525",
+   "note": "Image seed rows match site thresholds"
+  },
+  {
+   "id": "R09357a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:525",
+   "note": "Image seed rows match site thresholds"
+  },
+  {
+   "id": "R09359",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/ARCHITECTURE.md:55",
+   "note": "Pillow aspect ratio check"
+  },
+  {
+   "id": "R09366",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1538; docs/architecture/DATABASE.md:1033",
+   "note": "retrieve_brand stage + brand_chunks in v1; chunk granularity conflicts (R09379)"
+  },
+  {
+   "id": "R09368",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1062",
+   "note": "type tone_rule"
+  },
+  {
+   "id": "R09368a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1538; docs/canon/CANON.md:119",
+   "note": "retrieve_brand_chunks port; prompts are AI team"
+  },
+  {
+   "id": "R09368b",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1062",
+   "note": "No style chunk type or mapping to tone_rule stated"
+  },
+  {
+   "id": "R09368c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1062; docs/architecture/DATABASE.md:1064",
+   "note": "type glossary, derived from tenants.glossary"
+  },
+  {
+   "id": "R09368d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1062; docs/architecture/DATABASE.md:508",
+   "note": "type compliance; brand rule text also chunked"
+  },
+  {
+   "id": "R09379",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1035; docs/architecture/DATABASE.md:1062; T90",
+   "note": "Plan chunks ~200-word windows; site chunks voice guide per rule/tone clause (also L6381)"
+  },
+  {
+   "id": "R09383",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1035; docs/architecture/DATABASE.md:1062; T90",
+   "note": "Example is one tone clause per chunk; ours would sit inside a ~200-word window"
+  },
+  {
+   "id": "R09385",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1035; docs/architecture/DATABASE.md:1062; T90",
+   "note": "Plan chunks ~200-word windows; site chunks style preferences per guideline"
+  },
+  {
+   "id": "R09389",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1035; docs/architecture/DATABASE.md:1062; T90",
+   "note": "Example is one guideline per chunk; ours a ~200-word window; no style type (R09368b)"
+  },
+  {
+   "id": "R09391",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1035; docs/architecture/DATABASE.md:1062; T90; T38",
+   "note": "DATABASE.md:1062 sets ~200-word text for all types; site chunks glossary per term (L6387 per term pair)"
+  },
+  {
+   "id": "R09395",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:222; T38",
+   "note": "glossary map {\"kurta outfit\": \"kurta set\"}"
+  },
+  {
+   "id": "R09397",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1064; docs/architecture/DATABASE.md:1076; G13",
+   "note": "example type + listing_version source exist; approve->brand_embed trigger and per-field chunking unplanned (G13)"
+  },
+  {
+   "id": "R09401",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/review/VISION-ALIGNMENT.md:184; G13; T14",
+   "note": "No high-performer selection or weight for example chunks; performance data Phase 2 by T14 default"
+  },
+  {
+   "id": "R09403",
+   "status": "conflict",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1035; docs/architecture/DATABASE.md:1062; T90",
+   "note": "Plan chunks ~200-word windows; site chunks compliance preferences per rule (also L6393)"
+  },
+  {
+   "id": "R09407",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:519; docs/architecture/DATABASE.md:1062",
+   "note": "claim_requires_attribute organic->certifications; compliance chunk"
+  },
+  {
+   "id": "R09409",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:713; docs/architecture/BACKEND-ARCHITECTURE.md:1538",
+   "note": "retrieve_brand_chunks called inside the pipeline run"
+  },
+  {
+   "id": "R09413",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "GenerationContext.product"
+  },
+  {
+   "id": "R09413a",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:119; T58",
+   "note": "tenant_id, not brand_id"
+  },
+  {
+   "id": "R09413b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "GenerationContext.marketplace"
+  },
+  {
+   "id": "R09414",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1538",
+   "note": "Backend embeds the query with text-embedding-3-small"
+  },
+  {
+   "id": "R09415",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1063; docs/architecture/DATABASE.md:1073; T66",
+   "note": "Cosine (<=>); exact scan in year 1, HNSW above ~20k chunks"
+  },
+  {
+   "id": "R09415a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/CANON.md:119",
+   "note": "k: int = 8"
+  },
+  {
+   "id": "R09415b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1063; docs/architecture/DATABASE.md:1073; T66",
+   "note": "Cosine (<=>); exact scan in year 1, HNSW above ~20k chunks"
+  },
+  {
+   "id": "R09416",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt injection and generation are AI team; chunks via port"
+  },
+  {
+   "id": "R09417",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prompt injection and generation are AI team; chunks via port"
+  },
+  {
+   "id": "R09418",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1538; docs/architecture/BACKEND-ARCHITECTURE.md:1564",
+   "note": "Port embeds + searches; stages retrieve_brand then agents"
+  },
+  {
+   "id": "R09421",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:93; docs/architecture/BACKEND-ARCHITECTURE.md:260",
+   "note": "EMBEDDING_MODEL=text-embedding-3-small"
+  },
+  {
+   "id": "R09421a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/canon/ENV.md:93; docs/architecture/DATABASE.md:1063",
+   "note": "Env var + per-row embedding_model"
+  },
+  {
+   "id": "R09421b",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:1063",
+   "note": "Queries filter on embedding_model; a non-1536-dim model needs a migration"
+  },
+  {
+   "id": "R09428",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09430",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09430a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09430b",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09435",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09435a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09435b",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09435c",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09435d",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09435f",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09435g",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09435h",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09441",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09441a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09441b",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09441c",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09441d",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09443",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09443a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09443b",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09443c",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09443d",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent is Phase 3 (site L9428; AGENTS.md §4)"
+  },
+  {
+   "id": "R09450",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent registry page is FUTURE (site L9450)"
+  },
+  {
+   "id": "R09452",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent registry page is FUTURE (site L9450)"
+  },
+  {
+   "id": "R09457",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent registry page is FUTURE (site L9450)"
+  },
+  {
+   "id": "R09457a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent registry page is FUTURE (site L9450)"
+  },
+  {
+   "id": "R09460",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent registry page is FUTURE (site L9450)"
+  },
+  {
+   "id": "R09462",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent registry page is FUTURE (site L9450)"
+  },
+  {
+   "id": "R09463",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent registry page is FUTURE (site L9450)"
+  },
+  {
+   "id": "R09464",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent registry page is FUTURE (site L9450)"
+  },
+  {
+   "id": "R09466",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent registry page is FUTURE (site L9450)"
+  },
+  {
+   "id": "R09469",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent registry page is FUTURE (site L9450)"
+  },
+  {
+   "id": "R09472",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent registry page is FUTURE (site L9450)"
+  },
+  {
+   "id": "R09476",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent registry page is FUTURE (site L9450)"
+  },
+  {
+   "id": "R09476a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent registry page is FUTURE (site L9450)"
+  },
+  {
+   "id": "R09476b",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent registry page is FUTURE (site L9450)"
+  },
+  {
+   "id": "R09476c",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent registry page is FUTURE (site L9450)"
+  },
+  {
+   "id": "R09476d",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Agent registry page is FUTURE (site L9450)"
+  },
+  {
+   "id": "R09483",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1564; docs/review/SPEC-TRACEABILITY.md:146",
+   "note": "Page in v1; agents AI team, seam + Rules Engine ours; SEO score open"
+  },
+  {
+   "id": "R09500",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "ctx.product pushed"
+  },
+  {
+   "id": "R09502",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118; docs/canon/CANON.md:119",
+   "note": "brand_profile in ctx + retrieve_brand_chunks"
+  },
+  {
+   "id": "R09502a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "marketplace_rules RuleSet in ctx"
+  },
+  {
+   "id": "R09504",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131",
+   "note": "content.{title, bullets, description}"
+  },
+  {
+   "id": "R09504a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131",
+   "note": "content.{title, bullets, description}"
+  },
+  {
+   "id": "R09504b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131",
+   "note": "content.{title, bullets, description}"
+  },
+  {
+   "id": "R09506",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Descriptive; agent_runs records tokens per call"
+  },
+  {
+   "id": "R09508",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1564",
+   "note": "Agent is a v1 pipeline stage"
+  },
+  {
+   "id": "R09510",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "ctx.category"
+  },
+  {
+   "id": "R09512",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Competitive signals Phase 3 (site [203] L13314; AGENTS.md §4); [34] L9594 omits it"
+  },
+  {
+   "id": "R09514",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2132",
+   "note": "keywords.search_terms"
+  },
+  {
+   "id": "R09514a",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2132; T26",
+   "note": "keywords.hidden_terms"
+  },
+  {
+   "id": "R09516",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "T91",
+   "note": "SEO score undefined on site and in our plan (ST:445)"
+  },
+  {
+   "id": "R09518",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1564",
+   "note": "Agent is a v1 pipeline stage"
+  },
+  {
+   "id": "R09520",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "ctx.product"
+  },
+  {
+   "id": "R09522",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118; docs/architecture/DATABASE.md:542",
+   "note": "ctx.category_template via for_generation()"
+  },
+  {
+   "id": "R09524",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2133",
+   "note": "attributes map, primitive values"
+  },
+  {
+   "id": "R09526",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:526",
+   "note": "Template checks: MISSING_ATTRIBUTE, VALUE_NOT_ALLOWED"
+  },
+  {
+   "id": "R09528",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1564",
+   "note": "Agent is a v1 pipeline stage"
+  },
+  {
+   "id": "R09530",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540; docs/architecture/DATABASE.md:2134",
+   "note": "validate_images(listing) over ImageRefs"
+  },
+  {
+   "id": "R09534",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:484; docs/drafts/CONTRACTS.md:415",
+   "note": "ImageReport per image, keyed per marketplace"
+  },
+  {
+   "id": "R09536",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "Pillow checks then vision model"
+  },
+  {
+   "id": "R09536a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "Pillow checks then vision model"
+  },
+  {
+   "id": "R09538",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1564",
+   "note": "Agent is a v1 pipeline stage"
+  },
+  {
+   "id": "R09540",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent Phase 3 (site L9548)"
+  },
+  {
+   "id": "R09544",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent Phase 3 (site L9548)"
+  },
+  {
+   "id": "R09546",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent Phase 3 (site L9548)"
+  },
+  {
+   "id": "R09546a",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent Phase 3 (site L9548)"
+  },
+  {
+   "id": "R09548",
+   "status": "later-phase",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Optimization Agent Phase 3 (site L9548)"
+  },
+  {
+   "id": "R09550",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1539",
+   "note": "validate_rules(listing: CanonicalListing)"
+  },
+  {
+   "id": "R09554",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1539; docs/architecture/BACKEND-ARCHITECTURE.md:1338",
+   "note": "ErrorReport with passed flag"
+  },
+  {
+   "id": "R09556",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:80; docs/canon/CANON.md:126",
+   "note": "rules_engine.py hard-banned from openai"
+  },
+  {
+   "id": "R09558",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:227",
+   "note": "Rules Engine built in S14"
+  },
+  {
+   "id": "R09562",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:80",
+   "note": "Invariant 2"
+  },
+  {
+   "id": "R09562a",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:823",
+   "note": "Approve/publish need a passed rules_engine run for current version (G9)"
+  },
+  {
+   "id": "R09569",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1564; docs/review/SPEC-TRACEABILITY.md:147",
+   "note": "Page in v1; agent split matches"
+  },
+  {
+   "id": "R09594",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118; docs/architecture/DATABASE.md:1193",
+   "note": "ctx.product facts incl. attributes"
+  },
+  {
+   "id": "R09612",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:484",
+   "note": "ImageReport per image"
+  },
+  {
+   "id": "R09633",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2124; T61",
+   "note": "Nested [35] shape adopted (T61 open); hidden_terms T26"
+  },
+  {
+   "id": "R09635",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:82; docs/architecture/DATABASE.md:778",
+   "note": "No marketplace fields/structures in CanonicalListing"
+  },
+  {
+   "id": "R09635a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:3094; docs/drafts/CONTRACTS.md:258",
+   "note": "CanonicalListing is the AI-to-adapter contract"
+  },
+  {
+   "id": "R09644",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2128",
+   "note": "listing_id, version, created_at as [35] (UUID ids)"
+  },
+  {
+   "id": "R09645",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2129",
+   "note": "product_id, marketplace present"
+  },
+  {
+   "id": "R09646",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2129",
+   "note": "product_id, marketplace present"
+  },
+  {
+   "id": "R09647",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2128; docs/architecture/DATABASE.md:544",
+   "note": "category internal slug; ethnic_wear_kurta_sets seeded"
+  },
+  {
+   "id": "R09648",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2130; T61",
+   "note": "ListingStatus default created; generated is not one of the 9"
+  },
+  {
+   "id": "R09649",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131; docs/drafts/CONTRACTS.md:212",
+   "note": "content.{title str, bullets list[str], description str}"
+  },
+  {
+   "id": "R09650",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131; docs/drafts/CONTRACTS.md:212",
+   "note": "content.{title str, bullets list[str], description str}"
+  },
+  {
+   "id": "R09651",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131; docs/drafts/CONTRACTS.md:212",
+   "note": "content.{title str, bullets list[str], description str}"
+  },
+  {
+   "id": "R09654",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131; docs/drafts/CONTRACTS.md:212",
+   "note": "content.{title str, bullets list[str], description str}"
+  },
+  {
+   "id": "R09656",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2132",
+   "note": "keywords.search_terms list[str]"
+  },
+  {
+   "id": "R09657",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2132",
+   "note": "keywords.search_terms list[str]"
+  },
+  {
+   "id": "R09660",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2132; T26",
+   "note": "keywords.hidden_terms"
+  },
+  {
+   "id": "R09664",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2133; docs/architecture/DATABASE.md:1169-1170",
+   "note": "attributes map; keys color, size in dictionary"
+  },
+  {
+   "id": "R09665",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2133; docs/architecture/DATABASE.md:1169-1170",
+   "note": "attributes map; keys color, size in dictionary"
+  },
+  {
+   "id": "R09666",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:1169; T32",
+   "note": "material aliases fabric_type"
+  },
+  {
+   "id": "R09667",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2133; docs/architecture/DATABASE.md:1169-1170",
+   "note": "attributes map; keys color, size in dictionary"
+  },
+  {
+   "id": "R09669",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2135; T61",
+   "note": "image_reports in listing_versions.image_reports_json, not in listing"
+  },
+  {
+   "id": "R09670",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2136",
+   "note": "confidence_score float 0..1 or null"
+  },
+  {
+   "id": "R09671",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2128",
+   "note": "listing_id, version, created_at as [35] (UUID ids)"
+  },
+  {
+   "id": "R09672",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2128",
+   "note": "listing_id, version, created_at as [35] (UUID ids)"
+  },
+  {
+   "id": "R09678a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:82; docs/architecture/DATABASE.md:778",
+   "note": "No marketplace fields/structures in CanonicalListing"
+  },
+  {
+   "id": "R09678b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:82; docs/architecture/DATABASE.md:778",
+   "note": "No marketplace fields/structures in CanonicalListing"
+  },
+  {
+   "id": "R09678c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:82; docs/architecture/DATABASE.md:778",
+   "note": "No marketplace fields/structures in CanonicalListing"
+  },
+  {
+   "id": "R09678d",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "AGENTS.md:82; docs/architecture/DATABASE.md:541",
+   "note": "Adapters map via template specs"
+  },
+  {
+   "id": "R09678e",
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2097; docs/review/TEAM-QUESTIONS.md:40; T22",
+   "note": "Canonical model unchanged; new marketplace also needs enum MINOR + CHECK alters"
+  },
+  {
+   "id": "R09682",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "AGENTS.md:82",
+   "note": "Invariant 4"
+  },
+  {
+   "id": "R09682a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:3094; docs/drafts/CONTRACTS.md:258",
+   "note": "CanonicalListing is the AI-to-adapter contract"
+  },
+  {
+   "id": "R09689",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1564; docs/drafts/BUILD-SEQUENCE.md:235",
+   "note": "Page in v1; required-element and banned-term seeds are gaps"
+  },
+  {
+   "id": "R09691",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "RuleSet (caps) pushed in ctx; correction loop fixes"
+  },
+  {
+   "id": "R09691a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118; docs/canon/CANON.md:119",
+   "note": "brand_profile + brand chunks provided"
+  },
+  {
+   "id": "R09691b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "SEO optimisation is prompt work"
+  },
+  {
+   "id": "R09691c",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:118",
+   "note": "RuleSet (caps) pushed in ctx; correction loop fixes"
+  },
+  {
+   "id": "R09702",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/drafts/BUILD-SEQUENCE.md:235; docs/architecture/BACKEND-ARCHITECTURE.md:1385",
+   "note": "Seed Amazon content.title max_length 200"
+  },
+  {
+   "id": "R09706",
+   "status": "needs-client",
+   "owner": "client",
+   "ref": "Q7; docs/drafts/BUILD-SEQUENCE.md:235; T92",
+   "note": "Plan seeds Flipkart 150 (site L6190); per-category caps wait on launch categories"
+  },
+  {
+   "id": "R09708",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:518",
+   "note": "No rule requiring brand/product type in title; cross_field contains_value_of unseeded"
+  },
+  {
+   "id": "R09710",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:518",
+   "note": "No rule requiring brand/product type in title; cross_field contains_value_of unseeded"
+  },
+  {
+   "id": "R09710a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Key differentiator not deterministically checkable; prompt work"
+  },
+  {
+   "id": "R09712",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:518",
+   "note": "No rule requiring brand/product type in title; cross_field contains_value_of unseeded"
+  },
+  {
+   "id": "R09712a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:518",
+   "note": "No rule requiring brand/product type in title; cross_field contains_value_of unseeded"
+  },
+  {
+   "id": "R09714",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:514; docs/drafts/BUILD-SEQUENCE.md:235",
+   "note": "banned_terms type exists; seed list unspecified (scaffold lacks best/guaranteed; no Flipkart list)"
+  },
+  {
+   "id": "R09716",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:514; docs/drafts/BUILD-SEQUENCE.md:235",
+   "note": "banned_terms type exists; seed list unspecified (scaffold lacks best/guaranteed; no Flipkart list)"
+  },
+  {
+   "id": "R09716a",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:514; docs/drafts/BUILD-SEQUENCE.md:235",
+   "note": "banned_terms type exists; seed list unspecified (scaffold lacks best/guaranteed; no Flipkart list)"
+  },
+  {
+   "id": "R09718",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:514; docs/drafts/BUILD-SEQUENCE.md:235",
+   "note": "banned_terms type exists; seed list unspecified (scaffold lacks best/guaranteed; no Flipkart list)"
+  },
+  {
+   "id": "R09718a",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:495; T48",
+   "note": "Competitor names only via brand-defined banned_terms tenant rules"
+  },
+  {
+   "id": "R09720",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Title pattern and SEO are prompt work (ST:443)"
+  },
+  {
+   "id": "R09724",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Title pattern and SEO are prompt work (ST:443)"
+  },
+  {
+   "id": "R09726",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Title pattern and SEO are prompt work (ST:443)"
+  },
+  {
+   "id": "R09726a",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:514; docs/drafts/BUILD-SEQUENCE.md:235",
+   "note": "max_length title rules + correction loop"
+  },
+  {
+   "id": "R09726b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:514",
+   "note": "banned_terms rules enforced by Rules Engine"
+  },
+  {
+   "id": "R09726c",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:496; docs/architecture/BACKEND-ARCHITECTURE.md:1539",
+   "note": "Rules per marketplace/category validated on every version"
+  },
+  {
+   "id": "R09733",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1564; docs/review/SPEC-TRACEABILITY.md:150",
+   "note": "Page in v1; style is prompt work"
+  },
+  {
+   "id": "R09735",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:119",
+   "note": "Brand chunks via retrieve_brand_chunks"
+  },
+  {
+   "id": "R09735a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Bullet style is prompt work"
+  },
+  {
+   "id": "R09735b",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Bullet style is prompt work"
+  },
+  {
+   "id": "R09740",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:515",
+   "note": "min_items e.g. Amazon bullets min 5, warning"
+  },
+  {
+   "id": "R09740a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Bullet style is prompt work"
+  },
+  {
+   "id": "R09740b",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/canon/CANON.md:119",
+   "note": "Brand chunks via retrieve_brand_chunks"
+  },
+  {
+   "id": "R09740c",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Bullet style is prompt work"
+  },
+  {
+   "id": "R09740d",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Bullet style is prompt work"
+  },
+  {
+   "id": "R09742",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:497; docs/architecture/DATABASE.md:514",
+   "note": "max_length on content.bullets[*] exists; per-marketplace caps are rules-pack data, unlisted"
+  },
+  {
+   "id": "R09743",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Bullet style is prompt work"
+  },
+  {
+   "id": "R09744",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Bullet style is prompt work"
+  },
+  {
+   "id": "R09745",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:514; docs/architecture/DATABASE.md:519",
+   "note": "banned_terms + claim_requires_attribute (UNSUPPORTED_CLAIM)"
+  },
+  {
+   "id": "R09745a",
+   "status": "covered-changed",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:495; T48",
+   "note": "Competitor names only via brand-defined banned_terms tenant rules"
+  },
+  {
+   "id": "R09746",
+   "status": "covered",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:519; docs/architecture/DATABASE.md:523",
+   "note": "claim_requires_attribute + fact_backed_attribute (FACT_MISMATCH); free-text grounding is prompt work"
+  },
+  {
+   "id": "R09753",
+   "status": "covered",
+   "owner": "shared",
+   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1564; docs/review/SPEC-TRACEABILITY.md:151",
+   "note": "content_agent stage in v1; no description markup contract (R09755)"
+  },
+  {
+   "id": "R09755",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131",
+   "note": "description is plain str; no HTML subset, sanitising or rendering contract"
+  },
+  {
+   "id": "R09755a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prose and storytelling are AI team"
+  },
+  {
+   "id": "R09755b",
+   "status": "gap",
+   "owner": "shared",
+   "ref": "docs/architecture/DATABASE.md:2131",
+   "note": "description is plain str; no HTML subset, sanitising or rendering contract"
+  },
+  {
+   "id": "R09760",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prose and storytelling are AI team"
+  },
+  {
+   "id": "R09760a",
+   "status": "other-team",
+   "owner": "ai-team",
+   "ref": "",
+   "note": "Prose and storytelling are AI team"
+  },
+  {
+   "id": "R09760b",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "docs/architecture/DATABASE.md:2131",
+   "note": "No per-marketplace description rendering in adapters specified"
+  },
+  {
+   "id": "R09760c",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Amazon basic-HTML description rendering/sanitising unplanned"
+  },
+  {
+   "id": "R09760d",
+   "status": "gap",
+   "owner": "backend-db",
+   "ref": "",
+   "note": "Flipkart description constraints unnamed; verify in adapter step"
+  }
+ ]
+}

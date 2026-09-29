@@ -1,0 +1,5979 @@
+{
+ "chunk": "c21",
+ "start": 12510,
+ "end": 13080,
+ "items": [
+  {
+   "id": "R12510",
+   "lines": [
+    12510,
+    12510
+   ],
+   "page": "[159] Marketplace OAuth",
+   "kind": "info",
+   "text": "Marketplace OAuth",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12512",
+   "lines": [
+    12512,
+    12512
+   ],
+   "page": "[159] Marketplace OAuth",
+   "kind": "decision",
+   "text": "Each marketplace uses OAuth 2.0."
+  },
+  {
+   "id": "R12512a",
+   "lines": [
+    12512,
+    12512
+   ],
+   "page": "[159] Marketplace OAuth",
+   "kind": "decision",
+   "text": "Amazon uses LWA (Login with Amazon)."
+  },
+  {
+   "id": "R12512b",
+   "lines": [
+    12512,
+    12512
+   ],
+   "page": "[159] Marketplace OAuth",
+   "kind": "decision",
+   "text": "Flipkart uses its seller API OAuth."
+  },
+  {
+   "id": "R12512c",
+   "lines": [
+    12512,
+    12512
+   ],
+   "page": "[159] Marketplace OAuth",
+   "kind": "flow",
+   "text": "The adapter handles the OAuth consent flow."
+  },
+  {
+   "id": "R12512d",
+   "lines": [
+    12512,
+    12512
+   ],
+   "page": "[159] Marketplace OAuth",
+   "kind": "flow",
+   "text": "The adapter handles the OAuth code exchange."
+  },
+  {
+   "id": "R12512e",
+   "lines": [
+    12512,
+    12512
+   ],
+   "page": "[159] Marketplace OAuth",
+   "kind": "quality",
+   "text": "The adapter handles token storage (encrypted)."
+  },
+  {
+   "id": "R12512f",
+   "lines": [
+    12512,
+    12512
+   ],
+   "page": "[159] Marketplace OAuth",
+   "kind": "requirement",
+   "text": "The adapter handles automatic token refresh."
+  },
+  {
+   "id": "R12514",
+   "lines": [
+    12514,
+    12514
+   ],
+   "page": "[159] Marketplace OAuth",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12516",
+   "lines": [
+    12516,
+    12516
+   ],
+   "page": "[160] Token Encryption",
+   "kind": "info",
+   "text": "Page title [160] Token Encryption",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12518",
+   "lines": [
+    12518,
+    12518
+   ],
+   "page": "[160] Token Encryption",
+   "kind": "info",
+   "text": "Section: Security",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12519",
+   "lines": [
+    12519,
+    12519
+   ],
+   "page": "[160] Token Encryption",
+   "kind": "scope",
+   "text": "Page [160] Token Encryption scope: MVP."
+  },
+  {
+   "id": "R12520",
+   "lines": [
+    12520,
+    12520
+   ],
+   "page": "[160] Token Encryption",
+   "kind": "info",
+   "text": "Page URL .../page/token-encryption",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12521",
+   "lines": [
+    12521,
+    12521
+   ],
+   "page": "[160] Token Encryption",
+   "kind": "quality",
+   "text": "AES-256 encryption for marketplace credentials at rest."
+  },
+  {
+   "id": "R12522",
+   "lines": [
+    12522,
+    12522
+   ],
+   "page": "[160] Token Encryption",
+   "kind": "info",
+   "text": "Keywords: token encryption, AES-256, encrypted, credentials",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12524",
+   "lines": [
+    12524,
+    12524
+   ],
+   "page": "[160] Token Encryption",
+   "kind": "info",
+   "text": "Token Encryption",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12526",
+   "lines": [
+    12526,
+    12526
+   ],
+   "page": "[160] Token Encryption",
+   "kind": "quality",
+   "text": "Marketplace OAuth tokens are encrypted with AES-256 before storage."
+  },
+  {
+   "id": "R12526a",
+   "lines": [
+    12526,
+    12526
+   ],
+   "page": "[160] Token Encryption",
+   "kind": "decision",
+   "text": "Encryption keys are stored in AWS Secrets Manager."
+  },
+  {
+   "id": "R12526b",
+   "lines": [
+    12526,
+    12526
+   ],
+   "page": "[160] Token Encryption",
+   "kind": "quality",
+   "text": "Encryption keys are never stored in application code."
+  },
+  {
+   "id": "R12526c",
+   "lines": [
+    12526,
+    12526
+   ],
+   "page": "[160] Token Encryption",
+   "kind": "quality",
+   "text": "Encryption keys are never stored in environment variables."
+  },
+  {
+   "id": "R12526d",
+   "lines": [
+    12526,
+    12526
+   ],
+   "page": "[160] Token Encryption",
+   "kind": "quality",
+   "text": "Decryption happens in-memory only."
+  },
+  {
+   "id": "R12526e",
+   "lines": [
+    12526,
+    12526
+   ],
+   "page": "[160] Token Encryption",
+   "kind": "requirement",
+   "text": "Decryption happens only when the adapter needs to make an API call."
+  },
+  {
+   "id": "R12528",
+   "lines": [
+    12528,
+    12528
+   ],
+   "page": "[160] Token Encryption",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12530",
+   "lines": [
+    12530,
+    12530
+   ],
+   "page": "[161] Secrets Management",
+   "kind": "info",
+   "text": "Page title [161] Secrets Management",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12532",
+   "lines": [
+    12532,
+    12532
+   ],
+   "page": "[161] Secrets Management",
+   "kind": "info",
+   "text": "Section: Security",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12533",
+   "lines": [
+    12533,
+    12533
+   ],
+   "page": "[161] Secrets Management",
+   "kind": "scope",
+   "text": "Page [161] Secrets Management scope: MVP."
+  },
+  {
+   "id": "R12534",
+   "lines": [
+    12534,
+    12534
+   ],
+   "page": "[161] Secrets Management",
+   "kind": "info",
+   "text": "Page URL .../page/secrets-management",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12535",
+   "lines": [
+    12535,
+    12535
+   ],
+   "page": "[161] Secrets Management",
+   "kind": "decision",
+   "text": "AWS Secrets Manager is used for encryption keys."
+  },
+  {
+   "id": "R12535a",
+   "lines": [
+    12535,
+    12535
+   ],
+   "page": "[161] Secrets Management",
+   "kind": "decision",
+   "text": "AWS Secrets Manager is used for sensitive configuration."
+  },
+  {
+   "id": "R12536",
+   "lines": [
+    12536,
+    12536
+   ],
+   "page": "[161] Secrets Management",
+   "kind": "info",
+   "text": "Keywords: secrets, management, AWS Secrets Manager, keys",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12538",
+   "lines": [
+    12538,
+    12538
+   ],
+   "page": "[161] Secrets Management",
+   "kind": "info",
+   "text": "Secrets Management",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12540",
+   "lines": [
+    12540,
+    12540
+   ],
+   "page": "[161] Secrets Management",
+   "kind": "decision",
+   "text": "AWS Secrets Manager stores database credentials."
+  },
+  {
+   "id": "R12540a",
+   "lines": [
+    12540,
+    12540
+   ],
+   "page": "[161] Secrets Management",
+   "kind": "info",
+   "text": "AWS Secrets Manager stores encryption keys.",
+   "why_not": "restatement",
+   "dup_of": "R12535"
+  },
+  {
+   "id": "R12540b",
+   "lines": [
+    12540,
+    12540
+   ],
+   "page": "[161] Secrets Management",
+   "kind": "decision",
+   "text": "AWS Secrets Manager stores API keys."
+  },
+  {
+   "id": "R12540c",
+   "lines": [
+    12540,
+    12540
+   ],
+   "page": "[161] Secrets Management",
+   "kind": "info",
+   "text": "AWS Secrets Manager stores other sensitive configuration.",
+   "why_not": "restatement",
+   "dup_of": "R12535a"
+  },
+  {
+   "id": "R12540d",
+   "lines": [
+    12540,
+    12540
+   ],
+   "page": "[161] Secrets Management",
+   "kind": "requirement",
+   "text": "Secrets are fetched at application startup."
+  },
+  {
+   "id": "R12540e",
+   "lines": [
+    12540,
+    12540
+   ],
+   "page": "[161] Secrets Management",
+   "kind": "requirement",
+   "text": "Secrets are cached in memory."
+  },
+  {
+   "id": "R12540f",
+   "lines": [
+    12540,
+    12540
+   ],
+   "page": "[161] Secrets Management",
+   "kind": "quality",
+   "text": "Secret rotation is supported without deployment."
+  },
+  {
+   "id": "R12542",
+   "lines": [
+    12542,
+    12542
+   ],
+   "page": "[161] Secrets Management",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12544",
+   "lines": [
+    12544,
+    12544
+   ],
+   "page": "[162] Data Encryption",
+   "kind": "info",
+   "text": "Page title [162] Data Encryption",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12546",
+   "lines": [
+    12546,
+    12546
+   ],
+   "page": "[162] Data Encryption",
+   "kind": "info",
+   "text": "Section: Security",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12547",
+   "lines": [
+    12547,
+    12547
+   ],
+   "page": "[162] Data Encryption",
+   "kind": "scope",
+   "text": "Page [162] Data Encryption scope: MVP."
+  },
+  {
+   "id": "R12548",
+   "lines": [
+    12548,
+    12548
+   ],
+   "page": "[162] Data Encryption",
+   "kind": "info",
+   "text": "Page URL .../page/data-encryption",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12549",
+   "lines": [
+    12549,
+    12549
+   ],
+   "page": "[162] Data Encryption",
+   "kind": "quality",
+   "text": "Encryption at rest for all data."
+  },
+  {
+   "id": "R12549a",
+   "lines": [
+    12549,
+    12549
+   ],
+   "page": "[162] Data Encryption",
+   "kind": "quality",
+   "text": "Encryption in transit for all data."
+  },
+  {
+   "id": "R12550",
+   "lines": [
+    12550,
+    12550
+   ],
+   "page": "[162] Data Encryption",
+   "kind": "info",
+   "text": "Keywords: data encryption, at rest, in transit, TLS",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12552",
+   "lines": [
+    12552,
+    12552
+   ],
+   "page": "[162] Data Encryption",
+   "kind": "info",
+   "text": "Data Encryption",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12554",
+   "lines": [
+    12554,
+    12554
+   ],
+   "page": "[162] Data Encryption",
+   "kind": "quality",
+   "text": "In transit: TLS everywhere."
+  },
+  {
+   "id": "R12554a",
+   "lines": [
+    12554,
+    12554
+   ],
+   "page": "[162] Data Encryption",
+   "kind": "quality",
+   "text": "TLS for all API calls."
+  },
+  {
+   "id": "R12554b",
+   "lines": [
+    12554,
+    12554
+   ],
+   "page": "[162] Data Encryption",
+   "kind": "quality",
+   "text": "TLS for database connections."
+  },
+  {
+   "id": "R12554c",
+   "lines": [
+    12554,
+    12554
+   ],
+   "page": "[162] Data Encryption",
+   "kind": "quality",
+   "text": "TLS for S3 access."
+  },
+  {
+   "id": "R12555",
+   "lines": [
+    12555,
+    12555
+   ],
+   "page": "[162] Data Encryption",
+   "kind": "quality",
+   "text": "At rest: RDS encryption enabled."
+  },
+  {
+   "id": "R12555a",
+   "lines": [
+    12555,
+    12555
+   ],
+   "page": "[162] Data Encryption",
+   "kind": "quality",
+   "text": "At rest: S3 server-side encryption."
+  },
+  {
+   "id": "R12555b",
+   "lines": [
+    12555,
+    12555
+   ],
+   "page": "[162] Data Encryption",
+   "kind": "info",
+   "text": "At rest: marketplace tokens AES-256 encrypted.",
+   "why_not": "restatement",
+   "dup_of": "R12526"
+  },
+  {
+   "id": "R12557",
+   "lines": [
+    12557,
+    12557
+   ],
+   "page": "[162] Data Encryption",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12559",
+   "lines": [
+    12559,
+    12559
+   ],
+   "page": "[163] API Security",
+   "kind": "info",
+   "text": "Page title [163] API Security",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12561",
+   "lines": [
+    12561,
+    12561
+   ],
+   "page": "[163] API Security",
+   "kind": "info",
+   "text": "Section: Security",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12562",
+   "lines": [
+    12562,
+    12562
+   ],
+   "page": "[163] API Security",
+   "kind": "scope",
+   "text": "Page [163] API Security scope: MVP."
+  },
+  {
+   "id": "R12563",
+   "lines": [
+    12563,
+    12563
+   ],
+   "page": "[163] API Security",
+   "kind": "info",
+   "text": "Page URL .../page/api-security",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12564",
+   "lines": [
+    12564,
+    12564
+   ],
+   "page": "[163] API Security",
+   "kind": "quality",
+   "text": "API security practice: rate limiting."
+  },
+  {
+   "id": "R12564a",
+   "lines": [
+    12564,
+    12564
+   ],
+   "page": "[163] API Security",
+   "kind": "quality",
+   "text": "API security practice: input validation."
+  },
+  {
+   "id": "R12564b",
+   "lines": [
+    12564,
+    12564
+   ],
+   "page": "[163] API Security",
+   "kind": "quality",
+   "text": "API security practice: CORS."
+  },
+  {
+   "id": "R12565",
+   "lines": [
+    12565,
+    12565
+   ],
+   "page": "[163] API Security",
+   "kind": "info",
+   "text": "Keywords: API security, rate limiting, CORS, input validation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12567",
+   "lines": [
+    12567,
+    12567
+   ],
+   "page": "[163] API Security",
+   "kind": "info",
+   "text": "API Security",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12569",
+   "lines": [
+    12569,
+    12569
+   ],
+   "page": "[163] API Security",
+   "kind": "quality",
+   "text": "Rate limiting per tenant."
+  },
+  {
+   "id": "R12569a",
+   "lines": [
+    12569,
+    12569
+   ],
+   "page": "[163] API Security",
+   "kind": "quality",
+   "text": "Rate limiting per IP."
+  },
+  {
+   "id": "R12570",
+   "lines": [
+    12570,
+    12570
+   ],
+   "page": "[163] API Security",
+   "kind": "quality",
+   "text": "Input validation on all endpoints."
+  },
+  {
+   "id": "R12570a",
+   "lines": [
+    12570,
+    12570
+   ],
+   "page": "[163] API Security",
+   "kind": "decision",
+   "text": "Input validation uses Pydantic schemas."
+  },
+  {
+   "id": "R12571",
+   "lines": [
+    12571,
+    12571
+   ],
+   "page": "[163] API Security",
+   "kind": "quality",
+   "text": "CORS configured for allowed origins only."
+  },
+  {
+   "id": "R12572",
+   "lines": [
+    12572,
+    12572
+   ],
+   "page": "[163] API Security",
+   "kind": "quality",
+   "text": "Request size limits to prevent abuse."
+  },
+  {
+   "id": "R12573",
+   "lines": [
+    12573,
+    12573
+   ],
+   "page": "[163] API Security",
+   "kind": "quality",
+   "text": "SQL injection prevention via parameterized queries."
+  },
+  {
+   "id": "R12575",
+   "lines": [
+    12575,
+    12575
+   ],
+   "page": "[163] API Security",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12577",
+   "lines": [
+    12577,
+    12577
+   ],
+   "page": "[164] Auditability",
+   "kind": "info",
+   "text": "Page title [164] Auditability",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12579",
+   "lines": [
+    12579,
+    12579
+   ],
+   "page": "[164] Auditability",
+   "kind": "info",
+   "text": "Section: Security",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12580",
+   "lines": [
+    12580,
+    12580
+   ],
+   "page": "[164] Auditability",
+   "kind": "scope",
+   "text": "Page [164] Auditability scope: MVP."
+  },
+  {
+   "id": "R12581",
+   "lines": [
+    12581,
+    12581
+   ],
+   "page": "[164] Auditability",
+   "kind": "info",
+   "text": "Page URL .../page/auditability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12582",
+   "lines": [
+    12582,
+    12582
+   ],
+   "page": "[164] Auditability",
+   "kind": "quality",
+   "text": "Full audit trail on every action."
+  },
+  {
+   "id": "R12582a",
+   "lines": [
+    12582,
+    12582
+   ],
+   "page": "[164] Auditability",
+   "kind": "quality",
+   "text": "Full audit trail on every action is for compliance."
+  },
+  {
+   "id": "R12582b",
+   "lines": [
+    12582,
+    12582
+   ],
+   "page": "[164] Auditability",
+   "kind": "quality",
+   "text": "Full audit trail on every action is for governance."
+  },
+  {
+   "id": "R12583",
+   "lines": [
+    12583,
+    12583
+   ],
+   "page": "[164] Auditability",
+   "kind": "info",
+   "text": "Keywords: auditability, audit, compliance, governance",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12585",
+   "lines": [
+    12585,
+    12585
+   ],
+   "page": "[164] Auditability",
+   "kind": "info",
+   "text": "Auditability",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12587",
+   "lines": [
+    12587,
+    12587
+   ],
+   "page": "[164] Auditability",
+   "kind": "data",
+   "text": "AuditLog captures who (actor)."
+  },
+  {
+   "id": "R12587a",
+   "lines": [
+    12587,
+    12587
+   ],
+   "page": "[164] Auditability",
+   "kind": "data",
+   "text": "AuditLog captures what (action)."
+  },
+  {
+   "id": "R12587b",
+   "lines": [
+    12587,
+    12587
+   ],
+   "page": "[164] Auditability",
+   "kind": "data",
+   "text": "AuditLog captures which (entity)."
+  },
+  {
+   "id": "R12587c",
+   "lines": [
+    12587,
+    12587
+   ],
+   "page": "[164] Auditability",
+   "kind": "data",
+   "text": "AuditLog captures when (timestamp)."
+  },
+  {
+   "id": "R12587d",
+   "lines": [
+    12587,
+    12587
+   ],
+   "page": "[164] Auditability",
+   "kind": "data",
+   "text": "AuditLog captures what changed (before/after)."
+  },
+  {
+   "id": "R12587e",
+   "lines": [
+    12587,
+    12587
+   ],
+   "page": "[164] Auditability",
+   "kind": "quality",
+   "text": "AuditLog supports compliance auditing."
+  },
+  {
+   "id": "R12587f",
+   "lines": [
+    12587,
+    12587
+   ],
+   "page": "[164] Auditability",
+   "kind": "quality",
+   "text": "AuditLog supports incident investigation."
+  },
+  {
+   "id": "R12587g",
+   "lines": [
+    12587,
+    12587
+   ],
+   "page": "[164] Auditability",
+   "kind": "quality",
+   "text": "AuditLog supports governance reporting."
+  },
+  {
+   "id": "R12589",
+   "lines": [
+    12589,
+    12589
+   ],
+   "page": "[164] Auditability",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12591",
+   "lines": [
+    12591,
+    12591
+   ],
+   "page": "[165] AI Data Security",
+   "kind": "info",
+   "text": "Page title [165] AI Data Security",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12593",
+   "lines": [
+    12593,
+    12593
+   ],
+   "page": "[165] AI Data Security",
+   "kind": "info",
+   "text": "Section: Security",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12594",
+   "lines": [
+    12594,
+    12594
+   ],
+   "page": "[165] AI Data Security",
+   "kind": "scope",
+   "text": "Page [165] AI Data Security scope: MVP."
+  },
+  {
+   "id": "R12595",
+   "lines": [
+    12595,
+    12595
+   ],
+   "page": "[165] AI Data Security",
+   "kind": "info",
+   "text": "Page URL .../page/ai-data-security",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12596",
+   "lines": [
+    12596,
+    12596
+   ],
+   "page": "[165] AI Data Security",
+   "kind": "quality",
+   "text": "Brand and product data is secured when sent to AI models."
+  },
+  {
+   "id": "R12597",
+   "lines": [
+    12597,
+    12597
+   ],
+   "page": "[165] AI Data Security",
+   "kind": "info",
+   "text": "Keywords: AI data, security, data privacy, model input",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12599",
+   "lines": [
+    12599,
+    12599
+   ],
+   "page": "[165] AI Data Security",
+   "kind": "info",
+   "text": "AI Data Security",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12601",
+   "lines": [
+    12601,
+    12601
+   ],
+   "page": "[165] AI Data Security",
+   "kind": "quality",
+   "text": "Product data and brand voice sent to AI models is tenant-scoped."
+  },
+  {
+   "id": "R12601a",
+   "lines": [
+    12601,
+    12601
+   ],
+   "page": "[165] AI Data Security",
+   "kind": "quality",
+   "text": "No cross-tenant data is ever included in prompts."
+  },
+  {
+   "id": "R12601b",
+   "lines": [
+    12601,
+    12601
+   ],
+   "page": "[165] AI Data Security",
+   "kind": "decision",
+   "text": "API keys for AI providers are stored in Secrets Manager."
+  },
+  {
+   "id": "R12601c",
+   "lines": [
+    12601,
+    12601
+   ],
+   "page": "[165] AI Data Security",
+   "kind": "quality",
+   "text": "AI provider data retention policies are reviewed for compliance."
+  },
+  {
+   "id": "R12603",
+   "lines": [
+    12603,
+    12603
+   ],
+   "page": "[165] AI Data Security",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12605",
+   "lines": [
+    12605,
+    12605
+   ],
+   "page": "[166] Prompt Injection Considerations",
+   "kind": "info",
+   "text": "Page title [166] Prompt Injection Considerations",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12607",
+   "lines": [
+    12607,
+    12607
+   ],
+   "page": "[166] Prompt Injection Considerations",
+   "kind": "info",
+   "text": "Section: Security",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12608",
+   "lines": [
+    12608,
+    12608
+   ],
+   "page": "[166] Prompt Injection Considerations",
+   "kind": "scope",
+   "text": "Page [166] Prompt Injection Considerations scope: MVP."
+  },
+  {
+   "id": "R12609",
+   "lines": [
+    12609,
+    12609
+   ],
+   "page": "[166] Prompt Injection Considerations",
+   "kind": "info",
+   "text": "Page URL .../page/prompt-injection",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12610",
+   "lines": [
+    12610,
+    12610
+   ],
+   "page": "[166] Prompt Injection Considerations",
+   "kind": "risk",
+   "text": "Prompt injection is a considered risk with defined mitigations."
+  },
+  {
+   "id": "R12611",
+   "lines": [
+    12611,
+    12611
+   ],
+   "page": "[166] Prompt Injection Considerations",
+   "kind": "info",
+   "text": "Keywords: prompt injection, security, attack, mitigation",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12613",
+   "lines": [
+    12613,
+    12613
+   ],
+   "page": "[166] Prompt Injection Considerations",
+   "kind": "info",
+   "text": "Prompt Injection Considerations",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12615",
+   "lines": [
+    12615,
+    12615
+   ],
+   "page": "[166] Prompt Injection Considerations",
+   "kind": "risk",
+   "text": "User-provided product data is included in prompts."
+  },
+  {
+   "id": "R12615a",
+   "lines": [
+    12615,
+    12615
+   ],
+   "page": "[166] Prompt Injection Considerations",
+   "kind": "risk",
+   "text": "Prompt injection mitigation: structured output validation."
+  },
+  {
+   "id": "R12615b",
+   "lines": [
+    12615,
+    12615
+   ],
+   "page": "[166] Prompt Injection Considerations",
+   "kind": "quality",
+   "text": "Structured output validation: Pydantic rejects unexpected fields."
+  },
+  {
+   "id": "R12615c",
+   "lines": [
+    12615,
+    12615
+   ],
+   "page": "[166] Prompt Injection Considerations",
+   "kind": "risk",
+   "text": "Mitigation: Rules Engine catches malicious content."
+  },
+  {
+   "id": "R12615d",
+   "lines": [
+    12615,
+    12615
+   ],
+   "page": "[166] Prompt Injection Considerations",
+   "kind": "risk",
+   "text": "Mitigation: system prompts are clearly separated from user data."
+  },
+  {
+   "id": "R12615e",
+   "lines": [
+    12615,
+    12615
+   ],
+   "page": "[166] Prompt Injection Considerations",
+   "kind": "risk",
+   "text": "Mitigation: output is always validated before use."
+  },
+  {
+   "id": "R12617",
+   "lines": [
+    12617,
+    12617
+   ],
+   "page": "[166] Prompt Injection Considerations",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12619",
+   "lines": [
+    12619,
+    12619
+   ],
+   "page": "[167] Marketplace Credential Security",
+   "kind": "info",
+   "text": "Page title [167] Marketplace Credential Security",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12621",
+   "lines": [
+    12621,
+    12621
+   ],
+   "page": "[167] Marketplace Credential Security",
+   "kind": "info",
+   "text": "Section: Security",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12622",
+   "lines": [
+    12622,
+    12622
+   ],
+   "page": "[167] Marketplace Credential Security",
+   "kind": "scope",
+   "text": "Page [167] Marketplace Credential Security scope: MVP."
+  },
+  {
+   "id": "R12623",
+   "lines": [
+    12623,
+    12623
+   ],
+   "page": "[167] Marketplace Credential Security",
+   "kind": "info",
+   "text": "Page URL .../page/marketplace-credential-security",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12624",
+   "lines": [
+    12624,
+    12624
+   ],
+   "page": "[167] Marketplace Credential Security",
+   "kind": "quality",
+   "text": "Marketplace API credentials security: isolation."
+  },
+  {
+   "id": "R12624a",
+   "lines": [
+    12624,
+    12624
+   ],
+   "page": "[167] Marketplace Credential Security",
+   "kind": "quality",
+   "text": "Marketplace API credentials security: encryption."
+  },
+  {
+   "id": "R12624b",
+   "lines": [
+    12624,
+    12624
+   ],
+   "page": "[167] Marketplace Credential Security",
+   "kind": "quality",
+   "text": "Marketplace API credentials security: access control."
+  },
+  {
+   "id": "R12625",
+   "lines": [
+    12625,
+    12625
+   ],
+   "page": "[167] Marketplace Credential Security",
+   "kind": "info",
+   "text": "Keywords: marketplace credentials, security, isolation, access control",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12627",
+   "lines": [
+    12627,
+    12627
+   ],
+   "page": "[167] Marketplace Credential Security",
+   "kind": "info",
+   "text": "Credential Security",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12629",
+   "lines": [
+    12629,
+    12629
+   ],
+   "page": "[167] Marketplace Credential Security",
+   "kind": "info",
+   "text": "Marketplace credentials are encrypted at rest (AES-256).",
+   "why_not": "restatement",
+   "dup_of": "R12521"
+  },
+  {
+   "id": "R12629a",
+   "lines": [
+    12629,
+    12629
+   ],
+   "page": "[167] Marketplace Credential Security",
+   "kind": "quality",
+   "text": "Marketplace credentials are isolated per tenant (no cross-tenant access)."
+  },
+  {
+   "id": "R12629b",
+   "lines": [
+    12629,
+    12629
+   ],
+   "page": "[167] Marketplace Credential Security",
+   "kind": "quality",
+   "text": "Marketplace credentials are accessible only by the adapter (not by AI agents)."
+  },
+  {
+   "id": "R12629c",
+   "lines": [
+    12629,
+    12629
+   ],
+   "page": "[167] Marketplace Credential Security",
+   "kind": "quality",
+   "text": "Marketplace credential access events are logged for audit."
+  },
+  {
+   "id": "R12629d",
+   "lines": [
+    12629,
+    12629
+   ],
+   "page": "[167] Marketplace Credential Security",
+   "kind": "quality",
+   "text": "Credential values are not logged."
+  },
+  {
+   "id": "R12629e",
+   "lines": [
+    12629,
+    12629
+   ],
+   "page": "[167] Marketplace Credential Security",
+   "kind": "requirement",
+   "text": "Marketplace credentials are automatically rotated/refreshed."
+  },
+  {
+   "id": "R12631",
+   "lines": [
+    12631,
+    12631
+   ],
+   "page": "[167] Marketplace Credential Security",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12633",
+   "lines": [
+    12633,
+    12633
+   ],
+   "page": "[168] Logging",
+   "kind": "info",
+   "text": "Page title [168] Logging",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12635",
+   "lines": [
+    12635,
+    12635
+   ],
+   "page": "[168] Logging",
+   "kind": "info",
+   "text": "Section: Observability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12636",
+   "lines": [
+    12636,
+    12636
+   ],
+   "page": "[168] Logging",
+   "kind": "scope",
+   "text": "Page [168] Logging scope: MVP."
+  },
+  {
+   "id": "R12637",
+   "lines": [
+    12637,
+    12637
+   ],
+   "page": "[168] Logging",
+   "kind": "info",
+   "text": "Page URL .../page/logging",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12638",
+   "lines": [
+    12638,
+    12638
+   ],
+   "page": "[168] Logging",
+   "kind": "quality",
+   "text": "Structured logging throughout the platform."
+  },
+  {
+   "id": "R12639",
+   "lines": [
+    12639,
+    12639
+   ],
+   "page": "[168] Logging",
+   "kind": "info",
+   "text": "Keywords: logging, structured, logs, JSON",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12641",
+   "lines": [
+    12641,
+    12641
+   ],
+   "page": "[168] Logging",
+   "kind": "info",
+   "text": "Structured Logging",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12643",
+   "lines": [
+    12643,
+    12643
+   ],
+   "page": "[168] Logging",
+   "kind": "quality",
+   "text": "All logs are structured JSON."
+  },
+  {
+   "id": "R12643a",
+   "lines": [
+    12643,
+    12643
+   ],
+   "page": "[168] Logging",
+   "kind": "data",
+   "text": "Structured log field: timestamp."
+  },
+  {
+   "id": "R12643b",
+   "lines": [
+    12643,
+    12643
+   ],
+   "page": "[168] Logging",
+   "kind": "data",
+   "text": "Structured log field: level."
+  },
+  {
+   "id": "R12643c",
+   "lines": [
+    12643,
+    12643
+   ],
+   "page": "[168] Logging",
+   "kind": "data",
+   "text": "Structured log field: request_id."
+  },
+  {
+   "id": "R12643d",
+   "lines": [
+    12643,
+    12643
+   ],
+   "page": "[168] Logging",
+   "kind": "data",
+   "text": "Structured log field: tenant_id."
+  },
+  {
+   "id": "R12643e",
+   "lines": [
+    12643,
+    12643
+   ],
+   "page": "[168] Logging",
+   "kind": "data",
+   "text": "Structured log field: module."
+  },
+  {
+   "id": "R12643f",
+   "lines": [
+    12643,
+    12643
+   ],
+   "page": "[168] Logging",
+   "kind": "data",
+   "text": "Structured log field: message."
+  },
+  {
+   "id": "R12643g",
+   "lines": [
+    12643,
+    12643
+   ],
+   "page": "[168] Logging",
+   "kind": "data",
+   "text": "Structured log field: context."
+  },
+  {
+   "id": "R12643h",
+   "lines": [
+    12643,
+    12643
+   ],
+   "page": "[168] Logging",
+   "kind": "quality",
+   "text": "Correlation IDs link logs across: API request → job → agent run → model call → adapter call."
+  },
+  {
+   "id": "R12643i",
+   "lines": [
+    12643,
+    12643
+   ],
+   "page": "[168] Logging",
+   "kind": "quality",
+   "text": "Sensitive data is never logged."
+  },
+  {
+   "id": "R12645",
+   "lines": [
+    12645,
+    12645
+   ],
+   "page": "[168] Logging",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12647",
+   "lines": [
+    12647,
+    12647
+   ],
+   "page": "[169] Metrics",
+   "kind": "info",
+   "text": "Page title [169] Metrics",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12649",
+   "lines": [
+    12649,
+    12649
+   ],
+   "page": "[169] Metrics",
+   "kind": "info",
+   "text": "Section: Observability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12650",
+   "lines": [
+    12650,
+    12650
+   ],
+   "page": "[169] Metrics",
+   "kind": "scope",
+   "text": "Page [169] Metrics scope: MVP."
+  },
+  {
+   "id": "R12651",
+   "lines": [
+    12651,
+    12651
+   ],
+   "page": "[169] Metrics",
+   "kind": "info",
+   "text": "Page URL .../page/metrics",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12652",
+   "lines": [
+    12652,
+    12652
+   ],
+   "page": "[169] Metrics",
+   "kind": "quality",
+   "text": "Application metric: latency."
+  },
+  {
+   "id": "R12652a",
+   "lines": [
+    12652,
+    12652
+   ],
+   "page": "[169] Metrics",
+   "kind": "quality",
+   "text": "Application metric: throughput."
+  },
+  {
+   "id": "R12652b",
+   "lines": [
+    12652,
+    12652
+   ],
+   "page": "[169] Metrics",
+   "kind": "quality",
+   "text": "Application metric: error rates."
+  },
+  {
+   "id": "R12653",
+   "lines": [
+    12653,
+    12653
+   ],
+   "page": "[169] Metrics",
+   "kind": "info",
+   "text": "Keywords: metrics, latency, throughput, error rate",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12655",
+   "lines": [
+    12655,
+    12655
+   ],
+   "page": "[169] Metrics",
+   "kind": "info",
+   "text": "Key Metrics",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12657",
+   "lines": [
+    12657,
+    12657
+   ],
+   "page": "[169] Metrics",
+   "kind": "quality",
+   "text": "Key metric: API latency p50."
+  },
+  {
+   "id": "R12657a",
+   "lines": [
+    12657,
+    12657
+   ],
+   "page": "[169] Metrics",
+   "kind": "quality",
+   "text": "Key metric: API latency p95."
+  },
+  {
+   "id": "R12657b",
+   "lines": [
+    12657,
+    12657
+   ],
+   "page": "[169] Metrics",
+   "kind": "quality",
+   "text": "Key metric: API latency p99."
+  },
+  {
+   "id": "R12658",
+   "lines": [
+    12658,
+    12658
+   ],
+   "page": "[169] Metrics",
+   "kind": "quality",
+   "text": "Key metric: Agent generation duration."
+  },
+  {
+   "id": "R12659",
+   "lines": [
+    12659,
+    12659
+   ],
+   "page": "[169] Metrics",
+   "kind": "quality",
+   "text": "Key metric: Validation pass rate."
+  },
+  {
+   "id": "R12660",
+   "lines": [
+    12660,
+    12660
+   ],
+   "page": "[169] Metrics",
+   "kind": "quality",
+   "text": "Key metric: Marketplace API latency."
+  },
+  {
+   "id": "R12661",
+   "lines": [
+    12661,
+    12661
+   ],
+   "page": "[169] Metrics",
+   "kind": "quality",
+   "text": "Key metric: Queue depth."
+  },
+  {
+   "id": "R12661a",
+   "lines": [
+    12661,
+    12661
+   ],
+   "page": "[169] Metrics",
+   "kind": "quality",
+   "text": "Key metric: Queue processing time."
+  },
+  {
+   "id": "R12662",
+   "lines": [
+    12662,
+    12662
+   ],
+   "page": "[169] Metrics",
+   "kind": "quality",
+   "text": "Key metric: Error rates by source."
+  },
+  {
+   "id": "R12663",
+   "lines": [
+    12663,
+    12663
+   ],
+   "page": "[169] Metrics",
+   "kind": "quality",
+   "text": "Key metric: AI cost per listing."
+  },
+  {
+   "id": "R12665",
+   "lines": [
+    12665,
+    12665
+   ],
+   "page": "[169] Metrics",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12667",
+   "lines": [
+    12667,
+    12667
+   ],
+   "page": "[170] Tracing",
+   "kind": "info",
+   "text": "Page title [170] Tracing",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12669",
+   "lines": [
+    12669,
+    12669
+   ],
+   "page": "[170] Tracing",
+   "kind": "info",
+   "text": "Section: Observability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12670",
+   "lines": [
+    12670,
+    12670
+   ],
+   "page": "[170] Tracing",
+   "kind": "scope",
+   "text": "Page [170] Tracing scope: MVP."
+  },
+  {
+   "id": "R12671",
+   "lines": [
+    12671,
+    12671
+   ],
+   "page": "[170] Tracing",
+   "kind": "info",
+   "text": "Page URL .../page/tracing",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12672",
+   "lines": [
+    12672,
+    12672
+   ],
+   "page": "[170] Tracing",
+   "kind": "decision",
+   "text": "Distributed tracing with OpenTelemetry."
+  },
+  {
+   "id": "R12673",
+   "lines": [
+    12673,
+    12673
+   ],
+   "page": "[170] Tracing",
+   "kind": "info",
+   "text": "Keywords: tracing, distributed, OpenTelemetry, spans",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12675",
+   "lines": [
+    12675,
+    12675
+   ],
+   "page": "[170] Tracing",
+   "kind": "info",
+   "text": "Distributed Tracing",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12677",
+   "lines": [
+    12677,
+    12677
+   ],
+   "page": "[170] Tracing",
+   "kind": "quality",
+   "text": "OpenTelemetry traces span the full request lifecycle: user request → API → job queue → agent execution → model call → validation → marketplace API."
+  },
+  {
+   "id": "R12677a",
+   "lines": [
+    12677,
+    12677
+   ],
+   "page": "[170] Tracing",
+   "kind": "data",
+   "text": "Each trace span includes: operation name."
+  },
+  {
+   "id": "R12677b",
+   "lines": [
+    12677,
+    12677
+   ],
+   "page": "[170] Tracing",
+   "kind": "data",
+   "text": "Each trace span includes: duration."
+  },
+  {
+   "id": "R12677c",
+   "lines": [
+    12677,
+    12677
+   ],
+   "page": "[170] Tracing",
+   "kind": "data",
+   "text": "Each trace span includes: status."
+  },
+  {
+   "id": "R12677d",
+   "lines": [
+    12677,
+    12677
+   ],
+   "page": "[170] Tracing",
+   "kind": "data",
+   "text": "Each trace span includes: relevant metadata."
+  },
+  {
+   "id": "R12679",
+   "lines": [
+    12679,
+    12679
+   ],
+   "page": "[170] Tracing",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12681",
+   "lines": [
+    12681,
+    12681
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "info",
+   "text": "Page title [171] Agent Observability",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12683",
+   "lines": [
+    12683,
+    12683
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "info",
+   "text": "Section: Observability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12684",
+   "lines": [
+    12684,
+    12684
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "scope",
+   "text": "Page [171] Agent Observability scope: MVP."
+  },
+  {
+   "id": "R12685",
+   "lines": [
+    12685,
+    12685
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "info",
+   "text": "Page URL .../page/agent-observability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12686",
+   "lines": [
+    12686,
+    12686
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "quality",
+   "text": "AgentRun-level observability covers: model."
+  },
+  {
+   "id": "R12686a",
+   "lines": [
+    12686,
+    12686
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "quality",
+   "text": "AgentRun-level observability covers: tokens."
+  },
+  {
+   "id": "R12686b",
+   "lines": [
+    12686,
+    12686
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "quality",
+   "text": "AgentRun-level observability covers: cost."
+  },
+  {
+   "id": "R12686c",
+   "lines": [
+    12686,
+    12686
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "quality",
+   "text": "AgentRun-level observability covers: duration."
+  },
+  {
+   "id": "R12686d",
+   "lines": [
+    12686,
+    12686
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "quality",
+   "text": "AgentRun-level observability covers: status."
+  },
+  {
+   "id": "R12686e",
+   "lines": [
+    12686,
+    12686
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "quality",
+   "text": "AgentRun-level observability covers: errors."
+  },
+  {
+   "id": "R12687",
+   "lines": [
+    12687,
+    12687
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "info",
+   "text": "Keywords: agent observability, AgentRun, tracking, monitoring",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12689",
+   "lines": [
+    12689,
+    12689
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "info",
+   "text": "Agent Observability",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12691",
+   "lines": [
+    12691,
+    12691
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "data",
+   "text": "Every AgentRun records: model_used."
+  },
+  {
+   "id": "R12691a",
+   "lines": [
+    12691,
+    12691
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "data",
+   "text": "Every AgentRun records: tokens_in."
+  },
+  {
+   "id": "R12691b",
+   "lines": [
+    12691,
+    12691
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "data",
+   "text": "Every AgentRun records: tokens_out."
+  },
+  {
+   "id": "R12691c",
+   "lines": [
+    12691,
+    12691
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "data",
+   "text": "Every AgentRun records: cost."
+  },
+  {
+   "id": "R12691d",
+   "lines": [
+    12691,
+    12691
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "data",
+   "text": "Every AgentRun records: duration_ms."
+  },
+  {
+   "id": "R12691e",
+   "lines": [
+    12691,
+    12691
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "data",
+   "text": "Every AgentRun records: status."
+  },
+  {
+   "id": "R12691f",
+   "lines": [
+    12691,
+    12691
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "data",
+   "text": "Every AgentRun records: error_report_json."
+  },
+  {
+   "id": "R12691g",
+   "lines": [
+    12691,
+    12691
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "quality",
+   "text": "AgentRun records give a complete picture of AI operations: which models are used."
+  },
+  {
+   "id": "R12691h",
+   "lines": [
+    12691,
+    12691
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "quality",
+   "text": "AgentRun records give a complete picture of AI operations: how much they cost."
+  },
+  {
+   "id": "R12691i",
+   "lines": [
+    12691,
+    12691
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "quality",
+   "text": "AgentRun records give a complete picture of AI operations: how often they fail."
+  },
+  {
+   "id": "R12691j",
+   "lines": [
+    12691,
+    12691
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "quality",
+   "text": "AgentRun records give a complete picture of AI operations: what errors they produce."
+  },
+  {
+   "id": "R12693",
+   "lines": [
+    12693,
+    12693
+   ],
+   "page": "[171] Agent Observability",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12695",
+   "lines": [
+    12695,
+    12695
+   ],
+   "page": "[172] AI Cost Observability",
+   "kind": "info",
+   "text": "Page title [172] AI Cost Observability",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12697",
+   "lines": [
+    12697,
+    12697
+   ],
+   "page": "[172] AI Cost Observability",
+   "kind": "info",
+   "text": "Section: Observability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12698",
+   "lines": [
+    12698,
+    12698
+   ],
+   "page": "[172] AI Cost Observability",
+   "kind": "scope",
+   "text": "Page [172] AI Cost Observability scope: MVP."
+  },
+  {
+   "id": "R12699",
+   "lines": [
+    12699,
+    12699
+   ],
+   "page": "[172] AI Cost Observability",
+   "kind": "info",
+   "text": "Page URL .../page/ai-cost-observability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12700",
+   "lines": [
+    12700,
+    12700
+   ],
+   "page": "[172] AI Cost Observability",
+   "kind": "quality",
+   "text": "AI costs tracked across models."
+  },
+  {
+   "id": "R12700a",
+   "lines": [
+    12700,
+    12700
+   ],
+   "page": "[172] AI Cost Observability",
+   "kind": "quality",
+   "text": "AI costs tracked across agents."
+  },
+  {
+   "id": "R12700b",
+   "lines": [
+    12700,
+    12700
+   ],
+   "page": "[172] AI Cost Observability",
+   "kind": "quality",
+   "text": "AI costs tracked across tenants."
+  },
+  {
+   "id": "R12701",
+   "lines": [
+    12701,
+    12701
+   ],
+   "page": "[172] AI Cost Observability",
+   "kind": "info",
+   "text": "Keywords: AI cost, observability, tracking, spending",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12703",
+   "lines": [
+    12703,
+    12703
+   ],
+   "page": "[172] AI Cost Observability",
+   "kind": "info",
+   "text": "Cost Observability",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12705",
+   "lines": [
+    12705,
+    12705
+   ],
+   "page": "[172] AI Cost Observability",
+   "kind": "quality",
+   "text": "Cost tracked per AgentRun (model + tokens = cost)."
+  },
+  {
+   "id": "R12705a",
+   "lines": [
+    12705,
+    12705
+   ],
+   "page": "[172] AI Cost Observability",
+   "kind": "quality",
+   "text": "Cost tracked per listing (sum of all agent runs)."
+  },
+  {
+   "id": "R12705b",
+   "lines": [
+    12705,
+    12705
+   ],
+   "page": "[172] AI Cost Observability",
+   "kind": "quality",
+   "text": "Cost tracked per tenant (sum of all listings)."
+  },
+  {
+   "id": "R12705c",
+   "lines": [
+    12705,
+    12705
+   ],
+   "page": "[172] AI Cost Observability",
+   "kind": "quality",
+   "text": "Cost tracked per model (aggregate by model_used)."
+  },
+  {
+   "id": "R12705d",
+   "lines": [
+    12705,
+    12705
+   ],
+   "page": "[172] AI Cost Observability",
+   "kind": "requirement",
+   "text": "Dashboards show daily AI spend."
+  },
+  {
+   "id": "R12705e",
+   "lines": [
+    12705,
+    12705
+   ],
+   "page": "[172] AI Cost Observability",
+   "kind": "requirement",
+   "text": "Dashboards show cost trends."
+  },
+  {
+   "id": "R12705f",
+   "lines": [
+    12705,
+    12705
+   ],
+   "page": "[172] AI Cost Observability",
+   "kind": "requirement",
+   "text": "Dashboards show cost per listing over time."
+  },
+  {
+   "id": "R12707",
+   "lines": [
+    12707,
+    12707
+   ],
+   "page": "[172] AI Cost Observability",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12709",
+   "lines": [
+    12709,
+    12709
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "info",
+   "text": "Page title [173] Marketplace API Observability",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12711",
+   "lines": [
+    12711,
+    12711
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "info",
+   "text": "Section: Observability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12712",
+   "lines": [
+    12712,
+    12712
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "scope",
+   "text": "Page [173] Marketplace API Observability scope: MVP."
+  },
+  {
+   "id": "R12713",
+   "lines": [
+    12713,
+    12713
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "info",
+   "text": "Page URL .../page/marketplace-api-observability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12714",
+   "lines": [
+    12714,
+    12714
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "quality",
+   "text": "Tracking marketplace API performance."
+  },
+  {
+   "id": "R12714a",
+   "lines": [
+    12714,
+    12714
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "quality",
+   "text": "Tracking marketplace API errors."
+  },
+  {
+   "id": "R12715",
+   "lines": [
+    12715,
+    12715
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "info",
+   "text": "Keywords: marketplace API, observability, tracking, latency",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12717",
+   "lines": [
+    12717,
+    12717
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "info",
+   "text": "Marketplace API Observability",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12719",
+   "lines": [
+    12719,
+    12719
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "quality",
+   "text": "Each marketplace adapter call is logged."
+  },
+  {
+   "id": "R12719a",
+   "lines": [
+    12719,
+    12719
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "data",
+   "text": "Marketplace adapter call log field: endpoint."
+  },
+  {
+   "id": "R12719b",
+   "lines": [
+    12719,
+    12719
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "data",
+   "text": "Marketplace adapter call log field: method."
+  },
+  {
+   "id": "R12719c",
+   "lines": [
+    12719,
+    12719
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "data",
+   "text": "Marketplace adapter call log field: duration."
+  },
+  {
+   "id": "R12719d",
+   "lines": [
+    12719,
+    12719
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "data",
+   "text": "Marketplace adapter call log field: status code."
+  },
+  {
+   "id": "R12719e",
+   "lines": [
+    12719,
+    12719
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "data",
+   "text": "Marketplace adapter call log field: error details."
+  },
+  {
+   "id": "R12719f",
+   "lines": [
+    12719,
+    12719
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "data",
+   "text": "Marketplace adapter call log field: rate limit remaining."
+  },
+  {
+   "id": "R12719g",
+   "lines": [
+    12719,
+    12719
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "quality",
+   "text": "Adapter call logging enables API health monitoring."
+  },
+  {
+   "id": "R12719h",
+   "lines": [
+    12719,
+    12719
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "quality",
+   "text": "Adapter call logging enables rate limit tracking."
+  },
+  {
+   "id": "R12719i",
+   "lines": [
+    12719,
+    12719
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "quality",
+   "text": "Adapter call logging enables error pattern detection."
+  },
+  {
+   "id": "R12719j",
+   "lines": [
+    12719,
+    12719
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "quality",
+   "text": "Adapter call logging enables SLA tracking."
+  },
+  {
+   "id": "R12721",
+   "lines": [
+    12721,
+    12721
+   ],
+   "page": "[173] Marketplace API Observability",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12723",
+   "lines": [
+    12723,
+    12723
+   ],
+   "page": "[174] Error Monitoring",
+   "kind": "info",
+   "text": "Page title [174] Error Monitoring",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12725",
+   "lines": [
+    12725,
+    12725
+   ],
+   "page": "[174] Error Monitoring",
+   "kind": "info",
+   "text": "Section: Observability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12726",
+   "lines": [
+    12726,
+    12726
+   ],
+   "page": "[174] Error Monitoring",
+   "kind": "scope",
+   "text": "Page [174] Error Monitoring scope: MVP."
+  },
+  {
+   "id": "R12727",
+   "lines": [
+    12727,
+    12727
+   ],
+   "page": "[174] Error Monitoring",
+   "kind": "info",
+   "text": "Page URL .../page/error-monitoring",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12728",
+   "lines": [
+    12728,
+    12728
+   ],
+   "page": "[174] Error Monitoring",
+   "kind": "decision",
+   "text": "Error monitoring with Sentry."
+  },
+  {
+   "id": "R12728a",
+   "lines": [
+    12728,
+    12728
+   ],
+   "page": "[174] Error Monitoring",
+   "kind": "decision",
+   "text": "Alerting with Sentry."
+  },
+  {
+   "id": "R12729",
+   "lines": [
+    12729,
+    12729
+   ],
+   "page": "[174] Error Monitoring",
+   "kind": "info",
+   "text": "Keywords: error monitoring, alerting, Sentry, notifications",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12731",
+   "lines": [
+    12731,
+    12731
+   ],
+   "page": "[174] Error Monitoring",
+   "kind": "info",
+   "text": "Error Monitoring",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12733",
+   "lines": [
+    12733,
+    12733
+   ],
+   "page": "[174] Error Monitoring",
+   "kind": "quality",
+   "text": "Sentry captures unhandled exceptions."
+  },
+  {
+   "id": "R12733a",
+   "lines": [
+    12733,
+    12733
+   ],
+   "page": "[174] Error Monitoring",
+   "kind": "quality",
+   "text": "Sentry captures business errors."
+  },
+  {
+   "id": "R12733b",
+   "lines": [
+    12733,
+    12733
+   ],
+   "page": "[174] Error Monitoring",
+   "kind": "quality",
+   "text": "Alert rules notify the team of critical system errors."
+  },
+  {
+   "id": "R12733c",
+   "lines": [
+    12733,
+    12733
+   ],
+   "page": "[174] Error Monitoring",
+   "kind": "quality",
+   "text": "Alert rules notify the team of elevated error rates."
+  },
+  {
+   "id": "R12733d",
+   "lines": [
+    12733,
+    12733
+   ],
+   "page": "[174] Error Monitoring",
+   "kind": "quality",
+   "text": "Alert rules notify the team of marketplace API failures."
+  },
+  {
+   "id": "R12733e",
+   "lines": [
+    12733,
+    12733
+   ],
+   "page": "[174] Error Monitoring",
+   "kind": "quality",
+   "text": "Alert rules notify the team of AI model failures."
+  },
+  {
+   "id": "R12733f",
+   "lines": [
+    12733,
+    12733
+   ],
+   "page": "[174] Error Monitoring",
+   "kind": "quality",
+   "text": "Error grouping helps identify systemic issues."
+  },
+  {
+   "id": "R12735",
+   "lines": [
+    12735,
+    12735
+   ],
+   "page": "[174] Error Monitoring",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12737",
+   "lines": [
+    12737,
+    12737
+   ],
+   "page": "[175] Sentry",
+   "kind": "info",
+   "text": "Page title [175] Sentry",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12739",
+   "lines": [
+    12739,
+    12739
+   ],
+   "page": "[175] Sentry",
+   "kind": "info",
+   "text": "Section: Observability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12740",
+   "lines": [
+    12740,
+    12740
+   ],
+   "page": "[175] Sentry",
+   "kind": "scope",
+   "text": "Page [175] Sentry scope: MVP."
+  },
+  {
+   "id": "R12741",
+   "lines": [
+    12741,
+    12741
+   ],
+   "page": "[175] Sentry",
+   "kind": "info",
+   "text": "Page URL .../page/sentry",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12742",
+   "lines": [
+    12742,
+    12742
+   ],
+   "page": "[175] Sentry",
+   "kind": "decision",
+   "text": "Sentry configured for error tracking."
+  },
+  {
+   "id": "R12742a",
+   "lines": [
+    12742,
+    12742
+   ],
+   "page": "[175] Sentry",
+   "kind": "decision",
+   "text": "Sentry configured for performance monitoring."
+  },
+  {
+   "id": "R12743",
+   "lines": [
+    12743,
+    12743
+   ],
+   "page": "[175] Sentry",
+   "kind": "info",
+   "text": "Keywords: Sentry, error tracking, performance monitoring",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12745",
+   "lines": [
+    12745,
+    12745
+   ],
+   "page": "[175] Sentry",
+   "kind": "info",
+   "text": "Sentry Setup",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12747",
+   "lines": [
+    12747,
+    12747
+   ],
+   "page": "[175] Sentry",
+   "kind": "decision",
+   "text": "Sentry is configured in the frontend (Next.js)."
+  },
+  {
+   "id": "R12747a",
+   "lines": [
+    12747,
+    12747
+   ],
+   "page": "[175] Sentry",
+   "kind": "decision",
+   "text": "Sentry is configured in the backend (FastAPI)."
+  },
+  {
+   "id": "R12747b",
+   "lines": [
+    12747,
+    12747
+   ],
+   "page": "[175] Sentry",
+   "kind": "quality",
+   "text": "Sentry Python SDK captures exceptions with full context."
+  },
+  {
+   "id": "R12747c",
+   "lines": [
+    12747,
+    12747
+   ],
+   "page": "[175] Sentry",
+   "kind": "quality",
+   "text": "Source maps enable readable stack traces."
+  },
+  {
+   "id": "R12747d",
+   "lines": [
+    12747,
+    12747
+   ],
+   "page": "[175] Sentry",
+   "kind": "quality",
+   "text": "Sentry performance monitoring tracks transaction durations."
+  },
+  {
+   "id": "R12749",
+   "lines": [
+    12749,
+    12749
+   ],
+   "page": "[175] Sentry",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12751",
+   "lines": [
+    12751,
+    12751
+   ],
+   "page": "[176] OpenTelemetry",
+   "kind": "info",
+   "text": "Page title [176] OpenTelemetry",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12753",
+   "lines": [
+    12753,
+    12753
+   ],
+   "page": "[176] OpenTelemetry",
+   "kind": "info",
+   "text": "Section: Observability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12754",
+   "lines": [
+    12754,
+    12754
+   ],
+   "page": "[176] OpenTelemetry",
+   "kind": "scope",
+   "text": "Page [176] OpenTelemetry scope: MVP."
+  },
+  {
+   "id": "R12755",
+   "lines": [
+    12755,
+    12755
+   ],
+   "page": "[176] OpenTelemetry",
+   "kind": "info",
+   "text": "Page URL .../page/opentelemetry",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12756",
+   "lines": [
+    12756,
+    12756
+   ],
+   "page": "[176] OpenTelemetry",
+   "kind": "info",
+   "text": "OpenTelemetry for distributed tracing.",
+   "why_not": "restatement",
+   "dup_of": "R12672"
+  },
+  {
+   "id": "R12756a",
+   "lines": [
+    12756,
+    12756
+   ],
+   "page": "[176] OpenTelemetry",
+   "kind": "decision",
+   "text": "OpenTelemetry for metrics."
+  },
+  {
+   "id": "R12757",
+   "lines": [
+    12757,
+    12757
+   ],
+   "page": "[176] OpenTelemetry",
+   "kind": "info",
+   "text": "Keywords: OpenTelemetry, OTEL, tracing, metrics",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12759",
+   "lines": [
+    12759,
+    12759
+   ],
+   "page": "[176] OpenTelemetry",
+   "kind": "info",
+   "text": "OpenTelemetry",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12761",
+   "lines": [
+    12761,
+    12761
+   ],
+   "page": "[176] OpenTelemetry",
+   "kind": "decision",
+   "text": "OpenTelemetry SDK instrumented in FastAPI."
+  },
+  {
+   "id": "R12761a",
+   "lines": [
+    12761,
+    12761
+   ],
+   "page": "[176] OpenTelemetry",
+   "kind": "quality",
+   "text": "OpenTelemetry: automatic HTTP span creation."
+  },
+  {
+   "id": "R12761b",
+   "lines": [
+    12761,
+    12761
+   ],
+   "page": "[176] OpenTelemetry",
+   "kind": "quality",
+   "text": "OpenTelemetry: database query tracing."
+  },
+  {
+   "id": "R12761c",
+   "lines": [
+    12761,
+    12761
+   ],
+   "page": "[176] OpenTelemetry",
+   "kind": "quality",
+   "text": "OpenTelemetry: Redis operation tracing."
+  },
+  {
+   "id": "R12761d",
+   "lines": [
+    12761,
+    12761
+   ],
+   "page": "[176] OpenTelemetry",
+   "kind": "quality",
+   "text": "OpenTelemetry: custom spans for agent execution."
+  },
+  {
+   "id": "R12761e",
+   "lines": [
+    12761,
+    12761
+   ],
+   "page": "[176] OpenTelemetry",
+   "kind": "quality",
+   "text": "Traces are exported to a compatible backend for visualization and analysis."
+  },
+  {
+   "id": "R12763",
+   "lines": [
+    12763,
+    12763
+   ],
+   "page": "[176] OpenTelemetry",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12765",
+   "lines": [
+    12765,
+    12765
+   ],
+   "page": "[177] AgentRun Telemetry",
+   "kind": "info",
+   "text": "Page title [177] AgentRun Telemetry",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12767",
+   "lines": [
+    12767,
+    12767
+   ],
+   "page": "[177] AgentRun Telemetry",
+   "kind": "info",
+   "text": "Section: Observability",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12768",
+   "lines": [
+    12768,
+    12768
+   ],
+   "page": "[177] AgentRun Telemetry",
+   "kind": "scope",
+   "text": "Page [177] AgentRun Telemetry scope: MVP."
+  },
+  {
+   "id": "R12769",
+   "lines": [
+    12769,
+    12769
+   ],
+   "page": "[177] AgentRun Telemetry",
+   "kind": "info",
+   "text": "Page URL .../page/agent-run-telemetry",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12770",
+   "lines": [
+    12770,
+    12770
+   ],
+   "page": "[177] AgentRun Telemetry",
+   "kind": "quality",
+   "text": "Detailed telemetry for every agent execution."
+  },
+  {
+   "id": "R12771",
+   "lines": [
+    12771,
+    12771
+   ],
+   "page": "[177] AgentRun Telemetry",
+   "kind": "info",
+   "text": "Keywords: agent run, telemetry, detailed, execution",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12773",
+   "lines": [
+    12773,
+    12773
+   ],
+   "page": "[177] AgentRun Telemetry",
+   "kind": "info",
+   "text": "AgentRun Telemetry",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12775",
+   "lines": [
+    12775,
+    12775
+   ],
+   "page": "[177] AgentRun Telemetry",
+   "kind": "flow",
+   "text": "Correlation chain: request_id → tenant_id → brand_id → product_id → listing_id → agent_run_id → model call → validation → adapter call."
+  },
+  {
+   "id": "R12775a",
+   "lines": [
+    12775,
+    12775
+   ],
+   "page": "[177] AgentRun Telemetry",
+   "kind": "data",
+   "text": "Correlation chain identifier: request_id."
+  },
+  {
+   "id": "R12775b",
+   "lines": [
+    12775,
+    12775
+   ],
+   "page": "[177] AgentRun Telemetry",
+   "kind": "data",
+   "text": "Correlation chain identifier: tenant_id."
+  },
+  {
+   "id": "R12775c",
+   "lines": [
+    12775,
+    12775
+   ],
+   "page": "[177] AgentRun Telemetry",
+   "kind": "data",
+   "text": "Correlation chain identifier: brand_id."
+  },
+  {
+   "id": "R12775d",
+   "lines": [
+    12775,
+    12775
+   ],
+   "page": "[177] AgentRun Telemetry",
+   "kind": "data",
+   "text": "Correlation chain identifier: product_id."
+  },
+  {
+   "id": "R12775e",
+   "lines": [
+    12775,
+    12775
+   ],
+   "page": "[177] AgentRun Telemetry",
+   "kind": "data",
+   "text": "Correlation chain identifier: listing_id."
+  },
+  {
+   "id": "R12775f",
+   "lines": [
+    12775,
+    12775
+   ],
+   "page": "[177] AgentRun Telemetry",
+   "kind": "data",
+   "text": "Correlation chain identifier: agent_run_id."
+  },
+  {
+   "id": "R12775g",
+   "lines": [
+    12775,
+    12775
+   ],
+   "page": "[177] AgentRun Telemetry",
+   "kind": "quality",
+   "text": "Everything is traceable from user request to marketplace response."
+  },
+  {
+   "id": "R12777",
+   "lines": [
+    12777,
+    12777
+   ],
+   "page": "[177] AgentRun Telemetry",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12779",
+   "lines": [
+    12779,
+    12779
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "info",
+   "text": "Page title [178] Recommended Tech Stack",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12781",
+   "lines": [
+    12781,
+    12781
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "info",
+   "text": "Section: Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12782",
+   "lines": [
+    12782,
+    12782
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "scope",
+   "text": "Page [178] Recommended Tech Stack scope: MVP."
+  },
+  {
+   "id": "R12783",
+   "lines": [
+    12783,
+    12783
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "info",
+   "text": "Page URL .../page/recommended-tech-stack",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12784",
+   "lines": [
+    12784,
+    12784
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Complete recommended tech stack with rationale for each technology choice."
+  },
+  {
+   "id": "R12785",
+   "lines": [
+    12785,
+    12785
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "info",
+   "text": "Keywords: tech stack, technology, Next.js, FastAPI, PostgreSQL, Redis, LangGraph",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12787",
+   "lines": [
+    12787,
+    12787
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "info",
+   "text": "Tech Stack",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12789",
+   "lines": [
+    12789,
+    12793
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "info",
+   "text": "Table header: Layer | Choice | Why",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12795",
+   "lines": [
+    12795,
+    12797
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Frontend: Next.js."
+  },
+  {
+   "id": "R12795a",
+   "lines": [
+    12795,
+    12797
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Frontend: TypeScript."
+  },
+  {
+   "id": "R12795b",
+   "lines": [
+    12795,
+    12797
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Frontend: Tailwind."
+  },
+  {
+   "id": "R12799",
+   "lines": [
+    12799,
+    12799
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "requirement",
+   "text": "Frontend (Next.js + TypeScript + Tailwind) rationale: Dashboard."
+  },
+  {
+   "id": "R12799a",
+   "lines": [
+    12799,
+    12799
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "requirement",
+   "text": "Frontend (Next.js + TypeScript + Tailwind) rationale: review UI."
+  },
+  {
+   "id": "R12799b",
+   "lines": [
+    12799,
+    12799
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "requirement",
+   "text": "Frontend (Next.js + TypeScript + Tailwind) rationale: analytics."
+  },
+  {
+   "id": "R12801",
+   "lines": [
+    12801,
+    12803
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Auth: NextAuth."
+  },
+  {
+   "id": "R12805",
+   "lines": [
+    12805,
+    12805
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Auth (NextAuth) rationale: Self-hosted."
+  },
+  {
+   "id": "R12805a",
+   "lines": [
+    12805,
+    12805
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Auth (NextAuth) rationale: flexible."
+  },
+  {
+   "id": "R12807",
+   "lines": [
+    12807,
+    12809
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Backend: FastAPI (Python)."
+  },
+  {
+   "id": "R12811",
+   "lines": [
+    12811,
+    12811
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Backend (FastAPI) rationale: Async."
+  },
+  {
+   "id": "R12811a",
+   "lines": [
+    12811,
+    12811
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Backend (FastAPI) rationale: typed."
+  },
+  {
+   "id": "R12811b",
+   "lines": [
+    12811,
+    12811
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "interface",
+   "text": "Backend (FastAPI) rationale: auto OpenAPI docs."
+  },
+  {
+   "id": "R12813",
+   "lines": [
+    12813,
+    12815
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "AI Orchestration: LangGraph."
+  },
+  {
+   "id": "R12817",
+   "lines": [
+    12817,
+    12817
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "requirement",
+   "text": "AI Orchestration (LangGraph) rationale: Agent graph."
+  },
+  {
+   "id": "R12817a",
+   "lines": [
+    12817,
+    12817
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "requirement",
+   "text": "AI Orchestration (LangGraph) rationale: bounded retries."
+  },
+  {
+   "id": "R12819",
+   "lines": [
+    12819,
+    12821
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "LLM: GPT-4o mini."
+  },
+  {
+   "id": "R12819a",
+   "lines": [
+    12819,
+    12821
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "LLM: DeepSeek-V3."
+  },
+  {
+   "id": "R12823",
+   "lines": [
+    12823,
+    12823
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "LLM rationale: Model routing layer."
+  },
+  {
+   "id": "R12825",
+   "lines": [
+    12825,
+    12827
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Vision: GPT-4o mini (vision)."
+  },
+  {
+   "id": "R12829",
+   "lines": [
+    12829,
+    12829
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Vision rationale: Same model for text and images."
+  },
+  {
+   "id": "R12831",
+   "lines": [
+    12831,
+    12833
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Embeddings: text-embedding-3-small."
+  },
+  {
+   "id": "R12835",
+   "lines": [
+    12835,
+    12835
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "requirement",
+   "text": "Embeddings rationale: Brand voice retrieval."
+  },
+  {
+   "id": "R12837",
+   "lines": [
+    12837,
+    12839
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Vector Store: pgvector."
+  },
+  {
+   "id": "R12841",
+   "lines": [
+    12841,
+    12841
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Vector Store rationale: Same DB for relational + vectors."
+  },
+  {
+   "id": "R12843",
+   "lines": [
+    12843,
+    12845
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Database: PostgreSQL (RDS)."
+  },
+  {
+   "id": "R12847",
+   "lines": [
+    12847,
+    12847
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Database rationale: With pgvector extension."
+  },
+  {
+   "id": "R12849",
+   "lines": [
+    12849,
+    12851
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Queue: Redis."
+  },
+  {
+   "id": "R12849a",
+   "lines": [
+    12849,
+    12851
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Queue: ARQ."
+  },
+  {
+   "id": "R12853",
+   "lines": [
+    12853,
+    12853
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "requirement",
+   "text": "Queue rationale: Background jobs."
+  },
+  {
+   "id": "R12855",
+   "lines": [
+    12855,
+    12857
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Storage: S3-compatible."
+  },
+  {
+   "id": "R12859",
+   "lines": [
+    12859,
+    12859
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "requirement",
+   "text": "Storage (S3-compatible) rationale: Images."
+  },
+  {
+   "id": "R12859a",
+   "lines": [
+    12859,
+    12859
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "requirement",
+   "text": "Storage (S3-compatible) rationale: CSVs."
+  },
+  {
+   "id": "R12859b",
+   "lines": [
+    12859,
+    12859
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "requirement",
+   "text": "Storage (S3-compatible) rationale: batch artifacts."
+  },
+  {
+   "id": "R12861",
+   "lines": [
+    12861,
+    12863
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Observability: Sentry."
+  },
+  {
+   "id": "R12861a",
+   "lines": [
+    12861,
+    12863
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Observability: OpenTelemetry."
+  },
+  {
+   "id": "R12865",
+   "lines": [
+    12865,
+    12865
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "quality",
+   "text": "Observability (Sentry + OpenTelemetry) rationale \"Error + trace + cost logs\": error."
+  },
+  {
+   "id": "R12865a",
+   "lines": [
+    12865,
+    12865
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "quality",
+   "text": "Observability (Sentry + OpenTelemetry) rationale \"Error + trace + cost logs\": trace."
+  },
+  {
+   "id": "R12865b",
+   "lines": [
+    12865,
+    12865
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "quality",
+   "text": "Observability (Sentry + OpenTelemetry) rationale \"Error + trace + cost logs\": cost logs."
+  },
+  {
+   "id": "R12867",
+   "lines": [
+    12867,
+    12869
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Infrastructure: AWS EC2."
+  },
+  {
+   "id": "R12867a",
+   "lines": [
+    12867,
+    12869
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Infrastructure: AWS RDS."
+  },
+  {
+   "id": "R12867b",
+   "lines": [
+    12867,
+    12869
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Infrastructure: AWS ElastiCache."
+  },
+  {
+   "id": "R12871",
+   "lines": [
+    12871,
+    12871
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Infrastructure rationale: Production hosting."
+  },
+  {
+   "id": "R12873",
+   "lines": [
+    12873,
+    12873
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "info",
+   "text": "Simplicity by Design",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12875",
+   "lines": [
+    12875,
+    12875
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "This stack is intentionally simple."
+  },
+  {
+   "id": "R12875a",
+   "lines": [
+    12875,
+    12875
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "scope",
+   "text": "No Kubernetes."
+  },
+  {
+   "id": "R12875b",
+   "lines": [
+    12875,
+    12875
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "scope",
+   "text": "No Kafka."
+  },
+  {
+   "id": "R12875c",
+   "lines": [
+    12875,
+    12875
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "scope",
+   "text": "No microservices."
+  },
+  {
+   "id": "R12875d",
+   "lines": [
+    12875,
+    12875
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "scope",
+   "text": "No separate vector databases."
+  },
+  {
+   "id": "R12875e",
+   "lines": [
+    12875,
+    12875
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "constraint",
+   "text": "The MVP can run on 2-3 EC2 instances."
+  },
+  {
+   "id": "R12875f",
+   "lines": [
+    12875,
+    12875
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "decision",
+   "text": "Complexity is added only when scale demands it."
+  },
+  {
+   "id": "R12877",
+   "lines": [
+    12877,
+    12877
+   ],
+   "page": "[178] Recommended Tech Stack",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12879",
+   "lines": [
+    12879,
+    12879
+   ],
+   "page": "[179] Frontend Architecture",
+   "kind": "info",
+   "text": "Page title [179] Frontend Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12881",
+   "lines": [
+    12881,
+    12881
+   ],
+   "page": "[179] Frontend Architecture",
+   "kind": "info",
+   "text": "Section: Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12882",
+   "lines": [
+    12882,
+    12882
+   ],
+   "page": "[179] Frontend Architecture",
+   "kind": "scope",
+   "text": "Page [179] Frontend Architecture scope: MVP."
+  },
+  {
+   "id": "R12883",
+   "lines": [
+    12883,
+    12883
+   ],
+   "page": "[179] Frontend Architecture",
+   "kind": "info",
+   "text": "Page URL .../page/frontend-architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12884",
+   "lines": [
+    12884,
+    12884
+   ],
+   "page": "[179] Frontend Architecture",
+   "kind": "info",
+   "text": "Next.js frontend architecture.",
+   "why_not": "restatement",
+   "dup_of": "R12795"
+  },
+  {
+   "id": "R12884a",
+   "lines": [
+    12884,
+    12884
+   ],
+   "page": "[179] Frontend Architecture",
+   "kind": "info",
+   "text": "Frontend: dashboard, review UI, analytics.",
+   "why_not": "restatement",
+   "dup_of": "R12799"
+  },
+  {
+   "id": "R12885",
+   "lines": [
+    12885,
+    12885
+   ],
+   "page": "[179] Frontend Architecture",
+   "kind": "info",
+   "text": "Keywords: frontend, Next.js, dashboard, UI, TypeScript",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12887",
+   "lines": [
+    12887,
+    12887
+   ],
+   "page": "[179] Frontend Architecture",
+   "kind": "info",
+   "text": "Frontend Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12889",
+   "lines": [
+    12889,
+    12889
+   ],
+   "page": "[179] Frontend Architecture",
+   "kind": "info",
+   "text": "Next.js + TypeScript + Tailwind.",
+   "why_not": "restatement",
+   "dup_of": "R12795"
+  },
+  {
+   "id": "R12889a",
+   "lines": [
+    12889,
+    12889
+   ],
+   "page": "[179] Frontend Architecture",
+   "kind": "interface",
+   "text": "Frontend page: Dashboard (overview)."
+  },
+  {
+   "id": "R12889b",
+   "lines": [
+    12889,
+    12889
+   ],
+   "page": "[179] Frontend Architecture",
+   "kind": "interface",
+   "text": "Frontend page: Products (import/manage)."
+  },
+  {
+   "id": "R12889c",
+   "lines": [
+    12889,
+    12889
+   ],
+   "page": "[179] Frontend Architecture",
+   "kind": "interface",
+   "text": "Frontend page: Listings (generate/review/approve)."
+  },
+  {
+   "id": "R12889d",
+   "lines": [
+    12889,
+    12889
+   ],
+   "page": "[179] Frontend Architecture",
+   "kind": "interface",
+   "text": "Frontend page: Marketplaces (connect/manage)."
+  },
+  {
+   "id": "R12889e",
+   "lines": [
+    12889,
+    12889
+   ],
+   "page": "[179] Frontend Architecture",
+   "kind": "interface",
+   "text": "Frontend page: Analytics (performance)."
+  },
+  {
+   "id": "R12889f",
+   "lines": [
+    12889,
+    12889
+   ],
+   "page": "[179] Frontend Architecture",
+   "kind": "requirement",
+   "text": "Server-side rendering for initial load."
+  },
+  {
+   "id": "R12889g",
+   "lines": [
+    12889,
+    12889
+   ],
+   "page": "[179] Frontend Architecture",
+   "kind": "requirement",
+   "text": "Client-side navigation for interactions."
+  },
+  {
+   "id": "R12891",
+   "lines": [
+    12891,
+    12891
+   ],
+   "page": "[179] Frontend Architecture",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12893",
+   "lines": [
+    12893,
+    12893
+   ],
+   "page": "[180] Backend Architecture",
+   "kind": "info",
+   "text": "Page title [180] Backend Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12895",
+   "lines": [
+    12895,
+    12895
+   ],
+   "page": "[180] Backend Architecture",
+   "kind": "info",
+   "text": "Section: Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12896",
+   "lines": [
+    12896,
+    12896
+   ],
+   "page": "[180] Backend Architecture",
+   "kind": "scope",
+   "text": "Page [180] Backend Architecture scope: MVP."
+  },
+  {
+   "id": "R12897",
+   "lines": [
+    12897,
+    12897
+   ],
+   "page": "[180] Backend Architecture",
+   "kind": "info",
+   "text": "Page URL .../page/backend-architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12898",
+   "lines": [
+    12898,
+    12898
+   ],
+   "page": "[180] Backend Architecture",
+   "kind": "info",
+   "text": "FastAPI backend architecture — async, typed.",
+   "why_not": "restatement",
+   "dup_of": "R12811"
+  },
+  {
+   "id": "R12898a",
+   "lines": [
+    12898,
+    12898
+   ],
+   "page": "[180] Backend Architecture",
+   "kind": "decision",
+   "text": "Backend architecture is modular."
+  },
+  {
+   "id": "R12899",
+   "lines": [
+    12899,
+    12899
+   ],
+   "page": "[180] Backend Architecture",
+   "kind": "info",
+   "text": "Keywords: backend, FastAPI, Python, async, architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12901",
+   "lines": [
+    12901,
+    12901
+   ],
+   "page": "[180] Backend Architecture",
+   "kind": "info",
+   "text": "Backend Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12903",
+   "lines": [
+    12903,
+    12903
+   ],
+   "page": "[180] Backend Architecture",
+   "kind": "info",
+   "text": "FastAPI with async Python.",
+   "why_not": "restatement",
+   "dup_of": "R12807"
+  },
+  {
+   "id": "R12903a",
+   "lines": [
+    12903,
+    12903
+   ],
+   "page": "[180] Backend Architecture",
+   "kind": "decision",
+   "text": "Backend module: routers (API endpoints)."
+  },
+  {
+   "id": "R12903b",
+   "lines": [
+    12903,
+    12903
+   ],
+   "page": "[180] Backend Architecture",
+   "kind": "decision",
+   "text": "Backend module: services (business logic)."
+  },
+  {
+   "id": "R12903c",
+   "lines": [
+    12903,
+    12903
+   ],
+   "page": "[180] Backend Architecture",
+   "kind": "decision",
+   "text": "Backend module: repositories (database access)."
+  },
+  {
+   "id": "R12903d",
+   "lines": [
+    12903,
+    12903
+   ],
+   "page": "[180] Backend Architecture",
+   "kind": "quality",
+   "text": "Repositories provide database access with tenant isolation."
+  },
+  {
+   "id": "R12903e",
+   "lines": [
+    12903,
+    12903
+   ],
+   "page": "[180] Backend Architecture",
+   "kind": "decision",
+   "text": "Backend module: agents (AI orchestration)."
+  },
+  {
+   "id": "R12903f",
+   "lines": [
+    12903,
+    12903
+   ],
+   "page": "[180] Backend Architecture",
+   "kind": "decision",
+   "text": "Backend module: adapters (marketplace integration)."
+  },
+  {
+   "id": "R12903g",
+   "lines": [
+    12903,
+    12903
+   ],
+   "page": "[180] Backend Architecture",
+   "kind": "interface",
+   "text": "Auto-generated OpenAPI documentation."
+  },
+  {
+   "id": "R12905",
+   "lines": [
+    12905,
+    12905
+   ],
+   "page": "[180] Backend Architecture",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12907",
+   "lines": [
+    12907,
+    12907
+   ],
+   "page": "[181] AI Infrastructure",
+   "kind": "info",
+   "text": "Page title [181] AI Infrastructure",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12909",
+   "lines": [
+    12909,
+    12909
+   ],
+   "page": "[181] AI Infrastructure",
+   "kind": "info",
+   "text": "Section: Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12910",
+   "lines": [
+    12910,
+    12910
+   ],
+   "page": "[181] AI Infrastructure",
+   "kind": "scope",
+   "text": "Page [181] AI Infrastructure scope: MVP."
+  },
+  {
+   "id": "R12911",
+   "lines": [
+    12911,
+    12911
+   ],
+   "page": "[181] AI Infrastructure",
+   "kind": "info",
+   "text": "Page URL .../page/ai-infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12912",
+   "lines": [
+    12912,
+    12912
+   ],
+   "page": "[181] AI Infrastructure",
+   "kind": "info",
+   "text": "AI infrastructure — LangGraph.",
+   "why_not": "restatement",
+   "dup_of": "R12813"
+  },
+  {
+   "id": "R12912a",
+   "lines": [
+    12912,
+    12912
+   ],
+   "page": "[181] AI Infrastructure",
+   "kind": "decision",
+   "text": "AI infrastructure includes model APIs."
+  },
+  {
+   "id": "R12912b",
+   "lines": [
+    12912,
+    12912
+   ],
+   "page": "[181] AI Infrastructure",
+   "kind": "decision",
+   "text": "AI infrastructure includes an embedding pipeline."
+  },
+  {
+   "id": "R12913",
+   "lines": [
+    12913,
+    12913
+   ],
+   "page": "[181] AI Infrastructure",
+   "kind": "info",
+   "text": "Keywords: AI infrastructure, LangGraph, model APIs, embeddings",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12915",
+   "lines": [
+    12915,
+    12915
+   ],
+   "page": "[181] AI Infrastructure",
+   "kind": "info",
+   "text": "AI Infrastructure",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12917",
+   "lines": [
+    12917,
+    12917
+   ],
+   "page": "[181] AI Infrastructure",
+   "kind": "info",
+   "text": "LangGraph for agent orchestration.",
+   "why_not": "restatement",
+   "dup_of": "R12813"
+  },
+  {
+   "id": "R12917a",
+   "lines": [
+    12917,
+    12917
+   ],
+   "page": "[181] AI Infrastructure",
+   "kind": "decision",
+   "text": "OpenAI API for text generation."
+  },
+  {
+   "id": "R12917b",
+   "lines": [
+    12917,
+    12917
+   ],
+   "page": "[181] AI Infrastructure",
+   "kind": "decision",
+   "text": "OpenAI API for vision."
+  },
+  {
+   "id": "R12917c",
+   "lines": [
+    12917,
+    12917
+   ],
+   "page": "[181] AI Infrastructure",
+   "kind": "info",
+   "text": "text-embedding-3-small for embeddings.",
+   "why_not": "restatement",
+   "dup_of": "R12831"
+  },
+  {
+   "id": "R12917d",
+   "lines": [
+    12917,
+    12917
+   ],
+   "page": "[181] AI Infrastructure",
+   "kind": "decision",
+   "text": "ModelRouter for model selection."
+  },
+  {
+   "id": "R12917e",
+   "lines": [
+    12917,
+    12917
+   ],
+   "page": "[181] AI Infrastructure",
+   "kind": "requirement",
+   "text": "All AI interactions are async."
+  },
+  {
+   "id": "R12917f",
+   "lines": [
+    12917,
+    12917
+   ],
+   "page": "[181] AI Infrastructure",
+   "kind": "requirement",
+   "text": "All AI interactions are tracked in AgentRun records."
+  },
+  {
+   "id": "R12919",
+   "lines": [
+    12919,
+    12919
+   ],
+   "page": "[181] AI Infrastructure",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12921",
+   "lines": [
+    12921,
+    12921
+   ],
+   "page": "[182] PostgreSQL",
+   "kind": "info",
+   "text": "Page title [182] PostgreSQL",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12923",
+   "lines": [
+    12923,
+    12923
+   ],
+   "page": "[182] PostgreSQL",
+   "kind": "info",
+   "text": "Section: Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12924",
+   "lines": [
+    12924,
+    12924
+   ],
+   "page": "[182] PostgreSQL",
+   "kind": "scope",
+   "text": "Page [182] PostgreSQL scope: MVP."
+  },
+  {
+   "id": "R12925",
+   "lines": [
+    12925,
+    12925
+   ],
+   "page": "[182] PostgreSQL",
+   "kind": "info",
+   "text": "Page URL .../page/postgresql",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12926",
+   "lines": [
+    12926,
+    12926
+   ],
+   "page": "[182] PostgreSQL",
+   "kind": "info",
+   "text": "PostgreSQL configuration — RDS.",
+   "why_not": "restatement",
+   "dup_of": "R12843"
+  },
+  {
+   "id": "R12926a",
+   "lines": [
+    12926,
+    12926
+   ],
+   "page": "[182] PostgreSQL",
+   "kind": "info",
+   "text": "PostgreSQL configuration — pgvector extension.",
+   "why_not": "restatement",
+   "dup_of": "R12847"
+  },
+  {
+   "id": "R12926b",
+   "lines": [
+    12926,
+    12926
+   ],
+   "page": "[182] PostgreSQL",
+   "kind": "quality",
+   "text": "PostgreSQL configuration — connection pooling."
+  },
+  {
+   "id": "R12927",
+   "lines": [
+    12927,
+    12927
+   ],
+   "page": "[182] PostgreSQL",
+   "kind": "info",
+   "text": "Keywords: PostgreSQL, RDS, database, configuration",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12929",
+   "lines": [
+    12929,
+    12929
+   ],
+   "page": "[182] PostgreSQL",
+   "kind": "info",
+   "text": "PostgreSQL",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12931",
+   "lines": [
+    12931,
+    12931
+   ],
+   "page": "[182] PostgreSQL",
+   "kind": "info",
+   "text": "AWS RDS PostgreSQL with pgvector extension.",
+   "why_not": "restatement",
+   "dup_of": "R12843"
+  },
+  {
+   "id": "R12931a",
+   "lines": [
+    12931,
+    12931
+   ],
+   "page": "[182] PostgreSQL",
+   "kind": "decision",
+   "text": "Connection pooling via asyncpg."
+  },
+  {
+   "id": "R12931b",
+   "lines": [
+    12931,
+    12931
+   ],
+   "page": "[182] PostgreSQL",
+   "kind": "info",
+   "text": "Encryption at rest enabled.",
+   "why_not": "restatement",
+   "dup_of": "R12555"
+  },
+  {
+   "id": "R12931c",
+   "lines": [
+    12931,
+    12931
+   ],
+   "page": "[182] PostgreSQL",
+   "kind": "quality",
+   "text": "Automated backups."
+  },
+  {
+   "id": "R12931d",
+   "lines": [
+    12931,
+    12931
+   ],
+   "page": "[182] PostgreSQL",
+   "kind": "constraint",
+   "text": "AWS RDS PostgreSQL: db.t3.micro for MVP."
+  },
+  {
+   "id": "R12931e",
+   "lines": [
+    12931,
+    12931
+   ],
+   "page": "[182] PostgreSQL",
+   "kind": "constraint",
+   "text": "AWS RDS PostgreSQL: 20GB storage for MVP."
+  },
+  {
+   "id": "R12931f",
+   "lines": [
+    12931,
+    12931
+   ],
+   "page": "[182] PostgreSQL",
+   "kind": "requirement",
+   "text": "Database scales up as needed."
+  },
+  {
+   "id": "R12933",
+   "lines": [
+    12933,
+    12933
+   ],
+   "page": "[182] PostgreSQL",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12935",
+   "lines": [
+    12935,
+    12935
+   ],
+   "page": "[183] pgvector",
+   "kind": "info",
+   "text": "Page title [183] pgvector",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12937",
+   "lines": [
+    12937,
+    12937
+   ],
+   "page": "[183] pgvector",
+   "kind": "info",
+   "text": "Section: Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12938",
+   "lines": [
+    12938,
+    12938
+   ],
+   "page": "[183] pgvector",
+   "kind": "scope",
+   "text": "Page [183] pgvector scope: MVP."
+  },
+  {
+   "id": "R12939",
+   "lines": [
+    12939,
+    12939
+   ],
+   "page": "[183] pgvector",
+   "kind": "info",
+   "text": "Page URL .../page/pgvector",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12940",
+   "lines": [
+    12940,
+    12940
+   ],
+   "page": "[183] pgvector",
+   "kind": "decision",
+   "text": "pgvector extension for vector similarity search in PostgreSQL."
+  },
+  {
+   "id": "R12941",
+   "lines": [
+    12941,
+    12941
+   ],
+   "page": "[183] pgvector",
+   "kind": "info",
+   "text": "Keywords: pgvector, vector, similarity, cosine, embedding",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12943",
+   "lines": [
+    12943,
+    12943
+   ],
+   "page": "[183] pgvector",
+   "kind": "info",
+   "text": "pgvector",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12945",
+   "lines": [
+    12945,
+    12945
+   ],
+   "page": "[183] pgvector",
+   "kind": "info",
+   "text": "The pgvector extension adds vector data types and similarity search operators to PostgreSQL.",
+   "why_not": "restatement",
+   "dup_of": "R12940"
+  },
+  {
+   "id": "R12945a",
+   "lines": [
+    12945,
+    12945
+   ],
+   "page": "[183] pgvector",
+   "kind": "requirement",
+   "text": "pgvector is used for brand voice retrieval."
+  },
+  {
+   "id": "R12945b",
+   "lines": [
+    12945,
+    12945
+   ],
+   "page": "[183] pgvector",
+   "kind": "constraint",
+   "text": "Store 1536-dimensional embeddings."
+  },
+  {
+   "id": "R12945c",
+   "lines": [
+    12945,
+    12945
+   ],
+   "page": "[183] pgvector",
+   "kind": "interface",
+   "text": "Query with cosine similarity (`<=>` operator)."
+  },
+  {
+   "id": "R12945d",
+   "lines": [
+    12945,
+    12945
+   ],
+   "page": "[183] pgvector",
+   "kind": "decision",
+   "text": "IVFFlat indexing for performance at scale."
+  },
+  {
+   "id": "R12947",
+   "lines": [
+    12947,
+    12947
+   ],
+   "page": "[183] pgvector",
+   "kind": "info",
+   "text": "Non-Technical Explanation",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12949",
+   "lines": [
+    12949,
+    12949
+   ],
+   "page": "[183] pgvector",
+   "kind": "info",
+   "text": "pgvector stores and searches \"meaning vectors\" — numerical representations of brand writing style — directly in our regular database.",
+   "why_not": "restatement",
+   "dup_of": "R12841"
+  },
+  {
+   "id": "R12949a",
+   "lines": [
+    12949,
+    12949
+   ],
+   "page": "[183] pgvector",
+   "kind": "info",
+   "text": "No separate specialized database is needed for vectors.",
+   "why_not": "restatement",
+   "dup_of": "R12875d"
+  },
+  {
+   "id": "R12951",
+   "lines": [
+    12951,
+    12951
+   ],
+   "page": "[183] pgvector",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12953",
+   "lines": [
+    12953,
+    12953
+   ],
+   "page": "[184] Redis",
+   "kind": "info",
+   "text": "Page title [184] Redis",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12955",
+   "lines": [
+    12955,
+    12955
+   ],
+   "page": "[184] Redis",
+   "kind": "info",
+   "text": "Section: Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12956",
+   "lines": [
+    12956,
+    12956
+   ],
+   "page": "[184] Redis",
+   "kind": "scope",
+   "text": "Page [184] Redis scope: MVP."
+  },
+  {
+   "id": "R12957",
+   "lines": [
+    12957,
+    12957
+   ],
+   "page": "[184] Redis",
+   "kind": "info",
+   "text": "Page URL .../page/redis",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12958",
+   "lines": [
+    12958,
+    12958
+   ],
+   "page": "[184] Redis",
+   "kind": "info",
+   "text": "Redis for job queues.",
+   "why_not": "restatement",
+   "dup_of": "R12849"
+  },
+  {
+   "id": "R12958a",
+   "lines": [
+    12958,
+    12958
+   ],
+   "page": "[184] Redis",
+   "kind": "decision",
+   "text": "Redis for caching."
+  },
+  {
+   "id": "R12959",
+   "lines": [
+    12959,
+    12959
+   ],
+   "page": "[184] Redis",
+   "kind": "info",
+   "text": "Keywords: Redis, queue, cache, ElastiCache",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12961",
+   "lines": [
+    12961,
+    12961
+   ],
+   "page": "[184] Redis",
+   "kind": "info",
+   "text": "Redis",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12963",
+   "lines": [
+    12963,
+    12963
+   ],
+   "page": "[184] Redis",
+   "kind": "decision",
+   "text": "Redis runs on AWS ElastiCache Redis."
+  },
+  {
+   "id": "R12963a",
+   "lines": [
+    12963,
+    12963
+   ],
+   "page": "[184] Redis",
+   "kind": "decision",
+   "text": "Redis serves as message broker for ARQ job queues."
+  },
+  {
+   "id": "R12963b",
+   "lines": [
+    12963,
+    12963
+   ],
+   "page": "[184] Redis",
+   "kind": "decision",
+   "text": "Redis caches frequently accessed data: rules."
+  },
+  {
+   "id": "R12963c",
+   "lines": [
+    12963,
+    12963
+   ],
+   "page": "[184] Redis",
+   "kind": "decision",
+   "text": "Redis caches frequently accessed data: category mappings."
+  },
+  {
+   "id": "R12963d",
+   "lines": [
+    12963,
+    12963
+   ],
+   "page": "[184] Redis",
+   "kind": "decision",
+   "text": "Redis serves as session store if needed."
+  },
+  {
+   "id": "R12963e",
+   "lines": [
+    12963,
+    12963
+   ],
+   "page": "[184] Redis",
+   "kind": "constraint",
+   "text": "Redis: single node for MVP."
+  },
+  {
+   "id": "R12963f",
+   "lines": [
+    12963,
+    12963
+   ],
+   "page": "[184] Redis",
+   "kind": "scope",
+   "text": "Redis: cluster mode for scale."
+  },
+  {
+   "id": "R12965",
+   "lines": [
+    12965,
+    12965
+   ],
+   "page": "[184] Redis",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12967",
+   "lines": [
+    12967,
+    12967
+   ],
+   "page": "[185] ARQ",
+   "kind": "info",
+   "text": "Page title [185] ARQ",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12969",
+   "lines": [
+    12969,
+    12969
+   ],
+   "page": "[185] ARQ",
+   "kind": "info",
+   "text": "Section: Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12970",
+   "lines": [
+    12970,
+    12970
+   ],
+   "page": "[185] ARQ",
+   "kind": "scope",
+   "text": "Page [185] ARQ scope: MVP."
+  },
+  {
+   "id": "R12971",
+   "lines": [
+    12971,
+    12971
+   ],
+   "page": "[185] ARQ",
+   "kind": "info",
+   "text": "Page URL .../page/arq",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12972",
+   "lines": [
+    12972,
+    12972
+   ],
+   "page": "[185] ARQ",
+   "kind": "decision",
+   "text": "ARQ task queue framework — Python async job processing."
+  },
+  {
+   "id": "R12973",
+   "lines": [
+    12973,
+    12973
+   ],
+   "page": "[185] ARQ",
+   "kind": "info",
+   "text": "Keywords: ARQ, task queue, job processing, async",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12975",
+   "lines": [
+    12975,
+    12975
+   ],
+   "page": "[185] ARQ",
+   "kind": "info",
+   "text": "ARQ",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12977",
+   "lines": [
+    12977,
+    12977
+   ],
+   "page": "[185] ARQ",
+   "kind": "info",
+   "text": "ARQ is a Python async task queue built on Redis.",
+   "why_not": "restatement",
+   "dup_of": "R12972"
+  },
+  {
+   "id": "R12977a",
+   "lines": [
+    12977,
+    12977
+   ],
+   "page": "[185] ARQ",
+   "kind": "requirement",
+   "text": "ARQ used for listing generation jobs."
+  },
+  {
+   "id": "R12977b",
+   "lines": [
+    12977,
+    12977
+   ],
+   "page": "[185] ARQ",
+   "kind": "requirement",
+   "text": "ARQ used for marketplace publish jobs."
+  },
+  {
+   "id": "R12977c",
+   "lines": [
+    12977,
+    12977
+   ],
+   "page": "[185] ARQ",
+   "kind": "requirement",
+   "text": "ARQ used for image processing jobs."
+  },
+  {
+   "id": "R12977d",
+   "lines": [
+    12977,
+    12977
+   ],
+   "page": "[185] ARQ",
+   "kind": "requirement",
+   "text": "ARQ used for bulk import processing."
+  },
+  {
+   "id": "R12977e",
+   "lines": [
+    12977,
+    12977
+   ],
+   "page": "[185] ARQ",
+   "kind": "quality",
+   "text": "ARQ feature: job scheduling."
+  },
+  {
+   "id": "R12977f",
+   "lines": [
+    12977,
+    12977
+   ],
+   "page": "[185] ARQ",
+   "kind": "quality",
+   "text": "ARQ feature: result storage."
+  },
+  {
+   "id": "R12977g",
+   "lines": [
+    12977,
+    12977
+   ],
+   "page": "[185] ARQ",
+   "kind": "quality",
+   "text": "ARQ feature: retry policies."
+  },
+  {
+   "id": "R12977h",
+   "lines": [
+    12977,
+    12977
+   ],
+   "page": "[185] ARQ",
+   "kind": "quality",
+   "text": "ARQ feature: concurrency control."
+  },
+  {
+   "id": "R12979",
+   "lines": [
+    12979,
+    12979
+   ],
+   "page": "[185] ARQ",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12981",
+   "lines": [
+    12981,
+    12981
+   ],
+   "page": "[186] S3",
+   "kind": "info",
+   "text": "Page title [186] S3",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12983",
+   "lines": [
+    12983,
+    12983
+   ],
+   "page": "[186] S3",
+   "kind": "info",
+   "text": "Section: Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12984",
+   "lines": [
+    12984,
+    12984
+   ],
+   "page": "[186] S3",
+   "kind": "scope",
+   "text": "Page [186] S3 scope: MVP."
+  },
+  {
+   "id": "R12985",
+   "lines": [
+    12985,
+    12985
+   ],
+   "page": "[186] S3",
+   "kind": "info",
+   "text": "Page URL .../page/s3",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12986",
+   "lines": [
+    12986,
+    12986
+   ],
+   "page": "[186] S3",
+   "kind": "info",
+   "text": "S3 for image storage, CSV uploads, and batch artifacts.",
+   "why_not": "restatement",
+   "dup_of": "R12859"
+  },
+  {
+   "id": "R12987",
+   "lines": [
+    12987,
+    12987
+   ],
+   "page": "[186] S3",
+   "kind": "info",
+   "text": "Keywords: S3, storage, images, CSV, uploads",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12989",
+   "lines": [
+    12989,
+    12989
+   ],
+   "page": "[186] S3",
+   "kind": "info",
+   "text": "S3 Storage",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12991",
+   "lines": [
+    12991,
+    12991
+   ],
+   "page": "[186] S3",
+   "kind": "requirement",
+   "text": "S3-compatible storage for: product images."
+  },
+  {
+   "id": "R12991a",
+   "lines": [
+    12991,
+    12991
+   ],
+   "page": "[186] S3",
+   "kind": "quality",
+   "text": "Product images are stored under tenant-scoped paths."
+  },
+  {
+   "id": "R12991b",
+   "lines": [
+    12991,
+    12991
+   ],
+   "page": "[186] S3",
+   "kind": "info",
+   "text": "S3-compatible storage for CSV uploads and batch artifacts.",
+   "why_not": "restatement",
+   "dup_of": "R12859a"
+  },
+  {
+   "id": "R12991c",
+   "lines": [
+    12991,
+    12991
+   ],
+   "page": "[186] S3",
+   "kind": "requirement",
+   "text": "S3-compatible storage for processed image versions."
+  },
+  {
+   "id": "R12991d",
+   "lines": [
+    12991,
+    12991
+   ],
+   "page": "[186] S3",
+   "kind": "info",
+   "text": "S3 server-side encryption enabled.",
+   "why_not": "restatement",
+   "dup_of": "R12555a"
+  },
+  {
+   "id": "R12991e",
+   "lines": [
+    12991,
+    12991
+   ],
+   "page": "[186] S3",
+   "kind": "requirement",
+   "text": "S3 lifecycle policies for cost management."
+  },
+  {
+   "id": "R12991f",
+   "lines": [
+    12991,
+    12991
+   ],
+   "page": "[186] S3",
+   "kind": "decision",
+   "text": "Lifecycle policies archive old versions to Glacier."
+  },
+  {
+   "id": "R12993",
+   "lines": [
+    12993,
+    12993
+   ],
+   "page": "[186] S3",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R12995",
+   "lines": [
+    12995,
+    12995
+   ],
+   "page": "[187] AWS Infrastructure",
+   "kind": "info",
+   "text": "Page title [187] AWS Infrastructure",
+   "why_not": "heading"
+  },
+  {
+   "id": "R12997",
+   "lines": [
+    12997,
+    12997
+   ],
+   "page": "[187] AWS Infrastructure",
+   "kind": "info",
+   "text": "Section: Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R12998",
+   "lines": [
+    12998,
+    12998
+   ],
+   "page": "[187] AWS Infrastructure",
+   "kind": "scope",
+   "text": "Page [187] AWS Infrastructure scope: MVP."
+  },
+  {
+   "id": "R12999",
+   "lines": [
+    12999,
+    12999
+   ],
+   "page": "[187] AWS Infrastructure",
+   "kind": "info",
+   "text": "Page URL .../page/aws-infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13000",
+   "lines": [
+    13000,
+    13000
+   ],
+   "page": "[187] AWS Infrastructure",
+   "kind": "info",
+   "text": "AWS infrastructure — EC2, RDS, ElastiCache.",
+   "why_not": "restatement",
+   "dup_of": "R12867"
+  },
+  {
+   "id": "R13000a",
+   "lines": [
+    13000,
+    13000
+   ],
+   "page": "[187] AWS Infrastructure",
+   "kind": "decision",
+   "text": "AWS infrastructure includes S3."
+  },
+  {
+   "id": "R13001",
+   "lines": [
+    13001,
+    13001
+   ],
+   "page": "[187] AWS Infrastructure",
+   "kind": "info",
+   "text": "Keywords: AWS, infrastructure, EC2, RDS, ElastiCache",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13003",
+   "lines": [
+    13003,
+    13003
+   ],
+   "page": "[187] AWS Infrastructure",
+   "kind": "info",
+   "text": "AWS Infrastructure",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13005",
+   "lines": [
+    13005,
+    13005
+   ],
+   "page": "[187] AWS Infrastructure",
+   "kind": "constraint",
+   "text": "MVP: EC2 t3.medium."
+  },
+  {
+   "id": "R13005a",
+   "lines": [
+    13005,
+    13005
+   ],
+   "page": "[187] AWS Infrastructure",
+   "kind": "decision",
+   "text": "MVP: the EC2 t3.medium runs both app + worker."
+  },
+  {
+   "id": "R13005b",
+   "lines": [
+    13005,
+    13005
+   ],
+   "page": "[187] AWS Infrastructure",
+   "kind": "info",
+   "text": "MVP: RDS db.t3.micro (PostgreSQL).",
+   "why_not": "restatement",
+   "dup_of": "R12931d"
+  },
+  {
+   "id": "R13005c",
+   "lines": [
+    13005,
+    13005
+   ],
+   "page": "[187] AWS Infrastructure",
+   "kind": "info",
+   "text": "MVP: ElastiCache (Redis).",
+   "why_not": "restatement",
+   "dup_of": "R12867b"
+  },
+  {
+   "id": "R13005d",
+   "lines": [
+    13005,
+    13005
+   ],
+   "page": "[187] AWS Infrastructure",
+   "kind": "info",
+   "text": "MVP: S3 (storage).",
+   "why_not": "restatement",
+   "dup_of": "R13000a"
+  },
+  {
+   "id": "R13005e",
+   "lines": [
+    13005,
+    13005
+   ],
+   "page": "[187] AWS Infrastructure",
+   "kind": "constraint",
+   "text": "Everything in a single AWS region."
+  },
+  {
+   "id": "R13005f",
+   "lines": [
+    13005,
+    13005
+   ],
+   "page": "[187] AWS Infrastructure",
+   "kind": "quality",
+   "text": "VPC with private subnets for data tier."
+  },
+  {
+   "id": "R13005g",
+   "lines": [
+    13005,
+    13005
+   ],
+   "page": "[187] AWS Infrastructure",
+   "kind": "decision",
+   "text": "Load balancer for frontend."
+  },
+  {
+   "id": "R13007",
+   "lines": [
+    13007,
+    13007
+   ],
+   "page": "[187] AWS Infrastructure",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13009",
+   "lines": [
+    13009,
+    13009
+   ],
+   "page": "[188] Deployment Architecture",
+   "kind": "info",
+   "text": "Page title [188] Deployment Architecture",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13011",
+   "lines": [
+    13011,
+    13011
+   ],
+   "page": "[188] Deployment Architecture",
+   "kind": "info",
+   "text": "Section: Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13012",
+   "lines": [
+    13012,
+    13012
+   ],
+   "page": "[188] Deployment Architecture",
+   "kind": "scope",
+   "text": "Page [188] Deployment Architecture scope: MVP."
+  },
+  {
+   "id": "R13013",
+   "lines": [
+    13013,
+    13013
+   ],
+   "page": "[188] Deployment Architecture",
+   "kind": "info",
+   "text": "Page URL .../page/deployment-architecture",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13014",
+   "lines": [
+    13014,
+    13014
+   ],
+   "page": "[188] Deployment Architecture",
+   "kind": "decision",
+   "text": "Application is deployed on EC2."
+  },
+  {
+   "id": "R13014a",
+   "lines": [
+    13014,
+    13014
+   ],
+   "page": "[188] Deployment Architecture",
+   "kind": "requirement",
+   "text": "Deployment includes auto-restart."
+  },
+  {
+   "id": "R13014b",
+   "lines": [
+    13014,
+    13014
+   ],
+   "page": "[188] Deployment Architecture",
+   "kind": "decision",
+   "text": "Deployment includes blue-green deployments."
+  },
+  {
+   "id": "R13015",
+   "lines": [
+    13015,
+    13015
+   ],
+   "page": "[188] Deployment Architecture",
+   "kind": "info",
+   "text": "Keywords: deployment, architecture, EC2, CI/CD",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13017",
+   "lines": [
+    13017,
+    13017
+   ],
+   "page": "[188] Deployment Architecture",
+   "kind": "info",
+   "text": "Deployment",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13019",
+   "lines": [
+    13019,
+    13019
+   ],
+   "page": "[188] Deployment Architecture",
+   "kind": "info",
+   "text": "MVP: simple EC2 deployment.",
+   "why_not": "restatement",
+   "dup_of": "R13014"
+  },
+  {
+   "id": "R13019a",
+   "lines": [
+    13019,
+    13019
+   ],
+   "page": "[188] Deployment Architecture",
+   "kind": "decision",
+   "text": "MVP: systemd for process management."
+  },
+  {
+   "id": "R13019b",
+   "lines": [
+    13019,
+    13019
+   ],
+   "page": "[188] Deployment Architecture",
+   "kind": "decision",
+   "text": "MVP: Nginx for reverse proxy."
+  },
+  {
+   "id": "R13019c",
+   "lines": [
+    13019,
+    13019
+   ],
+   "page": "[188] Deployment Architecture",
+   "kind": "flow",
+   "text": "MVP: application code deployed via git pull + restart."
+  },
+  {
+   "id": "R13019d",
+   "lines": [
+    13019,
+    13019
+   ],
+   "page": "[188] Deployment Architecture",
+   "kind": "scope",
+   "text": "Future: containerization with Docker."
+  },
+  {
+   "id": "R13019e",
+   "lines": [
+    13019,
+    13019
+   ],
+   "page": "[188] Deployment Architecture",
+   "kind": "scope",
+   "text": "Future: CI/CD pipeline."
+  },
+  {
+   "id": "R13019f",
+   "lines": [
+    13019,
+    13019
+   ],
+   "page": "[188] Deployment Architecture",
+   "kind": "scope",
+   "text": "Future: blue-green deployments."
+  },
+  {
+   "id": "R13021",
+   "lines": [
+    13021,
+    13021
+   ],
+   "page": "[188] Deployment Architecture",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13023",
+   "lines": [
+    13023,
+    13023
+   ],
+   "page": "[189] Environment Strategy",
+   "kind": "info",
+   "text": "Page title [189] Environment Strategy",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13025",
+   "lines": [
+    13025,
+    13025
+   ],
+   "page": "[189] Environment Strategy",
+   "kind": "info",
+   "text": "Section: Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13026",
+   "lines": [
+    13026,
+    13026
+   ],
+   "page": "[189] Environment Strategy",
+   "kind": "scope",
+   "text": "Page [189] Environment Strategy scope: MVP."
+  },
+  {
+   "id": "R13027",
+   "lines": [
+    13027,
+    13027
+   ],
+   "page": "[189] Environment Strategy",
+   "kind": "info",
+   "text": "Page URL .../page/environment-strategy",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13028",
+   "lines": [
+    13028,
+    13028
+   ],
+   "page": "[189] Environment Strategy",
+   "kind": "decision",
+   "text": "Environment strategy: local, staging, production."
+  },
+  {
+   "id": "R13029",
+   "lines": [
+    13029,
+    13029
+   ],
+   "page": "[189] Environment Strategy",
+   "kind": "info",
+   "text": "Keywords: environment, strategy, local, staging, production",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13031",
+   "lines": [
+    13031,
+    13031
+   ],
+   "page": "[189] Environment Strategy",
+   "kind": "info",
+   "text": "Environments",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13033",
+   "lines": [
+    13033,
+    13037
+   ],
+   "page": "[189] Environment Strategy",
+   "kind": "info",
+   "text": "Table header: Environment | Purpose | Infrastructure",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13039",
+   "lines": [
+    13039,
+    13041
+   ],
+   "page": "[189] Environment Strategy",
+   "kind": "data",
+   "text": "Environment Local: purpose Development."
+  },
+  {
+   "id": "R13043",
+   "lines": [
+    13043,
+    13043
+   ],
+   "page": "[189] Environment Strategy",
+   "kind": "decision",
+   "text": "Local infrastructure: Docker Compose (PostgreSQL)."
+  },
+  {
+   "id": "R13043a",
+   "lines": [
+    13043,
+    13043
+   ],
+   "page": "[189] Environment Strategy",
+   "kind": "decision",
+   "text": "Local infrastructure: Docker Compose (Redis)."
+  },
+  {
+   "id": "R13045",
+   "lines": [
+    13045,
+    13047
+   ],
+   "page": "[189] Environment Strategy",
+   "kind": "data",
+   "text": "Environment Staging: purpose Testing."
+  },
+  {
+   "id": "R13049",
+   "lines": [
+    13049,
+    13049
+   ],
+   "page": "[189] Environment Strategy",
+   "kind": "decision",
+   "text": "Staging infrastructure: smaller AWS instances."
+  },
+  {
+   "id": "R13049a",
+   "lines": [
+    13049,
+    13049
+   ],
+   "page": "[189] Environment Strategy",
+   "kind": "requirement",
+   "text": "Staging uses test marketplace accounts."
+  },
+  {
+   "id": "R13051",
+   "lines": [
+    13051,
+    13053
+   ],
+   "page": "[189] Environment Strategy",
+   "kind": "data",
+   "text": "Environment Production: purpose Live."
+  },
+  {
+   "id": "R13055",
+   "lines": [
+    13055,
+    13055
+   ],
+   "page": "[189] Environment Strategy",
+   "kind": "decision",
+   "text": "Production infrastructure: full AWS setup."
+  },
+  {
+   "id": "R13055a",
+   "lines": [
+    13055,
+    13055
+   ],
+   "page": "[189] Environment Strategy",
+   "kind": "requirement",
+   "text": "Production uses production marketplace accounts."
+  },
+  {
+   "id": "R13057",
+   "lines": [
+    13057,
+    13057
+   ],
+   "page": "[189] Environment Strategy",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13059",
+   "lines": [
+    13059,
+    13059
+   ],
+   "page": "[190] Local Development",
+   "kind": "info",
+   "text": "Page title [190] Local Development",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13061",
+   "lines": [
+    13061,
+    13061
+   ],
+   "page": "[190] Local Development",
+   "kind": "info",
+   "text": "Section: Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13062",
+   "lines": [
+    13062,
+    13062
+   ],
+   "page": "[190] Local Development",
+   "kind": "scope",
+   "text": "Page [190] Local Development scope: MVP."
+  },
+  {
+   "id": "R13063",
+   "lines": [
+    13063,
+    13063
+   ],
+   "page": "[190] Local Development",
+   "kind": "info",
+   "text": "Page URL .../page/local-development",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13064",
+   "lines": [
+    13064,
+    13064
+   ],
+   "page": "[190] Local Development",
+   "kind": "info",
+   "text": "Local development setup with Docker Compose.",
+   "why_not": "restatement",
+   "dup_of": "R13043"
+  },
+  {
+   "id": "R13065",
+   "lines": [
+    13065,
+    13065
+   ],
+   "page": "[190] Local Development",
+   "kind": "info",
+   "text": "Keywords: local, development, Docker Compose, setup",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13067",
+   "lines": [
+    13067,
+    13067
+   ],
+   "page": "[190] Local Development",
+   "kind": "info",
+   "text": "Local Development",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13069",
+   "lines": [
+    13069,
+    13069
+   ],
+   "page": "[190] Local Development",
+   "kind": "info",
+   "text": "Docker Compose for local development.",
+   "why_not": "restatement",
+   "dup_of": "R13043"
+  },
+  {
+   "id": "R13069a",
+   "lines": [
+    13069,
+    13069
+   ],
+   "page": "[190] Local Development",
+   "kind": "decision",
+   "text": "Local Docker Compose: PostgreSQL with pgvector."
+  },
+  {
+   "id": "R13069b",
+   "lines": [
+    13069,
+    13069
+   ],
+   "page": "[190] Local Development",
+   "kind": "info",
+   "text": "Local Docker Compose: Redis.",
+   "why_not": "restatement",
+   "dup_of": "R13043a"
+  },
+  {
+   "id": "R13069c",
+   "lines": [
+    13069,
+    13069
+   ],
+   "page": "[190] Local Development",
+   "kind": "decision",
+   "text": "Local Docker Compose: MinIO (S3-compatible)."
+  },
+  {
+   "id": "R13069d",
+   "lines": [
+    13069,
+    13069
+   ],
+   "page": "[190] Local Development",
+   "kind": "requirement",
+   "text": "Local: FastAPI with hot reload."
+  },
+  {
+   "id": "R13069e",
+   "lines": [
+    13069,
+    13069
+   ],
+   "page": "[190] Local Development",
+   "kind": "decision",
+   "text": "Local: Next.js dev server."
+  },
+  {
+   "id": "R13069f",
+   "lines": [
+    13069,
+    13069
+   ],
+   "page": "[190] Local Development",
+   "kind": "decision",
+   "text": "Environment variables via .env files."
+  },
+  {
+   "id": "R13069g",
+   "lines": [
+    13069,
+    13069
+   ],
+   "page": "[190] Local Development",
+   "kind": "quality",
+   "text": ".env files are never committed."
+  },
+  {
+   "id": "R13071",
+   "lines": [
+    13071,
+    13071
+   ],
+   "page": "[190] Local Development",
+   "kind": "info",
+   "text": "Page separator ---",
+   "why_not": "table-scaffold"
+  },
+  {
+   "id": "R13073",
+   "lines": [
+    13073,
+    13073
+   ],
+   "page": "[191] Staging",
+   "kind": "info",
+   "text": "Page title [191] Staging",
+   "why_not": "heading"
+  },
+  {
+   "id": "R13075",
+   "lines": [
+    13075,
+    13075
+   ],
+   "page": "[191] Staging",
+   "kind": "info",
+   "text": "Section: Infrastructure",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13076",
+   "lines": [
+    13076,
+    13076
+   ],
+   "page": "[191] Staging",
+   "kind": "scope",
+   "text": "Page [191] Staging scope: MVP."
+  },
+  {
+   "id": "R13077",
+   "lines": [
+    13077,
+    13077
+   ],
+   "page": "[191] Staging",
+   "kind": "info",
+   "text": "Page URL .../page/staging",
+   "why_not": "navigation"
+  },
+  {
+   "id": "R13078",
+   "lines": [
+    13078,
+    13078
+   ],
+   "page": "[191] Staging",
+   "kind": "requirement",
+   "text": "Staging environment for pre-production testing."
+  },
+  {
+   "id": "R13079",
+   "lines": [
+    13079,
+    13079
+   ],
+   "page": "[191] Staging",
+   "kind": "info",
+   "text": "Keywords: staging, environment, testing, pre-production",
+   "why_not": "navigation"
+  }
+ ]
+}
