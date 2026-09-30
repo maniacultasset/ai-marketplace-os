@@ -171,6 +171,9 @@ Source: `CANON.md:142`; `docs/STATE.md` header and "Decided" (S1 plan decisions;
 ## 11. Contracts (`packages/schemas`)
 
 - Every change needs the Tech Lead, AI lead and FE lead; an AI-seam change is also a `CANON.md` PR.
+  **Interim (STATE P8, 2026-09-30):** until the AI and FE leads are named, the Tech Lead approves
+  alone. Every release ships a changelog entry and a notice to both teams, which adopt pinned versions
+  when ready.
 - MINOR (additive optional field) any day. MAJOR (rename, removal, type change) only on Day 14
   (Sun 4 Oct), Day 28 (Sun 18 Oct) or Day 42 (Sun 1 Nov).
 - Generated `openapi.json` and `.d.ts` files are machine-owned: `make -C packages/schemas all`.

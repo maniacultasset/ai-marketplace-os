@@ -240,12 +240,20 @@ as "EP decision N" (EP decision 10, the S2 contract freeze, is a different item 
 | 10 | **Schema source for S5–S10:** accept `docs/architecture/DATABASE.md` rev 3 as the schema source, building its `[Proposed]` items as written until reviewed. `mkos-planner` uses it only once STATE marks it accepted. Until then it falls back to the CANON.md migration ledger, which predates the 2026-09-27 decisions. | user (Tech Lead) | S5 onward |
 | 11 | Rewrite `be02277`/`ef0f3be` to drop the tooling files from history? It needs a force-push to `main`; agents never do it. | user | none |
 
-## Pending user decisions (from the 2026-09-30 handoff check)
+## Decisions of 2026-09-30 (were pending from the handoff check; now decided)
 
-Each item has a recommended default and the files that change once it is decided. Nothing here is
-decided; ask the user, and record the answer (dated) under "Decided" before acting on it. **P1–P4
-block the next task (the S1 follow-ups): answer them in one batch**, then create `fix/s1-followups`
-and run the loop. P15–P19 come from the 2026-09-30 verified-check pass.
+**Decided by the user on 2026-09-30: every "Recommended default" below is accepted as written, except
+P8.** P8 is the interim rule stated in its row. The "Changes once decided" column lists the files that
+change; where an item is work, it appears in "Start here" item 2.
+
+Done on 2026-09-30:
+- **P1:** the pending doc edits rode in PR #4.
+- **P11:** tool names and local paths removed in PR #4.
+- **P12:** `gitleaks dir --redact .` found 2 matches, both false positives: the spec phrase "key field:
+  parent/child relationship" in `docs/review/REQUIREMENTS-TRACE.md:520` and `docs/trace/c02.json:2253`.
+  There are no real secrets. Allowlisting them joins the S1 follow-ups.
+- **P14:** backup at `~/Backups/ai-marketplace-os/local-only-2026-09-30-2325.tar.gz` (owner-only).
+- **P18:** the local rule files are fixed, and the session-start status prints the rules version.
 
 | # | Decision | Recommended default | Changes once decided |
 |---|---|---|---|
@@ -256,7 +264,7 @@ and run the loop. P15–P19 come from the 2026-09-30 verified-check pass.
 | P5 | Step order: may the S2 plan start before the ADR-0004 spike? | Single-track until P6 is settled. Order: 2.1, then the S2 plan (plans are docs-only and may overlap), then the spike, then the S2 build. S4 waits for billing (P10). | "Start here" 2, the `docs/PHASES.md` step table, the local conductor's scope rule |
 | P6 | Two build tracks: draft the amendment, or stay single-track | Before the S2 plan is approved, draft as `Status: proposed` the ADR-0011 amendment and the agent-rules text (EP decision 8): one conductor; an `Active` suffix per track; a git worktree per track with its own compose project and DB port (a Canon edit to `CANON.md:65`, which needs the user's OK); only Track A writes migrations; only the conductor edits STATE. Trip-wire: D12, Fri 2 Oct (EXECUTION-PLAN §6.5). | `docs/adr/0011-team-loop.md`, `docs/canon/CANON.md`, the local agent rules §7, the `docs/PHASES.md` step table |
 | P7 | ADRs 0006–0008: build as written now, or wait for the team verdict; and the S2 freeze scope (EP decision 10) | Build as written (their status lines say so); a later team overrule becomes an additive migration. S2 freezes the 0006–0008 shapes as written. | `docs/canon/CANON.md:27`, "Start here" 2.5, EXECUTION-PLAN §6.2 (S2, S6 rows) and §10; if "wait": the ADR-0006/0007/0008 status lines |
-| P8 | Who the AI lead and FE lead are, and how their contract approval is recorded (GitHub teams and CODEOWNERS are inert on Free) | Needed before the S2 plan: S2 (the D14 contract freeze) can't merge under `docs/RULES.md` §11 without them. The user names them; approval is a PR review by them, or their written OK quoted in the PR body with date and channel, and in the CODE-PLAN approvals row. Until then the S2 PR stays open after CI is green. | this file's header, `docs/RULES.md` §11, the local agent rules §6 |
+| P8 | Who the AI lead and FE lead are, and how their contract approval is recorded (GitHub teams and CODEOWNERS are inert on Free) | **Decided (user, 2026-09-30):** our team owns the backend and database; the frontend and AI teams work independently in their own repositories and have no named leads yet. **Until they are named, the Tech Lead (the user) approves `packages/schemas` changes.** Every contract release ships a changelog entry and a notice to both teams; they adopt versions when ready (pinned); MAJOR changes still only in the Day-14/28/42 windows. | this file's header, `docs/RULES.md` §11, the local agent rules §6 |
 | P9 | Do S5 and the spike complete on local Docker PostgreSQL, with their staging legs deferred to billing? Is T3 decided on the spike's local half? | Yes to both; the staging legs (S5 `0000` + upgrade on `aimos-db`; spike criterion 6) are tracked in "Start here" 2.9. | EXECUTION-PLAN §6.2 (S5 row) and §10, "Start here" 2.2 and 2.9, T3 |
 | P10 | S4: where it sits in the order, and who runs `tofu plan` | S4 code after S3 (Track B), checked locally with `tofu fmt -check` and `tofu validate` once OpenTofu is installed. `tofu plan`/`apply` are run by the user after billing, since agents hold no GCP credentials (EXECUTION-PLAN §5.1, §8). | "Start here" 2.9, EXECUTION-PLAN §6.2 and §10 |
 | P11 | Remove the AI tool names left in tracked files | One docs PR: `docs/architecture/DATABASE.md:3`, the two temp paths in `docs/drafts/CHECKLISTS.md:131` and `:162`, and the retired v0 rules file in `docs/archive/`, whose name carries a tool name (rename it and update its references). The client spec snapshot (`docs/source/`, `docs/trace/`) is never edited. (`BACKEND-ARCHITECTURE.md` §12's ADR-0011 row was made neutral on 2026-09-30, since that file was edited.) | those files |
@@ -301,7 +309,7 @@ and run the loop. P15–P19 come from the 2026-09-30 verified-check pass.
    `docs/EXECUTION-PLAN.md` §6.2–§6.3, and step scope and "Done when" from
    `docs/drafts/BUILD-SEQUENCE.md` (S1–S14) as corrected by `docs/review/SUPERSEDED.md` and
    `KNOWN-ISSUES.md`.
-   1. **S1 follow-ups** (branch `fix/s1-followups`; recommended fixes, awaiting the user's OK and the
+   1. **S1 follow-ups** (plan id `s1-followups`, branch `fix/s1-followups`; P2–P4, P13 and P19 are decided and included, plus allowlisting the 2 gitleaks false positives from P12) (was: awaiting the user's OK and the
       process choice, P2–P4; `docs/plans/s1/REPORT.md` "Open"):
       - (a) **MinIO:**
         - Use `cgr.dev/chainguard/minio` + `cgr.dev/chainguard/minio-client`, pinned by index digest
@@ -339,6 +347,13 @@ and run the loop. P15–P19 come from the 2026-09-30 verified-check pass.
       - (c) **pip-audit:** add `-s osv --timeout 60` in `scripts/ci/run_pip_audit.py`. Test first: a
         unit test that monkeypatches `subprocess.run` and asserts `-s osv --timeout 60` in the
         `pip_audit` argv.
+   1b. **Before the S2 plan, in this order** (decided 2026-09-30):
+      - **P16:** commit a tool-neutral `docs/PROCESS.md` (roles, loop, session protocol, approvals) and
+        repoint the tracked `AGENTS.md §N` citations to it or to `docs/RULES.md`.
+      - **P17:** one tracked list of corrected "Done when" lines for S2–S14, plus drafts for S15–S26,
+        which the user approves.
+      - **P6:** draft the two-track amendment as `Status: proposed`. Single-track until it is approved
+        (P5).
    2. **ADR-0004 spike** (1 day; the local half, EXECUTION-PLAN P0-A5): procrastinate transactional
       enqueue against the 8 pass criteria, in a throwaway harness outside the repo; report in
       `docs/plans/spike-0004/REPORT.md` (local-only). It decides the queue (T3) before S8/S13. The
@@ -444,6 +459,7 @@ and run the loop. P15–P19 come from the 2026-09-30 verified-check pass.
 
 ## Session log (newest first; at most 5 lines each; keep the newest 5, older ones go to `docs/archive/STATE-log.md`)
 
+- **2026-09-30 (docs standard):** PR #4 adds PRD, ARCH, RULES, DESIGN and PHASES and the handoff fixes. The user accepted all P1–P19 defaults, with P8 as an interim rule (the Tech Lead approves contracts until the leads are named). P12 scan clean (2 false positives), P14 backup made, P18 local fixes applied.
 - **2026-09-30 (verified-check fixes; tool-neutral docs):**
   - Applied the verified-check findings: front door (PRD, ARCH, RULES, DESIGN, PHASES), both READMEs, EXECUTION-PLAN (§1 and the 10-check count fixed in place; the add-on no longer named), BACKEND-ARCHITECTURE (10 checks), ADR-0010/0011 amendment notes, the PR template. Items needing the user: P15–P19; P1, P8 and P14 sharpened.
   - Files touched: README.md, `docs/{STATE,README,EXECUTION-PLAN,PRD,ARCH,RULES,DESIGN,PHASES}.md`, `docs/architecture/BACKEND-ARCHITECTURE.md`, `docs/adr/{0010,0011}-*.md`, `docs/archive/STATE-log.md`, `.github/pull_request_template.md`. Local-only files unchanged (P18).
