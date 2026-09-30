@@ -1,9 +1,11 @@
 # EXECUTION-PLAN: from setup to launch (backend + DB)
 
-_Written 2026-09-29 (Day 9) by Claude Code from four drafts (gsd-core, GitHub/CI/CD, GCP, roadmap) and
-two critiques (feasibility, security/DevOps). Facts re-checked against the repo on 2026-09-29._
+_Written 2026-09-29 (Day 9) by the agent from four drafts (a third-party agent-workflow add-on,
+GitHub/CI/CD, GCP, roadmap) and two critiques (feasibility, security/DevOps). Facts re-checked against
+the repo on 2026-09-29; §1 and the §6.2 S1 row updated in place on 2026-09-30 (§10)._
 
-**Status: proposed.** Nothing here overrides AGENTS.md, an accepted ADR or the Canon until the user
+**Status: proposed**, except the §2 decisions the user has made (1–4, 6–8, 17 and 19; STATE "Setup
+decisions" and §10). Nothing here overrides AGENTS.md, an accepted ADR or the Canon until the user
 approves the matching item in §2. **This file is the plan. `docs/STATE.md` is the status.** Progress
 (which `P0-*` item or step is done) is recorded in STATE, never ticked in this file. The plan changes
 only with the user's OK, and each change gets a dated line in §10.
@@ -15,21 +17,25 @@ explicit go for that exact command. **[CLIENT]** = only the client can do it.
 
 ## 1. In one page
 
-1. Nothing is coded yet (Day 9). This week is **Phase 0** (setup) plus **S1** (repo, toolchain, the 12
-   CI checks): S1 is planned now and built D10–12, once Docker and git exist.
-2. **You and the client, this week:** GitHub **Team** plan by Thu 1 Oct; a separate **bot GitHub
-   account** for the agents; install Docker, gcloud and gitleaks; `git init`; create the private repo;
-   the client sets up Google billing and gives **your own** Google identity access; you run the GCP
-   runbook (§5.2).
+1. **S1 merged on 2026-09-30 (PR #3):** repo, toolchain and the 10 CI checks (ADR-0012). The Phase 0
+   items still open are in STATE "Where we are"; the next work, in order, is STATE "Start here" 2.
+2. **You and the client, open:** Google billing (not active; it blocks S4 apply, the thin staging
+   deploy, S12 and S25) and access for **your own** Google identity; then you run the GCP runbook
+   (§5.2). GitHub stays on Free until the first prod release, and agents push as `codekid69` until the
+   **bot account** exists (decisions 1–2 as decided). Docker, gcloud and gitleaks are installed and
+   the repo exists.
 3. **GitHub:** one private repo, `maniacultasset/ai-marketplace-os`, trunk-based. Every change is a PR
-   that must pass the 12 checks. You approve and merge. A merge to `main` auto-deploys staging. Prod
-   deploys only the release tag `vX.Y.Z` that you publish, with smoke test, watch and auto-rollback.
+   that must pass the 10 checks (advisory on Free, ADR-0013 §5). You approve and merge. From S4, a
+   merge to `main` auto-deploys staging. Prod deploys only the release tag `vX.Y.Z` that you publish,
+   with smoke test, watch and auto-rollback.
 4. **Safety:** agents never hold your GitHub login or your Google admin login. Prod credentials go only
    to your release. No key files anywhere. Secrets live only in Secret Manager.
-5. **Staging:** reachable privately about **Sat 3 Oct (D13)**, deployed by hand. Auto-deploy from
-   `main` about **Thu 8 Oct (D18)**. Walking skeleton over TLS about **Thu 15 Oct (D25)**, if the
-   domain exists by Fri 9 Oct.
-6. **Prod environment**, the first practice release and a rollback drill: about **Thu 15 Oct (D25)**.
+5. **Staging:** every date waits on GCP billing (§10). Once billing is on, the by-hand thin deploy
+   (§5.2 step 9) comes first. The planned targets were auto-deploy from `main` about **Thu 8 Oct
+   (D18)** and the walking skeleton over TLS about **Thu 15 Oct (D25)**, if the domain exists by Fri
+   9 Oct.
+6. **Prod environment**, the first practice release and a rollback drill: planned about **Thu 15 Oct
+   (D25)**; it also waits on billing and the domain.
 7. **First AI-drafted listing on staging:** about **Thu 22 Oct (D32)**, if the AI team's pipeline
    arrives by Mon 19 Oct.
 8. **First publish to the Amazon sandbox:** about **Tue 27–Wed 28 Oct (D37–38)**. A real Amazon
@@ -37,15 +43,16 @@ explicit go for that exact command. **[CLIENT]** = only the client can do it.
 9. **Does 4 Nov hold?** Only as an **Amazon-first launch** with the cuts in §6.6, **two build tracks**
    (decision 8) and same-day approvals. That leaves 1–2 days of slack. The full scope realistically
    lands **mid to late November**. Decide on **Sun 4 Oct (D14)**, not later.
-10. **gsd-core: don't install it.** It contacts npm at every session start and conflicts with our
-    approval and git rules. We copy 8 of its ideas into our own loop instead (§7).
-11. Claude Code and Codex both follow this file. Status lives in `docs/STATE.md` (§8).
+10. **The third-party agent-workflow add-on: don't install it.** It contacts npm at every session
+    start and conflicts with our approval and git rules. We copy 8 of its ideas into our own loop instead (§7).
+11. Every editor and agent follows this file. Status lives in `docs/STATE.md` (§8).
 
 ---
 
 ## 2. Decisions for the user
 
-Each has a recommended default. "By" is the latest date that keeps §6 on track.
+Each has a recommended default. "By" is the latest date that keeps §6 on track. Other files cite these
+as "EP decision N"; `docs/STATE.md` has its own "open decision" list.
 
 ### Needed this week
 
@@ -54,7 +61,7 @@ Each has a recommended default. "By" is the latest date that keeps §6 on track.
 | 1 | GitHub plan | **Team**: ~7 seats × $4 ≈ $28/mo, plus ≈ $36/mo of Actions minutes. On Free, private repos get no rulesets, required checks, CODEOWNERS or environments, so S1's "force-push to main is rejected" (BUILD-SEQUENCE.md:20) can't pass. If the client stays on Free: the §4.3 fallback plus a SUPERSEDED entry moving that line to "when Team lands". | D11 (Thu 1 Oct) |
 | 2 | Agent identity | **A bot account** (a GitHub machine user; you pick the name) with a fine-grained token for this repo only, expiring in 90 days. Log `codekid69` out of `gh` and the Keychain on this Mac, and do admin work and releases in the browser with a passkey. Why: today's `gh` token is `codekid69`'s OAuth token (`gho_`, `repo workflow gist read:org`). It reaches every repo you can see, other clients' included, and PRs opened with it can't be approved by you. **Mandatory before any prod credential exists.** | before the first push |
 | 3 | Branch model | **Trunk-based:** short branch → PR → `main`. Staging is an *environment* that always runs `main`, and prod runs SemVer tags (ADR-0009; spec L5655, L7053). **No long-lived `staging` branch:** with squash-only merges it drifts from `main` for good. | D10 |
-| 4 | Who runs outward commands | **You** run `git init`, repo creation, the first push and the GCP runbook; AGENTS.md:124 and :236 forbid agents doing them. Later, the bot may run a named list of `gh`/`git push` commands after you approve an AGENTS.md §4/§7 amendment, still with a go per command. | D10 |
+| 4 | Who runs outward commands | **You** run `git init`, repo creation, the first push and the GCP runbook; the agent rules (AGENTS.md §4 provisioning, §6 Git) forbid agents doing them. Later, the bot may run a named list of `gh`/`git push` commands after you approve an AGENTS.md §4/§7 amendment, still with a go per command. | D10 |
 | 5 | GCP by hand now | **Your STATE list plus guardrails:** projects, billing, APIs, budgets, log retention, `aimos-db`, database `aimos`, the `vector` check, AR `aimos`. For the fast go-live, also the `aimos-api` account and 2 secrets (`DATABASE_URL`, `JWT_SECRET`). **Everything else is reviewed OpenTofu:** KMS, GCS, WIF, the deployer, Scheduler and audit logs at S4 (D17–18); the prod data plane at S25 (D23–25). | D10 |
 | 6 | Staging database | `aimos-db` in **`aimos-staging`**, on **`db-custom-1-3840`** as you said: prod-like, which the spike's throughput test needs. It is stopped nights and weekends, and the tier can change later with a restart. **No user `app`:** `gcloud sql users create` puts it in `cloudsqlsuperuser` (CREATEROLE, CREATEDB), and the roles come from `0000_bootstrap.sql` at S5 (CANON.md:75). This departs from STATE, so it needs your OK. | §5.2 step 5 |
 | 7 | Boot requirements | **Required settings by role** (`api`, `worker`, `migrate`); each feature adds its own requirement when it lands (KMS at S15, OpenAI at S16/S18). Alembic `env.py` doesn't import the full settings. Why: the scaffold check (scaffold/apps/api/app/core/config.py:97–108) needs `OPENAI_API_KEY`, `SENTRY_DSN` and `KMS_KEY_URI`, none of which exist yet, so staging couldn't boot. Changes Addendum §8, so it needs a TEAM-QUESTIONS row. | S1 plan |
@@ -74,10 +81,10 @@ Each has a recommended default. "By" is the latest date that keeps §6 on track.
 | 16 | `BOOTSTRAP_DATABASE_URL` | **You only**, not the migrator (it is a `127.0.0.1:5433` proxy URL Cloud Run can't use anyway). Rotate the `postgres` password after `0000`. This amends CANON-ADDENDUM.md:72, so it needs a TEAM-QUESTIONS row. | S5 |
 | 17 | Dependency updates | **Self-hosted Renovate, no auto-merge:** drop ADR-0005:42, which conflicts with "the user approves every merge". pip-audit, osv-scanner and Renovate send only package names and versions; record that as an AGENTS.md §1 exception. | S1 |
 | 18 | Names (not in the Canon) | Services `aimos-api`, `aimos-worker`, `aimos-migrate`. Accounts `aimos-api`, `aimos-worker`, `aimos-migrator`, `aimos-deployer`, `aimos-scheduler`, `aimos-tofu`. AR `aimos`, image `backend`. **Secret id = env var name.** Workflows `ci-api.yml`, `contracts.yml`, `ci-web.yml` (CANON.md:77), plus new `ci-meta.yml`. | §5.2 step 9 |
-| 19 | What goes into git | **Yes:** `docs/` (with `docs/source/`), `scaffold/`, `scripts/`, `.claude/`. **No:** `deliverables/*.docx` (39 MB of generated binaries; share them through the client's channel). | P0-U5 |
+| 19 | What goes into git | **Yes:** `docs/` (with `docs/source/`), `scaffold/`, `scripts/` (agent tooling stays local-only; see §10). **No:** `deliverables/*.docx` (39 MB of generated binaries; share them through the client's channel). | P0-U5 |
 | 20 | Mutation gate | **ADR-0010 as written** (a core-module score of at least 80% blocks a release), with a written per-release waiver from you (C9). | S9 |
 | 21 | Auto-rollback thresholds (ADR-0009 doesn't say) | Roll back on any of: 5xx ≥ 2% with ≥ 20 requests in a 5-minute window; p95 ≥ 2× the previous revision (floor 1.5 s); a new Sentry issue for the release; a crash loop. Traffic is too thin at v1, so add synthetic probes from a smoke tenant. | S25 |
-| 22 | Codex subagents | Check whether this Codex loads `.codex/agents/*.toml`. If it does, AGENTS.md:265 is out of date and gsd idea 11 applies. | any time |
+| 22 | Second-editor subagents | Check whether the second editor loads role agents from its local config folder. If it does, AGENTS.md §7 (single-session reviews) is out of date and §7.2 idea 11 applies. | any time |
 
 ---
 
@@ -155,34 +162,36 @@ Work top to bottom within each group. STATE records the done IDs.
 - **P0-U10** Before the S5 plan (D12): accept `DATABASE.md` rev 3 (STATE open decision 10), and OK
   the Canon PR re-planning the migration ledger (DATABASE.md:1758).
 
-### 3.4 Agent (Claude Code or Codex)
+### 3.4 Agent (any editor)
 
 - **P0-A1** Now: `plan-step S1` (docs only). S1 must be **queue-agnostic** (no Redis, no
-  procrastinate yet; the ADR-0004 CI env block). It must carry the 12 checks across 4 workflows, the
-  pre-commit `commit-msg` hook (gsd idea 8), CODEOWNERS (one pattern per line), `.gitleaks.toml`,
-  role-scoped settings (decision 7) and the PR template (gsd idea 7).
+  procrastinate yet; the ADR-0004 CI env block). It must carry the 10 checks (ADR-0012) across 4 workflows,
+  the pre-commit `commit-msg` hook (§7.2 idea 8), CODEOWNERS (one pattern per line), `.gitleaks.toml`,
+  role-scoped settings (decision 7) and the PR template (§7.2 idea 7).
 - **P0-A2** `scripts/spec-sync.sh` before the S2 plan (the snapshot is from 2026-09-27, so it is stale
   on 1 Oct; AGENTS.md §7).
 - **P0-A3** Draft the **tooling change pack**; it edits nothing until P0-U4:
-  - drive SKILL.md:63–68 and its §5 Codex table: merge becomes "push the branch, open a PR as the
+  - The local conductor's merge step and its §5 by-hand table: merge becomes "push the branch, open a PR as the
     bot, CI green, the user approves and squash-merges on GitHub". It lands **before** P0-U7.
   - AGENTS.md §4/§7: the by-hand GCP exception (STATE 2026-09-29 + decision 5); the named bot commands,
     each needing a go; "agents never hold `codekid69` or GCP admin credentials"; the
     dependency-metadata egress exception.
-  - `.claude/settings.json`: `permissions.ask` for `git push*`, `git tag*`, `gh api*`, `gh pr merge*`,
+  - The local editor settings: ask-before-run permissions for `git push*`, `git tag*`, `gh api*`, `gh pr merge*`,
     `gh release*`, `gh workflow run*`, `gh auth*`, `gcloud*`, `tofu*`, `curl*`, `security find-*`, plus
-    the secret-read guard hook (gsd ideas 5 and 6).
+    the secret-read guard hook (§7.2 ideas 5 and 6).
   - SUPERSEDED.md: S4 `aimos-pg` → `aimos-db`; 3 projects → 2; the stale S1/S4/S12 values (arq, pg16,
     3.11, Redis, Cloud Build, gunicorn); ENV.md:35, 65, 70.
-  - The Codex mapping for all of it, in the same change (F26).
+  - The by-hand mapping for all of it, in the same change (F26).
 - **P0-A4** A read-only gitleaks scan of the tree (`gitleaks dir --redact .`; older versions:
   `detect --no-git`). Report the findings before P0-U5.
-- **P0-A5** **ADR-0004 spike, local half** (D10–11, needs Docker): a throwaway harness in the
-  scratchpad against the 8 criteria (ADR-0004:59–70). Report in `docs/plans/spike-0004/REPORT.md`; it
+- **P0-A5** **ADR-0004 spike, local half** (D10–11, needs Docker): a throwaway harness outside the
+  repo (e.g. `${TMPDIR:-/tmp}/mkos-spike-0004/`, deleted afterwards) against the 8 criteria (ADR-0004:59–70). Report in `docs/plans/spike-0004/REPORT.md`; it
   settles T3 before the S8 plan (D16). The staging half (criterion 6) runs after P0-U8. A failed spike
   brings Redis + ARQ back into S8/S13 only.
-- **P0-A6** Draft, as proposed: **ADR-0012 "CI/CD and release"** (§4), and TEAM-QUESTIONS rows for
-  decisions 7, 15, 16 and "`JWT_SECRET` required only for the API".
+- **P0-A6** Draft, as proposed: **an ADR "CI/CD and release"** (§4) under the next free number (claim
+  it in `docs/adr/README.md` first; 0014 at the time of writing, since ADR-0012 and ADR-0013 are
+  taken and ADR-0013 already covers S1 CI on Free), and TEAM-QUESTIONS rows for decisions 15 and 16
+  (decision 7 and "`JWT_SECRET` required only for the API" are now T105).
 - **P0-A7** By D21: a **BUILD-SEQUENCE amendment** with S15–S26 and their "Done when" lines.
   `mkos-planner` can't plan a step without a `## S<n>` section (mkos-planner.md:20). You approve it.
 
@@ -222,9 +231,9 @@ their own paths is open.
 
 - **`main`** (no bypass): no deletion, no force-push, linear history, squash only. PR required with 1
   approval, stale approvals dismissed, code-owner review and conversations resolved. **Not** "approval
-  of the most recent push" (clicking "Update branch" would void your own approval). All 12 checks
-  required, **from the GitHub Actions app only**, strict, added only after a dummy PR shows all 12
-  green. Required reviewers (decision 11): `packages/schemas/**` needs 1 each from `tech-lead`, `ai-eng`
+  of the most recent push" (clicking "Update branch" would void your own approval). All 10 checks
+  (ADR-0012) required, **from the GitHub Actions app only**, strict, added only after a dummy PR shows
+  all 10 green. Required reviewers (decision 11): `packages/schemas/**` needs 1 each from `tech-lead`, `ai-eng`
   and `frontend`; `apps/api/alembic/**` and `scripts/db/**` need `tech-lead`.
 - **`main-merge`:** restrict updates; `tech-lead` may bypass only through a PR merge.
 - **`release-tags`** (`v*`, `schemas-v*`): only `tech-lead` creates, updates or deletes them.
@@ -256,7 +265,7 @@ them), release-please.
 |---|---|---|---|
 | `ci-api.yml` | PR → `main` | **api-lint** (ruff, black, pip-audit with a dated ignore list), **api-typecheck**, **api-tests** (squawk; Alembic up → check → down → up; migration-compat; pytest), **tenant-isolation**, **lint-imports**, **bootstrap** | ≤ 9 min |
 | `contracts.yml` | PR → `main` | **contracts**, **schemas-drift** | ≤ 4 min |
-| `ci-web.yml` | PR → `main` | **web-lint**, **web-typecheck** (FE-owned; placeholders until apps/web exists) | ≤ 4 min |
+| `ci-web.yml` | — | none here: `web-lint` and `web-typecheck` moved to the frontend repository (ADR-0012) | — |
 | `ci-meta.yml` | PR (also `edited`) | **commit-lint** (the AGENTS.md §6 regexes), **gitleaks** (over the PR range) | ≤ 1 min |
 | `nightly.yml` | 02:00 IST + manual | mutmut on the core modules; full Schemathesis; deep Hypothesis; random order × 3 seeds; a migration replay with timings; **pip-audit, pnpm audit, osv-scanner and a full-history gitleaks scan, which always run, even when `main` is unchanged** | ~45 min; a failure opens a `nightly-red` issue |
 | `deploy-staging.yml` | push to `main` (from S4) | §4.5 | ~18 min |
@@ -595,10 +604,10 @@ the ledger's "proxy/admin 10" (ADR-0001).
 
 | Step | Track | Days | Starts after | For the other teams |
 |---|---|---|---|---|
-| S1 Monorepo, toolchain, 12 CI checks | — | D10–12 (30 Sep–2 Oct) | Docker, git, repo, P0-A3 | the checks become required once all 12 are green |
-| *By-hand staging deploy* (§5.2 step 9) | you | D13 (Sat 3 Oct) | S1, P0-U8 | private `/healthz` |
+| S1 Backend repo, toolchain, 10 CI checks (ADR-0012); **merged 2026-09-30, PR #3** | — | planned D10–12; merged D10 | Docker, git, repo, P0-A3 | checks advisory on GitHub Free (ADR-0013 §5); required once Team lands |
+| *By-hand staging deploy* (§5.2 step 9) | you | after GCP billing (planned D13) | S1, P0-U8 | private `/healthz` |
 | S5 Alembic + `0000_bootstrap.sql` + roles | A | D13 | S1, P0-U10 | local + `aimos-db` via the proxy |
-| S2 `packages/schemas` (17 modules) | B | D13–14 | S1, decision 10, T1, T61 | **D14 (Sun, MAJOR window): `schemas-v1.0.0` (decided modules)** |
+| S2 `packages/schemas` (17 modules) | B | D13–14 | S1, EP decision 10, T1, T61 | **D14 (Sun, MAJOR window): `schemas-v1.0.0` (decided modules)** |
 | S6 `0001_core_tenancy` | A | D14 | S5, the ADR-0006/0007 verdict | |
 | S3 OpenAPI stubs, TS types, mock | B | D15–16 | S2 | **D16: `/api/v1` surface out; additive only until D28** |
 | S7 `0002` + `0002b` HNSW | A | D15–17 | S6 | |
@@ -699,73 +708,77 @@ T51, T67, T88, T91 · S20/S22: T45, T49, T53, T77, T78 · S26: T8, T81, T82, T87
 
 ---
 
-## 7. gsd-core (open-gsd/gsd-core v1.15.0, snapshot d8533f6)
+## 7. Third-party agent add-on: verdict (evaluated 2026-09-29)
 
 ### 7.1 Verdict: don't install it. Copy about 8 ideas by hand.
 
-Evidence (G = the downloaded source in the session scratchpad):
-- **It phones home with no off switch.** At every session start, on Claude and on Codex, a hook
-  spawns a detached `npm view @opengsd/gsd-core version` (G/hooks/hooks.json:7 →
-  G/hooks/gsd-check-update.js:72–84 → G/gsd-core/bin/check-latest-version.cjs:102). There is no
+Evidence (G = the downloaded source, kept outside the repo):
+- **It phones home with no off switch.** At every session start, in every editor, a hook
+  spawns a detached `npm view` of its own package version (G/hooks/hooks.json:7 → its update-check
+  hook script :72–84 → its version-check script :102). There is no
   opt-out, and a reinstall restores the hook (G/bin/install.js:1372–1375). It installs unpinned via
   `npx …@latest` and needs Node ≥ 24 (G/package.json:59). **That fails AGENTS.md §1.**
-- **It leaks content.** With no flags, `/gsd-review` sends the plans and requirements to every
-  reviewer CLI it finds, including CodeRabbit, Kimi and Qwen (G/docs/COMMANDS.md:1824, 1851).
-  `/gsd-profile-user` reads `~/.claude/projects`, which holds other clients' transcripts
+- **It leaks content.** With no flags, its review command sends the plans and requirements to every
+  third-party AI reviewer CLI it finds (G/docs/COMMANDS.md:1824, 1851).
+  Its profile command reads the editor's per-project transcript folder in the home directory, which
+  holds other clients' transcripts
   (G/src/profile-pipeline.cts:98).
 - **It creates a second source of truth.** `.planning/` STATE, ROADMAP and REQUIREMENTS duplicate our
   STATE, BUILD-SEQUENCE, REQUIREMENTS-TRACE and `docs/plans/`. Its `CONTEXT.md` means something else.
-  `/gsd-new-project` writes a second, Claude-only `.claude/CLAUDE.md`.
+  Its new-project command writes a second, editor-specific rules file.
 - **It conflicts with our approvals and git rules.** It has auto-advance and auto-approval in auto
   mode (`mode: yolo` is opt-in; the default is `interactive`, G/docs/CONFIGURATION.md:220). It commits
-  once per task, commits `.planning/` by default (:659), and `/gsd-ship` pushes. Ours: agents never
+  once per task, commits `.planning/` by default (:659), and its ship command pushes. Ours: agents never
   approve, and never push or merge without the user (AGENTS.md §6).
 - **Its footprint is large:** 35 roles, 72 commands, 28 hooks and about 12k tokens of skill text per
-  session. A global install changes `~/.claude` and `~/.codex` for every client on this Mac.
+  session. A global install changes both editors' global config for every client on this Mac.
 
 ### 7.2 Ideas to port
 
-They land as **one** tooling change, with the Codex §5 mapping updated in the same change, before S1
+They land as **one** tooling change, with the conductor's §5 by-hand mapping updated in the same change, before S1
 or between steps, **never mid-step**.
 
 | # | Idea | Where | When |
 |---|---|---|---|
-| 5 | **Secret-read guard:** a PreToolUse hook denying `.env*` (except `.env.example`), `*.pem`, `*-key.json`, `$CLOUDSDK_CONFIG/**`. Defense in depth only; decision 2 is the real control. | `.claude/hooks/` + settings.json; an AGENTS.md line for Codex | P0-A3, before gcloud |
-| 6 | **Ask before irreversible actions** (`permissions.ask`; settings.json has no `permissions` block today) | `.claude/settings.json` | P0-A3 |
-| 7 | **PR body from REPORT.md:** summary, Done-when + trace ids, 12 gates with evidence, ADRs, risk/rollback, TDD audit | `.github/pull_request_template.md`; drive SKILL step 5 | S1 |
+| 5 | **Secret-read guard:** a pre-tool-call hook denying `.env*` (except `.env.example`), `*.pem`, `*-key.json`, `$CLOUDSDK_CONFIG/**`. Defense in depth only; decision 2 is the real control. | local editor hooks + settings; an AGENTS.md line for editors without hooks | P0-A3, before gcloud |
+| 6 | **Ask before irreversible actions** (ask-before-run permissions; the local editor settings have none today) | local editor settings | P0-A3 |
+| 7 | **PR body from REPORT.md:** summary, Done-when + trace ids, 10 gates with evidence, ADRs, risk/rollback, TDD audit | `.github/pull_request_template.md`; the conductor's step 5 | S1 |
 | 8 | **Commit-message check** as a pre-commit `commit-msg` hook (not `core.hooksPath`, which makes `pre-commit install` refuse) | `.pre-commit-config.yaml` | S1 |
-| 4 | **Stall detection:** open high findings don't drop between rounds → `blocked` early | build-step.js; plans README rule 5 | before S2 |
+| 4 | **Stall detection:** open high findings don't drop between rounds → `blocked` early | the build workflow; plans README rule 5 | before S2 |
 | 3 | **Validation map:** per criterion, test path, command, "fails when the guard is removed", runtime; the critic blocks untested criteria | mkos-code-planner, mkos-code-reviewer | before S2 |
-| 1, 2 | **Fresh context per task group** (~3 tasks with `files`/`depends_on`, one implementer each, in sequence) + a mid-step **`HANDOFF.md`** (done, next, gates, touched files, resume step for both tools) | code-planner, implementer, build-step.js, plans README, drive SKILL §5 | before S5 |
+| 1, 2 | **Fresh context per task group** (~3 tasks with `files`/`depends_on`, one implementer each, in sequence) + a mid-step **`HANDOFF.md`** (done, next, gates, touched files, resume step for both tools) | code-planner, implementer, the build workflow, plans README, the conductor's §5 | before S5 |
 | 9, 10 | "Must be true" wiring checks (e.g. every repository subclasses the tenant base); `verify: backstop` criteria that need a held-out human test | planner, e2e-tester, verifier | by S9 |
-| 11–13 | Codex role agents (only if decision 22 says yes); a plan index + archive; dependency provenance (PyPI URL, pin, reason) | scripts, `docs/plans/INDEX.md`, roles | low priority |
+| 11–13 | Second-editor role agents (only if decision 22 says yes); a plan index + archive; dependency provenance (PyPI URL, pin, reason) | scripts, `docs/plans/INDEX.md`, roles | low priority |
 
 ---
 
-## 8. How Claude Code and Codex use this plan
+## 8. How the agents use this plan
 
 | What | Where (files beat memory, AGENTS.md §7) |
 |---|---|
-| Rules | `AGENTS.md` (Claude loads it through CLAUDE.md) |
+| Rules | `docs/RULES.md` (engineering rules, tracked); `AGENTS.md` (the local agent rules) |
 | Status: `Active`, `Branch`, done `P0-*` ids, current step, decisions | `docs/STATE.md`; only the launching/conductor session edits it |
 | The plan | this file; changed only with the user's OK, plus a line in §10 |
 | One step's loop | `docs/plans/<id>/` (CONTEXT, PLAN, CODE-PLAN line 1 = approval, LOOP, REPORT, later HANDOFF) |
 | Questions and rulings | TEAM-QUESTIONS, `docs/adr/`, CANON + ADDENDUM |
 
 **Picking up at any point:**
-1. Read AGENTS.md, then STATE. If `Active` isn't `none`, follow AGENTS.md §7.
+1. Read the front door (`docs/PRD.md`, `ARCH.md`, `RULES.md`, `DESIGN.md`, `PHASES.md`), then STATE;
+   agents also read the local AGENTS.md. If `Active` isn't `none`, follow AGENTS.md §7.
 2. Phase 0 open? Take the first `P0-*` id that STATE doesn't list as done. **Agents do only `P0-A*`;**
    for the others, remind the user in one line with the command.
 3. Step in progress? Resume from the last block of `docs/plans/<id>/LOOP.md` (and `HANDOFF.md`).
-   Claude Code: `/drive <range>`. Codex: drive SKILL §5 by hand.
+   With the conductor: `drive <range>`; without workflows: the conductor's §5 by hand.
 4. Next step: §6.2/§6.3 order, with every "Starts after" merged. In two-track mode only the conductor
    starts steps, and each `Active` suffix names its worktree.
 
-**Outward actions, the same for both tools:** agents never run `gcloud`, `tofu plan/apply`, `git init`
-or repo creation, and never touch rulesets, releases or prod. The bot pushes branches and opens PRs
-only after decision 4 is in AGENTS.md, with a go per command. Codex has no deny rules, so the
-AGENTS.md text is its control. **If plan and reality diverge,** don't improvise: add a TEAM-QUESTIONS
-row or a STATE open decision, ask, then add the dated line in §10.
+**Outward actions, the same for every editor:** until the bot account exists (decision 2), agents
+push branches and open PRs as `codekid69`, with the user's go per push or PR command (§10). The user
+approves and squash-merges on GitHub. Agents never run `gcloud`, `tofu plan/apply`, `git init` or
+repo creation, never touch rulesets, tags, releases or prod, and never force-push or rewrite history.
+An editor without deny rules relies on the AGENTS.md text as its control. **If plan and reality
+diverge,** don't improvise: add a TEAM-QUESTIONS row or a STATE open decision, ask, then add the dated
+line in §10.
 
 ---
 
@@ -777,7 +790,7 @@ accepted as written and is applied above.** "Checked" means verified in the repo
 
 | Item | Verdict | Reason / change |
 |---|---|---|
-| F2 Two tracks break the loop | Accepted | Checked AGENTS.md:238–257 (one `Active`) and drive SKILL steps 5–7 (sequential): the roadmap draft's "planning while building is allowed today" was wrong. Now decision 8. |
+| F2 Two tracks break the loop | Accepted | Checked AGENTS.md:238–257 (one `Active`) and the conductor's steps 5–7 (sequential): the roadmap draft's "planning while building is allowed today" was wrong. Now decision 8. |
 | F3 / S1 Agents hold the prod key | Accepted (core) | Checked: the token is `gho_` OAuth, not "classic" as the GitHub draft said. A separate macOS user or devcontainer is **recommended, not mandated**: logging `codekid69` out of gh and the Keychain, plus a separate gcloud config with no ADC, removes the credentials without a second workstation. |
 | F6 / S9 WIF by hand | Accepted | OpenTofu at S4/S25. **Rejected:** the GitHub draft's D7 (CD right after S1); the by-hand deploy (§5.2 step 9) gives the fast go-live instead. |
 | F8 / S16 `app` user, tier | Accepted | Asked as decision 6 rather than defaulted away (AGENTS.md §2, rank 0). |
@@ -789,7 +802,7 @@ accepted as written and is applied above.** "Checked" means verified in the repo
 | F32 STATE details | Partly | spec-sync (P0-A2) and `/rules/dry-run` after S10 are in. The STATE `Active` HH:MM fix is left to the conductor. |
 | S7 Audit logs by hand now | Moved to S4 | A by-hand IAM-policy JSON edit is error-prone, and until S4 the only secrets are generated ones; rule: no vendor secret before S4. |
 | S12 PITR drill at S5 | Moved to S25 (D25) | S5 is on the critical path with an empty DB; D25 still leaves 18 days before gate 6. |
-| S21 GSD evidence | Accepted | `yolo` is opt-in; the default is `interactive` (§7.1). |
+| S21 Add-on evidence | Accepted | `yolo` is opt-in; the default is `interactive` (§7.1). |
 | GCP R2 staging `db-f1-micro` | Rejected as default | Your explicit tier is kept with its cost shown; `f1-micro` stays an option. |
 | GCP R8 migrator reads the bootstrap secret | Rejected | Superuser URL for you only (decision 16). |
 | GCP "KMS, GCS, all accounts by hand now" | Rejected | Not needed before S4/S15, and it shrinks the import set (decision 5). |
@@ -805,3 +818,35 @@ accepted as written and is applied above.** "Checked" means verified in the repo
   - The required checks here are 10, not 12.
   - `@mkos/schemas` is published to GitHub Packages rather than consumed as a pnpm workspace package.
   - The AI pipeline is pinned from the AI team's repository (T104), and CI uses a stub.
+
+- **2026-09-29/30, the user chose local-first with an early thin deploy.**
+  - §6 dates for S4, S12 and S25 now depend on GCP billing, which is not active yet. S4 can be written and
+    checked locally first; who runs `tofu plan` is STATE pending user decision P10 (§8: agents don't).
+  - S15, S20 and S22 are built against a fake marketplace server and `FakeAdapter` until the credentials
+    exist.
+  - S18 runs on the stub pipeline until the AI team's drop.
+  - The next work in order is in `docs/STATE.md` "Start here" item 2.
+- **2026-09-30:** S1 merged (PR #3). Its three follow-ups are STATE "Start here" 2.1.
+- **2026-09-30, handoff check (corrections only; no change of intent):**
+  - §2 outcomes the user decided on 2026-09-29/30 (recorded in `docs/STATE.md` "Setup decisions"): 1 =
+    stay on GitHub Free, upgrade to Team before the first prod release. 2 = agents push as `codekid69`
+    for now, with a go per push or PR; a bot account before any prod credential. 3 = trunk-based. 4 =
+    a one-time exception: the agent ran `git init`, the first commit, `gh repo create` and the first
+    push. 6 = no `gcloud`-created `app` user. 7 = ADR-0013 §1 (T105). 8 = two tracks, yes; the
+    amendment is not drafted yet (STATE pending user decision P6). 17 = Renovate with no auto-merge
+    (ADR-0013). 19 = yes for `docs/`, `scaffold/`, `scripts/`; the agent tooling and `docs/plans/*/`
+    stay local-only (`.git/info/exclude`); generated `.docx` files stay out of git. Still open: 5, 9,
+    10, 11–16, 18, 20–22.
+  - Read §1 items 1–3 ("nothing is coded", 12 checks, "once Docker and git exist") and the §6.2 S1
+    row with S1 merged (PR #3) and 10 checks (ADR-0012).
+  - P0-A5's harness lives outside the repo; P0-A6's ADR takes the next free number; §8 "Outward
+    actions" matches decision 2 as decided; §2 numbers are cited as "EP decision N"; AGENTS.md is
+    cited by section, not line; editor names are replaced with neutral terms.
+- **2026-09-30, verified-check fixes (corrections only; no change of intent):**
+  - §1 items 1–3, 5, 6 and 10, the Status line, and the §6.2 S1 and by-hand deploy rows now state
+    today's facts in place (S1 merged, 10 checks, dates waiting on billing); the read-as notes above
+    stay as history.
+  - The 12-check wording in §3.4 P0-A1, §4.2, §4.4 (`ci-web.yml`) and §7.2 idea 7 now reads 10 (ADR-0012).
+  - The third-party add-on is no longer named: §7 is retitled "Third-party agent add-on: verdict", its
+    commands are described by role, and editor-specific setting and hook names are replaced with
+    neutral terms ("ask-before-run permissions", "a pre-tool-call hook", "the conductor").

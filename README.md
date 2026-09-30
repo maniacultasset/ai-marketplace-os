@@ -15,6 +15,18 @@ AI drafts  ->  rules validate  ->  a person approves  ->  adapter publishes  -> 
 
 AI never publishes. Every listing passes deterministic validation and human approval first.
 
+## Start here
+
+Read these in order. Each is a short summary that points into the detailed sources, which stay the
+single source of truth.
+
+1. [`docs/PRD.md`](docs/PRD.md): what v1 must do, for whom, and what it leaves out.
+2. [`docs/ARCH.md`](docs/ARCH.md): how the backend is built and where it runs.
+3. [`docs/RULES.md`](docs/RULES.md): the engineering rules every contributor follows.
+4. [`docs/DESIGN.md`](docs/DESIGN.md): the backend design conventions.
+5. [`docs/PHASES.md`](docs/PHASES.md): phases and build status.
+6. [`docs/STATE.md`](docs/STATE.md): live status, decisions and next actions.
+
 ## Repository
 
 This repository holds the backend and database. Build step S1 created the skeleton: the uv workspace,
@@ -32,15 +44,16 @@ a FastAPI app with health probes, the local database stack and the ten required 
 
 | Repository | Owner | How it connects |
 |---|---|---|
-| Frontend (Next.js dashboard) | Frontend team | Calls this API. Installs `@mkos/schemas` from GitHub Packages at a pinned version. |
-| AI pipeline (`mkos-pipeline`) | AI team | Runs inside the backend worker through `run_listing_pipeline`. Pinned by git tag; CI uses a stub. |
+| Frontend (Next.js dashboard) | Frontend team | Calls this API. Installs `@mkos/schemas` from GitHub Packages at a pinned version (publishing starts in S3). |
+| AI pipeline (`mkos-pipeline`) | AI team | Runs inside the backend worker through `run_listing_pipeline`. Pinned by git tag; CI uses a stub (the seam and the stub land in S14b). |
 
 Contract changes are released as versions (ADR-0012), so each repository upgrades on purpose.
 
 ## Stack
 
 - Python 3.13, FastAPI, Pydantic 2, SQLAlchemy 2 (async) with psycopg 3
-- PostgreSQL 17 with pgvector; tenant isolation enforced with row-level security
+- PostgreSQL 17 with pgvector; tenant isolation through tenant-scoped repositories (S9) and row-level
+  security (S10), both planned
 - Background jobs queued in PostgreSQL (procrastinate)
 - uv workspace for Python, pnpm for TypeScript
 - Google Cloud, `asia-south1`: Cloud Run, Cloud SQL, Secret Manager, Cloud KMS, Cloud Storage
@@ -64,6 +77,9 @@ curl -s localhost:8000/healthz && curl -s localhost:8000/readyz
 - Trailing slashes are never redirected: `/api/v1/x/` is a 404 when the route is `/api/v1/x`, so
   clients must use the exact OpenAPI paths.
 - `make test-unit` runs the unit and meta tests without a database.
+- Without `make dev` (for example, to run only the checks): `uv sync --frozen --all-packages`, then
+  `uv run pre-commit install` before your first commit (it installs the pre-commit and commit-msg
+  hooks), and `docker compose up -d --wait` to start Postgres before `make test-db`.
 
 Each required check has a make target of the same name, and CI runs exactly that target:
 
@@ -84,11 +100,11 @@ Each required check has a make target of the same name, and CI runs exactly that
 
 ## Environments
 
-| Environment | Runs on | Database | Deployed by |
-|---|---|---|---|
-| Local | Developer machine | PostgreSQL 17 in Docker | — |
-| Staging | Cloud Run, project `aimos-staging` | Cloud SQL | Every merge to `main` |
-| Production | Cloud Run, project `aimos-prod` | Cloud SQL | An approved release tag `vX.Y.Z`: zero-traffic deploy, smoke test, automatic rollback |
+| Environment | Runs on | Database | Deployed by (planned) | Today |
+|---|---|---|---|---|
+| Local | Developer machine | PostgreSQL 17 in Docker | — | running |
+| Staging | Cloud Run, project `aimos-staging` | Cloud SQL | Every merge to `main` (from S4) | project exists; billing not linked; nothing deployed |
+| Production | Cloud Run, project `aimos-prod` | Cloud SQL | An approved release tag `vX.Y.Z`: zero-traffic deploy, smoke test, automatic rollback (from S25) | same as staging |
 
 ## Documentation
 
@@ -116,5 +132,6 @@ committed.
 
 ## Status
 
-Build step S1 (the scaffold, toolchain and CI checks) is in review. Current status and next steps are in
+Build step S1 (scaffold, toolchain and CI checks) is merged. Small follow-ups (local object storage, a
+build-tool pin, a pip-audit timeout) are next. Current status and next steps are in
 [`docs/STATE.md`](docs/STATE.md).
