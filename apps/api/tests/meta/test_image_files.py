@@ -51,6 +51,22 @@ def test_builder_sets_uv_project_environment(dockerfile: str) -> None:
     assert instructions[builder + 1] == "ENV UV_PROJECT_ENVIRONMENT=/opt/venv"
 
 
+def test_every_uv_sync_builds_wheels_not_editables(dockerfile: str) -> None:
+    """Fix round 1 (F3, F4): for an editable build, hatchling's `get_requires_for_build_editable`
+    adds `editables~=0.3`, which uv then fetches from PyPI unpinned and unhashed into the image
+    builder. A wheel build needs only the pinned build constraints (uv.lock [manifest])."""
+    commands = [
+        command.strip()
+        for instruction in _instructions(dockerfile)
+        if instruction.startswith("RUN ")
+        for command in instruction.removeprefix("RUN ").split("&&")
+        if "uv sync" in command
+    ]
+    assert len(commands) == 2
+    for command in commands:
+        assert "--no-editable" in command.split(), command
+
+
 def test_no_gunicorn_or_web_concurrency(dockerfile: str, entrypoint: Path) -> None:
     for text in (dockerfile, entrypoint.read_text(encoding="utf-8")):
         assert "gunicorn" not in text.lower()

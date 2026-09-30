@@ -16,17 +16,19 @@ WORKDIR /src
 COPY pyproject.toml uv.lock .python-version ./
 COPY packages/schemas/pyproject.toml packages/schemas/
 COPY apps/api/pyproject.toml apps/api/
+# --no-editable on every sync: an editable build makes hatchling fetch `editables` from PyPI,
+# unpinned and unhashed; a wheel build needs only the pinned build constraints (uv.lock).
 RUN uv venv "$VIRTUAL_ENV" \
- && uv sync --frozen --no-dev --no-install-workspace --package mkos-api
+ && uv sync --frozen --no-dev --no-editable --no-install-workspace --package mkos-api
 COPY packages/schemas/ packages/schemas/
 COPY apps/api/ apps/api/
 COPY scripts/db/ scripts/db/
-RUN uv sync --frozen --no-dev --package mkos-api
+RUN uv sync --frozen --no-dev --no-editable --package mkos-api
 
 FROM base AS runtime
 RUN useradd --uid 10001 --create-home --shell /usr/sbin/nologin app
-# Paths are preserved from the builder: uv workspace installs are path-linked, so relocating
-# /src here would break `import app` and `import mkos_schemas`.
+# The workspace members are wheels in /opt/venv. /src keeps the builder's paths for the files
+# outside them (scripts/db), and `import app` resolves to /src/apps/api (PYTHONPATH, WORKDIR).
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /src /src
 COPY --chmod=0755 apps/api/docker-entrypoint.sh /usr/local/bin/entrypoint

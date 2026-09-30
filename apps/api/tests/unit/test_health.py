@@ -193,6 +193,56 @@ def test_readyz_failure_cached_within_ttl(
     assert ping.calls == 2
 
 
+async def test_readiness_bounded_while_an_overrunning_check_drains(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AC6b, fix round 1 (F1): a hung established connection makes psycopg's cancel-then-close
+    outlive `ping`'s own timeout by ~10 s. Every probe still answers within the bound, and probes
+    arriving during the drain join the same check instead of starting new pings."""
+    from app.services.health import READINESS_CACHE_SECONDS, ReadinessCheck
+
+    bound = 0.05
+    monkeypatch.setattr("app.services.health.READINESS_TIMEOUT_SECONDS", bound)
+    ping, clock = CountingPing(result=True, delay=bound * 10), FakeClock()
+    monkeypatch.setattr("app.services.health.ping", ping)
+    check = ReadinessCheck(clock=clock)
+    loop = asyncio.get_running_loop()
+
+    for _ in range(2):  # the probe that starts the check, then one that joins it mid-drain
+        started = loop.time()
+        assert await check.is_ready() is False
+        assert loop.time() - started < bound * 4
+        clock.now += READINESS_CACHE_SECONDS * 2  # the real drain (~10 s) outlasts the cache
+    assert ping.calls == 1
+
+    await asyncio.sleep(bound * 10)  # the check drains and records its own late result
+    assert await check.is_ready() is True
+    assert ping.calls == 1
+
+
+async def test_bound_expiring_as_the_check_finishes_keeps_its_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """F1 guard: when the bound expires in the same loop pass as the check finishes, the probe
+    reports the check's result and never overwrites the cached result with a false failure."""
+    from app.services.health import ReadinessCheck
+
+    calls = 0
+
+    async def instant_ping(timeout_seconds: float) -> bool:
+        nonlocal calls
+        calls += 1
+        return True  # no await: the check task finishes in its first step
+
+    # A zero bound makes wait_for cancel its shield first and only then see the finished check.
+    monkeypatch.setattr("app.services.health.READINESS_TIMEOUT_SECONDS", 0.0)
+    monkeypatch.setattr("app.services.health.ping", instant_ping)
+    check = ReadinessCheck(clock=FakeClock())
+    assert await check.is_ready() is True
+    assert await check.is_ready() is True  # served from the cache
+    assert calls == 1
+
+
 def test_docs_and_openapi_off_in_production(
     clean_env: object, monkeypatch: pytest.MonkeyPatch
 ) -> None:

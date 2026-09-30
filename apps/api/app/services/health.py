@@ -32,13 +32,27 @@ class ReadinessCheck:
         self._checked_at = 0.0
 
     async def is_ready(self) -> bool:
-        if self._inflight is not None:
-            # A cancelled waiter must never cancel the check the other waiters share.
-            return await asyncio.shield(self._inflight)
-        if self._result is not None and self._clock() - self._checked_at < self._ttl:
-            return self._result
-        self._inflight = asyncio.create_task(self._check())
-        return await asyncio.shield(self._inflight)
+        task = self._inflight
+        if task is None:
+            if self._result is not None and self._clock() - self._checked_at < self._ttl:
+                return self._result
+            # `_inflight` is also the strong reference that keeps the task alive while it runs.
+            task = self._inflight = asyncio.create_task(self._check())
+        try:
+            # The shield: neither a cancelled waiter nor an expired bound cancels the check the
+            # other waiters share.
+            return await asyncio.wait_for(asyncio.shield(task), READINESS_TIMEOUT_SECONDS)
+        except TimeoutError:
+            if task.done():
+                # The check finished as the bound expired; it has already recorded its result.
+                return task.result()
+            # On a hung established connection, psycopg's cancel and close outlive `ping`'s own
+            # timeout by ~10 s. Answer within the bound and leave the check in flight: probes
+            # arriving meanwhile join it instead of taking more pooled connections, and `ping`
+            # logs the failure when it gives up.
+            self._result = False
+            self._checked_at = self._clock()
+            return False
 
     async def _check(self) -> bool:
         try:
