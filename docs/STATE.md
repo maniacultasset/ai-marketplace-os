@@ -1,8 +1,8 @@
 # STATE — read first, update last
 
-_Last updated: 2026-09-29 (Tue) by Claude Code. Either Codex or Claude Code can pick up from here. Docs map: `docs/README.md`. Plan: `docs/EXECUTION-PLAN.md`._
-**Active:** claude-code · main · since 2026-09-29 20:41 · drive S1 (planning; build waits for Docker Desktop)
-**Branch:** main
+_Last updated: 2026-09-30 (Wed). Any editor can pick up from here: read "Start here" below. Docs map: `docs/README.md`. Plan: `docs/EXECUTION-PLAN.md`._
+**Active:** none
+**Branch:** `main`. S1 was merged through PR #3 (squash) on 2026-09-30; the next work goes on a new branch.
 **Git repo:** yes. Private `maniacultasset/ai-marketplace-os` (https://github.com/maniacultasset/ai-marketplace-os); first commit `be02277` on 2026-09-29. From here on, every change goes branch → PR → squash merge, and the user approves each merge.
 **Hosting ADR:** accepted ADR-0001 (GCP asia-south1, bootstrapped profile; 2026-09-27)
 **Tech Lead:** the user (to be confirmed)
@@ -11,9 +11,8 @@ _Last updated: 2026-09-29 (Tue) by Claude Code. Either Codex or Claude Code can 
 
 - **Sprint:** Mon 21 Sep → Wed 4 Nov 2026 (45 days). Day N = today's date − 20 Sep 2026, so Sat
   26 Sep = Day 6.
-- **Phase:** pre-S1. No code yet; the **docs foundation is complete** (2026-09-28): stack and hosting
-  ADRs, DB and backend architecture, Word docs for the team, and a line-by-line trace of the client
-  spec against our plan.
+- **Phase:** **S1 merged (PR #3, 2026-09-30).** Three small S1 follow-ups are open (Start here, item 2). The docs
+  foundation is complete (2026-09-28).
 - **Build location:** this folder becomes the monorepo root. The user decided this on 2026-09-26.
   - This voids `scaffold/README.md`'s instruction to copy the scaffold into a separate repo. **Never
     run its `cp -R scaffold/.` here:** it overwrites the root README.
@@ -142,6 +141,38 @@ _Last updated: 2026-09-29 (Tue) by Claude Code. Either Codex or Claude Code can 
     approval before S2.
   - Recommended defaults applied: trunk-based branching (decision 3); no `gcloud`-created `app`
     database user (decision 6); generated `.docx` files not in git (decision 19, `.gitignore`).
+- **v1 expectations confirmed (user, 2026-09-29):** v1 = the site's Day-45 Definition of Done (L4679).
+  - The journey: sign in → connect Amazon/Flipkart → import → AI generate → unified errors → bounded
+    self-correction → maker-checker approval → publish with per-field results and operational
+    analytics, in production.
+  - Scope follows the Phase-1 scope lock (L4723).
+  - We build backend + DB and the hand-off points; the AI and FE teams build their parts, and we
+    monitor them.
+  - The launch-scope choice (Amazon-first on 4 Nov vs full scope around 18–25 Nov) is the client's, by
+    Sun 4 Oct.
+- **S1 plan decisions (user via /drive, 2026-09-29):**
+  - Approved with the Tech Lead's fixes: all 18 logged critique findings are applied before the final
+    approval.
+  - **ADR-0013 accepted:** settings by role, no FE keys, staged checks on Free, the ENV.md edits,
+    T105/T106, the dependency set, and the pip-audit/Renovate package-name egress exception.
+  - The three-lead rule is **waived for the empty `packages/schemas` 0.0.0 skeleton only**.
+  - **Step plan files `docs/plans/<step>/` are local-only** (`.git/info/exclude`); PR descriptions
+    carry the scope and results.
+- **Claude-side quality plugins (user, 2026-09-29):** `pyright-lsp` (plus `pyright` 1.1.414 via npm),
+  `pr-review-toolkit` and `claude-security`, at project scope.
+  - Skipped: `code-review` (posts AI-signed PR comments), `commit-commands`, `security-guidance`,
+    `feature-dev`, `code-simplifier`.
+  - CI tooling in the repo stays the source of truth for pass/fail, for Claude and Codex alike.
+- **Build order (user, 2026-09-29): local-first, plus an early thin deploy.**
+  - **Phase A:** build and prove every API, schema and migration locally (Docker Postgres 17), end to
+    end with the AI stub.
+  - **Once billing is on:** deploy only the skeleton (health check + DB connection) to staging, so
+    hosting problems surface early.
+  - **Phase B:** full staging and prod hosting after the local end-to-end run. The frontend moves from
+    the S3 mock to the live URL.
+  - **Phase C:** swap the AI stub for the AI team's pinned pipeline.
+  - Production-grade throughout: versioned API/contracts, additive-only migrations, ADRs, and
+    tests + approval on every merge.
 - **Repository scope (user, 2026-09-29; ADR-0012):**
   - **Backend-only repo.** No `apps/web`; the frontend team has its own repository.
   - Required checks drop from 12 to 10: `web-lint` and `web-typecheck` leave.
@@ -183,36 +214,46 @@ _Last updated: 2026-09-29 (Tue) by Claude Code. Either Codex or Claude Code can 
 
 ## Next actions
 
-**Start here (Codex or Claude Code, from 2026-09-29):**
-0. **Docs were reorganised on 2026-09-29.** Read `docs/README.md` for the map (old `docs/context/…` →
-   `docs/{canon,drafts,review,trace}/`). The plan from setup to launch is `docs/EXECUTION-PLAN.md`:
-   read its §1 and §2 decisions first.
-1. **The user, before any code:**
-   - Install Docker Desktop.
-   - Run `git init` here (a `.gitignore` is ready) and commit the docs baseline.
-   - Any GitHub repo must be **private**: this is confidential client work.
-2. **Read:**
-   - `AGENTS.md`, then this file.
-   - `BUILD-SEQUENCE.md` `## S1`, then `SUPERSEDED.md` and `KNOWN-ISSUES.md`.
-   - Grep `docs/review/REQUIREMENTS-TRACE.md` for the step's terms.
-3. **ADR-0004 spike** (1 day, needs Docker): procrastinate transactional enqueue, the 8 pass criteria.
-   The result settles T3.
-4. **S1 through the team loop:**
-   - **Codex:** follow `.claude/skills/drive/SKILL.md`; its §5 maps each Claude-only part.
-   - **Claude Code:** `/drive S1..S3`.
-   - Each PLAN.md lists the ⚠️ gaps, ❌ conflicts and ❓ questions of REQUIREMENTS-TRACE.md that touch
-     the step. This replaces the build-readiness audit, which the user stopped on 2026-09-28.
-5. **Close doc gaps step by step** (user, 2026-09-28): 285 backend/DB, 142 shared and 103 ops gaps are
-   listed in REQUIREMENTS-TRACE.md.
-   - Fix `DATABASE.md` / `BACKEND-ARCHITECTURE.md` in the step that needs the fix.
-   - Update the verdicts in `req-trace/cNN.map.json`, then run `scripts/trace/check_mapping.py` and
-     `compile_trace.py`.
-   - Rebuild the Word docs with `scripts/docgen/build.sh`.
-6. **The user takes to the team:**
-   - TEAM-QUESTIONS T1–T102 (95 open).
-   - ADRs 0006–0011 (⚑ proposed).
-   - The Word docs' first page lists them all.
-   - Also open: decisions 4, 5, 7, 9 and **10 (accept DATABASE.md as the schema source before S5)** below.
+**Start here (any editor, from 2026-09-30):**
+1. **S1 status: merged into `main` through PR #3** (user, 2026-09-30).
+   - Local gates: 10/10 pass; 325 tests.
+   - Local-only loop files on this Mac: the plan in `docs/plans/s1/{PLAN,CODE-PLAN}.md` (approved), the
+     result in `docs/plans/s1/REPORT.md`, and 26 deviations in `docs/plans/s1/DEVIATIONS.md`.
+   - CI on GitHub was green on PR #3 before the merge.
+2. **S1 follow-ups: first PR, branch `fix/s1-followups`; recommended fixes, awaiting the user's OK** (REPORT.md "Open"):
+   - (a) **MinIO image source.** `minio/minio` and `minio/mc` are unpublished. Use
+     `cgr.dev/chainguard/minio` and `cgr.dev/chainguard/minio-client`, pinned by index digest and bound to
+     127.0.0.1.
+     - Add the `minio` and `minio-init` compose services. The init has no shell: `MC_HOST_local` plus
+       `mc mb --ignore-existing`.
+     - The healthcheck can't use `mc ready`; the image has no shell, and the minio volume must be
+       writable by uid 65532.
+     - Add the bucket checks in `scripts/ci/bootstrap.sh` and the planned tests.
+     - Add TEAM-QUESTIONS T107.
+     - This closes AC9 (bucket half), AC10 and the AC15 bucket leg.
+   - (b) **Pin `editables`** exactly, with a hash, in `build-constraint-dependencies` and
+     `build-constraints.txt`, then re-lock and add a meta test. Editable syncs in
+     `.github/actions/py-setup` and `make dev` fetch it unpinned today.
+   - (c) **pip-audit robustness.** In `scripts/ci/run_pip_audit.py`, add `-s osv --timeout 60`. The PyPI
+     mode timed out from this network; OSV mode passed clean.
+   - Then: re-run all 10 gates, open the PR, confirm CI is green, and the user approves the merge (squash).
+3. **Next steps after S1** (docs/EXECUTION-PLAN.md §6): S2 (freeze `mkos-schemas` v1.0.0; the three-lead
+   rule applies again), S3 (freeze `/api/v1` OpenAPI plus a mock), then S5+.
+   - **ADR-0004 spike** (procrastinate, 1 day) before S8/S13.
+   - **Decision 10:** accept `DATABASE.md` as the schema source before S5.
+4. **How to run the build loop:**
+   - The approved plan is the spec: execute tasks test-first, run every gate, review, fix at most 3
+     rounds, then write the report.
+   - The loop rules are in `docs/plans/README.md`; the role files and the conductor are local-only on
+     this Mac (see `docs/README.md`).
+   - Git: branch → PR → squash merge approved by the user.
+   - **No AI names or attribution in commits, PRs or committed files.**
+5. **Build order (user):** local-first. Once billing is on, a thin staging deploy of the skeleton, then
+   full hosting after the local end-to-end run.
+   - **GCP billing:** not active yet; the client is setting it up.
+6. **The user takes to the team:** TEAM-QUESTIONS (T1–T106 plus T107 when added), the ⚑ proposed ADRs
+   0006–0011, launch scope (Amazon-first vs full) by Sun 4 Oct, and open decisions 4, 5, 7, 9 and 10.
+7. **Doc gaps close step by step:** each step's plan pulls in its REQUIREMENTS-TRACE rows.
 
 **Done (2026-09-26 → 28):**
 - **Research:**
@@ -246,7 +287,8 @@ _Last updated: 2026-09-29 (Tue) by Claude Code. Either Codex or Claude Code can 
 - **Present:** git 2.54, gh 2.98, node 24.
 - **Installed 2026-09-27:** uv 0.12.19 (`~/.local/bin`; pin this version per ADR-0005), Python
   3.13.15 (managed by uv), pnpm 12.5.1 (corepack, via the nvm Node 24.20).
-- **Missing:** Docker Desktop (the user installs it), psql (optional; `docker exec` works).
+- **Installed 2026-09-29:** Docker Desktop 4.93.0 (engine 29.8.1, Compose 5.5.1; the user accepted the license; turning off usage statistics in Settings is up to the user), gitleaks 8.30.1 (`~/.local/bin`, checksum-verified), pyright 1.1.414. Smoke test: PostgreSQL 17.10 + pgvector 0.8.5 OK.
+- **Not needed:** host `psql`; ADR-0013 §7 runs it inside the compose container.
 - **Doc tooling:** `scripts/docgen/node_modules` (472 MB, pinned by `package.json`/lock, gitignored)
   and local Google Chrome, which runs offline for diagram rendering. The scripts run on the system
   `python3` (3.9); python-docx is available for checks.
@@ -264,6 +306,17 @@ _Last updated: 2026-09-29 (Tue) by Claude Code. Either Codex or Claude Code can 
 
 ## Session log (newest first; at most 5 lines each; keep the newest 5, older ones go to `docs/archive/STATE-log.md`)
 
+- **2026-09-29/30 (no AI attribution in git):**
+  - Setup:
+    - GitHub repo made backend-only, with no AI branding (PRs #1, #2 merged).
+    - Docs restructured.
+    - GCP projects created; billing still pending.
+    - Docker, gitleaks and pyright installed.
+  - **S1:** planned (approved with 18 fixes, ADR-0013 accepted), then built by the loop: 3 fix rounds;
+    the report was written by hand after the report step stalled 3 times.
+  - **Merged as PR #3.** Three follow-ups are listed under "Start here".
+  - Files touched: the S1 tree (97 files + fix round), `docs/STATE.md`, ADR-0012/0013, TEAM-QUESTIONS,
+    CANON note, README files; local-only: AGENTS.md, `.claude/`, `docs/plans/s1/`.
 - **2026-09-29 Claude (no-git):**
   - Wrote `docs/EXECUTION-PLAN.md` via a 7-agent workflow. gsd-core: don't install it (it contacts
     npm at every session start); 8 of its ideas are ported into our loop.
