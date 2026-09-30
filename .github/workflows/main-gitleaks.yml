@@ -1,0 +1,26 @@
+# Scans every push to main (not a required check). On GitHub Free nothing stops a direct push or a
+# red merge (ADR-0013 §5). One concurrency group per pushed commit, never cancelled, so no pushed
+# range is left unscanned; a zero or unknown `before` falls back to a full-history scan.
+name: main-gitleaks
+on:
+  push:
+    branches: [main]
+permissions: {}
+concurrency:
+  group: main-gitleaks-${{ github.sha }}
+  cancel-in-progress: false
+jobs:
+  gitleaks-main:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - run: make gitleaks
+        env:
+          BASE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.event.after }}

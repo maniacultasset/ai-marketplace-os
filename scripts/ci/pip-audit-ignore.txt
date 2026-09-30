@@ -1,0 +1,3 @@
+# pip-audit advisories to ignore, each until a date (scripts/ci/run_pip_audit.py).
+# Line format: <ID> <YYYY-MM-DD> <reason>
+# The entry stops applying after its date: an expired or malformed line fails api-lint.

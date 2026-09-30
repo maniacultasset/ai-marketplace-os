@@ -9,28 +9,32 @@
 **/.mypy_cache
 **/.ruff_cache
 **/.pytest_cache
+**/.hypothesis
+**/.import_linter_cache
 **/.coverage
 **/htmlcov
 **/coverage
+**/mutants
 
-# secrets: nothing credential-bearing may be COPYable
-.env
-.env.*
-!.env.example
-secrets/
-*.pem
-*.key
-*.p12
-gcp-sa-*.json
+# secrets: nothing credential-bearing may be COPYable, at any depth
+**/.env
+**/.env.*
+!**/.env.example
+**/secrets/
+**/*.pem
+**/*.key
+**/*.p12
+**/gcp-sa-*.json
 
-# frontend build output (apps/web has its own Dockerfile)
 **/node_modules
-apps/web/.next
-apps/web/out
-apps/web/.turbo
 
 # not needed at runtime
 docs/
+deliverables/
+scaffold/
+scripts/docgen/
+scripts/trace/
+.tools/
 infra/
 _archive/
 **/tests/__snapshots__

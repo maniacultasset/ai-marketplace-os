@@ -8,6 +8,7 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | Variable | Local value | Source | Required | Notes |
 |---|---|---|---|---|
 | `APP_ENV` | `local` | local .env | required | local \| staging \| production. THE single environment switch: admin kill-switch, Sentry environment tag and LocalKmsStub selection all read this. `ENV` is forbidden. |
+| `APP_ROLE` | `api` | local .env | optional | api \| worker \| migrate \| shell; default api (ADR-0013 §1). Picks the boot requirements: api needs DATABASE_URL and JWT_SECRET, worker needs DATABASE_URL, migrate needs ALEMBIC_DATABASE_URL, shell nothing more. The image sets it per role. |
 | `APP_NAME` | `marketplace-os-api` | local .env | optional | Worker deployment overrides to marketplace-os-worker. |
 | `API_V1_PREFIX` | `/api/v1` | local .env | required | Never change. /healthz, /readyz, /openapi.json, /docs, /internal/admin sit outside it. |
 | `LOG_LEVEL` | `INFO` | local .env | optional | DEBUG locally if you want SQL echo context; INFO everywhere else. |
@@ -24,9 +25,7 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | `ADMIN_SESSION_SECRET` | `dev_only_admin_session_secret_at_least_32_chars` | both | required | Secret Manager in staging/prod; 32+ random bytes. |
 | `ADMIN_STAFF_EMAILS` | `(empty — leave blank)` | local .env | optional | Comma-separated allowlist, second layer behind IAP/IAM. |
 | `ADMIN_LOCAL_EMAIL` | `dev@local` | local .env | optional | Used only when APP_ENV=local. |
-| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8000/api/v1` | local .env | required | apps/web/.env.local ONLY — the API never reads it. Must carry the /api/v1 prefix. |
-| `NEXTAUTH_URL` | `http://localhost:3000` | local .env | required | apps/web/.env.local ONLY. |
-| `NEXTAUTH_SECRET` | `dev_only_nextauth_secret_change_me` | both | required | apps/web/.env.local ONLY; Secret Manager for the web Cloud Run service. Distinct from JWT_SECRET — NextAuth encrypts its own session cookie, FastAPI signs the API token. |
+| `PORT` | `8000` | local .env | required | 8000 locally. Cloud Run injects `$PORT` (image default 8080); the worker health server binds `settings.port`, which is why this is a register row and not a hard-coded constant. |
 
 ## Database
 
@@ -37,15 +36,9 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | `DATABASE_POOL_SIZE` | `5` | local .env | required | 5, not 10 — connection budget is (api max-instances + worker max-instances) × 10; the arithmetic lives in the Cloud Run ADR. |
 | `DATABASE_MAX_OVERFLOW` | `5` | local .env | required | Engine also sets pool_pre_ping=True, pool_recycle=1800 (Cloud SQL drops idle connections). |
 | `DATABASE_ECHO` | `false` | local .env | optional | Never true outside local. |
-
-## Redis
-
-| Variable | Local value | Source | Required | Notes |
-|---|---|---|---|---|
-| `REDIS_URL` | `redis://localhost:6379/0` | both | required | Matches compose redis:7-alpine on 6379. Memorystore Basic in GCP — no persistence, so nothing durable may live here. |
-| `ARQ_QUEUE_NAME` | `q:default` | local .env | required | Two queues for MVP: q:default (generation, images, imports, embeddings) and q:publish. One worker deployment per queue; the publish deployment sets q:publish. |
-| `ARQ_MAX_JOBS` | `10` | local .env | required | q:publish deployment sets 4. |
-| `ARQ_JOB_TIMEOUT_SECONDS` | `1800` | local .env | required | Ceiling only. Per-function timeouts: generation 300s, publish 600s, imports 1800s. |
+| `DATABASE_POOL_TIMEOUT` | `10` | local .env | required | Seconds to wait for a pooled connection before raising. |
+| `DATABASE_POOL_RECYCLE` | `1800` | local .env | required | Cloud SQL drops idle connections; recycle below that window. |
+| `DB_STATEMENT_TIMEOUT_MS` | `15000` | local .env | required | Server-side `statement_timeout` for every app connection, passed as the libpq `options` connect argument (psycopg 3; the `server_settings` form is asyncpg-only). |
 
 ## GCS
 

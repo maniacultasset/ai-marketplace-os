@@ -17,8 +17,8 @@ AI never publishes. Every listing passes deterministic validation and human appr
 
 ## Repository
 
-This repository holds the backend and database. The application paths are created in build step S1;
-today the repository holds the design, the decisions and the tooling.
+This repository holds the backend and database. Build step S1 created the skeleton: the uv workspace,
+a FastAPI app with health probes, the local database stack and the ten required checks.
 
 | Path | Contents |
 |---|---|
@@ -26,7 +26,7 @@ today the repository holds the design, the decisions and the tooling.
 | `packages/schemas` | API and event contracts: Python `mkos_schemas`, TypeScript `@mkos/schemas` |
 | `infra` | OpenTofu for Google Cloud |
 | `docs` | Architecture, decisions, specification snapshot, requirements trace |
-| `scripts` | Spec sync, document build, trace checks |
+| `scripts` | `db/` bootstrap SQL, `ci/` check scripts, spec sync, document build, trace checks |
 
 ### Related repositories
 
@@ -46,6 +46,41 @@ Contract changes are released as versions (ADR-0012), so each repository upgrade
 - Google Cloud, `asia-south1`: Cloud Run, Cloud SQL, Secret Manager, Cloud KMS, Cloud Storage
 
 Each choice and the alternatives considered are recorded in [`docs/adr/`](docs/adr/).
+
+## Quickstart
+
+Prerequisites: Docker Desktop and [uv](https://docs.astral.sh/uv/) 0.12.19 (the pinned version; uv
+installs Python 3.13 itself).
+
+```sh
+cp .env.example .env
+make dev        # Postgres 17 + pgvector, bootstrap SQL, uv sync, git hooks, then the API on :8000
+curl -s localhost:8000/healthz && curl -s localhost:8000/readyz
+```
+
+- Every port binds `127.0.0.1` only: Postgres on 5432 and the API on 8000. MinIO (9000 and 9001)
+  joins the stack once its image source is decided; nothing in the API uses it yet.
+- The API docs are at <http://localhost:8000/docs>. Production serves no docs.
+- Trailing slashes are never redirected: `/api/v1/x/` is a 404 when the route is `/api/v1/x`, so
+  clients must use the exact OpenAPI paths.
+- `make test-unit` runs the unit and meta tests without a database.
+
+Each required check has a make target of the same name, and CI runs exactly that target:
+
+| Check | Local command | Needs |
+|---|---|---|
+| `api-lint` | `make api-lint` | network (pip-audit) |
+| `api-typecheck` | `make api-typecheck` | — |
+| `api-tests` | `make test-db api-tests` | the compose Postgres |
+| `tenant-isolation` | `make test-db tenant-isolation` | the compose Postgres |
+| `contracts` | `make contracts` | — |
+| `schemas-drift` | `make schemas-drift` | — |
+| `commit-lint` | `PR_TITLE='feat(x): y' HEAD_REF=feat/x make commit-lint` | — |
+| `bootstrap` | `make bootstrap` | Docker, a `.env`, free ports 5432 and 8000 |
+| `lint-imports` | `make lint-imports` | — |
+| `gitleaks` | `make gitleaks` | network (first run downloads the pinned binary) |
+
+`scripts/ci/prove_gates.sh [--with-docker]` proves that each check goes red on a seeded violation.
 
 ## Environments
 
@@ -81,5 +116,5 @@ committed.
 
 ## Status
 
-Design complete; implementation starts with build step S1 (September 2026). Current status and next steps
-are in [`docs/STATE.md`](docs/STATE.md).
+Build step S1 (the scaffold, toolchain and CI checks) is in review. Current status and next steps are in
+[`docs/STATE.md`](docs/STATE.md).

@@ -1,0 +1,15 @@
+# gitleaks config (CANON-ADDENDUM.md §12). The default rules, plus an allowlist of exact local-dev
+# values that are committed on purpose. Values only, anchored; never paths.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Committed local-dev and CI placeholder values (ENV.md, CANON-ADDENDUM.md §11, §13)"
+regexes = [
+  '''^dev_only_change_me_at_least_32_characters_long$''',
+  '''^ci_only_not_a_real_secret_at_least_32_chars$''',
+  '''^local_only_schema_export_secret_32_chars$''',
+  '''^dev_only_admin_session_secret_at_least_32_chars$''',
+  '''^bG9jYWxfZGV2X29ubHlfMzJfYnl0ZV9rZXlfMDAwMDA=$''',
+  '''^minioadmin$''',
+]

@@ -10,10 +10,10 @@
   },
   {
    "id": "R06994",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2417 (§10.3)",
-   "note": "Compose `version: '3.8'` not specified; the key is obsolete and ignored by Compose v2"
+   "ref": "docker-compose.yml",
+   "note": "no `version:` key: it is obsolete and ignored by Compose v2 (S1)"
   },
   {
    "id": "R06996",
@@ -356,7 +356,7 @@
    "status": "covered",
    "owner": "ops",
    "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2505; docs/architecture/BACKEND-ARCHITECTURE.md:2565-2566",
-   "note": "PR must pass 12 required checks, then user approves merge"
+   "note": "PR must pass the 10 required checks (ADR-0012), advisory on GitHub Free (ADR-0013 §5), then the user approves the merge"
   },
   {
    "id": "R07054",

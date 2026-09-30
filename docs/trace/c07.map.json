@@ -2621,10 +2621,10 @@
   },
   {
    "id": "R04881a",
-   "status": "covered",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "BUILD-SEQUENCE.md:14",
-   "note": "S1 monorepo tree"
+   "ref": "docs/adr/0012-backend-only-repository.md",
+   "note": "backend-only repo: apps/api, packages/schemas, infra, scripts, docs, .github; apps/web lives in the FE team's repo (ADR-0012; T103)"
   },
   {
    "id": "R04881b",
@@ -2649,10 +2649,10 @@
   },
   {
    "id": "R04882",
-   "status": "covered",
+   "status": "gap",
    "owner": "ops",
-   "ref": "CANON-ADDENDUM.md:273",
-   "note": "branch protection with 12 checks; needs the GitHub repo decision (STATE open decision 4)"
+   "ref": "docs/adr/0013-s1-toolchain-and-ci-on-free.md",
+   "note": "no branch protection until GitHub Team: Free has no rulesets on private repos; the 10 checks are advisory (ADR-0013 §5; T106)"
   },
   {
    "id": "R04882a",
@@ -2726,10 +2726,10 @@
   },
   {
    "id": "R04885a",
-   "status": "covered",
+   "status": "gap",
    "owner": "ops",
-   "ref": "BUILD-SEQUENCE.md:20",
-   "note": "S1 done-when; git repo not created yet"
+   "ref": "docs/adr/0013-s1-toolchain-and-ci-on-free.md",
+   "note": "repo pushed (S1), but branch protection waits for GitHub Team (ADR-0013 §5; T106)"
   },
   {
    "id": "R04885b",
@@ -2883,21 +2883,21 @@
    "status": "covered",
    "owner": "backend-db",
    "ref": "BACKEND-ARCHITECTURE.md:2607",
-   "note": "12 required checks on every PR"
+   "note": "10 checks, advisory on Free (ADR-0012; ADR-0013 §5)"
   },
   {
    "id": "R04896b",
    "status": "covered",
    "owner": "backend-db",
    "ref": "BACKEND-ARCHITECTURE.md:2607",
-   "note": "12 required checks on every PR"
+   "note": "10 checks, advisory on Free (ADR-0012; ADR-0013 §5)"
   },
   {
    "id": "R04896c",
    "status": "covered",
    "owner": "backend-db",
    "ref": "BACKEND-ARCHITECTURE.md:2607",
-   "note": "12 required checks on every PR"
+   "note": "10 checks, advisory on Free (ADR-0012; ADR-0013 §5)"
   },
   {
    "id": "R04898",

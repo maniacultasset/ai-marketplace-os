@@ -8,21 +8,21 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 - **Every line of the client spec is traced.** All 13,711 lines of the snapshot are in the register:
   11,167 entries, of which 8,916 are checkable statements. `scripts/trace/check_coverage.py` proves 100% line coverage.
 - **Every statement has a verdict**, with a reference, adversarially verified per chunk (`scripts/trace/check_mapping.py`).
-- **6,977 of 8,916 (78%) are covered by our plan**: 6,063 as written and
-  914 deliberately changed by an ADR, Canon row or recorded decision.
-- **550 are gaps** (backend/DB 285, shared seams 142, ops 103, AI team 4, FE team 0, client 16).
+- **6,976 of 8,916 (78%) are covered by our plan**: 6,060 as written and
+  916 deliberately changed by an ADR, Canon row or recorded decision.
+- **550 are gaps** (backend/DB 284, shared seams 141, ops 105, AI team 4, FE team 0, client 16).
 - **340 need the team or client** (67 conflicts, 273 questions);
   each points to a row in `TEAM-QUESTIONS.md`.
-- 510 belong to the AI or FE team, and 539 are marked Phase 2/3 by the site itself.
+- 511 belong to the AI or FE team, and 539 are marked Phase 2/3 by the site itself.
 
 | Status | Statements | Share |
 |---|---:|---:|
-| ✅ covered | 6,063 | 68.0% |
-| 🔁 covered-changed | 914 | 10.3% |
+| ✅ covered | 6,060 | 68.0% |
+| 🔁 covered-changed | 916 | 10.3% |
 | ⚠️ gap | 550 | 6.2% |
 | ❌ conflict | 67 | 0.8% |
 | ❓ needs-client | 273 | 3.1% |
-| 🧩 other-team | 510 | 5.7% |
+| 🧩 other-team | 511 | 5.7% |
 | ⏭ later-phase | 539 | 6.0% |
 
 ## By page
@@ -45,7 +45,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [10] Acceptance Criteria, Metrics & Lead Handoff (§22–26) | 86 | 4 | 11 | 0 | 4 | 0 | 2 | 15 |
 | [01] 45-Day Plan & Definition of Done | 85 | 3 | 1 | 0 | 2 | 0 | 0 | 3 |
 | [02] Phase-1 Scope Lock & Non-Goals | 49 | 1 | 1 | 0 | 4 | 6 | 36 | 5 |
-| [03] Day-by-Day Execution Plan (45 Days) | 440 | 73 | 109 | 1 | 76 | 49 | 0 | 186 |
+| [03] Day-by-Day Execution Plan (45 Days) | 437 | 74 | 111 | 1 | 76 | 49 | 0 | 188 |
 | [04] Team Structure & Solo Sprint | 57 | 7 | 3 | 0 | 13 | 16 | 0 | 16 |
 | [05] GCP Tech Stack & Architecture | 85 | 19 | 6 | 0 | 0 | 11 | 0 | 6 |
 | [06] Consolidated Data Model & Schema | 162 | 23 | 0 | 8 | 9 | 0 | 0 | 17 |
@@ -54,7 +54,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [09] Image Compliance & Adapters | 57 | 6 | 6 | 6 | 6 | 0 | 0 | 18 |
 | [10] Security, Multi-Tenancy & Reliability | 59 | 13 | 7 | 0 | 0 | 1 | 0 | 7 |
 | [11] Testing Strategy, Launch Gate & Risks | 61 | 12 | 29 | 1 | 5 | 7 | 17 | 35 |
-| [12] API Surface, Dev Setup & Appendix | 91 | 51 | 9 | 0 | 1 | 8 | 0 | 10 |
+| [12] API Surface, Dev Setup & Appendix | 91 | 52 | 7 | 0 | 1 | 9 | 0 | 8 |
 | [1] System Overview | 129 | 1 | 0 | 0 | 11 | 20 | 3 | 11 |
 | [2] Architecture Principles | 83 | 1 | 2 | 0 | 2 | 0 | 1 | 4 |
 | [3] Product Scope | 37 | 0 | 0 | 0 | 2 | 1 | 10 | 2 |
@@ -1070,7 +1070,7 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 | R13665 | L13665 | Production launch checklist: All Phase 1 features implemented. | T16; VISION Q25 | Phase-1 set per plan scope lock (T16); steps after S14 unsequenced |
 | R13668 | L13668 | Production launch checklist: Marketplace OAuth flows verified with production accounts. | T77 | Prod filings/app approval status unknown (STATE open decision 5); verify step itself unplanned |
 
-## ⚠️ Gaps we own: backend + DB (285)
+## ⚠️ Gaps we own: backend + DB (284)
 
 Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITECTURE.md and the build steps.
 
@@ -1281,7 +1281,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 |---|---|---|---|---|
 | R06926a | L6926 | GET /listings/{id}/status: Returns retry attempt count. | drafts/CONTRACTS.md:560; BACKEND-ARCHITECTURE.md:1350; DATABASE.md:785 | JobEnvelope.attempt is the queue attempt (generation max 1); live correction count not exposed. |
 | R06932a | L6932 | POST /listings/validate: results saved in validation_runs. | BACKEND-ARCHITECTURE.md:1338; DATABASE.md:809 | Endpoint not stated to persist validation_runs rows. |
-| R06994 | L6994–6995 | docker-compose.yml uses compose file version: '3.8' | docs/architecture/BACKEND-ARCHITECTURE.md:2417 (§10.3) | Compose `version: '3.8'` not specified; the key is obsolete and ignored by Compose v2 |
 | R07014 | L7014 | minio service image: minio/minio:latest | docs/architecture/BACKEND-ARCHITECTURE.md:2425 | MinIO image tag not specified; site uses floating :latest, plan pins only the Postgres image |
 | R07015 | L7015 | minio service command: server /data --console-address ":9001" | docs/architecture/BACKEND-ARCHITECTURE.md:2425 | MinIO `server /data --console-address :9001` command not specified |
 | R07021 | L7021 | minio service port mapping "9001:9001" | docs/architecture/BACKEND-ARCHITECTURE.md:2425 | MinIO console port 9001 not specified |
@@ -1758,9 +1757,9 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
 | R13647 | L13647 | Security checklist: TLS on all connections. | docs/architecture/BACKEND-ARCHITECTURE.md:2263 | DB and storage connection encryption stated nowhere; doc gap for ADR-0001/S4 |
-| R13650 | L13650 | Security checklist: SQL injection prevention verified. | docs/architecture/BACKEND-ARCHITECTURE.md:2204 | Parameterised SQL only a site ask; no SQLi verification (test/lint/audit) planned |
+| R13650 | L13650 | Security checklist: SQL injection prevention verified. | docs/architecture/BACKEND-ARCHITECTURE.md:2204 | SQL injection prevention is verified with the repository layer (S9) and the API routes (S10): parameterised queries and tests; ruff S608 (S1) is only the lint half |
 
-## ⚠️ Gaps on a shared seam (backend + AI or FE team) (142)
+## ⚠️ Gaps on a shared seam (backend + AI or FE team) (141)
 
 
 ### [★] Complete Founder BRD (End-to-End)
@@ -1891,12 +1890,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R06698 | L6698 | Image Suite owner: AI / OPS. | BACKEND-ARCHITECTURE.md:2690 | Owner unnamed; site says AI/OPS. |
 | R06726a | L6726 | E2E test tooling: Playwright (browser flow, login to publish). | BACKEND-ARCHITECTURE.md:2694; ADR-0010 | Playwright not in ADR-0010 toolset; owner unnamed. |
 | R06840a | L6840 | Mitigation (Vision False Positives): 50-image fixture library calibrated on Day 24. | BACKEND-ARCHITECTURE.md:2690; drafts/CHECKLISTS.md:33 | Day-24 calibration only in the pre-Canon client ask (CHECKLISTS.md:33); not in the test plan. |
-
-### [12] API Surface, Dev Setup & Appendix
-
-| R-id | Lines | The site says | Ref | What is missing / differs |
-|---|---|---|---|---|
-| R06981 | L6981 | apps/web/Dockerfile | BACKEND-ARCHITECTURE.md:2304 | Web container and hosting not in ADR-0001; FE owns the Dockerfile. |
 
 ### [2] Architecture Principles
 
@@ -2175,7 +2168,7 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R13622a | L13622 | QA checklist: Image compliance test case: wrong background. | docs/architecture/BACKEND-ARCHITECTURE.md:2690; docs/architecture/DATABASE.md:525 | White-background seed exists; only background_off contract fixture, no test |
 | R13627a | L13627 | QA checklist: Failure injection test: model timeout. | docs/architecture/BACKEND-ARCHITECTURE.md:2789 | Model-timeout injection not in ADR-0010; model calls in AI graph, JOB_TIMEOUT 300 s ours |
 
-## ⚠️ Gaps in delivery and operations (103)
+## ⚠️ Gaps in delivery and operations (105)
 
 
 ### [01] 45-Day Plan & Definition of Done
@@ -2199,6 +2192,8 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R04869d | L4869 | Plan phase: Week 5 = Days 29–35. | DATABASE.md:1758 | no build steps after S14 for Weeks 3-7; schedule re-baseline pending (Q25) |
 | R04869e | L4869 | Plan phase: Week 6 = Days 36–42. | DATABASE.md:1758 | no build steps after S14 for Weeks 3-7; schedule re-baseline pending (Q25) |
 | R04869f | L4869 | Plan phase: Week 7 = Days 43–45. | DATABASE.md:1758 | no build steps after S14 for Weeks 3-7; schedule re-baseline pending (Q25) |
+| R04882 | L4882 | Day 1: set up branch protection. | docs/adr/0013-s1-toolchain-and-ci-on-free.md | no branch protection until GitHub Team: Free has no rulesets on private repos; the 10 checks are advisory (ADR-0013 §5; T106) |
+| R04885a | L4885 | Day 1 DoD: monorepo pushed with branch protection. | docs/adr/0013-s1-toolchain-and-ci-on-free.md | repo pushed (S1), but branch protection waits for GitHub Team (ADR-0013 §5; T106) |
 | R05016c | L5016 | Day 11 TL: team onboarding — assign tickets. | BUILD-SEQUENCE.md:235 | ONBOARDING.md describes the ticket flow; ticket assignment itself not planned |
 | R05020 | L5020 | Day 11 OPS: IAM accounts for team. | BUILD-SEQUENCE.md:235; BACKEND-ARCHITECTURE.md:1619 | ONBOARDING says how to get GCP access; per-engineer IAM grants not specified (S4 OpenTofu) |
 | R05056 | L5056 | Day 14 deliverable theme: Week 2 Milestone Demo & Scope Freeze. | DATABASE.md:1758 | milestone demo and scope freeze not scheduled (Q25) |
