@@ -1277,7 +1277,7 @@ flowchart LR
 | Types: `mypy --strict` on `apps/api` and `packages/schemas`; non-strict on `packages/pipeline` | `api-typecheck` | [Decided] Canon required checks |
 | Every table mapped with `TenantScoped` is covered by the cross-tenant test, including pgvector search | `tenant-isolation` | [Decided] Canon required checks |
 
-The full list of 12 required checks is in §11.2. No workflow that carries one of them may have a `paths:` filter [Decided] Addendum §12.
+The full list of 10 required checks is in §11.2 (ADR-0012). No workflow that carries one of them may have a `paths:` filter [Decided] Addendum §12.
 
 ## 5. API surface
 
@@ -2502,14 +2502,14 @@ Incorporation (Pvt Ltd/LLP) and GST registration are strongly recommended, whate
 
 ## 11. Delivery (release, testing, observability)
 
-**In plain words.** Every change arrives as a pull request and must pass 12 automatic checks. The user then approves the merge. Each merge to `main` deploys itself to staging, where smoke and end-to-end tests run against the real deployment. Production only ever receives a numbered release, with a changelog, that the user has approved. The production release first updates the database, then starts the new version with **no** traffic. It tests that version privately, moves users onto it, and watches it for 10–15 minutes. If errors appear, traffic goes back to the previous version automatically. There is no manual user-acceptance phase: the automated suite has to catch regressions.
+**In plain words.** Every change arrives as a pull request and must pass 10 automatic checks. The user then approves the merge. Each merge to `main` deploys itself to staging, where smoke and end-to-end tests run against the real deployment. Production only ever receives a numbered release, with a changelog, that the user has approved. The production release first updates the database, then starts the new version with **no** traffic. It tests that version privately, moves users onto it, and watches it for 10–15 minutes. If errors appear, traffic goes back to the previous version automatically. There is no manual user-acceptance phase: the automated suite has to catch regressions.
 
 **Part 1: from pull request to a release candidate**
 
 ```mermaid
 flowchart TB
   PR["Pull request"]:::backend
-  CK{"12 required checks green?"}:::backend
+  CK{"10 required checks green?"}:::backend
   MG["User approves, squash merge to main"]:::human
   STG["Auto-deploy to staging - same zero-traffic flow as prod"]:::gcp
   SE{"Staging smoke and E2E pass?"}:::backend
@@ -2604,11 +2604,11 @@ ADR-0009 sets the signals (error rate and latency) but not these two.
 - **Tooling:** every revision starts with `SET lock_timeout = '5s'`, and the `squawk` linter checks each migration.
 - **Numbering:** revision ids are claimed in the Canon's migration ledger before the file is written [Decided] (Canon).
 
-### 11.2 The 12 required checks
+### 11.2 The 10 required checks
 
-**In plain words.** These 12 checks must be green before anything merges. Together they prove the code is formatted, type-safe and tested. They also prove that one brand cannot see another's data, that the shared contracts did not break the AI or frontend teams, that a fresh machine can still boot the system, and that no secret was committed.
+**In plain words.** These 10 checks must be green before anything merges. Together they prove the code is formatted, type-safe and tested. They also prove that one brand cannot see another's data, that the shared contracts did not break the AI or frontend teams, that a fresh machine can still boot the system, and that no secret was committed.
 
-All 12 are [Decided] (Canon "Required CI checks"; Addendum §12). GitHub check names are exact.
+All 10 are [Decided] (Canon "Required CI checks"; Addendum §12 as amended by ADR-0012, which moved `web-lint` and `web-typecheck` to the frontend repository). GitHub check names are exact.
 
 | Check | What it proves |
 |---|---|
@@ -2618,14 +2618,12 @@ All 12 are [Decided] (Canon "Required CI checks"; Addendum §12). GitHub check n
 | `tenant-isolation` | The cross-brand tests, as their own job on a dedicated database, including vector search (§9.1) |
 | `contracts` | The shared schemas install in a bare venv, golden fixtures round-trip, and `oasdiff` finds no breaking API change |
 | `schemas-drift` | Regenerating the JSON Schema and TypeScript types produces no diff |
-| `web-lint` | eslint with zero warnings allowed (FE code) |
-| `web-typecheck` | `tsc --noEmit` in strict mode (FE code) |
 | `commit-lint` | PR title and branch name follow the naming rules |
 | `bootstrap` | A clean clone boots, migrates, seeds, answers `/healthz` and `/readyz`, and the Docker image imports the app |
 | `lint-imports` | Import boundaries: the AI pipeline cannot import the backend or the credential modules, and only admin, CLI and scripts may use `platform_scope` |
 | `gitleaks` | No secret appears in the PR's commits |
 
-- **Also in CI** [Decided] (ADR-0005, ADR-0010): `pip-audit` (or osv-scanner) for known vulnerabilities, run in the PR gate. Renovate opens weekly grouped dependency PRs, and only dev-dependency patches auto-merge. Whether `pip-audit` is one of the *required* checks is not specified.
+- **Also in CI** [Decided] (ADR-0005, ADR-0010): `pip-audit` (or osv-scanner) for known vulnerabilities, run in the PR gate. Renovate opens weekly grouped dependency PRs, with no auto-merge of any kind (ADR-0013 §6 amends ADR-0005). Whether `pip-audit` is one of the *required* checks is not specified.
 - **"Done"** for a code change means every required check that exists yet has passed, with fresh output shown (AGENTS.md §6).
 
 ### 11.3 The four test gates and quality bars
@@ -2635,7 +2633,7 @@ All 12 are [Decided] (Canon "Required CI checks"; Addendum §12). GitHub check n
 ```mermaid
 flowchart TB
   PR["Pull request"]:::backend
-  G1["Gate 1 - every PR, at most about 10 min:<br/>the 12 required checks"]:::backend
+  G1["Gate 1 - every PR, at most about 10 min:<br/>the 10 required checks"]:::backend
   MAIN["main branch"]:::backend
   G2["Gate 2 - nightly:<br/>mutation score on core modules"]:::backend
   G3["Gate 3 - staging deploy:<br/>smoke and E2E on the deployed build"]:::backend
@@ -2660,7 +2658,7 @@ All four gates are [Decided] by the user and recorded in ADR-0010 (text still `p
 
 | Gate | When | What runs | Tag |
 |---|---|---|---|
-| 1. PR | Every push to a PR, at most about 10 minutes | The 12 required checks (§11.2), including integration tests on real PostgreSQL 17 and the tenant-isolation suite, plus squawk and pip-audit | [Decided] ADR-0010; Canon |
+| 1. PR | Every push to a PR, at most about 10 minutes | The 10 required checks (§11.2), including integration tests on real PostgreSQL 17 and the tenant-isolation suite, plus squawk and pip-audit | [Decided] ADR-0010; Canon |
 | 2. Nightly | Every night | Mutation testing of the core modules (score ≥ 80%), the full Schemathesis run, Hypothesis at high example counts, randomised test order | [Decided] ADR-0010 |
 | 3. Staging deploy | Every merge to `main` | A migration on a prod-like copy, smoke tests, and the BRD §21 walkthrough as an automated E2E test. One deliberately messy product as an extra fixture is [Proposed] (VISION C8). | [Decided] ADR-0010, provisional (T8) |
 | 4. Prod deploy | Every approved tag | Smoke test on the zero-traffic revision, 10–15 minute watch, automatic rollback | [Decided] ADR-0009, ADR-0010 |
@@ -2844,7 +2842,7 @@ ADR-0001 to 0005 are accepted (user in chat, 2026-09-27). ADR-0006 to 0011 are w
 | **0008** Human approval | **v1 publishes only after a human approves one specific `listing_version`.** The approver is a different active member with the reviewer, owner or admin role, enforced in the API and by a DB trigger. `tenants.auto_publish` is reserved, with `CHECK (auto_publish = false)` in v1. Every approval writes `review_decisions` and `audit_log`. | It follows the build plan and specs (L4700, L4812) and invariant 3. | BRD: autonomous submission, approval optional (L39–41, L2243). Admin: operational actions only, no data modification (L7437–7475). | T10 (also T15) | Proposed (user decision in chat, 2026-09-27); the client confirms the long term (Q1). Admin as approver departs from the site and from Canon 0004, so that point is provisional (§13.5). |
 | **0009** Environments and release | **local** (Docker Desktop) + **staging** (auto-deploys every merge to `main`) + **prod** (only a SemVer tag `vX.Y.Z`, after the user approves, with a changelog). No cloud dev tier. A prod deploy migrates first (expand-only), gives the new revision zero traffic, smoke-tests it, shifts traffic, watches error rate and latency for 10–15 minutes and **rolls back automatically**. Rollback means redeploying the previous tag. | A small, bootstrapped team owns merges and prod rollouts. Expand/contract migrations let the previous revision run on the new schema. | Local, staging and production (spec [189], L13023); tested rollback under 15 minutes (L5424, L6806–6808). The EC2/systemd deployment text (L13014–13019) is superseded. | none | Proposed (user decision in chat, 2026-09-27) |
 | **0010** Test strategy | **Automated only, four gates:** PR (at most about 10 minutes), nightly, staging deploy, prod deploy. The BRD §21 walkthrough runs as an automated E2E test on staging. Core modules (rules engine, tenant guard, maker-checker, idempotency, publish retry) need **90% branch coverage and a nightly mutation score of at least 80%**. | The backend team works mostly alone and wants every kind of test automated and sensitive to small regressions. | Whole-team UAT as launch gate 9 (L6732–6738, L6800–6802) | T8 | Proposed (user decision in chat, 2026-09-27); **provisional** |
-| **0011** Team loop | For each build step: context, plan and critique, **the user approves the plan**, tests first, gates, code and security reviews with every finding re-checked, at most 3 fix rounds, then **the user approves the merge**. The coding agents (Claude Code and Codex) hand over through `docs/STATE.md`. | Two human approvals are the only waits per step, and every step leaves a paper trail in `docs/plans/<step>/`. | Not specified | none | Proposed (user decision in chat, 2026-09-27) |
+| **0011** Team loop | For each build step: context, plan and critique, **the user approves the plan**, tests first, gates, code and security reviews with every finding re-checked, at most 3 fix rounds, then **the user approves the merge**. The coding-agent editors hand over through `docs/STATE.md`. | Two human approvals are the only waits per step, and every step leaves a paper trail in `docs/plans/<step>/`. | Not specified | none | Proposed (user decision in chat, 2026-09-27) |
 
 ### 12.2 Other recorded decisions (STATE "Decided", 26–27 Sep 2026)
 
@@ -3221,7 +3219,7 @@ flowchart TB
 | `mkos-schemas` / `mkos_schemas` / `@mkos/schemas` | The shared contracts package: its Python distribution name, its Python import name and its TypeScript package. The generated `openapi.json` and `.d.ts` files are machine-owned and never hand-edited. | [Decided, Canon] |
 | `schemas-v1.0.0` | The first tagged release of the contracts package. Shape changes are cheap before it and a MAJOR three-team change after it (VISION §1). | [Decided] |
 | MINOR / MAJOR contract change | MINOR is an additive optional field and can land any day. MAJOR is a rename, removal or type change and can land only in the Day-14, Day-28 or Day-42 windows. Both need the Tech Lead, the AI lead and the FE lead. | [Decided] |
-| Required checks | The 12 CI checks that must pass before a merge to `main` (Addendum §12; listed in §11.2). | [Decided] |
+| Required checks | The 10 CI checks that must pass before a merge to `main` (Addendum §12 as amended by ADR-0012; listed in §11.2). | [Decided] |
 | Build steps S1–S14 | The dependency-ordered build plan, done in order (`BUILD-SEQUENCE.md`). | [Decided] |
 | Spike | A time-boxed trial. ADR-0004's 1-day spike has 8 pass criteria, including transactional defer, tenant context under RLS, timeouts, retries, throughput and crash recovery (§8.2). | [Decided] |
 | UAT | User acceptance testing by people. The site makes whole-team UAT launch gate 9; we use automated tests instead (T8, ADR-0010). | [Site] / [Decided] |

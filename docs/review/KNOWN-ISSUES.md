@@ -56,8 +56,9 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 
 ## D. Hygiene
 
-- An absolute local machine path (`…/Clients-popcom/…/scratchpad/…`) appears in `CHECKLISTS.md` and
-  the kickoff pack. Scrub it before sharing either file outside the team.
+- An absolute local machine path (`…/Clients-popcom/…/scratchpad/…`) appears in the kickoff pack
+  (`deliverables/`, not in git). Scrub it before sharing that file outside the team. `CHECKLISTS.md`
+  was fixed on 2026-09-30.
 - `BLOCKERS.md` IAM matrix gives the AI group project-level `secretAccessor`, which covers the
   marketplace secrets. That contradicts invariant 6. Grant it per secret.
 - `CANON.md` was never merged with the Addendum and never mentions it. `AGENTS.md` §2 sets the

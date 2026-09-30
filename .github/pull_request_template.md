@@ -4,7 +4,7 @@
 
 ## Step and "Done when"
 
-<!-- The build step (S1..S14), each "Done when" line with its trace ids, and its result. -->
+<!-- The build step id (S1..S26, EXECUTION-PLAN §6.2-§6.3), each "Done when" line with its trace ids, and its result. -->
 
 | Criterion | Result | Proof |
 |---|---|---|
@@ -40,3 +40,7 @@
 ## Tests first
 
 <!-- For each guard: the test that went red first, and the proof it fails when the guard is removed. -->
+
+## Docs
+
+- [ ] `docs/PRD.md` / `docs/ARCH.md` / `docs/DESIGN.md` / `docs/PHASES.md` / `docs/STATE.md` updated in this PR if behaviour, structure, scope or status changed, with the detailed source behind each (`docs/RULES.md` §12)
