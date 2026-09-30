@@ -249,8 +249,9 @@ change; where an item is work, it appears in "Start here" item 2.
 Done on 2026-09-30:
 - **P1:** the pending doc edits rode in PR #4.
 - **P11:** tool names and local paths removed in PR #4.
-- **P12:** `gitleaks dir --redact .` found 2 matches, both false positives: the spec phrase "key field:
-  parent/child relationship" in `docs/review/REQUIREMENTS-TRACE.md:520` and `docs/trace/c02.json:2253`.
+- **P12:** `gitleaks dir --redact .` found 2 matches, both false positives: a spec sentence about the
+  Listing record's parent-child field in `docs/review/REQUIREMENTS-TRACE.md:520` and
+  `docs/trace/c02.json:2253`. They are already allowlisted for commit `be02277` in `.gitleaksignore`.
   There are no real secrets. Allowlisting them joins the S1 follow-ups.
 - **P14:** backup at `~/Backups/ai-marketplace-os/local-only-2026-09-30-2325.tar.gz` (owner-only).
 - **P18:** the local rule files are fixed, and the session-start status prints the rules version.

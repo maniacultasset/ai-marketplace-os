@@ -4,3 +4,5 @@
 # meaningful. Never add paths or values.
 be02277054e319009eee09390040f8ca0da8d940:docs/trace/c02.json:generic-api-key:2253
 be02277054e319009eee09390040f8ca0da8d940:docs/review/REQUIREMENTS-TRACE.md:generic-api-key:520
+# The same false positive, quoted in the docs/STATE.md P12 note of commit 3dded44 (reworded in the next commit).
+3dded44bb7fb9d5f81f048bb655771076cb3b8cb:docs/STATE.md:generic-api-key:252
