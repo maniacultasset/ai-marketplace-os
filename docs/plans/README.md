@@ -1,24 +1,26 @@
 # docs/plans/ — one folder per build step or feature
 
-Each `<id>/` folder (e.g. `s1/`) is the hand-off record for one pass through the team loop in
-AGENTS.md §6. **These files, not any tool's memory, are the loop state.** Claude Code or Codex can
-resume from them at any point.
+Each `<id>/` folder (e.g. `s1/`) is the hand-off record for one pass through the team loop (the local
+agent rules, AGENTS.md §6). **These files, not any tool's memory, are the loop state.** Any editor can
+resume from them at any point. The folders are local-only (`.git/info/exclude`); this README is the
+only committed file here, and the PR description carries the scope, criteria and results.
 
 | File | Written by | Meaning |
 |---|---|---|
 | `CONTEXT.md` | mkos-planner | The context pack (≤150 lines). Covers: the step's "Done when" after the SUPERSEDED/KNOWN-ISSUES corrections, every Canon/Addendum/ADR/STATE row used (as `path:line` plus the quoted cell), git mode and branch, blocking open decisions, and a map of the existing code in the touched areas. **Every other role reads this first.** |
 | `PLAN.md` | mkos-planner | Scope, acceptance criteria, risks, decisions needed |
 | `CODE-PLAN.md` | mkos-code-planner | Tasks, tests first, edge-case register, migrations, gates, and the **Approvals required before code** table. **Line 1 is the status line.** |
-| `LOOP.md` | build-step / Codex | Append-only, one block per round (format below) |
+| `LOOP.md` | the build workflow, or the agent running the loop by hand | Append-only, one block per round (format below) |
 | `DEVIATIONS.md` | mkos-implementer | Any departure from the approved plan, with the reason |
 | `repro/` | mkos-e2e-tester | Failing reproduction tests. Not collected by pytest. A confirmed finding's repro moves into `tests/` as its regression test. |
-| `REPORT.md` | build-step | Final status, gates, rounds, open findings, suggestions |
+| `REPORT.md` | the build workflow | Final status, gates, rounds, open findings, suggestions |
+| `HANDOFF.md` | the launching session | Planned (EXECUTION-PLAN §7.2 ideas 1–2, before S5): mid-step notes when a session stops: done, next, gates, touched files, resume step |
 
 ## The status line (the human approval gate)
 
 **Line 1** of `CODE-PLAN.md` is exactly one of these:
 - `Status: draft`
-- `Status: approved (<who> via <file|/drive|codex>, YYYY-MM-DD)`
+- `Status: approved (<who> via <file|drive|chat>, YYYY-MM-DD)`
 
 Rules:
 - No other line in the file may contain the text `Status: approved`.
@@ -40,10 +42,10 @@ CODE-PLAN.md has a table with these columns: item | kind | approver(s) | recorde
   `mkos_schemas/codes.py`, and won't write a migration revision, while that row is unrecorded. The
   task goes to `tasks_blocked` instead.
 
-## Loop rules (build-step implements these; Codex follows them by hand)
+## Loop rules (the build workflow implements these; an editor without workflows follows them by hand)
 
-1. **Preflight:** a fresh session (not the retired CLAUDE-v0), the plan approved, and the right
-   branch if this is a git repo.
+1. **Preflight:** a fresh session (its local rules carry a current `Rules version`, not the retired v0
+   rules), the plan approved, and the right branch.
 2. **Implement** test-first.
    - **Red gates are fixed before any review**, with no reviewer time spent on red code.
    - An empty gate list counts as red.
@@ -92,7 +94,7 @@ Gates: <name>=<pass|fail|skipped> …
 
 ## Test tooling
 
-Hypothesis, Schemathesis, squawk, mutmut, pytest-randomly, pytest-socket and pip-audit belong to the
-testing decision (STATE, 2026-09-27; ADR pending). S1 adds them as pinned dev dependencies. **No role
-adds or upgrades a dependency outside an approved plan.** If a tool isn't in `uv.lock` yet, the check
+Hypothesis, Schemathesis, squawk, mutmut, pytest-randomly, pytest-socket and pip-audit belong to
+ADR-0010 (proposed) and the ADR-0013 dependency set. All are pinned in `uv.lock` since S1 except
+squawk, which S5 adds. **No role adds or upgrades a dependency outside an approved plan.** If a tool isn't in `uv.lock` yet, the check
 is reported as untested, with the reason.

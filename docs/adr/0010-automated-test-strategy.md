@@ -2,6 +2,8 @@
 
 - **Status:** ⚑ **DECISION NEEDED (team).** Proposed. It records the user's chat decision of 2026-09-27; the team confirms or overrules it, and until then we build it as written. **Departs from the site's UAT launch gate**
   (TEAM-QUESTIONS T8), so it is provisional until the team confirms.
+- **Amended 2026-09-30 (no change of intent):** the required checks are 10, not 12, since ADR-0012
+  moved `web-lint` and `web-typecheck` to the frontend repository.
 - **Date:** 2026-09-27
 - **Deciders:** the user (Tech Lead)
 
@@ -30,7 +32,7 @@
 3. **Toolset** (exact-pinned dev dependencies, added in S1): pytest, Hypothesis, Schemathesis,
    squawk, mutmut, pytest-randomly, pytest-socket (no network in unit tests), pip-audit, plus the
    Canon gates.
-4. Tests come first in every build step (AGENTS.md §6). A merge needs all 12 required checks green.
+4. Tests come first in every build step (AGENTS.md §6). A merge needs all 10 required checks green (ADR-0012).
 
 ## Consequences
 
