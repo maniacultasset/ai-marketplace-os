@@ -128,7 +128,7 @@ ADR-0004 §2, §4; `EXECUTION-PLAN.md` §5.3; `docker-compose.yml:13`.
 - No network in unit tests (`--disable-socket`). Stand-ins: a fake marketplace server and
   `FakeAdapter`, `LocalKmsStub`, MinIO, the stub pipeline. Never real credentials or real
   marketplace, KMS or model APIs.
-- Open: MinIO image source (STATE "Start here" 2.1a); ADR-0010 gates await the team (T8).
+- ADR-0010 gates await the team (T8). MinIO image source is T107 (Chainguard compose, `/data`).
 
 Source: `README.md` "Quickstart"; `Makefile`; `CANON.md:79`, `:128`, `:136-137`; ADR-0010;
 ADR-0012 §3; `pyproject.toml:80`; `docs/STATE.md` "Start here" 2.8; AGENTS.md §6.
@@ -154,7 +154,7 @@ Source: `.pre-commit-config.yaml`; `.github/workflows/`; `BACKEND-ARCHITECTURE.m
 
 - Branch `^(feat|fix|chore|docs|refactor|test|perf)/[a-z0-9._-]+$`; PR title (the squash commit)
   `^(feat|fix|chore|docs|refactor|test|perf)(\([a-z0-9-]+\))?: .+`. A commit-msg hook checks commits.
-- Install the hooks (`uv run pre-commit install`, run by `make dev`) before your first commit.
+- Install the hooks (`make hooks`, or `uv run --frozen pre-commit install`; `make dev` calls `hooks`) before your first commit.
 - Short branch -> PR -> all 10 checks green (advisory on GitHub Free, so confirm them) -> review ->
   squash merge by the Tech Lead. No direct or force pushes to `main`.
 - The PR body follows `.github/pull_request_template.md` with scope, criteria and results.

@@ -3,8 +3,8 @@
 Audits the locked runtime and dev packages (`uv export`) plus the hash-pinned build-time packages
 (`build-constraints.txt`), which the export omits. Advisories listed in
 `scripts/ci/pip-audit-ignore.txt` are ignored only until their expiry date; an expired or
-malformed entry fails the gate. This sends package names and versions to the advisory service,
-an egress exception the Tech Lead recorded (ADR-0013 §6).
+malformed entry fails the gate. This sends package names and versions to the OSV advisory
+service, an egress exception the Tech Lead recorded (ADR-0013 §6).
 """
 
 from __future__ import annotations
@@ -67,6 +67,10 @@ def main() -> int:
             "pip_audit",
             "--strict",
             "--disable-pip",
+            "-s",
+            "osv",
+            "--timeout",
+            "60",
             "-r",
             str(exported),
             "-r",

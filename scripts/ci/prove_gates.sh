@@ -8,8 +8,8 @@
 #
 # Usage: scripts/ci/prove_gates.sh [--with-docker]
 #   --with-docker adds the api-tests, tenant-isolation and bootstrap legs. They need the local
-#   compose Postgres with the test databases (`make test-db`), and free ports 5432 and 8000 for the
-#   bootstrap leg, which pauses this checkout's compose stack and restarts it afterwards.
+#   compose Postgres with the test databases (`make test-db`), and free ports 5432, 8000, 9000 and
+#   9001 for the bootstrap legs, which pause this checkout's compose stack and restart it afterwards.
 # Logs: $TMPDIR/prove-gates/<leg>.log. Never pushes; the seeded commits stay in throwaway worktrees.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
@@ -92,6 +92,10 @@ seed_no_uv_project_env() {
   cp .env.example .env  # as the CI job does before `make bootstrap`
   replace apps/api/Dockerfile $'ENV UV_PROJECT_ENVIRONMENT=/opt/venv\n' ''
 }
+seed_misspelled_bucket() {
+  cp .env.example .env
+  replace docker-compose.yml 'local/marketplace-csv' 'local/marketplace-csx'
+}
 
 # leg <name> <gate> <expected; ;-separated extended regexes> <seed fn> <command...>
 leg() {
@@ -162,6 +166,9 @@ if [ "$with_docker" -eq 1 ]; then
   # The bootstrap leg runs its own compose project on 5432; pause this checkout's stack meanwhile.
   docker compose stop >/dev/null 2>&1
   leg bootstrap-empty-venv bootstrap "No module named 'mkos_schemas'" seed_no_uv_project_env \
+    COMPOSE_PROJECT_NAME=prove-gates-bootstrap make bootstrap
+  docker compose -p prove-gates-bootstrap down -v >/dev/null 2>&1
+  leg bootstrap-misspelled-bucket bootstrap 'bucket marketplace-csv missing' seed_misspelled_bucket \
     COMPOSE_PROJECT_NAME=prove-gates-bootstrap make bootstrap
   docker compose -p prove-gates-bootstrap down -v >/dev/null 2>&1
   docker compose start >/dev/null 2>&1

@@ -101,31 +101,31 @@
   },
   {
    "id": "R07014",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2425",
-   "note": "MinIO image tag not specified; site uses floating :latest, plan pins only the Postgres image"
+   "ref": "docker-compose.yml; TEAM-QUESTIONS T107",
+   "note": "Chainguard minio image pinned by index digest, not a floating tag (ADR-0003)"
   },
   {
    "id": "R07015",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2425",
-   "note": "MinIO `server /data --console-address :9001` command not specified"
+   "ref": "docker-compose.yml",
+   "note": "server /data --console-address :9001; path matches the site, ownership of /data is uid 0"
   },
   {
    "id": "R07016",
-   "status": "covered",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "docs/canon/ENV.md:58",
-   "note": "MINIO_ROOT_USER minioadmin = S3_ACCESS_KEY"
+   "ref": "docs/canon/ENV.md:51; TEAM-QUESTIONS T107",
+   "note": "MINIO_ROOT_USER is interpolated from S3_ACCESS_KEY (P2)"
   },
   {
    "id": "R07018",
    "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "docs/canon/ENV.md:59; docs/canon/CANON.md:157 (R1-8)",
-   "note": "MINIO_ROOT_PASSWORD minioadmin; minioadmin_dev_password forbidden by Canon (no T-row)"
+   "ref": "docs/canon/ENV.md:52; docs/canon/CANON.md:157 (R1-8); TEAM-QUESTIONS T107",
+   "note": "MINIO_ROOT_PASSWORD is interpolated from S3_SECRET_KEY (P2); the site's dev password is not used"
   },
   {
    "id": "R07019",
@@ -136,17 +136,17 @@
   },
   {
    "id": "R07021",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2425",
-   "note": "MinIO console port 9001 not specified"
+   "ref": "docker-compose.yml; TEAM-QUESTIONS T107",
+   "note": "console port 9001 published on 127.0.0.1 only"
   },
   {
    "id": "R07022",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2425",
-   "note": "MinIO volume miniodata:/data not specified"
+   "ref": "docker-compose.yml",
+   "note": "volume miniodata:/data; path matches the site, ownership of /data is uid 0"
   },
   {
    "id": "R07025",
@@ -157,10 +157,10 @@
   },
   {
    "id": "R07027",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2425",
-   "note": "named volume miniodata not specified"
+   "ref": "docker-compose.yml",
+   "note": "named volume miniodata"
   },
   {
    "id": "R07032",

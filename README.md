@@ -67,19 +67,22 @@ installs Python 3.13 itself).
 
 ```sh
 cp .env.example .env
-make dev        # Postgres 17 + pgvector, bootstrap SQL, uv sync, git hooks, then the API on :8000
+make hooks      # or: uv run --frozen pre-commit install
+make dev        # Postgres, MinIO, bootstrap SQL, uv sync, hooks, then the API on :8000
 curl -s localhost:8000/healthz && curl -s localhost:8000/readyz
 ```
 
-- Every port binds `127.0.0.1` only: Postgres on 5432 and the API on 8000. MinIO (9000 and 9001)
-  joins the stack once its image source is decided; nothing in the API uses it yet.
+- Every port binds `127.0.0.1` only: Postgres on 5432, the API on 8000, MinIO API on 9000 and
+  console on 9001. `minio-init` creates `marketplace-images` and `marketplace-csv`. Nothing in
+  the API uses MinIO yet.
 - The API docs are at <http://localhost:8000/docs>. Production serves no docs.
 - Trailing slashes are never redirected: `/api/v1/x/` is a 404 when the route is `/api/v1/x`, so
   clients must use the exact OpenAPI paths.
 - `make test-unit` runs the unit and meta tests without a database.
-- Without `make dev` (for example, to run only the checks): `uv sync --frozen --all-packages`, then
-  `uv run pre-commit install` before your first commit (it installs the pre-commit and commit-msg
-  hooks), and `docker compose up -d --wait` to start Postgres before `make test-db`.
+- Without `make dev` (for example, to run only the checks): `cp .env.example .env`, then
+  `make hooks` (or `uv run --frozen pre-commit install`) before your first commit (it installs the
+  pre-commit and commit-msg hooks), and `docker compose up -d --wait` to start Postgres before
+  `make test-db`. Every `docker compose` call needs `.env` under the `:?` form.
 
 Each required check has a make target of the same name, and CI runs exactly that target:
 

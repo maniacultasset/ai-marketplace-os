@@ -8,9 +8,9 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 - **Every line of the client spec is traced.** All 13,711 lines of the snapshot are in the register:
   11,167 entries, of which 8,916 are checkable statements. `scripts/trace/check_coverage.py` proves 100% line coverage.
 - **Every statement has a verdict**, with a reference, adversarially verified per chunk (`scripts/trace/check_mapping.py`).
-- **6,976 of 8,916 (78%) are covered by our plan**: 6,060 as written and
-  916 deliberately changed by an ADR, Canon row or recorded decision.
-- **550 are gaps** (backend/DB 284, shared seams 141, ops 105, AI team 4, FE team 0, client 16).
+- **6,981 of 8,916 (78%) are covered by our plan**: 6,060 as written and
+  921 deliberately changed by an ADR, Canon row or recorded decision.
+- **545 are gaps** (backend/DB 279, shared seams 141, ops 105, AI team 4, FE team 0, client 16).
 - **340 need the team or client** (67 conflicts, 273 questions);
   each points to a row in `TEAM-QUESTIONS.md`.
 - 511 belong to the AI or FE team, and 539 are marked Phase 2/3 by the site itself.
@@ -18,8 +18,8 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 | Status | Statements | Share |
 |---|---:|---:|
 | ✅ covered | 6,060 | 68.0% |
-| 🔁 covered-changed | 916 | 10.3% |
-| ⚠️ gap | 550 | 6.2% |
+| 🔁 covered-changed | 921 | 10.3% |
+| ⚠️ gap | 545 | 6.1% |
 | ❌ conflict | 67 | 0.8% |
 | ❓ needs-client | 273 | 3.1% |
 | 🧩 other-team | 511 | 5.7% |
@@ -54,7 +54,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [09] Image Compliance & Adapters | 57 | 6 | 6 | 6 | 6 | 0 | 0 | 18 |
 | [10] Security, Multi-Tenancy & Reliability | 59 | 13 | 7 | 0 | 0 | 1 | 0 | 7 |
 | [11] Testing Strategy, Launch Gate & Risks | 61 | 12 | 29 | 1 | 5 | 7 | 17 | 35 |
-| [12] API Surface, Dev Setup & Appendix | 91 | 52 | 7 | 0 | 1 | 9 | 0 | 8 |
+| [12] API Surface, Dev Setup & Appendix | 91 | 57 | 2 | 0 | 1 | 9 | 0 | 3 |
 | [1] System Overview | 129 | 1 | 0 | 0 | 11 | 20 | 3 | 11 |
 | [2] Architecture Principles | 83 | 1 | 2 | 0 | 2 | 0 | 1 | 4 |
 | [3] Product Scope | 37 | 0 | 0 | 0 | 2 | 1 | 10 | 2 |
@@ -1070,7 +1070,7 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 | R13665 | L13665 | Production launch checklist: All Phase 1 features implemented. | T16; VISION Q25 | Phase-1 set per plan scope lock (T16); steps after S14 unsequenced |
 | R13668 | L13668 | Production launch checklist: Marketplace OAuth flows verified with production accounts. | T77 | Prod filings/app approval status unknown (STATE open decision 5); verify step itself unplanned |
 
-## ⚠️ Gaps we own: backend + DB (284)
+## ⚠️ Gaps we own: backend + DB (279)
 
 Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITECTURE.md and the build steps.
 
@@ -1281,11 +1281,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 |---|---|---|---|---|
 | R06926a | L6926 | GET /listings/{id}/status: Returns retry attempt count. | drafts/CONTRACTS.md:560; BACKEND-ARCHITECTURE.md:1350; DATABASE.md:785 | JobEnvelope.attempt is the queue attempt (generation max 1); live correction count not exposed. |
 | R06932a | L6932 | POST /listings/validate: results saved in validation_runs. | BACKEND-ARCHITECTURE.md:1338; DATABASE.md:809 | Endpoint not stated to persist validation_runs rows. |
-| R07014 | L7014 | minio service image: minio/minio:latest | docs/architecture/BACKEND-ARCHITECTURE.md:2425 | MinIO image tag not specified; site uses floating :latest, plan pins only the Postgres image |
-| R07015 | L7015 | minio service command: server /data --console-address ":9001" | docs/architecture/BACKEND-ARCHITECTURE.md:2425 | MinIO `server /data --console-address :9001` command not specified |
-| R07021 | L7021 | minio service port mapping "9001:9001" | docs/architecture/BACKEND-ARCHITECTURE.md:2425 | MinIO console port 9001 not specified |
-| R07022 | L7022–7023 | minio service volume miniodata:/data | docs/architecture/BACKEND-ARCHITECTURE.md:2425 | MinIO volume miniodata:/data not specified |
-| R07027 | L7027–7028 | docker-compose named volume: miniodata | docs/architecture/BACKEND-ARCHITECTURE.md:2425 | named volume miniodata not specified |
 
 ### [2] Architecture Principles
 

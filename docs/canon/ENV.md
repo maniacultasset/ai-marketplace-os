@@ -48,8 +48,8 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | `GCS_BUCKET_IMAGES` | `marketplace-images` | local .env | required | Exactly the bucket the compose `mc mb` one-shot creates. staging: aimos-images-staging; prod: aimos-images-prod. |
 | `GCS_BUCKET_CSV` | `marketplace-csv` | local .env | required | Exactly the bucket the compose `mc mb` one-shot creates. staging: aimos-csv-staging; prod: aimos-csv-prod. |
 | `S3_ENDPOINT_URL` | `http://localhost:9000` | local .env | optional | MinIO only. Unset in staging/prod. |
-| `S3_ACCESS_KEY` | `minioadmin` | local .env | optional | MINIO_ROOT_USER in docker-compose. |
-| `S3_SECRET_KEY` | `minioadmin` | local .env | optional | MINIO_ROOT_PASSWORD in docker-compose is `minioadmin`; minioadmin_dev_password is forbidden. |
+| `S3_ACCESS_KEY` | `local_only_minio_root_user` | local .env | optional | Interpolated as MINIO_ROOT_USER (`:?` form; a missing `.env` fails). |
+| `S3_SECRET_KEY` | `local_only_minio_root_password_32_chars` | local .env | optional | Interpolated as MINIO_ROOT_PASSWORD (`:?` form; a missing `.env` fails). minioadmin_dev_password is forbidden. |
 
 ## GCP
 

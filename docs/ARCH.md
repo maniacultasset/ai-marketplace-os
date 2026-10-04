@@ -112,7 +112,7 @@ Source: BACKEND-ARCHITECTURE.md §9.1; CANON.md migration ledger; EXECUTION-PLAN
 | API | `make dev`: uvicorn on `127.0.0.1:8000` | Cloud Run, min 0 / max 1 | Cloud Run, 1 vCPU / 1 GiB, min 1 / max 3 |
 | Worker | not yet (S13) | worker pool, 1 instance, 0 off-hours | worker pool, 1 vCPU / 2 GiB, 1 instance |
 | Database | `pgvector/pgvector:0.8.5-pg17`; db `marketplace_os`, tests on `mos_test` / `mos_iso` | Cloud SQL PG17 `aimos-db`, stopped nights and weekends | Cloud SQL PG17 Enterprise `db-custom-1-3840`, PITR 7 days |
-| Storage | MinIO, not yet in compose (**Open:** STATE S1 follow-up (a)) | GCS, own buckets | GCS, own buckets |
+| Storage | MinIO (compose, Chainguard images; TEAM-QUESTIONS T107) | GCS, own buckets | GCS, own buckets |
 | Ingress | `127.0.0.1` only | `api-staging.<APEX>` (Firebase Hosting rewrite) | `api.<APEX>` (global external ALB) |
 | Deploy | — | every merge to `main` (from S4) | approved tag `vX.Y.Z` (from S25): zero traffic, smoke test, watch, auto-rollback |
 | Today | running | projects exist; billing not linked; nothing deployed | same as staging |
@@ -137,7 +137,7 @@ apps/api/             47: Dockerfile, docker-entrypoint.sh, pyproject.toml
 packages/schemas/     6: pyproject.toml, Makefile (no generators yet), src/mkos_schemas/__init__.py,
                       py.typed, jsonschema/ and ts/src/ placeholders
 infra/                1: README.md (OpenTofu arrives in S4)
-scripts/              22: db/0000_bootstrap.sql, ci/ (8 check scripts + pip-audit-ignore.txt),
+scripts/              23: db/0000_bootstrap.sql, ci/ (9 check scripts + pip-audit-ignore.txt),
                       docgen/ (7), trace/ (4), spec-sync.sh
 docs/                 91: STATE, EXECUTION-PLAN, README; adr/ 15, architecture/ 2, canon/ 3, drafts/ 7,
                       review/ 6, source/ 3, trace/ 47, research/ 3, plans/ 1, archive/ 1

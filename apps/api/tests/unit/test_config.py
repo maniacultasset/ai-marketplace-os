@@ -403,6 +403,21 @@ def test_no_module_level_settings_singleton(clean_env: Path) -> None:
     assert result.returncode == 0, result.stderr
 
 
+def test_s3_defaults_equal_env_example(repo_root: Path) -> None:
+    from app.core.config import Settings
+
+    pairs = {}
+    for raw in (repo_root / ".env.example").read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        pairs[key] = value
+    assert Settings.model_fields["s3_access_key"].default == pairs["S3_ACCESS_KEY"]
+    assert Settings.model_fields["s3_secret_key"].default == pairs["S3_SECRET_KEY"]
+    assert Settings.model_fields["s3_secret_key"].repr is False
+
+
 def test_a9_defaults(ci_env: dict[str, str]) -> None:
     from app.core.config import get_settings
 

@@ -1,12 +1,11 @@
-"""AC9: docker-compose.yml (CANON-ADDENDUM.md §1 postgres, pinned by digest, loopback ports).
-
-The MinIO services are pending the image decision (DEVIATIONS.md): minio/minio and minio/mc are
-no longer published, so their three planned tests land with them.
+"""AC9 and the MinIO services (TEAM-QUESTIONS T107): docker-compose.yml (CANON-ADDENDUM.md §1
+postgres, pinned by digest, loopback ports).
 """
 
 from __future__ import annotations
 
 import re
+import shlex
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -15,6 +14,31 @@ import pytest
 import yaml
 
 DIGEST_IMAGE = re.compile(r"^pgvector/pgvector:0\.8\.5-pg17@sha256:[0-9a-f]{64}$")
+MINIO_IMAGE = re.compile(r"^cgr\.dev/chainguard/minio:latest@sha256:[0-9a-f]{64}$")
+MINIO_CLIENT_IMAGE = re.compile(r"^cgr\.dev/chainguard/minio-client:latest@sha256:[0-9a-f]{64}$")
+_ON_FAILURE_N = re.compile(r"^on-failure:[1-9][0-9]*$")
+_BUCKET_TOKEN = re.compile(r"marketplace-[a-z]+")
+_ACCESS_INTERP = "${S3_ACCESS_KEY:?run cp .env.example .env}"
+_SECRET_INTERP = "${S3_SECRET_KEY:?run cp .env.example .env}"
+
+
+def canon_local_bucket_names(repo_root: Path) -> list[str]:
+    for raw in (repo_root / "docs" / "canon" / "CANON.md").read_text(encoding="utf-8").splitlines():
+        if raw.startswith("| Local bucket names |"):
+            cells = raw.split("|")
+            return _BUCKET_TOKEN.findall(cells[2])
+    raise AssertionError("CANON.md Local bucket names row missing")
+
+
+def _as_command(value: object) -> list[str]:
+    if isinstance(value, list):
+        return [str(part) for part in value]
+    return shlex.split(str(value))
+
+
+def _needs_healthcheck(service: dict[str, Any]) -> bool:
+    restart = str(service.get("restart", ""))
+    return restart not in {"no", "on-failure"} and _ON_FAILURE_N.fullmatch(restart) is None
 
 
 @pytest.fixture
@@ -65,13 +89,14 @@ def test_postgres_matches_addendum_with_pg17_image_and_loopback_port(
 
 def test_long_running_services_have_healthchecks(compose: dict[str, Any]) -> None:
     for name, service in compose["services"].items():
-        if service.get("restart") != "no":
+        if _needs_healthcheck(service):
             assert "healthcheck" in service, name
 
 
 def test_named_volumes(compose: dict[str, Any]) -> None:
     declared = set(compose.get("volumes") or {})
     assert "pgdata" in declared
+    assert "miniodata" in declared
     for name, service in compose["services"].items():
         for volume in service.get("volumes", []):
             source = str(volume).split(":", 1)[0]
@@ -103,3 +128,90 @@ def test_make_dev_uvicorn_keeps_loopback_default(repo_root: Path) -> None:
     body = recipe.group(1)
     assert "uvicorn app.main:app" in body
     assert "--host" not in body
+
+
+def test_services_exactly_three(compose: dict[str, Any]) -> None:
+    assert set(compose["services"]) == {"postgres", "minio", "minio-init"}
+
+
+def test_minio_pinned_by_digest_with_site_command_ports_volume(
+    compose: dict[str, Any], repo_root: Path
+) -> None:
+    service = compose["services"]["minio"]
+    assert MINIO_IMAGE.fullmatch(service["image"])
+    volumes = [str(item) for item in service["volumes"]]
+    data_mounts = [item.split(":", 1)[1] for item in volumes if item.startswith("miniodata:")]
+    assert data_mounts == [data_mounts[0]]
+    path = data_mounts[0]
+    assert _as_command(service["command"]) == ["server", path, "--console-address", ":9001"]
+    assert service["ports"] == ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
+    probe = service["healthcheck"]["test"]
+    assert probe[0] == "CMD"
+    assert probe[-1] == "--version"
+    assert str(probe[1]).startswith("/")
+    raw = (repo_root / "docker-compose.yml").read_text(encoding="utf-8")
+    minio_block = raw.split("\n  minio:\n", 1)[1].split("\n  minio-init:", 1)[0]
+    assert "CMD-SHELL" not in minio_block
+
+
+def test_minio_credentials_interpolated_and_fail_loudly(
+    compose: dict[str, Any], repo_root: Path
+) -> None:
+    minio = compose["services"]["minio"]["environment"]
+    init = compose["services"]["minio-init"]["environment"]
+    assert minio["MINIO_ROOT_USER"] == _ACCESS_INTERP
+    assert minio["MINIO_ROOT_PASSWORD"] == _SECRET_INTERP
+    assert init["MC_HOST_local"] == f"http://{_ACCESS_INTERP}:{_SECRET_INTERP}@minio:9000"
+    raw = (repo_root / "docker-compose.yml").read_text(encoding="utf-8")
+    assert ":?run cp .env.example .env" in raw
+    assert ": " not in raw.split("MINIO_ROOT_USER:", 1)[1].split("\n", 1)[0]
+    assert ": " not in raw.split("MINIO_ROOT_PASSWORD:", 1)[1].split("\n", 1)[0]
+    assert "local_only_minio_root_user" not in raw
+    assert "local_only_minio_root_password_32_chars" not in raw
+    assert "minioadmin" not in raw
+
+
+@pytest.mark.parametrize(
+    ("restart", "healthcheck", "flagged"),
+    [
+        (None, False, True),
+        ("unless-stopped", False, True),
+        ("always", False, True),
+        ("on-failure:0", False, True),
+        ("on-failure:x", False, True),
+        ("on-failure:", False, True),
+        ("no", False, False),
+        ("on-failure", False, False),
+        ("on-failure:10", False, False),
+    ],
+)
+def test_healthcheck_rule_flags_seeded_services(
+    restart: str | None, healthcheck: bool, flagged: bool
+) -> None:
+    service: dict[str, Any] = {}
+    if restart is not None:
+        service["restart"] = restart
+    if healthcheck:
+        service["healthcheck"] = {"test": ["CMD", "/bin/true"]}
+    assert _needs_healthcheck(service) is flagged
+
+
+def test_init_creates_both_buckets_idempotently(compose: dict[str, Any], repo_root: Path) -> None:
+    service = compose["services"]["minio-init"]
+    assert MINIO_CLIENT_IMAGE.fullmatch(service["image"])
+    assert service["depends_on"] == {"minio": {"condition": "service_healthy"}}
+    assert service["restart"] == "on-failure:10"
+    assert "ports" not in service
+    names = canon_local_bucket_names(repo_root)
+    example = (repo_root / ".env.example").read_text(encoding="utf-8")
+    images = re.search(r"^GCS_BUCKET_IMAGES=(.+)$", example, re.MULTILINE)
+    csv = re.search(r"^GCS_BUCKET_CSV=(.+)$", example, re.MULTILINE)
+    assert images is not None and csv is not None
+    assert names == [images.group(1), csv.group(1)]
+    assert _as_command(service["command"]) == [
+        "mb",
+        "--ignore-existing",
+        *[f"local/{name}" for name in names],
+    ]
+    raw = (repo_root / "docker-compose.yml").read_text(encoding="utf-8")
+    assert raw.count("local/marketplace-csv") == 1

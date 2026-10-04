@@ -86,8 +86,8 @@ Every step runs locally on Docker PostgreSQL 17 + pgvector; Cloud SQL is for sta
 - **"Done when":** S1–S14 come from BUILD-SEQUENCE after the SUPERSEDED and KNOWN-ISSUES fixes.
   **S15 and above (S17a, S17b and S25 included) have no "Done when" lines yet; the planner writes
   them first (EP P0-A7).**
-- **S1 follow-ups** (branch `fix/s1-followups`, awaiting the user's OK): (a) MinIO compose services,
-  (b) pin `editables`, (c) pip-audit in OSV mode. Source: STATE "Start here" 2.1.
+- **S1 follow-ups** (branch `fix/s1-followups`): (a) MinIO compose services, (b) `editables` pin,
+  (c) pip-audit OSV — landed. Source: STATE "Start here" 2.1.
 - Open: EP P0-A7. EP §6.2 starts S13 after S12 (staging over TLS), but the local-first order builds
   S13 before any staging deploy; how S12 splits into local and staging parts is not written down.
 

@@ -1,8 +1,7 @@
 # Local stack for `make dev` and the `bootstrap` check. No Redis (ADR-0004), no `version:` key.
 # Every image is pinned by its multi-arch index digest (arm64 laptops, amd64 CI; ADR-0003), and
 # every published port binds 127.0.0.1 only, so nothing listens on the LAN.
-# MinIO (minio + the minio-init bucket one-shot) is added once its image source is decided:
-# minio/minio and minio/mc are no longer published on Docker Hub or quay.io.
+# MinIO: Chainguard images pinned by index digest (TEAM-QUESTIONS T107).
 services:
   postgres:
     image: pgvector/pgvector:0.8.5-pg17@sha256:d2ef61f42ef767baa5a1475393303cc235bcd92febd9d7014eddb48b41f3bad0
@@ -19,6 +18,29 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-
+  minio:
+    image: cgr.dev/chainguard/minio:latest@sha256:4cf4831a2bbcf13ddca09c1cbcc9faff716dd3c4247e0babc32864b8ee8e0034
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: '${S3_ACCESS_KEY:?run cp .env.example .env}'
+      MINIO_ROOT_PASSWORD: '${S3_SECRET_KEY:?run cp .env.example .env}'
+    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "/usr/bin/minio", "--version"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  minio-init:
+    image: cgr.dev/chainguard/minio-client:latest@sha256:b20bdc339b3f2596c8f731793f861d2445fd13a9a3cfb517ff020969f4e4bf71
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MC_HOST_local: 'http://${S3_ACCESS_KEY:?run cp .env.example .env}:${S3_SECRET_KEY:?run cp .env.example .env}@minio:9000'
+    command: ["mb", "--ignore-existing", "local/marketplace-images", "local/marketplace-csv"]
+    restart: on-failure:10
 volumes:
   pgdata:
+  miniodata:

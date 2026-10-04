@@ -1,9 +1,13 @@
 # Build-time pins, hash-checked: hatchling (the build backend of both workspace members), its
-# four dependencies on Python 3.13, and pip for the contracts venv (scripts/ci/contracts.sh).
-# Keep hatchling and its four deps equal to [tool.uv] build-constraint-dependencies in the root
+# five dependencies (`editables` is the one hatchling adds to every editable build) on Python 3.13,
+# and pip for the contracts venv (scripts/ci/contracts.sh).
+# Keep hatchling and its five deps equal to [tool.uv] build-constraint-dependencies in the root
 # pyproject.toml. Regenerate with:
-#   printf 'hatchling==X\npip==Y\n' > /tmp/bc.in
+#   printf 'hatchling==1.31.0\npackaging==26.3\npathspec==1.1.1\npluggy==1.6.0\ntrove-classifiers==2026.9.21.13\npip==26.2.1\neditables==0.6\n' > /tmp/bc.in
 #   uv pip compile --generate-hashes --python-version 3.13 --no-header --no-annotate /tmp/bc.in
+editables==0.6 \
+    --hash=sha256:1163834902381c4613787951c5914800fdf155ae08848a373b8ea5006780977c \
+    --hash=sha256:d70e4698078a1d033e7786d9c64e5be070d058a67c21417024d38a58ac20aa43
 hatchling==1.31.0 \
     --hash=sha256:6b48ad4068a482ed7239b3a8215bc55b47aad3345d58dfc94e553c5d2d46211b \
     --hash=sha256:aac80bec8b6fe35e8480f1c335be8910fa210a0e6f735a139be205dadcacb544

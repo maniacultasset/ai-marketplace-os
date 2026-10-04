@@ -6,27 +6,27 @@ SHELL := bash
 
 .PHONY: help
 help:
-	@echo "make dev | test-unit | bootstrap-db | test-db | <check-id>"
+	@echo "make dev | hooks | test-unit | bootstrap-db | test-db | <check-id>"
 
 .PHONY: test-unit
 test-unit:
-	uv run pytest -q apps/api/tests/unit apps/api/tests/meta
+	uv run --frozen pytest -q apps/api/tests/unit apps/api/tests/meta
 
 # ---- required checks (one target per check id) ----
 LINT_PATHS := apps/api packages/schemas scripts
 
 .PHONY: api-lint
 api-lint:
-	uv run ruff check $(LINT_PATHS)
-	uv run black --check $(LINT_PATHS)
-	uv run python scripts/ci/check_repo_rules.py
-	uv run python scripts/ci/run_pip_audit.py
+	uv run --frozen ruff check $(LINT_PATHS)
+	uv run --frozen black --check $(LINT_PATHS)
+	uv run --frozen python scripts/ci/check_repo_rules.py
+	uv run --frozen python scripts/ci/run_pip_audit.py
 
 # import-linter, then the tenant_scope_checked grep (CANON-ADDENDUM.md §6): the literal may appear
 # only in apps/api/app/db/{guard,session}.py. Zero hits pass until S9 adds them.
 .PHONY: lint-imports
 lint-imports:
-	uv run lint-imports --config .importlinter
+	uv run --frozen lint-imports --config .importlinter
 	@hits="$$(grep -rl --include='*.py' tenant_scope_checked apps packages scripts)" || [ $$? -eq 1 ]; \
 	bad=0; \
 	for hit in $$hits; do \
@@ -66,23 +66,28 @@ COV_FAIL_UNDER ?= 70
 .PHONY: api-tests
 api-tests:
 	APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) \
-	  uv run pytest -q -m "not tenant_isolation" --cov=app --cov-report=term-missing \
+	  uv run --frozen pytest -q -m "not tenant_isolation" --cov=app --cov-report=term-missing \
 	  --cov-fail-under=$(COV_FAIL_UNDER)
 
 .PHONY: tenant-isolation
 tenant-isolation:
 	APP_ENV=local DATABASE_URL=$(ISO_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) \
-	  uv run pytest -q -m tenant_isolation --no-cov
+	  uv run --frozen pytest -q -m tenant_isolation --no-cov
 
 # ---- local development (CANON-ADDENDUM.md §2 order; Alembic joins in S5) ----
 # uvicorn keeps its 127.0.0.1 default: never pass --host here.
 .PHONY: dev
 dev:
-	docker compose up -d --wait
+	docker compose up -d --wait postgres minio
+	docker compose up -d minio-init
 	$(MAKE) bootstrap-db
 	uv sync --frozen --all-packages
-	uv run pre-commit install
-	uv run uvicorn app.main:app --reload --port 8000 --app-dir apps/api
+	$(MAKE) hooks
+	uv run --frozen uvicorn app.main:app --reload --port 8000 --app-dir apps/api
+
+.PHONY: hooks
+hooks:
+	uv run --frozen pre-commit install
 
 .PHONY: bootstrap
 bootstrap:
@@ -99,7 +104,7 @@ gitleaks:
 
 .PHONY: api-typecheck
 api-typecheck:
-	uv run mypy
+	uv run --frozen mypy
 
 .PHONY: contracts
 contracts:

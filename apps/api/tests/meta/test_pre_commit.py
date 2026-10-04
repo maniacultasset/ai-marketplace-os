@@ -22,10 +22,19 @@ def test_all_hooks_local_and_commit_msg_installed(config: dict[str, Any]) -> Non
     assert config["default_stages"] == ["pre-commit"]
     assert [repo["repo"] for repo in config["repos"]] == ["local"]
     hooks = {hook["id"]: hook for repo in config["repos"] for hook in repo["hooks"]}
-    assert set(hooks) == {"ruff", "black", "mypy", "gitleaks", "commit-lint"}
+    assert set(hooks) == {
+        "ruff",
+        "black",
+        "mypy",
+        "gitleaks",
+        "commit-lint",
+        "commit-attribution",
+    }
     assert all(hook["language"] == "system" for hook in hooks.values())
     assert hooks["commit-lint"]["stages"] == ["commit-msg"]
     assert hooks["commit-lint"]["entry"].endswith("scripts/ci/commit_lint.py --message-file")
+    assert hooks["commit-attribution"]["stages"] == ["commit-msg"]
+    assert hooks["commit-attribution"]["entry"].endswith("scripts/ci/commit_attribution.py")
     assert "--staged" in hooks["gitleaks"]["entry"]
     assert "--force-exclude" in hooks["ruff"]["entry"]
 

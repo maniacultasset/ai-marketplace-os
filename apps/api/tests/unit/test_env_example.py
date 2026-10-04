@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 from pathlib import Path
 
@@ -70,6 +71,41 @@ def test_database_url_is_canon_local(repo_root: Path) -> None:
     local = "postgresql+psycopg://postgres:postgres@localhost:5432/marketplace_os"
     assert values["DATABASE_URL"] == local
     assert values["ALEMBIC_DATABASE_URL"] == local
+
+
+_LOCAL_ONLY = re.compile(r"^local_only_[A-Za-z0-9_]+$")
+_Q1_ACCESS = "local_only_minio_root_user"
+_Q1_SECRET = "local_only_minio_root_password_32_chars"
+_ENV_LOCAL = re.compile(r"^\| `([A-Z][A-Z0-9_]*)` \| `([^`]*)` \|")
+
+
+def test_s3_credentials_are_local_only_values(repo_root: Path) -> None:
+    values = dict(_env_example(repo_root))
+    access, secret = values["S3_ACCESS_KEY"], values["S3_SECRET_KEY"]
+    assert access == _Q1_ACCESS
+    assert secret == _Q1_SECRET
+    assert _LOCAL_ONLY.fullmatch(access)
+    assert _LOCAL_ONLY.fullmatch(secret)
+    assert len(secret) >= 8
+    assert access != "minioadmin"
+    assert secret != "minioadmin"
+
+
+def test_s3_values_match_env_md_and_config(repo_root: Path) -> None:
+    from app.core.config import Settings
+
+    example = dict(_env_example(repo_root))
+    locals_by_name: dict[str, str] = {}
+    for raw in (repo_root / "docs" / "canon" / "ENV.md").read_text(encoding="utf-8").splitlines():
+        match = _ENV_LOCAL.match(raw)
+        if match:
+            locals_by_name[match.group(1)] = match.group(2)
+    for key, field in (
+        ("S3_ACCESS_KEY", "s3_access_key"),
+        ("S3_SECRET_KEY", "s3_secret_key"),
+    ):
+        assert locals_by_name[key] == example[key]
+        assert Settings.model_fields[field].default == example[key]
 
 
 def test_bucket_names_and_blank_gcp_project(repo_root: Path) -> None:
