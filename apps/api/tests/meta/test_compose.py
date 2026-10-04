@@ -20,6 +20,14 @@ _ON_FAILURE_N = re.compile(r"^on-failure:[1-9][0-9]*$")
 _BUCKET_TOKEN = re.compile(r"marketplace-[a-z]+")
 _ACCESS_INTERP = "${S3_ACCESS_KEY:?run cp .env.example .env}"
 _SECRET_INTERP = "${S3_SECRET_KEY:?run cp .env.example .env}"
+_PORT_KEYS = {"target", "published", "host_ip"}
+PORT_ENTRY = {
+    "postgres": {
+        "target": 5432,
+        "published": "${PG_HOST_PORT:-5432}",
+        "host_ip": "127.0.0.1",
+    },
+}
 
 
 def canon_local_bucket_names(repo_root: Path) -> list[str]:
@@ -71,6 +79,20 @@ def _all_ports(compose: dict[str, Any]) -> list[str | dict[str, Any]]:
     return [p for service in compose["services"].values() for p in service.get("ports", [])]
 
 
+def long_form_problems(entry: object) -> list[str]:
+    """A published port is a dict whose keys are exactly target, published and host_ip."""
+    if not isinstance(entry, dict):
+        return ["not a mapping"]
+    problems: list[str] = []
+    keys = set(entry)
+    if keys != _PORT_KEYS:
+        problems.append(f"keys {sorted(keys)}")
+    target = entry.get("target")
+    if not isinstance(target, int):
+        problems.append("target is not int")
+    return problems
+
+
 def test_no_version_key(compose: dict[str, Any]) -> None:
     assert "version" not in compose
 
@@ -81,7 +103,7 @@ def test_postgres_matches_addendum_with_pg17_image_and_loopback_port(
     actual = dict(compose["services"]["postgres"])
     expected = _addendum_postgres(repo_root)
     assert DIGEST_IMAGE.fullmatch(actual.pop("image"))
-    assert actual.pop("ports") == ["127.0.0.1:5432:5432"]
+    assert actual.pop("ports") == [PORT_ENTRY["postgres"]]
     expected.pop("image")
     expected.pop("ports")
     assert actual == expected
@@ -119,6 +141,20 @@ def test_published_ports_loopback_only(compose: dict[str, Any]) -> None:
     assert published_host_ip("5432") is None
     assert published_host_ip("0.0.0.0:5432:5432") == "0.0.0.0"  # noqa: S104 - test input
     assert published_host_ip({"target": 5432, "published": 5432}) is None
+    assert published_host_ip({"target": 5432, "published": "${PG_HOST_PORT:-5432}"}) is None
+    off_loopback = {"target": 5432, "published": "5432", "host_ip": "0.0.0.0"}  # noqa: S104
+    assert published_host_ip(off_loopback) == off_loopback["host_ip"]
+
+
+def test_every_port_entry_is_long_form(compose: dict[str, Any]) -> None:
+    ports = _all_ports(compose)
+    assert ports
+    for entry in ports:
+        assert long_form_problems(entry) == [], entry
+    assert long_form_problems("127.0.0.1:5432:5432")
+    assert long_form_problems(
+        {"target": 5432, "published": "5432", "host_ip": "127.0.0.1", "protocol": "tcp"}
+    )
 
 
 def test_make_dev_uvicorn_keeps_loopback_default(repo_root: Path) -> None:
@@ -144,7 +180,18 @@ def test_minio_pinned_by_digest_with_site_command_ports_volume(
     assert data_mounts == [data_mounts[0]]
     path = data_mounts[0]
     assert _as_command(service["command"]) == ["server", path, "--console-address", ":9001"]
-    assert service["ports"] == ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
+    assert service["ports"] == [
+        {
+            "target": 9000,
+            "published": "${MINIO_API_HOST_PORT:-9000}",
+            "host_ip": "127.0.0.1",
+        },
+        {
+            "target": 9001,
+            "published": "${MINIO_CONSOLE_HOST_PORT:-9001}",
+            "host_ip": "127.0.0.1",
+        },
+    ]
     probe = service["healthcheck"]["test"]
     assert probe[0] == "CMD"
     assert probe[-1] == "--version"

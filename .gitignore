@@ -16,6 +16,10 @@ build/
 .env.*
 !.env.example
 
+# Per-checkout host ports (`.worktree.env`, ADR-0011 amendment): no secrets, never committed
+.worktree.env
+
+
 # Doc tooling (scripts/docgen): build cache (diagram PNGs, generated pages, Chrome config)
 scripts/docgen/.cache/
 

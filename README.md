@@ -69,13 +69,13 @@ installs Python 3.13 itself).
 ```sh
 cp .env.example .env
 make hooks      # or: uv run --frozen pre-commit install
-make dev        # Postgres, MinIO, bootstrap SQL, uv sync, hooks, then the API on :8000
+make dev        # Postgres, MinIO, bootstrap SQL, uv sync, hooks, then the API on :8000 (the default)
 curl -s localhost:8000/healthz && curl -s localhost:8000/readyz
 ```
 
-- Every port binds `127.0.0.1` only: Postgres on 5432, the API on 8000, MinIO API on 9000 and
-  console on 9001. `minio-init` creates `marketplace-images` and `marketplace-csv`. Nothing in
-  the API uses MinIO yet.
+- Every port binds `127.0.0.1` only. The default host ports are Postgres 5432, the API 8000, MinIO
+  API 9000 and console 9001; a second worktree changes them (below). `minio-init` creates
+  `marketplace-images` and `marketplace-csv`. Nothing in the API uses MinIO yet.
 - The API docs are at <http://localhost:8000/docs>. Production serves no docs.
 - Trailing slashes are never redirected: `/api/v1/x/` is a 404 when the route is `/api/v1/x`, so
   clients must use the exact OpenAPI paths.
@@ -97,11 +97,39 @@ Each required check has a make target of the same name, and CI runs exactly that
 | `contracts` | `make contracts` | — |
 | `schemas-drift` | `make schemas-drift` | — |
 | `commit-lint` | `PR_TITLE='feat(x): y' HEAD_REF=feat/x make commit-lint` | — |
-| `bootstrap` | `make bootstrap` | Docker, a `.env`, free ports 5432, 8000, 9000 and 9001 |
+| `bootstrap` | `make bootstrap` | Docker, a `.env`, free host ports (defaults 5432, 8000, 9000, 9001) |
 | `lint-imports` | `make lint-imports` | — |
 | `gitleaks` | `make gitleaks` | network (first run downloads the pinned binary) |
 
 `scripts/ci/prove_gates.sh [--with-docker]` proves that each check goes red on a seeded violation.
+
+### A second stack in a git worktree
+
+The compose project is the folder name, which is already unique. `.worktree.env` is git-ignored
+and read only by make and the scripts, never by the app (Settings rejects unknown `.env` keys).
+`JWT_ISSUER` and the OAuth redirect URIs stay on 8000: they are exact registered strings
+(`docs/canon/ENV.md`). `make dev`, `make bootstrap` and the test targets stop if `.env` or the
+running stack disagrees with `.worktree.env`.
+
+```sh
+git worktree add ../ai-marketplace-os-trackb -b <branch> origin/main
+cd ../ai-marketplace-os-trackb
+printf '%s\n' PG_HOST_PORT=5433 MINIO_API_HOST_PORT=9010 MINIO_CONSOLE_HOST_PORT=9011 \
+  API_HOST_PORT=8001 > .worktree.env
+cp .env.example .env   # then change only the ports: DATABASE_URL and ALEMBIC_DATABASE_URL
+                       # -> :5433, S3_ENDPOINT_URL -> :9010, PORT -> 8001
+make dev
+```
+
+Plain compose in that folder loads the same file in a subshell:
+
+```sh
+(e="$(scripts/ci/worktree_env.sh exports)" && eval "$e" && docker compose ps)
+```
+
+Tear the second stack down with `docker compose down -v`, then `cd -` and
+`git worktree remove ../ai-marketplace-os-trackb`. Remove old `mkos-api:ci*` images with
+`docker image rm`.
 
 ## Environments
 
