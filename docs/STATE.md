@@ -2,7 +2,7 @@
 
 _Last updated: 2026-10-04 (Sun). Any contributor, with any editor, can pick up from here: read "Start here" below. Front door: `docs/PRD.md`, `docs/ARCH.md`, `docs/RULES.md` (the engineering rulebook: it wins over the local agent rules file, and the sources it cites win over it, per its top paragraph), `docs/DESIGN.md`, `docs/PHASES.md`. Docs map: `docs/README.md`. Plan: `docs/EXECUTION-PLAN.md`._
 **Active:** none
-**Branch:** `main`. S1 follow-ups merge with this PR (squash). S1 itself was PR #3 on 2026-09-30.
+**Branch:** `main`. S1 follow-ups merged as PR #6 (`370c603`, 2026-10-04). S1 itself was PR #3 on 2026-09-30.
 **Git repo:** yes. Private `maniacultasset/ai-marketplace-os` (https://github.com/maniacultasset/ai-marketplace-os); first commit `be02277` on 2026-09-29. From here on, every change goes branch → PR → squash merge, and the user approves each merge.
 **Hosting ADR:** accepted ADR-0001 (GCP asia-south1, bootstrapped profile; 2026-09-27)
 **Tech Lead:** the user (to be confirmed)
@@ -12,7 +12,7 @@ _Last updated: 2026-10-04 (Sun). Any contributor, with any editor, can pick up f
 
 - **Sprint:** Mon 21 Sep → Wed 4 Nov 2026 (45 days). Day N = today's date − 20 Sep 2026, so Sat
   26 Sep = Day 6.
-- **Phase:** **S1 follow-ups merge with this PR.** Next is the pre-S2 docs (P16, P17, P6), then the ADR-0004 spike. The docs
+- **Phase:** **Milestone 0 done (2026-10-04):** S1 follow-ups merged (PR #6); STEPS, PROCESS and the two-track amendment approved; queue spike passed (T3 = procrastinate). Next: per-worktree ports, then S2 (Track B) and S5 (Track A). The docs
   foundation is complete (2026-09-28).
 - **Build location:** this folder is the root of the backend-only repo (ADR-0012).
   - **Never run `scaffold/README.md`'s `cp -R scaffold/.`:** it overwrites the root README. S1 moved
@@ -237,8 +237,29 @@ as "EP decision N" (EP decision 10, the S2 contract freeze, is a different item 
 | 7 | Was the kickoff pack sent to the client? Its B1 blocks carry the wrong KMS ring and `/v1/marketplace` redirect URIs. Were they used to file with Amazon or Flipkart? | user | marketplace filing |
 | 8 | ~~Multi-brand logins~~ **Decided 2026-09-27:** memberships, designed now. | — | — |
 | 9 | **AI team:** confirm Python + LangGraph in-process, **Python 3.13** (ADR-0002), and **Azure OpenAI** for Microsoft credits (the user will propose it). | user → AI team | S2 (the seam), S13 |
-| 10 | **Schema source for S5–S10:** accept `docs/architecture/DATABASE.md` rev 3 as the schema source, building its `[Proposed]` items as written until reviewed. `mkos-planner` uses it only once STATE marks it accepted. Until then it falls back to the CANON.md migration ledger, which predates the 2026-09-27 decisions. | user (Tech Lead) | S5 onward |
+| 10 | ~~Schema source for S5–S10~~ **Decided (user, 2026-10-04):** `docs/architecture/DATABASE.md` rev 3 is the schema source; its `[Proposed]` items are built as written until reviewed. | — | — |
 | 11 | Rewrite `be02277`/`ef0f3be` to drop the tooling files from history? It needs a force-push to `main`; agents never do it. | user | none |
+
+## Decisions of 2026-10-04 (user via chat, starting the v1 drive)
+
+- **Schema source:** `docs/architecture/DATABASE.md` rev 3 is accepted (open decision 10 closed).
+- **Two build tracks (P6):** yes. The agent drafts the ADR-0011 amendment as `Status: proposed`;
+  work stays single-track until the user accepts it.
+- **Launch scope for planning:** Amazon-first on 4 Nov with the EXECUTION-PLAN §6.6 cuts, Flipkart
+  behind a flag. The client still confirms; until then every plan uses this.
+- **Standing merge approval:** after the user approves a step's plan, the agent may squash-merge its
+  PR once all 10 CI checks are green and no high or medium review finding is open, and reports each
+  merge. Plan approvals stay per step.
+- **v1 goal:** build and prove the whole v1 journey locally end to end (stand-ins for marketplaces,
+  AI, KMS and GCS), then host once billing and a domain exist.
+- **ADR-0004 spike, local half (2026-10-04):** procrastinate 3.10.0 with psycopg 3.3.6 passes 7 of 8
+  criteria on local PG17; criterion 6 (throughput on Cloud SQL) waits for billing (2.9). Per P9, T3 is
+  decided on the local half: **procrastinate, no Redis.** S8 must carry the spike's findings:
+  `app_rw` EXECUTE grants on procrastinate's functions in `0003b`; `max_attempts` counts retries
+  (set it to `job_runs.max_attempts - 1`); a retry strategy that re-queues shutdown aborts; a reaper
+  for jobs stalled after a crash (the job body can run twice, so tasks stay idempotent); how re-runs
+  count against `job_runs.attempt`; dedupe in `job_runs`, not `queueing_lock`. Report:
+  `docs/plans/spike-0004/REPORT.md` (local-only).
 
 ## Decisions of 2026-09-30 (were pending from the handoff check; now decided)
 
@@ -298,9 +319,10 @@ Done on 2026-09-30:
      also lacks the front door itself.
    - Answer or chase the "Pending user decisions" above before the work they block.
 1. **Where we are:**
-   - **S1 is merged into `main` (PR #3, 2026-09-30):** 10/10 CI checks green on GitHub and 325 tests.
-   - The design is complete (`docs/architecture/`, ADRs 0001–0013, `docs/EXECUTION-PLAN.md`); the
-     implementation is about 5% done.
+   - **S1 and its follow-ups are merged (PR #3, PR #6):** 10/10 CI checks green; the local stack runs
+     Postgres 17 and MinIO.
+   - The design is complete (`docs/architecture/`, ADRs 0001–0013, `docs/EXECUTION-PLAN.md`,
+     `docs/STEPS.md`); the implementation is about 5% done (1 of 27 build steps).
    - Local-only on this Mac:
      - S1 plan, report and deviations: `docs/plans/s1/{PLAN,CODE-PLAN,REPORT,DEVIATIONS}.md`;
      - the role files (`mkos-*.md`) and the loop conductor, in the local editor config (the
@@ -347,18 +369,14 @@ Done on 2026-09-30:
       - (c) **pip-audit:** add `-s osv --timeout 60` in `scripts/ci/run_pip_audit.py`. Test first: a
         unit test that monkeypatches `subprocess.run` and asserts `-s osv --timeout 60` in the
         `pip_audit` argv.
-   1b. **Before the S2 plan, in this order** (decided 2026-09-30):
-      - **P16:** commit a tool-neutral `docs/PROCESS.md` (roles, loop, session protocol, approvals) and
-        repoint the tracked `AGENTS.md §N` citations to it or to `docs/RULES.md`.
-      - **P17:** one tracked list of corrected "Done when" lines for S2–S14, plus drafts for S15–S26,
-        which the user approves.
-      - **P6:** draft the two-track amendment as `Status: proposed`. Single-track until it is approved
-        (P5).
-   2. **ADR-0004 spike** (1 day; the local half, EXECUTION-PLAN P0-A5): procrastinate transactional
-      enqueue against the 8 pass criteria, in a throwaway harness outside the repo; report in
-      `docs/plans/spike-0004/REPORT.md` (local-only). It decides the queue (T3) before S8/S13. The
-      staging half (criterion 6) waits for billing (2.9). Open: T3 on the local half (P9); may the S2
-      plan come first (P5).
+   1b. **Done 2026-10-04 (this PR):** P16 `docs/PROCESS.md` with the tracked citations repointed;
+      P17 `docs/STEPS.md` approved (S2–S26 "Done when"); P6 ADR-0011 two-track amendment accepted;
+      the per-track port Canon edit approved and applied.
+   2. **Done 2026-10-04: ADR-0004 spike, local half:** 7 of 8 criteria pass; T3 = procrastinate
+      (see "Decisions of 2026-10-04"). Criterion 6 waits for billing (2.9).
+   2a. **Next: per-worktree ports** (`chore/two-track-ports`): parameterise the compose host ports,
+      the Makefile test URLs and API port, `bootstrap.sh` and `prove_gates.sh`, and the CI image tag,
+      as listed in the ADR-0011 amendment; then Track B starts in its own worktree.
    3. **S2**: freeze `mkos-schemas` v1.0.0. Needs EP decision 10 (freeze all 17 modules as written, or
       only the decided ones; P7), T1 and T61 (EXECUTION-PLAN §6.2); target the Sun 4 Oct (D14) MAJOR
       window. Before the S2 plan: the two-track choice (P6) and the AI and FE leads (P8). From here,
@@ -459,6 +477,7 @@ Done on 2026-09-30:
 
 ## Session log (newest first; at most 5 lines each; keep the newest 5, older ones go to `docs/archive/STATE-log.md`)
 
+- **2026-10-04 (milestone 0):** Wrote `docs/STEPS.md` (S2–S26 "Done when", approved), `docs/PROCESS.md` (92 citations repointed), the ADR-0011 two-track amendment (accepted) and the per-track port Canon notes (approved). Queue spike local half: 7/8 pass, T3 = procrastinate. Decisions: DATABASE.md rev 3 accepted, Amazon-first planning, standing merge approval. Next: ports, then S2 and S5.
 - **2026-10-04 (s1-followups):** MinIO in compose (Chainguard, `/data` despite uid 0), `editables==0.6`, pip-audit on OSV, commit-msg attribution check, frozen `uv run`. The user approved the plan and the merge. README wait is scoped to Postgres. Next: P16, P17, P6, then the ADR-0004 spike.
 - **2026-09-30 (docs standard):** PR #4 adds PRD, ARCH, RULES, DESIGN and PHASES and the handoff fixes. The user accepted all P1–P19 defaults, with P8 as an interim rule (the Tech Lead approves contracts until the leads are named). P12 scan clean (2 false positives), P14 backup made, P18 local fixes applied.
 - **2026-09-30 (verified-check fixes; tool-neutral docs):**
@@ -470,23 +489,3 @@ Done on 2026-09-30:
   - README.md and `docs/README.md` now open with the front door (PRD, ARCH, RULES, DESIGN, PHASES, STATE); the PR template has a "Docs" item; the local agent rules point to `docs/RULES.md`; the conductor's merge step is the PR flow.
   - Files touched: README.md, `docs/{STATE,README,EXECUTION-PLAN,PRD,ARCH,RULES,DESIGN,PHASES}.md`, `docs/plans/README.md`, `docs/adr/0011-team-loop.md`, `docs/archive/STATE-log.md` (new), `.github/pull_request_template.md`; local-only: AGENTS.md, the editor config (conductor, role files, hook, plan workflow), `docs/plans/s1/{REPORT,LOOP}.md`.
   - Docs-only, no gates run. Not committed (P1).
-- **2026-09-29/30 (no AI attribution in git):**
-  - Setup:
-    - GitHub repo made backend-only, with no AI branding (PRs #1, #2 merged).
-    - Docs restructured.
-    - GCP projects created; billing still pending.
-    - Docker, gitleaks and pyright installed.
-  - **S1:** planned (approved with 18 fixes, ADR-0013 accepted), then built by the loop: 3 fix rounds;
-    the report was written by hand after the report step stalled 3 times.
-  - **Merged as PR #3.** Three follow-ups are listed under "Start here".
-  - Files touched: the S1 tree (97 files + fix round), `docs/STATE.md`, ADR-0012/0013, TEAM-QUESTIONS,
-    CANON note, README files; local-only: AGENTS.md, the editor config, `docs/plans/s1/`.
-- **2026-09-29 (no-git):**
-  - Wrote `docs/EXECUTION-PLAN.md` via a 7-agent workflow. A third-party agent-workflow add-on: don't
-    install it (it contacts npm at every session start); 8 of its ideas are ported into our loop.
-  - Restructured `docs/` (the user chose a full restructure): 979 references rewritten, and
-    `docs/README.md` added. The Word-doc cache moved to `scripts/docgen/.cache/`.
-  - AGENTS.md §1: never publish to hosted document or connector services.
-  - GCP: installed `gcloud`/`cloud-sql-proxy`; logged in as `maniacultasset@gmail.com`; created
-    projects `aimos-staging` and `aimos-prod`. The client is setting up billing.
-  - Files touched (no git): AGENTS.md, README.md, `docs/README.md` (new), `docs/STATE.md`, `docs/plans/README.md`, the local role files (planner, implementer), `.gitignore`, `scripts/{docgen,trace}/*`, every moved doc, `docs/trace/*.map.json`.

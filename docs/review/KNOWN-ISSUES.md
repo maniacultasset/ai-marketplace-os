@@ -36,7 +36,7 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 | Locally, the API and the worker health server both bind `PORT=8000`. | Give the worker health server its own `WORKER_HEALTH_PORT`, or none: a Cloud Run worker pool needs no `$PORT`. | S13 |
 | The `api` entrypoint trusts forwarded headers from any peer (`--proxy-headers --forwarded-allow-ips='*'`, so `request.url` reads https behind Cloud Run). uvicorn then takes the left-most, client-supplied `X-Forwarded-For` entry as `request.client.host` (uvicorn 0.54.0 `middleware/proxy_headers.py:176-177`). | The per-IP rate limiter must derive the client IP from the entry Cloud Run appends, never the left-most one. | S10 |
 | Several "Done when" lines depend on artifacts from later steps (S7, S8, S11), which creates ordering cycles. S1's part is resolved: migrations move to S5, the seed to S9, and the worker to S13 (ADR-0013 §4). | Move those tests to the later step. | planning |
-| Numbering drift: the Canon cites "invariant 12" (two schemes, 10 vs 14 items); ADR numbers collide in the pack; Day 11 is a Thursday while the MAJOR windows fall on Sundays. | Use AGENTS.md §3 numbering. Keep an ADR ledger in `docs/adr/README.md`. | ongoing |
+| Numbering drift: the Canon cites "invariant 12" (two schemes, 10 vs 14 items); ADR numbers collide in the pack; Day 11 is a Thursday while the MAJOR windows fall on Sundays. | Use the `docs/RULES.md` §1 numbering. Keep an ADR ledger in `docs/adr/README.md`. | ongoing |
 
 ## C. Scaffold bugs (fix when the file moves into place in S1, then test)
 
@@ -61,7 +61,7 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   was fixed on 2026-09-30.
 - `BLOCKERS.md` IAM matrix gives the AI group project-level `secretAccessor`, which covers the
   marketplace secrets. That contradicts invariant 6. Grant it per secret.
-- `CANON.md` was never merged with the Addendum and never mentions it. `AGENTS.md` §2 sets the
+- `CANON.md` was never merged with the Addendum and never mentions it. `docs/README.md` "When sources disagree" sets the
   precedence until someone merges them.
 - The step that adds the S3 client must refuse `local_only_` S3 values outside `APP_ENV=local`
   (`apps/api/app/core/config.py` does this only for the JWT secret).

@@ -1,7 +1,7 @@
 # docs/plans/ — one folder per build step or feature
 
-Each `<id>/` folder (e.g. `s1/`) is the hand-off record for one pass through the team loop (the local
-agent rules, AGENTS.md §6). **These files, not any tool's memory, are the loop state.** Any editor can
+Each `<id>/` folder (e.g. `s1/`) is the hand-off record for one pass through the team loop
+(`docs/PROCESS.md` §4). **These files, not any tool's memory, are the loop state.** Any editor can
 resume from them at any point. The folders are local-only (`.git/info/exclude`); this README is the
 only committed file here, and the PR description carries the scope, criteria and results.
 

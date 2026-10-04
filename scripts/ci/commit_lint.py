@@ -1,4 +1,4 @@
-"""The `commit-lint` check and the `commit-msg` hook (CANON.md:142; AGENTS.md §6).
+"""The `commit-lint` check and the `commit-msg` hook (CANON.md:142; docs/RULES.md §10).
 
 The PR title becomes the squash commit, so it must be a conventional-commit subject, and the
 branch name must match the branch rule. Both come in through argv (from `env:` in CI), and are

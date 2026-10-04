@@ -6,7 +6,7 @@
 //   MMDC=<path to mmdc> PPTR_CONFIG=<puppeteer json> \
 //   node scripts/docgen/md_to_docx.mjs <input.md> <output.docx> \
 //     [--title T] [--subtitle S] [--version V] [--extra more.md ...]
-// The .md is the source of truth (AGENTS.md §8). Regenerate the .docx; never edit it by hand.
+// The .md is the source of truth (docs/RULES.md §12). Regenerate the .docx; never edit it by hand.
 import { createRequire } from 'node:module'
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'

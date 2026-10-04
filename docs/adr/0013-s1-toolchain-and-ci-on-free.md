@@ -38,7 +38,7 @@
    and ADR-0012 removed `apps/web`. Amends A§8 and ENV.md's three FE rows.
 3. **Lint adds `TID` plus two repo checks in `api-lint`:**
    - The banned APIs are `asyncpg`, `redis` and `arq` (ADR-0004); `jose`, `passlib` and `numpy`
-     (AGENTS.md §4); and `openai`/`langgraph` outside their Canon exemptions (CANON.md:126).
+     (`docs/RULES.md` §4); and `openai`/`langgraph` outside their Canon exemptions (CANON.md:126).
    - No `os.environ`/`os.getenv` outside `app/core/config.py`.
    - No string literal passed as `error_code=`.
    - `scripts/docgen/**` and `scripts/trace/**` (doc tooling on system Python 3.9) are out of lint
@@ -72,7 +72,7 @@
    - Renovate is configured self-hosted (`renovate.json`), with **no auto-merge** of any kind. It runs
      from the laptop while on Free. Amends ADR-0005:42.
    - `pip-audit` in `api-lint` sends package names and versions to the advisory service. That is
-     recorded as an AGENTS.md §1 exception.
+     recorded as the exception in `docs/PROCESS.md` §1.
 7. **Local bootstrap without host psql.** `make bootstrap-db` runs `psql` inside the compose `postgres`
    container, against the file already mounted at `/docker-entrypoint-initdb.d/0000_bootstrap.sql`
    (CANON-ADDENDUM.md:20). CI keeps the host `psql` step (CANON-ADDENDUM.md:63-70). Amends

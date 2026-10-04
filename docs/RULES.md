@@ -28,8 +28,8 @@ Source: spec L4692-4707; `BACKEND-ARCHITECTURE.md:174`; ADR-0004 §6.
 - **Do** read the front door (README "Start here") and then `docs/STATE.md` at every session start;
   before planning a step, pull its rows from `docs/review/`.
 - **Do** build in the order of STATE "Start here" item 2 (dependencies from EXECUTION-PLAN
-  §6.2–§6.3; a step starts only after its dependencies merge). Step scope and "Done when" come from
-  BUILD-SEQUENCE S1–S14, as corrected by SUPERSEDED and KNOWN-ISSUES, and are the acceptance tests.
+  §6.2–§6.3; a step starts only after its dependencies merge). Step scope and "Done when" for S2–S26
+  come from `docs/STEPS.md` (approved 2026-10-04) and are the acceptance tests.
 - **Do** cite a file for every claim: `path:line`, a Canon row, or spec `L<line>`.
 - **Do** ask instead of guessing: add a TEAM-QUESTIONS row, and build on its default only if waiting
   blocks the step.
@@ -41,7 +41,7 @@ Source: spec L4692-4707; `BACKEND-ARCHITECTURE.md:174`; ADR-0004 §6.
 
 Source: `README.md` "Start here"; `docs/STATE.md` "Start here" 0 and 2, "GCP by hand";
 `EXECUTION-PLAN.md` §5.1, §5.5, §6.2; `TEAM-QUESTIONS.md:1-16`; `SUPERSEDED.md:1-10`; ADR-0009 §4;
-AGENTS.md §2, §6, §7 (local rules file).
+`docs/PROCESS.md` §2, §4, §6.
 
 ## 3. Canonical names
 
@@ -131,7 +131,7 @@ ADR-0004 §2, §4; `EXECUTION-PLAN.md` §5.3; `docker-compose.yml:13`.
 - ADR-0010 gates await the team (T8). MinIO image source is T107 (Chainguard compose, `/data`).
 
 Source: `README.md` "Quickstart"; `Makefile`; `CANON.md:79`, `:128`, `:136-137`; ADR-0010;
-ADR-0012 §3; `pyproject.toml:80`; `docs/STATE.md` "Start here" 2.8; AGENTS.md §6.
+ADR-0012 §3; `pyproject.toml:80`; `docs/STATE.md` "Start here" 2.8; `docs/PROCESS.md` §4.
 
 ## 9. Security
 
@@ -166,7 +166,7 @@ Source: `.pre-commit-config.yaml`; `.github/workflows/`; `BACKEND-ARCHITECTURE.m
 
 Source: `CANON.md:142`; `docs/STATE.md` header and "Decided" (S1 plan decisions; no AI branding);
 `.pre-commit-config.yaml:1-3`; `Makefile` `dev`; ADR-0013 §5; ADR-0009; `docs/adr/README.md:1-5`;
-`EXECUTION-PLAN.md` §2 decision 3; AGENTS.md §6.
+`EXECUTION-PLAN.md` §2 decision 3; `docs/PROCESS.md` §5, §7.
 
 ## 11. Contracts (`packages/schemas`)
 
@@ -194,4 +194,4 @@ detailed source behind it:
 Rebuild Word editions from the `.md` with `scripts/docgen/build.sh`; never edit them alone.
 
 Source: `docs/STATE.md` "Decided" (front-door docs, user 2026-09-30); `docs/README.md`;
-`docs/adr/README.md:3-5`; AGENTS.md §8.
+`docs/adr/README.md:3-5`.

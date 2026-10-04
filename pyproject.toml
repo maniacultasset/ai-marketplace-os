@@ -58,9 +58,9 @@ ignore = ["E501"]
 "asyncpg".msg = "No asyncpg: psycopg 3 is the only driver (ADR-0004)."
 "redis".msg = "No Redis (ADR-0004)."
 "arq".msg = "No arq: the queue is procrastinate on Postgres (ADR-0004)."
-"jose".msg = "No python-jose: use PyJWT (AGENTS.md §4)."
-"passlib".msg = "No passlib: use pwdlib[argon2] (AGENTS.md §4)."
-"numpy".msg = "No numpy (AGENTS.md §4)."
+"jose".msg = "No python-jose: use PyJWT (docs/RULES.md §4)."
+"passlib".msg = "No passlib: use pwdlib[argon2] (docs/RULES.md §4)."
+"numpy".msg = "No numpy (docs/RULES.md §4)."
 "openai".msg = "Model calls only in app/services/{embeddings,vision}.py (CANON.md:126)."
 "langgraph".msg = "LangGraph belongs to the AI pipeline, not the backend (CANON.md:126)."
 

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Rebuild the team .docx files from the .md sources. The .md is the source of truth (AGENTS.md §8).
+# Rebuild the team .docx files from the .md sources. The .md is the source of truth (docs/RULES.md §12).
 # First run: (cd scripts/docgen && npm install). Needs Google Chrome for diagram rendering.
 set -eu
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
@@ -10,7 +10,7 @@ CACHE="$HERE/.cache"                    # build cache stays with the tool; deliv
 mkdir -p "$CACHE"
 CHROME="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
 PPTR="$CACHE/pptr.json"
-# Offline by design (AGENTS.md §1): every hostname fails to resolve, so Chrome can't send anything out.
+# Offline by design (docs/PROCESS.md §1): every hostname fails to resolve, so Chrome can't send anything out.
 # Puppeteer gives Chrome a throwaway profile, never the user's own.
 printf '{"executablePath":"%s","args":["--no-sandbox","--host-resolver-rules=MAP * ~NOTFOUND","--disable-background-networking","--disable-component-update","--disable-sync","--disable-domain-reliability","--no-first-run","--no-default-browser-check"]}\n' "$CHROME" > "$PPTR"
 VERSION="${VERSION:-Draft $(date +%Y-%m-%d)}"

@@ -25,14 +25,14 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | `ADMIN_SESSION_SECRET` | `dev_only_admin_session_secret_at_least_32_chars` | both | required | Secret Manager in staging/prod; 32+ random bytes. |
 | `ADMIN_STAFF_EMAILS` | `(empty — leave blank)` | local .env | optional | Comma-separated allowlist, second layer behind IAP/IAM. |
 | `ADMIN_LOCAL_EMAIL` | `dev@local` | local .env | optional | Used only when APP_ENV=local. |
-| `PORT` | `8000` | local .env | required | 8000 locally. Cloud Run injects `$PORT` (image default 8080); the worker health server binds `settings.port`, which is why this is a register row and not a hard-coded constant. |
+| `PORT` | `8000` | local .env | required | 8000 locally (a second worktree sets its own value in its `.env`). Cloud Run injects `$PORT` (image default 8080); the worker health server binds `settings.port`, which is why this is a register row and not a hard-coded constant. |
 
 ## Database
 
 | Variable | Local value | Source | Required | Notes |
 |---|---|---|---|---|
-| `DATABASE_URL` | `postgresql+asyncpg://postgres:postgres@localhost:5432/marketplace_os` | both | required | Matches docker-compose exactly (POSTGRES_USER/PASSWORD/DB = postgres/postgres/marketplace_os). postgres_dev_password and password are forbidden. Secret Manager in staging/prod, connecting as app_rw. |
-| `ALEMBIC_DATABASE_URL` | `postgresql+psycopg://postgres:postgres@localhost:5432/marketplace_os` | both | required | Sync driver for Alembic. In staging/prod this is the `migrator` role, used only by the pre-deploy Cloud Run migration job. |
+| `DATABASE_URL` | `postgresql+asyncpg://postgres:postgres@localhost:5432/marketplace_os` | both | required | Matches docker-compose exactly (POSTGRES_USER/PASSWORD/DB = postgres/postgres/marketplace_os). 5432 is the default host port; a second worktree changes only the port in its own `.env`. postgres_dev_password and password are forbidden. Secret Manager in staging/prod, connecting as app_rw. |
+| `ALEMBIC_DATABASE_URL` | `postgresql+psycopg://postgres:postgres@localhost:5432/marketplace_os` | both | required | Sync driver for Alembic. Same default host port as `DATABASE_URL`. In staging/prod this is the `migrator` role, used only by the pre-deploy Cloud Run migration job. |
 | `DATABASE_POOL_SIZE` | `5` | local .env | required | 5, not 10 — connection budget is (api max-instances + worker max-instances) × 10; the arithmetic lives in the Cloud Run ADR. |
 | `DATABASE_MAX_OVERFLOW` | `5` | local .env | required | Engine also sets pool_pre_ping=True, pool_recycle=1800 (Cloud SQL drops idle connections). |
 | `DATABASE_ECHO` | `false` | local .env | optional | Never true outside local. |
@@ -47,7 +47,7 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | `STORAGE_BACKEND` | `minio` | local .env | required | minio locally, gcs in staging/prod. |
 | `GCS_BUCKET_IMAGES` | `marketplace-images` | local .env | required | Exactly the bucket the compose `mc mb` one-shot creates. staging: aimos-images-staging; prod: aimos-images-prod. |
 | `GCS_BUCKET_CSV` | `marketplace-csv` | local .env | required | Exactly the bucket the compose `mc mb` one-shot creates. staging: aimos-csv-staging; prod: aimos-csv-prod. |
-| `S3_ENDPOINT_URL` | `http://localhost:9000` | local .env | optional | MinIO only. Unset in staging/prod. |
+| `S3_ENDPOINT_URL` | `http://localhost:9000` | local .env | optional | MinIO only (9000 is the default host port; a second worktree sets its own). Unset in staging/prod. |
 | `S3_ACCESS_KEY` | `local_only_minio_root_user` | local .env | optional | Interpolated as MINIO_ROOT_USER (`:?` form; a missing `.env` fails). |
 | `S3_SECRET_KEY` | `local_only_minio_root_password_32_chars` | local .env | optional | Interpolated as MINIO_ROOT_PASSWORD (`:?` form; a missing `.env` fails). minioadmin_dev_password is forbidden. |
 

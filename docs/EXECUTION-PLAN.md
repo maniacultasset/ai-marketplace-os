@@ -5,7 +5,7 @@ GitHub/CI/CD, GCP, roadmap) and two critiques (feasibility, security/DevOps). Fa
 the repo on 2026-09-29; §1 and the §6.2 S1 row updated in place on 2026-09-30 (§10)._
 
 **Status: proposed**, except the §2 decisions the user has made (1–4, 6–8, 17 and 19; STATE "Setup
-decisions" and §10). Nothing here overrides AGENTS.md, an accepted ADR or the Canon until the user
+decisions" and §10). Nothing here overrides `docs/RULES.md`, `docs/PROCESS.md`, an accepted ADR or the Canon until the user
 approves the matching item in §2. **This file is the plan. `docs/STATE.md` is the status.** Progress
 (which `P0-*` item or step is done) is recorded in STATE, never ticked in this file. The plan changes
 only with the user's OK, and each change gets a dated line in §10.
@@ -61,11 +61,11 @@ as "EP decision N"; `docs/STATE.md` has its own "open decision" list.
 | 1 | GitHub plan | **Team**: ~7 seats × $4 ≈ $28/mo, plus ≈ $36/mo of Actions minutes. On Free, private repos get no rulesets, required checks, CODEOWNERS or environments, so S1's "force-push to main is rejected" (BUILD-SEQUENCE.md:20) can't pass. If the client stays on Free: the §4.3 fallback plus a SUPERSEDED entry moving that line to "when Team lands". | D11 (Thu 1 Oct) |
 | 2 | Agent identity | **A bot account** (a GitHub machine user; you pick the name) with a fine-grained token for this repo only, expiring in 90 days. Log `codekid69` out of `gh` and the Keychain on this Mac, and do admin work and releases in the browser with a passkey. Why: today's `gh` token is `codekid69`'s OAuth token (`gho_`, `repo workflow gist read:org`). It reaches every repo you can see, other clients' included, and PRs opened with it can't be approved by you. **Mandatory before any prod credential exists.** | before the first push |
 | 3 | Branch model | **Trunk-based:** short branch → PR → `main`. Staging is an *environment* that always runs `main`, and prod runs SemVer tags (ADR-0009; spec L5655, L7053). **No long-lived `staging` branch:** with squash-only merges it drifts from `main` for good. | D10 |
-| 4 | Who runs outward commands | **You** run `git init`, repo creation, the first push and the GCP runbook; the agent rules (AGENTS.md §4 provisioning, §6 Git) forbid agents doing them. Later, the bot may run a named list of `gh`/`git push` commands after you approve an AGENTS.md §4/§7 amendment, still with a go per command. | D10 |
+| 4 | Who runs outward commands | **You** run `git init`, repo creation, the first push and the GCP runbook; the agent rules (`docs/PROCESS.md` §1 cloud access, §7 git flow) forbid agents doing them. Later, the bot may run a named list of `gh`/`git push` commands after you approve a `docs/PROCESS.md` §1/§7 amendment, still with a go per command. | D10 |
 | 5 | GCP by hand now | **Your STATE list plus guardrails:** projects, billing, APIs, budgets, log retention, `aimos-db`, database `aimos`, the `vector` check, AR `aimos`. For the fast go-live, also the `aimos-api` account and 2 secrets (`DATABASE_URL`, `JWT_SECRET`). **Everything else is reviewed OpenTofu:** KMS, GCS, WIF, the deployer, Scheduler and audit logs at S4 (D17–18); the prod data plane at S25 (D23–25). | D10 |
 | 6 | Staging database | `aimos-db` in **`aimos-staging`**, on **`db-custom-1-3840`** as you said: prod-like, which the spike's throughput test needs. It is stopped nights and weekends, and the tier can change later with a restart. **No user `app`:** `gcloud sql users create` puts it in `cloudsqlsuperuser` (CREATEROLE, CREATEDB), and the roles come from `0000_bootstrap.sql` at S5 (CANON.md:75). This departs from STATE, so it needs your OK. | §5.2 step 5 |
 | 7 | Boot requirements | **Required settings by role** (`api`, `worker`, `migrate`); each feature adds its own requirement when it lands (KMS at S15, OpenAI at S16/S18). Alembic `env.py` doesn't import the full settings. Why: the scaffold check (scaffold/apps/api/app/core/config.py:97–108) needs `OPENAI_API_KEY`, `SENTRY_DSN` and `KMS_KEY_URI`, none of which exist yet, so staging couldn't boot. Changes Addendum §8, so it needs a TEAM-QUESTIONS row. | S1 plan |
-| 8 | Two build tracks | **Approve an ADR-0011 + AGENTS.md §7 amendment:** one conductor; an `Active` suffix per track; the next step planned while one builds; a git worktree per track with its own compose project and DB port (a Canon edit, CANON.md:65); **only Track A writes migrations**; only the conductor edits STATE. **Without it, 4 Nov can't hold** (§6.5). | D12 |
+| 8 | Two build tracks | **Approve an ADR-0011 + `docs/PROCESS.md` §6 amendment:** one conductor; an `Active` suffix per track; the next step planned while one builds; a git worktree per track with its own compose project and DB port (a Canon edit, CANON.md:65); **only Track A writes migrations**; only the conductor edits STATE. **Without it, 4 Nov can't hold** (§6.5). | D12 |
 | 9 | Launch scope | **Amazon-first on 4 Nov with cuts C1–C10 (§6.6),** agreed by the client. The alternative is full scope around 18–25 Nov. | D14 (Sun 4 Oct) |
 | 10 | Contract freeze | Take proposed ADRs **0006/0007/0008** to the team now. S2 freezes **only the decided modules** as `schemas-v1.0.0` on D14; the rest are additive MINORs, and breaking fixes wait for D28. | D11 |
 
@@ -79,12 +79,12 @@ as "EP decision N"; `docs/STATE.md` has its own "open decision" list.
 | 14 | When prod exists | **S25 moves to D23–25.** At least 2 real `v0.x` prod releases plus a rollback drill before D43. **No `-rc` tags to prod**: the "dry run" is a real `v0.9.x`. | D20 |
 | 15 | KMS grants | **API: encrypt only** (it seals tokens at the OAuth callback). **Worker: encrypt + decrypt.** Anything needing plaintext (revoke, connection health) runs as a worker job. No human gets either role. Record it as a Canon/ADR row before S4. | S4 plan |
 | 16 | `BOOTSTRAP_DATABASE_URL` | **You only**, not the migrator (it is a `127.0.0.1:5433` proxy URL Cloud Run can't use anyway). Rotate the `postgres` password after `0000`. This amends CANON-ADDENDUM.md:72, so it needs a TEAM-QUESTIONS row. | S5 |
-| 17 | Dependency updates | **Self-hosted Renovate, no auto-merge:** drop ADR-0005:42, which conflicts with "the user approves every merge". pip-audit, osv-scanner and Renovate send only package names and versions; record that as an AGENTS.md §1 exception. | S1 |
+| 17 | Dependency updates | **Self-hosted Renovate, no auto-merge:** drop ADR-0005:42, which conflicts with "the user approves every merge". pip-audit, osv-scanner and Renovate send only package names and versions; record that as a `docs/PROCESS.md` §1 exception. | S1 |
 | 18 | Names (not in the Canon) | Services `aimos-api`, `aimos-worker`, `aimos-migrate`. Accounts `aimos-api`, `aimos-worker`, `aimos-migrator`, `aimos-deployer`, `aimos-scheduler`, `aimos-tofu`. AR `aimos`, image `backend`. **Secret id = env var name.** Workflows `ci-api.yml`, `contracts.yml`, `ci-web.yml` (CANON.md:77), plus new `ci-meta.yml`. | §5.2 step 9 |
 | 19 | What goes into git | **Yes:** `docs/` (with `docs/source/`), `scaffold/`, `scripts/` (agent tooling stays local-only; see §10). **No:** `deliverables/*.docx` (39 MB of generated binaries; share them through the client's channel). | P0-U5 |
 | 20 | Mutation gate | **ADR-0010 as written** (a core-module score of at least 80% blocks a release), with a written per-release waiver from you (C9). | S9 |
 | 21 | Auto-rollback thresholds (ADR-0009 doesn't say) | Roll back on any of: 5xx ≥ 2% with ≥ 20 requests in a 5-minute window; p95 ≥ 2× the previous revision (floor 1.5 s); a new Sentry issue for the release; a crash loop. Traffic is too thin at v1, so add synthetic probes from a smoke tenant. | S25 |
-| 22 | Second-editor subagents | Check whether the second editor loads role agents from its local config folder. If it does, AGENTS.md §7 (single-session reviews) is out of date and §7.2 idea 11 applies. | any time |
+| 22 | Second-editor subagents | Check whether the second editor loads role agents from its local config folder. If it does, `docs/PROCESS.md` §9 (single-session reviews) is out of date and §7.2 idea 11 applies. | any time |
 
 ---
 
@@ -134,7 +134,7 @@ Work top to bottom within each group. STATE records the done IDs.
 ### 3.3 The user
 
 - **P0-U1** Answer decisions 1–10.
-- **P0-U2** Install: Docker Desktop (Settings → "Send usage statistics" **off**, AGENTS.md §1);
+- **P0-U2** Install: Docker Desktop (Settings → "Send usage statistics" **off**, `docs/PROCESS.md` §1);
   `brew analytics off`; `brew install --cask gcloud-cli`; `brew install cloud-sql-proxy libpq gitleaks
   opentofu`.
 - **P0-U3** Put a **passkey** on `codekid69`. Create the bot account (with 2FA) and its fine-grained
@@ -169,7 +169,7 @@ Work top to bottom within each group. STATE records the done IDs.
   the pre-commit `commit-msg` hook (§7.2 idea 8), CODEOWNERS (one pattern per line), `.gitleaks.toml`,
   role-scoped settings (decision 7) and the PR template (§7.2 idea 7).
 - **P0-A2** `scripts/spec-sync.sh` before the S2 plan (the snapshot is from 2026-09-27, so it is stale
-  on 1 Oct; AGENTS.md §7).
+  on 1 Oct; `docs/PROCESS.md` §6).
 - **P0-A3** Draft the **tooling change pack**; it edits nothing until P0-U4:
   - The local conductor's merge step and its §5 by-hand table: merge becomes "push the branch, open a PR as the
     bot, CI green, the user approves and squash-merges on GitHub". It lands **before** P0-U7.
@@ -266,7 +266,7 @@ them), release-please.
 | `ci-api.yml` | PR → `main` | **api-lint** (ruff, black, pip-audit with a dated ignore list), **api-typecheck**, **api-tests** (squawk; Alembic up → check → down → up; migration-compat; pytest), **tenant-isolation**, **lint-imports**, **bootstrap** | ≤ 9 min |
 | `contracts.yml` | PR → `main` | **contracts**, **schemas-drift** | ≤ 4 min |
 | `ci-web.yml` | — | none here: `web-lint` and `web-typecheck` moved to the frontend repository (ADR-0012) | — |
-| `ci-meta.yml` | PR (also `edited`) | **commit-lint** (the AGENTS.md §6 regexes), **gitleaks** (over the PR range) | ≤ 1 min |
+| `ci-meta.yml` | PR (also `edited`) | **commit-lint** (the `docs/RULES.md` §10 regexes), **gitleaks** (over the PR range) | ≤ 1 min |
 | `nightly.yml` | 02:00 IST + manual | mutmut on the core modules; full Schemathesis; deep Hypothesis; random order × 3 seeds; a migration replay with timings; **pip-audit, pnpm audit, osv-scanner and a full-history gitleaks scan, which always run, even when `main` is unchanged** | ~45 min; a failure opens a `nightly-red` issue |
 | `deploy-staging.yml` | push to `main` (from S4) | §4.5 | ~18 min |
 | `deploy-prod.yml` | `release: published` on `vX.Y.Z`; manual `mode=deploy\|rollback` on a tag (from S25) | §4.5 | ~25–30 min |
@@ -717,7 +717,7 @@ Evidence (G = the downloaded source, kept outside the repo):
   spawns a detached `npm view` of its own package version (G/hooks/hooks.json:7 → its update-check
   hook script :72–84 → its version-check script :102). There is no
   opt-out, and a reinstall restores the hook (G/bin/install.js:1372–1375). It installs unpinned via
-  `npx …@latest` and needs Node ≥ 24 (G/package.json:59). **That fails AGENTS.md §1.**
+  `npx …@latest` and needs Node ≥ 24 (G/package.json:59). **That fails `docs/PROCESS.md` §1.**
 - **It leaks content.** With no flags, its review command sends the plans and requirements to every
   third-party AI reviewer CLI it finds (G/docs/COMMANDS.md:1824, 1851).
   Its profile command reads the editor's per-project transcript folder in the home directory, which
@@ -729,7 +729,7 @@ Evidence (G = the downloaded source, kept outside the repo):
 - **It conflicts with our approvals and git rules.** It has auto-advance and auto-approval in auto
   mode (`mode: yolo` is opt-in; the default is `interactive`, G/docs/CONFIGURATION.md:220). It commits
   once per task, commits `.planning/` by default (:659), and its ship command pushes. Ours: agents never
-  approve, and never push or merge without the user (AGENTS.md §6).
+  approve, and never push or merge without the user (`docs/PROCESS.md` §5, §7).
 - **Its footprint is large:** 35 roles, 72 commands, 28 hooks and about 12k tokens of skill text per
   session. A global install changes both editors' global config for every client on this Mac.
 
@@ -754,17 +754,17 @@ or between steps, **never mid-step**.
 
 ## 8. How the agents use this plan
 
-| What | Where (files beat memory, AGENTS.md §7) |
+| What | Where (files beat memory, `docs/PROCESS.md` §2) |
 |---|---|
-| Rules | `docs/RULES.md` (engineering rules, tracked); `AGENTS.md` (the local agent rules) |
+| Rules | `docs/RULES.md` (engineering rules, tracked); `docs/PROCESS.md` (the team process, tracked); `AGENTS.md` (the local agent rules) |
 | Status: `Active`, `Branch`, done `P0-*` ids, current step, decisions | `docs/STATE.md`; only the launching/conductor session edits it |
 | The plan | this file; changed only with the user's OK, plus a line in §10 |
 | One step's loop | `docs/plans/<id>/` (CONTEXT, PLAN, CODE-PLAN line 1 = approval, LOOP, REPORT, later HANDOFF) |
 | Questions and rulings | TEAM-QUESTIONS, `docs/adr/`, CANON + ADDENDUM |
 
 **Picking up at any point:**
-1. Read the front door (`docs/PRD.md`, `ARCH.md`, `RULES.md`, `DESIGN.md`, `PHASES.md`), then STATE;
-   agents also read the local AGENTS.md. If `Active` isn't `none`, follow AGENTS.md §7.
+1. Read the front door (`docs/PRD.md`, `ARCH.md`, `RULES.md`, `DESIGN.md`, `PHASES.md`, `PROCESS.md`), then STATE;
+   agents also read the local AGENTS.md. If `Active` isn't `none`, follow `docs/PROCESS.md` §6.
 2. Phase 0 open? Take the first `P0-*` id that STATE doesn't list as done. **Agents do only `P0-A*`;**
    for the others, remind the user in one line with the command.
 3. Step in progress? Resume from the last block of `docs/plans/<id>/LOOP.md` (and `HANDOFF.md`).
@@ -793,7 +793,7 @@ accepted as written and is applied above.** "Checked" means verified in the repo
 | F2 Two tracks break the loop | Accepted | Checked AGENTS.md:238–257 (one `Active`) and the conductor's steps 5–7 (sequential): the roadmap draft's "planning while building is allowed today" was wrong. Now decision 8. |
 | F3 / S1 Agents hold the prod key | Accepted (core) | Checked: the token is `gho_` OAuth, not "classic" as the GitHub draft said. A separate macOS user or devcontainer is **recommended, not mandated**: logging `codekid69` out of gh and the Keychain, plus a separate gcloud config with no ADC, removes the credentials without a second workstation. |
 | F6 / S9 WIF by hand | Accepted | OpenTofu at S4/S25. **Rejected:** the GitHub draft's D7 (CD right after S1); the by-hand deploy (§5.2 step 9) gives the fast go-live instead. |
-| F8 / S16 `app` user, tier | Accepted | Asked as decision 6 rather than defaulted away (AGENTS.md §2, rank 0). |
+| F8 / S16 `app` user, tier | Accepted | Asked as decision 6 rather than defaulted away (`docs/PROCESS.md` §2, rank 0). |
 | F11 Estimates unrealistic | Partly | Scope decision moved to D14; the buffered date (18–25 Nov) is stated. The best case still uses calendar days, because the date is the client's call and the weekly trip-wires expose a slip early. |
 | F14 Ledger order | Accepted | Checked CANON ledger + DATABASE.md §8.2: `0005_rls` follows `0004`, so RLS moved from S9 to S10. |
 | F17 13th check | Accepted | Checked the GitHub changelog: the required-reviewer rule maps paths to teams (decision 11). |

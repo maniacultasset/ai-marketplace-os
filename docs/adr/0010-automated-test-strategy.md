@@ -32,7 +32,7 @@
 3. **Toolset** (exact-pinned dev dependencies, added in S1): pytest, Hypothesis, Schemathesis,
    squawk, mutmut, pytest-randomly, pytest-socket (no network in unit tests), pip-audit, plus the
    Canon gates.
-4. Tests come first in every build step (AGENTS.md §6). A merge needs all 10 required checks green (ADR-0012).
+4. Tests come first in every build step (`docs/RULES.md` §8). A merge needs all 10 required checks green (ADR-0012).
 
 ## Consequences
 
