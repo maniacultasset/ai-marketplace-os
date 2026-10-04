@@ -35,7 +35,7 @@
 4. **Required checks drop from 12 to 10:** `web-lint` and `web-typecheck` move to the frontend
    repository.
 5. **Cross-team review:**
-   - Changes to `packages/schemas` still need the AI and frontend leads' approval (AGENTS.md §6).
+   - Changes to `packages/schemas` still need the AI and frontend leads' approval (`docs/RULES.md` §11).
    - They land as versioned contract releases, MINOR any day and MAJOR only in the Day-14/28/42
      windows.
 

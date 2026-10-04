@@ -107,7 +107,7 @@ the root `pyproject.toml`, `docker-compose.yml`, `.github/workflows/*.yml` and
 | ENV.md `GIT_SHA` "Injected by Cloud Build" | set by the deploy pipeline (S4/S12); `dev` locally | ADR-0001 |
 | A§7 `bootstrap` job: `alembic upgrade head`, `app.cli seed`, and the image import `import app, mkos_schemas, mkos_pipeline` | S1 runs the job without alembic (S5) or seed (S9), and the image import is `import app, mkos_schemas` until S14 | ADR-0013 §4 |
 | A§11 CI env block with four variables (`postgresql+asyncpg` URL and `REDIS_URL`) | three variables: `APP_ENV`, `DATABASE_URL` (`postgresql+psycopg`), `JWT_SECRET` | C (ADR-0004 row) |
-| A§1 compose `ports: ["5432:5432"]`; site L7004, L7020 `"9000:9000"`, L7021 `"9001:9001"` (every interface) | every published port binds loopback: `"127.0.0.1:<port>:<port>"`; `make dev` keeps uvicorn on its `127.0.0.1` default | ADR-0013; AGENTS.md §1 |
+| A§1 compose `ports: ["5432:5432"]`; site L7004, L7020 `"9000:9000"`, L7021 `"9001:9001"` (every interface) | every published port binds loopback: `"127.0.0.1:<port>:<port>"`; `make dev` keeps uvicorn on its `127.0.0.1` default | ADR-0013; `docs/RULES.md` §9 |
 | EXECUTION-PLAN decision 19: the agent-tooling folder listed as "Yes" for git (EXECUTION-PLAN.md:77) | agent tooling stays local through `.git/info/exclude` and is never pushed | STATE.md:188 |
 
 ## Pending edits to `scaffold/` (apply before moving the files in during S1)

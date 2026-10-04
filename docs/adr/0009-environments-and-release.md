@@ -30,7 +30,7 @@
 3. **Rollback = redeploy the previous tag.** It is possible because every migration is
    backward-compatible (expand/contract), so the previous revision runs on the new schema. It is
    rehearsed before launch, targeting under 15 minutes.
-4. Infrastructure is changed only through reviewed OpenTofu (AGENTS.md §4).
+4. Infrastructure is changed only through reviewed OpenTofu (`docs/RULES.md` §2).
 
 ## Consequences
 

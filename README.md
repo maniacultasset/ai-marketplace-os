@@ -25,7 +25,8 @@ single source of truth.
 3. [`docs/RULES.md`](docs/RULES.md): the engineering rules every contributor follows.
 4. [`docs/DESIGN.md`](docs/DESIGN.md): the backend design conventions.
 5. [`docs/PHASES.md`](docs/PHASES.md): phases and build status.
-6. [`docs/STATE.md`](docs/STATE.md): live status, decisions and next actions.
+6. [`docs/PROCESS.md`](docs/PROCESS.md): how the team plans, builds, reviews and merges.
+7. [`docs/STATE.md`](docs/STATE.md): live status, decisions and next actions.
 
 ## Repository
 

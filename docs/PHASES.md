@@ -2,7 +2,7 @@
 
 Purpose: where the backend and database build stands, phase by phase, from setup to the v1 launch and beyond.
 
-Read with: `docs/STATE.md` (live status), `docs/EXECUTION-PLAN.md` §3 and §6, `docs/drafts/BUILD-SEQUENCE.md` as corrected by `docs/review/SUPERSEDED.md` and `KNOWN-ISSUES.md` (scope, "Done when"), `docs/source/system-arch-llms-full.txt` (L<line>), `docs/review/TEAM-QUESTIONS.md`, `docs/adr/README.md`.
+Read with: `docs/STATE.md` (live status), `docs/EXECUTION-PLAN.md` §3 and §6, `docs/STEPS.md` (scope, "Done when", approved 2026-10-04), `docs/source/system-arch-llms-full.txt` (L<line>), `docs/review/TEAM-QUESTIONS.md`, `docs/adr/README.md`.
 
 **This file is a summary.** The documents above remain the single source of truth; where they
 disagree with this file, they win and this file is corrected. Step status here mirrors
@@ -39,11 +39,9 @@ pgvector smoke-tested (STATE "Environment facts"). GCP projects `aimos-staging` 
 | Amazon SP-API and Flipkart developer applications | client | S15, S20, S22 | STATE "Start here" 4; T77, T78 |
 | GitHub Team plan (checks are advisory on Free) | client | before the first prod release | STATE "Setup decisions"; ADR-0013 §5 |
 | Bot account for pushes | user | before any prod credential exists | STATE "Setup decisions" |
-| ADR-0004 spike, 8 pass criteria (decides T3) | agent | S8, S13 | EP P0-A5; STATE "Start here" 2.2 |
-| BUILD-SEQUENCE amendment: S15–S26 "Done when", CD in S4, S14 split | agent drafts, user approves | by D21 | EP P0-A7, §6.2 |
-| Accept `DATABASE.md` rev 3 as the schema source | user | S5 | STATE dec. 10; EP P0-U10 |
-| Two build tracks: ADR-0011 amendment | agent drafts, user approves | S2 | STATE "Setup decisions" |
-| Launch scope: Amazon-first 4 Nov vs full scope ~18–25 Nov | client | Sun 4 Oct (D14) | STATE "Start here" 4; EP dec. 9 |
+| ADR-0004 spike criterion 6 (throughput on Cloud SQL); the local half passed 7 of 8 and decided T3 (procrastinate) on 2026-10-04 | agent, after billing | S8, S13 | EP P0-A5; STATE "Decisions of 2026-10-04" |
+| Per-worktree ports so two tracks can run (ADR-0011 amendment accepted 2026-10-04) | agent | Track B | ADR-0011 amendment |
+| Launch scope: we plan Amazon-first 4 Nov (user, 2026-10-04); the client confirms | client | — | STATE "Decisions of 2026-10-04"; EP dec. 9 |
 | Python 3.13, pipeline repo, drop date | AI team | S2, S13, S18 | STATE dec. 9; T1, T104; EP P0-U9 |
 | Also open: P0-A3 (rest), P0-A4 (P12), P0-A6, P0-G2, P0-G3, P0-C2, P0-C4, P0-U2 (OpenTofu), P0-U3, P0-U4, P0-U7, P0-U8 | see EP §3 | various | STATE "Where we are" (Phase 0) |
 
@@ -83,24 +81,21 @@ Every step runs locally on Docker PostgreSQL 17 + pgvector; Cloud SQL is for sta
 | S22 | Flipkart adapter, behind a flag at launch | S15, S21 | fixtures + FakeAdapter | Flipkart credentials (T78) | not started |
 | S26 | Launch hardening: failure injection, load test, audits, BRD walkthrough | everything above | — | pilot brand + 2 UAT people (D30; T8) | not started |
 
-- **"Done when":** S1–S14 come from BUILD-SEQUENCE after the SUPERSEDED and KNOWN-ISSUES fixes.
-  **S15 and above (S17a, S17b and S25 included) have no "Done when" lines yet; the planner writes
-  them first (EP P0-A7).**
-- **S1 follow-ups** (branch `fix/s1-followups`): (a) MinIO compose services, (b) `editables` pin,
-  (c) pip-audit OSV — landed. Source: STATE "Start here" 2.1.
-- Open: EP P0-A7. EP §6.2 starts S13 after S12 (staging over TLS), but the local-first order builds
-  S13 before any staging deploy; how S12 splits into local and staging parts is not written down.
+- **"Done when":** S2–S26 come from `docs/STEPS.md` (approved 2026-10-04). A step whose untagged
+  lines pass is "done (local)"; `[staging]` lines finish after billing and the domain.
+- **S1 follow-ups** merged (PR #6, 2026-10-04): MinIO compose services, `editables` pin, pip-audit OSV.
 
 ### Local-first build order
 
-Source: STATE "Start here" 2 and "Build order" (user, 2026-09-29/30); EP §10. It mirrors STATE
-"Start here" 2, which wins. Open: P5, P6; the table is reordered once both are answered.
+Source: STATE "Start here" 2 and "Build order" (user, 2026-09-29/30); EP §10; ADR-0011 two-track
+amendment (accepted 2026-10-04). It mirrors STATE "Start here" 2, which wins.
 
-1. S1 follow-ups (a)–(c) landed on `fix/s1-followups`.
-2. ADR-0004 spike (1 day).
-3. S2, then S3.
-4. S5 → S6 → S7 → S8.
-5. S9, S10.
+1. Done: S1 follow-ups (PR #6); pre-S2 docs (STEPS, PROCESS, ADR-0011 amendment); ADR-0004 spike
+   local half.
+2. Per-worktree ports (enables two tracks).
+3. S2, then S3 (Track B once two tracks run).
+4. S5 → S6 → S7 → S8 (Track A).
+5. S9, S10 (Track A).
 6. S11, S13, S14a/b, S17a.
 7. S15–S24 and S26 against the stand-ins above (STATE "Start here" 2.8).
 8. External waits: billing → S4 apply, thin staging deploy, S12, S25; domain → HTTPS and OAuth redirect

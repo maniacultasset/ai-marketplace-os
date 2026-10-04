@@ -1,7 +1,7 @@
 # VISION ALIGNMENT: the client's vision against our direction
 
 _Written 2026-09-27 (Day 7). **Status: traceability record.** It changes no rule; every action here is
-a proposal that needs the user's OK, an ADR or a client answer (AGENTS.md §6)._
+a proposal that needs the user's OK, an ADR or a client answer (`docs/PROCESS.md` §5)._
 
 - **Client source:** `docs/source/system-arch-llms-full.txt`, a dump of https://system-arch.vercel.app
   (fetched 2026-09-26, unchanged 2026-09-27). `L<n>` = line in that file; these are stable.
@@ -345,7 +345,7 @@ Playwright owner; the Day-41 security audit (L5387-5398).
 ### 4.14 Roadmap and non-goals
 
 All aligned:
-- **Non-goals:** BRD L187-217 and plan L4807-4813 match AGENTS §4. Add the BRD's inventory, pricing
+- **Non-goals:** BRD L187-217 and plan L4807-4813 match `docs/PRD.md` §6. Add the BRD's inventory, pricing
   and returns items there.
 - **Phase 2:** version compare, prompt A/B, webhooks (L13293-13299). `listing_versions` and
   `prompt_version` exist now, so ask the AI team to fill `prompt_version` from day 1.

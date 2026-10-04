@@ -123,7 +123,7 @@ Example: "Python 3.13 [Decided, ADR-0002; departs from L5737, T1]" means we have
 
 ### 1.6 When two sources disagree
 
-This order comes from `AGENTS.md` §2. The first one that answers the question wins:
+This order comes from `docs/PROCESS.md` §2. The first one that answers the question wins:
 
 0. The user's latest explicit instruction (and `docs/STATE.md` for step status).
 1. The client's spec site, where its pages agree with each other.
@@ -145,12 +145,12 @@ marketplace adapter send it to Amazon or Flipkart. AI never has the power to pub
 
 | Team | Builds | Tag |
 |---|---|---|
-| **Backend + database (us)** | The FastAPI API, the Postgres schema and migrations, the background workers, the Amazon and Flipkart adapters, the Rules Engine, login and roles (auth/RBAC), and the shared contracts package `packages/schemas`. On the AI seam we also own brand-document chunking, the embedding calls, brand-snippet search and the Pillow image checks. | [Decided] AGENTS.md §1; Canon "AI seam" ownership line |
+| **Backend + database (us)** | The FastAPI API, the Postgres schema and migrations, the background workers, the Amazon and Flipkart adapters, the Rules Engine, login and roles (auth/RBAC), and the shared contracts package `packages/schemas`. On the AI seam we also own brand-document chunking, the embedding calls, brand-snippet search and the Pillow image checks. | [Decided] `docs/PROCESS.md` §1; Canon "AI seam" ownership line |
 | **AI team** | The writing pipeline in `packages/pipeline` (LangGraph agents and prompts), called through one function, `run_listing_pipeline`. | [Decided] Canon "AI seam" |
-| **FE team** | The Next.js dashboard in `apps/web`. | [Decided] AGENTS.md §1 |
+| **FE team** | The Next.js dashboard in `apps/web`. | [Decided] `docs/PROCESS.md` §1 |
 
 Both other teams build against our contracts, so a contract change breaks two teams at once
-(AGENTS.md §1, §6).
+(`docs/PROCESS.md` §1; `docs/RULES.md` §11).
 
 **Year-1 scale** [Decided, STATE 2026-09-27]: 5–30 brands, about 50k products, 1,000-row imports,
 20 generations running at once.
@@ -173,7 +173,7 @@ is never given direct publish authority (L7109).
 
 ### 2.3 The 10 invariants, in plain words
 
-These are never traded for speed (AGENTS.md §3). They match the build plan's 10 [Site L4692–4707].
+These are never traded for speed (`docs/RULES.md` §1). They match the build plan's 10 [Site L4692–4707].
 The specs list 14 (L13690–13703); those map onto ours as 1→1, 2→2, 3→3, 4+5→4, 6→5, 7→6, 8→7,
 9→8, 10→9 and 11+12→10. Their #13 (scheduled Optimization Agent) is Phase 3, and #14 (no core
 rewrite for a new marketplace) is a design principle (VISION-ALIGNMENT §4.14).
@@ -289,7 +289,7 @@ steps. Labels are kept short; the key details under each diagram carry the rest.
 **Rules that hold in every journey** (so each journey doesn't repeat them):
 - **The brand comes from the token.** In an HTTP request the brand (`tenant_id`) comes only from the
   verified JWT `tid` claim, never from the URL, query or body. A worker takes it from its `job_runs`
-  row; the OAuth callback takes it from the saved OAuth state [Decided, AGENTS.md §5; Site L12470].
+  row; the OAuth callback takes it from the saved OAuth state [Decided, `docs/RULES.md` §3; Site L12470].
 - **Slow work is a job.** The API writes the data, a `job_runs` row and the queue entry in **one
   transaction**, then answers `202` with a poll URL. The dashboard polls `GET /api/v1/jobs/{job_id}`,
   which reads `job_runs`, never the queue [Decided, Canon; ADR-0004; Site L11359–11377]. A queue
@@ -1094,7 +1094,7 @@ version records which fields changed; the listing goes to `validated` or `needs_
   suggestions and who answered. One task can cover many issues, so a missing fact is asked once,
   however many variants or marketplaces it affects (T20).
 - **Proposed seam change:** `GenerationResult` gains structured questions. That is a MINOR
-  `mkos-schemas` change and needs the Tech Lead, the AI lead and the FE lead (AGENTS.md §6).
+  `mkos-schemas` change and needs the Tech Lead, the AI lead and the FE lead (`docs/RULES.md` §11).
   Detecting missing or conflicting facts is not one of today's 12 pipeline stages
   (VISION-ALIGNMENT §4.1), so it is an AI-team item.
 - **No new status** [Proposed]: the listing waits in `blocked`, and the dashboard shows "human
@@ -1202,8 +1202,8 @@ flowchart TB
 | Backend model services | `app/services/embeddings.py` and `app/services/vision.py`: the only backend modules allowed to call a model. `app/services/telemetry.py` records an `agent_runs` row for each of these calls. | [Decided] Canon "The AI seam" |
 | Workers | procrastinate workers on queues `default` and `publish`, in one Cloud Run worker-pool process with separate concurrency per queue. | [Decided] ADR-0001, ADR-0004 (spike-gated; deviates from the site's Redis + ARQ, T3). See §8 |
 | Marketplace adapters | The only code that talks to Amazon or Flipkart. Maps the canonical listing to marketplace fields, owns auth refresh, rate limiting, idempotency and error mapping; returns a per-field `ListingResult`, never a boolean. A `FakeAdapter` lets everything run without marketplace access. | [Site] adapter ABC and responsibilities (L10519-10533). [Decided] invariant 4; FakeAdapter (Canon "The AI seam"). ABC frozen with a network-free `preview()`, and an outbound Postgres token bucket per (marketplace, account, operation): [Proposed] `VISION-ALIGNMENT.md` G11, G17 |
-| Cloud adapters | `StorageAdapter` (S3 API, same code path as local MinIO), a KMS `KeyWrapper`, secrets as environment variables. Domain code never imports a cloud SDK. | [Decided] ADR-0001, AGENTS.md §4. [Site] "No Cloud Leaks into Domain Code" (L5853) |
-| Configuration | Only `app/core/config.py` reads the environment; the variable is `APP_ENV`. | [Decided] AGENTS.md §5 |
+| Cloud adapters | `StorageAdapter` (S3 API, same code path as local MinIO), a KMS `KeyWrapper`, secrets as environment variables. Domain code never imports a cloud SDK. | [Decided] ADR-0001, `docs/DESIGN.md` §1. [Site] "No Cloud Leaks into Domain Code" (L5853) |
+| Configuration | Only `app/core/config.py` reads the environment; the variable is `APP_ENV`. | [Decided] `docs/RULES.md` §5 |
 | Internal admin | Read-only SQLAdmin at `/internal/admin` for platform staff. It reads across tenants only through `platform_scope()`. In production it returns 404, and turning it on there stops the app from starting. | [Decided] Canon naming register; Addendum §6, §14. Excluding `token_enc` and `hashed_password` from admin views: [Proposed] (`DATABASE.md` §5.4; `BUILD-SEQUENCE.md` S14) |
 
 **Runtime shape** [Decided] ADR-0001, ADR-0005:
@@ -1271,9 +1271,9 @@ flowchart LR
 | The string `tenant_scope_checked` appears in exactly two files (`app/db/guard.py`, `app/db/session.py`) | CI grep inside the `lint-imports` job | [Decided] Addendum §6 |
 | `openai` and `langgraph` are banned everywhere except `packages/pipeline/**`, `app/services/embeddings.py` and `app/services/vision.py`. `app/services/rules_engine.py` is hard-banned, which makes "rules are data, not code" mechanical | ruff banned-api (TID251), inside `api-lint` | [Decided] Canon "The AI seam". Known defect: the ruff selection omits `TID`, so the rule never fires until S1 adds it ([Proposed] fix, `KNOWN-ISSUES.md`) |
 | Routers may not import `sqlalchemy`, `app.models` or `app.db` | ruff banned-api plus an import-linter layered contract | [Proposed] (`BUILD-SEQUENCE.md` S12; `CHECKLISTS.md` layering row) |
-| Only `app/core/config.py` reads `os.environ`; no string literal where an `ErrorCode` belongs | The rules are decided. No existing check covers them, so a custom grep or AST check is needed | Rules: [Decided] AGENTS.md §5, Addendum §20. Check: [Proposed] (`KNOWN-ISSUES.md`) |
-| Banned dependencies: python-jose, passlib, numpy, cloud-sql-python-connector, slowapi, gunicorn, asyncpg | Not specified. `pip-audit` covers only known CVEs | [Decided] AGENTS.md §4; ADR-0004, ADR-0005 |
-| Domain code never imports a cloud SDK | Not specified | [Decided] AGENTS.md §4; ADR-0001 |
+| Only `app/core/config.py` reads `os.environ`; no string literal where an `ErrorCode` belongs | The rules are decided. No existing check covers them, so a custom grep or AST check is needed | Rules: [Decided] `docs/RULES.md` §5, §6, Addendum §20. Check: [Proposed] (`KNOWN-ISSUES.md`) |
+| Banned dependencies: python-jose, passlib, numpy, cloud-sql-python-connector, slowapi, gunicorn, asyncpg | Not specified. `pip-audit` covers only known CVEs | [Decided] `docs/RULES.md` §4; ADR-0004, ADR-0005 |
+| Domain code never imports a cloud SDK | Not specified | [Decided] `docs/DESIGN.md` §1; ADR-0001 |
 | Types: `mypy --strict` on `apps/api` and `packages/schemas`; non-strict on `packages/pipeline` | `api-typecheck` | [Decided] Canon required checks |
 | Every table mapped with `TenantScoped` is covered by the cross-tenant test, including pgvector search | `tenant-isolation` | [Decided] Canon required checks |
 
@@ -1342,7 +1342,7 @@ never called directly: it picks jobs up from PostgreSQL (§8.2).
 | | `POST /api/v1/listings/publish` | Owner or operator only; approved listings only; 202 with a job | [Site] L6940, L11419. [Decided] owner or operator (Canon role defaults). Idempotency-Key required: [Proposed] `BUILD-SEQUENCE.md` S8 |
 | | `POST /api/v1/listings/{id}/publish/retry-fields` | Retry only the fields that failed | [Proposed] `BUILD-SEQUENCE.md` S3; invariant 10 |
 | Marketplaces | `POST /api/v1/marketplaces/connect` | Start OAuth; returns the consent URL | [Site] L6946, L11433. The Canon freezes only the callback; whether connect carries `{marketplace}` in its path is not specified |
-| | `GET /api/v1/marketplaces/{marketplace}/callback` | OAuth return. No JWT: the tenant comes from the server-side OAuth state, kept in Postgres and consumed once | [Decided] Canon naming register; AGENTS.md §5; ADR-0004 §8 |
+| | `GET /api/v1/marketplaces/{marketplace}/callback` | OAuth return. No JWT: the tenant comes from the server-side OAuth state, kept in Postgres and consumed once | [Decided] Canon naming register; `docs/RULES.md` §3; ADR-0004 §8 |
 | | Connected accounts and health | List accounts and connection health | [Site] "health status returned" (L6950). Path: [Proposed] `BUILD-SEQUENCE.md` S3 |
 | Images | `POST /api/v1/images/upload` | Upload an image and start the compliance checks | [Site] L11461. A signed upload-URL step: [Proposed] `BUILD-SEQUENCE.md` S3 |
 | | `GET /api/v1/images/{id}/report` | The `ImageReport` for one image | [Site] L6958, L11461 |
@@ -1356,7 +1356,7 @@ never called directly: it picks jobs up from PostgreSQL (§8.2).
 
 **Rules that apply to every request.**
 - **Identity:** a Bearer JWT issued by FastAPI [Decided] Canon JWT rows, provisional under T7. Token lifetimes and claims are in §9.2.
-- **Tenant:** comes only from the verified `tid` claim, never from a path, query or body. [Decided] AGENTS.md §5.
+- **Tenant:** comes only from the verified `tid` claim, never from a path, query or body. [Decided] `docs/RULES.md` §3.
 - **Roles:** owner, operator, reviewer and admin. [Site] L11531.
   - Approval needs reviewer or owner. [Decided] Canon `0004`. ADR-0008 also lists admin; that is open (§3.5).
   - Publishing needs owner or operator. [Decided] Canon role defaults.
@@ -1395,7 +1395,7 @@ never called directly: it picks jobs up from PostgreSQL (§8.2).
 
 - **Fixed vocabularies.** [Decided]
   - `source` is one of `schema | rules_engine | vision_model | ai_model | amazon_adapter | flipkart_adapter | system`. API-layer and handler failures use `system`, never `api` (Canon; Addendum §19).
-  - Error codes come only from `mkos_schemas/codes.py`, and a new code needs the Tech Lead (AGENTS.md §5; Addendum §20).
+  - Error codes come only from `mkos_schemas/codes.py`, and a new code needs the Tech Lead (`docs/RULES.md` §6; Addendum §20).
   - `JOB_TIMEOUT` (a whole job, `source=system`) and `TIMEOUT` (one model call, `source=ai_model`) are different codes (Addendum §20).
 - **HTTP envelope.** [Proposed] `BUILD-SEQUENCE.md` S3:
   - Every non-2xx response is `{"error": {"type", "message", "status", "correlation_id", "details", "error_report"}}`.
@@ -1444,7 +1444,7 @@ never called directly: it picks jobs up from PostgreSQL (§8.2).
   - All business routes are under `/api/v1`.
   - The only unversioned routes are `/healthz`, `/readyz`, `/openapi.json`, `/docs` and `/internal/admin`.
   - The OAuth redirect URIs registered with Amazon and Flipkart embed `/api/v1/marketplaces/{marketplace}/callback` (Canon; Addendum §26), so the prefix is expensive to change later.
-- **Contract change control.** [Decided] AGENTS.md §6; Canon required checks.
+- **Contract change control.** [Decided] `docs/RULES.md` §11; Canon required checks.
   - The generated `openapi.json` and the TypeScript types are committed and machine-owned. `schemas-drift` fails on hand edits.
   - The `contracts` check runs an oasdiff breaking-change diff against the base branch.
   - A MINOR (additive) change can land any day. A MAJOR (rename, removal, type change) lands only in the Day-14, Day-28 or Day-42 windows.
@@ -1632,7 +1632,7 @@ What this means for prompts, including what never reaches the LLM, is in §9.5.
 - Any change is a PR against `CANON.md` plus a MINOR or MAJOR bump of `mkos-schemas`, approved by the Tech Lead, AI lead and FE lead.
 - MAJOR changes land only in the Day-14, Day-28 or Day-42 windows.
 
-[Decided] Canon; AGENTS.md §6.
+[Decided] Canon; `docs/RULES.md` §11.
 
 ## 7. Data architecture
 
@@ -1948,7 +1948,7 @@ flowchart TB
 
 | Layer | What it does | The bug it catches | Tag and source |
 |---|---|---|---|
-| Identity (entry) | The tenant comes only from the verified JWT `tid` claim, never from a path, query or body. Workers take it from the `job_runs` row or `GenerationContext`. The OAuth callback takes it from the server-side OAuth state row. | A client naming another brand's id | [Site] "cannot be overridden by the client" (L12470); [Decided] AGENTS.md §5 |
+| Identity (entry) | The tenant comes only from the verified JWT `tid` claim, never from a path, query or body. Workers take it from the `job_runs` row or `GenerationContext`. The OAuth callback takes it from the server-side OAuth state row. | A client naming another brand's id | [Site] "cannot be overridden by the client" (L12470); [Decided] `docs/RULES.md` §3 |
 | 1. Repository filter | Every repository extends `TenantScopedRepository`, which adds `WHERE tenant_id = :tid` | A handler that forgets the filter | [Site] L6592-6614; [Decided] invariant 5 |
 | 2. ORM guard | A SQLAlchemy `do_orm_execute` guard raises `CrossTenantQueryError` for any query on a tenant-owned table that did not come through the repository | A raw query that bypasses the repository | [Decided] Canon R1-11, Addendum §6 |
 | 3. Row-level security (RLS) | Postgres policies on every tenant-owned table (`USING` and `WITH CHECK` on `app.tenant_id`), with `FORCE ROW LEVEL SECURITY` so the table owner is not exempt. They ship behind a settings flag for one week, then become the default. | Any code path that reaches the database with a wrong or missing filter | [Decided] Canon migration `0005_rls` |
@@ -1965,7 +1965,7 @@ flowchart TB
 
 **How we prove it:**
 - The `tenant-isolation` required check runs on every PR against a dedicated database. It covers relational reads and pgvector similarity search, and it loops over every tenant-scoped table, so a table added later cannot skip coverage [Decided] (Canon).
-- Tests must show each guard can fail. Remove the tenant filter and the isolation test must go red [Decided] (AGENTS.md §6).
+- Tests must show each guard can fail. Remove the tenant filter and the isolation test must go red [Decided] (`docs/RULES.md` §8).
 - Proposed [Proposed] (DATABASE.md §4, §8.1):
   - The isolation job runs as the application role `app_rw`, asserts that role is neither superuser nor BYPASSRLS, and proves each layer on its own.
   - The whole test suite also runs as `app_rw`.
@@ -2066,7 +2066,7 @@ sequenceDiagram
 ```
 
 - **[Site]** "The user who generates or edits a listing CANNOT approve that listing". It is enforced by a database `CHECK` and confirmed in the API before any publish (L6620). The generator is "the person or agent that triggered listing creation" (L7481). The approve endpoint enforces it server-side (L5313).
-- **[Decided]** Invariant 3 (AGENTS.md §3): human approval is mandatory, with maker-checker. Canon rulings:
+- **[Decided]** Invariant 3 (`docs/RULES.md` §1): human approval is mandatory, with maker-checker. Canon rulings:
   - **Constraint:** `listing_versions` carries a maker-checker constraint (Canon `0002`).
   - **Immutability:** migration `0004_integrity` adds a trigger on `listing_versions` (named `lv_guard` in DATABASE.md §5.3) that makes `generated_by_user_id`, the content and the approval immutable once written. The same trigger re-checks maker-checker.
   - **Approver checks:** the approver must exist, be in the same brand and hold reviewer or owner (ADR-0008 adds admin; open, §3.5). The trigger compares **both** the generator and the editor against the approver, exactly as the API does.
@@ -2299,7 +2299,7 @@ flowchart TB
 ```
 
 - **[Decided]** GCP `asia-south1`, a "bootstrapped profile", with two projects: `aimos-staging` and `aimos-prod` (ADR-0001, accepted 2026-09-27). The site's build plan is also on GCP (L4671, L5801-5855). The spec pages that describe AWS (L13005, L13019) are superseded by the plan's GCP edition (VISION-ALIGNMENT C7).
-- **[Decided]** Provisioning happens only through reviewed OpenTofu, in the build step that owns it (S4/S12). Nobody creates cloud resources by hand (AGENTS.md §4).
+- **[Decided]** Provisioning happens only through reviewed OpenTofu, in the build step that owns it (S4/S12). Nobody creates cloud resources by hand (`docs/RULES.md` §2).
 - **[Decided]** Domain code never imports a cloud SDK. Storage sits behind an S3-API `StorageAdapter`, keys behind a KMS `KeyWrapper`, and secrets arrive as env vars. That keeps a move to another cloud a planned 1–2 engineer-week job (ADR-0001 portability rules). [Site] "No Cloud Leaks into Domain Code" (L5853).
 - **Web app hosting.** The site places the Next.js app on Cloud Run (L4964, L5445). ADR-0001 covers the API side only. Web sizing, ingress and cost are **not specified** in our ADRs (FE team).
 
@@ -2425,7 +2425,7 @@ flowchart TB
 | Object storage | MinIO through the same S3-API `StorageAdapter` as Cloud Storage. Buckets `marketplace-images` and `marketplace-csv` are created by compose. | [Decided] ADR-0001; Canon; [Site] L13069 |
 | Queue | Postgres (procrastinate). **No Redis container.** | [Decided] ADR-0004; the site lists Redis (L13043, L13069): T3 open |
 | KMS | `LocalKmsStub` when `APP_ENV=local`; no GCP call | [Decided] ENV.md:67-68 |
-| Config | One `.env.example` at the repo root; only `app/core/config.py` reads the environment | [Decided] Canon; AGENTS.md §5 |
+| Config | One `.env.example` at the repo root; only `app/core/config.py` reads the environment | [Decided] Canon; `docs/RULES.md` §5 |
 | Cloud credentials | `gcloud auth application-default login`; no service-account key files. Laptops reach cloud databases only through the Cloud SQL Auth Proxy. | [Decided] Canon; ADR-0001 |
 | Seed data | `make seed`: 2 brands sharing SKU-001, one user per role; runs with no LLM key and no GCP credentials | [Decided] Canon |
 | Check it works | `curl -s localhost:8000/healthz && curl -s localhost:8000/readyz` | [Decided] Canon |
@@ -2560,7 +2560,7 @@ flowchart TB
 
 ### 11.1 The release flow, step by step
 
-**Merging** [Decided] (AGENTS.md §6; Canon):
+**Merging** [Decided] (`docs/RULES.md` §10; `docs/PROCESS.md` §5; Canon):
 - Branch names match `^(feat|fix|chore|docs|refactor|test|perf)/[a-z0-9._-]+$`. PR titles are Conventional Commits.
 - Squash merge only. The user approves every merge to `main`.
 - No workflow carrying a required check may have a `paths:` filter, so every check reports on every PR.
@@ -2624,7 +2624,7 @@ All 10 are [Decided] (Canon "Required CI checks"; Addendum §12 as amended by AD
 | `gitleaks` | No secret appears in the PR's commits |
 
 - **Also in CI** [Decided] (ADR-0005, ADR-0010): `pip-audit` (or osv-scanner) for known vulnerabilities, run in the PR gate. Renovate opens weekly grouped dependency PRs, with no auto-merge of any kind (ADR-0013 §6 amends ADR-0005). Whether `pip-audit` is one of the *required* checks is not specified.
-- **"Done"** for a code change means every required check that exists yet has passed, with fresh output shown (AGENTS.md §6).
+- **"Done"** for a code change means every required check that exists yet has passed, with fresh output shown (`docs/RULES.md` §8).
 
 ### 11.3 The four test gates and quality bars
 
@@ -2985,7 +2985,7 @@ All 66 rows (T1–T66) are **open**. T1–T16 are in §12.4; T17–T66 come from
 
 | Rows | What the team does | Notes |
 |---|---|---|
-| T1–T8 | Confirm or overrule each departure. Until then every ADR or Canon row that departs from a clear site statement stays provisional (AGENTS.md §2): today that covers parts of ADR-0001 to 0005, ADR-0006 (T23), ADR-0008 (admin as approver) and ADR-0010. | T1 (Python 3.13) also needs the AI team's OK, because the pipeline runs in the same interpreter. |
+| T1–T8 | Confirm or overrule each departure. Until then every ADR or Canon row that departs from a clear site statement stays provisional (`docs/PROCESS.md` §2): today that covers parts of ADR-0001 to 0005, ADR-0006 (T23), ADR-0008 (admin as approver) and ADR-0010. | T1 (Python 3.13) also needs the AI team's OK, because the pipeline runs in the same interpreter. |
 | T9–T16 | Pick a version wherever the site contradicts itself. | Several are also client questions: T8 = Q15, T9 = Q23, T10 = Q1, T12 = Q3, T13 = Q2, T14 = Q10, T15 = Q5, T16 = Q25. |
 | T17–T66 | Confirm or pick, as above. | From the database site-alignment pass; DATABASE.md §11.4 maps each row to the schema. |
 | New rows [Proposed] | Add rows for the departures below. None has a T-id yet. | The page-level traceability pass is verified (STATE, 2026-09-27: 10 conflict and 19 needs-client pages). Its new questions go into Section C after the line-by-line mapping pass, which is still running, so Section C has no rows yet. |
@@ -3088,7 +3088,7 @@ flowchart TB
 | Term | Meaning | Tag |
 |---|---|---|
 | Safety chain | "AI proposes → Deterministic rules validate → Humans approve → Adapters execute → Performance feeds back" (L4715). The whole design follows this order, and AI never has publish authority (§2.2). | [Site] |
-| The 10 invariants | The rules nobody trades for speed (L4698–4707; AGENTS.md §3), listed in plain words with their enforcement in §2.3. Some drafts number a 14-item list; use this numbering. | [Site] |
+| The 10 invariants | The rules nobody trades for speed (L4698–4707; `docs/RULES.md` §1), listed in plain words with their enforcement in §2.3. Some drafts number a 14-item list; use this numbering. | [Site] |
 | Canonical listing (`CanonicalListing`) | The marketplace-neutral listing (title, bullets, description, keywords, attributes, images) that the AI agents produce and the Rules Engine validates. It never contains raw marketplace structures (L6045–6047). It lives in `mkos_schemas.listing`. Its exact shape is still open (VISION C5). | [Site]; shape [Proposed] |
 | Listing | One product on one marketplace: `UNIQUE (product_id, marketplace)` (Canon 0002). | [Decided] |
 | Listing version | Every change creates a new version holding the complete content (L9864). Approval is always for one specific version (ADR-0008). | [Site] + [Decided] |
@@ -3109,7 +3109,7 @@ flowchart TB
 | ASIN / FSN | Amazon's and Flipkart's identifiers for a live listing. We have no columns for them yet (VISION §1, G3). | [Proposed] to add |
 | Legal Metrology | India's rules for packaged goods. The 2022 garment amendment requires declarations such as manufacturer, marketer or importer details and consumer care (L1506–1508). Which declarations block approval is still open (Q8). | [Site]; blocking list [Proposed] |
 | Scope lock | The plan's Phase-1 table. Any feature not in its left column goes to the backlog (L4731–4733). | [Site] |
-| Non-goals | Kubernetes, Kafka, a separate vector database, model fine-tuning, competitor scraping, and any marketplace beyond Amazon and Flipkart (AGENTS.md §4; no dedicated vector DB, L4811). | [Site] + [Decided] |
+| Non-goals | Kubernetes, Kafka, a separate vector database, model fine-tuning, competitor scraping, and any marketplace beyond Amazon and Flipkart (`docs/PRD.md` §6; no dedicated vector DB, L4811). | [Site] + [Decided] |
 | D2C | Direct-to-consumer: a brand that sells its own products straight to shoppers, here through Amazon and Flipkart. The first customers are Indian apparel D2C brands (ADR-0007). | [Site] |
 | BRD and BRD §21 | The Founder BRD, the business requirements document on the spec site (L10–2286). BRD §21 is its end-to-end walkthrough of one apparel product (L2084–2145), which we run as an automated E2E test on staging (ADR-0010). | [Site] |
 | DoD | Definition of done. The "Day-45 DoD" is the plan's list of what must work at launch (L5450). | [Site] |
@@ -3134,7 +3134,7 @@ flowchart TB
 | Model provider | OpenAI (`OPENAI_API_KEY`, Canon). Azure OpenAI, paid with Microsoft credits, is being proposed to the AI team (ADR-0001). | [Decided] / [Proposed] |
 | `BrandChunkDTO` | A plain data object for one brand snippet, returned by `retrieve_brand_chunks`; never the database model (§6.3). | [Decided, Canon] |
 | `ImageReport` | The result of the image checks for one image: `validate_images` returns a list of them, and `GET /api/v1/images/{id}/report` returns one (§5.2, §6.3). | [Site] + [Decided] |
-| Pillow | The Python imaging library behind the deterministic image checks that run before any vision-model call (§6.3). The backend owns these checks. | [Decided] AGENTS.md §1 |
+| Pillow | The Python imaging library behind the deterministic image checks that run before any vision-model call (§6.3). The backend owns these checks. | [Decided] `docs/PROCESS.md` §1 |
 
 ### 14.3 Tenancy, identity and security
 
@@ -3156,7 +3156,7 @@ flowchart TB
 | SP-API / Flipkart Seller API | Amazon's Selling Partner API and Flipkart's seller API, reached only through the adapters (L6410). | [Site] |
 | Rate limits | Per-tenant, per-IP and login limits through a Postgres-backed FastAPI dependency (ADR-0005; numbers in §9.6). The site asks for limits per tenant and per IP (L12569). | [Site] + [Decided] |
 | NextAuth | The Next.js sign-in library the FE team uses. In our design it only keeps the browser session, holding the tokens FastAPI issued; the site has it issue the JWT (T7). | [Site] + [Decided] |
-| argon2id | The password-hashing algorithm we use, through pwdlib (AGENTS.md §4). | [Decided] |
+| argon2id | The password-hashing algorithm we use, through pwdlib (`docs/RULES.md` §4). | [Decided] |
 | PKCE | Proof Key for Code Exchange: an OAuth safeguard. The connect step stores a secret verifier, and the code exchange must present it, so an intercepted code is useless on its own (§3.2). | [Proposed] |
 | Envelope encryption | Each seller token is encrypted with its own data key, and that key is encrypted ("wrapped") by a master key that never leaves Cloud KMS. Only the adapter unwraps it, in memory, for one call (§9.4). | [Site] + [Decided] |
 | Composite foreign key | A reference by `(tenant_id, id)` instead of `id` alone, so a row can only point at a row of the same brand (§9.1, layer 4). | [Decided, Canon] |
@@ -3200,7 +3200,7 @@ flowchart TB
 | Built-in Cloud SQL connection / Cloud SQL Auth Proxy | Cloud Run connects through its built-in managed connection, with no VPC connector (T5). Laptops use the Auth Proxy. | [Decided]; T5 |
 | GCS and `StorageAdapter` | Google Cloud Storage holds images and CSVs, with V4 signed URLs. Code goes through an S3-API `StorageAdapter`, so local development uses MinIO (ADR-0001). | [Decided] |
 | Zero-traffic deploy and auto-rollback | The new revision gets 0% of traffic and is smoke-tested on its own URL. Then traffic shifts, error rate and latency are watched for 10–15 minutes, and traffic rolls back automatically on a breach (ADR-0009). | [Decided] |
-| OpenTofu | Infrastructure as code. Cloud resources are created only through reviewed OpenTofu, never by hand (AGENTS.md §4). | [Decided] |
+| OpenTofu | Infrastructure as code. Cloud resources are created only through reviewed OpenTofu, never by hand (`docs/RULES.md` §2). | [Decided] |
 | Workload Identity Federation | Lets GitHub Actions deploy to GCP without stored keys; one image digest is promoted from staging to prod (ADR-0001). | [Decided] |
 | Startup credits | The GCP free trial ($300 for 90 days) and the Start tier ($2,000 for 12 months, at Google's discretion); Microsoft for Startups credits for Azure OpenAI. Most larger credits depend on incorporation and DPIIT (Startup India) recognition (ADR-0001; hosting research; §10.5). | [Decided] / [Proposed] |
 | GST | 18% on Indian invoices. It is reclaimable once the client is GST-registered, so all cost figures here are before GST (ADR-0001). | [Decided] |
@@ -3225,7 +3225,7 @@ flowchart TB
 | UAT | User acceptance testing by people. The site makes whole-team UAT launch gate 9; we use automated tests instead (T8, ADR-0010). | [Site] / [Decided] |
 | Team loop | Plan, user approval, tests first, build, reviews, at most 3 fix rounds, then user approval of the merge (ADR-0011). | [Decided] |
 | Tier A gaps | VISION-ALIGNMENT gaps G1–G8, G10 and G15, which must land in migrations 0001–0003 or `schemas-v1.0.0` (Q24). | [Proposed] |
-| Conventional Commits | A commit and PR-title format such as `feat(api): …`. Our PR titles must match it (AGENTS.md §6; L7054). | [Site] + [Decided] |
+| Conventional Commits | A commit and PR-title format such as `feat(api): …`. Our PR titles must match it (`docs/RULES.md` §10; L7054). | [Site] + [Decided] |
 | oasdiff | A tool that compares two OpenAPI files. The `contracts` check fails on a breaking API change (§5.6). | [Decided, Canon] |
 | squawk | A linter for SQL migrations that flags locking or otherwise unsafe changes (§11.1). | [Decided] ADR-0010 |
 | Mutation testing (mutmut) | The tool plants small bugs in the code and checks that the tests catch them. Core modules need a score of at least 80% (§11.3). | [Decided] ADR-0010 |

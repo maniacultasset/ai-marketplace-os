@@ -5,7 +5,7 @@ This addendum closes the six unresolved findings and all thirteen canon-versus-a
 
 ## 1. Bootstrap SQL — the one filename and the compose mount
 
-The file is `scripts/db/0000_bootstrap.sql`, exactly that name, exactly that path. `scripts/db/00-extensions.sql` is DELETED from the repo and from every document. The docker-compose postgres service is rewritten to mount the new name; this is the whole service, verbatim:
+The file is `scripts/db/0000_bootstrap.sql`, exactly that name, exactly that path. `scripts/db/00-extensions.sql` is DELETED from the repo and from every document. The docker-compose postgres service is rewritten to mount the new name; this is the whole service, verbatim (host port 5432 is the default; a second worktree overrides only the host port, per the ADR-0011 two-track amendment, user 2026-10-04):
 
 ```yaml
   postgres:
@@ -162,7 +162,7 @@ The products-uniqueness canon row's proof sentence becomes: "both tenants hold K
 
 ## 7. `bootstrap` required-check job
 
-`bootstrap` is a real GitHub job with the check name exactly `bootstrap`, in `.github/workflows/ci-api.yml`, no `paths:` filter. It proves the documented trace from a clean clone on every PR to main:
+`bootstrap` is a real GitHub job with the check name exactly `bootstrap`, in `.github/workflows/ci-api.yml`, no `paths:` filter. It proves the documented trace from a clean clone on every PR to main (`localhost:8000` is the default API port; a second worktree uses its own):
 ```yaml
   bootstrap:                      # required check
     runs-on: ubuntu-latest

@@ -1,7 +1,7 @@
 # SPEC TRACEABILITY: every client spec page against our plan
 
 _Written 2026-09-27 (Day 7). **Status: traceability record.** It changes no rule. Every change it lists
-needs the user's OK, an ADR or a client answer (AGENTS.md §2, §6)._
+needs the user's OK, an ADR or a client answer (`docs/PROCESS.md` §2, §5)._
 
 ## Are we aligned with every page?
 
@@ -57,7 +57,7 @@ action page appears in it.
 
 **Owners:** BE = us (backend + DB); AI = the AI team; FE = the FE team; shared = both our seam and
 another team; client = a client decision; ops = infrastructure and cost (our team, with the client's
-budget). **Refs:** inv = invariant (AGENTS.md §3); VA = VISION-ALIGNMENT.md; DB = DATABASE.md; OD =
+budget). **Refs:** inv = invariant (`docs/RULES.md` §1); VA = VISION-ALIGNMENT.md; DB = DATABASE.md; OD =
 STATE open decision. **Page shorthand** in the last section: B★ and B01-B10 are Founder BRD pages,
 P01-P12 are build-plan pages, and [n] is spec [n].
 
@@ -95,7 +95,7 @@ P01-P12 are build-plan pages, and [n] is spec [n].
 | # | Page | Status | Owner | Note | Refs |
 |---:|---|---|---|---|---|
 | 12 | [01] 45-Day Plan & Definition of Done · L4641 | ⚠️ gap | shared | DoD, invariants and loop match; Redis → procrastinate (ADR-0004). Operational analytics match TEAM-QUESTIONS T14's default (S3 stubs the endpoints), though no step builds them yet (Q25). Gaps: 'approve or reject with audit trail' has no reject contract (G4); per-field publish results are only Proposed (G3). | G3, G4; T14; Q25; ADR-0004, ADR-0008 |
-| 13 | [02] Phase-1 Scope Lock & Non-Goals · L4723 | ❓ needs-client | client | Scope matches AGENTS §4. Our additions (variants, memberships, tenant lifecycle, auto_publish) and no Redis need sign-off. | Q14; C6; ADR-0004; STATE Decided |
+| 13 | [02] Phase-1 Scope Lock & Non-Goals · L4723 | ❓ needs-client | client | Scope matches PRD.md §6. Our additions (variants, memberships, tenant lifecycle, auto_publish) and no Redis need sign-off. | Q14; C6; ADR-0004; STATE Decided |
 | 14 | [03] Day-by-Day Execution Plan (45 Days) · L4853 | ⚠️ gap | shared | Pre-S1 vs Day-7 milestones (Q25). Unplanned: the brand-guide chunking step (Day 16), image rules as data (Day 24, G6), the failure-injection suite (Day 28). Rollback <15 min is ADR-0009; stack, UAT and the AgentState snapshot changed by ruling (ADR-0001–0005, ADR-0010, Canon seam). Day 45's lone user is C10. | Q12, Q15, Q16, Q25; G6, G13; C8, C10; ADR-0001–0010; DB §8.3 |
 | 15 | [04] Team Structure & Solo Sprint · L5538 | ⚠️ gap | shared | Shared schema contract matches; chunking moved to backend (Canon), the Redis/ARQ worker dropped (ADR-0004). The critical path (infra Days 1-3, schema Days 4-5) is missed with no re-baseline (Q25); Days 43-45 UAT has no ruling (C8). | CANON.md:129; ADR-0004; Q18, Q25; C8, Q15 |
 | 16 | [05] GCP Tech Stack & Architecture · L5659 | 🔁 aligned-changed | BE | GCP, 4 layers and cloud abstractions match. Python 3.13, PG17, procrastinate + psycopg and the built-in Cloud SQL connection with no VPC connector are ADR rulings; tell the client (TEAM-QUESTIONS T1-T5). | C6, C7; ADR-0001–0004 |
@@ -113,10 +113,10 @@ P01-P12 are build-plan pages, and [n] is spec [n].
 |---:|---|---|---|---|---|
 | 24 | [1] System Overview · L7065 | ❓ needs-client | client | Safety chain, 4 layers, Amazon + Flipkart and the canonical model match; confidence scoring is the AI team's Day-21 formula ADR. As at [6], the flow takes catalog Sync as an input (Q20) and loops performance into optimization (C9, Q10). | Q20; C9, Q10; CONTRACTS.md:34 |
 | 25 | [2] Architecture Principles · L7303 | ⚠️ gap | BE | Adapters, tenancy, AgentRun logging match; Secret Manager replaces AWS. Gaps: approve has no passed-validation precondition outside the DB draft (G9; DB §7.1 is Proposed); 'adapters own rate limiting' has no outbound limiter (G17). | G9, G17; ADR-0001; inv 2, 5, 7; DB §7.1 |
-| 26 | [3] Product Scope · L7379 | ❓ needs-client | client | Non-MVP list matches AGENTS §4. The source contradicts itself on catalog sync: MVP here and in [7], Future in [8] (Q20). | Q20; ARCHITECTURE.md:70 |
+| 26 | [3] Product Scope · L7379 | ❓ needs-client | client | Non-MVP list matches PRD.md §6. The source contradicts itself on catalog sync: MVP here and in [7], Future in [8] (Q20). | Q20; ARCHITECTURE.md:70 |
 | 27 | [4] Users & Roles · L7437 | ❓ needs-client | client | Roles and generator≠approver match; rights per Canon D13 (Q17). One-person brands can never publish (C10, Q5). | C10; Q5, Q17; CANON.md:152 |
 | 28 | [5] MVP Boundaries · L7487 | ❓ needs-client | client | Versioning in MVP matches. 'Basic analytics' in MVP and whether performance is v1 need the client (C9, Q10). | C9; Q10; G14 |
-| 29 | [6] Architecture Diagram · L7611 | ❓ needs-client | client | Only the Listing Agent is MVP, as in our non-goals. But the 'Current MVP' diagrams take Catalog Sync as an input (Q20) and loop Performance → Optimization Agent (C9, Q10), which we defer. | AGENTS.md §4; Q20; C9, Q10 |
+| 29 | [6] Architecture Diagram · L7611 | ❓ needs-client | client | Only the Listing Agent is MVP, as in our non-goals. But the 'Current MVP' diagrams take Catalog Sync as an input (Q20) and loop Performance → Optimization Agent (C9, Q10), which we defer. | PRD.md §6; Q20; C9, Q10 |
 | 30 | [7] End-to-End User Flow · L7744 | ⚠️ gap | shared | Parallel agents, correction cap, field-only retries and one auth refresh (S13) match. Unplanned: per-row generation fan-out with per-marketplace concurrency (G10, G17), a marketplace-differences preview (G11), a reject API (G4), a reconnect state after the failed refresh (G19). | G4, G10, G11, G17, G19; Q11 |
 | 31 | [8] Product Import Flow · L7874 | ❌ conflict | BE | Async CSV + row validation match. Spec requires ≥1 image per row and JPEG/PNG/TIFF; scaffold has optional images and .webp. | new (VA §4.3); ADR-0004; scaffold row_model.py |
 | 32 | [9] Marketplace Connection Flow · L7933 | ⚠️ gap | BE | OAuth callback under /api/v1/marketplaces/{m}, state in Postgres, auto-refresh match. 'Persistent failure escalates to user' has no state yet: `reauth_required` is only Proposed (G19). | Canon OAuth rows; ADR-0004; G19; DB §5.4 |
@@ -141,7 +141,7 @@ P01-P12 are build-plan pages, and [n] is spec [n].
 | 51 | [28] Attribute Agent · L9232 | 🧩 other-team | AI | AI team's agent emits canonical attributes; adapters map names and values. Value maps as data are G7. | G7; CANON.md:122 |
 | 52 | [29] Image Agent · L9280 | ⚠️ gap | shared | Two-stage pipeline matches (backend Pillow + AI vision via validate_images, on GCS). Its per-marketplace thresholds have no image RuleDef (G6); a verdict per marketplace is G12; Flipkart 'Restricted' needs a severity (new). | G6, G12; new; CANON.md:119, :129; ADR-0001 |
 | 53 | [30] Brand Voice Agent / Retrieval · L9363 | ⚠️ gap | shared | Embedding model as config matches. Per-artifact chunking and approved listings as examples unplanned (G13). | G13; CANON.md:129; DB §5.5 |
-| 54 | [31] Optimization Agent · L9425 | ⏭ later-phase | AI | Phase 3, scheduled, same validation and approval; matches AGENTS §4. Needs v1 review/performance signals (G4, G14). | AGENTS.md §4; G4, G14 |
+| 54 | [31] Optimization Agent · L9425 | ⏭ later-phase | AI | Phase 3, scheduled, same validation and approval; matches PRD.md §7. Needs v1 review/performance signals (G4, G14). | PRD.md §7; G4, G14 |
 | 55 | [32] Future Agent Registry · L9447 | ⏭ later-phase | AI | Future. One pipeline entry point; a new agent = schemas MINOR (AgentName, PipelineStage) + CHECK alter. | CANON.md:54, :109, :130 |
 | 56 | [33] Agent Responsibilities Matrix · L9480 | 🧩 other-team | AI | AI team owns the agents; seam and Rules Engine aligned. Open: approve precondition (G9), undefined SEO score (new). | G9, G1, G7, G12, C5; new: SEO score |
 | 57 | [34] Listing Generation Responsibilities · L9566 | ⚠️ gap | shared | Agent split matches; Rules Engine is ours. Open: approve precondition (G9); hidden_terms rename has no Canon row (C5). | G9, C5, G1, G7; inv 2, 8 |
@@ -173,7 +173,7 @@ P01-P12 are build-plan pages, and [n] is spec [n].
 | 83 | [60] Approved Listing Memory · L10390 | ⚠️ gap | BE | No approve → brand_embed trigger and no weight column; 'high-performing' needs performance data, which is Phase 2 (G13, C9). | G13; C9, G14 |
 | 84 | [61] Brand Glossary · L10404 | ⚠️ gap | BE | tenants.glossary exists; per-term chunks and Rules Engine enforcement (glossary → tenant banned_terms) unplanned (G13, G6). | G13, G6; VA §4.4 |
 | 85 | [62] Brand Compliance Rules · L10418 | ⚠️ gap | BE | Brand compliance chunks are planned. Gaps: brand rules have no write path, and the DB draft even proposes no tenant rules in v1; 'no organic claim without certification' needs claim_requires_attribute (G6). | G6; Addendum §4, §17; DB §5.2 |
-| 86 | [63] AI Marketplace OS · L10432 | ⏭ later-phase | shared | Future vision. Listing Agent is our scope; other agents and marketplaces are non-goals. 'No rewrite' = CHECK ALTER + MINOR. | AGENTS.md §4; VA §4.8 |
+| 86 | [63] AI Marketplace OS · L10432 | ⏭ later-phase | shared | Future vision. Listing Agent is our scope; other agents and marketplaces are non-goals. 'No rewrite' = CHECK ALTER + MINOR. | PRD.md §6; VA §4.8 |
 | 87 | [64] Marketplace Abstraction · L10474 | ✅ aligned | BE | Only adapters touch marketplace APIs; the canonical model stays neutral (invariant 4). | inv 4 |
 | 88 | [65] Canonical Data Model · L10488 | ⚠️ gap | BE | Invariant 4 and CanonicalListing cover it. Attribute keys and value formats undefined (G1, G7); shape lacks a Canon row (C5). | G1, G7, C5; inv 4 |
 | 89 | [66] Marketplace Adapter Pattern · L10506 | ⚠️ gap | BE | ListingResult is drafted and the ABC is spec-given; FakeAdapter only so far. Gaps: 'adapters own rate limiting' has no limiter (G17); the ABC with get_performance and a review preview() is unwritten (G11). | G11, G17; Canon AI seam (FakeAdapter) |
@@ -186,12 +186,12 @@ P01-P12 are build-plan pages, and [n] is spec [n].
 | 96 | [73] Marketplace Error Mapping · L10639 | ✅ aligned | BE | Adapters map marketplace errors to the unified ErrorReport. A data-driven raw-code table is G18. | inv 8; G18 |
 | 97 | [74] Catalog Agent · L10653 | ⏭ later-phase | AI | Future agent; out of MVP. | ARCHITECTURE.md:73 |
 | 98 | [75] Revenue Operations Agent · L10669 | ⏭ later-phase | AI | Future; depends on pricing, ads and sales attribution. No backend work now. | ARCHITECTURE.md:68, :73 |
-| 99 | [76] Pricing Agent · L10685 | ⏭ later-phase | AI | Future; the BRD excludes pricing optimization and competitor scraping is a non-goal. | AGENTS.md §4; VA §2 |
+| 99 | [76] Pricing Agent · L10685 | ⏭ later-phase | AI | Future; the BRD excludes pricing optimization and competitor scraping is a non-goal. | PRD.md §6; VA §2 |
 | 100 | [77] Ads Agent · L10701 | ⏭ later-phase | AI | Future; the BRD excludes ads. Would need advertising-API roles beyond those filed. | VA §2; BLOCKERS.md:32 |
 | 101 | [78] Ranking Agent · L10717 | ⏭ later-phase | AI | Future. performance.ranking_position exists but ingestion is undecided (G14, C9); competitor scraping is a non-goal. | G14, C9; CANON.md:94 |
-| 102 | [79] Inventory Agent · L10733 | ⏭ later-phase | AI | Future; inventory is a BRD non-goal. Add it to AGENTS §4 non-goals. | VA §4.14 |
+| 102 | [79] Inventory Agent · L10733 | ⏭ later-phase | AI | Future; inventory is a BRD non-goal. Listed in the PRD.md §6 non-goals. | VA §4.14 |
 | 103 | [80] Returns Agent · L10749 | ⏭ later-phase | AI | Future; returns are BRD not-v1 and no returns data ingestion is planned. | VA §2, §4.14 |
-| 104 | [81] Optimization Agent (Future) · L10765 | ⏭ later-phase | AI | Phase 3 per AGENTS §4. v1 should capture reject reasons and performance so the agent has training signal (G4, G14). | AGENTS.md §4; G4, G14, C9 |
+| 104 | [81] Optimization Agent (Future) · L10765 | ⏭ later-phase | AI | Phase 3 per PRD.md §7. v1 should capture reject reasons and performance so the agent has training signal (G4, G14). | PRD.md §7; G4, G14, C9 |
 | 105 | [82] Agent Dependency Graph · L10779 | ⚠️ gap | BE | Order matches S1-S14 up to rules. No S-step for brand context; adapters, publish, analytics unsequenced (see [211]). | new; BUILD-SEQUENCE; Q25; C9 |
 | 106 | [83] Agent Registry · L10813 | ⏭ later-phase | shared | Future. agent_runs already gives per-agent history and cost; no registry table or on/off switch planned. | DB §5.4; CANON.md:94 |
 | 107 | [84] Data Architecture · L10827 | ✅ aligned | BE | One Postgres + pgvector for relational and vector data, tenant_id on every table. | ADR-0003; DB §2, §4 |
@@ -212,7 +212,7 @@ P01-P12 are build-plan pages, and [n] is spec [n].
 | 122 | [99] Image Model · L11163 | 🔁 aligned-changed | BE | Same shape as the spec: one compliance_status plus image_report_json per image, which is all the spec's own model has for 'per marketplace'. storage_key replaces s3_url and tenant_id is added (Canon 0002). | Canon 0002; Canon ImageSlot row; DB §5.2 |
 | 123 | [100] Error Model · L11177 | ✅ aligned | BE | As the spec says: ErrorReports as JSONB on validation_runs and agent_runs (Canon 0002). source is a column; field, code, marketplace and retryable sit in each ErrorItem. An errors API is [114]. | Canon 0002; Addendum §19; DB §5.3, §5.4 |
 | 124 | [101] Database Indexing Strategy · L11191 | ✅ aligned | BE | Index plan matches; HNSW chosen (the spec allows IVFFlat or HNSW). | CHECKLISTS.md:149; Canon 0002b |
-| 125 | [102] Vector Storage · L11209 | ✅ aligned | BE | pgvector at MVP scale; a separate vector DB is a named non-goal. | AGENTS.md §4 |
+| 125 | [102] Vector Storage · L11209 | ✅ aligned | BE | pgvector at MVP scale; a separate vector DB is a named non-goal. | PRD.md §6 |
 | 126 | [103] API Architecture · L11223 | ❓ needs-client | client | Routes under /api/v1, async, JWT, 202 for long work. The site consistently fans valid import rows into generation (L7806, L7929, L11249, L11345, L12075); VA's default 'no' departs from that (Q11, G10). /analytics as performance + attribution is Q10. | Q11, Q10; G10; Canon prefix row |
 | 127 | [104] Product APIs · L11303 | 🔁 aligned-changed | BE | POST /api/v1/products; images uploaded separately through signed GCS URLs, not s3:// URLs in the body. | Canon prefix row; BUILD-SEQUENCE S3 |
 | 128 | [105] Bulk Import APIs · L11335 | ❓ needs-client | BE | CSV upload, validation, batch tracking covered as a 202 job; row errors in the ImportReport. 'Enqueues each valid row for generation' is consistent across the site; VA's default 'no' departs from it (Q11, G10). | Q11; G10; Addendum §19-20; DB §5.4 |
@@ -317,7 +317,7 @@ P01-P12 are build-plan pages, and [n] is spec [n].
 | 227 | [204] Future Marketplace Expansion · L13321 | ⏭ later-phase | BE | New marketplaces as adapters plus rules and mapping data; in practice a CHECK ALTER + enum MINOR. | VA §4.8; catalogus move 7 |
 | 228 | [205] Future Agent Expansion · L13335 | ⏭ later-phase | AI | AgentInterface and registration are future; today there is one pipeline entry point. | CANON.md:109 |
 | 229 | [206] Auto-Publish Evolution · L13349 | ⏭ later-phase | shared | Phase 3. v1 keeps approval with auto_publish OFF; track-record signals need review_decisions (G4) from v1. | C1, Q1, G4; DB §5.1 |
-| 230 | [207] Optimization Evolution · L13363 | ⏭ later-phase | AI | Phase 3/4+ roadmap; needs review and performance signals captured in v1 (G4, C9). | AGENTS.md §4; G4, G14, C9 |
+| 230 | [207] Optimization Evolution · L13363 | ⏭ later-phase | AI | Phase 3/4+ roadmap; needs review and performance signals captured in v1 (G4, C9). | PRD.md §7; G4, G14, C9 |
 | 231 | [208] AI Learning Loop · L13377 | ⏭ later-phase | shared | Phase 3. Its training signal (approved examples, reject feedback, performance) must be captured from v1: G4, G13, G14. | G4, G13, G14 |
 | 232 | [209] Production Readiness Checklist · L13391 | ✅ aligned | shared | Items map onto our gates and launch checklist (migrations, auth, OAuth, image pipeline, errors). | BUILD-SEQUENCE; DELEGATE-GATE.md |
 | 233 | [210] Development Plan · L13414 | ⚠️ gap | shared | S1-S14 re-sequences steps 1-7 with Done-when tests; FastAPI JWT; observability moved early. Step 8 (brand vectorization) and steps 17-22 have no S-step yet (Q25). | BUILD-SEQUENCE; Canon D6; Q25 |
@@ -331,12 +331,12 @@ P01-P12 are build-plan pages, and [n] is spec [n].
 | 241 | [218] QA Checklist · L13608 | ⚠️ gap | BE | ADR-0010 sets the gates, quality bars and toolset; unit, rules, image, adapter, tenant and load tests are planned. Failure injection (network, model timeout, DB) is not in it. | ADR-0010; VA §4.13 |
 | 242 | [219] Security Checklist · L13631 | ⚠️ gap | BE | All items planned; GCP Secret Manager replaces AWS. 'TLS on all connections' is stated nowhere for DB and storage ([162]). | ADR-0001; VA §4.11; Canon 0004/0005 |
 | 243 | [220] Production Launch Checklist · L13655 | ⚠️ gap | shared | Launch items map to our gates; rollback is ADR-0009. Prod OAuth depends on filings (Q12); no incident response plan or ops owner (Q18). | Q12, Q18; ADR-0009 |
-| 244 | [221] Architectural Invariants · L13678 | ✅ aligned | shared | The client's 14 invariants map onto our 10 (4+5→4, 11+12→10); #13 is Phase 3, #14 a design principle. | AGENTS.md §3; VA §4.14 |
+| 244 | [221] Architectural Invariants · L13678 | ✅ aligned | shared | The client's 14 invariants map onto our 10 (4+5→4, 11+12→10); #13 is Phase 3, #14 a design principle. | RULES.md §1; VA §4.14 |
 
 ## What must change in our plan
 
 Every gap, conflict and needs-client page above appears here, duplicates merged, most urgent first.
-Nothing is applied yet: each item needs the user's OK plus an ADR or a Canon PR (AGENTS.md §2).
+Nothing is applied yet: each item needs the user's OK plus an ADR or a Canon PR (`docs/PROCESS.md` §2).
 
 ### A. Backend + DB foundation: before migrations 0001-0003 and the `schemas-v1.0.0` tag
 
