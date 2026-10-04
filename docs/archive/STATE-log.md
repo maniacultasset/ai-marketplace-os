@@ -3,6 +3,10 @@
 Older session-log entries moved out of `docs/STATE.md`, which keeps the newest 5. Frozen history:
 facts here may be stale; `docs/STATE.md` is the current status.
 
+- **2026-09-30 (handoff check applied; tool-neutral docs):** Applied the doc fixes from the handoff
+  check; README and `docs/README.md` open with the front door; the PR template gained a "Docs" item;
+  the conductor's merge step became the PR flow. Docs-only.
+
 - **2026-09-29/30 (no AI attribution in git):** GitHub repo made backend-only with no AI branding
   (PRs #1, #2); docs restructured; GCP projects created (billing pending); Docker, gitleaks and
   pyright installed. S1 planned (18 fixes, ADR-0013 accepted), built in 3 fix rounds, merged as PR #3.

@@ -2,7 +2,7 @@
 
 _Last updated: 2026-10-04 (Sun). Any contributor, with any editor, can pick up from here: read "Start here" below. Front door: `docs/PRD.md`, `docs/ARCH.md`, `docs/RULES.md` (the engineering rulebook: it wins over the local agent rules file, and the sources it cites win over it, per its top paragraph), `docs/DESIGN.md`, `docs/PHASES.md`. Docs map: `docs/README.md`. Plan: `docs/EXECUTION-PLAN.md`._
 **Active:** none
-**Branch:** `main`. S1 follow-ups merged as PR #6 (`370c603`, 2026-10-04). S1 itself was PR #3 on 2026-09-30.
+**Branch:** `main`. Latest merges: PR #7 (milestone 0 docs, `3165617`) and PR #6 (S1 follow-ups, `370c603`), both 2026-10-04. No step branch is open.
 **Git repo:** yes. Private `maniacultasset/ai-marketplace-os` (https://github.com/maniacultasset/ai-marketplace-os); first commit `be02277` on 2026-09-29. From here on, every change goes branch → PR → squash merge, and the user approves each merge.
 **Hosting ADR:** accepted ADR-0001 (GCP asia-south1, bootstrapped profile; 2026-09-27)
 **Tech Lead:** the user (to be confirmed)
@@ -12,7 +12,7 @@ _Last updated: 2026-10-04 (Sun). Any contributor, with any editor, can pick up f
 
 - **Sprint:** Mon 21 Sep → Wed 4 Nov 2026 (45 days). Day N = today's date − 20 Sep 2026, so Sat
   26 Sep = Day 6.
-- **Phase:** **Milestone 0 done (2026-10-04):** S1 follow-ups merged (PR #6); STEPS, PROCESS and the two-track amendment approved; queue spike passed (T3 = procrastinate). Next: per-worktree ports, then S2 (Track B) and S5 (Track A). The docs
+- **Phase:** **Milestone 0 done (2026-10-04):** S1 follow-ups merged (PR #6); STEPS, PROCESS and the two-track amendment approved (PR #7); queue spike passed (T3 = procrastinate). **v1 build progress: 1 of 27 steps (about 5%).** Two plans are drafted and waiting for critique fixes and the user's approval: `two-track-ports` and S2 ("Start here" 2a and 3). The docs
   foundation is complete (2026-09-28).
 - **Build location:** this folder is the root of the backend-only repo (ADR-0012).
   - **Never run `scaffold/README.md`'s `cp -R scaffold/.`:** it overwrites the root README. S1 moved
@@ -374,13 +374,25 @@ Done on 2026-09-30:
       the per-track port Canon edit approved and applied.
    2. **Done 2026-10-04: ADR-0004 spike, local half:** 7 of 8 criteria pass; T3 = procrastinate
       (see "Decisions of 2026-10-04"). Criterion 6 waits for billing (2.9).
-   2a. **Next: per-worktree ports** (`chore/two-track-ports`): parameterise the compose host ports,
-      the Makefile test URLs and API port, `bootstrap.sh` and `prove_gates.sh`, and the CI image tag,
-      as listed in the ADR-0011 amendment; then Track B starts in its own worktree.
-   3. **S2**: freeze `mkos-schemas` v1.0.0. Needs EP decision 10 (freeze all 17 modules as written, or
-      only the decided ones; P7), T1 and T61 (EXECUTION-PLAN §6.2); target the Sun 4 Oct (D14) MAJOR
-      window. Before the S2 plan: the two-track choice (P6) and the AI and FE leads (P8). From here,
-      `packages/schemas` changes need Tech Lead + AI lead + FE lead.
+   2a. **Next: per-worktree ports** (plan id `two-track-ports`, branch `chore/two-track-ports`; plan
+      files local-only in `docs/plans/two-track-ports/`). Status 2026-10-04: CONTEXT, PLAN and
+      CODE-PLAN (`Status: draft`, 14 tasks, 13 criteria) written; both plan critiques done (code: 5
+      high, security: 1 high); the revision applying all findings was in progress at handoff. **To
+      resume:** check each file's "Critique log" covers code findings 1–11 and security S1–S10; if
+      not, apply them; then ask the user to approve line 1. No Canon, contract or migration change.
+      Then Track B (S2, S3, S11, S14a, S17a) runs in its own worktree.
+   3. **S2: freeze `mkos-schemas` v1.0.0** (plan id `s2`, branch `feat/s2-schemas`, Track B). Status
+      2026-10-04: CONTEXT and PLAN written (`docs/plans/s2/`, local-only); CODE-PLAN was being written
+      at handoff; plan critique not run yet. Acceptance criteria are `docs/STEPS.md` §S2. **Decisions
+      the user must answer at plan approval** (PLAN.md "Decisions needed", defaults in brackets):
+      ship v1.0.0 now as a one-time exception outside the D14 window [yes]; freeze scope [B: the 17
+      modules plus the DATABASE.md rev 3 changes inside them; `facts.py`/`batches.py` later as MINOR];
+      adding allowed values is breaking [yes]; new codes `MAKER_CHECKER_VIOLATION`, `BUDGET_EXCEEDED`
+      [add]; pydantic floor raised for `serialize_by_alias` [yes, a Canon edit]; Addendum §17 vs rev 3
+      [follow rev 3]. Contract approvals: the Tech Lead until AI/FE leads are named (P8).
+   4. **Then, in parallel once ports merge:** Track A S5 → S6 → S7 → S8 (S8 carries the spike
+      findings, "Decisions of 2026-10-04") → S9 → S10; Track B S2 → S3, S11, S14a, S17a. Order, dates
+      and "Done when": `docs/STEPS.md`.
    4. **S3**: freeze the `/api/v1` OpenAPI, publish `@mkos/schemas` to GitHub Packages (ADR-0012), and
       stand up the mock the FE team integrates against.
    5. **S5 → S6 → S7 → S8**: Alembic, roles and migrations 0001–0003b.
@@ -477,6 +489,7 @@ Done on 2026-09-30:
 
 ## Session log (newest first; at most 5 lines each; keep the newest 5, older ones go to `docs/archive/STATE-log.md`)
 
+- **2026-10-04 (handoff):** Plans drafted for `two-track-ports` (critiqued, revision in progress) and S2 (PLAN done, CODE-PLAN in progress); see "Start here" 2a and 3 for exactly where to resume. Local-only plan files backed up to `~/Backups/ai-marketplace-os/`. Agent commits need the editor's co-author trailer suppressed; the commit-msg hook rejects it.
 - **2026-10-04 (milestone 0):** Wrote `docs/STEPS.md` (S2–S26 "Done when", approved), `docs/PROCESS.md` (92 citations repointed), the ADR-0011 two-track amendment (accepted) and the per-track port Canon notes (approved). Queue spike local half: 7/8 pass, T3 = procrastinate. Decisions: DATABASE.md rev 3 accepted, Amazon-first planning, standing merge approval. Next: ports, then S2 and S5.
 - **2026-10-04 (s1-followups):** MinIO in compose (Chainguard, `/data` despite uid 0), `editables==0.6`, pip-audit on OSV, commit-msg attribution check, frozen `uv run`. The user approved the plan and the merge. README wait is scoped to Postgres. Next: P16, P17, P6, then the ADR-0004 spike.
 - **2026-09-30 (docs standard):** PR #4 adds PRD, ARCH, RULES, DESIGN and PHASES and the handoff fixes. The user accepted all P1–P19 defaults, with P8 as an interim rule (the Tech Lead approves contracts until the leads are named). P12 scan clean (2 false positives), P14 backup made, P18 local fixes applied.
@@ -484,8 +497,3 @@ Done on 2026-09-30:
   - Applied the verified-check findings: front door (PRD, ARCH, RULES, DESIGN, PHASES), both READMEs, EXECUTION-PLAN (§1 and the 10-check count fixed in place; the add-on no longer named), BACKEND-ARCHITECTURE (10 checks), ADR-0010/0011 amendment notes, the PR template. Items needing the user: P15–P19; P1, P8 and P14 sharpened.
   - Files touched: README.md, `docs/{STATE,README,EXECUTION-PLAN,PRD,ARCH,RULES,DESIGN,PHASES}.md`, `docs/architecture/BACKEND-ARCHITECTURE.md`, `docs/adr/{0010,0011}-*.md`, `docs/archive/STATE-log.md`, `.github/pull_request_template.md`. Local-only files unchanged (P18).
   - Docs-only, no gates run. Not committed (P1). The Word editions are not rebuilt.
-- **2026-09-30 (handoff check applied; tool-neutral docs):**
-  - Applied the doc fixes from the 2026-09-30 handoff check; 14 items that need the user are listed under "Pending user decisions".
-  - README.md and `docs/README.md` now open with the front door (PRD, ARCH, RULES, DESIGN, PHASES, STATE); the PR template has a "Docs" item; the local agent rules point to `docs/RULES.md`; the conductor's merge step is the PR flow.
-  - Files touched: README.md, `docs/{STATE,README,EXECUTION-PLAN,PRD,ARCH,RULES,DESIGN,PHASES}.md`, `docs/plans/README.md`, `docs/adr/0011-team-loop.md`, `docs/archive/STATE-log.md` (new), `.github/pull_request_template.md`; local-only: AGENTS.md, the editor config (conductor, role files, hook, plan workflow), `docs/plans/s1/{REPORT,LOOP}.md`.
-  - Docs-only, no gates run. Not committed (P1).
