@@ -96,7 +96,7 @@ Every step runs locally on Docker PostgreSQL 17 + pgvector; Cloud SQL is for sta
 Source: STATE "Start here" 2 and "Build order" (user, 2026-09-29/30); EP §10. It mirrors STATE
 "Start here" 2, which wins. Open: P5, P6; the table is reordered once both are answered.
 
-1. S1 follow-ups (a)–(c).
+1. S1 follow-ups (a)–(c) landed on `fix/s1-followups`.
 2. ADR-0004 spike (1 day).
 3. S2, then S3.
 4. S5 → S6 → S7 → S8.

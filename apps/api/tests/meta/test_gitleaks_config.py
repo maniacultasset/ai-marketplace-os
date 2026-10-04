@@ -73,6 +73,22 @@ def test_false_positive_values_are_exact_parent_child() -> None:
     assert {"parent/child"} == FALSE_POSITIVE_VALUES
 
 
+def test_parent_child_allowlist_rejects_prefix_and_suffix(config: dict[str, Any]) -> None:
+    patterns = [
+        pattern
+        for allowlist in _allowlists(config)
+        for pattern in allowlist.get("regexes", [])
+        if "parent/child" in pattern
+    ]
+    assert patterns == [r"^parent/child$"]
+    compiled = re.compile(patterns[0])
+    assert compiled.fullmatch("parent/child")
+    assert compiled.fullmatch("xparent/child") is None
+    assert compiled.fullmatch("parent/child/extra") is None
+    assert compiled.fullmatch("parent/child ") is None
+    assert compiled.fullmatch(" parent/child") is None
+
+
 def test_gitleaksignore_pins_only_the_known_history_false_positives(repo_root: Path) -> None:
     entries = [
         line

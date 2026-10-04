@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import string
 import subprocess
 import sys
 from collections.abc import Callable
@@ -9,6 +10,8 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 SCISSORS = "# ------------------------ >8 ------------------------"
 
@@ -136,3 +139,25 @@ def test_runs_as_isolated_subprocess(repo_root: Path, tmp_path: Path) -> None:
         text=True,
     )
     assert result.returncode == 1
+
+
+# `_` is in string.punctuation but is a word char, so `^\W*` does not consume it.
+_NONWORD = "".join(ch for ch in string.punctuation + " \t" if not ch.isalnum() and ch != "_")
+
+
+@settings(deadline=None, max_examples=80)
+@given(
+    prefix=st.text(alphabet=_NONWORD, max_size=8),
+    gap=st.sampled_from([" ", "  ", "\t"]),
+    rest=st.text(alphabet=string.ascii_letters, min_size=1, max_size=12),
+)
+def test_generated_with_footer_property(attr: ModuleType, prefix: str, gap: str, rest: str) -> None:
+    line = f"{prefix}generated{gap}with {rest}"
+    assert attr.offending_lines(line) == [1]
+
+
+@settings(deadline=None, max_examples=80)
+@given(lead=st.from_regex(r"[A-Za-z][A-Za-z0-9 ]{0,20}", fullmatch=True))
+def test_mid_sentence_generated_with_property(attr: ModuleType, lead: str) -> None:
+    line = f"{lead} was generated with compile_trace.py"
+    assert attr.offending_lines(line) == []

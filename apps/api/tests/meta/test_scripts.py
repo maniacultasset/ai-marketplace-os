@@ -33,6 +33,31 @@ def test_shell_scripts_parse(repo_root: Path) -> None:
         assert result.returncode == 0, (script.name, result.stderr)
 
 
+def test_readme_compose_wait_is_scoped(repo_root: Path) -> None:
+    """Bare `up -d --wait` fails once minio-init has exited 0 (Compose v5.5.1)."""
+    readme = (repo_root / "README.md").read_text(encoding="utf-8")
+    unscoped = [
+        line
+        for line in readme.splitlines()
+        if "docker compose up -d --wait" in line and "postgres" not in line
+    ]
+    assert unscoped == []
+
+
+def test_bootstrap_and_dev_scope_wait_to_long_running(repo_root: Path) -> None:
+    """BD8: a one-shot minio-init makes bare `up -d --wait` exit 1 (Compose v5.5.1)."""
+    bootstrap = (repo_root / "scripts" / "ci" / "bootstrap.sh").read_text(encoding="utf-8")
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert "up -d --wait postgres minio" in bootstrap
+    assert "up -d minio-init" in bootstrap
+    assert re.search(r"up -d --wait postgres minio", makefile)
+    assert re.search(r"^dev:\n(?:\t.*\n)*\t.*up -d minio-init", makefile, re.MULTILINE)
+    for text in (bootstrap, makefile):
+        for line in text.splitlines():
+            if "up -d --wait" in line:
+                assert "postgres" in line and "minio" in line, line
+
+
 def test_bootstrap_checks_minio_init_and_both_buckets(repo_root: Path) -> None:
     text = (repo_root / "scripts" / "ci" / "bootstrap.sh").read_text(encoding="utf-8")
     assert "ps -a --format json minio-init" in text

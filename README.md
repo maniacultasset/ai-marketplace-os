@@ -81,8 +81,9 @@ curl -s localhost:8000/healthz && curl -s localhost:8000/readyz
 - `make test-unit` runs the unit and meta tests without a database.
 - Without `make dev` (for example, to run only the checks): `cp .env.example .env`, then
   `make hooks` (or `uv run --frozen pre-commit install`) before your first commit (it installs the
-  pre-commit and commit-msg hooks), and `docker compose up -d --wait` to start Postgres before
-  `make test-db`. Every `docker compose` call needs `.env` under the `:?` form.
+  pre-commit and commit-msg hooks), and `docker compose up -d --wait postgres` to start Postgres
+  before `make test-db`. Waiting on every service fails on Compose v5.5.1, because `minio-init`
+  exits 0. Every `docker compose` call needs `.env` under the `:?` form.
 
 Each required check has a make target of the same name, and CI runs exactly that target:
 
@@ -95,7 +96,7 @@ Each required check has a make target of the same name, and CI runs exactly that
 | `contracts` | `make contracts` | — |
 | `schemas-drift` | `make schemas-drift` | — |
 | `commit-lint` | `PR_TITLE='feat(x): y' HEAD_REF=feat/x make commit-lint` | — |
-| `bootstrap` | `make bootstrap` | Docker, a `.env`, free ports 5432 and 8000 |
+| `bootstrap` | `make bootstrap` | Docker, a `.env`, free ports 5432, 8000, 9000 and 9001 |
 | `lint-imports` | `make lint-imports` | — |
 | `gitleaks` | `make gitleaks` | network (first run downloads the pinned binary) |
 
