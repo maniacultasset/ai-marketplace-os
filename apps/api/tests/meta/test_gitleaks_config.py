@@ -15,8 +15,10 @@ DEV_VALUES = {
     "local_only_schema_export_secret_32_chars",  # CANON-ADDENDUM.md:293
     "dev_only_admin_session_secret_at_least_32_chars",  # ENV.md ADMIN_SESSION_SECRET row
     "bG9jYWxfZGV2X29ubHlfMzJfYnl0ZV9rZXlfMDAwMDA=",  # ENV.md KMS_LOCAL_DEV_KEY row
-    "minioadmin",  # ENV.md S3_ACCESS_KEY / S3_SECRET_KEY rows
+    "local_only_minio_root_user",  # ENV.md S3_ACCESS_KEY / S3_SECRET_KEY rows
+    "local_only_minio_root_password_32_chars",
 }
+FALSE_POSITIVE_VALUES = {"parent/child"}
 
 
 @pytest.fixture
@@ -59,11 +61,32 @@ def test_allowlist_exact_anchored_values_only(config: dict[str, Any]) -> None:
 
 def test_allowlisted_values_are_repo_dev_values(config: dict[str, Any], repo_root: Path) -> None:
     values = _values(config)
-    assert values == DEV_VALUES
+    assert values == DEV_VALUES | FALSE_POSITIVE_VALUES
     committed = (repo_root / ".env.example").read_text(encoding="utf-8") + (
         repo_root / "apps/api/app/core/config.py"
     ).read_text(encoding="utf-8")
-    assert not [value for value in values if value not in committed]
+    assert not [value for value in DEV_VALUES if value not in committed]
+    assert "parent/child" not in committed
+
+
+def test_false_positive_values_are_exact_parent_child() -> None:
+    assert {"parent/child"} == FALSE_POSITIVE_VALUES
+
+
+def test_parent_child_allowlist_rejects_prefix_and_suffix(config: dict[str, Any]) -> None:
+    patterns = [
+        pattern
+        for allowlist in _allowlists(config)
+        for pattern in allowlist.get("regexes", [])
+        if "parent/child" in pattern
+    ]
+    assert patterns == [r"^parent/child$"]
+    compiled = re.compile(patterns[0])
+    assert compiled.fullmatch("parent/child")
+    assert compiled.fullmatch("xparent/child") is None
+    assert compiled.fullmatch("parent/child/extra") is None
+    assert compiled.fullmatch("parent/child ") is None
+    assert compiled.fullmatch(" parent/child") is None
 
 
 def test_gitleaksignore_pins_only_the_known_history_false_positives(repo_root: Path) -> None:

@@ -3,6 +3,9 @@
 Older session-log entries moved out of `docs/STATE.md`, which keeps the newest 5. Frozen history:
 facts here may be stale; `docs/STATE.md` is the current status.
 
+- **2026-09-28 (no-git), handoff to the second editor:**
+  - Did: spec trace (8,916 statements), DATABASE.md rev 3, BACKEND-ARCHITECTURE.md, ADRs 0006–0011 proposed, two Word docs, docgen and trace scripts.
+  - Stopped at the user's request before the build-readiness audit. Cost: about 19M tokens for the trace.
 - **2026-09-27 (no-git):**
   - Decided ADRs 0001–0005 (GCP; Python 3.13; PG17; Postgres queue/no Redis; hygiene) and the site as
     the source of truth.

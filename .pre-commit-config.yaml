@@ -1,5 +1,5 @@
 # Local hooks only: every tool is the pinned one from uv.lock, nothing is fetched from a hook repo.
-# `make dev` runs `pre-commit install`, which installs both hook types below.
+# `make hooks` (called by `make dev`) runs `pre-commit install`, which installs both hook types below.
 default_install_hook_types: [pre-commit, commit-msg]
 default_stages: [pre-commit]
 exclude: ^(scaffold|scripts/docgen|scripts/trace|docs)/
@@ -30,5 +30,10 @@ repos:
       - id: commit-lint
         name: commit-lint
         entry: python3 scripts/ci/commit_lint.py --message-file
+        language: system
+        stages: [commit-msg]
+      - id: commit-attribution
+        name: commit-attribution
+        entry: python3 scripts/ci/commit_attribution.py
         language: system
         stages: [commit-msg]

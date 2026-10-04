@@ -8,6 +8,7 @@ members = [
     "mkos-schemas",
 ]
 build-constraints = [
+    { name = "editables", specifier = "==0.6" },
     { name = "hatchling", specifier = "==1.31.0" },
     { name = "packaging", specifier = "==26.3" },
     { name = "pathspec", specifier = "==1.1.1" },

@@ -1,6 +1,6 @@
 """AC6b (added by the e2e tester): a probe whose client goes away (its waiter is cancelled) must
 never cancel the readiness check that concurrent probes share (the `asyncio.shield` in
-`ReadinessCheck.is_ready`, CODE-PLAN.md T5)."""
+`ReadinessCheck.is_ready`)."""
 
 from __future__ import annotations
 

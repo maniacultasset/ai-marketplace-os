@@ -1,8 +1,8 @@
 # STATE — read first, update last
 
-_Last updated: 2026-09-30 (Wed). Any contributor, with any editor, can pick up from here: read "Start here" below. Front door: `docs/PRD.md`, `docs/ARCH.md`, `docs/RULES.md` (the engineering rulebook: it wins over the local agent rules file, and the sources it cites win over it, per its top paragraph), `docs/DESIGN.md`, `docs/PHASES.md`. Docs map: `docs/README.md`. Plan: `docs/EXECUTION-PLAN.md`._
+_Last updated: 2026-10-04 (Sun). Any contributor, with any editor, can pick up from here: read "Start here" below. Front door: `docs/PRD.md`, `docs/ARCH.md`, `docs/RULES.md` (the engineering rulebook: it wins over the local agent rules file, and the sources it cites win over it, per its top paragraph), `docs/DESIGN.md`, `docs/PHASES.md`. Docs map: `docs/README.md`. Plan: `docs/EXECUTION-PLAN.md`._
 **Active:** none
-**Branch:** `main`. S1 was merged through PR #3 (squash) on 2026-09-30; the next work goes on a new branch.
+**Branch:** `main`. S1 follow-ups merge with this PR (squash). S1 itself was PR #3 on 2026-09-30.
 **Git repo:** yes. Private `maniacultasset/ai-marketplace-os` (https://github.com/maniacultasset/ai-marketplace-os); first commit `be02277` on 2026-09-29. From here on, every change goes branch → PR → squash merge, and the user approves each merge.
 **Hosting ADR:** accepted ADR-0001 (GCP asia-south1, bootstrapped profile; 2026-09-27)
 **Tech Lead:** the user (to be confirmed)
@@ -12,7 +12,7 @@ _Last updated: 2026-09-30 (Wed). Any contributor, with any editor, can pick up f
 
 - **Sprint:** Mon 21 Sep → Wed 4 Nov 2026 (45 days). Day N = today's date − 20 Sep 2026, so Sat
   26 Sep = Day 6.
-- **Phase:** **S1 merged (PR #3, 2026-09-30).** Three small S1 follow-ups are open (Start here, item 2.1). The docs
+- **Phase:** **S1 follow-ups merge with this PR.** Next is the pre-S2 docs (P16, P17, P6), then the ADR-0004 spike. The docs
   foundation is complete (2026-09-28).
 - **Build location:** this folder is the root of the backend-only repo (ADR-0012).
   - **Never run `scaffold/README.md`'s `cp -R scaffold/.`:** it overwrites the root README. S1 moved
@@ -310,8 +310,7 @@ Done on 2026-09-30:
    `docs/EXECUTION-PLAN.md` §6.2–§6.3, and step scope and "Done when" from
    `docs/drafts/BUILD-SEQUENCE.md` (S1–S14) as corrected by `docs/review/SUPERSEDED.md` and
    `KNOWN-ISSUES.md`.
-   1. **S1 follow-ups** (plan id `s1-followups`, branch `fix/s1-followups`; P2–P4, P13 and P19 are decided and included, plus allowlisting the 2 gitleaks false positives from P12) (was: awaiting the user's OK and the
-      process choice, P2–P4; `docs/plans/s1/REPORT.md` "Open"):
+   1. **S1 follow-ups — done in this PR** (plan id `s1-followups`, branch `fix/s1-followups`; P2–P4, P13 and P19 included; `parent/child` allowlisted in `.gitleaks.toml`). Record of what landed:
       - (a) **MinIO:**
         - Use `cgr.dev/chainguard/minio` + `cgr.dev/chainguard/minio-client`, pinned by index digest
           and bound to 127.0.0.1, with services `minio` and `minio-init`.
@@ -460,6 +459,7 @@ Done on 2026-09-30:
 
 ## Session log (newest first; at most 5 lines each; keep the newest 5, older ones go to `docs/archive/STATE-log.md`)
 
+- **2026-10-04 (s1-followups):** MinIO in compose (Chainguard, `/data` despite uid 0), `editables==0.6`, pip-audit on OSV, commit-msg attribution check, frozen `uv run`. The user approved the plan and the merge. README wait is scoped to Postgres. Next: P16, P17, P6, then the ADR-0004 spike.
 - **2026-09-30 (docs standard):** PR #4 adds PRD, ARCH, RULES, DESIGN and PHASES and the handoff fixes. The user accepted all P1–P19 defaults, with P8 as an interim rule (the Tech Lead approves contracts until the leads are named). P12 scan clean (2 false positives), P14 backup made, P18 local fixes applied.
 - **2026-09-30 (verified-check fixes; tool-neutral docs):**
   - Applied the verified-check findings: front door (PRD, ARCH, RULES, DESIGN, PHASES), both READMEs, EXECUTION-PLAN (§1 and the 10-check count fixed in place; the add-on no longer named), BACKEND-ARCHITECTURE (10 checks), ADR-0010/0011 amendment notes, the PR template. Items needing the user: P15–P19; P1, P8 and P14 sharpened.
@@ -490,18 +490,3 @@ Done on 2026-09-30:
   - GCP: installed `gcloud`/`cloud-sql-proxy`; logged in as `maniacultasset@gmail.com`; created
     projects `aimos-staging` and `aimos-prod`. The client is setting up billing.
   - Files touched (no git): AGENTS.md, README.md, `docs/README.md` (new), `docs/STATE.md`, `docs/plans/README.md`, the local role files (planner, implementer), `.gitignore`, `scripts/{docgen,trace}/*`, every moved doc, `docs/trace/*.map.json`.
-- **2026-09-28 (no-git), handoff to the second editor:**
-  - Did:
-    - Spec trace: page level verified; line level has 8,916 statements with verified verdicts →
-      REQUIREMENTS-TRACE.md.
-    - DATABASE.md rev 3 and BACKEND-ARCHITECTURE.md (both written by workflows).
-    - ADRs 0006–0011 as ⚑ proposed; 2 Word docs (with decision highlights); docgen and trace scripts.
-    - The by-hand mapping in the conductor's §5; `.gitignore`.
-  - Stopped at the user's request: the build-readiness audit (no output); step readiness is checked
-    inside each plan instead.
-  - Cost: about 19M tokens for the trace (5.9M recording + 12.9M comparison), well over the
-    estimates given.
-  - Files touched (no git): AGENTS.md, `.gitignore`, the local conductor,
-    `docs/STATE.md`, `docs/adr/0006–0011` + README, `docs/canon/CANON.md`, `docs/review/{TEAM-QUESTIONS,SPEC-TRACEABILITY,REQUIREMENTS-TRACE}.md`,
-    `docs/trace/`, `docs/architecture/{DATABASE,BACKEND-ARCHITECTURE}.md`,
-    `scripts/{docgen,trace}/`, `deliverables/*.docx`.

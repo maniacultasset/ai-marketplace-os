@@ -27,6 +27,7 @@ BUILD_CONSTRAINT_NAMES = {
     "pluggy",
     "trove-classifiers",
     "pip",
+    "editables",
 }
 _PIN = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)==([^\s\\;]+)")
 
@@ -126,3 +127,22 @@ def test_build_constraints_agree(repo_root: Path) -> None:
     for member in ("apps/api", "packages/schemas"):
         build = _toml(repo_root / member / "pyproject.toml")["build-system"]
         assert build["requires"] == [hatchling], member
+
+
+def test_build_constraints_header_names_editables(repo_root: Path) -> None:
+    text = (repo_root / "build-constraints.txt").read_text(encoding="utf-8")
+    header, _, _ = text.partition("hatchling==")
+    assert "five dependencies" in header
+    assert "four" not in header
+    assert "editables==" in text
+    recipe = next(line for line in text.splitlines() if "printf" in line)
+    for pin in (
+        "hatchling==",
+        "packaging==",
+        "pathspec==",
+        "pluggy==",
+        "trove-classifiers==",
+        "pip==",
+        "editables==",
+    ):
+        assert pin in recipe, pin
