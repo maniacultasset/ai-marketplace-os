@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -103,6 +104,29 @@ def test_pr_template_lists_ten_checks(repo_root: Path) -> None:
         assert f"`{check}`" in template, check
     for heading in ("Summary", "Done when", "Checks", "ADRs", "Contract impact", "Risk"):
         assert heading in template, heading
+
+
+def test_worktree_env_is_ignored(repo_root: Path) -> None:
+    ignored = subprocess.run(
+        ["git", "check-ignore", "-q", ".worktree.env"],
+        cwd=repo_root,
+        check=False,
+    )
+    assert ignored.returncode == 0
+    tracked = subprocess.run(
+        ["git", "ls-files", "--error-unmatch", ".env.example"],
+        cwd=repo_root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert tracked.returncode == 0
+    sample = subprocess.run(
+        ["git", "check-ignore", "-q", "worktree.env.sample"],
+        cwd=repo_root,
+        check=False,
+    )
+    assert sample.returncode == 1
 
 
 def test_contracts_script_installs_only_hashed_build_deps(repo_root: Path) -> None:

@@ -1,6 +1,7 @@
 # Local stack for `make dev` and the `bootstrap` check. No Redis (ADR-0004), no `version:` key.
-# Every image is pinned by its multi-arch index digest (arm64 laptops, amd64 CI; ADR-0003), and
-# every published port binds 127.0.0.1 only, so nothing listens on the LAN.
+# Every image is pinned by its multi-arch index digest (arm64 laptops, amd64 CI; ADR-0003).
+# Every published port binds 127.0.0.1 only; host ports default to 5432,
+# 9000 and 9001 and a second worktree overrides them in `.worktree.env` (ADR-0011 amendment).
 # MinIO: Chainguard images pinned by index digest (TEAM-QUESTIONS T107).
 services:
   postgres:
@@ -9,7 +10,10 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: marketplace_os
-    ports: ["127.0.0.1:5432:5432"]
+    ports:
+      - target: 5432
+        published: "${PG_HOST_PORT:-5432}"
+        host_ip: 127.0.0.1
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./scripts/db/0000_bootstrap.sql:/docker-entrypoint-initdb.d/0000_bootstrap.sql:ro
@@ -24,7 +28,13 @@ services:
     environment:
       MINIO_ROOT_USER: '${S3_ACCESS_KEY:?run cp .env.example .env}'
       MINIO_ROOT_PASSWORD: '${S3_SECRET_KEY:?run cp .env.example .env}'
-    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
+    ports:
+      - target: 9000
+        published: "${MINIO_API_HOST_PORT:-9000}"
+        host_ip: 127.0.0.1
+      - target: 9001
+        published: "${MINIO_CONSOLE_HOST_PORT:-9001}"
+        host_ip: 127.0.0.1
     volumes:
       - miniodata:/data
     healthcheck:

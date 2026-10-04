@@ -8,12 +8,15 @@
 #
 # Usage: scripts/ci/prove_gates.sh [--with-docker]
 #   --with-docker adds the api-tests, tenant-isolation and bootstrap legs. They need the local
-#   compose Postgres with the test databases (`make test-db`), and free ports 5432, 8000, 9000 and
-#   9001 for the bootstrap legs, which pause this checkout's compose stack and restart it afterwards.
+#   compose Postgres with the test databases (`make test-db`), and this checkout's host ports
+#   (defaults 5432, 8000, 9000, 9001, or its `.worktree.env`). The bootstrap legs pause this
+#   checkout's compose stack and restart it afterwards.
 # Logs: $TMPDIR/prove-gates/<leg>.log. Never pushes; the seeded commits stay in throwaway worktrees.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 root="$(pwd)"
+worktree_exports="$(scripts/ci/worktree_env.sh exports .worktree.env)" || exit 1
+eval "$worktree_exports"
 
 with_docker=0
 if [ "${1:-}" = "--with-docker" ]; then with_docker=1; fi
@@ -70,8 +73,14 @@ seed_error_code() { append apps/api/app/main.py $'\n\ndef _seeded(**kwargs: str)
 seed_expired_ignore() { append scripts/ci/pip-audit-ignore.txt 'GHSA-seed-seed-seed 2020-01-01 seeded expired entry'; }
 seed_services_async_engine() { new_file apps/api/app/services/x.py $'"""Seeded."""\n\nfrom sqlalchemy.ext.asyncio import AsyncSession\n\n__all__ = ["AsyncSession"]'; }
 seed_type_error() { append apps/api/app/main.py $'\n\ndef _seeded() -> int:\n    return "x"'; }
-seed_failing_test() { new_file apps/api/tests/unit/test_seeded.py $'def test_seeded() -> None:\n    assert False'; }
-seed_no_marker() { replace apps/api/tests/tenant_isolation/test_sentinel.py $'@pytest.mark.tenant_isolation\n' ''; }
+seed_failing_test() {
+  cp "$root/.env" .env
+  new_file apps/api/tests/unit/test_seeded.py $'def test_seeded() -> None:\n    assert False'
+}
+seed_no_marker() {
+  cp "$root/.env" .env
+  replace apps/api/tests/tenant_isolation/test_sentinel.py $'@pytest.mark.tenant_isolation\n' ''
+}
 seed_schemas_import_error() { append packages/schemas/src/mkos_schemas/__init__.py 'raise ImportError("seeded")'; }
 # One hex digit in each hatchling hash. Either artifact (wheel or sdist) satisfies
 # --require-hashes on its own, so both must stop matching for the pins to be broken.
@@ -161,16 +170,17 @@ leg lint-imports-service-db lint-imports 'app.services never imports app.db.sess
   seed_service_session make lint-imports
 
 if [ "$with_docker" -eq 1 ]; then
-  leg api-tests-failing-test api-tests 'test_seeded' seed_failing_test make api-tests
-  leg tenant-isolation-no-marker tenant-isolation 'deselected' seed_no_marker make tenant-isolation
-  # The bootstrap leg runs its own compose project on 5432; pause this checkout's stack meanwhile.
+  self_project="$(docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"
+  leg api-tests-failing-test api-tests 'test_seeded' seed_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg tenant-isolation-no-marker tenant-isolation 'deselected' seed_no_marker COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
+  # Bootstrap legs use their own project on this checkout's host ports; pause this stack meanwhile.
   docker compose stop >/dev/null 2>&1
-  leg bootstrap-empty-venv bootstrap "No module named 'mkos_schemas'" seed_no_uv_project_env \
-    COMPOSE_PROJECT_NAME=prove-gates-bootstrap make bootstrap
-  docker compose -p prove-gates-bootstrap down -v >/dev/null 2>&1
-  leg bootstrap-misspelled-bucket bootstrap 'bucket marketplace-csv missing' seed_misspelled_bucket \
-    COMPOSE_PROJECT_NAME=prove-gates-bootstrap make bootstrap
-  docker compose -p prove-gates-bootstrap down -v >/dev/null 2>&1
+  leg bootstrap-empty-venv bootstrap "No module named 'mkos_schemas'" seed_no_uv_project_env COMPOSE_PROJECT_NAME="prove-gates-bootstrap-${self_project}" DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/marketplace_os ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/marketplace_os S3_ENDPOINT_URL=http://localhost:${MINIO_API_HOST_PORT:-9000} PORT=${API_HOST_PORT:-8000} make bootstrap
+  docker compose -p "prove-gates-bootstrap-${self_project}" down -v >/dev/null 2>&1
+  docker image rm -f "mkos-api:ci-prove-gates-bootstrap-${self_project}" >/dev/null 2>&1
+  leg bootstrap-misspelled-bucket bootstrap 'bucket marketplace-csv missing' seed_misspelled_bucket COMPOSE_PROJECT_NAME="prove-gates-bootstrap-${self_project}" DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/marketplace_os ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/marketplace_os S3_ENDPOINT_URL=http://localhost:${MINIO_API_HOST_PORT:-9000} PORT=${API_HOST_PORT:-8000} make bootstrap
+  docker compose -p "prove-gates-bootstrap-${self_project}" down -v >/dev/null 2>&1
+  docker image rm -f "mkos-api:ci-prove-gates-bootstrap-${self_project}" >/dev/null 2>&1
   docker compose start >/dev/null 2>&1
 fi
 
