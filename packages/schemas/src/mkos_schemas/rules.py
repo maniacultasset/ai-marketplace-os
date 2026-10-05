@@ -296,12 +296,10 @@ class Rule(WireModel):
 
 class RuleSet(WireModel):
     """Carried on GenerationContext.marketplace_rules; the backend resolves it before enqueue.
-
     PipelineDeps has NO load_rules port — the AI package fetches nothing. Rows group by
     (tenant_id, field, rule_type, subject, pack); a category rule shadows the category=NULL
     rule and the highest enabled version wins. Tenant rules never shadow platform rules: both
-    run, so brand rules only tighten.
-    """
+    run, so brand rules only tighten."""
 
     marketplace: Marketplace
     category: Slug

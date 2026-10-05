@@ -2330,7 +2330,7 @@
       "type": "object"
     },
     "RuleSet": {
-      "description": "Carried on GenerationContext.marketplace_rules; the backend resolves it before enqueue.\n\nPipelineDeps has NO load_rules port \u2014 the AI package fetches nothing. Rows group by\n(tenant_id, field, rule_type, subject, pack); a category rule shadows the category=NULL\nrule and the highest enabled version wins. Tenant rules never shadow platform rules: both\nrun, so brand rules only tighten.",
+      "description": "Carried on GenerationContext.marketplace_rules; the backend resolves it before enqueue.\nPipelineDeps has NO load_rules port \u2014 the AI package fetches nothing. Rows group by\n(tenant_id, field, rule_type, subject, pack); a category rule shadows the category=NULL\nrule and the highest enabled version wins. Tenant rules never shadow platform rules: both\nrun, so brand rules only tighten.",
       "properties": {
         "category": {
           "pattern": "^[a-z0-9_]{2,64}$",

@@ -35,6 +35,8 @@ from mkos_schemas.rules import (
 )
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
+from . import canon_sources
+
 _RID = UUID("11111111-1111-1111-1111-111111111111")
 _TS = datetime(2026, 1, 1, tzinfo=UTC)
 _RULE_DEF_ADAPTER: TypeAdapter[RuleDef] = TypeAdapter(RuleDef)
@@ -232,8 +234,15 @@ def test_params_field_only_on_image_requirement() -> None:
         assert has_params == (cls is ImageRequirement)
 
 
+def test_ruleset_docstring_is_the_addendum_text() -> None:
+    block = canon_sources.addendum_block("17").strip()
+    assert block.startswith('"""') and block.endswith('"""')
+    expected = " ".join(block.strip('"').split())
+    assert " ".join((RuleSet.__doc__ or "").split()) == expected
+
+
 def test_ruleset_docstring() -> None:
-    doc = RuleSet.__doc__ or ""
+    doc = " ".join((RuleSet.__doc__ or "").split())
     assert "Rows group by" in doc
     # A§17 keeps everything but its shadowing sentence (Decision 11).
     assert "PipelineDeps has NO load_rules port" in doc

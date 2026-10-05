@@ -378,27 +378,27 @@ so `docker run --rm -e APP_ROLE=shell mkos-api:ci -c "import app, mkos_schemas, 
 Frozen names, no synonyms anywhere in code, DDL, fixtures or prose:
 - `Rule` = `id, tenant_id, marketplace, category, field, severity, version, enabled, rule_def`
 - `RuleSet` = `marketplace, category, rules, rules_version, loaded_at`
-- `RuleDef` = discriminated union on `type`, members `max_length | min_length | banned_terms | required_attribute | max_items`, each carrying `message`, optional `suggestion` and `error_code`
-- forbidden spellings: `field_path`, `kind`, `params`, `version` (on RuleSet — it is `rules_version`)
+- `RuleDef` = discriminated union on `type` (the tag is required), 14 members `max_length | min_length | banned_terms | required_attribute | max_items | min_items | allowed_values | conditional_required | cross_field | claim_requires_attribute | image_requirement | pattern | fact_source | fact_backed_attribute` (DATABASE.md rev 3 RuleDef table), each extending `_RuleBase {message, suggestion?, error_code, pack='core', policy_ref?, error_class?, retry_class?}`
+- forbidden spellings: `field_path`, `kind`, `params`, `version` (on RuleSet — it is `rules_version`). The one exception: `params` is the field name on `image_requirement` only (its typed `ImageRequirementParams`); no other member carries it
 
 The ai_seam register's fifth rule is rewritten to: "`RuleSet` and `Rule` are declared in `packages/schemas/src/mkos_schemas/rules.py`. No field list is repeated here or anywhere else; that file is the contract."
 
-> **Supersedes:** The ai_seam register row listing RuleSet/Rule fields inline. Resolves internal conflict #1.
+> **Supersedes:** The ai_seam register row listing RuleSet/Rule fields inline. Resolves internal conflict #1. **Amended (S2, 2026-10-05, Tech Lead):** the `RuleDef` member list grows from 5 to the 14 types of DATABASE.md rev 3 (`:510-523`), with the `_RuleBase` fields and the `params` exception on `image_requirement`.
 
 
 ## 17. rules.py RuleSet docstring
 
 `load_rules` no longer exists on `PipelineDeps` — context is pushed. Replace the `RuleSet` docstring in `packages/schemas/src/mkos_schemas/rules.py` with exactly:
 ```python
-    """Carried on GenerationContext.marketplace_rules; the backend resolves it
-    before enqueue. PipelineDeps has NO load_rules port — the AI package fetches
-    nothing. Resolution order: a tenant rule shadows the platform rule with the
-    same (marketplace, category, field), and a category rule shadows the
-    category=NULL rule."""
+    """Carried on GenerationContext.marketplace_rules; the backend resolves it before enqueue.
+    PipelineDeps has NO load_rules port — the AI package fetches nothing. Rows group by
+    (tenant_id, field, rule_type, subject, pack); a category rule shadows the category=NULL
+    rule and the highest enabled version wins. Tenant rules never shadow platform rules: both
+    run, so brand rules only tighten."""
 ```
 Same edit discipline for any other artifact docstring naming a deleted port: `load_rules`, `load_category_template`, `validate_schema` and `record_agent_run` may not appear as `PipelineDeps` members in any file.
 
-> **Supersedes:** The shipped rules.py docstring 'What PipelineDeps.load_rules() returns'. Resolves internal conflict #2.
+> **Supersedes:** The shipped rules.py docstring 'What PipelineDeps.load_rules() returns'. Resolves internal conflict #2. **Amended (S2, 2026-10-05, Tech Lead):** the shadowing sentence follows DATABASE.md rev 3 (`:507`, §11.2 row 9): tenant rows never shadow platform rows, so brand rules only tighten (invariant 2).
 
 
 ## 18. PipelineStage and JobState — enums.py and state.py
