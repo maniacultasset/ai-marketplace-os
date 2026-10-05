@@ -87,6 +87,7 @@ asyncio_mode = "auto"
 markers = [
   "tenant_isolation: the tenant-isolation suite; runs in its own job against mos_iso (CANON.md:137)",
   "cloudsql_mimic: 0000 and the password file on a throwaway container as a non-superuser CREATEROLE role (make bootstrap-mimic)",
+  "endpoint(op_id, case, variant=None): one case of an /api/v1 operation's test matrix (S3 AC9; tests/endpoint_cases.py)",
 ]
 
 [tool.coverage.run]
