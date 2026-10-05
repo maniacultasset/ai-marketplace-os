@@ -197,14 +197,15 @@ def test_schema_usage_for_app_roles(superuser_conn: Conn, bootstrap_sql: str) ->
 
 
 def test_bootstrap_leaves_no_relation_in_public(superuser_conn: Conn, bootstrap_sql: str) -> None:
-    """mos_test stays schema-empty, so `alembic check` sees no drift; extension members aside."""
+    """mos_test stays schema-empty, so `alembic check` sees no drift; extension members aside,
+    and Alembic's own `alembic_version`, which `make api-tests` creates there before pytest."""
     superuser_conn.execute(bootstrap_sql)
     superuser_conn.execute(bootstrap_sql)
     relations = superuser_conn.execute(
         "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
         "WHERE n.nspname = 'public' AND c.relkind IN ('r', 'v', 'S', 'm', 'p') "
         "AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_class'::regclass "
-        "AND d.objid = c.oid AND d.deptype = 'e')"
+        "AND d.objid = c.oid AND d.deptype = 'e') AND c.relname <> 'alembic_version'"
     ).fetchall()
     functions = superuser_conn.execute(
         "SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
