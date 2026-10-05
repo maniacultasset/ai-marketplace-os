@@ -207,6 +207,74 @@ def test_background_forgiven_run_cap(run_len: int, expected: bool) -> None:
     assert passes(_png(img)) is expected
 
 
+# 6c. a grey background with rounded or cut white corners: each edge's run continues inward and
+# stays under the run cap, so the cross-edge rule (at most two edges with a forgiven run over
+# WIDE_RUN_PERCENT % of the edge) catches it
+
+
+def _rounded_grey(radius: int) -> Image.Image:
+    img = Image.new("RGB", (1000, 1000), fx.WHITE)
+    ImageDraw.Draw(img).rounded_rectangle((0, 0, 999, 999), radius=radius, fill=GREY)
+    return img
+
+
+@pytest.mark.parametrize("radius", [100, 150, 200, 250])
+def test_rounded_grey_background_fails(radius: int) -> None:
+    assert codes(bg(_png(_rounded_grey(radius)))) == ["BACKGROUND_OFF"]
+
+
+@pytest.mark.parametrize("cut", [80, 150])
+def test_octagon_grey_background_fails(cut: int) -> None:
+    c = cut
+    img = Image.new("RGB", (1000, 1000), fx.WHITE)
+    pts = [
+        (c, 0),
+        (999 - c, 0),
+        (999, c),
+        (999, 999 - c),
+        (999 - c, 999),
+        (c, 999),
+        (0, 999 - c),
+        (0, c),
+    ]
+    ImageDraw.Draw(img).polygon(pts, fill=GREY)
+    assert codes(bg(_png(img))) == ["BACKGROUND_OFF"]
+
+
+def test_background_inscribed_disc_passes() -> None:
+    """A disc touching all four edges covers about 28 % of each edge strip, under the 50 % cut."""
+    img = Image.new("RGB", (1000, 1000), fx.WHITE)
+    ImageDraw.Draw(img).ellipse((0, 0, 999, 999), fill=fx.DARK)
+    assert passes(_png(img)) is True
+
+
+def test_background_full_bleed_three_edges_fails() -> None:
+    """Documented trade-off (D3, T110): a product touching three edges over more than half their
+    length cannot be told from a grey card, so it fails closed."""
+    img = Image.new("RGB", (1000, 1000), fx.WHITE)
+    img.paste(fx.DARK, (200, 200, 800, 1000))
+    img.paste(fx.DARK, (0, 200, 1000, 800))
+    assert codes(bg(_png(img))) == ["BACKGROUND_OFF"]
+
+
+def test_background_two_wide_edges_pass() -> None:
+    """Two edges with a forgiven run over half their length stay within the cross-edge limit."""
+    assert passes(_png(_touching())) is True
+    img = Image.new("RGB", (1000, 1000), fx.WHITE)
+    img.paste(fx.DARK, (0, 200, 1000, 800))
+    assert passes(_png(img)) is True
+
+
+@pytest.mark.parametrize(("arm", "expected"), [(480, True), (481, False)])
+def test_background_wide_run_cut(arm: int, expected: bool) -> None:
+    """A plus touching all four edges; each edge strip has 960 positions, so a run counts as wide
+    only above 50 % (480)."""
+    img = Image.new("RGB", (1000, 1000), fx.WHITE)
+    img.paste(fx.DARK, (260, 0, 260 + arm, 1000))
+    img.paste(fx.DARK, (0, 260, 1000, 260 + arm))
+    assert passes(_png(img)) is expected
+
+
 # 7. only the band is converted
 
 

@@ -54,12 +54,18 @@ ASPECT_TOLERANCE_PERCENT: Final = 1
 # opaque and every channel is within CHANNEL_TOLERANCE of the target, and a region passes at
 # MIN_MATCH % matching. On an edge, one off run is forgiven as the product's contact only where the
 # line just inside the band is off too (the product continues inward) and the run is shorter than
-# MAX_RUN_PERCENT % of the edge. Calibrated on synthetic images; revisited when real images arrive.
+# MAX_RUN_PERCENT % of the edge. At most MAX_WIDE_RUN_EDGES edges may have a forgiven run over
+# WIDE_RUN_PERCENT % of the edge: a grey card with rounded or cut white corners continues inward on
+# every edge, while an inscribed disc covers about 28 % of each. A full-bleed product touching three
+# or four edges over half their length fails closed (vision confirms). Calibrated on synthetic
+# images; revisited when real images arrive.
 BAND_MIN_PX: Final = 2
 BAND_PERCENT: Final = 2
 CHANNEL_TOLERANCE: Final = 5
 MIN_MATCH: Final = 99
 MAX_RUN_PERCENT: Final = 90
+WIDE_RUN_PERCENT: Final = 50
+MAX_WIDE_RUN_EDGES: Final = 2
 
 CHECK_CODES: Final[Mapping[CheckName, ImageIssueCode]] = MappingProxyType(
     {
@@ -420,11 +426,12 @@ def _region_passes(mask: Image.Image) -> bool:
     return _mostly_matching(mask.histogram()[255], mask.width * mask.height)
 
 
-def _edge_passes(mask: Image.Image, edge: _Edge) -> bool:
+def _edge_passes(mask: Image.Image, edge: _Edge) -> tuple[bool, bool]:
     """Split off the inward line, collapse the band strip to a 1 px profile along the edge
     (mismatches per position), forgive the longest run of positions where the inward line is off
     (a product touching that edge and continuing inward) if it is under MAX_RUN_PERCENT % of the
-    edge, and judge the rest of the strip."""
+    edge, and judge the rest of the strip. Returns (passes, forgiven run over WIDE_RUN_PERCENT %).
+    """
     w, h = mask.size
     if edge.horizontal:
         length, depth, size = w, h - 1, (w, 1)
@@ -452,19 +459,26 @@ def _edge_passes(mask: Image.Image, edge: _Edge) -> bool:
             start = None
     if best_len * 100 >= length * MAX_RUN_PERCENT:
         best_len = 0
+    wide = best_len * 100 > length * WIDE_RUN_PERCENT
     total = (length - best_len) * depth
     if total == 0:
-        return True
+        return True, wide
     mismatching = sum(counts) - sum(counts[best_start : best_start + best_len])
-    return _mostly_matching(total - mismatching, total)
+    return _mostly_matching(total - mismatching, total), wide
 
 
 def _background_passes(band: _BandRegions, rgb: tuple[int, int, int]) -> bool:
     if band.whole is not None:
         return _region_passes(_match_mask(band.whole, rgb))
-    return all(_region_passes(_match_mask(c, rgb)) for c in band.corners) and all(
-        _edge_passes(_match_mask(edge.crop, rgb), edge) for edge in band.edges
-    )
+    if not all(_region_passes(_match_mask(c, rgb)) for c in band.corners):
+        return False
+    wide_edges = 0
+    for edge in band.edges:
+        passes, wide = _edge_passes(_match_mask(edge.crop, rgb), edge)
+        if not passes:
+            return False
+        wide_edges += wide
+    return wide_edges <= MAX_WIDE_RUN_EDGES
 
 
 # --- entry point ---
