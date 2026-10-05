@@ -41,3 +41,6 @@ htmlcov/
 .tools/
 *.egg-info/
 mutants/
+
+# The contract types package (S3): installed from its lockfile, never committed
+packages/schemas/ts/node_modules/

@@ -53,6 +53,7 @@ ignore = ["E501"]
 "apps/api/tests/**" = ["S101", "S105", "S106", "S603", "S607"]
 "packages/schemas/tests/**" = ["S101", "S105", "S106", "S603", "S607"]
 "scripts/ci/**" = ["T201", "S603", "S607"]
+"scripts/schemas/**" = ["T201"]
 "apps/api/app/services/embeddings.py" = ["TID251"]
 "apps/api/app/services/vision.py" = ["TID251"]
 

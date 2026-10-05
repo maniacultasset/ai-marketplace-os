@@ -1,0 +1,36 @@
+{
+  "name": "@maniacultasset/schemas",
+  "version": "1.0.0",
+  "description": "AI Marketplace OS contract types: the /api/v1 OpenAPI surface and the shared JSON Schemas. Install as \"@mkos/schemas\": \"npm:@maniacultasset/schemas@<version>\".",
+  "license": "UNLICENSED",
+  "private": false,
+  "type": "module",
+  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts"
+    }
+  },
+  "files": [
+    "src/api.d.ts",
+    "src/contracts.d.ts",
+    "src/index.ts"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/maniacultasset/ai-marketplace-os.git",
+    "directory": "packages/schemas/ts"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@12.5.1",
+  "devDependencies": {
+    "json-schema-to-typescript": "16.0.0",
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3"
+  }
+}

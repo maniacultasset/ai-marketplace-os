@@ -1,0 +1,5 @@
+# pnpm settings for the contract types package (pnpm 12 reads only registry and auth keys from
+# .npmrc). Never run dependency lifecycle scripts; never ask the registry about a newer pnpm.
+ignoreScripts: true
+updateNotifier: false
+savePrefix: ''
