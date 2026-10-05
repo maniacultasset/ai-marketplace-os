@@ -173,7 +173,7 @@
    "id": "R05896",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "CANON-ADDENDUM.md:32; DATABASE.md:1762",
+   "ref": "CANON-ADDENDUM.md:34; DATABASE.md:1762",
    "note": "CREATE EXTENSION vector in raw 0000_bootstrap.sql, not Alembic."
   },
   {
@@ -2161,7 +2161,7 @@
    "id": "R06258",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "DATABASE.md:1369; CANON-ADDENDUM.md:420",
+   "ref": "DATABASE.md:1369; CANON-ADDENDUM.md:446",
    "note": "CATEGORY_NOT_MAPPED in codes.py; import-time lookups use source rules_engine."
   },
   {

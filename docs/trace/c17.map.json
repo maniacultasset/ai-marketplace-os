@@ -1384,7 +1384,7 @@
    "id": "R10649a",
    "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "DATABASE.md:553; CANON-ADDENDUM.md:102",
+   "ref": "DATABASE.md:553; CANON-ADDENDUM.md:128",
    "note": "field is a paths.py path, not main_image."
   },
   {

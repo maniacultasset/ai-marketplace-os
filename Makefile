@@ -80,12 +80,17 @@ lint-imports:
 	echo "tenant_scope_checked grep: OK"
 
 # ---- local database (ADR-0013 §7: psql runs inside the compose container, no host psql) ----
+# The SQL files go on stdin from the repo, never through the initdb bind mount, so an edit that
+# replaces a file's inode never leaves the container on a stale copy.
 PSQL := docker compose exec -T postgres psql -U postgres -v ON_ERROR_STOP=1
-BOOTSTRAP_SQL := /docker-entrypoint-initdb.d/0000_bootstrap.sql
 
+# Role passwords: SCRAM verifiers only (scripts/db/scram_verifier.py), passed by name from the
+# caller's environment; unset or empty skips that role. Never `NAME=value` on this line.
 .PHONY: bootstrap-db
 bootstrap-db:
-	$(PSQL) -d marketplace_os -f $(BOOTSTRAP_SQL)
+	$(PSQL) -d marketplace_os -f - < scripts/db/0000_bootstrap.sql
+	docker compose exec -T -e APP_RW_SCRAM -e APP_RO_SCRAM -e MIGRATOR_SCRAM postgres \
+	  psql -U postgres -v ON_ERROR_STOP=1 -X -q -d marketplace_os -f - < scripts/db/0000_role_passwords.sql
 
 # The test databases: mos_test for api-tests, mos_iso for tenant-isolation (never marketplace_os).
 .PHONY: test-db
@@ -95,7 +100,7 @@ test-db:
 	  if ! $(PSQL) -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '$$db'" | grep -qx 1; then \
 	    docker compose exec -T postgres createdb -U postgres "$$db"; \
 	  fi; \
-	  $(PSQL) -d "$$db" -f $(BOOTSTRAP_SQL); \
+	  $(PSQL) -d "$$db" -f - < scripts/db/0000_bootstrap.sql; \
 	done
 
 # ---- tests (CANON.md:136-137; the CI env block is these three variables, CANON.md:21) ----
@@ -109,7 +114,7 @@ COV_FAIL_UNDER ?= 70
 api-tests:
 	$(PG_PORT_GUARD)
 	APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) \
-	  uv run --frozen pytest -q -m "not tenant_isolation" --cov=app --cov-report=term-missing \
+	  uv run --frozen pytest -q -m "not tenant_isolation and not cloudsql_mimic" --cov=app --cov-report=term-missing \
 	  --cov-fail-under=$(COV_FAIL_UNDER)
 
 .PHONY: tenant-isolation
@@ -117,6 +122,12 @@ tenant-isolation:
 	$(PG_PORT_GUARD)
 	APP_ENV=local DATABASE_URL=$(ISO_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) \
 	  uv run --frozen pytest -q -m tenant_isolation --no-cov
+
+# 0000 (and the password file) as a Cloud SQL-style non-superuser CREATEROLE role, on a throwaway
+# container from the compose postgres image (DATABASE.md:1754). Docker only; no database URL.
+.PHONY: bootstrap-mimic
+bootstrap-mimic:
+	uv run --frozen pytest -q -m cloudsql_mimic --no-cov apps/api/tests/cloudsql_mimic
 
 # ---- local development (CANON-ADDENDUM.md §2 order; Alembic joins in S5) ----
 # uvicorn keeps its 127.0.0.1 default: never pass --host here.

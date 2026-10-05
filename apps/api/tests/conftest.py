@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
-CI_JWT_SECRET = "ci_only_not_a_real_secret_at_least_32_chars"  # A§11:264
+CI_JWT_SECRET = "ci_only_not_a_real_secret_at_least_32_chars"  # A§11:290
 CI_DATABASE_URL = "postgresql+psycopg://postgres:postgres@localhost:5432/mos_test"
 _EXTRA_ENV_NAMES = ("ENV", "REDIS_URL")
 _REGISTER_ROW = re.compile(r"^\| `([A-Z][A-Z0-9_]*)` \|")
@@ -53,7 +53,7 @@ def clean_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]
 
 @pytest.fixture
 def ci_env(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
-    """The three-variable CI env block (CANON.md:21; A§11:264)."""
+    """The three-variable CI env block (CANON.md:21; A§11:290)."""
     env = {"APP_ENV": "local", "DATABASE_URL": CI_DATABASE_URL, "JWT_SECRET": CI_JWT_SECRET}
     for key, value in env.items():
         monkeypatch.setenv(key, value)

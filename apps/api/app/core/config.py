@@ -20,7 +20,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 EMBEDDING_DIMENSIONS: Final[int] = 1536
 
 # Every JWT literal committed to the repo or the Canon: ENV.md's JWT_SECRET row (.env.example),
-# CANON-ADDENDUM.md:264 (the CI env block) and CANON-ADDENDUM.md:293 (the schema export).
+# CANON-ADDENDUM.md:290 (the CI env block) and CANON-ADDENDUM.md:319 (the schema export).
 COMMITTED_JWT_SECRETS: Final[frozenset[str]] = frozenset(
     {
         "dev_only_change_me_at_least_32_characters_long",

@@ -105,6 +105,10 @@ seed_misspelled_bucket() {
   cp .env.example .env
   replace docker-compose.yml 'local/marketplace-csv' 'local/marketplace-csx'
 }
+seed_bootstrap_no_set_role() {
+  cp .env.example .env
+  replace scripts/db/0000_bootstrap.sql $'SET ROLE migrator;\n' ''
+}
 
 # leg <name> <gate> <expected; ;-separated extended regexes> <seed fn> <command...>
 leg() {
@@ -179,6 +183,9 @@ if [ "$with_docker" -eq 1 ]; then
   docker compose -p "prove-gates-bootstrap-${self_project}" down -v >/dev/null 2>&1
   docker image rm -f "mkos-api:ci-prove-gates-bootstrap-${self_project}" >/dev/null 2>&1
   leg bootstrap-misspelled-bucket bootstrap 'bucket marketplace-csv missing' seed_misspelled_bucket COMPOSE_PROJECT_NAME="prove-gates-bootstrap-${self_project}" DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/marketplace_os ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/marketplace_os S3_ENDPOINT_URL=http://localhost:${MINIO_API_HOST_PORT:-9000} PORT=${API_HOST_PORT:-8000} make bootstrap
+  docker compose -p "prove-gates-bootstrap-${self_project}" down -v >/dev/null 2>&1
+  docker image rm -f "mkos-api:ci-prove-gates-bootstrap-${self_project}" >/dev/null 2>&1
+  leg bootstrap-mimic-no-set-role bootstrap 'permission denied to change default privileges' seed_bootstrap_no_set_role COMPOSE_PROJECT_NAME="prove-gates-bootstrap-${self_project}" DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/marketplace_os ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/marketplace_os S3_ENDPOINT_URL=http://localhost:${MINIO_API_HOST_PORT:-9000} PORT=${API_HOST_PORT:-8000} make bootstrap
   docker compose -p "prove-gates-bootstrap-${self_project}" down -v >/dev/null 2>&1
   docker image rm -f "mkos-api:ci-prove-gates-bootstrap-${self_project}" >/dev/null 2>&1
   docker compose start >/dev/null 2>&1

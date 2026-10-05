@@ -15,10 +15,10 @@
     CODEOWNERS enforcement or environments on private repos.
 - Some Addendum rulings can't be met as written in S1:
   - They assume later steps' artifacts: Alembic, the seed and `mkos_pipeline` in the `bootstrap` job
-    (CANON-ADDENDUM.md:175-182).
+    (CANON-ADDENDUM.md:201-208).
   - They require `OPENAI_API_KEY`, `SENTRY_DSN` and `KMS_KEY_URI` before any feature uses them
     (`scaffold/apps/api/app/core/config.py:100-104`; EXECUTION-PLAN.md:60).
-- Some rulings assume a host `psql` that this Mac lacks (CANON-ADDENDUM.md:55-60; STATE.md:268).
+- Some rulings assume a host `psql` that this Mac lacks (CANON-ADDENDUM.md:81-86; STATE.md:268).
 - ruff never enforces the banned-API rule, because `TID` is not selected (KNOWN-ISSUES.md:35).
 
 ## Decision
@@ -32,9 +32,9 @@
    - Every other deployed-only requirement is added by the step whose feature reads it (KMS at S15,
      OpenAI at S16/S18, Sentry at S11, the admin-secret guard at S14).
    - The CI env block stays the three variables of CANON.md:21.
-   - Amends CANON-ADDENDUM.md:196 ("four hard-required") and :221-225 until S14.
+   - Amends CANON-ADDENDUM.md:222 ("four hard-required") and :247-251 until S14.
 2. **No FE-only keys.** `next_public_api_base_url`, `nextauth_url` and `nextauth_secret` leave Settings
-   and `.env.example`. They existed only so a shared root `.env` validated (CANON-ADDENDUM.md:213-220),
+   and `.env.example`. They existed only so a shared root `.env` validated (CANON-ADDENDUM.md:239-246),
    and ADR-0012 removed `apps/web`. Amends A§8 and ENV.md's three FE rows.
 3. **Lint adds `TID` plus two repo checks in `api-lint`:**
    - The banned APIs are `asyncpg`, `redis` and `arq` (ADR-0004); `jose`, `passlib` and `numpy`
@@ -58,7 +58,7 @@
      `mkos_pipeline` until S14.
    - `lint-imports`: contracts only over packages that exist.
    - An empty test selection (pytest exit 5) is always a failure.
-   - Amends CANON.md:136 and CANON-ADDENDUM.md:175-182 and :276 for the interim.
+   - Amends CANON.md:136 and CANON-ADDENDUM.md:201-208 and :302 for the interim.
 5. **Free-plan operating mode** (EXECUTION-PLAN.md §4.3):
    - Checks are advisory. The user merges only when all 10 are green.
    - No GitHub secrets. This does not withdraw ADR-0012:48-49 (CI read access to the AI repository).
@@ -75,8 +75,8 @@
      recorded as the exception in `docs/PROCESS.md` §1.
 7. **Local bootstrap without host psql.** `make bootstrap-db` runs `psql` inside the compose `postgres`
    container, against the file already mounted at `/docker-entrypoint-initdb.d/0000_bootstrap.sql`
-   (CANON-ADDENDUM.md:20). CI keeps the host `psql` step (CANON-ADDENDUM.md:63-70). Amends
-   CANON-ADDENDUM.md:55-60.
+   (CANON-ADDENDUM.md:20). CI keeps the host `psql` step (CANON-ADDENDUM.md:89-96). Amends
+   CANON-ADDENDUM.md:81-86.
 
 ## Consequences
 

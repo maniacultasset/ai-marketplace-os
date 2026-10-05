@@ -586,7 +586,7 @@
    "id": "R08203e",
    "status": "covered",
    "owner": "shared",
-   "ref": "BACKEND-ARCHITECTURE.md:1544; CANON-ADDENDUM.md:382",
+   "ref": "BACKEND-ARCHITECTURE.md:1544; CANON-ADDENDUM.md:408",
    "note": "validate_schema = CanonicalListing.model_validate stage; worker re-validates."
   },
   {
@@ -810,21 +810,21 @@
    "id": "R08258",
    "status": "other-team",
    "owner": "ai-team",
-   "ref": "CANON-ADDENDUM.md:382",
+   "ref": "CANON-ADDENDUM.md:408",
    "note": "content_agent stage name in PipelineStage."
   },
   {
    "id": "R08259",
    "status": "other-team",
    "owner": "ai-team",
-   "ref": "CANON-ADDENDUM.md:382",
+   "ref": "CANON-ADDENDUM.md:408",
    "note": "keyword_agent stage name in PipelineStage."
   },
   {
    "id": "R08260",
    "status": "other-team",
    "owner": "ai-team",
-   "ref": "CANON-ADDENDUM.md:382",
+   "ref": "CANON-ADDENDUM.md:408",
    "note": "attribute_agent stage name in PipelineStage."
   },
   {
@@ -1258,7 +1258,7 @@
    "id": "R08351",
    "status": "covered",
    "owner": "shared",
-   "ref": "BACKEND-ARCHITECTURE.md:1454; CANON-ADDENDUM.md:382",
+   "ref": "BACKEND-ARCHITECTURE.md:1454; CANON-ADDENDUM.md:408",
    "note": "Seam and 12 PipelineStage names are v1."
   },
   {
@@ -2140,7 +2140,7 @@
    "id": "R08548",
    "status": "covered",
    "owner": "shared",
-   "ref": "DATABASE.md:1462; CANON-ADDENDUM.md:382",
+   "ref": "DATABASE.md:1462; CANON-ADDENDUM.md:408",
    "note": "load_context is the first stage."
   },
   {
@@ -2168,21 +2168,21 @@
    "id": "R08553",
    "status": "other-team",
    "owner": "ai-team",
-   "ref": "CANON-ADDENDUM.md:382",
+   "ref": "CANON-ADDENDUM.md:408",
    "note": "content_agent stage."
   },
   {
    "id": "R08554",
    "status": "other-team",
    "owner": "ai-team",
-   "ref": "CANON-ADDENDUM.md:382",
+   "ref": "CANON-ADDENDUM.md:408",
    "note": "keyword_agent stage."
   },
   {
    "id": "R08555",
    "status": "other-team",
    "owner": "ai-team",
-   "ref": "CANON-ADDENDUM.md:382",
+   "ref": "CANON-ADDENDUM.md:408",
    "note": "attribute_agent stage."
   },
   {
@@ -2203,7 +2203,7 @@
    "id": "R08560",
    "status": "covered-changed",
    "owner": "shared",
-   "ref": "DATABASE.md:1462; CANON-ADDENDUM.md:382",
+   "ref": "DATABASE.md:1462; CANON-ADDENDUM.md:408",
    "note": "validate split into validate_schema, validate_rules, validate_vision."
   },
   {
@@ -2315,7 +2315,7 @@
    "id": "R08578",
    "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "DATABASE.md:300; CANON-ADDENDUM.md:382",
+   "ref": "DATABASE.md:300; CANON-ADDENDUM.md:408",
    "note": "Listing status changes audited before/after; stage history not kept (job_runs.node latest)."
   },
   {

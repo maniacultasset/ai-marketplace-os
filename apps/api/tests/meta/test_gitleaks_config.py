@@ -11,8 +11,8 @@ import pytest
 
 DEV_VALUES = {
     "dev_only_change_me_at_least_32_characters_long",  # ENV.md JWT_SECRET row
-    "ci_only_not_a_real_secret_at_least_32_chars",  # CANON-ADDENDUM.md:264
-    "local_only_schema_export_secret_32_chars",  # CANON-ADDENDUM.md:293
+    "ci_only_not_a_real_secret_at_least_32_chars",  # CANON-ADDENDUM.md:290
+    "local_only_schema_export_secret_32_chars",  # CANON-ADDENDUM.md:319
     "dev_only_admin_session_secret_at_least_32_chars",  # ENV.md ADMIN_SESSION_SECRET row
     "bG9jYWxfZGV2X29ubHlfMzJfYnl0ZV9rZXlfMDAwMDA=",  # ENV.md KMS_LOCAL_DEV_KEY row
     "local_only_minio_root_user",  # ENV.md S3_ACCESS_KEY / S3_SECRET_KEY rows
