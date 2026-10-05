@@ -121,3 +121,96 @@ def test_rerun_repairs_partial_state(superuser_conn: Conn, bootstrap_sql: str) -
     superuser_conn.execute("DROP EXTENSION pg_trgm")
     superuser_conn.execute(bootstrap_sql)
     assert _scalar(superuser_conn, "SELECT count(*) FROM pg_extension WHERE extname='pg_trgm'") == 1
+
+
+def test_bootstrap_sql_memberships(superuser_conn: Conn, bootstrap_sql: str) -> None:
+    """DATABASE.md:1739, :1752: app_rw may SET app_platform_ro but never inherits it."""
+    superuser_conn.execute(bootstrap_sql)
+    rows = superuser_conn.execute(
+        "SELECT m.member::regrole::text, m.inherit_option, m.set_option "
+        "FROM pg_auth_members m WHERE m.roleid = 'app_platform_ro'::regrole"
+    ).fetchall()
+    rw = [row[1:] for row in rows if row[0] == "app_rw"]
+    ro = [row[1:] for row in rows if row[0] == "app_ro"]
+    assert rw
+    assert ro
+    assert all(inherit is False and set_ is True for inherit, set_ in rw)
+    assert all(inherit is True for inherit, _ in ro)
+    into_migrator = superuser_conn.execute(
+        "SELECT m.member::regrole::text FROM pg_auth_members m "
+        "WHERE m.roleid = 'migrator'::regrole AND m.member::regrole::text IN ('app_rw', 'app_ro')"
+    ).fetchall()
+    assert into_migrator == []
+
+
+def test_read_only_roles_get_no_default_select(superuser_conn: Conn, bootstrap_sql: str) -> None:
+    """DATABASE.md:1750: only app_rw gets default table and sequence privileges."""
+    superuser_conn.execute(bootstrap_sql)
+    with superuser_conn.transaction(force_rollback=True):
+        superuser_conn.execute("SET LOCAL ROLE migrator")
+        superuser_conn.execute("CREATE TABLE public.s5_probe_table (id int)")
+        superuser_conn.execute("CREATE SEQUENCE public.s5_probe_seq")
+        for privilege in ("SELECT", "INSERT", "UPDATE", "DELETE"):
+            assert _scalar(
+                superuser_conn,
+                f"SELECT has_table_privilege('app_rw', 'public.s5_probe_table', '{privilege}')",
+            ), privilege
+        for role in ("app_ro", "app_platform_ro"):
+            assert not _scalar(
+                superuser_conn,
+                f"SELECT has_table_privilege('{role}', 'public.s5_probe_table', 'SELECT')",
+            ), role
+        assert _scalar(
+            superuser_conn,
+            "SELECT has_sequence_privilege('app_rw', 'public.s5_probe_seq', 'USAGE')",
+        )
+
+
+def test_functions_not_executable_by_public(superuser_conn: Conn, bootstrap_sql: str) -> None:
+    """DATABASE.md:1752: a function migrator creates is not executable by PUBLIC or the app."""
+    superuser_conn.execute(bootstrap_sql)
+    with superuser_conn.transaction(force_rollback=True):
+        superuser_conn.execute("CREATE ROLE s5_public_probe NOLOGIN")
+        superuser_conn.execute("SET LOCAL ROLE migrator")
+        superuser_conn.execute(
+            "CREATE FUNCTION public.s5_probe_fn() RETURNS int LANGUAGE sql AS 'SELECT 1'"
+        )
+        acl = _scalar(
+            superuser_conn,
+            "SELECT proacl::text FROM pg_proc WHERE oid = 'public.s5_probe_fn()'::regprocedure",
+        )
+        assert acl == "{migrator=X/migrator}"
+        for role in ("app_rw", "app_ro", "s5_public_probe"):
+            assert not _scalar(
+                superuser_conn,
+                f"SELECT has_function_privilege('{role}', 'public.s5_probe_fn()', 'EXECUTE')",
+            ), role
+
+
+def test_schema_usage_for_app_roles(superuser_conn: Conn, bootstrap_sql: str) -> None:
+    superuser_conn.execute(bootstrap_sql)
+    for role in ("app_rw", "app_ro", "app_platform_ro"):
+        assert _scalar(superuser_conn, f"SELECT has_schema_privilege('{role}', 'public', 'USAGE')")
+        assert not _scalar(
+            superuser_conn, f"SELECT has_schema_privilege('{role}', 'public', 'CREATE')"
+        ), role
+
+
+def test_bootstrap_leaves_no_relation_in_public(superuser_conn: Conn, bootstrap_sql: str) -> None:
+    """mos_test stays schema-empty, so `alembic check` sees no drift; extension members aside."""
+    superuser_conn.execute(bootstrap_sql)
+    superuser_conn.execute(bootstrap_sql)
+    relations = superuser_conn.execute(
+        "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+        "WHERE n.nspname = 'public' AND c.relkind IN ('r', 'v', 'S', 'm', 'p') "
+        "AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_class'::regclass "
+        "AND d.objid = c.oid AND d.deptype = 'e')"
+    ).fetchall()
+    functions = superuser_conn.execute(
+        "SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
+        "WHERE n.nspname = 'public' "
+        "AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_proc'::regclass "
+        "AND d.objid = p.oid AND d.deptype = 'e')"
+    ).fetchall()
+    assert relations == []
+    assert functions == []
