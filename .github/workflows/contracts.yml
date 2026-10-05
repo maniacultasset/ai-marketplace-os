@@ -1,4 +1,4 @@
-# Required checks: contracts, schemas-drift (reduced forms until S2/S3, ADR-0013 §4).
+# Required checks: contracts, schemas-drift (full strength since S3; ADR-0013 §4 reductions end).
 name: contracts
 on:
   pull_request:
@@ -37,4 +37,10 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/py-setup
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      # pnpm at the integrity-pinned version from packages/schemas/ts/package.json `packageManager`.
+      - run: corepack enable pnpm
       - run: make schemas-drift

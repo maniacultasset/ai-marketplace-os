@@ -3,6 +3,7 @@ CANON.md:21, :77; CANON-ADDENDUM.md §11; ADR-0013 §5)."""
 
 from __future__ import annotations
 
+import json
 import re
 import tomllib
 from collections.abc import Callable, Iterator
@@ -258,3 +259,21 @@ def test_main_scan_uses_push_range(workflows: dict[str, dict[str, Any]]) -> None
         "BASE_SHA": "${{ github.event.before }}",
         "HEAD_SHA": "${{ github.event.after }}",
     }
+
+
+def test_schemas_drift_sets_up_node_pinned(
+    workflows: dict[str, dict[str, Any]], repo_root: Path
+) -> None:
+    # S3 T18: the drift job builds the TS types, so it needs Node 24 and the pinned pnpm.
+    steps = workflows["contracts.yml"]["jobs"]["schemas-drift"]["steps"]
+    node = [s for s in steps if "actions/setup-node@" in s.get("uses", "")]
+    assert len(node) == 1
+    assert SHA_PINNED.fullmatch(node[0]["uses"])
+    assert node[0]["with"] == {"node-version": "24", "package-manager-cache": False}
+    runs = [s.get("run") for s in steps]
+    assert runs.index("corepack enable pnpm") < runs.index("make schemas-drift")
+    assert steps.index(node[0]) < runs.index("corepack enable pnpm")
+    package = json.loads((repo_root / "packages/schemas/ts/package.json").read_text("utf-8"))
+    assert re.fullmatch(r"pnpm@\d+\.\d+\.\d+\+sha512\.[0-9a-f]{128}", package["packageManager"])
+    contracts_steps = workflows["contracts.yml"]["jobs"]["contracts"]["steps"]
+    assert not [s for s in contracts_steps if "setup-node" in s.get("uses", "")]

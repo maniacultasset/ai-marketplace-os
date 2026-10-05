@@ -151,3 +151,15 @@ def test_pack_checker(script: Callable[[str], ModuleType], monkeypatch: pytest.M
     bad = {"files": [*good["files"], {"path": "src/secret.ts"}]}
     monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(bad)))
     assert check.main() == 1
+
+
+def test_ts_consumer_check_in_schemas_drift(repo_root: Path) -> None:
+    makefile = (repo_root / "Makefile").read_text("utf-8")
+    recipe = makefile.split("\nschemas-drift:\n", 1)[1].split("\n\n", 1)[0]
+    lines = [line.strip() for line in recipe.splitlines()]
+    assert lines[0] == "$(MAKE) -C packages/schemas all"
+    assert "$(MAKE) -C packages/schemas ts-pack-check" in lines
+    assert "$(MAKE) -C packages/schemas ts-consumer-check" in lines
+    assert lines.index("$(MAKE) -C packages/schemas ts-consumer-check") > lines.index(
+        "git diff --exit-code -- packages/schemas/jsonschema packages/schemas/ts"
+    )

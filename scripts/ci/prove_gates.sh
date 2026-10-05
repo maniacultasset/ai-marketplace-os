@@ -214,6 +214,20 @@ seed_drift_hand_edit() {
   git -c core.hooksPath=/dev/null -c user.name=prove-gates -c user.email=prove-gates@example.invalid \
     commit -q -m "test: seeded schema edit"
 }
+seed_commit() {  # seed_commit <path>: commit one seeded edit to a generated file
+  git add -- "$1"
+  git -c core.hooksPath=/dev/null -c user.name=prove-gates -c user.email=prove-gates@example.invalid \
+    commit -q -m "test: seeded generated-file edit"
+}
+# S3: a committed hand edit to the generated TS types or to openapi.json.
+seed_drift_api_dts() {
+  printf '\nexport type Seeded = 1;\n' >>packages/schemas/ts/src/api.d.ts
+  seed_commit packages/schemas/ts/src/api.d.ts
+}
+seed_drift_openapi() {
+  replace packages/schemas/jsonschema/openapi.json '"title": "AI Marketplace OS API"' '"title": "Seeded API"'
+  seed_commit packages/schemas/jsonschema/openapi.json
+}
 seed_drift_model_change() { replace packages/schemas/src/mkos_schemas/listing.py 'max_length=500' 'max_length=501'; }
 seed_schemas_sqlalchemy() { append packages/schemas/src/mkos_schemas/__init__.py 'import sqlalchemy'; }
 seed_schemas_type_error() { append packages/schemas/src/mkos_schemas/enums.py $'\n\ndef _seeded() -> int:\n    return "x"'; }
@@ -226,6 +240,8 @@ leg contracts-missing-fixture contracts 'missing golden fixture: ImportReport' s
 leg contracts-no-fixtures contracts 'no golden fixtures' seed_no_fixtures make contracts
 leg schemas-drift-hand-edit schemas-drift 'diff --git' seed_drift_hand_edit make schemas-drift
 leg schemas-drift-model-change schemas-drift 'diff --git' seed_drift_model_change make schemas-drift
+leg schemas-drift-api-dts schemas-drift 'diff --git a/packages/schemas/ts/src/api.d.ts' seed_drift_api_dts make schemas-drift
+leg schemas-drift-openapi schemas-drift 'diff --git a/packages/schemas/jsonschema/openapi.json' seed_drift_openapi make schemas-drift
 leg lint-imports-schemas-sqla lint-imports 'mkos_schemas imports no app, web or DB framework BROKEN' \
   seed_schemas_sqlalchemy make lint-imports
 leg api-typecheck-schemas api-typecheck 'Incompatible return value' seed_schemas_type_error make api-typecheck

@@ -180,11 +180,15 @@ api-typecheck:
 contracts:
 	scripts/ci/contracts.sh
 
-# The generators land in S2/S3; the drift check also fails on untracked generated files.
+# Full strength since S3 (CANON.md:139): regenerate the JSON Schemas, openapi.json and the TS types,
+# fail on any diff or untracked generated file, then prove the package packs only its generated
+# files and type-checks for an FE consumer importing `@mkos/schemas`.
 .PHONY: schemas-drift
 schemas-drift:
 	$(MAKE) -C packages/schemas all
 	git diff --exit-code -- packages/schemas/jsonschema packages/schemas/ts
 	@untracked="$$(git ls-files --others --exclude-standard -- packages/schemas/jsonschema packages/schemas/ts)"; \
-	if [ -n "$$untracked" ]; then echo "schemas-drift: untracked generated files:"; echo "$$untracked"; exit 1; fi; \
-	echo "schemas-drift: OK"
+	if [ -n "$$untracked" ]; then echo "schemas-drift: untracked generated files:"; echo "$$untracked"; exit 1; fi
+	$(MAKE) -C packages/schemas ts-pack-check
+	$(MAKE) -C packages/schemas ts-consumer-check
+	@echo "schemas-drift: OK"
