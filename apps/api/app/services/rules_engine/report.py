@@ -30,7 +30,7 @@ from typing import Final
 from uuid import UUID
 
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
-from mkos_schemas.enums import ErrorSource, Marketplace, RetryClass, Severity
+from mkos_schemas.enums import ErrorClass, ErrorSource, Marketplace, RetryClass, Severity
 from mkos_schemas.errors import MAX_ERROR_ITEMS, ErrorItem, ErrorReport
 from mkos_schemas.rules import PLACEHOLDERS, Rule
 
@@ -96,38 +96,58 @@ def submitted_text(value: object) -> str | None:
     return str(value)
 
 
-def make_item(draft: Draft, *, marketplace: Marketplace) -> ErrorItem:
+@dataclass(frozen=True)
+class _Rendered:
+    message: str
+    suggestion: str | None
+    error_class: ErrorClass | None
+    retry_class: RetryClass
+
+    @property
+    def retryable(self) -> bool:
+        return self.retry_class in _RETRYABLE
+
+
+def _render(draft: Draft) -> _Rendered:
     rule = draft.rule
     meta = ERROR_CODE_META[draft.code]
     if rule is None:
         message = render_text(TEMPLATE_MESSAGES[draft.code], draft.placeholders)
-        suggestion: str | None = None
-        error_class = meta.error_class
-        retry_class = meta.retry_class
-    else:
-        rule_def = rule.rule_def
-        message = render_text(rule_def.message, draft.placeholders)
-        suggestion = (
-            None
-            if rule_def.suggestion is None
-            else render_text(rule_def.suggestion, draft.placeholders)
-        )
-        error_class = rule_def.error_class or meta.error_class
-        retry_class = rule_def.retry_class or meta.retry_class
+        return _Rendered(message, None, meta.error_class, meta.retry_class)
+    rule_def = rule.rule_def
+    message = render_text(rule_def.message, draft.placeholders)
+    suggestion = (
+        None
+        if rule_def.suggestion is None
+        else render_text(rule_def.suggestion, draft.placeholders)
+    )
+    return _Rendered(
+        message,
+        suggestion,
+        rule_def.error_class or meta.error_class,
+        rule_def.retry_class or meta.retry_class,
+    )
+
+
+def _item(draft: Draft, rendered: _Rendered, marketplace: Marketplace) -> ErrorItem:
     return ErrorItem(
         field=draft.field,
         error_code=draft.code,
         severity=draft.severity,
-        message=message,
+        message=rendered.message,
         value_submitted=submitted_text(draft.value),  # ErrorItem redacts secrets and caps it
-        suggestion=suggestion,
+        suggestion=rendered.suggestion,
         source=ErrorSource.RULES_ENGINE,
-        retryable=retry_class in _RETRYABLE,
+        retryable=rendered.retryable,
         marketplace=marketplace,
-        rule_id=None if rule is None else rule.id,
-        error_class=error_class,
-        retry_class=retry_class,
+        rule_id=None if draft.rule is None else draft.rule.id,
+        error_class=rendered.error_class,
+        retry_class=rendered.retry_class,
     )
+
+
+def make_item(draft: Draft, *, marketplace: Marketplace) -> ErrorItem:
+    return _item(draft, _render(draft), marketplace)
 
 
 _FAMILIES: Final = (
@@ -167,17 +187,17 @@ def _is_platform(draft: Draft) -> bool:
     return draft.rule is None or draft.rule.tenant_id is None
 
 
-def _sort_key(pair: tuple[Draft, ErrorItem]) -> tuple[object, ...]:
-    draft, item = pair
-    rule_id: UUID | None = item.rule_id
+def _sort_key(pair: tuple[Draft, _Rendered]) -> tuple[object, ...]:
+    draft, rendered = pair
+    rule_id = None if draft.rule is None else draft.rule.id
     return (
-        item.severity is not Severity.ERROR,
+        draft.severity is not Severity.ERROR,
         not _is_platform(draft),
-        path_rank(item.field),
-        item.error_code.value,
+        path_rank(draft.field),
+        draft.code.value,
         rule_id is None,
         "" if rule_id is None else str(rule_id),
-        item.message,
+        rendered.message,
     )
 
 
@@ -201,14 +221,15 @@ def build_report(
     drafts: Iterable[Draft], *, listing_id: UUID | None, marketplace: Marketplace
 ) -> ErrorReport:
     """Dedupe, derive the status from the full set, sort (D13) and cap at 500."""
-    pairs = [(d, make_item(d, marketplace=marketplace)) for d in _dedupe(drafts)]
-    blocking = [item for _, item in pairs if item.severity is Severity.ERROR]
+    # Items are validated only for the first 500; status and retryable use the full set.
+    pairs = [(d, _render(d)) for d in _dedupe(drafts)]
+    blocking = [r for d, r in pairs if d.severity is Severity.ERROR]
     failed = bool(blocking)
     pairs.sort(key=_sort_key)
     return ErrorReport(
         status="failed" if failed else "passed",
         error_code=ErrorCode.VALIDATION_FAILED if failed else None,
-        retryable=failed and all(item.retryable for item in blocking),
-        errors=[item for _, item in pairs[:MAX_ERROR_ITEMS]],
+        retryable=failed and all(r.retryable for r in blocking),
+        errors=[_item(d, r, marketplace) for d, r in pairs[:MAX_ERROR_ITEMS]],
         listing_id=listing_id,
     )

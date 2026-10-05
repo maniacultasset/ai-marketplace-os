@@ -54,17 +54,7 @@ def normalise(text: str, *, case_sensitive: bool) -> str:
     folded = unicodedata.normalize("NFKC", text)
     if not case_sensitive:
         folded = folded.casefold()
-    out: list[str] = []
-    in_space = False
-    for ch in folded:
-        if ch.isspace():
-            in_space = True
-            continue
-        if in_space and out:
-            out.append(" ")
-        in_space = False
-        out.append(ch)
-    return "".join(out)
+    return " ".join(folded.split())  # split() breaks on str.isspace runs and drops the ends
 
 
 def _joined(value: SlotValue) -> str:
