@@ -56,6 +56,14 @@ class MarketplaceAccount(Base):
             unique=True,
             postgresql_where=text("status <> 'revoked'"),
         ),
+        # T31: one seller account, one tenant (global by design)
+        Index(
+            conv("uq_marketplace_accounts_marketplace_seller_id"),
+            "marketplace",
+            "seller_id",
+            unique=True,
+            postgresql_where=text("status <> 'revoked'"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = id_column()

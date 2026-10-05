@@ -187,6 +187,13 @@ ACCOUNTS_UP: Final[tuple[str, ...]] = (
     CREATE UNIQUE INDEX uq_marketplace_accounts_tenant_id_marketplace
       ON public.marketplace_accounts (tenant_id, marketplace) WHERE status <> 'revoked'
     """,
+    # T31 default: a v1 seller account connects to exactly one tenant (DATABASE.md §5.5 Index
+    # note). Global by design, like uq_invitations_token_hash: seller_id comes from the OAuth
+    # callback, never from the brand, so it is no tenant-chosen probe.
+    """
+    CREATE UNIQUE INDEX uq_marketplace_accounts_marketplace_seller_id
+      ON public.marketplace_accounts (marketplace, seller_id) WHERE status <> 'revoked'
+    """,
     _updated_at_trigger("marketplace_accounts"),
 )
 ACCOUNTS_DOWN: Final[tuple[str, ...]] = ("DROP TABLE public.marketplace_accounts",)

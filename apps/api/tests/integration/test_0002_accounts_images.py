@@ -1,6 +1,7 @@
 """`marketplace_accounts`, `images` and `batches` (DATABASE.md §5.5 marketplace_accounts, §5.2
-images, §5.3 batches): one live account per brand and marketplace, the crypto-shred CHECK, image
-slots, one main image per colourway, object keys, batch sizes and the cross-tenant FKs."""
+images, §5.3 batches): one live account per brand and marketplace, one tenant per live seller
+account (T31), the crypto-shred CHECK, image slots, one main image per colourway, object keys,
+batch sizes and the cross-tenant FKs."""
 
 from __future__ import annotations
 
@@ -42,6 +43,34 @@ def test_one_live_account_per_marketplace(db: Conn) -> None:
     )
     f.marketplace_account(db, tenant_id)  # a reconnect after the revoke
     f.marketplace_account(db, f.tenant(db))  # another brand
+
+
+def test_one_live_tenant_per_seller_account(db: Conn) -> None:
+    """T31 default (DATABASE.md §5.5 Index note): a v1 seller account connects to exactly one
+    tenant, so two brands never hold live tokens for one (marketplace, seller_id)."""
+    first_tenant, second_tenant = f.tenant(db), f.tenant(db)
+    first = f.marketplace_account(db, first_tenant, seller_id="A1SELLER")
+    for status in ("active", "needs_reconnect"):
+        f.expect_violation(
+            db,
+            "23505",
+            "uq_marketplace_accounts_marketplace_seller_id",
+            lambda status=status: f.marketplace_account(
+                db,
+                second_tenant,
+                seller_id="A1SELLER",
+                status=status,
+                needs_reconnect_since="2026-10-05" if status == "needs_reconnect" else None,
+            ),
+        )
+    # the same id on another marketplace is another seller account
+    f.marketplace_account(db, second_tenant, marketplace="flipkart", seller_id="A1SELLER")
+    db.execute(
+        "UPDATE marketplace_accounts SET status = 'revoked', token_enc = NULL, "
+        "kms_key_version = NULL, revoked_at = now() WHERE id = %s",
+        (first,),
+    )
+    f.marketplace_account(db, second_tenant, seller_id="A1SELLER")  # after the first brand revoked
 
 
 MA_REJECTS: dict[str, tuple[dict[str, Any], str]] = {

@@ -368,6 +368,9 @@ def test_0001_unique_keys_on_tenant_tables_include_tenant_id(db: Conn) -> None:
           AND i.relname <> 'uq_product_colourways_id_style_product_id'
           -- global by design (pre-login accept lookup); the value is a sha256 of 32 random bytes
           AND i.relname <> 'uq_invitations_token_hash'
+          -- global by design (T31: one seller account, one tenant); seller_id comes from the
+          -- marketplace OAuth callback, not from the brand
+          AND i.relname <> 'uq_marketplace_accounts_marketplace_seller_id'
           -- led by a uuid row id (0002: (product_id, marketplace), (listing_id, version), …):
           -- probing it needs another tenant's random id, so it is no wider than the PK oracle
           AND (SELECT a.atttypid FROM pg_attribute a WHERE a.attrelid = c.oid
