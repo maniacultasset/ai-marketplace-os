@@ -247,3 +247,39 @@ def test_no_network_flag(repo_root: Path) -> None:
 def test_contracts_sh_runs_oasdiff_against_base(repo_root: Path) -> None:
     text = (repo_root / "scripts/ci/contracts.sh").read_text("utf-8")
     assert 'scripts/ci/oasdiff_check.sh "${CONTRACTS_BASE_REF:-origin/main}"' in text
+
+
+# ---- S3 fix round 1 (R1-1): INFO-rated response removals must red the gate ----
+_LEVELS = Path("scripts/ci/oasdiff-levels.txt")
+_RAISED_RULES = (
+    "response-optional-property-removed",
+    "response-non-success-status-removed",
+    "optional-response-header-removed",
+)
+
+
+def test_oasdiff_levels_file_raises_response_removals(repo_root: Path) -> None:
+    lines = [
+        line.split()
+        for line in (repo_root / _LEVELS).read_text("utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+    levels = {parts[0]: parts[1] for parts in lines if len(parts) == 2}
+    assert all(len(parts) == 2 for parts in lines), lines
+    for rule in _RAISED_RULES:
+        assert levels.get(rule) in {"warn", "error"}, rule
+
+
+def test_oasdiff_runs_with_the_levels_file(repo_root: Path) -> None:
+    text = (repo_root / _OASDIFF).read_text("utf-8")
+    assert f'cp {_LEVELS} "$work/levels.txt"' in text
+    runs = [line for line in text.splitlines() if line.strip().startswith("docker run")]
+    command = text[text.index(runs[0]) :].split("\necho", 1)[0]
+    assert "--severity-levels /specs/levels.txt" in command
+    assert "--fail-on WARN" in command
+
+
+def test_prove_gates_seeds_an_optional_field_and_status_removal(repo_root: Path) -> None:
+    text = (repo_root / "scripts/ci/prove_gates.sh").read_text("utf-8")
+    for rule in _RAISED_RULES[:2]:
+        assert f"leg contracts-{rule} contracts '{rule}'" in text, rule

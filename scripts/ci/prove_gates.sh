@@ -234,6 +234,16 @@ seed_drift_openapi() {
 seed_response_field_removed() {
   replace apps/api/app/api/v1/schemas/products.py $'class ProductOut(WireModel):\n    id: UUID\n    sku: Sku\n' $'class ProductOut(WireModel):\n    id: UUID\n'
 }
+# S3 fix round 1 (R1-1): oasdiff rates these INFO; scripts/ci/oasdiff-levels.txt makes them red.
+seed_optional_field_removed() {
+  replace apps/api/app/api/pagination.py \
+    $'    next_cursor: Annotated[str | None, Field(max_length=MAX_CURSOR_LENGTH)] = None\n' ''
+}
+seed_error_status_removed() {
+  replace apps/api/app/api/v1/surface.py \
+    $'    for status, codes in op.error_codes.items():\n        out[status] = {' \
+    $'    for status, codes in op.error_codes.items():\n        if status == 404:\n            continue\n        out[status] = {'
+}
 seed_drift_model_change() { replace packages/schemas/src/mkos_schemas/listing.py 'max_length=500' 'max_length=501'; }
 seed_schemas_sqlalchemy() { append packages/schemas/src/mkos_schemas/__init__.py 'import sqlalchemy'; }
 seed_schemas_type_error() { append packages/schemas/src/mkos_schemas/enums.py $'\n\ndef _seeded() -> int:\n    return "x"'; }
@@ -286,6 +296,8 @@ if [ "$with_docker" -eq 1 ]; then
   leg api-tests-case-matrix api-tests 'auth_me: missing endpoint cases' seed_case_matrix COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-presence-only-auth api-tests 'auth_me: presence-only bearer_required' seed_presence_only_auth COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg contracts-response-field-removed contracts 'response-required-property-removed' seed_response_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
+  leg contracts-response-optional-property-removed contracts 'response-optional-property-removed' seed_optional_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
+  leg contracts-response-non-success-status-removed contracts 'response-non-success-status-removed' seed_error_status_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
   # A throwaway database with 0000, so the seeded revision legs never stamp mos_test. The broken
   # downgrade leaves its revision stamped there, so that leg runs last.
   docker compose exec -T postgres dropdb -U postgres --if-exists --force mos_prove
