@@ -201,9 +201,11 @@ def test_updated_at_triggers_catalog(db: Conn) -> None:
 
 
 def test_no_enum_types(db: Conn) -> None:
+    """Vocabularies are TEXT + CHECK (DATABASE.md §1). The only enums are procrastinate's own
+    (vendored by 0003b, not ours to change)."""
     rows = db.execute(
         "SELECT typname FROM pg_type WHERE typnamespace = 'public'::regnamespace "
-        "AND typtype = 'e'"
+        "AND typtype = 'e' AND typname NOT LIKE 'procrastinate\\_%'"
     ).fetchall()
     assert rows == []
 
