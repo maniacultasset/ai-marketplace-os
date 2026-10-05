@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from importlib import metadata
 
 from fastapi import FastAPI
 
@@ -29,7 +30,8 @@ def create_app() -> FastAPI:
     serve_docs = settings.app_env != "production"
     app = FastAPI(
         title="AI Marketplace OS API",
-        version="0.0.0",
+        # The contract version: openapi.json and @mkos/schemas share mkos-schemas' version.
+        version=metadata.version("mkos-schemas"),
         docs_url="/docs" if serve_docs else None,
         openapi_url="/openapi.json" if serve_docs else None,
         redoc_url=None,
@@ -37,6 +39,8 @@ def create_app() -> FastAPI:
         # Behind Cloud Run a slash redirect would point at http://; a mismatch is a plain 404.
         redirect_slashes=False,
         lifespan=lifespan,
+        # One component per model (no `-Input`/`-Output` pairs), so FE type names stay plain.
+        separate_input_output_schemas=False,
     )
     app.state.readiness = ReadinessCheck()
     install_error_handlers(app)

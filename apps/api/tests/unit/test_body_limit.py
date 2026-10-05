@@ -163,6 +163,18 @@ def test_body_cap_bulk_unauthenticated(make_app: Callable[[], FastAPI]) -> None:
     _assert_envelope(response, 413, ErrorCode.PAYLOAD_TOO_LARGE)
 
 
+def test_body_cap_bulk_unauthenticated_streamed(make_app: Callable[[], FastAPI]) -> None:
+    client = TestClient(make_app(), raise_server_exceptions=False)
+    headers = {"content-type": "multipart/form-data; boundary=b"}
+    body = (b'--b\r\nContent-Disposition: form-data; name="file"; filename="a.csv"\r\n\r\n',)
+    response = client.post(
+        "/api/v1/products/bulk",
+        content=iter([*body, *_chunks(ELEVEN_MIB, 1024 * 1024)]),
+        headers=headers,
+    )
+    _assert_envelope(response, 413, ErrorCode.PAYLOAD_TOO_LARGE)
+
+
 def test_body_cap_reads_setting(
     make_app: Callable[[], FastAPI], monkeypatch: pytest.MonkeyPatch
 ) -> None:
