@@ -685,6 +685,119 @@ CATALOG_UP: Final[tuple[str, ...]] = (
 )
 CATALOG_DOWN: Final[tuple[str, ...]] = ("DROP TABLE public.products",)
 
+
+# ---- VARIANTS: product_colourways, variant_matrix_cells (DATABASE.md §5.2) ----
+# DATABASE.md writes the style and variant references as "→ products"; they are built `→ t`
+# (DATABASE.md §1), because before 0005 the composite FKs are the only database-level
+# isolation. The cell's colourway is pinned by the same-style key: its style is the cell's
+# style, which the composite style FK keeps in the cell's tenant. The variant key is
+# `UNIQUE (tenant_id, variant_product_id)`: a cell in tenant A naming B's variant then fails
+# at the FK (23503), never at the key (23505), which would reveal that B's row exists.
+VARIANTS_UP: Final[tuple[str, ...]] = (
+    r"""
+    CREATE TABLE public.product_colourways (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      style_product_id uuid NOT NULL,
+      attributes jsonb NOT NULL,
+      colour_key text NOT NULL
+        GENERATED ALWAYS AS (lower(btrim(attributes -> 'color' ->> 'value'))) STORED,
+      colour_sku text,
+      position smallint NOT NULL,
+      deleted_at timestamptz,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_product_colourways PRIMARY KEY (id),
+      CONSTRAINT uq_product_colourways_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT uq_product_colourways_id_style_product_id UNIQUE (id, style_product_id),
+      CONSTRAINT fk_product_colourways_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_product_colourways_style_product_id FOREIGN KEY (tenant_id, style_product_id)
+        REFERENCES public.products (tenant_id, id) ON DELETE RESTRICT,
+      CONSTRAINT ck_product_colourways_attributes CHECK (
+        public.fact_map_valid(attributes, true)
+        AND attributes ? 'color'
+        AND coalesce(jsonb_typeof(attributes -> 'color' -> 'value') = 'string', false)
+      ),
+      CONSTRAINT ck_product_colourways_colour_key
+        CHECK (char_length(colour_key) BETWEEN 1 AND 64),
+      CONSTRAINT ck_product_colourways_colour_sku CHECK (colour_sku ~ '^[^]\s]{1,64}$')
+    )
+    """,
+    """
+    CREATE UNIQUE INDEX uq_product_colourways_style_product_id_colour_key
+      ON public.product_colourways (style_product_id, colour_key) WHERE deleted_at IS NULL
+    """,
+    """
+    CREATE UNIQUE INDEX uq_product_colourways_tenant_id_colour_sku
+      ON public.product_colourways (tenant_id, colour_sku)
+      WHERE colour_sku IS NOT NULL AND deleted_at IS NULL
+    """,
+    """
+    CREATE INDEX ix_product_colourways_tenant_id_style_product_id
+      ON public.product_colourways (tenant_id, style_product_id)
+    """,
+    _updated_at_trigger("product_colourways"),
+    """
+    CREATE TABLE public.variant_matrix_cells (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      style_product_id uuid NOT NULL,
+      colourway_id uuid,
+      size_key text,
+      availability text NOT NULL,
+      variant_product_id uuid,
+      unavailable_reason text,
+      source text NOT NULL,
+      evidence_ref text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_variant_matrix_cells PRIMARY KEY (id),
+      CONSTRAINT uq_variant_matrix_cells_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT vmc_cell_uq UNIQUE NULLS NOT DISTINCT (style_product_id, colourway_id, size_key),
+      CONSTRAINT uq_variant_matrix_cells_tenant_id_variant_product_id
+        UNIQUE (tenant_id, variant_product_id),
+      CONSTRAINT fk_variant_matrix_cells_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_variant_matrix_cells_style_product_id
+        FOREIGN KEY (tenant_id, style_product_id)
+        REFERENCES public.products (tenant_id, id) ON DELETE RESTRICT,
+      CONSTRAINT fk_variant_matrix_cells_variant_product_id
+        FOREIGN KEY (tenant_id, variant_product_id)
+        REFERENCES public.products (tenant_id, id) ON DELETE RESTRICT,
+      CONSTRAINT fk_variant_matrix_cells_colourway_id_style_product_id
+        FOREIGN KEY (colourway_id, style_product_id)
+        REFERENCES public.product_colourways (id, style_product_id) ON DELETE RESTRICT,
+      CONSTRAINT ck_variant_matrix_cells_one_axis
+        CHECK (colourway_id IS NOT NULL OR size_key IS NOT NULL),
+      CONSTRAINT ck_variant_matrix_cells_size_key
+        CHECK (size_key ~ '^[a-z0-9][a-z0-9 ./+-]{0,31}$'),
+      CONSTRAINT ck_variant_matrix_cells_availability
+        CHECK (availability IN ('available', 'unavailable')),
+      CONSTRAINT ck_variant_matrix_cells_available_variant
+        CHECK ((availability = 'available') = (variant_product_id IS NOT NULL)),
+      CONSTRAINT ck_variant_matrix_cells_unavailable_reason CHECK (
+        (availability = 'unavailable') = (unavailable_reason IS NOT NULL)
+        AND (unavailable_reason IS NULL
+             OR unavailable_reason IN ('not_produced', 'discontinued', 'not_provided'))
+      ),
+      CONSTRAINT ck_variant_matrix_cells_source
+        CHECK (source IN ('seller', 'pim', 'marketplace', 'derived')),
+      CONSTRAINT ck_variant_matrix_cells_derived_not_provided
+        CHECK (source <> 'derived' OR unavailable_reason IS NOT DISTINCT FROM 'not_provided')
+    )
+    """,
+    """
+    CREATE INDEX ix_variant_matrix_cells_tenant_id_style_product_id
+      ON public.variant_matrix_cells (tenant_id, style_product_id)
+    """,
+    _updated_at_trigger("variant_matrix_cells"),
+)
+VARIANTS_DOWN: Final[tuple[str, ...]] = (
+    "DROP TABLE public.variant_matrix_cells",
+    "DROP TABLE public.product_colourways",
+)
+
 SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (FUNCTIONS_UP, FUNCTIONS_DOWN),
     (FACT_MAP_UP, FACT_MAP_DOWN),
@@ -692,6 +805,7 @@ SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (IDENTITY_B_UP, IDENTITY_B_DOWN),
     (FACT_OWNERS_UP, FACT_OWNERS_DOWN),
     (CATALOG_UP, CATALOG_DOWN),
+    (VARIANTS_UP, VARIANTS_DOWN),
 )
 
 

@@ -11,12 +11,14 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
+    Computed,
     DateTime,
     ForeignKeyConstraint,
     Index,
     Integer,
     Numeric,
     PrimaryKeyConstraint,
+    SmallInteger,
     Text,
     UniqueConstraint,
     Uuid,
@@ -141,5 +143,100 @@ class Product(Base):
     provenance: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=EMPTY_OBJECT)
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created_at_column()
+    updated_at: Mapped[datetime] = updated_at_column()
+
+
+# Written as PostgreSQL deparses the revision's expression, so `alembic check` sees no change.
+COLOUR_KEY_SQL = "lower(btrim(((attributes -> 'color'::text) ->> 'value'::text)))"
+
+
+class ProductColourway(Base):
+    __tablename__ = "product_colourways"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_product_colourways")),
+        anchor("product_colourways"),
+        # the target of the same-style composite FKs (cells now, images in 0002)
+        UniqueConstraint(
+            "id", "style_product_id", name=conv("uq_product_colourways_id_style_product_id")
+        ),
+        tenant_fk("product_colourways"),
+        to_product("product_colourways", "style_product_id"),
+        Index(
+            conv("uq_product_colourways_style_product_id_colour_key"),
+            "style_product_id",
+            "colour_key",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        Index(
+            conv("uq_product_colourways_tenant_id_colour_sku"),
+            "tenant_id",
+            "colour_sku",
+            unique=True,
+            postgresql_where=text("colour_sku IS NOT NULL AND deleted_at IS NULL"),
+        ),
+        Index(
+            conv("ix_product_colourways_tenant_id_style_product_id"),
+            "tenant_id",
+            "style_product_id",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    style_product_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    attributes: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    colour_key: Mapped[str] = mapped_column(Text, Computed(COLOUR_KEY_SQL, persisted=True))
+    colour_sku: Mapped[str | None] = mapped_column(Text)
+    position: Mapped[int] = mapped_column(SmallInteger)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created_at_column()
+    updated_at: Mapped[datetime] = updated_at_column()
+
+
+class VariantMatrixCell(Base):
+    __tablename__ = "variant_matrix_cells"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_variant_matrix_cells")),
+        anchor("variant_matrix_cells"),
+        UniqueConstraint(
+            "style_product_id",
+            "colourway_id",
+            "size_key",
+            name=conv("vmc_cell_uq"),
+            postgresql_nulls_not_distinct=True,
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "variant_product_id",
+            name=conv("uq_variant_matrix_cells_tenant_id_variant_product_id"),
+        ),
+        tenant_fk("variant_matrix_cells"),
+        to_product("variant_matrix_cells", "style_product_id"),
+        to_product("variant_matrix_cells", "variant_product_id"),
+        ForeignKeyConstraint(
+            ["colourway_id", "style_product_id"],
+            ["product_colourways.id", "product_colourways.style_product_id"],
+            ondelete="RESTRICT",
+            name=conv("fk_variant_matrix_cells_colourway_id_style_product_id"),
+        ),
+        Index(
+            conv("ix_variant_matrix_cells_tenant_id_style_product_id"),
+            "tenant_id",
+            "style_product_id",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    style_product_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    colourway_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    size_key: Mapped[str | None] = mapped_column(Text)
+    availability: Mapped[str] = mapped_column(Text)
+    variant_product_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    unavailable_reason: Mapped[str | None] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(Text)
+    evidence_ref: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
