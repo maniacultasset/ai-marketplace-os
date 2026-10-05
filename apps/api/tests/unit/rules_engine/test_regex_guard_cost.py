@@ -2,7 +2,7 @@
 optional groups are walked once per (node, open set) instead of twice per level (2**depth), atom
 overlap is a mask intersection instead of pairwise probe matching, the guard fails closed on a
 step budget and an open-set cap, and a refusal is memoised like a compiled regex.
-Moved from docs/plans/s14a/repro/test_repro_tester_r2.py."""
+Moved from the round 2 tester repro."""
 
 from __future__ import annotations
 

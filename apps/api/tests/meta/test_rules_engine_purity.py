@@ -39,7 +39,8 @@ ALLOWED_MODULES = frozenset(
 BANNED_CALLS = frozenset(
     {"datetime.now", "datetime.utcnow", "date.today", "uuid.uuid1", "uuid.uuid4", "uuid1", "uuid4"}
 )
-IMPORTLIB_ALLOWED_ARGS = frozenset({"re._parser", "re._constants"})
+# The stdlib regex engine's own parser, constants, case-fold table and C core: pure, no I/O.
+IMPORTLIB_ALLOWED_ARGS = frozenset({"re._parser", "re._constants", "re._casefix", "_sre"})
 
 
 def _module_allowed(name: str) -> bool:

@@ -23,6 +23,8 @@ from mkos_schemas.rules import Condition, check_rule_regex
 # The stdlib regex parser (no public API, as in mkos_schemas/rules.py). Python is pinned ==3.13.*.
 _sre: Any = importlib.import_module("re._constants")
 _sre_parser: Any = importlib.import_module("re._parser")
+_sre_lib: Any = importlib.import_module("_sre")
+_sre_casefix: Any = importlib.import_module("re._casefix")
 
 MatchMode = Literal["word", "substring", "regex"]
 SlotKind = Literal["text", "length"]
@@ -204,11 +206,55 @@ def find_terms(
 # ---------------------------------------------------------------------------------------------
 # Rule regex: the S2 gate plus the overlapping-repeat guard (PLAN D6 option B, AC 15)
 
+_MAX_CODE_POINT: Final = 0x10FFFF
 _PROBE_SAMPLES: Final = tuple(
-    chr(c) for c in (0x5F, 0x967, 0x915, 0x901, 0xA0, 0x3000, 0xFF21, 0x1F600)
+    chr(c) for c in (0x5F, 0x967, 0x915, 0x901, 0xA0, 0x3000, 0xFF21, 0x1F600, _MAX_CODE_POINT)
 )
 _BASE_PROBES: Final = tuple(chr(c) for c in range(256)) + _PROBE_SAMPLES
 _BASE_PROBE_TEXT: Final = "".join(_BASE_PROBES)
+_CATEGORY_RUNS: Final = (r"\w+", r"\d+", r"\s+")
+
+
+def _around(points: set[int]) -> str:
+    """``points`` and their neighbours as one probe text, in code-point order."""
+    near = {q for p in points for q in (p - 1, p, p + 1) if 0 <= q <= _MAX_CODE_POINT}
+    return "".join(chr(c) for c in sorted(near))
+
+
+def _category_probe_text() -> str:
+    """Both ends of every maximal run of the Unicode ``\\w``, ``\\d`` and ``\\s`` (their
+    negations share the ends; IGNORECASE does not change them) and their neighbours (R3-1)."""
+    space = "".join(map(chr, range(_MAX_CODE_POINT + 1)))
+    ends: set[int] = set()
+    for run in _CATEGORY_RUNS:
+        for m in re.finditer(run, space):
+            ends.update((m.start(), m.end()))
+    return _around(ends)
+
+
+def _fold_probe_text() -> str:
+    """Every character IGNORECASE can relate to another (the regex engine lowers both sides, plus
+    its extra case pairs) and their neighbours. Outside this set a class under IGNORECASE
+    matches exactly what it matches without it, so its interval ends stay probed (R3-1)."""
+    space = range(_MAX_CODE_POINT + 1)
+    lowered = {
+        c: low
+        for c, low in zip(space, map(_sre_lib.unicode_tolower, space), strict=True)
+        if low != c
+    }
+    cased = set(lowered) | set(lowered.values())
+    for key, pairs in _sre_casefix._EXTRA_CASES.items():
+        cased.add(key)
+        cased.update(pairs)
+    return _around(cased)
+
+
+# Built at import (about 0.1 s, once per process), so no evaluate call pays for it and the
+# guard's latency stays flat from the first rule regex on.
+_CATEGORY_PROBE_TEXT: Final = _category_probe_text()
+_FOLD_PROBE_TEXT: Final = _fold_probe_text()
+
+
 _CATEGORY_CLASS: Final = {
     "CATEGORY_DIGIT": r"\d",
     "CATEGORY_NOT_DIGIT": r"\D",
@@ -225,11 +271,13 @@ _REPEAT_OPS: Final = frozenset({_sre.MAX_REPEAT, _sre.MIN_REPEAT})
 
 @dataclass(frozen=True)
 class _CharSet:
-    """One single-character atom of a regex, as a one-character pattern plus extra probes."""
+    """One single-character atom of a regex, as a one-character pattern plus extra probes:
+    the ends of its own ranges and literals and their neighbours (R3-1)."""
 
     source: str
     flags: int
     probes: tuple[str, ...]
+    has_category: bool = False
 
 
 @lru_cache(maxsize=_CACHE_SIZE)
@@ -237,12 +285,17 @@ def _charset_pattern(source: str, flags: int) -> re.Pattern[str]:
     return re.compile(source, flags)
 
 
+def _near(*points: int) -> tuple[str, ...]:
+    """The points and their neighbours: every interval end of a set built from them."""
+    return tuple(chr(q) for p in points for q in (p - 1, p, p + 1) if 0 <= q <= _MAX_CODE_POINT)
+
+
 def _class_item(op: Any, av: Any) -> tuple[str, tuple[str, ...]]:
     if op is _sre.LITERAL:
-        return re.escape(chr(av)), (chr(av),)
+        return re.escape(chr(av)), _near(av)
     if op is _sre.RANGE:
         lo, hi = av
-        return f"{re.escape(chr(lo))}-{re.escape(chr(hi))}", (chr(lo), chr(hi))
+        return f"{re.escape(chr(lo))}-{re.escape(chr(hi))}", _near(lo, hi)
     if op is _sre.CATEGORY:
         return _CATEGORY_CLASS.get(av.name, r"\s\S"), ()
     return r"\s\S", ()  # unknown item: match anything (more refusals, never fewer)
@@ -250,22 +303,24 @@ def _class_item(op: Any, av: Any) -> tuple[str, tuple[str, ...]]:
 
 def _charset(op: Any, av: Any, flags: int) -> _CharSet:
     if op is _sre.LITERAL:
-        return _CharSet(re.escape(chr(av)), flags, (chr(av),))
+        return _CharSet(re.escape(chr(av)), flags, _near(av))
     if op is _sre.NOT_LITERAL:
-        return _CharSet(f"[^{re.escape(chr(av))}]", flags, (chr(av),))
+        return _CharSet(f"[^{re.escape(chr(av))}]", flags, _near(av))
     if op is _sre.ANY:
         return _CharSet(".", flags, ())
     negate = ""
     parts: list[str] = []
     probes: list[str] = []
+    has_category = False
     for item_op, item_av in av:
         if item_op is _sre.NEGATE:
             negate = "^"
             continue
+        has_category = has_category or item_op is _sre.CATEGORY
         part, extra = _class_item(item_op, item_av)
         parts.append(part)
         probes.extend(extra)
-    return _CharSet(f"[{negate}{''.join(parts)}]", flags, tuple(probes))
+    return _CharSet(f"[{negate}{''.join(parts)}]", flags, tuple(probes), has_category)
 
 
 _GUARD_STEP_BUDGET: Final = 20_000
@@ -275,15 +330,21 @@ _MAX_OPEN_ATOMS: Final = 64
 """Distinct atoms an open set may hold; above it the guard refuses (fail closed, R2-2)."""
 
 
-@lru_cache(maxsize=_CACHE_SIZE)
-def _base_mask(atom: _CharSet) -> int:
-    """Bit ``i`` set when the atom matches ``_BASE_PROBES[i]``: one ``finditer`` over the
-    probes joined, since an atom always consumes exactly one character."""
-    pattern = _charset_pattern(atom.source, atom.flags)
+def _text_mask(atom: _CharSet, text: str) -> int:
+    """Bit ``i`` set when the atom matches ``text[i]``: one ``finditer``, since an atom always
+    consumes exactly one character."""
     mask = 0
-    for m in pattern.finditer(_BASE_PROBE_TEXT):
+    for m in _charset_pattern(atom.source, atom.flags).finditer(text):
         mask |= 1 << m.start()
     return mask
+
+
+@lru_cache(maxsize=_CACHE_SIZE)
+def _tier_mask(atom: _CharSet, tier: int) -> int:
+    """The atom's mask over one shared probe tier: 0 base, 1 category ends, 2 case folds."""
+    if tier == 0:
+        return _text_mask(atom, _BASE_PROBE_TEXT)
+    return _text_mask(atom, _CATEGORY_PROBE_TEXT if tier == 1 else _FOLD_PROBE_TEXT)
 
 
 def _sub_flags(flags: int, av: Any) -> int:
@@ -316,19 +377,31 @@ class _Guard:
         self._walks: dict[_WalkKey, frozenset[_CharSet]] = {}
         self._atom_sets: dict[tuple[int, int], frozenset[_CharSet]] = {}
         self._masks: dict[_CharSet, int] = {}
-        extras = {p for atom in self.atoms(tree, flags) for p in atom.probes}
-        self._extra_text = "".join(sorted(extras))
+        every = self.atoms(tree, flags)
+        self._extra_text = "".join(sorted({p for atom in every for p in atom.probes}))
+        # (tier, bit offset): the tiers this regex needs, each at its own bits.
+        self._tiers: list[tuple[int, int]] = [(0, 0)]
+        offset = len(_BASE_PROBES)
+        if any(a.has_category and not a.flags & re.ASCII for a in every):
+            self._tiers.append((1, offset))
+            offset += len(_CATEGORY_PROBE_TEXT)
+        if any(a.flags & re.IGNORECASE and not a.flags & re.ASCII for a in every):
+            self._tiers.append((2, offset))
+            offset += len(_FOLD_PROBE_TEXT)
+        self._extra_offset = offset
 
     def mask(self, atom: _CharSet) -> int:
-        """The probes the atom matches: the base probes, then every atom's own probe of this
-        regex (bits from ``len(_BASE_PROBES)`` up). Two atoms overlap when their masks meet."""
+        """The probes the atom matches. Each atom's set is a union of code-point intervals, and
+        two such sets meet exactly when one holds a left end of an interval of the other; the
+        probes hold every such end (own ranges and literals with neighbours, Unicode category
+        run ends, case-fold partners under IGNORECASE), so masks meet exactly when the atoms
+        overlap (R3-1)."""
         cached = self._masks.get(atom)
         if cached is None:
-            pattern = _charset_pattern(atom.source, atom.flags)
-            cached = _base_mask(atom)
-            offset = len(_BASE_PROBES)
-            for m in pattern.finditer(self._extra_text):
-                cached |= 1 << (offset + m.start())
+            cached = 0
+            for tier, offset in self._tiers:
+                cached |= _tier_mask(atom, tier) << offset
+            cached |= _text_mask(atom, self._extra_text) << self._extra_offset
             self._masks[atom] = cached
         return cached
 
@@ -345,8 +418,11 @@ class _Guard:
         self._charge(len(atoms) + len(open_set))
         open_mask = 0
         for b in open_set:
-            open_mask |= self.mask(b)
-        return any(self.mask(a) & open_mask for a in atoms)
+            b_mask = self.mask(b)
+            if not b_mask:  # matches no probe: fail closed, as if it overlapped everything
+                return True
+            open_mask |= b_mask
+        return any(not m or m & open_mask for m in map(self.mask, atoms))
 
     def atoms(self, sub: Any, flags: int) -> frozenset[_CharSet]:
         """Every single-character atom anywhere below ``sub``."""
