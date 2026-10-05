@@ -254,10 +254,91 @@ IDENTITY_A_DOWN: Final[tuple[str, ...]] = (
     "DROP TABLE public.tenants",
 )
 
+
+# ---- IDENTITY_B: tenant_memberships, invitations (DATABASE.md §5.1; ADR-0006) ----
+# Every actor FK in the schema targets `tenant_memberships (tenant_id, user_id)` (`→ m`), so an
+# actor from another tenant fails at the key. The last-owner trigger is 0004.
+IDENTITY_B_UP: Final[tuple[str, ...]] = (
+    """
+    CREATE TABLE public.tenant_memberships (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      user_id uuid NOT NULL,
+      role text NOT NULL,
+      is_active boolean NOT NULL DEFAULT true,
+      deactivated_at timestamptz,
+      invited_by_user_id uuid,
+      last_used_at timestamptz,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_tenant_memberships PRIMARY KEY (id),
+      CONSTRAINT uq_tenant_memberships_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT uq_tenant_memberships_tenant_id_user_id UNIQUE (tenant_id, user_id),
+      CONSTRAINT fk_tenant_memberships_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_tenant_memberships_user_id_users FOREIGN KEY (user_id)
+        REFERENCES public.users (id) ON DELETE RESTRICT,
+      CONSTRAINT fk_tenant_memberships_invited_by_user_id
+        FOREIGN KEY (tenant_id, invited_by_user_id)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT ck_tenant_memberships_role
+        CHECK (role IN ('owner', 'operator', 'reviewer', 'admin'))
+    )
+    """,
+    """
+    CREATE INDEX ix_tenant_memberships_user_id_active ON public.tenant_memberships (user_id)
+      WHERE is_active
+    """,
+    _updated_at_trigger("tenant_memberships"),
+    r"""
+    CREATE TABLE public.invitations (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      email text NOT NULL,
+      role text NOT NULL,
+      token_hash bytea NOT NULL,
+      invited_by_user_id uuid,
+      expires_at timestamptz NOT NULL,
+      accepted_at timestamptz,
+      accepted_user_id uuid,
+      revoked_at timestamptz,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_invitations PRIMARY KEY (id),
+      CONSTRAINT uq_invitations_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT uq_invitations_token_hash UNIQUE (token_hash),
+      CONSTRAINT fk_invitations_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_invitations_invited_by_user_id FOREIGN KEY (tenant_id, invited_by_user_id)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT fk_invitations_accepted_user_id_users FOREIGN KEY (accepted_user_id)
+        REFERENCES public.users (id),
+      CONSTRAINT ck_invitations_email CHECK (
+        email = lower(btrim(email)) AND email ~ '^[^@\s]+@[^@\s]+$'
+        AND octet_length(email) <= 254
+      ),
+      CONSTRAINT ck_invitations_role CHECK (role IN ('owner', 'operator', 'reviewer', 'admin')),
+      CONSTRAINT ck_invitations_token_hash CHECK (octet_length(token_hash) = 32),
+      CONSTRAINT ck_invitations_accepted_revoked
+        CHECK (accepted_at IS NULL OR revoked_at IS NULL)
+    )
+    """,
+    """
+    CREATE UNIQUE INDEX uq_invitations_pending ON public.invitations (tenant_id, email)
+      WHERE accepted_at IS NULL AND revoked_at IS NULL
+    """,
+    _updated_at_trigger("invitations"),
+)
+IDENTITY_B_DOWN: Final[tuple[str, ...]] = (
+    "DROP TABLE public.invitations",
+    "DROP TABLE public.tenant_memberships",
+)
+
 SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (FUNCTIONS_UP, FUNCTIONS_DOWN),
     (FACT_MAP_UP, FACT_MAP_DOWN),
     (IDENTITY_A_UP, IDENTITY_A_DOWN),
+    (IDENTITY_B_UP, IDENTITY_B_DOWN),
 )
 
 

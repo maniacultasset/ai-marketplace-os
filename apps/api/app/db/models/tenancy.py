@@ -13,6 +13,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKeyConstraint,
     Index,
+    LargeBinary,
     Numeric,
     PrimaryKeyConstraint,
     Text,
@@ -110,5 +111,75 @@ class User(Base):
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created_at_column()
+    updated_at: Mapped[datetime] = updated_at_column()
+
+
+class TenantMembership(Base):
+    __tablename__ = "tenant_memberships"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_tenant_memberships")),
+        anchor("tenant_memberships"),
+        UniqueConstraint(
+            "tenant_id", "user_id", name=conv("uq_tenant_memberships_tenant_id_user_id")
+        ),
+        tenant_fk("tenant_memberships"),
+        ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            ondelete="RESTRICT",
+            name=conv("fk_tenant_memberships_user_id_users"),
+        ),
+        to_membership("tenant_memberships", "invited_by_user_id"),
+        Index(
+            conv("ix_tenant_memberships_user_id_active"),
+            "user_id",
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    role: Mapped[str] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+    deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    invited_by_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created_at_column()
+    updated_at: Mapped[datetime] = updated_at_column()
+
+
+class Invitation(Base):
+    __tablename__ = "invitations"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_invitations")),
+        anchor("invitations"),
+        UniqueConstraint("token_hash", name=conv("uq_invitations_token_hash")),
+        tenant_fk("invitations"),
+        to_membership("invitations", "invited_by_user_id"),
+        ForeignKeyConstraint(
+            ["accepted_user_id"], ["users.id"], name=conv("fk_invitations_accepted_user_id_users")
+        ),
+        Index(
+            conv("uq_invitations_pending"),
+            "tenant_id",
+            "email",
+            unique=True,
+            postgresql_where=text("accepted_at IS NULL AND revoked_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    email: Mapped[str] = mapped_column(Text)
+    role: Mapped[str] = mapped_column(Text)
+    # sha256 of the raw token; never granted to the read-only roles.
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary)
+    invited_by_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    accepted_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
