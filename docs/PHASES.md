@@ -56,7 +56,7 @@ Every step runs locally on Docker PostgreSQL 17 + pgvector; Cloud SQL is for sta
 | S1 | uv workspace, FastAPI with health probes, local DB stack, 10 required checks | Docker, git, repo | — | — | merged (PR #3, 2026-09-30) |
 | S5 | Alembic, `0000_bootstrap.sql`, DB roles | S1, P0-U10 first half | — | STATE dec. 10 | done (local): S5a merged (PR #10), S5b on `feat/s5b-alembic`; the staging leg (`0000` and `upgrade head` on `aimos-db`) waits on billing (STATE 2.9) |
 | S2 | `mkos-schemas` v1.0.0 (17 modules), frozen D14 | S1, EP dec. 10, T1, T61 | — | AI + FE lead approval | done: merged (PR #11); one `schemas-v1.0.0` tag after S3, on the user's go |
-| S6 | `0001_core_tenancy` | S5, ADR-0006/0007 verdict, P0-U10 second half (ledger re-plan Canon PR, DATABASE.md:1758) | — | team verdict | not started |
+| S6 | `0001_core_tenancy` | S5, ADR-0006/0007 verdict, P0-U10 second half (ledger re-plan Canon PR, DATABASE.md:1758), row 0001 claimed in the S6 PR | — | team verdict | done (local): `0001_core_tenancy` on `feat/s6-core-tenancy`; the staging leg waits on billing (STATE 2.9) |
 | S3 | `/api/v1` OpenAPI, TS types, `@mkos/schemas` on GitHub Packages, mock | S2 | the mock stands in for the API for the FE team | FE team (P0-U9) | not started |
 | S7 | `0002` + `0002b` HNSW | S6 | — | — | not started |
 | S8 | `0003` + `0003b` procrastinate | S7, spike | — | — | not started |

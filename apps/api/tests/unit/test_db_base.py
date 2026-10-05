@@ -90,7 +90,6 @@ def test_naming_convention_unnamed_check_refused() -> None:
         _ddl(Table("t", _fresh(), Column("c", Integer), CheckConstraint("c > 0")))
 
 
-def test_base_metadata_is_empty_and_conventional() -> None:
+def test_base_metadata_is_conventional() -> None:
     assert metadata is Base.metadata
-    assert dict(Base.metadata.tables) == {}
     assert Base.metadata.naming_convention == NAMING_CONVENTION

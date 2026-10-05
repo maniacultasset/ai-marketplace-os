@@ -196,22 +196,27 @@ def test_schema_usage_for_app_roles(superuser_conn: Conn, bootstrap_sql: str) ->
         ), role
 
 
-def test_bootstrap_leaves_no_relation_in_public(superuser_conn: Conn, bootstrap_sql: str) -> None:
-    """mos_test stays schema-empty, so `alembic check` sees no drift; extension members aside,
-    and Alembic's own `alembic_version`, which `make api-tests` creates there before pytest."""
-    superuser_conn.execute(bootstrap_sql)
-    superuser_conn.execute(bootstrap_sql)
-    relations = superuser_conn.execute(
-        "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
-        "WHERE n.nspname = 'public' AND c.relkind IN ('r', 'v', 'S', 'm', 'p') "
-        "AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_class'::regclass "
-        "AND d.objid = c.oid AND d.deptype = 'e') AND c.relname <> 'alembic_version'"
+def _public_objects(conn: Conn) -> tuple[list[tuple[Any, ...]], list[tuple[Any, ...]]]:
+    """Relations and functions in `public` that are not extension members."""
+    relations = conn.execute(
+        "SELECT c.relname, c.relkind FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+        "WHERE n.nspname = 'public' AND NOT EXISTS (SELECT 1 FROM pg_depend d "
+        "WHERE d.classid = 'pg_class'::regclass AND d.objid = c.oid AND d.deptype = 'e') "
+        "ORDER BY 1, 2"
     ).fetchall()
-    functions = superuser_conn.execute(
-        "SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
-        "WHERE n.nspname = 'public' "
+    functions = conn.execute(
+        "SELECT p.oid::regprocedure::text FROM pg_proc p "
+        "JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' "
         "AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_proc'::regclass "
-        "AND d.objid = p.oid AND d.deptype = 'e')"
+        "AND d.objid = p.oid AND d.deptype = 'e') ORDER BY 1"
     ).fetchall()
-    assert relations == []
-    assert functions == []
+    return relations, functions
+
+
+def test_bootstrap_adds_no_relation_or_function(superuser_conn: Conn, bootstrap_sql: str) -> None:
+    """0000 creates roles, extensions and privileges only. `make api-tests` leaves mos_test at
+    the Alembic head before pytest, so the check compares before and after, never "empty"."""
+    before = _public_objects(superuser_conn)
+    superuser_conn.execute(bootstrap_sql)
+    superuser_conn.execute(bootstrap_sql)
+    assert _public_objects(superuser_conn) == before

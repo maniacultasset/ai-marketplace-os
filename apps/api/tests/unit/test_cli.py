@@ -9,6 +9,7 @@ from typing import Any
 
 import pytest
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from app import cli
 from app.db.migrations import ALEMBIC_INI, DatabaseAheadError, MigrationLockBusy
 from sqlalchemy.exc import OperationalError
@@ -72,15 +73,28 @@ def test_cli_requires_a_command(argv: list[str], capsys: pytest.CaptureFixture[s
 
 
 def test_migrate_success_line(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
     calls = _fake_upgrade(monkeypatch, None)
     config = Config(str(ALEMBIC_INI))
+    config.set_main_option("version_locations", str(tmp_path))
     assert cli.run_migrate(config) == 0
     assert calls == [(config, "head")]
     out, err = capsys.readouterr()
     assert out == "migrate: ok (head none)\n"
     assert err == ""
+
+
+def test_migrate_success_line_names_the_script_head(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _fake_upgrade(monkeypatch, None)
+    config = Config(str(ALEMBIC_INI))
+    heads = ScriptDirectory.from_config(config).get_heads()
+    assert heads, "versions/ holds at least revision 0001"
+    assert cli.run_migrate(config) == 0
+    out, _ = capsys.readouterr()
+    assert out == f"migrate: ok (head {','.join(sorted(heads))})\n"
 
 
 def test_migrate_database_ahead_exit_3(

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import os
 import secrets
-from collections.abc import AsyncIterator, Callable, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import psycopg
 import pytest
@@ -135,3 +135,107 @@ def alembic_env(
 
     yield make_config
     get_settings.cache_clear()
+
+
+# ---- 0001 onward: one scratch database at the Alembic head per session ----
+#
+# `make api-tests` leaves mos_test at the code's head before pytest, and tests leave it
+# unchanged: schema tests write only to `head_db` (or a per-test `scratch_db`).
+
+Conn = psycopg.Connection[tuple[object, ...]]
+
+
+def catalog_snapshot(conn: Conn) -> dict[str, list[tuple[object, ...]]]:
+    """Relations and functions in `public` that are not extension members, plus the recorded
+    Alembic revisions: what a test must leave unchanged in mos_test."""
+    relations = conn.execute(
+        "SELECT c.relname, c.relkind FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+        "WHERE n.nspname = 'public' AND NOT EXISTS (SELECT 1 FROM pg_depend d "
+        "WHERE d.classid = 'pg_class'::regclass AND d.objid = c.oid AND d.deptype = 'e') "
+        "ORDER BY 1, 2"
+    ).fetchall()
+    functions = conn.execute(
+        "SELECT p.oid::regprocedure::text FROM pg_proc p "
+        "JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' "
+        "AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_proc'::regclass "
+        "AND d.objid = p.oid AND d.deptype = 'e') ORDER BY 1"
+    ).fetchall()
+    versions: list[tuple[object, ...]] = []
+    if conn.execute("SELECT to_regclass('alembic_version')").fetchone() != (None,):
+        versions = conn.execute("SELECT version_num FROM alembic_version ORDER BY 1").fetchall()
+    return {"relations": relations, "functions": functions, "versions": versions}
+
+
+def _admin_connect() -> Conn:
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        pytest.fail("DATABASE_URL is unset: run the integration tests through `make api-tests`")
+    conn = psycopg.connect(libpq_url(url), autocommit=True, connect_timeout=5)
+    row = conn.execute("SELECT current_database()").fetchone()
+    if not row or row[0] not in ALLOWED_DATABASES:
+        conn.close()
+        pytest.fail(f"refusing to run integration tests against database {row!r}")
+    return conn
+
+
+def upgrade_to_head(db: ScratchDb, tmp: Path) -> None:
+    """`alembic upgrade head` on a scratch database, through env.py (as migrator), with no
+    developer `.env` and a settings cache that is cold before and after."""
+    from alembic import command
+    from app.core.config import get_settings
+    from app.db.migrations import alembic_config
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.chdir(tmp)
+        patch.setenv("APP_ENV", "local")
+        patch.setenv("ALEMBIC_DATABASE_URL", db.url)
+        get_settings.cache_clear()
+        try:
+            command.upgrade(alembic_config(), "head")
+        finally:
+            get_settings.cache_clear()
+
+
+@contextmanager
+def head_database(tmp: Path) -> Iterator[ScratchDb]:
+    """A scratch database with 0000 applied and the code's Alembic head, dropped afterwards."""
+    with _admin_connect() as admin, scratch_database(admin) as db:
+        upgrade_to_head(db, tmp)
+        yield db
+
+
+@pytest.fixture(scope="session")
+def head_db(tmp_path_factory: pytest.TempPathFactory) -> Iterator[ScratchDb]:
+    with head_database(tmp_path_factory.mktemp("head_db")) as db:
+        yield db
+
+
+@pytest.fixture
+def db(head_db: ScratchDb) -> Iterator[Conn]:
+    """A connection to `head_db` as `postgres`, inside one transaction that is rolled back."""
+    with psycopg.connect(head_db.libpq, connect_timeout=5) as conn:
+        try:
+            yield conn
+        finally:
+            conn.rollback()
+
+
+def expect_sqlstate(
+    conn: Conn,
+    code: str,
+    query: str | sql.SQL | sql.Composed,
+    params: Sequence[Any] | Mapping[str, Any] | None = None,
+    *,
+    constraint: str | None = None,
+) -> psycopg.Error:
+    """Run one statement inside a savepoint and assert it fails with `code` (and, when given,
+    on the named constraint). The connection stays usable afterwards."""
+    try:
+        with conn.transaction():
+            conn.execute(query, params)
+    except psycopg.Error as error:
+        assert error.sqlstate == code, f"wanted {code}, got {error.sqlstate}: {error}"
+        if constraint is not None:
+            assert error.diag.constraint_name == constraint, error.diag.constraint_name
+        return error
+    raise AssertionError(f"wanted SQLSTATE {code}, the statement succeeded")

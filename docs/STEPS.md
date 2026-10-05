@@ -188,15 +188,17 @@ start before billing. S14b gains S14a as a dependency because `/rules/dry-run` c
   `auto_publish` with `CHECK (auto_publish = false)`), global `users` unique on `lower(email)`,
   `tenant_memberships`, `invitations`, `products` (+ family and fact columns, `deleted_at`),
   `brand_profiles`, `business_parties`, `product_colourways`, `variant_matrix_cells`; functions
-  `set_updated_at()`, GUC helpers, `audit()`, `fact_map_valid()`, `gtin_valid()`; anchors `UNIQUE (tenant_id, id)`.
+  `set_updated_at()`, GUC helpers, `fact_map_valid()`, `gtin_valid()`; anchors `UNIQUE (tenant_id, id)`.
+  `audit()` **moves to S10** (`0004_integrity`, after `audit_log` in 0002; DATABASE.md:1765, :1770).
 - **Done when:**
   1. A duplicate SKU in one tenant is rejected; the same SKU in a second tenant is accepted. Proof:
      `test_products_sku_unique_per_tenant`.
   2. `A@x.test` and `a@x.test` cannot both exist (ADR-0006 §1; fixes KNOWN-ISSUES.md:16). Proof: `test_users_email_unique_ci`.
   3. One membership per (tenant, user), roles only `owner|operator|reviewer|admin`. Proof: `test_memberships_*`.
   4. A child whose parent is in another tenant fails at the composite FK; a product cannot be its own
-     parent; only parents carry `variation_theme`; `M/Navy` and `m/navy` collide (ADR-0007 §4). Proof:
-     `test_product_family_*`.
+     parent; only parents carry `variation_theme`; identical stored variant keys under one parent
+     collide. Proof: `test_product_family_*`. (The `M/Navy` vs `m/navy` case-fold collision, ADR-0007
+     §4, **moves to S10**: the 0004 variant guard writes the key; DATABASE.md:1765.)
   5. Setting `tenants.auto_publish = true` fails (ADR-0008 §2). Proof: `test_auto_publish_locked`.
   6. `gtin_valid()` checks digits and the EAN-13/GTIN-14 case (DATABASE.md:1795). Proof: `test_gtin_valid`.
   7. Upgrade/downgrade of `0001` clean. Proof: `make api-tests`.
@@ -336,9 +338,10 @@ start before billing. S14b gains S14a as a dependency because `/rules/dry-run` c
     rotation and reuse detection (CANON.md:82; ENV.md:69-75).
   - `get_current_principal` dependency; a role × action matrix; every route declares a role or
     `@public` (BUILD-SEQUENCE.md:166).
-  - `0004_integrity` per DATABASE.md:1768 (guards, append-only, last-owner guard, transition table and
-    seed, purge/prune functions); `0005_rls` ENABLE + FORCE on every tenant table, with an emergency
-    disable script in place of a settings flag (DATABASE.md:1769).
+  - `0004_integrity` per DATABASE.md:1770 (guards, append-only, last-owner guard, transition table and
+    seed, purge/prune functions, and `audit()` + its grant, moved from S6); `0005_rls` ENABLE + FORCE
+    on every tenant table, with an emergency disable script in place of a settings flag
+    (DATABASE.md:1771).
   - Postgres rate limiter (120/tenant, 60/IP, 5/login per IP and email) taking the client IP from the
     entry Cloud Run appends (ADR-0005; KNOWN-ISSUES.md:37); explicit CORS list; 10 MiB body cap.
 - **Done when:**
@@ -356,6 +359,12 @@ start before billing. S14b gains S14a as a dependency because `/rules/dry-run` c
      change the bucket. Proof: `test_rate_limit_*`.
   8. Login, failed login, refresh reuse and role change each write an audit row. Proof: `test_auth_audit`.
   9. A tenant's last active owner cannot be demoted or deactivated. Proof: `test_last_owner_guard`.
+  10. (moved from S6) Through the 0004 variant guard, children of one style with `M/Navy` and
+      `m/navy` collide on the stored `variant_key` (ADR-0007 §4; DATABASE.md:424, :1765). Proof:
+      `test_variant_key_casefold_collides`.
+  11. (moved from S6) A catalog test proves `app_rw` has no DELETE on `tenants`, `users`,
+      `business_parties` and `brand_profiles`, and only column UPDATE on `tenants` (`name`, `tone`,
+      `guidelines`, `glossary`) (DATABASE.md:229, :1133, :1150). Proof: `test_privilege_matrix[table]`.
 - **Trace:** CANON.md:72, :82, :97-98; ADR-0004 §8, ADR-0005, ADR-0006, ADR-0008; SUPERSEDED.md:74-77;
   KNOWN-ISSUES.md:16, :26, :30, :33-34, :37; DATABASE.md §7.1, §8.1-§8.2; T7, T15, T23, T88.
   **Stand-in:** none. **Waits:** none. **Open:** OQ2, OQ8, OQ12.
