@@ -223,3 +223,32 @@ def idempotency_key(conn: Conn, side: TenantSeed, **columns: Any) -> str:
         "expires_at": "2026-10-06T00:00:00Z",
     }
     return insert_row(conn, "idempotency_keys", {**defaults, **columns}, "key")  # type: ignore[no-any-return]
+
+
+# ---- refresh_tokens, oauth_states ----
+
+
+def refresh_token(conn: Conn, side: TenantSeed, **columns: Any) -> UUID:
+    """A live token of `side`'s owner, in a family of its own."""
+    n = next(_counter)
+    defaults: dict[str, Any] = {
+        "tenant_id": side.tenant_id,
+        "user_id": side.user_id,
+        "token_hash": digest(f"token-{n}"),
+        "expires_at": "2026-10-19T00:00:00Z",
+        "family_id": uuid4(),
+    }
+    return f.insert(conn, "refresh_tokens", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def oauth_state(conn: Conn, side: TenantSeed, **columns: Any) -> UUID:
+    """An Amazon OAuth state of `side`'s owner, valid for ten minutes."""
+    n = next(_counter)
+    defaults: dict[str, Any] = {
+        "tenant_id": side.tenant_id,
+        "state_hash": digest(f"state-{n}"),
+        "user_id": side.user_id,
+        "marketplace": "amazon",
+        "expires_at": "2099-01-01T00:00:00Z",
+    }
+    return f.insert(conn, "oauth_states", **{**defaults, **columns})  # type: ignore[no-any-return]

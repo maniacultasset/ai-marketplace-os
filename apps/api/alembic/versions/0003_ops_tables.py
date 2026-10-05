@@ -439,10 +439,79 @@ IMPORTS_DOWN: Final[tuple[str, ...]] = (
     "DROP TABLE public.imports",
 )
 
+# ---- AUTH: refresh_tokens, oauth_states, rate_limit_counters (DATABASE.md §5.1, §5.4) ----
+# Tokens and states are looked up by hash before any tenant is known, so both hashes are
+# globally UNIQUE. A deleted membership takes its tokens (the CASCADE exception); rotation never
+# links across tenants, and deleting a successor clears only `replaced_by`. The counters hold
+# no tenant data, are UNLOGGED (empty after a crash, fine for per-minute limits) and get no RLS.
+AUTH_UP: Final[tuple[str, ...]] = (
+    f"""
+    CREATE TABLE public.refresh_tokens (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      user_id uuid NOT NULL,
+      token_hash bytea NOT NULL,
+      expires_at timestamptz NOT NULL,
+      revoked_at timestamptz,
+      replaced_by uuid,
+      user_agent text,
+      ip inet,
+      family_id uuid NOT NULL,
+      revoked_reason text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_refresh_tokens PRIMARY KEY (id),
+      CONSTRAINT uq_refresh_tokens_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT uq_refresh_tokens_token_hash UNIQUE (token_hash),
+      CONSTRAINT fk_refresh_tokens_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_refresh_tokens_user_id FOREIGN KEY (tenant_id, user_id)
+        REFERENCES public.tenant_memberships (tenant_id, user_id) ON DELETE CASCADE,
+      CONSTRAINT fk_refresh_tokens_replaced_by FOREIGN KEY (tenant_id, replaced_by)
+        REFERENCES public.refresh_tokens (tenant_id, id) ON DELETE SET NULL (replaced_by),
+      CONSTRAINT ck_refresh_tokens_token_hash {_digest("token_hash")}
+    )
+    """,
+    f"""
+    CREATE TABLE public.oauth_states (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      state_hash bytea NOT NULL,
+      user_id uuid NOT NULL,
+      marketplace text NOT NULL,
+      code_verifier text,
+      expires_at timestamptz NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_oauth_states PRIMARY KEY (id),
+      CONSTRAINT uq_oauth_states_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT uq_oauth_states_state_hash UNIQUE (state_hash),
+      CONSTRAINT fk_oauth_states_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_oauth_states_user_id FOREIGN KEY (tenant_id, user_id)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT ck_oauth_states_marketplace {MARKETPLACE_CHECK},
+      CONSTRAINT ck_oauth_states_state_hash {_digest("state_hash")}
+    )
+    """,
+    """
+    CREATE UNLOGGED TABLE public.rate_limit_counters (
+      bucket_key text NOT NULL,
+      window_start timestamptz NOT NULL,
+      n integer NOT NULL,
+      CONSTRAINT pk_rate_limit_counters PRIMARY KEY (bucket_key, window_start)
+    )
+    """,
+)
+AUTH_DOWN: Final[tuple[str, ...]] = (
+    "DROP TABLE public.rate_limit_counters",
+    "DROP TABLE public.oauth_states",
+    "DROP TABLE public.refresh_tokens",
+)
+
 SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (PLATFORM_UP, PLATFORM_DOWN),
     (JOBS_UP, JOBS_DOWN),
     (IMPORTS_UP, IMPORTS_DOWN),
+    (AUTH_UP, AUTH_DOWN),
 )
 
 

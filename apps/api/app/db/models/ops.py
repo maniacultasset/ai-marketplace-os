@@ -14,6 +14,7 @@ from typing import Any
 
 from sqlalchemy import (
     DateTime,
+    ForeignKeyConstraint,
     Index,
     Integer,
     LargeBinary,
@@ -24,7 +25,7 @@ from sqlalchemy import (
     Uuid,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import INET, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql.elements import conv
 
@@ -211,3 +212,75 @@ class IdempotencyKey(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_column()
+
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_refresh_tokens")),
+        anchor("refresh_tokens"),
+        # looked up by hash before any tenant is known
+        UniqueConstraint("token_hash", name=conv("uq_refresh_tokens_token_hash")),
+        tenant_fk("refresh_tokens"),
+        ForeignKeyConstraint(
+            ["tenant_id", "user_id"],
+            ["tenant_memberships.tenant_id", "tenant_memberships.user_id"],
+            ondelete="CASCADE",
+            name=conv("fk_refresh_tokens_user_id"),
+        ),
+        # rotation never links across tenants; deleting a successor clears only replaced_by
+        to_row(
+            "refresh_tokens", "replaced_by", "refresh_tokens", ondelete="SET NULL (replaced_by)"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    # sha256 of the raw token; never granted to the read-only roles
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary, deferred=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    replaced_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    user_agent: Mapped[str | None] = mapped_column(Text)
+    ip: Mapped[str | None] = mapped_column(INET)
+    family_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    revoked_reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = created_at_column()
+
+
+class OAuthState(Base):
+    __tablename__ = "oauth_states"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_oauth_states")),
+        anchor("oauth_states"),
+        # the callback carries no JWT: the row is found by hash, the tenant comes from it
+        UniqueConstraint("state_hash", name=conv("uq_oauth_states_state_hash")),
+        tenant_fk("oauth_states"),
+        to_membership("oauth_states", "user_id"),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    # sha256 of the raw state; never granted to the read-only roles
+    state_hash: Mapped[bytes] = mapped_column(LargeBinary, deferred=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    marketplace: Mapped[str] = mapped_column(Text)
+    # the PKCE verifier; never granted to the read-only roles
+    code_verifier: Mapped[str | None] = mapped_column(Text, deferred=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created_at_column()
+
+
+class RateLimitCounter(Base):
+    """Counters only: no tenant_id, no RLS, UNLOGGED (empty after a crash)."""
+
+    __tablename__ = "rate_limit_counters"
+    __table_args__ = (
+        PrimaryKeyConstraint("bucket_key", "window_start", name=conv("pk_rate_limit_counters")),
+        {"prefixes": ["UNLOGGED"]},
+    )
+
+    bucket_key: Mapped[str] = mapped_column(Text)
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    n: Mapped[int] = mapped_column(Integer)
