@@ -753,6 +753,40 @@ DEFERRED_DOWN: Final[tuple[str, ...]] = tuple(
     f"ALTER TABLE public.{table} DROP CONSTRAINT {name}" for table, name, _ in DEFERRED_FKS
 )
 
+# ---- GRANTS: SELECT for the read-only roles (DATABASE.md §8.1 "Read-only roles get no default
+# SELECT") per table, or per column where a table holds a secret or uploaded personal data: never
+# `refresh_tokens.token_hash`, `oauth_states.state_hash` or `code_verifier`,
+# `idempotency_keys.request_hash` (the §8.2 pattern `(token|hash|password|secret|verifier|_enc)$`)
+# nor `import_rows.raw_row` (party contact cells). procrastinate's tables (0003b) get none.
+# app_rw writes through the 0000 default privileges; its REVOKEs and column grants are 0004.
+READ_ONLY_ROLES: Final = "app_ro, app_platform_ro"
+WHOLE_TABLES: Final = (
+    "public.category_templates, public.marketplace_error_map, public.attribute_definitions, "
+    "public.attribute_columns, public.category_attributes, public.job_runs, public.imports, "
+    "public.rate_limit_counters, public.listing_submissions, public.publish_field_results"
+)
+IMPORT_ROWS_READABLE: Final = (
+    "id, tenant_id, import_id, row_number, sku, parent_sku, status, product_id, "
+    "error_report_json, job_id, created_at"
+)
+IDEMPOTENCY_KEYS_READABLE: Final = (
+    "tenant_id, key, endpoint, response_status, response_json, user_id, expires_at, created_at"
+)
+REFRESH_TOKENS_READABLE: Final = (
+    "id, tenant_id, user_id, expires_at, revoked_at, replaced_by, user_agent, ip, family_id, "
+    "revoked_reason, created_at"
+)
+OAUTH_STATES_READABLE: Final = "id, tenant_id, user_id, marketplace, expires_at, created_at"
+GRANTS_UP: Final[tuple[str, ...]] = (
+    f"GRANT SELECT ON {WHOLE_TABLES} TO {READ_ONLY_ROLES}",
+    f"GRANT SELECT ({IMPORT_ROWS_READABLE}) ON public.import_rows TO {READ_ONLY_ROLES}",
+    f"GRANT SELECT ({IDEMPOTENCY_KEYS_READABLE}) ON public.idempotency_keys TO {READ_ONLY_ROLES}",
+    f"GRANT SELECT ({REFRESH_TOKENS_READABLE}) ON public.refresh_tokens TO {READ_ONLY_ROLES}",
+    f"GRANT SELECT ({OAUTH_STATES_READABLE}) ON public.oauth_states TO {READ_ONLY_ROLES}",
+)
+# The grants go with their tables.
+GRANTS_DOWN: Final[tuple[str, ...]] = ()
+
 SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (PLATFORM_UP, PLATFORM_DOWN),
     (JOBS_UP, JOBS_DOWN),
@@ -760,6 +794,7 @@ SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (AUTH_UP, AUTH_DOWN),
     (SUBMISSIONS_UP, SUBMISSIONS_DOWN),
     (DEFERRED_UP, DEFERRED_DOWN),
+    (GRANTS_UP, GRANTS_DOWN),
 )
 
 
