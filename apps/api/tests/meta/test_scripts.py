@@ -432,3 +432,41 @@ def test_bootstrap_seeds_after_migrate(repo_root: Path) -> None:
     assert "SEED_PROFILE" not in run  # unset: the entrypoint's demo default
     for name in ("DATABASE_URL", "ALEMBIC_DATABASE_URL"):
         assert f"-e {name}=postgresql+psycopg://postgres:postgres@postgres:5432/" in run
+
+
+def test_prove_gates_has_s14a_legs(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    legs = {
+        "api-lint-engine-openai": ("api-lint", "TID251", "seed_engine_openai"),
+        "lint-imports-engine-sqla": (
+            "lint-imports",
+            "app.services.rules_engine is pure .*BROKEN",
+            "seed_engine_sqla",
+        ),
+        "lint-imports-engine-repositories": (
+            "lint-imports",
+            "app.services.rules_engine is pure .*BROKEN",
+            "seed_engine_repositories",
+        ),
+        "api-tests-engine-impure": (
+            "api-tests",
+            "test_rules_engine_import_allowlist",
+            "seed_engine_impure",
+        ),
+        "api-tests-engine-coverage": (
+            "api-tests",
+            "rules_engine branch coverage",
+            "seed_engine_coverage",
+        ),
+    }
+    for name, (gate, regex, seed) in legs.items():
+        match = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' \\?\s*(\S+)", text)
+        assert match is not None, name
+        assert match.group(1) == regex, name
+        assert match.group(2) == seed, name
+        assert re.search(rf"(?m)^{seed}\(\) \{{", text), seed
+    docker = text.index('if [ "$with_docker" -eq 1 ]; then')
+    assert text.index("leg api-tests-engine-impure") > docker
+    assert text.index("leg api-tests-engine-coverage") > docker
+    assert "apps/api/app/services/rules_engine/x.py" in text
+    assert "import openai" in text
