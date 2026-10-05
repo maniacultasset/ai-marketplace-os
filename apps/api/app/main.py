@@ -8,6 +8,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api import health
+from app.api.body_limit import BodyLimitMiddleware
+from app.api.errors import install_error_handlers
 from app.api.v1.router import router as v1_router
 from app.core.config import get_settings
 from app.db.session import dispose_engine
@@ -37,8 +39,12 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.state.readiness = ReadinessCheck()
+    install_error_handlers(app)
     app.include_router(health.router)
     app.include_router(v1_router, prefix=settings.api_v1_prefix)
+    # Added last, so it is the outermost user middleware: the cap holds before any body parsing
+    # or auth dependency runs (CANON.md:83; S3 AC16).
+    app.add_middleware(BodyLimitMiddleware, max_bytes=settings.request_max_body_bytes)
     return app
 
 
