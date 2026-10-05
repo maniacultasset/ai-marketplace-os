@@ -161,6 +161,7 @@ Work top to bottom within each group. STATE records the done IDs.
   they consume `@mkos/schemas`.
 - **P0-U10** Before the S5 plan (D12): accept `DATABASE.md` rev 3 (STATE open decision 10), and OK
   the Canon PR re-planning the migration ledger (DATABASE.md:1758).
+  S5 waived the second half (user, 2026-10-05); it gates the S6 plan.
 
 ### 3.4 Agent (any editor)
 
