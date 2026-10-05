@@ -173,7 +173,7 @@ def test_background_disc_touching_edge_passes() -> None:
     assert passes(_png(img)) is True
 
 
-# 6b. frames and stripes (fix round 1, F2; moved from docs/plans/s17a/repro)
+# 6b. frames and stripes: an off run is forgiven only where it continues inward
 
 GREY = (128, 128, 128)
 
