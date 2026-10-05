@@ -37,16 +37,23 @@ def _require_uuid(name: str, value: object) -> UUID:
 
 
 def _children_outside(root: ClauseElement, skip: ClauseElement) -> Iterator[ClauseElement]:
-    """Every element under `root` except `skip` and what lies under it."""
+    """Every element under `root` except `skip` (or an annotated copy) and what lies under it."""
     stack: list[ClauseElement] = [root]
     seen: set[int] = set()
     while stack:
         element = stack.pop()
-        if element is skip or id(element) in seen:
+        if id(element) in seen or _same_selectable(element, skip):
             continue
         seen.add(id(element))
         yield element
         stack.extend(element.get_children())
+
+
+def _same_selectable(element: ClauseElement, skip: ClauseElement) -> bool:
+    """`skip` itself, or an ORM-annotated copy of it (`aliased(Model, cte)` annotates the CTE)."""
+    if element is skip:
+        return True
+    return isinstance(element, (CTE, Subquery)) and element._deannotate() is skip
 
 
 def _own_tables(node: ClauseElement) -> set[str]:
