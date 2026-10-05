@@ -11,14 +11,17 @@ from __future__ import annotations
 import ast
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
 
 from app.api.v1.deps import bearer_required
 from app.api.v1.surface import CASES, OPS, Operation, cases, is_stub
 from fastapi.routing import iter_route_contexts
+from starlette.routing import Host, Mount
 
 TESTS_ROOT: Final = Path(__file__).resolve().parent
+API_V1: Final = "/api/v1"
 REQUIRED_VARIANTS: Final[Mapping[str, frozenset[str]]] = {
     "invalid_token": frozenset({"expired", "bad_signature", "wrong_typ"}),
     "maker_checker": frozenset({"generator_approves", "editor_approves"}),
@@ -93,10 +96,49 @@ def missing_cases(op: Operation, found: Found) -> list[str]:
     return missing
 
 
-def _routes(app: Any) -> Iterable[Any]:
+@dataclass(frozen=True)
+class V1Route:
+    """One route under `/api/v1` as the app serves it (the prefix applied)."""
+
+    label: str
+    """`<METHOD> <path>`; `WEBSOCKET` or `MOUNT` when the route has no HTTP methods."""
+    path: str
+    methods: frozenset[str]
+    operation_id: str | None
+    endpoint: Any
+    context: Any
+
+
+def v1_routes(app: Any) -> Iterable[V1Route]:
+    """Every HTTP, websocket and mounted route under `/api/v1`, with or without an
+    `operation_id`: a route added with `include_in_schema=False` has none and must not escape the
+    guard (R1-2)."""
     for context in iter_route_contexts(app.routes):
-        if getattr(context, "operation_id", None) is not None:
-            yield context
+        # A websocket route or mount inside an included router is served by its prefixed copy.
+        prefixed = getattr(context, "starlette_route", None)
+        served = prefixed if prefixed is not None else context
+        path = str(getattr(served, "path", "") or "")
+        if not (path == API_V1 or path.startswith(f"{API_V1}/")):
+            continue
+        methods = frozenset(getattr(served, "methods", None) or ())
+        mounted = isinstance(prefixed or context.original_route, (Mount, Host))
+        kind = "MOUNT" if mounted else "WEBSOCKET"
+        yield V1Route(
+            label=f"{','.join(sorted(methods)) or kind} {path}",
+            path=path,
+            methods=methods,
+            operation_id=getattr(context, "operation_id", None),
+            endpoint=getattr(served, "endpoint", None),
+            context=context,
+        )
+
+
+def _registered(route: V1Route) -> Operation | None:
+    """The registry op this route serves: same op_id, method and full path, or None."""
+    op = OPS.get(route.operation_id or "")
+    if op is None or route.methods != {op.method} or route.path != f"{API_V1}{op.path}":
+        return None
+    return op
 
 
 def _calls(dependant: Any) -> Iterable[Any]:
@@ -111,14 +153,15 @@ def guard_failures(app: Any, found: Found) -> list[str]:
     """One message per implemented route that is short of its case matrix, still presence-only,
     or not in the registry at all."""
     failures: list[str] = []
-    for context in _routes(app):
-        op_id = context.operation_id
-        if is_stub(context.endpoint):
-            continue
-        op = OPS.get(op_id)
+    for v1_route in v1_routes(app):
+        op = _registered(v1_route)
         if op is None:
-            failures.append(f"{op_id}: implemented route is not in the registry")
+            failures.append(f"{v1_route.label}: route is not in the registry")
             continue
+        context = v1_route.context
+        if is_stub(v1_route.endpoint):
+            continue
+        op_id = op.op_id
         missing = missing_cases(op, found)
         if missing:
             failures.append(f"{op_id}: missing endpoint cases: {', '.join(missing)}")

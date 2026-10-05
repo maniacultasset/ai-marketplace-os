@@ -8,7 +8,7 @@ from typing import NoReturn
 import pytest
 from app.api.errors import NotImplementedYet
 from app.api.v1.surface import OPS, cases, is_stub, route, stub
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, WebSocket
 from tests.endpoint_cases import (
     REQUIRED_VARIANTS,
     Found,
@@ -17,6 +17,7 @@ from tests.endpoint_cases import (
     missing_cases,
     scan,
     scan_source,
+    v1_routes,
 )
 
 
@@ -31,15 +32,15 @@ def test_implemented_routes_not_presence_only(v1_app: FastAPI) -> None:
 
 
 def test_every_route_is_a_stub_in_s3(v1_app: FastAPI) -> None:
-    from fastapi.routing import iter_route_contexts
-
-    endpoints = {
-        c.operation_id: c.endpoint
-        for c in iter_route_contexts(v1_app.routes)
-        if getattr(c, "operation_id", None)
-    }
-    assert set(endpoints) == set(OPS)
-    assert all(is_stub(fn) for fn in endpoints.values())
+    # Every /api/v1 route, not only those with an operation_id (R1-2): a hidden route added with
+    # include_in_schema=False has none and must still fail here.
+    routes = list(v1_routes(v1_app))
+    assert [r.label for r in routes if r.operation_id is None] == []
+    assert {r.operation_id for r in routes} == set(OPS)
+    assert sorted((m, r.path) for r in routes for m in r.methods) == sorted(
+        (op.method, f"/api/v1{op.path}") for op in OPS.values()
+    )
+    assert all(is_stub(r.endpoint) for r in routes)
 
 
 def _app_with(fn_is_stub: bool) -> FastAPI:
@@ -78,6 +79,89 @@ def test_guard_flags_presence_only_bearer() -> None:
 
 def test_guard_skips_stubs() -> None:
     assert guard_failures(_app_with(fn_is_stub=True), scan_dir_empty()) == []
+
+
+def _app_with_hidden_route(*, stubbed: bool = False, websocket: bool = False) -> FastAPI:
+    """The tester's repro (R1-2): a stub registry route plus an implemented, unauthenticated
+    /api/v1 route that has no operation_id and is not in openapi.json."""
+    router = APIRouter()
+
+    async def auth_me() -> NoReturn:
+        raise NotImplementedYet("auth_me")
+
+    route(router, OPS["auth_me"])(stub(auth_me))
+
+    async def export() -> dict[str, str]:
+        return {"rows": "every tenant's products"}
+
+    async def feed(ws: WebSocket) -> None:
+        await ws.close()
+
+    if websocket:
+        router.add_api_websocket_route("/products/feed", feed)
+    else:
+        router.add_api_route(
+            "/products/export",
+            stub(export) if stubbed else export,
+            methods=["GET"],
+            include_in_schema=False,
+        )
+    app = FastAPI()
+    app.include_router(router, prefix="/api/v1")
+    return app
+
+
+def test_guard_flags_a_hidden_route() -> None:
+    failures = guard_failures(_app_with_hidden_route(), scan())
+    assert failures == ["GET /api/v1/products/export: route is not in the registry"]
+
+
+def test_guard_flags_a_stub_marked_hidden_route() -> None:
+    failures = guard_failures(_app_with_hidden_route(stubbed=True), scan())
+    assert failures == ["GET /api/v1/products/export: route is not in the registry"]
+
+
+def test_guard_flags_a_hidden_websocket_route() -> None:
+    failures = guard_failures(_app_with_hidden_route(websocket=True), scan())
+    assert failures == ["WEBSOCKET /api/v1/products/feed: route is not in the registry"]
+
+
+def test_guard_flags_a_registry_op_id_on_the_wrong_path() -> None:
+    router = APIRouter()
+
+    async def auth_me() -> NoReturn:
+        raise NotImplementedYet("auth_me")
+
+    router.add_api_route(
+        "/auth/me2", stub(auth_me), methods=["GET"], operation_id="auth_me", response_model=None
+    )
+    app = FastAPI()
+    app.include_router(router, prefix="/api/v1")
+    assert guard_failures(app, scan_dir_empty()) == [
+        "GET /api/v1/auth/me2: route is not in the registry"
+    ]
+
+
+def test_guard_flags_a_mount_under_api_v1() -> None:
+    app = _app_with(fn_is_stub=True)
+    app.mount("/api/v1/raw", FastAPI())
+    assert guard_failures(app, scan_dir_empty()) == [
+        "MOUNT /api/v1/raw: route is not in the registry"
+    ]
+
+
+def test_guard_ignores_routes_outside_api_v1() -> None:
+    app = _app_with(fn_is_stub=True)
+
+    @app.get("/healthz")
+    async def healthz() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @app.get("/api/v10/x")
+    async def other() -> dict[str, str]:
+        return {}
+
+    assert guard_failures(app, scan_dir_empty()) == []
 
 
 def scan_dir_empty() -> Found:
