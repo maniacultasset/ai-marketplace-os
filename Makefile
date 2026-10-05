@@ -162,6 +162,11 @@ dev:
 
 # The local /api/v1 mock (S3 D5): committed openapi.json examples on 127.0.0.1 only. `Prefer:
 # code=<status>` answers a declared error example. `mock-smoke` starts it on a free port and probes it.
+# Tag CI only (publish-schemas.yml); refuses to run anywhere else. Publishing is the user's go.
+.PHONY: publish-schemas
+publish-schemas:
+	scripts/ci/publish_schemas.sh
+
 .PHONY: mock
 mock:
 	uv run --frozen python -m app_mock --host 127.0.0.1 --port $(MOCK_HOST_PORT)

@@ -1,5 +1,23 @@
 # mkos-schemas changelog
 
+The Python package `mkos-schemas` and the npm package `@maniacultasset/schemas` (installed by the FE
+as `"@mkos/schemas": "npm:@maniacultasset/schemas@<version>"`) share one version, released by one
+`schemas-v<version>` tag.
+
+**Version rule after a tag.** Any PR that changes the contract (`jsonschema/**`, `ts/src/**`, the
+`mkos_schemas` models, or `openapi.json` through the API registry) once `schemas-v<current>` exists:
+
+- If this file has an open `## 1.N.0 (unreleased)` heading, add the entry under it.
+- Otherwise bump to the next MINOR in one commit: `packages/schemas/pyproject.toml`,
+  `packages/schemas/ts/package.json`, `SCHEMA_VERSION` in `src/mkos_schemas/base.py`, every fixture's
+  `schema_version`, and the regenerated outputs; then open `## 1.N.0 (unreleased)`.
+- A description-only change may take a PATCH instead, unless a MINOR heading is already open.
+- Classify each change first (docs/RULES.md §11): adding a member to a closed vocabulary (an error
+  code to a declared set included) is MAJOR and waits for its window.
+- The tagging PR closes the heading (`## 1.N.0 (YYYY-MM-DD)`). The publish workflow refuses a tag
+  whose heading is still `(unreleased)`, and `make contracts` refuses contract changes at an
+  already tagged version (`scripts/ci/schemas_version_check.sh`).
+
 ## 1.0.0
 
 First contract release. It ships outside the 4 Oct window as a one-time exception: nothing is pinned to 0.0.0. Later breaking changes wait for 18 Oct or 1 Nov.

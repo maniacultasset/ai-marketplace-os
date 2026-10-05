@@ -21,4 +21,5 @@ PIP_DISABLE_PIP_VERSION_CHECK=1 "$venv/bin/pip" install --no-build-isolation --n
 )
 "$venv/bin/python" scripts/ci/contracts_check.py --fixtures packages/schemas/fixtures
 echo "contracts: mkos-schemas bare venv, fixtures and pass alias OK"
+scripts/ci/schemas_version_check.sh
 scripts/ci/oasdiff_check.sh "${CONTRACTS_BASE_REF:-origin/main}"

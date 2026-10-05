@@ -274,6 +274,10 @@ leg lint-imports-cli-imported lint-imports 'nothing imports app.cli BROKEN' seed
 leg lint-imports-image-checks-sqla lint-imports 'image checks are pure BROKEN' seed_image_checks_sqla make lint-imports
 leg lint-imports-image-checks-repo lint-imports 'image checks are pure BROKEN' seed_image_checks_repo make lint-imports
 leg lint-imports-app-imports-mock lint-imports 'app never imports app_mock BROKEN' seed_app_imports_mock make lint-imports
+# S3 T22: a contract edit at an already tagged version. The tag is made only inside a throwaway
+# clone (a worktree shares this repo's tags), so no schemas-v* tag ever lands here.
+leg contracts-schemas-tagged-unbumped contracts 'already tagged; bump per CHANGELOG rule' seed_none \
+  sh -c 'd="$(mktemp -d)"; trap "rm -rf \"\$d\"" EXIT; git clone -q --no-checkout "$PWD" "$d/r" && cd "$d/r" && git checkout -q "$(git -C "$OLDPWD" rev-parse HEAD)" && git tag schemas-v1.0.0 && printf "\n" >>packages/schemas/jsonschema/openapi.json && git add packages/schemas/jsonschema/openapi.json && git -c core.hooksPath=/dev/null -c user.name=prove-gates -c user.email=prove-gates@example.invalid commit -q -m "test: seeded post-tag edit" && make contracts'
 
 if [ "$with_docker" -eq 1 ]; then
   self_project="$(docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"

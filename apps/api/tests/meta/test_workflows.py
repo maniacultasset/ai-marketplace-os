@@ -26,9 +26,10 @@ PR_FILES = {
     "ci-meta.yml": ["commit-lint", "gitleaks"],
 }
 PUSH_FILE = "main-gitleaks.yml"
-ALL_FILES = [*PR_FILES, PUSH_FILE]
+PUBLISH_FILE = "publish-schemas.yml"
+ALL_FILES = [*PR_FILES, PUSH_FILE, PUBLISH_FILE]
 TEN_CHECKS = {job for jobs in PR_FILES.values() for job in jobs}
-TIMEOUTS = {"ci-api.yml": 15, "contracts.yml": 10, "ci-meta.yml": 5, PUSH_FILE: 5}
+TIMEOUTS = {"ci-api.yml": 15, "contracts.yml": 10, "ci-meta.yml": 5, PUSH_FILE: 5, PUBLISH_FILE: 10}
 ENV_JOBS = {
     "api-lint": "mos_test",
     "api-typecheck": "mos_test",
@@ -83,7 +84,7 @@ def _compose_postgres_image(repo_root: Path, load_yaml: Callable[[Path], Any]) -
     return image
 
 
-def test_exactly_four_workflow_files(workflows: dict[str, dict[str, Any]]) -> None:
+def test_exactly_five_workflow_files(workflows: dict[str, dict[str, Any]]) -> None:
     assert sorted(workflows) == sorted(ALL_FILES)
 
 
@@ -137,7 +138,11 @@ def test_workflow_permissions_empty_jobs_read_only(workflows: dict[str, dict[str
     for name, workflow in workflows.items():
         assert workflow["permissions"] == {}, name
     for name, job_id, job in _jobs(workflows):
-        assert job["permissions"] == {"contents": "read"}, (name, job_id)
+        if name == PUBLISH_FILE:
+            # The one job that writes: publishing the npm package to GitHub Packages.
+            assert job["permissions"] == {"contents": "read", "packages": "write"}, job_id
+        else:
+            assert job["permissions"] == {"contents": "read"}, (name, job_id)
         assert job["runs-on"] == "ubuntu-latest", (name, job_id)
 
 
@@ -246,7 +251,10 @@ def test_psql_bootstrap_precedes_pytest(workflows: dict[str, dict[str, Any]]) ->
 
 def test_timeouts_and_concurrency_set(workflows: dict[str, dict[str, Any]]) -> None:
     for name, workflow in workflows.items():
-        assert workflow["concurrency"]["cancel-in-progress"] is (name != PUSH_FILE), name
+        # Never cancel a main scan or a release mid-way.
+        assert workflow["concurrency"]["cancel-in-progress"] is (
+            name not in {PUSH_FILE, PUBLISH_FILE}
+        ), name
         for job_id, job in workflow["jobs"].items():
             assert job["timeout-minutes"] == TIMEOUTS[name], (name, job_id)
 
@@ -287,3 +295,33 @@ def test_contracts_job_runs_mock_smoke(workflows: dict[str, dict[str, Any]]) -> 
     assert runs.index("make mock-smoke") < len(steps) - 1
     assert steps[-1] == {"run": "make contracts"}
     assert steps[0]["with"]["fetch-depth"] == 0
+
+
+def test_publish_tag_trigger_only(workflows: dict[str, dict[str, Any]]) -> None:
+    assert workflows[PUBLISH_FILE]["on"] == {"push": {"tags": ["schemas-v*"]}}
+    assert list(workflows[PUBLISH_FILE]["jobs"]) == ["publish-schemas"]
+
+
+def test_publish_no_pull_request_target(
+    workflows: dict[str, dict[str, Any]], repo_root: Path
+) -> None:
+    on = workflows[PUBLISH_FILE]["on"]
+    assert set(on) == {"push"}
+    text = (repo_root / ".github/workflows" / PUBLISH_FILE).read_text(encoding="utf-8")
+    assert "pull_request" not in text
+    assert "workflow_dispatch" not in text
+
+
+def test_publish_token_only_in_env(workflows: dict[str, dict[str, Any]], repo_root: Path) -> None:
+    job = workflows[PUBLISH_FILE]["jobs"]["publish-schemas"]
+    last = job["steps"][-1]
+    assert last == {
+        "run": "make publish-schemas",
+        "env": {"NODE_AUTH_TOKEN": "${{ secrets.GITHUB_TOKEN }}"},
+    }
+    text = (repo_root / ".github/workflows" / PUBLISH_FILE).read_text(encoding="utf-8")
+    assert text.count("secrets.GITHUB_TOKEN") == 1
+    for step in job["steps"][:-1]:
+        assert "NODE_AUTH_TOKEN" not in str(step)
+    checkout = job["steps"][0]
+    assert checkout["with"] == {"persist-credentials": False, "fetch-depth": 0}
