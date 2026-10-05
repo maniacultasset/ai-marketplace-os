@@ -108,3 +108,23 @@ forbidden_modules =
     app
     sqlalchemy
     psycopg
+
+# The Rules Engine is pure (invariant 2; CANON.md:126): no DB, web or app layers, directly or
+# indirectly. The S14b port wraps it and does the loading.
+[importlinter:contract:rules-engine-is-pure]
+name = app.services.rules_engine is pure (no DB, web or app layers)
+type = forbidden
+source_modules =
+    app.services.rules_engine
+forbidden_modules =
+    sqlalchemy
+    psycopg
+    fastapi
+    starlette
+    app.db
+    app.repositories
+    app.api
+    app.workers
+    app.adapters
+    app.core
+    app.cli
