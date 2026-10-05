@@ -44,6 +44,50 @@ def test_vector_version_at_least_0_8_2(superuser_conn: Conn, bootstrap_sql: str)
     assert tuple(int(part) for part in version.split(".")) >= (0, 8, 2)
 
 
+def test_read_only_roles_exist(superuser_conn: Conn, bootstrap_sql: str) -> None:
+    superuser_conn.execute(bootstrap_sql)
+    rows = superuser_conn.execute(
+        "SELECT rolname, rolcanlogin, rolsuper, rolbypassrls "
+        "FROM pg_roles WHERE rolname IN "
+        "('migrator', 'app_rw', 'app_ro', 'app_platform_ro')"
+    ).fetchall()
+    found = {row[0]: row[1:] for row in rows}
+    assert set(found) == {"migrator", "app_rw", "app_ro", "app_platform_ro"}
+    for flags in found.values():
+        assert flags[1] is False  # rolsuper
+        assert flags[2] is False  # rolbypassrls
+    assert found["app_platform_ro"][0] is False
+    assert found["app_ro"][0] is True
+    assert found["migrator"][0] is True
+    assert found["app_rw"][0] is True
+
+
+def test_app_ro_is_read_only_by_default(superuser_conn: Conn, bootstrap_sql: str) -> None:
+    superuser_conn.execute(bootstrap_sql)
+    readonly = _scalar(
+        superuser_conn,
+        "SELECT rolconfig FROM pg_roles WHERE rolname = 'app_ro'",
+    )
+    assert readonly is not None
+    assert "default_transaction_read_only=on" in readonly
+
+
+def test_timeouts_and_utc(superuser_conn: Conn, bootstrap_sql: str) -> None:
+    superuser_conn.execute(bootstrap_sql)
+    migrator = _scalar(superuser_conn, "SELECT rolconfig FROM pg_roles WHERE rolname = 'migrator'")
+    app_rw = _scalar(superuser_conn, "SELECT rolconfig FROM pg_roles WHERE rolname = 'app_rw'")
+    assert "lock_timeout=5s" in migrator
+    assert "idle_in_transaction_session_timeout=60s" in app_rw
+    tz = _scalar(
+        superuser_conn,
+        "SELECT setconfig FROM pg_db_role_setting s "
+        "JOIN pg_database d ON d.oid = s.setdatabase "
+        "WHERE d.datname = current_database() AND s.setrole = 0",
+    )
+    assert tz is not None
+    assert any(item.lower() == "timezone=utc" for item in tz)
+
+
 def test_roles_exist_with_login(superuser_conn: Conn, bootstrap_sql: str) -> None:
     superuser_conn.execute(bootstrap_sql)
     rows = superuser_conn.execute(

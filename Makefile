@@ -86,6 +86,7 @@ BOOTSTRAP_SQL := /docker-entrypoint-initdb.d/0000_bootstrap.sql
 .PHONY: bootstrap-db
 bootstrap-db:
 	$(PSQL) -d marketplace_os -f $(BOOTSTRAP_SQL)
+	$(PSQL) -d marketplace_os -f /docker-entrypoint-initdb.d/0000_role_passwords.sql
 
 # The test databases: mos_test for api-tests, mos_iso for tenant-isolation (never marketplace_os).
 .PHONY: test-db

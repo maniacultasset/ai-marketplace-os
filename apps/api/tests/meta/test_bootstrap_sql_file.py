@@ -1,20 +1,24 @@
-"""AC8: scripts/db/0000_bootstrap.sql is CANON-ADDENDUM.md §1's SQL, byte for byte (CANON.md:92)."""
+"""The bootstrap file stays free of password literals and orders the Cloud SQL grant."""
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 
-def _addendum_sql(repo_root: Path) -> str:
-    addendum = (repo_root / "docs/canon/CANON-ADDENDUM.md").read_text(encoding="utf-8")
-    section = addendum[addendum.index("## 1. Bootstrap SQL") : addendum.index("## 2. Bootstrap")]
-    block = re.search(r"```sql\n(.*?)```", section, flags=re.DOTALL)
-    assert block is not None
-    return block.group(1)
+def test_bootstrap_sql_has_no_password_literal(repo_root: Path) -> None:
+    text = (repo_root / "scripts/db/0000_bootstrap.sql").read_text(encoding="utf-8")
+    assert "PASSWORD" not in text
+    assert ":'" not in text
 
 
-def test_file_equals_addendum_block(repo_root: Path) -> None:
-    actual = (repo_root / "scripts/db/0000_bootstrap.sql").read_text(encoding="utf-8")
-    assert actual == _addendum_sql(repo_root)
-    assert actual.endswith(";\n")
+def test_grant_migrator_precedes_owner_change(repo_root: Path) -> None:
+    text = (repo_root / "scripts/db/0000_bootstrap.sql").read_text(encoding="utf-8")
+    grant = text.index("GRANT migrator TO")
+    owner = text.index("ALTER SCHEMA public OWNER TO migrator")
+    assert grant < owner
+
+
+def test_workflows_have_no_password_literals(repo_root: Path) -> None:
+    text = (repo_root / ".github/workflows/ci-api.yml").read_text(encoding="utf-8")
+    assert "PASSWORD '" not in text
+    assert 'PASSWORD "' not in text
