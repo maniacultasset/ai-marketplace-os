@@ -26,7 +26,8 @@ SEAM_SECRET_DENY_NAMES: Final[frozenset[str]] = frozenset(
 SEAM_REDACTED: Final = "<redacted>"
 
 SEAM_JSON_SCAN_MAX_ATTEMPTS: Final = 64
-"""Decode attempts per string when looking for JSON embedded in text; past it the walk fails closed."""
+"""Failed decode attempts per string when looking for JSON embedded in text; past it the walk fails
+closed. Successful decodes move the scan past the value, so they cost nothing."""
 
 _CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
 
@@ -48,21 +49,56 @@ def is_seam_secret_key(key: str) -> bool:
 
 _JSON_DECODER: Final = json.JSONDecoder()
 
-# Only positions where a JSON object or array can really start cost a decode attempt: ``{`` must
-# be followed by a key or ``}``, ``[`` by a value or ``]``. Template braces such as ``{name}`` and
-# prose such as ``[see note]`` are skipped for free.
-_JSON_START = re.compile(r'\{\s*["}]|\[\s*[\]"{\[\-0-9tfnNI]')
+# Only positions where a JSON value worth walking can really start cost a decode attempt: ``{``
+# must be followed by a key or ``}``, ``[`` by a value or ``]``, and ``"`` (a JSON string literal,
+# i.e. double-encoded JSON) by ``{``, ``[`` or an escaped quote. Template braces such as ``{name}``,
+# prose such as ``[see note]`` and plain quoted words are skipped for free.
+_JSON_START = re.compile(r'\{\s*["}]|\[\s*[\]"{\[\-0-9tfnNI]|"(?=\s*[{\[]|\\")')
+_ESCAPED_QUOTE: Final = '\\"'
 
 _JSON_TOO_DEEP: Final = "<json nested too deep>"
 _JSON_SCAN_LIMIT: Final = "<json scan limit reached>"
 
 
+class _ScanBudget:
+    """Failed decode attempts shared by every pass over one string."""
+
+    def __init__(self) -> None:
+        self.failures = 0
+
+
+def _scan_json_values(text: str, budget: _ScanBudget, found: list[object]) -> str | None:
+    """Append every JSON object, array or JSON string literal found in ``text`` to ``found``.
+
+    Returns a fail-closed marker when nesting is too deep or the failure budget is spent.
+    """
+    pos = 0
+    while (match := _JSON_START.search(text, pos)) is not None:
+        start = match.start()
+        try:
+            value, end = _JSON_DECODER.raw_decode(text, start)
+        except json.JSONDecodeError:
+            if budget.failures >= SEAM_JSON_SCAN_MAX_ATTEMPTS:
+                return _JSON_SCAN_LIMIT
+            budget.failures += 1
+            pos = start + 1
+            continue
+        except RecursionError:
+            return _JSON_TOO_DEEP
+        found.append(value)
+        pos = end
+    return None
+
+
 def _decode_json_in_text(text: str) -> tuple[list[object], str | None]:
     """Decode every JSON value found in ``text``: the whole text as a JSON string literal
-    (double-encoded JSON), or each object or array embedded anywhere in it.
+    (double-encoded JSON), each object or array embedded anywhere in it, and each JSON string
+    literal holding JSON (double-encoded JSON after a prefix or before trailing text). Decoded
+    strings are walked again by the caller. When the text holds escaped quotes (``{\\"key\\": ...}``
+    without its enclosing quotes), it is scanned once more with them unescaped.
 
     Returns the decoded values, plus a marker when the walk must fail closed (nesting too deep to
-    parse, or more than ``SEAM_JSON_SCAN_MAX_ATTEMPTS`` candidates).
+    parse, or more than ``SEAM_JSON_SCAN_MAX_ATTEMPTS`` failed decode attempts).
     """
     stripped = text.strip().lstrip("\ufeff").strip()
     if stripped.startswith('"'):
@@ -76,23 +112,11 @@ def _decode_json_in_text(text: str) -> tuple[list[object], str | None]:
             if isinstance(literal, str):
                 return [literal], None
     found: list[object] = []
-    attempts = 0
-    pos = 0
-    while (match := _JSON_START.search(stripped, pos)) is not None:
-        if attempts >= SEAM_JSON_SCAN_MAX_ATTEMPTS:
-            return found, _JSON_SCAN_LIMIT
-        attempts += 1
-        start = match.start()
-        try:
-            value, end = _JSON_DECODER.raw_decode(stripped, start)
-        except json.JSONDecodeError:
-            pos = start + 1
-            continue
-        except RecursionError:
-            return found, _JSON_TOO_DEEP
-        found.append(value)
-        pos = end
-    return found, None
+    budget = _ScanBudget()
+    fail_closed = _scan_json_values(stripped, budget, found)
+    if fail_closed is None and _ESCAPED_QUOTE in stripped:
+        fail_closed = _scan_json_values(stripped.replace(_ESCAPED_QUOTE, '"'), budget, found)
+    return found, fail_closed
 
 
 def find_seam_secret_key(value: object) -> str | None:

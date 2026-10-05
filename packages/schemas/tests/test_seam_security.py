@@ -236,3 +236,65 @@ def test_walk_fails_closed_when_scan_cap_is_hit() -> None:
 def test_walk_fails_closed_on_deep_json_after_prefix() -> None:
     text = "prefix " + "[" * 100_000 + "]" * 100_000
     assert find_seam_secret_key(text) is not None
+
+
+_R3_SECRET = "sk-LIVE-ROUND3-SECRET-VALUE"
+_R3_INNER = json.dumps({"access_token": _R3_SECRET})
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "upstream body: " + json.dumps(_R3_INNER),
+        json.dumps(_R3_INNER) + " (truncated)",
+        "body=" + json.dumps(json.dumps({"client_secret": _R3_SECRET})),
+        json.dumps(_R3_INNER)[1:-1],
+        json.dumps({"a": "note " + json.dumps(_R3_INNER)}),
+        "log: " + json.dumps("prefix " + json.dumps(_R3_INNER) + " tail") + " end",
+    ],
+)
+def test_walk_decodes_escaped_json_inside_text(text: str) -> None:
+    # Double-encoded JSON after a prefix, before trailing text, without its quotes, or inside a
+    # JSON string value is walked like top-level JSON.
+    assert find_seam_secret_key(text) is not None
+    for field in ("message", "suggestion", "value_submitted"):
+        dumped = _error_item(**{field: text}).model_dump_json()
+        assert _R3_SECRET not in dumped, field
+        assert SEAM_REDACTED in dumped
+    raw = _golden_context()
+    raw["product"] = {**raw["product"], "notes": text}
+    with pytest.raises(ValidationError, match="forbidden seam key") as exc:
+        GenerationContext.model_validate(raw)
+    assert _R3_SECRET not in str(exc.value)
+
+
+_FOOTNOTES = " ".join(f"Dermatologist tested [{i}]." for i in range(1, 70))
+_CHECKBOXES = "\n".join(f"- [ ] tone rule {i}" for i in range(70))
+
+
+@pytest.mark.parametrize("text", [_FOOTNOTES, _CHECKBOXES])
+def test_walk_keeps_prose_with_many_harmless_arrays(text: str) -> None:
+    # Successful decodes (``[1]``, ``[ ]``) do not spend the fail-closed budget.
+    assert len(text) <= 2000
+    assert find_seam_secret_key(text) is None
+    chunk: dict[str, Any] = {
+        "id": "22222222-2222-2222-2222-222222222222",
+        "tenant_id": str(_TID),
+        "type": "tone_rule",
+        "text": text,
+        "similarity": 0.5,
+        "source_type": "brand_document",
+        "source_id": "33333333-3333-3333-3333-333333333333",
+    }
+    assert BrandChunkDTO.model_validate(chunk).text == text
+    assert _error_item(suggestion=text[:1000]).suggestion == text[:1000]
+    raw = _golden_context()
+    raw["product"] = {**raw["product"], "notes": text}
+    GenerationContext.model_validate(raw)
+
+
+def test_walk_cap_counts_failed_attempts_across_both_passes() -> None:
+    # Failures in the plain pass and the unescaped-quote pass share one budget.
+    text = "[1 " * (SEAM_JSON_SCAN_MAX_ATTEMPTS // 2 + 1) + '\\"'
+    assert find_seam_secret_key(text) is not None
+    assert find_seam_secret_key("[1 " * (SEAM_JSON_SCAN_MAX_ATTEMPTS // 2 + 1)) is None
