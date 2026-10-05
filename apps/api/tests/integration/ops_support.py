@@ -252,3 +252,44 @@ def oauth_state(conn: Conn, side: TenantSeed, **columns: Any) -> UUID:
         "expires_at": "2099-01-01T00:00:00Z",
     }
     return f.insert(conn, "oauth_states", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+# ---- listing_submissions, publish_field_results ----
+
+
+def submission(conn: Conn, side: TenantSeed, **columns: Any) -> UUID:
+    """A `pending` attempt-1 `create` of `side`'s listing version, requested by its owner,
+    with its own `listing_publish` job unless one is given."""
+    n = next(_counter)
+    defaults: dict[str, Any] = {
+        "tenant_id": side.tenant_id,
+        "listing_id": side.listing_id,
+        "listing_version_id": side.version_id,
+        "marketplace": "amazon",
+        "marketplace_account_id": side.account_id,
+        "attempt": 1,
+        "operation": "create",
+        "payload_sha256": digest(f"payload-{n}"),
+        "payload_storage_key": f"{side.tenant_id}/submissions/{n}.json",
+        "facts_digest": digest(f"facts-{n}"),
+        "idempotency_key": digest(f"idem-{n}").hex(),
+        "requested_by_user_id": side.user_id,
+        "actor_type": "user",
+    }
+    if "job_id" not in columns:
+        defaults["job_id"] = job_run(conn, side.tenant_id, created_by=side.user_id)
+    return f.insert(conn, "listing_submissions", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def field_result(conn: Conn, side: TenantSeed, submission_id: UUID, **columns: Any) -> UUID:
+    """A `succeeded` result for `content.title` of `side`'s item."""
+    defaults: dict[str, Any] = {
+        "tenant_id": side.tenant_id,
+        "submission_id": submission_id,
+        "listing_id": side.listing_id,
+        "listing_version_id": side.version_id,
+        "listing_item_id": side.item_id,
+        "field": "content.title",
+        "status": "succeeded",
+    }
+    return f.insert(conn, "publish_field_results", **{**defaults, **columns})  # type: ignore[no-any-return]

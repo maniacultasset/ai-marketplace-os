@@ -145,10 +145,21 @@ def test_tenant_columns_catalog(db: Conn) -> None:
 def _pinned(
     fks: list[tuple[str, str, str, list[str], list[str]]], source: str, column: str
 ) -> bool:
-    """`column` of `source` sits in a tenant-composite FK, or is the row's own id."""
-    if column == "id":
-        return True
-    return any(fk[1] == source and fk[3] == ["tenant_id", column] for fk in fks)
+    """`column` of `source` sits in a tenant-composite FK, or is the row's own id, or (0003,
+    publish_field_results) sits in another companion FK of `source` that has such a column: that
+    FK ties it to a row the pinned column already fixes in the tenant."""
+    pinned = {"id"} | {
+        fk[3][1] for fk in fks if fk[1] == source and len(fk[3]) == 2 and fk[3][0] == "tenant_id"
+    }
+    companions = [fk[3] for fk in fks if fk[1] == source and "tenant_id" not in fk[3]]
+    grew = True
+    while grew:
+        grew = False
+        for columns in companions:
+            if pinned & set(columns) and not set(columns) <= pinned:
+                pinned |= set(columns)
+                grew = True
+    return column in pinned
 
 
 def test_tenant_fks_composite(db: Conn) -> None:

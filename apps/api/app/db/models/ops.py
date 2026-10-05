@@ -20,16 +20,18 @@ from sqlalchemy import (
     LargeBinary,
     Numeric,
     PrimaryKeyConstraint,
+    SmallInteger,
     Text,
     UniqueConstraint,
     Uuid,
     text,
 )
-from sqlalchemy.dialects.postgresql import INET, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, INET, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql.elements import conv
 
 from app.db.base import Base
+from app.db.models.listings import to_listing_marketplace, to_version
 from app.db.models.tenancy import (
     NOW,
     anchor,
@@ -284,3 +286,163 @@ class RateLimitCounter(Base):
     bucket_key: Mapped[str] = mapped_column(Text)
     window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     n: Mapped[int] = mapped_column(Integer)
+
+
+def to_submission_anchor(table: str, column: str) -> ForeignKeyConstraint:
+    """`(column, listing_id, listing_version_id) → listing_submissions (id, listing_id,
+    listing_version_id)`: the same listing and version as the submission it names."""
+    return ForeignKeyConstraint(
+        [column, "listing_id", "listing_version_id"],
+        [
+            "listing_submissions.id",
+            "listing_submissions.listing_id",
+            "listing_submissions.listing_version_id",
+        ],
+        name=conv(f"fk_{table}_{column}"),
+    )
+
+
+class ListingSubmission(Base):
+    __tablename__ = "listing_submissions"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_listing_submissions")),
+        anchor("listing_submissions"),
+        # the previous-attempt and per-field target
+        UniqueConstraint(
+            "id",
+            "listing_id",
+            "listing_version_id",
+            name=conv("uq_listing_submissions_id_listing_id_listing_version_id"),
+        ),
+        UniqueConstraint(
+            "listing_id",
+            "listing_version_id",
+            "attempt",
+            name=conv("uq_listing_submissions_listing_id_listing_version_id_attempt"),
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "marketplace",
+            "idempotency_key",
+            name=conv("uq_listing_submissions_tenant_id_marketplace_idempotency_key"),
+        ),
+        tenant_fk("listing_submissions"),
+        to_row("listing_submissions", "listing_id", "listings"),
+        to_version("listing_submissions", "listing_version_id"),
+        to_listing_marketplace("listing_submissions"),
+        to_row("listing_submissions", "marketplace_account_id", "marketplace_accounts"),
+        ForeignKeyConstraint(
+            ["marketplace_account_id", "marketplace"],
+            ["marketplace_accounts.id", "marketplace_accounts.marketplace"],
+            name=conv("fk_listing_submissions_marketplace_account_id_marketplace"),
+        ),
+        to_row("listing_submissions", "job_id", "job_runs"),
+        to_membership("listing_submissions", "requested_by_user_id"),
+        to_submission_anchor("listing_submissions", "previous_submission_id"),
+        # at most one open submission per listing
+        Index(
+            conv("ux_ls_open"),
+            "listing_id",
+            unique=True,
+            postgresql_where=text("outcome IN ('pending', 'accepted')"),
+        ),
+        Index(
+            conv("ix_listing_submissions_attempts"),
+            "tenant_id",
+            "listing_id",
+            text("created_at DESC"),
+            text("id DESC"),
+        ),
+        Index(conv("ix_listing_submissions_job_id"), "job_id"),
+        Index(
+            conv("ix_listing_submissions_submission_ref"),
+            "tenant_id",
+            "marketplace",
+            "submission_ref",
+            postgresql_where=text("submission_ref IS NOT NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    listing_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    listing_version_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    marketplace: Mapped[str] = mapped_column(Text)
+    marketplace_account_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    job_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    attempt: Mapped[int] = mapped_column(SmallInteger)
+    operation: Mapped[str] = mapped_column(Text)
+    field_paths: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
+    payload_sha256: Mapped[bytes] = mapped_column(LargeBinary)
+    payload_storage_key: Mapped[str] = mapped_column(Text)
+    facts_digest: Mapped[bytes] = mapped_column(LargeBinary)
+    idempotency_key: Mapped[str] = mapped_column(Text)
+    submission_ref: Mapped[str | None] = mapped_column(Text)
+    outcome: Mapped[str] = mapped_column(Text, server_default=text("'pending'"))
+    error_code: Mapped[str | None] = mapped_column(Text)
+    retry_justification: Mapped[str | None] = mapped_column(Text)
+    previous_submission_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    corrections_json: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
+    requested_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    actor_type: Mapped[str] = mapped_column(Text)
+    error_report_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    raw_response_sha256: Mapped[bytes | None] = mapped_column(LargeBinary)
+    raw_response_storage_key: Mapped[str | None] = mapped_column(Text)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created_at_column()
+
+
+class PublishFieldResult(Base):
+    """Append-only per-field ledger, keyed by child SKU (the listing item)."""
+
+    __tablename__ = "publish_field_results"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_publish_field_results")),
+        anchor("publish_field_results"),
+        UniqueConstraint(
+            "submission_id",
+            "listing_item_id",
+            "field",
+            name=conv("uq_publish_field_results_submission_id_listing_item_id_field"),
+        ),
+        tenant_fk("publish_field_results"),
+        to_row("publish_field_results", "submission_id", "listing_submissions"),
+        ForeignKeyConstraint(
+            ["submission_id", "listing_id", "listing_version_id"],
+            [
+                "listing_submissions.id",
+                "listing_submissions.listing_id",
+                "listing_submissions.listing_version_id",
+            ],
+            name=conv("fk_publish_field_results_submission_id_listing_id"),
+        ),
+        ForeignKeyConstraint(
+            ["listing_item_id", "listing_id"],
+            ["listing_items.id", "listing_items.listing_id"],
+            name=conv("fk_publish_field_results_listing_item_id"),
+        ),
+        Index(
+            conv("ix_publish_field_results_retry"),
+            "tenant_id",
+            "listing_id",
+            "listing_version_id",
+            "listing_item_id",
+            "field",
+            text("created_at DESC"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    submission_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    listing_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    listing_version_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    listing_item_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    # a mkos_schemas.paths field path (the revision's CHECK mirrors FIELD_PATH_PATTERNS)
+    field: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text)
+    error_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    marketplace_code: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = created_at_column()

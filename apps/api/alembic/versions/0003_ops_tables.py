@@ -507,11 +507,224 @@ AUTH_DOWN: Final[tuple[str, ...]] = (
     "DROP TABLE public.refresh_tokens",
 )
 
+# ---- SUBMISSIONS: listing_submissions, publish_field_results (DATABASE.md §5.3) ----
+# One row per logical submission, committed `pending` before the marketplace call. Anchors:
+# `(tenant_id, id)` and `(id, listing_id, listing_version_id)` (the previous-attempt and per-field
+# target). `→ lv`, `→ l/mkt`, `(marketplace_account_id, marketplace)` and the previous-attempt FK
+# carry no tenant_id; each sits beside a tenant-composite FK that pins one of its columns.
+# `ux_ls_open`: at most one open submission per listing. `job_id` is a hard FK (publish jobs
+# live as long as the listing). `ls_guard` and the outcome-transition rules are 0004.
+# The `field` CHECK is mkos_schemas.paths.FIELD_PATH_PATTERNS, frozen here and joined by `|`;
+# Python's `\s` (str) is spelled out as the 29 code points it matches, because PostgreSQL's `\s`
+# follows the database's LC_CTYPE and disagrees (U+001C-U+001F, U+0085, U+00A0 under en_US.utf8).
+STORAGE_KEY_SHAPE: Final = """
+        {col} ~ '^[A-Za-z0-9][A-Za-z0-9._/-]*$'
+        AND char_length({col}) <= 1024
+        AND strpos({col}, '..') = 0
+        AND strpos({col}, '//') = 0"""
+# The 29 code points of Python's `\s` (str), as PostgreSQL `\uXXXX` escapes.
+PY_WHITESPACE_CODE_POINTS: Final = (
+    0x0009, 0x000A, 0x000B, 0x000C, 0x000D, 0x001C, 0x001D, 0x001E, 0x001F, 0x0020,
+    0x0085, 0x00A0, 0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006,
+    0x2007, 0x2008, 0x2009, 0x200A, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000,
+)  # fmt: skip
+PY_WHITESPACE: Final = "".join(f"\\u{cp:04x}" for cp in PY_WHITESPACE_CODE_POINTS)
+FIELD_PATH_ALTERNATIVES: Final = (
+    r"^listing$",
+    r"^request$",
+    r"^file\.header$",
+    r"^file\.row$",
+    r"^content\.title$",
+    r"^content\.bullets$",
+    r"^content\.bullets\[[0-9]{1,3}\]$",
+    r"^content\.description$",
+    r"^keywords\.search_terms(\[[0-9]{1,3}\])?$",
+    r"^keywords\.hidden_terms(\[[0-9]{1,3}\])?$",
+    r"^attributes$",
+    r"^attributes\.[a-z0-9_]{1,64}$",
+    r"^images\[[0-9]{1,3}\]$",
+    r"^facts\.[a-z][a-z0-9_]{1,63}$",
+    r"^variants$",
+    r"^variants\[[^\]" + PY_WHITESPACE + r"]{1,64}\]$",
+    r"^variants\[[^\]" + PY_WHITESPACE + r"]{1,64}\]\.facts\.[a-z][a-z0-9_]{1,63}$",
+    r"^brand\.[a-z][a-z0-9_]{1,63}$",
+)
+FIELD_PATH_PATTERN: Final = "|".join(FIELD_PATH_ALTERNATIVES)
+OUTCOMES: Final = (
+    "'pending', 'accepted', 'partially_accepted', 'rejected', 'error', 'live', 'superseded'"
+)
+OUTCOMES_TERMINAL: Final = "'partially_accepted', 'rejected', 'error', 'live', 'superseded'"
+RETRY_JUSTIFICATIONS: Final = (
+    "'changed_input', 'retryable_condition', 'marketplace_transition', 'human_resolution'"
+)
+SUBMISSIONS_UP: Final[tuple[str, ...]] = (
+    f"""
+    CREATE TABLE public.listing_submissions (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      listing_id uuid NOT NULL,
+      listing_version_id uuid NOT NULL,
+      marketplace text NOT NULL,
+      marketplace_account_id uuid NOT NULL,
+      job_id uuid NOT NULL,
+      attempt smallint NOT NULL,
+      operation text NOT NULL,
+      field_paths text[],
+      payload_sha256 bytea NOT NULL,
+      payload_storage_key text NOT NULL,
+      facts_digest bytea NOT NULL,
+      idempotency_key text NOT NULL,
+      submission_ref text,
+      outcome text NOT NULL DEFAULT 'pending',
+      error_code text,
+      retry_justification text,
+      previous_submission_id uuid,
+      corrections_json jsonb,
+      requested_by_user_id uuid NOT NULL,
+      actor_type text NOT NULL,
+      error_report_json jsonb,
+      raw_response_sha256 bytea,
+      raw_response_storage_key text,
+      sent_at timestamptz,
+      responded_at timestamptz,
+      resolved_at timestamptz,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_listing_submissions PRIMARY KEY (id),
+      CONSTRAINT uq_listing_submissions_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT uq_listing_submissions_id_listing_id_listing_version_id
+        UNIQUE (id, listing_id, listing_version_id),
+      CONSTRAINT uq_listing_submissions_listing_id_listing_version_id_attempt
+        UNIQUE (listing_id, listing_version_id, attempt),
+      CONSTRAINT uq_listing_submissions_tenant_id_marketplace_idempotency_key
+        UNIQUE (tenant_id, marketplace, idempotency_key),
+      CONSTRAINT fk_listing_submissions_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_listing_submissions_listing_id FOREIGN KEY (tenant_id, listing_id)
+        REFERENCES public.listings (tenant_id, id),
+      CONSTRAINT fk_listing_submissions_listing_version_id
+        FOREIGN KEY (listing_id, listing_version_id)
+        REFERENCES public.listing_versions (listing_id, id),
+      CONSTRAINT fk_listing_submissions_listing_id_marketplace
+        FOREIGN KEY (listing_id, marketplace) REFERENCES public.listings (id, marketplace),
+      CONSTRAINT fk_listing_submissions_marketplace_account_id
+        FOREIGN KEY (tenant_id, marketplace_account_id)
+        REFERENCES public.marketplace_accounts (tenant_id, id),
+      CONSTRAINT fk_listing_submissions_marketplace_account_id_marketplace
+        FOREIGN KEY (marketplace_account_id, marketplace)
+        REFERENCES public.marketplace_accounts (id, marketplace),
+      CONSTRAINT fk_listing_submissions_job_id FOREIGN KEY (tenant_id, job_id)
+        REFERENCES public.job_runs (tenant_id, id),
+      CONSTRAINT fk_listing_submissions_requested_by_user_id
+        FOREIGN KEY (tenant_id, requested_by_user_id)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT fk_listing_submissions_previous_submission_id
+        FOREIGN KEY (previous_submission_id, listing_id, listing_version_id)
+        REFERENCES public.listing_submissions (id, listing_id, listing_version_id),
+      CONSTRAINT ck_listing_submissions_marketplace {MARKETPLACE_CHECK},
+      CONSTRAINT ck_listing_submissions_attempt CHECK (attempt BETWEEN 1 AND 3),
+      CONSTRAINT ck_listing_submissions_operation
+        CHECK (operation IN ('create', 'update', 'patch')),
+      CONSTRAINT ck_listing_submissions_field_paths CHECK (
+        CASE WHEN operation = 'patch' THEN coalesce(cardinality(field_paths) >= 1, false)
+             ELSE field_paths IS NULL END
+      ),
+      CONSTRAINT ck_listing_submissions_payload_sha256 {_digest("payload_sha256")},
+      CONSTRAINT ck_listing_submissions_facts_digest {_digest("facts_digest")},
+      CONSTRAINT ck_listing_submissions_raw_response_sha256 {_digest("raw_response_sha256")},
+      CONSTRAINT ck_listing_submissions_payload_storage_key
+        CHECK ({STORAGE_KEY_SHAPE.format(col="payload_storage_key")}),
+      CONSTRAINT ck_listing_submissions_raw_response_storage_key
+        CHECK ({STORAGE_KEY_SHAPE.format(col="raw_response_storage_key")}),
+      CONSTRAINT ck_listing_submissions_outcome CHECK (outcome IN ({OUTCOMES})),
+      CONSTRAINT ck_listing_submissions_error_code
+        CHECK (outcome <> 'error' OR error_code IS NOT NULL),
+      CONSTRAINT ck_listing_submissions_retry_justification
+        CHECK (retry_justification IN ({RETRY_JUSTIFICATIONS})),
+      CONSTRAINT ck_listing_submissions_retry_pair CHECK (
+        CASE WHEN attempt = 1
+             THEN retry_justification IS NULL AND previous_submission_id IS NULL
+             ELSE retry_justification IS NOT NULL AND previous_submission_id IS NOT NULL END
+      ),
+      CONSTRAINT ck_listing_submissions_actor_type CHECK (actor_type IN ('user', 'system')),
+      CONSTRAINT ck_listing_submissions_system_changed_input CHECK (
+        actor_type <> 'system' OR retry_justification IS NOT DISTINCT FROM 'changed_input'
+      ),
+      CONSTRAINT ck_listing_submissions_error_report CHECK (
+        outcome NOT IN ('partially_accepted', 'rejected', 'error')
+        OR error_report_json IS NOT NULL
+      ),
+      CONSTRAINT ck_listing_submissions_resolved
+        CHECK ((outcome IN ({OUTCOMES_TERMINAL})) = (resolved_at IS NOT NULL)),
+      CONSTRAINT ck_listing_submissions_responded
+        CHECK (outcome = 'pending' OR responded_at IS NOT NULL)
+    )
+    """,
+    """
+    CREATE UNIQUE INDEX ux_ls_open ON public.listing_submissions (listing_id)
+      WHERE outcome IN ('pending', 'accepted')
+    """,
+    """
+    CREATE INDEX ix_listing_submissions_attempts
+      ON public.listing_submissions (tenant_id, listing_id, created_at DESC, id DESC)
+    """,
+    "CREATE INDEX ix_listing_submissions_job_id ON public.listing_submissions (job_id)",
+    """
+    CREATE INDEX ix_listing_submissions_submission_ref
+      ON public.listing_submissions (tenant_id, marketplace, submission_ref)
+      WHERE submission_ref IS NOT NULL
+    """,
+    f"""
+    CREATE TABLE public.publish_field_results (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      submission_id uuid NOT NULL,
+      listing_id uuid NOT NULL,
+      listing_version_id uuid NOT NULL,
+      listing_item_id uuid NOT NULL,
+      field text NOT NULL,
+      status text NOT NULL,
+      error_json jsonb,
+      marketplace_code text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_publish_field_results PRIMARY KEY (id),
+      CONSTRAINT uq_publish_field_results_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT uq_publish_field_results_submission_id_listing_item_id_field
+        UNIQUE (submission_id, listing_item_id, field),
+      CONSTRAINT fk_publish_field_results_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_publish_field_results_submission_id FOREIGN KEY (tenant_id, submission_id)
+        REFERENCES public.listing_submissions (tenant_id, id),
+      CONSTRAINT fk_publish_field_results_submission_id_listing_id
+        FOREIGN KEY (submission_id, listing_id, listing_version_id)
+        REFERENCES public.listing_submissions (id, listing_id, listing_version_id),
+      CONSTRAINT fk_publish_field_results_listing_item_id
+        FOREIGN KEY (listing_item_id, listing_id)
+        REFERENCES public.listing_items (id, listing_id),
+      CONSTRAINT ck_publish_field_results_field
+        CHECK (char_length(field) <= 192 AND field ~ '{FIELD_PATH_PATTERN}'),
+      CONSTRAINT ck_publish_field_results_status
+        CHECK (status IN ('succeeded', 'failed', 'skipped')),
+      CONSTRAINT ck_publish_field_results_error_json
+        CHECK ((status = 'failed') = (error_json IS NOT NULL))
+    )
+    """,
+    """
+    CREATE INDEX ix_publish_field_results_retry ON public.publish_field_results (
+      tenant_id, listing_id, listing_version_id, listing_item_id, field, created_at DESC
+    )
+    """,
+)
+SUBMISSIONS_DOWN: Final[tuple[str, ...]] = (
+    "DROP TABLE public.publish_field_results",
+    "DROP TABLE public.listing_submissions",
+)
+
 SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (PLATFORM_UP, PLATFORM_DOWN),
     (JOBS_UP, JOBS_DOWN),
     (IMPORTS_UP, IMPORTS_DOWN),
     (AUTH_UP, AUTH_DOWN),
+    (SUBMISSIONS_UP, SUBMISSIONS_DOWN),
 )
 
 
