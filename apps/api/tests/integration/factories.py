@@ -281,3 +281,34 @@ def version(conn: Conn, tenant_id: UUID, listing_id: UUID, **columns: Any) -> UU
     if "generated_by_user_id" not in columns:
         defaults["generated_by_user_id"] = member(conn, tenant_id)
     return insert(conn, "listing_versions", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def review_decision(
+    conn: Conn, tenant_id: UUID, listing_id: UUID, version_id: UUID | None, **columns: Any
+) -> UUID:
+    """An `approve` decision on `version_id`, decided by a new reviewer of `tenant_id`."""
+    defaults: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "listing_id": listing_id,
+        "listing_version_id": version_id,
+        "decision": "approve",
+    }
+    if "decided_by_user_id" not in columns:
+        defaults["decided_by_user_id"] = member(conn, tenant_id, role="reviewer")
+    return insert(conn, "review_decisions", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def listing_item(
+    conn: Conn, tenant_id: UUID, listing_id: UUID, product_id: UUID, **columns: Any
+) -> UUID:
+    """A `standalone` Amazon item of `listing_id` for `product_id`."""
+    n = _next()
+    defaults: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "listing_id": listing_id,
+        "marketplace": "amazon",
+        "product_id": product_id,
+        "item_role": "standalone",
+        "seller_sku": f"ITEM-{n}",
+    }
+    return insert(conn, "listing_items", **{**defaults, **columns})  # type: ignore[no-any-return]

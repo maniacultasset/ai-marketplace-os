@@ -528,12 +528,160 @@ LISTINGS_DOWN: Final[tuple[str, ...]] = (
     "DROP TABLE public.listings",
 )
 
+# ---- REVIEWS: review_decisions and listing_items (DATABASE.md §5.3; KI-A; T40, T45) ----
+# review_decisions is append-only (0004): one row per decision on an exact version; a reject
+# needs a reason and feedback; free text is untrusted and bounded. listing_items is one row per
+# sellable marketplace SKU; `(id, listing_id)` is the target of listing_issues' item FK, and
+# its live-version pointer defers like the listing's.
+REVIEWS_UP: Final[tuple[str, ...]] = (
+    """
+    CREATE TABLE public.review_decisions (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      listing_id uuid NOT NULL,
+      listing_version_id uuid,
+      decision text NOT NULL,
+      reason_code text,
+      feedback text,
+      field_paths text[] NOT NULL DEFAULT '{}',
+      instructions text,
+      facts_digest bytea,
+      decided_by_user_id uuid NOT NULL,
+      decided_at timestamptz NOT NULL DEFAULT now(),
+      batch_id uuid,
+      regeneration_job_id uuid,
+      request_id text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_review_decisions PRIMARY KEY (id),
+      CONSTRAINT uq_review_decisions_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT fk_review_decisions_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_review_decisions_listing_id FOREIGN KEY (tenant_id, listing_id)
+        REFERENCES public.listings (tenant_id, id),
+      CONSTRAINT fk_review_decisions_listing_version_id
+        FOREIGN KEY (listing_id, listing_version_id)
+        REFERENCES public.listing_versions (listing_id, id),
+      CONSTRAINT fk_review_decisions_decided_by_user_id
+        FOREIGN KEY (tenant_id, decided_by_user_id)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT fk_review_decisions_batch_id FOREIGN KEY (tenant_id, batch_id)
+        REFERENCES public.batches (tenant_id, id),
+      CONSTRAINT ck_review_decisions_decision
+        CHECK (decision IN ('approve', 'reject', 'regenerate_requested')),
+      CONSTRAINT ck_review_decisions_reason_code CHECK (reason_code IN ('inaccurate_fact',
+        'off_brand_voice', 'policy_violation', 'poor_quality', 'wrong_category', 'image_issue',
+        'other')),
+      CONSTRAINT ck_review_decisions_reject_reason CHECK (
+        decision <> 'reject' OR (reason_code IS NOT NULL AND feedback IS NOT NULL)
+      ),
+      CONSTRAINT ck_review_decisions_feedback CHECK (char_length(feedback) <= 2000),
+      CONSTRAINT ck_review_decisions_instructions CHECK (
+        instructions IS NULL
+        OR (decision = 'regenerate_requested' AND char_length(instructions) <= 2000)
+      ),
+      CONSTRAINT ck_review_decisions_facts_digest CHECK (
+        facts_digest IS NULL OR (decision = 'approve' AND octet_length(facts_digest) = 32)
+      ),
+      CONSTRAINT ck_review_decisions_regeneration_job CHECK (
+        (decision <> 'regenerate_requested' OR regeneration_job_id IS NOT NULL)
+        AND (regeneration_job_id IS NULL OR decision IN ('regenerate_requested', 'reject'))
+      ),
+      CONSTRAINT ck_review_decisions_listing_version
+        CHECK (listing_version_id IS NOT NULL OR decision = 'regenerate_requested')
+    )
+    """,
+    """
+    CREATE UNIQUE INDEX uq_review_decisions_listing_version_id
+      ON public.review_decisions (listing_version_id) WHERE decision = 'approve'
+    """,
+    """
+    CREATE INDEX ix_review_decisions_tenant_id_listing_id_decided_at
+      ON public.review_decisions (tenant_id, listing_id, decided_at DESC)
+    """,
+    """
+    CREATE INDEX ix_review_decisions_tenant_id_batch_id
+      ON public.review_decisions (tenant_id, batch_id)
+    """,
+    """
+    CREATE INDEX ix_review_decisions_regeneration_job_id
+      ON public.review_decisions (regeneration_job_id) WHERE regeneration_job_id IS NOT NULL
+    """,
+    f"""
+    CREATE TABLE public.listing_items (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      listing_id uuid NOT NULL,
+      marketplace text NOT NULL,
+      product_id uuid NOT NULL,
+      item_role text NOT NULL,
+      seller_sku text NOT NULL,
+      external_id text,
+      live_url text,
+      marketplace_state text NOT NULL DEFAULT 'not_submitted',
+      live_version_id uuid,
+      first_submitted_at timestamptz,
+      live_confirmed_at timestamptz,
+      last_synced_at timestamptz,
+      state_changed_at timestamptz,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_listing_items PRIMARY KEY (id),
+      CONSTRAINT uq_listing_items_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT uq_listing_items_id_listing_id UNIQUE (id, listing_id),
+      CONSTRAINT uq_listing_items_listing_id_product_id UNIQUE (listing_id, product_id),
+      CONSTRAINT uq_listing_items_tenant_id_marketplace_seller_sku
+        UNIQUE (tenant_id, marketplace, seller_sku),
+      CONSTRAINT fk_listing_items_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_listing_items_listing_id FOREIGN KEY (tenant_id, listing_id)
+        REFERENCES public.listings (tenant_id, id),
+      CONSTRAINT fk_listing_items_listing_id_marketplace FOREIGN KEY (listing_id, marketplace)
+        REFERENCES public.listings (id, marketplace),
+      CONSTRAINT fk_listing_items_product_id FOREIGN KEY (tenant_id, product_id)
+        REFERENCES public.products (tenant_id, id),
+      CONSTRAINT fk_listing_items_live_version_id FOREIGN KEY (listing_id, live_version_id)
+        REFERENCES public.listing_versions (listing_id, id) DEFERRABLE INITIALLY IMMEDIATE,
+      CONSTRAINT ck_listing_items_marketplace {MARKETPLACE_CHECK},
+      CONSTRAINT ck_listing_items_item_role
+        CHECK (item_role IN ('standalone', 'parent', 'child')),
+      CONSTRAINT ck_listing_items_marketplace_state CHECK (marketplace_state IN (
+        'not_submitted', 'processing', 'pending_review', 'live', 'inactive', 'rejected',
+        'removed')),
+      CONSTRAINT ck_listing_items_live_url CHECK ({HTTPS_URL.format(col="live_url")}),
+      CONSTRAINT ck_item_live_minimum CHECK (
+        (marketplace_state <> 'live'
+         OR (external_id IS NOT NULL AND live_confirmed_at IS NOT NULL
+             AND last_synced_at IS NOT NULL AND live_version_id IS NOT NULL))
+        AND (marketplace_state = 'not_submitted' OR first_submitted_at IS NOT NULL)
+      )
+    )
+    """,
+    """
+    CREATE UNIQUE INDEX uq_listing_items_one_root ON public.listing_items (listing_id)
+      WHERE item_role IN ('standalone', 'parent')
+    """,
+    """
+    CREATE INDEX ix_listing_items_tenant_id_listing_id_item_role
+      ON public.listing_items (tenant_id, listing_id, item_role)
+    """,
+    """
+    CREATE INDEX ix_listing_items_tenant_id_marketplace_external_id
+      ON public.listing_items (tenant_id, marketplace, external_id) WHERE external_id IS NOT NULL
+    """,
+    _updated_at_trigger("listing_items"),
+)
+REVIEWS_DOWN: Final[tuple[str, ...]] = (
+    "DROP TABLE public.listing_items",
+    "DROP TABLE public.review_decisions",
+)
+
 SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (RULES_UP, RULES_DOWN),
     (ACCOUNTS_UP, ACCOUNTS_DOWN),
     (IMAGES_UP, IMAGES_DOWN),
     (BATCHES_UP, BATCHES_DOWN),
     (LISTINGS_UP, LISTINGS_DOWN),
+    (REVIEWS_UP, REVIEWS_DOWN),
 )
 
 
