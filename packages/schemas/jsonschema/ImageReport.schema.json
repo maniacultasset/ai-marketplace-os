@@ -1,0 +1,208 @@
+{
+  "$defs": {
+    "ImageCheck": {
+      "properties": {
+        "check": {
+          "enum": [
+            "format",
+            "corruption",
+            "resolution",
+            "aspect_ratio",
+            "file_size",
+            "exif_orientation",
+            "background",
+            "fill_ratio",
+            "text_overlay",
+            "watermark",
+            "logo",
+            "product_visibility"
+          ],
+          "title": "Check",
+          "type": "string"
+        },
+        "method": {
+          "enum": [
+            "deterministic",
+            "vision"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "check",
+        "method",
+        "passed"
+      ],
+      "title": "ImageCheck",
+      "type": "object"
+    },
+    "ImageIssue": {
+      "properties": {
+        "check": {
+          "enum": [
+            "format",
+            "corruption",
+            "resolution",
+            "aspect_ratio",
+            "file_size",
+            "exif_orientation",
+            "background",
+            "fill_ratio",
+            "text_overlay",
+            "watermark",
+            "logo",
+            "product_visibility"
+          ],
+          "title": "Check",
+          "type": "string"
+        },
+        "code": {
+          "$ref": "#/$defs/ImageIssueCode"
+        },
+        "suggestion": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Suggestion",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "check",
+        "suggestion"
+      ],
+      "title": "ImageIssue",
+      "type": "object"
+    },
+    "ImageIssueCode": {
+      "enum": [
+        "BACKGROUND_OFF",
+        "RESOLUTION_LOW",
+        "TEXT_DETECTED",
+        "WATERMARK",
+        "FILL_RATIO_LOW",
+        "WRONG_ASPECT",
+        "FORMAT_UNSUPPORTED",
+        "FILE_TOO_LARGE",
+        "CORRUPT",
+        "LOGO_PROHIBITED"
+      ],
+      "title": "ImageIssueCode",
+      "type": "string"
+    },
+    "ImageSlot": {
+      "enum": [
+        "main",
+        "secondary",
+        "lifestyle",
+        "size_chart",
+        "packaging_label"
+      ],
+      "title": "ImageSlot",
+      "type": "string"
+    },
+    "Marketplace": {
+      "enum": [
+        "amazon",
+        "flipkart"
+      ],
+      "title": "Marketplace",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mkos.internal/ImageReport.schema.json",
+  "properties": {
+    "agent_run_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Agent Run Id"
+    },
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/ImageCheck"
+      },
+      "title": "Checks",
+      "type": "array"
+    },
+    "confidence": {
+      "anyOf": [
+        {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Confidence"
+    },
+    "image_id": {
+      "format": "uuid",
+      "title": "Image Id",
+      "type": "string"
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/ImageIssue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "marketplace": {
+      "$ref": "#/$defs/Marketplace"
+    },
+    "model_used": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model Used"
+    },
+    "pass": {
+      "title": "Pass",
+      "type": "boolean"
+    },
+    "processed_at": {
+      "format": "date-time",
+      "title": "Processed At",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "slot": {
+      "$ref": "#/$defs/ImageSlot"
+    }
+  },
+  "required": [
+    "image_id",
+    "marketplace",
+    "slot",
+    "pass",
+    "processed_at"
+  ],
+  "title": "ImageReport",
+  "type": "object"
+}

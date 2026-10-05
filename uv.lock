@@ -708,8 +708,14 @@ requires-dist = [
 
 [[package]]
 name = "mkos-schemas"
-version = "0.0.0"
+version = "1.0.0"
 source = { editable = "packages/schemas" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = ">=2.11,<3" }]
 
 [[package]]
 name = "msgpack"

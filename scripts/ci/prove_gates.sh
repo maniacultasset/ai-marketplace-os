@@ -152,7 +152,31 @@ leg api-typecheck-return api-typecheck 'Incompatible return value' seed_type_err
 leg contracts-import-error contracts 'ImportError: seeded' seed_schemas_import_error make contracts
 leg contracts-bad-hash contracts '[Hh]ash' seed_bad_build_hash make contracts
 leg schemas-drift-byte schemas-drift 'diff --git' seed_drift_byte make schemas-drift
+seed_contracts_ebay() { replace packages/schemas/fixtures/CanonicalListing.json '"marketplace": "amazon"' '"marketplace": "ebay"'; }
+seed_pass_underscore() { replace packages/schemas/src/mkos_schemas/base.py 'serialize_by_alias=True' 'serialize_by_alias=False'; }
+seed_missing_import_fixture() { rm -f packages/schemas/fixtures/ImportReport.json; }
+seed_no_fixtures() { rm -rf packages/schemas/fixtures; }
+seed_drift_hand_edit() {
+  printf '\n' >>packages/schemas/jsonschema/CanonicalListing.schema.json
+  git add packages/schemas/jsonschema/CanonicalListing.schema.json
+  git -c core.hooksPath=/dev/null -c user.name=prove-gates -c user.email=prove-gates@example.invalid \
+    commit -q -m "test: seeded schema edit"
+}
+seed_drift_model_change() { replace packages/schemas/src/mkos_schemas/listing.py 'max_length=500' 'max_length=501'; }
+seed_schemas_sqlalchemy() { append packages/schemas/src/mkos_schemas/__init__.py 'import sqlalchemy'; }
+seed_schemas_type_error() { append packages/schemas/src/mkos_schemas/enums.py $'\n\ndef _seeded() -> int:\n    return "x"'; }
+seed_schema_failing_test() { new_file packages/schemas/tests/test_seeded.py $'def test_seeded() -> None:\n    assert False'; }
+
 leg schemas-drift-untracked schemas-drift 'untracked generated files' seed_drift_untracked make schemas-drift
+leg contracts-broken-fixture contracts 'CanonicalListing' seed_contracts_ebay make contracts
+leg contracts-pass-underscore contracts 'pass_ emitted' seed_pass_underscore make contracts
+leg contracts-missing-fixture contracts 'missing golden fixture: ImportReport' seed_missing_import_fixture make contracts
+leg contracts-no-fixtures contracts 'no golden fixtures' seed_no_fixtures make contracts
+leg schemas-drift-hand-edit schemas-drift 'diff --git' seed_drift_hand_edit make schemas-drift
+leg schemas-drift-model-change schemas-drift 'diff --git' seed_drift_model_change make schemas-drift
+leg lint-imports-schemas-sqla lint-imports 'mkos_schemas imports no app, web or DB framework BROKEN' \
+  seed_schemas_sqlalchemy make lint-imports
+leg api-typecheck-schemas api-typecheck 'Incompatible return value' seed_schemas_type_error make api-typecheck
 leg commit-lint-title commit-lint 'PR title does not match' seed_none \
   PR_TITLE='update stuff' HEAD_REF=feat/s1-scaffold make commit-lint
 leg commit-lint-branch commit-lint 'branch name does not match' seed_none \
@@ -161,7 +185,7 @@ leg gitleaks-range gitleaks 'scanning [0-9a-f]{40}\.\.HEAD;leaks found: 1' seed_
   BASE_SHA="$base" HEAD_SHA=HEAD make gitleaks
 leg gitleaks-zero-base gitleaks 'zero or unknown;leaks found: 1' seed_leak \
   BASE_SHA="$zero_sha" HEAD_SHA=HEAD make gitleaks
-leg lint-imports-schemas-app lint-imports 'mkos_schemas never imports app BROKEN' \
+leg lint-imports-schemas-app lint-imports 'mkos_schemas imports no app, web or DB framework BROKEN' \
   seed_schemas_imports_app make lint-imports
 leg lint-imports-layers lint-imports 'routers -> services -> repositories BROKEN' \
   seed_repository_imports_api make lint-imports
@@ -176,6 +200,7 @@ leg lint-imports-service-db lint-imports 'app.services never imports app.db.sess
 if [ "$with_docker" -eq 1 ]; then
   self_project="$(docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"
   leg api-tests-failing-test api-tests 'test_seeded' seed_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-schema-test api-tests 'test_seeded' seed_schema_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg tenant-isolation-no-marker tenant-isolation 'deselected' seed_no_marker COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   # Bootstrap legs use their own project on this checkout's host ports; pause this stack meanwhile.
   docker compose stop >/dev/null 2>&1

@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0.0",
+  "id": "7b3c9e10-22d5-4f6a-8c31-9e0a4d5b6f22",
+  "tenant_id": "11111111-1111-1111-1111-111111111111",
+  "product_id": null,
+  "listing_id": null,
+  "listing_version_id": null,
+  "request_id": "req-golden-1",
+  "job_id": null,
+  "agent_name": "content",
+  "trigger": "generate",
+  "attempt": 1,
+  "model_used": null,
+  "prompt_version": null,
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "cached_input": 0
+  },
+  "cost_usd": "0.012300",
+  "duration_ms": 0,
+  "status": "completed",
+  "error_report": null,
+  "input_digest": null,
+  "started_at": "2026-09-22T10:30:00Z",
+  "created_at": "2026-09-22T10:30:05Z"
+}

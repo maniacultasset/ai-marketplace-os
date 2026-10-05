@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0.0",
+  "listing_id": "9c1d2f6a-3b84-4f21-9a55-0c6f8b2e77d1",
+  "listing_version_id": null,
+  "passed": false,
+  "stages": [
+    {
+      "schema_version": "1.0.0",
+      "validation_run_id": null,
+      "tenant_id": "11111111-1111-1111-1111-111111111111",
+      "listing_id": "9c1d2f6a-3b84-4f21-9a55-0c6f8b2e77d1",
+      "listing_version_id": null,
+      "marketplace": "amazon",
+      "source": "rules_engine",
+      "passed": false,
+      "attempt": 1,
+      "rules_version": null,
+      "duration_ms": 0,
+      "report": {
+        "schema_version": "1.0.0",
+        "status": "failed",
+        "error_code": "VALIDATION_FAILED",
+        "retryable": true,
+        "attempts_used": 1,
+        "max_attempts": 3,
+        "errors": [
+          {
+            "field": "content.title",
+            "error_code": "FIELD_TOO_LONG",
+            "severity": "error",
+            "message": "Title is 221 chars; Amazon limit is 200",
+            "value_submitted": "Organic Cotton Kurta Set... (221 chars)",
+            "suggestion": "Shorten to <= 200 chars; move detail to bullets",
+            "source": "rules_engine",
+            "retryable": true,
+            "marketplace": "amazon",
+            "rule_id": null,
+            "raw_code": null,
+            "error_class": null,
+            "retry_class": null,
+            "auto_fixable": false,
+            "fix_action": null
+          }
+        ],
+        "request_id": null,
+        "listing_id": null
+      },
+      "created_at": "2026-09-22T10:31:00Z"
+    }
+  ],
+  "blocking_count": 1,
+  "warning_count": 0,
+  "request_id": null
+}

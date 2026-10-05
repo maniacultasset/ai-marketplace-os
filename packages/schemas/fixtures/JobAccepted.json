@@ -1,0 +1,7 @@
+{
+  "job_id": "44444444-4444-4444-4444-444444444444",
+  "listing_id": "9c1d2f6a-3b84-4f21-9a55-0c6f8b2e77d1",
+  "status": "queued",
+  "estimated_duration_seconds": 30,
+  "poll_url": "/api/v1/jobs/44444444-4444-4444-4444-444444444444"
+}

@@ -1,0 +1,68 @@
+{
+  "$id": "https://schemas.mkos.internal/BrandChunkDTO.schema.json",
+  "properties": {
+    "chunk_index": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Chunk Index",
+      "type": "integer"
+    },
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "similarity": {
+      "maximum": 1.0,
+      "minimum": -1.0,
+      "title": "Similarity",
+      "type": "number"
+    },
+    "source_id": {
+      "format": "uuid",
+      "title": "Source Id",
+      "type": "string"
+    },
+    "source_type": {
+      "enum": [
+        "brand_document",
+        "brand_profile",
+        "listing_version"
+      ],
+      "title": "Source Type",
+      "type": "string"
+    },
+    "tenant_id": {
+      "format": "uuid",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "text": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Text",
+      "type": "string"
+    },
+    "type": {
+      "enum": [
+        "tone_rule",
+        "glossary",
+        "compliance",
+        "example"
+      ],
+      "title": "Type",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "tenant_id",
+    "type",
+    "text",
+    "similarity",
+    "source_type",
+    "source_id"
+  ],
+  "title": "BrandChunkDTO",
+  "type": "object"
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0.0",
+  "status": "failed",
+  "error_code": "VALIDATION_FAILED",
+  "retryable": true,
+  "attempts_used": 1,
+  "max_attempts": 3,
+  "errors": [
+    {
+      "field": "content.title",
+      "error_code": "FIELD_TOO_LONG",
+      "severity": "error",
+      "message": "Title is 221 chars; Amazon limit is 200",
+      "value_submitted": "Organic Cotton Kurta Set... (221 chars)",
+      "suggestion": "Shorten to <= 200 chars; move detail to bullets",
+      "source": "rules_engine",
+      "retryable": true,
+      "marketplace": "amazon",
+      "rule_id": null,
+      "raw_code": null,
+      "error_class": null,
+      "retry_class": null,
+      "auto_fixable": false,
+      "fix_action": null
+    }
+  ],
+  "request_id": null,
+  "listing_id": null
+}

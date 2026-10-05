@@ -1,0 +1,14 @@
+{
+  "sub": "88888888-8888-8888-8888-888888888888",
+  "tid": "11111111-1111-1111-1111-111111111111",
+  "roles": [
+    "owner"
+  ],
+  "email": "owner@example.com",
+  "typ": "access",
+  "jti": "jti-golden",
+  "iss": "https://api.mkos.internal",
+  "aud": "mkos",
+  "iat": 1700000000,
+  "exp": 1700000600
+}

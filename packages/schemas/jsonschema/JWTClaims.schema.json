@@ -1,0 +1,87 @@
+{
+  "$id": "https://schemas.mkos.internal/JWTClaims.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "aud": {
+      "maxLength": 256,
+      "minLength": 1,
+      "title": "Aud",
+      "type": "string"
+    },
+    "email": {
+      "maxLength": 254,
+      "minLength": 3,
+      "title": "Email",
+      "type": "string"
+    },
+    "exp": {
+      "minimum": 0,
+      "title": "Exp",
+      "type": "integer"
+    },
+    "iat": {
+      "minimum": 0,
+      "title": "Iat",
+      "type": "integer"
+    },
+    "iss": {
+      "maxLength": 256,
+      "minLength": 1,
+      "title": "Iss",
+      "type": "string"
+    },
+    "jti": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Jti",
+      "type": "string"
+    },
+    "roles": {
+      "items": {
+        "enum": [
+          "owner",
+          "operator",
+          "reviewer",
+          "admin"
+        ],
+        "type": "string"
+      },
+      "maxItems": 4,
+      "minItems": 1,
+      "title": "Roles",
+      "type": "array"
+    },
+    "sub": {
+      "format": "uuid",
+      "title": "Sub",
+      "type": "string"
+    },
+    "tid": {
+      "format": "uuid",
+      "title": "Tid",
+      "type": "string"
+    },
+    "typ": {
+      "enum": [
+        "access",
+        "refresh"
+      ],
+      "title": "Typ",
+      "type": "string"
+    }
+  },
+  "required": [
+    "sub",
+    "tid",
+    "roles",
+    "email",
+    "typ",
+    "jti",
+    "iss",
+    "aud",
+    "iat",
+    "exp"
+  ],
+  "title": "JWTClaims",
+  "type": "object"
+}

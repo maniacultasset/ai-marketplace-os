@@ -7,12 +7,16 @@ root_packages =
 include_external_packages = True
 
 [importlinter:contract:schemas-never-imports-app]
-name = mkos_schemas never imports app
+name = mkos_schemas imports no app, web or DB framework
 type = forbidden
 source_modules =
     mkos_schemas
 forbidden_modules =
     app
+    sqlalchemy
+    fastapi
+    starlette
+    psycopg
 
 # Routers never import sqlalchemy or app.db (BACKEND-ARCHITECTURE.md:1273). Indirect chains are
 # allowed: routers -> services -> app.db is the sanctioned route (BACKEND-ARCHITECTURE.md:1236).

@@ -51,7 +51,7 @@ help:
 
 .PHONY: test-unit
 test-unit:
-	uv run --frozen pytest -q apps/api/tests/unit apps/api/tests/meta
+	uv run --frozen pytest -q apps/api/tests/unit apps/api/tests/meta packages/schemas/tests
 
 # ---- required checks (one target per check id) ----
 LINT_PATHS := apps/api packages/schemas scripts

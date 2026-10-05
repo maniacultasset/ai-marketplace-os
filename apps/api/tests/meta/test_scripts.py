@@ -28,6 +28,22 @@ def test_prove_gates_has_misspelled_bucket_leg(repo_root: Path) -> None:
     assert "seed_misspelled_bucket" in text
 
 
+def test_prove_gates_has_s2_legs(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    for name in (
+        "contracts-broken-fixture",
+        "contracts-pass-underscore",
+        "contracts-missing-fixture",
+        "contracts-no-fixtures",
+        "schemas-drift-hand-edit",
+        "schemas-drift-model-change",
+        "lint-imports-schemas-sqla",
+        "api-typecheck-schemas",
+        "api-tests-schema-test",
+    ):
+        assert name in text
+
+
 def test_shell_scripts_parse(repo_root: Path) -> None:
     for script in _scripts(repo_root):
         result = subprocess.run(["bash", "-n", str(script)], capture_output=True, text=True)

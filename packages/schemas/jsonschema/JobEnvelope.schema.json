@@ -1,0 +1,545 @@
+{
+  "$defs": {
+    "ErrorClass": {
+      "enum": [
+        "missing_data",
+        "invalid_value",
+        "category_mismatch",
+        "variation_error",
+        "media_error",
+        "content_error",
+        "identifier_error",
+        "compliance_error",
+        "account_permission",
+        "marketplace_technical",
+        "unknown"
+      ],
+      "title": "ErrorClass",
+      "type": "string"
+    },
+    "ErrorCode": {
+      "description": "Every machine-readable error code in v1.0.0.",
+      "enum": [
+        "ACCOUNT_PERMISSION_DENIED",
+        "API_REJECTED_PARTIAL",
+        "AUTH_EXPIRED",
+        "BANNED_TERM",
+        "BATCH_TOO_LARGE",
+        "BUDGET_EXCEEDED",
+        "BULK_APPROVE_REQUIRES_VALIDATED",
+        "BYTE_BUDGET_EXCEEDED",
+        "CATEGORY_MISMATCH",
+        "CATEGORY_NOT_MAPPED",
+        "COMPLIANCE_DECLARATION_MISSING",
+        "CRITICAL_FACT_MISSING",
+        "CROSS_FIELD_MISMATCH",
+        "DUPLICATE_SKU_IN_FILE",
+        "DUPLICATE_SUBMISSION_BLOCKED",
+        "FACTS_CHANGED_SINCE_APPROVAL",
+        "FACT_LEVEL_INVALID",
+        "FACT_MISMATCH",
+        "FACT_NEEDS_CONFIRMATION",
+        "FACT_SOURCE_FORBIDDEN",
+        "FIELD_TOO_LONG",
+        "FIELD_TOO_SHORT",
+        "GENERATION_FAILED",
+        "HEADER_DUPLICATE_COLUMN",
+        "HEADER_MISSING_COLUMN",
+        "HEADER_UNKNOWN_COLUMN",
+        "IDENTIFIER_DUPLICATE",
+        "IDENTIFIER_INVALID",
+        "IDENTIFIER_MISSING",
+        "IMAGE_NON_COMPLIANT",
+        "IMPORT_FAILED",
+        "INTERNAL_ERROR",
+        "INVALID_STATUS_TRANSITION",
+        "JOB_TIMEOUT",
+        "JSON_INVALID",
+        "KEYWORD_DUPLICATE",
+        "LISTING_ARCHIVED",
+        "LISTING_BUSY",
+        "LISTING_PAUSED",
+        "MAKER_CHECKER_VIOLATION",
+        "MARKETPLACE_UNAVAILABLE",
+        "MARKETPLACE_UNCONFIRMED",
+        "MARKETPLACE_UNKNOWN_ERROR",
+        "MISSING_ATTRIBUTE",
+        "MODEL_UNAVAILABLE",
+        "PATTERN_MISMATCH",
+        "PRICE_ABOVE_MRP",
+        "PUBLISH_FAILED",
+        "RATE_LIMITED",
+        "REQUIRED_FIELD_MISSING",
+        "RETRY_EXHAUSTED",
+        "SCHEMA_INVALID",
+        "SELLER_SKU_CONFLICT",
+        "SKU_CONFLICT",
+        "SUBMISSION_ATTEMPTS_EXHAUSTED",
+        "SUBMISSION_IN_FLIGHT",
+        "SUBMISSION_NOT_APPLIED",
+        "TIMEOUT",
+        "TOKEN_LIMIT",
+        "UNKNOWN_FACT_KEY",
+        "UNSUPPORTED_CLAIM",
+        "VALIDATION_FAILED",
+        "VALUE_NOT_ALLOWED",
+        "VARIANT_MATRIX_INCOMPLETE",
+        "VARIATION_INVALID"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "ErrorItem": {
+      "properties": {
+        "auto_fixable": {
+          "default": false,
+          "title": "Auto Fixable",
+          "type": "boolean"
+        },
+        "error_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error_code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "fix_action": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FixAction"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "marketplace": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Marketplace"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "message": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "raw_code": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Code"
+        },
+        "retry_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetryClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retryable": {
+          "title": "Retryable",
+          "type": "boolean"
+        },
+        "rule_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rule Id"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "default": "error"
+        },
+        "source": {
+          "$ref": "#/$defs/ErrorSource"
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        },
+        "value_submitted": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value Submitted"
+        }
+      },
+      "required": [
+        "field",
+        "error_code",
+        "message",
+        "source",
+        "retryable"
+      ],
+      "title": "ErrorItem",
+      "type": "object"
+    },
+    "ErrorReport": {
+      "properties": {
+        "attempts_used": {
+          "default": 0,
+          "maximum": 3,
+          "minimum": 0,
+          "title": "Attempts Used",
+          "type": "integer"
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "errors": {
+          "items": {
+            "$ref": "#/$defs/ErrorItem"
+          },
+          "maxItems": 500,
+          "title": "Errors",
+          "type": "array"
+        },
+        "listing_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Listing Id"
+        },
+        "max_attempts": {
+          "default": 3,
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Max Attempts",
+          "type": "integer"
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Request Id"
+        },
+        "retryable": {
+          "default": false,
+          "title": "Retryable",
+          "type": "boolean"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "failed",
+            "partial"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "ErrorReport",
+      "type": "object"
+    },
+    "ErrorSource": {
+      "enum": [
+        "schema",
+        "rules_engine",
+        "vision_model",
+        "ai_model",
+        "amazon_adapter",
+        "flipkart_adapter",
+        "system"
+      ],
+      "title": "ErrorSource",
+      "type": "string"
+    },
+    "FixAction": {
+      "enum": [
+        "remap_value",
+        "reformat",
+        "derive_field",
+        "rebuild_variation"
+      ],
+      "title": "FixAction",
+      "type": "string"
+    },
+    "JobKind": {
+      "enum": [
+        "listing_generate",
+        "listing_publish",
+        "listing_status_sync",
+        "bulk_import",
+        "image_compliance",
+        "brand_embed"
+      ],
+      "title": "JobKind",
+      "type": "string"
+    },
+    "JobState": {
+      "enum": [
+        "queued",
+        "running",
+        "succeeded",
+        "partial",
+        "failed",
+        "cancelled",
+        "dead_letter"
+      ],
+      "title": "JobState",
+      "type": "string"
+    },
+    "Marketplace": {
+      "enum": [
+        "amazon",
+        "flipkart"
+      ],
+      "title": "Marketplace",
+      "type": "string"
+    },
+    "PipelineStage": {
+      "description": "TRANSIENT progress only \u2014 never written to listings.status.",
+      "enum": [
+        "load_context",
+        "retrieve_brand",
+        "content_agent",
+        "keyword_agent",
+        "attribute_agent",
+        "image_agent",
+        "merge_outputs",
+        "validate_schema",
+        "validate_rules",
+        "validate_vision",
+        "correct",
+        "quality_check"
+      ],
+      "title": "PipelineStage",
+      "type": "string"
+    },
+    "RetryClass": {
+      "enum": [
+        "auto_retry",
+        "ai_correct",
+        "user_action",
+        "system_failure"
+      ],
+      "title": "RetryClass",
+      "type": "string"
+    },
+    "Severity": {
+      "enum": [
+        "error",
+        "warning"
+      ],
+      "title": "Severity",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mkos.internal/JobEnvelope.schema.json",
+  "properties": {
+    "attempt": {
+      "default": 0,
+      "maximum": 3,
+      "minimum": 0,
+      "title": "Attempt",
+      "type": "integer"
+    },
+    "error": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ErrorReport"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "finished_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Finished At"
+    },
+    "job_id": {
+      "format": "uuid",
+      "title": "Job Id",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/JobKind"
+    },
+    "listing_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Listing Id"
+    },
+    "max_attempts": {
+      "default": 3,
+      "maximum": 3,
+      "minimum": 1,
+      "title": "Max Attempts",
+      "type": "integer"
+    },
+    "progress_pct": {
+      "default": 0,
+      "maximum": 100,
+      "minimum": 0,
+      "title": "Progress Pct",
+      "type": "integer"
+    },
+    "queued_at": {
+      "format": "date-time",
+      "title": "Queued At",
+      "type": "string"
+    },
+    "request_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Id",
+      "type": "string"
+    },
+    "result_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Result Url"
+    },
+    "schema_version": {
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "stage": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PipelineStage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "started_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Started At"
+    },
+    "status": {
+      "$ref": "#/$defs/JobState"
+    }
+  },
+  "required": [
+    "job_id",
+    "kind",
+    "status",
+    "request_id",
+    "queued_at"
+  ],
+  "title": "JobEnvelope",
+  "type": "object"
+}

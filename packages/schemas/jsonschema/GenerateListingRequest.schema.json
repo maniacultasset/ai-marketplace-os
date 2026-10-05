@@ -1,0 +1,62 @@
+{
+  "$defs": {
+    "Marketplace": {
+      "enum": [
+        "amazon",
+        "flipkart"
+      ],
+      "title": "Marketplace",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mkos.internal/GenerateListingRequest.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "category": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z0-9_]{2,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Category"
+    },
+    "force_regenerate": {
+      "default": false,
+      "title": "Force Regenerate",
+      "type": "boolean"
+    },
+    "marketplace": {
+      "$ref": "#/$defs/Marketplace"
+    },
+    "product_id": {
+      "format": "uuid",
+      "title": "Product Id",
+      "type": "string"
+    },
+    "user_instructions": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "User Instructions"
+    }
+  },
+  "required": [
+    "product_id",
+    "marketplace"
+  ],
+  "title": "GenerateListingRequest",
+  "type": "object"
+}
