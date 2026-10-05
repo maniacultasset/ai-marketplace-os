@@ -163,6 +163,20 @@ class BrandChunk(Base):
             unique=True,
             postgresql_where=text("is_active"),
         ),
+        # 0002b, built CONCURRENTLY: cosine HNSW (m=16, ef_construction=64) and the type filter
+        Index(
+            conv("brand_chunks_embedding_idx"),
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+        Index(
+            conv("brand_chunks_tenant_type_idx"),
+            "tenant_id",
+            "type",
+            postgresql_where=text("is_active"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = id_column()
