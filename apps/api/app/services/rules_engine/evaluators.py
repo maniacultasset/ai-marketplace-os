@@ -101,25 +101,24 @@ def _length(rule: Rule, ctx: Ctx) -> list[Draft]:
 
 
 def _grouped_hits(
-    slots: Sequence[tuple[str, SlotValue]], hit: Callable[[str], tuple[str, ...]]
+    slots: Sequence[tuple[str, SlotValue]],
+    hit: Callable[[str], tuple[str, ...]],
+    rule_terms: Sequence[str],
 ) -> list[tuple[str, str, tuple[str, ...]]]:
-    """(path, text, matched terms) per concrete path; list-attribute items share one path."""
-    order: list[str] = []
+    """(path, text, matched terms in rule order) per concrete path; the items of a list
+    attribute share one path, so they give one item (D10a)."""
     texts: dict[str, list[str]] = {}
-    terms: dict[str, list[str]] = {}
+    found: dict[str, set[str]] = {}
     for path, value in slots:
-        if not isinstance(value, str):
-            continue
-        found = hit(value)
-        if not found:
-            continue
-        if path not in texts:
-            order.append(path)
-            texts[path] = []
-            terms[path] = []
-        texts[path].append(value)
-        terms[path].extend(t for t in found if t not in terms[path])
-    return [(p, " ".join(texts[p]), tuple(terms[p])) for p in order]
+        text = cast("str", value)  # text slots always hold one string
+        hits = hit(text)
+        if hits:
+            texts.setdefault(path, []).append(text)
+            found.setdefault(path, set()).update(hits)
+    return [
+        (path, " ".join(texts[path]), tuple(t for t in rule_terms if t in found[path]))
+        for path in texts
+    ]
 
 
 def _banned_terms(rule: Rule, ctx: Ctx) -> list[Draft]:
@@ -133,7 +132,7 @@ def _banned_terms(rule: Rule, ctx: Ctx) -> list[Draft]:
     slots = iter_slots(ctx.listing, rule.field, kind="text")
     return [
         _draft(rule, path, text, value=text, term=", ".join(found))
-        for path, text, found in _grouped_hits(slots, hit)
+        for path, text, found in _grouped_hits(slots, hit, rule_def.terms)
     ]
 
 
@@ -162,7 +161,7 @@ def _claim(rule: Rule, ctx: Ctx) -> list[Draft]:
     slots = iter_slots(ctx.listing, rule.field, kind="text")
     return [
         _draft(rule, path, text, value=text, term=", ".join(terms), attribute=requires.attribute)
-        for path, text, terms in _grouped_hits(slots, hit)
+        for path, text, terms in _grouped_hits(slots, hit, rule_def.terms)
     ]
 
 
