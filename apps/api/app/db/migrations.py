@@ -21,7 +21,6 @@ from alembic.autogenerate.api import AutogenContext
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from alembic.util import CommandError
 from pgvector.sqlalchemy import VECTOR
 from sqlalchemy import Connection, text
 from sqlalchemy.exc import DBAPIError
@@ -86,13 +85,13 @@ def acquire_migration_lock(connection: Connection) -> None:
 
 
 def refuse_if_ahead(connection: Connection, script: ScriptDirectory) -> None:
-    """Raise `DatabaseAheadError` when a revision recorded in the database is unknown here."""
+    """Raise `DatabaseAheadError` when a revision recorded in the database is unknown here.
+
+    Exact ids only: `ScriptDirectory.get_revision` would also resolve a prefix (`0001` to
+    `0001_core_tenancy`) or the symbols `head`/`heads`, and the run would then skip as "ok"."""
+    known = {revision.revision for revision in script.walk_revisions()}
     for head in MigrationContext.configure(connection).get_current_heads():
-        try:
-            known = script.get_revision(head) is not None
-        except CommandError:
-            known = False
-        if not known:
+        if head not in known:
             raise DatabaseAheadError(safe_revision(head))
 
 

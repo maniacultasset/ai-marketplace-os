@@ -145,6 +145,30 @@ def test_migrate_refuses_newer_db(scratch_db: ScratchDb, tmp_path: Path) -> None
     assert _versions(scratch_db) == [AHEAD]
 
 
+@pytest.mark.parametrize("stored", ["0001", "head"])
+def test_migrate_refuses_prefix_or_symbol_in_db(
+    alembic_env: MakeConfig,
+    scratch_db: ScratchDb,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    stored: str,
+) -> None:
+    from app.cli import run_migrate
+
+    versions = tmp_path / "versions"
+    write_revision(versions, "0001_core_tenancy", [CREATE_PROBE], [DROP_PROBE])
+    with _connect(scratch_db) as conn:
+        conn.execute("CREATE TABLE alembic_version (version_num varchar(32) PRIMARY KEY)")
+        conn.execute("INSERT INTO alembic_version VALUES (%s)", (stored,))
+        conn.execute("ALTER TABLE alembic_version OWNER TO migrator")
+    assert run_migrate(alembic_env(versions)) == 3
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == REFUSAL.replace(AHEAD, stored)
+    assert _relations(scratch_db) == ["alembic_version"]
+    assert _versions(scratch_db) == [stored]
+
+
 def test_migrate_lock_times_out_when_held(
     alembic_env: MakeConfig,
     scratch_db: ScratchDb,

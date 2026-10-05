@@ -140,6 +140,24 @@ def test_refuses_unknown_revision_in_database(
     assert _version_rows(scratch_db) == ["ffffffffffff"]
 
 
+@pytest.mark.parametrize("stored", ["0001", "0001_core", "head", "heads"])
+def test_refuses_partial_or_symbolic_revision_in_database(
+    alembic_env: MakeConfig, scratch_db: ScratchDb, tmp_path: Path, stored: str
+) -> None:
+    """A prefix of a known id, or Alembic's `head`/`heads` symbol, is still an id this code
+    lacks: refused, never resolved to a known revision and skipped as "ok"."""
+    from app.db.migrations import DatabaseAheadError
+
+    versions = tmp_path / "versions"
+    write_revision(versions, "0001_core_tenancy", [CREATE_PROBE], [DROP_PROBE])
+    _seed_ahead(scratch_db, stored)
+    with pytest.raises(DatabaseAheadError) as info:
+        command.upgrade(alembic_env(versions), "head")
+    assert info.value.revision == stored
+    assert not _has_table(scratch_db, "probe")
+    assert _version_rows(scratch_db) == [stored]
+
+
 def test_check_fails_on_model_drift(alembic_env: MakeConfig) -> None:
     from app.db.base import metadata
 
