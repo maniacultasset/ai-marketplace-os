@@ -1956,10 +1956,10 @@
   },
   {
    "id": "R11324",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1332",
-   "note": "201 status for POST /api/v1/products not specified anywhere in plan"
+   "ref": "packages/schemas/jsonschema/openapi.json: POST /api/v1/products 201 ProductOut; apps/api/app/api/v1/surface.py products_create (S3)",
+   "note": "S3 freezes POST /api/v1/products as 201 with ProductOut; the handler lands in S12."
   },
   {
    "id": "R11326",

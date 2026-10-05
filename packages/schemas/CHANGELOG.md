@@ -30,4 +30,5 @@ Adding a member to a closed vocabulary (an enum, a `Literal`, a `RuleDef` union,
 - Frozen status vocabularies: `ListingStatus` (9), `ListingResult.status` (3), `MarketplaceState` (8), `JobState` (7).
 - `ImageRef` refuses `packaging_label` on a publishable listing. `ImageReport` may still name that slot.
 - `GenerationContext.product` stays a dict through v1; the `facts.py` retype moves to after v1.
-- Not in this release: `facts.py`, `batches.py`, and `CanonicalListing.attribute_sources`.
+- New generated outputs (S3): `jsonschema/openapi.json` (the frozen `/api/v1` surface: 35 operations, one error envelope, keyset pages) and the TypeScript types `ts/src/{api.d.ts,contracts.d.ts,index.ts}`, published as `@maniacultasset/schemas` (FE alias `@mkos/schemas`).
+- Not in this release: `facts.py`, `batches.py` (the approve and publish batch shapes ship as API models in `openapi.json`), and `CanonicalListing.attribute_sources`.
