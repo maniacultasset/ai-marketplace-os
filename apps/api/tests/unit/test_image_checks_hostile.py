@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import pytest
-from app.services.image_checks import MAX_JPEG_SCANS, MAX_PIXELS
+from app.services.image_checks import MAX_JPEG_SCANS, MAX_PIXELS, MAX_SIDE
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from mkos_schemas.images import ImageReport
@@ -85,6 +85,33 @@ def test_pixel_cap_boundary(calls: dict[str, int]) -> None:
     over = hostile(fx.png_header_only(8001, 5000, mode="L"))
     assert codes(over) == ["FILE_TOO_LARGE"]
     assert calls["verify"] == 0 and calls["load"] == 0
+
+
+@pytest.mark.parametrize("shape", ["tall", "wide"])
+def test_side_cap_thin_bomb(shape: str, calls: dict[str, int]) -> None:
+    """A 1 x N strip stays far under MAX_PIXELS but costs one row pointer per line and full-image
+    band crops; the side cap stops it on the header, before verify() or load()."""
+    assert MAX_SIDE == 20_000 and MAX_SIDE < MAX_PIXELS
+    over = (1, 40_000_000) if shape == "tall" else (40_000_000, 1)
+    report = hostile(fx.png_header_only(*over, mode="L"))
+    assert codes(report) == ["FILE_TOO_LARGE"] and report.pass_ is False
+    assert calls["verify"] == 0 and calls["load"] == 0
+
+
+@pytest.mark.parametrize(("w", "h"), [(1, MAX_SIDE), (MAX_SIDE, 1)])
+def test_side_cap_boundary(w: int, h: int) -> None:
+    at_cap = hostile(fx.png_header_only(w, h, mode="L"))
+    assert codes(at_cap) == ["CORRUPT"]
+    over = hostile(fx.png_header_only(w + (w > 1), h + (h > 1), mode="L"))
+    assert codes(over) == ["FILE_TOO_LARGE"]
+
+
+def test_side_cap_real_thin_image_with_band_rule() -> None:
+    """A decodable thin strip over the side cap, with a background rule selected."""
+    strip = fx.encode(Image.new("RGB", (2, MAX_SIDE + 1), fx.WHITE), "PNG")
+    assert codes(hostile(strip)) == ["FILE_TOO_LARGE"]
+    ok = fx.encode(Image.new("RGB", (2, MAX_SIDE), fx.WHITE), "PNG")
+    assert "FILE_TOO_LARGE" not in codes(hostile(ok))
 
 
 # 2, 3. text bomb, multi-frame, zero size

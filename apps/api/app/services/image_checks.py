@@ -36,6 +36,7 @@ __all__ = [
     "DEFAULT_SUGGESTIONS",
     "MAX_JPEG_SCANS",
     "MAX_PIXELS",
+    "MAX_SIDE",
     "check_image",
 ]
 
@@ -43,6 +44,9 @@ DECODE_FORMATS: Final = ("JPEG", "PNG", "TIFF")
 # Per-call decode budget: Pillow stores 8-bit multi-band modes at 4 B/px, so 40 M px is ~160 MB
 # of pixel storage. Checked on the header, before verify() or load() allocates anything.
 MAX_PIXELS: Final = 40_000_000
+# A thin strip (1 x 40 M) passes MAX_PIXELS yet costs one row pointer per line and full-image band
+# crops; capping each side keeps that path to a few x 20 k px. Real product photos are far smaller.
+MAX_SIDE: Final = 20_000
 # A progressive JPEG decodes every scan; real encoders emit about ten.
 MAX_JPEG_SCANS: Final = 64
 ASPECT_TOLERANCE_PERCENT: Final = 1
@@ -322,12 +326,13 @@ def _band_regions(img: Image.Image) -> _BandRegions:
 
 
 def _decode(data: bytes, fmt: str, *, want_band: bool) -> _Decoded | _Failure:
-    """Open with the sniffed decoder only, cap pixels on the header, verify, reopen and load
-    frame 0, then crop the background band if a rule needs it. Pixels are never rotated."""
+    """Open with the sniffed decoder only, cap pixels and side length on the header, verify,
+    reopen and load frame 0, then crop the background band if a rule needs it. Pixels are never
+    rotated."""
     try:
         with Image.open(BytesIO(data), formats=[fmt]) as probe:
             width, height = probe.size
-            if width * height > MAX_PIXELS:
+            if width * height > MAX_PIXELS or max(width, height) > MAX_SIDE:
                 return _Failure.TOO_LARGE
             if width == 0 or height == 0:
                 return _Failure.CORRUPT
