@@ -352,7 +352,8 @@ def test_0001_cross_tenant_natural_key_is_23503(db: Conn, write: Any, constraint
 
 
 def test_0001_unique_keys_on_tenant_tables_include_tenant_id(db: Conn) -> None:
-    """Catalog form: every non-PK unique index on a table with `tenant_id` includes it."""
+    """Catalog form: every non-PK unique index on a table with `tenant_id` includes it, or is
+    led by a uuid row id."""
     rows = db.execute("""
         SELECT c.relname, i.relname
         FROM pg_index x
@@ -367,6 +368,12 @@ def test_0001_unique_keys_on_tenant_tables_include_tenant_id(db: Conn) -> None:
           AND i.relname <> 'uq_product_colourways_id_style_product_id'
           -- global by design (pre-login accept lookup); the value is a sha256 of 32 random bytes
           AND i.relname <> 'uq_invitations_token_hash'
+          -- led by a uuid row id (0002: (product_id, marketplace), (listing_id, version), …):
+          -- probing it needs another tenant's random id, so it is no wider than the PK oracle
+          AND (SELECT a.atttypid FROM pg_attribute a WHERE a.attrelid = c.oid
+               AND a.attnum = x.indkey[0]) IS DISTINCT FROM 'uuid'::regtype
+          -- the tenant is in the key as an expression (rules_scope_key: NULL = platform rule)
+          AND strpos(pg_get_indexdef(x.indexrelid), 'COALESCE(tenant_id,') = 0
         ORDER BY 1, 2
     """).fetchall()
     assert rows == [], f"unique keys without tenant_id: {rows}"

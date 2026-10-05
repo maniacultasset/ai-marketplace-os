@@ -232,7 +232,8 @@ def _tenant_fks(conn: Conn) -> list[tuple[str, str, str, list[str], list[str]]]:
 
 
 def test_0001_tenant_fks_composite(db: Conn) -> None:
-    fks = _tenant_fks(db)
+    """The 0001 tables' FKs; test_0002_catalog.py checks the whole catalog from 0002 on."""
+    fks = [fk for fk in _tenant_fks(db) if fk[1] in TABLES_0001]
     assert len(fks) >= 18
     for name, source, target, columns, target_columns in fks:
         if name == SAME_STYLE_FK:
@@ -259,6 +260,7 @@ def test_0001_tenant_fks_cover_every_column(db: Conn) -> None:
     in_catalog = {
         f"{source}.{column}"
         for _, source, _, columns, _ in _tenant_fks(db)
+        if source in TABLES_0001
         for column in columns
         if column != "tenant_id"
     }
@@ -270,8 +272,8 @@ def _public_0001_objects(db: ScratchDb) -> dict[str, list[tuple[object, ...]]]:
     with psycopg.connect(db.libpq, autocommit=True, connect_timeout=5) as conn:
         snapshot = catalog_snapshot(conn)
         triggers = conn.execute(
-            "SELECT tgname FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid "
-            "WHERE c.relnamespace = 'public'::regnamespace AND NOT t.tgisinternal ORDER BY 1"
+            "SELECT c.relname, t.tgname FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid "
+            "WHERE c.relnamespace = 'public'::regnamespace AND NOT t.tgisinternal ORDER BY 1, 2"
         ).fetchall()
     return {**snapshot, "triggers": triggers}
 
@@ -284,7 +286,9 @@ def test_0001_round_trip(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None
     relations = {str(r[0]) for r in at_head["relations"]}
     assert set(TABLES_0001) <= relations
     assert {str(r[0]) for r in at_head["functions"]} >= set(FUNCTIONS_0001)
-    assert len(at_head["triggers"]) == len(TABLES_0001)
+    # one set_updated_at trigger per 0001 table (later revisions add their own tables' triggers)
+    triggers_0001 = [r for r in at_head["triggers"] if r[0] in TABLES_0001]
+    assert sorted(triggers_0001) == sorted((t, "set_updated_at") for t in TABLES_0001)
     command.downgrade(cfg, "base")
     after = _public_0001_objects(scratch_db)
     assert after["functions"] == empty["functions"] == []

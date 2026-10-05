@@ -175,3 +175,36 @@ def cell(conn: Conn, tenant_id: UUID, style_id: UUID, **columns: Any) -> UUID:
         "source": "seller",
     }
     return insert(conn, "variant_matrix_cells", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+# ---- 0002 (DATABASE.md §5.2-§5.7) ----
+
+POLICY_REF: dict[str, Any] = {"source": "amazon_policy", "title": "Product title requirements"}
+
+
+def rule_def(rule_type: str = "max_length", **fields: Any) -> dict[str, Any]:
+    """A RuleDef body (`mkos_schemas.rules`); a platform rule cites its policy."""
+    body: dict[str, Any] = {"type": rule_type, "message": "check {value}", "error_code": "X"}
+    body.update(fields)
+    return {key: value for key, value in body.items() if value is not None}
+
+
+def rule(conn: Conn, tenant_id: UUID | None = None, **columns: Any) -> UUID:
+    """A platform `max_length` rule on `content.title` unless the columns say otherwise; a
+    tenant rule defaults to `banned_terms` (the brand-rule types, DATABASE.md §5.2)."""
+    if tenant_id is None:
+        default_def = rule_def("max_length", limit=200, policy_ref=POLICY_REF)
+    else:
+        default_def = rule_def("banned_terms", terms=["best"], pack="brand")
+    body = columns.pop("rule_def", default_def)
+    fields = body if isinstance(body, dict) else {}
+    defaults: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "marketplace": "amazon",
+        "field": "content.title",
+        "rule_type": fields.get("type", "max_length"),
+        "subject": "",
+        "pack": fields.get("pack", "core"),
+        "rule_def": body,
+    }
+    return insert(conn, "rules", **{**defaults, **columns})  # type: ignore[no-any-return]
