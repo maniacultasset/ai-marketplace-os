@@ -374,3 +374,37 @@ def test_mock_smoke_script(repo_root: Path) -> None:
     assert "Prefer: code=404" in text
     assert "/products/0b1c2d3e-" in text
     assert "kill" in text
+
+
+S9_LEGS = {
+    "lint-imports-platform-scope-worker": ("lint-imports", ": R5 "),
+    "lint-imports-scope-ok-service": ("lint-imports", ": R6 "),
+    "api-lint-text-in-service": ("api-lint", ": R4 "),
+    "api-lint-text-attribute-chain": ("api-lint", ": R4 "),
+    "tenant-isolation-no-filter": ("tenant-isolation", "test_list_returns_only_own_rows"),
+    "tenant-isolation-no-guard": ("tenant-isolation", "test_raw_select_raises_guard"),
+    "tenant-isolation-superuser": ("tenant-isolation", "test_isolation_runs_as_app_rw"),
+    "tenant-isolation-guard-all-mappers": (
+        "tenant-isolation",
+        r"test_raw_select_raises_guard\[[a-z_]+-(join|subquery|exists|cte|select_from|core_table)\]",
+    ),
+    "tenant-isolation-no-before-flush": ("tenant-isolation", "test_flush_rejects_other_tenant"),
+    "tenant-isolation-no-marker": ("tenant-isolation", "deselected"),
+}
+
+
+def test_prove_gates_has_s9_legs(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    code = _code(text)
+    for name, (gate, regex) in S9_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+        assert re.search(rf"(?m)^{re.escape(leg.group(2))}\(\) \{{", code), leg.group(2)
+    docker = code.index('if [ "$with_docker" -eq 1 ]; then')
+    for name, (gate, _) in S9_LEGS.items():
+        if gate == "tenant-isolation":
+            assert code.index(f"leg {name} ") > docker, name
+    superuser = re.search(r"(?m)^[ \t]*leg tenant-isolation-superuser .*$", code)
+    assert superuser is not None
+    assert "ISO_DATABASE_URL=postgresql+psycopg://postgres:postgres@" in superuser.group(0)
