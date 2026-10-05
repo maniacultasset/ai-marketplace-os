@@ -28,7 +28,7 @@ from mkos_schemas.codes import ImageIssueCode
 from mkos_schemas.enums import ImageSlot, Marketplace, Severity
 from mkos_schemas.images import CheckName, ImageCheck, ImageIssue, ImageReport
 from mkos_schemas.rules import ImageRequirement, Rule
-from PIL import Image
+from PIL import Image, ImageChops
 
 __all__ = [
     "CHECK_CODES",
@@ -46,6 +46,13 @@ MAX_PIXELS: Final = 40_000_000
 # A progressive JPEG decodes every scan; real encoders emit about ten.
 MAX_JPEG_SCANS: Final = 64
 ASPECT_TOLERANCE_PERCENT: Final = 1
+# Background band: depth BAND_PERCENT % of each side (at least BAND_MIN_PX), a pixel matches when
+# opaque and every channel is within CHANNEL_TOLERANCE of the target, and a region passes at
+# MIN_MATCH % matching. Calibrated on synthetic images; revisited when real images arrive.
+BAND_MIN_PX: Final = 2
+BAND_PERCENT: Final = 2
+CHANNEL_TOLERANCE: Final = 5
+MIN_MATCH: Final = 99
 
 CHECK_CODES: Final[Mapping[CheckName, ImageIssueCode]] = MappingProxyType(
     {
@@ -254,9 +261,20 @@ class _Failure(Enum):
 
 
 @dataclass(frozen=True, slots=True)
+class _BandRegions:
+    """RGBA crops of the background band. `whole` is set instead when the image is too small to
+    hold separate corners and edges."""
+
+    corners: tuple[Image.Image, ...] = ()
+    edges: tuple[tuple[Image.Image, bool], ...] = ()  # (crop, runs along a horizontal edge)
+    whole: Image.Image | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class _Decoded:
     width: int  # measured: EXIF orientation 5-8 swapped
     height: int
+    band: _BandRegions | None
 
 
 def _orientation(img: Image.Image) -> int:
@@ -270,9 +288,42 @@ def _orientation(img: Image.Image) -> int:
     return 1
 
 
-def _decode(data: bytes, fmt: str) -> _Decoded | _Failure:
+def _rgba(crop: Image.Image) -> Image.Image:
+    """8-bit RGBA; 16-bit and 32-bit integer or float crops are scaled from 16-bit range first."""
+    if crop.mode in ("I", "F") or crop.mode.startswith("I;16"):
+        crop = crop.convert("F").point(lambda v: v / 257).convert("L")
+    return crop.convert("RGBA")
+
+
+def _band_regions(img: Image.Image) -> _BandRegions:
+    """Crop the band from the loaded image, then convert only the crops (never the full image,
+    which would double the decode memory)."""
+    w, h = img.size
+    by = max(BAND_MIN_PX, h * BAND_PERCENT // 100)
+    bx = max(BAND_MIN_PX, w * BAND_PERCENT // 100)
+    if w <= 2 * bx or h <= 2 * by:
+        return _BandRegions(whole=_rgba(img.crop((0, 0, w, h))))
+    corners = (
+        (0, 0, bx, by),
+        (w - bx, 0, w, by),
+        (0, h - by, bx, h),
+        (w - bx, h - by, w, h),
+    )
+    edges = (
+        ((bx, 0, w - bx, by), True),
+        ((bx, h - by, w - bx, h), True),
+        ((0, by, bx, h - by), False),
+        ((w - bx, by, w, h - by), False),
+    )
+    return _BandRegions(
+        corners=tuple(_rgba(img.crop(box)) for box in corners),
+        edges=tuple((_rgba(img.crop(box)), horizontal) for box, horizontal in edges),
+    )
+
+
+def _decode(data: bytes, fmt: str, *, want_band: bool) -> _Decoded | _Failure:
     """Open with the sniffed decoder only, cap pixels on the header, verify, reopen and load
-    frame 0. Pixels are never rotated."""
+    frame 0, then crop the background band if a rule needs it. Pixels are never rotated."""
     try:
         with Image.open(BytesIO(data), formats=[fmt]) as probe:
             width, height = probe.size
@@ -284,13 +335,14 @@ def _decode(data: bytes, fmt: str) -> _Decoded | _Failure:
         with Image.open(BytesIO(data), formats=[fmt]) as img:
             img.load()
             orientation = _orientation(img)
+            band = _band_regions(img) if want_band else None
     except (Image.DecompressionBombError, Image.DecompressionBombWarning, MemoryError):
         return _Failure.TOO_LARGE
     except Exception:  # decode boundary: any decoder failure on hostile bytes is CORRUPT
         return _Failure.CORRUPT
     if orientation in _SWAPPING_ORIENTATIONS:
         width, height = height, width
-    return _Decoded(width, height)
+    return _Decoded(width, height, band)
 
 
 # --- geometry ---
@@ -327,6 +379,62 @@ def _aspect(checks: _Checks, selected: list[_Selected], width: int, height: int)
         members = [rule for m in packs.values() for rule, _ in m]
         worst = min(members, key=lambda r: _SEVERITY_RANK[r.severity])
         checks.add("aspect_ratio", False, worst)
+
+
+# --- background ---
+
+_ALPHA_OPAQUE: Final = [255 if v == 255 else 0 for v in range(256)]
+_INVERT: Final = [255 - v for v in range(256)]
+
+
+def _match_mask(rgba: Image.Image, rgb: tuple[int, int, int]) -> Image.Image:
+    """`L` mask: 255 where the pixel is opaque and within tolerance of `rgb`, else 0."""
+    lut: list[int] = []
+    for target in rgb:
+        lut += [255 if abs(v - target) <= CHANNEL_TOLERANCE else 0 for v in range(256)]
+    r, g, b, a = rgba.point(lut + _ALPHA_OPAQUE).split()
+    return ImageChops.multiply(ImageChops.multiply(r, g), ImageChops.multiply(b, a))
+
+
+def _mostly_matching(matching: int, total: int) -> bool:
+    return matching * 100 >= total * MIN_MATCH
+
+
+def _region_passes(mask: Image.Image) -> bool:
+    return _mostly_matching(mask.histogram()[255], mask.width * mask.height)
+
+
+def _edge_passes(mask: Image.Image, horizontal: bool) -> bool:
+    """Collapse the strip to a 1 px profile along the edge (mismatches per position), forgive the
+    single longest run of mismatching positions (a product touching that edge), and judge the
+    rest of the strip."""
+    length, depth = (mask.width, mask.height) if horizontal else (mask.height, mask.width)
+    size = (length, 1) if horizontal else (1, length)
+    profile = mask.point(_INVERT).convert("F").resize(size, Image.Resampling.BOX)
+    means = struct.unpack(f"={length}f", profile.tobytes())
+    counts = [round(m * depth / 255) for m in means]
+    best_start = best_len = 0
+    start: int | None = None
+    for i, count in enumerate([*counts, 0]):
+        if count and start is None:
+            start = i
+        elif not count and start is not None:
+            if i - start > best_len:
+                best_start, best_len = start, i - start
+            start = None
+    total = (length - best_len) * depth
+    if total == 0:
+        return True
+    mismatching = sum(counts) - sum(counts[best_start : best_start + best_len])
+    return _mostly_matching(total - mismatching, total)
+
+
+def _background_passes(band: _BandRegions, rgb: tuple[int, int, int]) -> bool:
+    if band.whole is not None:
+        return _region_passes(_match_mask(band.whole, rgb))
+    return all(_region_passes(_match_mask(c, rgb)) for c in band.corners) and all(
+        _edge_passes(_match_mask(crop, rgb), horizontal) for crop, horizontal in band.edges
+    )
 
 
 # --- entry point ---
@@ -373,7 +481,8 @@ def check_image(
         if scans is None or scans > MAX_JPEG_SCANS:
             checks.add("corruption", False)
             return done()
-    decoded = _decode(data, fmt)
+    background = by_check.get("background", [])
+    decoded = _decode(data, fmt, want_band=bool(background))
     if isinstance(decoded, _Failure):
         checks.add("file_size" if decoded is _Failure.TOO_LARGE else "corruption", False)
         return done()
@@ -383,4 +492,10 @@ def check_image(
     resolution = [item for item in selected if item[1].check in _RESOLUTION_RULES]
     _resolution(checks, resolution, decoded.width, decoded.height)
     _aspect(checks, by_check.get("aspect_ratio", []), decoded.width, decoded.height)
+    if decoded.band is not None:
+        for rule, req in background:
+            rgb = req.params.rgb
+            if rgb is None:  # unreachable after _require; keeps the types honest
+                raise ValueError(f"image rule {rule.id}: background needs rgb")
+            checks.add("background", _background_passes(decoded.band, rgb), rule)
     return done()

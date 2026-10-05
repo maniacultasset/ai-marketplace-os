@@ -160,6 +160,7 @@ def test_post_decode_checks_all_run() -> None:
     rules = [
         image_rule("min_resolution", min_px=1000),
         image_rule("aspect_ratio", ratio_w=1, ratio_h=1),
+        image_rule("background", rgb=(255, 255, 255)),
     ]
     report = run(fx.jpeg(600, 300, border=(0, 0, 0)), rules)
     assert names(report) == [
@@ -168,8 +169,9 @@ def test_post_decode_checks_all_run() -> None:
         "exif_orientation",
         "resolution",
         "aspect_ratio",
+        "background",
     ]
-    assert codes(report) == ["RESOLUTION_LOW", "WRONG_ASPECT"]
+    assert codes(report) == ["RESOLUTION_LOW", "WRONG_ASPECT", "BACKGROUND_OFF"]
 
 
 # 8. no marketplace numbers in the module
