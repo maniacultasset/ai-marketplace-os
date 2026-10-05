@@ -273,3 +273,18 @@ def test_readme_documents_track_b(repo_root: Path) -> None:
         if ".env" in line and ".worktree.env" not in line and ".env.example" not in line:
             for key in keys:
                 assert f"{key}=" not in line
+
+
+def test_bootstrap_runs_alembic_image_migrate_and_mimic(repo_root: Path) -> None:
+    """CANON-ADDENDUM.md §7: bootstrap-db, then Alembic, then the app; the image's `migrate` role
+    runs on the compose network before the Cloud SQL mimic."""
+    text = _code((repo_root / "scripts" / "ci" / "bootstrap.sh").read_text(encoding="utf-8"))
+    alembic = "uv run --frozen alembic -c apps/api/alembic.ini upgrade head"
+    assert text.index("make bootstrap-db") < text.index(alembic) < text.index("uvicorn")
+    migrate_at = text.index("APP_ROLE=migrate")
+    assert text.index("scripts/ci/check_image.sh") < migrate_at < text.index("make bootstrap-mimic")
+    run = text[text.rindex("docker run", 0, migrate_at) : text.index("\n", migrate_at)]
+    assert '--network "$network"' in run
+    assert "ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/" in run
+    assert '"$image"' in run
+    assert "networks" in text and '"default"' in text
