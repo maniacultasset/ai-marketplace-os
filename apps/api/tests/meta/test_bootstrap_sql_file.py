@@ -143,6 +143,10 @@ def test_password_file_is_psql_only_and_verifier_only(repo_root: Path) -> None:
         "'log_statement'",
         "'log_min_duration_statement'",
         "'log_min_duration_sample'",
+        "'log_transaction_sample_rate'",
+        "'debug_print_parse'",
+        "'debug_print_rewritten'",
+        "'debug_print_plan'",
         "'pgaudit.log'",
     ):
         assert setting in query, setting

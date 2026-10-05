@@ -160,8 +160,21 @@ def test_role_passwords_verifier_sets_and_logs_in(mimic: Mimic) -> None:
         ("log_statement = 'ddl'",),
         ("log_statement = 'mod'",),
         ("log_statement = 'none'", "log_min_duration_statement = 0"),
+        ("log_statement = 'none'", "log_transaction_sample_rate = 1"),
+        ("log_statement = 'none'", "debug_print_parse = on"),
+        ("log_statement = 'none'", "debug_print_rewritten = on"),
+        ("log_statement = 'none'", "debug_print_plan = on"),
     ],
-    ids=["all", "ddl", "mod", "duration-0"],
+    ids=[
+        "all",
+        "ddl",
+        "mod",
+        "duration-0",
+        "transaction-sample",
+        "debug-parse",
+        "debug-rewritten",
+        "debug-plan",
+    ],
 )
 def test_role_passwords_refused_while_server_logs_statements(
     mimic: Mimic, boot_settings: tuple[str, ...]

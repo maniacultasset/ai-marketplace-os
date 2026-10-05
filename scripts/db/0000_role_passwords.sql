@@ -16,6 +16,10 @@ DO $$ BEGIN RAISE EXCEPTION 'a *_SCRAM value is not a SCRAM-SHA-256 verifier; no
 SELECT current_setting('log_statement') = 'none'
    AND current_setting('log_min_duration_statement') = '-1'
    AND current_setting('log_min_duration_sample') = '-1'
+   AND current_setting('log_transaction_sample_rate') = '0'
+   AND current_setting('debug_print_parse') = 'off'
+   AND current_setting('debug_print_rewritten') = 'off'
+   AND current_setting('debug_print_plan') = 'off'
    AND coalesce(current_setting('pgaudit.log', true), 'none') = 'none'
    AND (SELECT count(*) FROM pg_roles WHERE rolname IN ('app_rw', 'app_ro', 'migrator')) = 3
    AND (SELECT r.rolsuper OR (r.rolcreaterole AND (SELECT bool_and(pg_has_role(current_user, x.oid, 'MEMBER WITH ADMIN OPTION'))
