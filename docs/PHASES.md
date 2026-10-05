@@ -67,7 +67,7 @@ Every step runs locally on Docker PostgreSQL 17 + pgvector; Cloud SQL is for sta
 | S10 | Auth, RBAC, maker-checker, `0004_integrity`, `0005_rls` | S9, T7 | — | — | not started |
 | S25 | Prod via OpenTofu, `deploy-prod.yml`, `v0.1.0`, rollback + PITR drills | S4, domain | — | billing, domain | not started |
 | S12 | Walking skeleton over TLS | S10, S11, S4, DNS | — | billing, domain | not started |
-| S17a | Pillow checks as a pure library | S2 | synthetic fixtures | images (D26) | not started |
+| S17a | Pillow checks as a pure library | S2 | synthetic fixtures | images (D26) | built (local) on `feat/s17a-image-checks`: `app/services/image_checks.py` (format, corruption, EXIF orientation, file size, resolution, aspect with pack alternatives, background; pixel and JPEG-scan caps) and the `image checks are pure` import contract; review and merge pending; thresholds calibrate on real images (T110) |
 | S13 | Job spine + CSV import | S12, S8, S11 | MinIO for GCS; synthetic CSVs | real CSVs (D22) | not started |
 | S14b | AI seam (5 ports + fakes), `/rules/dry-run`, `/internal/admin` | S13, S3, S9, S10 | stub pipeline, FakeAdapter | — | not started |
 | S15 | Marketplace accounts + OAuth, `KeyWrapper`, token refresh | S10, S13, S4, Amazon app | fake marketplace server + FakeAdapter; `LocalKmsStub` | credentials, domain | not started |
