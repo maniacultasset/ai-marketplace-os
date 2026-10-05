@@ -110,9 +110,30 @@ seed_alembic_drift() {
   cp "$root/.env" .env
   append apps/api/app/db/base.py $'\nfrom sqlalchemy import Column, Integer, Table  # noqa: E402\n\nTable("seeded_drift", metadata, Column("id", Integer, primary_key=True))'
 }
+# The seeded revision chains onto the current head: a second root would stop `upgrade head`
+# with "Multiple head revisions" before the downgrade ever runs.
+alembic_head() {
+  python3 - <<'PY'
+import pathlib, re
+revisions, downs = set(), set()
+for path in pathlib.Path("apps/api/alembic/versions").glob("*.py"):
+    text = path.read_text(encoding="utf-8")
+    rev = re.search(r'^revision\b[^=]*= *"([^"]+)"', text, re.M)
+    down = re.search(r'^down_revision\b[^=]*= *"([^"]+)"', text, re.M)
+    if rev:
+        revisions.add(rev.group(1))
+    if down:
+        downs.add(down.group(1))
+heads = sorted(revisions - downs)
+assert len(heads) == 1, heads
+print(heads[0])
+PY
+}
 seed_roundtrip_broken() {
+  local head
+  head="$(alembic_head)"
   cp "$root/.env" .env
-  new_file apps/api/alembic/versions/0999_seeded.py $'"""seeded"""\n\nrevision = "0999"\ndown_revision = None\nbranch_labels = None\ndepends_on = None\n\n\ndef upgrade() -> None:\n    pass\n\n\ndef downgrade() -> None:\n    raise RuntimeError("seeded downgrade failure")'
+  new_file apps/api/alembic/versions/0999_seeded.py $'"""seeded"""\n\nrevision = "0999"\ndown_revision = "'"$head"$'"\nbranch_labels = None\ndepends_on = None\n\n\ndef upgrade() -> None:\n    pass\n\n\ndef downgrade() -> None:\n    raise RuntimeError("seeded downgrade failure")'
 }
 seed_squawk_missing() {
   cp "$root/.env" .env
