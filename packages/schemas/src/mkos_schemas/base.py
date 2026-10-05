@@ -29,7 +29,9 @@ SEAM_JSON_SCAN_MAX_ATTEMPTS: Final = 64
 """Failed decode attempts per string when looking for JSON embedded in text; past it the walk fails
 closed. Successful decodes move the scan past the value, so they cost nothing."""
 
-_CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+# A boundary before an upper-case letter that follows a lower-case letter or digit (``apiKey``), and
+# before the last capital of an acronym that starts a new word (``APIKey``, ``OAuthAPIKey``).
+_CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
 
 def normalize_seam_key(key: str) -> str:
@@ -50,10 +52,16 @@ def is_seam_secret_key(key: str) -> bool:
 _JSON_DECODER: Final = json.JSONDecoder()
 
 # Only positions where a JSON value worth walking can really start cost a decode attempt: ``{``
-# must be followed by a key or ``}``, ``[`` by a value or ``]``, and ``"`` (a JSON string literal,
-# i.e. double-encoded JSON) by ``{``, ``[`` or an escaped quote. Template braces such as ``{name}``,
-# prose such as ``[see note]`` and plain quoted words are skipped for free.
-_JSON_START = re.compile(r'\{\s*["}]|\[\s*[\]"{\[\-0-9tfnNI]|"(?=\s*[{\[]|\\")')
+# must be followed by a key or ``}``, ``[`` by a value or ``]`` (a literal or number only when a
+# ``,`` or ``]`` follows it), and ``"`` (a JSON string literal, i.e. double-encoded JSON) by ``{``,
+# ``[`` or an escaped quote. Template braces such as ``{name}``, prose such as ``[see note]``,
+# ``[note 4]`` or ``[2024-03-01]`` and plain quoted words are skipped for free.
+_JSON_START = re.compile(
+    r"\{\s*[\"}]"
+    r"|\[\s*(?:[\]\"{\[]"
+    r"|(?:true|false|null|NaN|-?Infinity|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\s*[,\]])"
+    r"|\"(?=\s*[{\[]|\\\")"
+)
 _ESCAPED_QUOTE: Final = '\\"'
 
 _JSON_TOO_DEEP: Final = "<json nested too deep>"
@@ -86,7 +94,10 @@ def _scan_json_values(text: str, budget: _ScanBudget, found: list[object]) -> st
         except RecursionError:
             return _JSON_TOO_DEEP
         found.append(value)
-        pos = end
+        # A decoded string literal may be the closing quote of a plain quoted word read together
+        # with the start of a real object (``"word" {"k": ...}``), so step past its quote only and
+        # keep scanning inside it; objects and arrays were decoded whole.
+        pos = start + 1 if isinstance(value, str) else end
     return None
 
 

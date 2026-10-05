@@ -224,13 +224,13 @@ def test_walk_keeps_text_without_secret_json() -> None:
 
 
 def test_walk_fails_closed_when_scan_cap_is_hit() -> None:
-    # Each "[1" candidate fails to decode; past the cap the rest is unscanned, so it is refused.
-    text = "[1 " * SEAM_JSON_SCAN_MAX_ATTEMPTS + '{"api_key": "' + _R2_SECRET + '"}'
+    # Each "[1," candidate (a real JSON start) fails to decode; past the cap the rest is unscanned, so it is refused.
+    text = "[1, " * SEAM_JSON_SCAN_MAX_ATTEMPTS + '{"api_key": "' + _R2_SECRET + '"}'
     assert find_seam_secret_key(text) is not None
     assert _error_item(value_submitted=text).value_submitted == SEAM_REDACTED
     # Exactly the cap with nothing left to scan is legal; one candidate more is refused.
-    assert find_seam_secret_key("[1 " * SEAM_JSON_SCAN_MAX_ATTEMPTS) is None
-    assert find_seam_secret_key("[1 " * (SEAM_JSON_SCAN_MAX_ATTEMPTS + 1)) is not None
+    assert find_seam_secret_key("[1, " * SEAM_JSON_SCAN_MAX_ATTEMPTS) is None
+    assert find_seam_secret_key("[1, " * (SEAM_JSON_SCAN_MAX_ATTEMPTS + 1)) is not None
 
 
 def test_walk_fails_closed_on_deep_json_after_prefix() -> None:
@@ -295,6 +295,38 @@ def test_walk_keeps_prose_with_many_harmless_arrays(text: str) -> None:
 
 def test_walk_cap_counts_failed_attempts_across_both_passes() -> None:
     # Failures in the plain pass and the unescaped-quote pass share one budget.
-    text = "[1 " * (SEAM_JSON_SCAN_MAX_ATTEMPTS // 2 + 1) + '\\"'
+    text = "[1, " * (SEAM_JSON_SCAN_MAX_ATTEMPTS // 2 + 1) + '\\"'
     assert find_seam_secret_key(text) is not None
-    assert find_seam_secret_key("[1 " * (SEAM_JSON_SCAN_MAX_ATTEMPTS // 2 + 1)) is None
+    assert find_seam_secret_key("[1, " * (SEAM_JSON_SCAN_MAX_ATTEMPTS // 2 + 1)) is None
+
+
+# Secret-free brand prose whose bracketed words start like a JSON literal or number: each one used to
+# cost a failed decode, so 65 of them hit the fail-closed cap and refused harmless text.
+_BRACKET_PROSE = [
+    " ".join(f"[New in {i}](/c/{i})" for i in range(70)),
+    " ".join(f"Gentle on skin [note {i}]." for i in range(70)),
+    "\n".join(f"[2024-03-{i % 28 + 1:02d}] tone update {i}" for i in range(70)),
+]
+
+
+@pytest.mark.parametrize("text", _BRACKET_PROSE)
+def test_seam_secret_walk_allows_bracketed_prose(text: str) -> None:
+    assert len(text) <= 2000
+    assert find_seam_secret_key(text) is None
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        'Amazon returned "invalid_grant" {"access_token": "S"}',
+        'token refresh failed for "seller-1" {"refresh_token":"S"}',
+        'see "spec" [{"api_key":"S"}]',
+    ],
+)
+def test_seam_secret_walk_finds_json_after_a_quoted_word(text: str) -> None:
+    assert find_seam_secret_key(text) is not None
+
+
+@pytest.mark.parametrize("key", ["APIKey", "OAuthAPIKey", "LWAClientSecret", "X-API-Key"])
+def test_seam_secret_key_catches_acronym_camel_case(key: str) -> None:
+    assert is_seam_secret_key(key)
