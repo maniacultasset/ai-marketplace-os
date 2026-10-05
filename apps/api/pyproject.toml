@@ -17,6 +17,7 @@ dependencies = [
   "pillow>=12.3,<13",
   "python-multipart==0.0.32",
   "mkos-schemas",
+  "pwdlib[argon2]==0.3.1",
 ]
 
 [tool.uv.sources]
