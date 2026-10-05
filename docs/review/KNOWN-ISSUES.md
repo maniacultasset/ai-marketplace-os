@@ -9,10 +9,10 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 
 | Issue | Why it matters | Step |
 |---|---|---|
-| The upstream spec site has a **Founder BRD** (11 pages) that says "default to autonomous submission after validation". It also defines a **14-status status model** and an apparel niche with variants, Legal Metrology and a 19-step flow. No repo doc mentions it. | This directly contradicts invariant 3 (human approval is mandatory) and the Canon's 9 listing statuses. The client's vision and the Canon may not match. | before S2 |
+| The upstream spec site has a **Founder BRD** (11 pages) that says "default to autonomous submission after validation". It also defines a **14-status status model** and an apparel niche with variants, Legal Metrology and a 19-step flow. No repo doc mentions it. | This directly contradicts invariant 3 (human approval is mandatory) and the Canon's 9 listing statuses. The client's vision and the Canon may not match. | before S2 (S2 freezes the 9 Canon statuses (T12 default); the BRD's 14 stay open with the client) |
 | Kickoff pack section B1 has copy-paste blocks that provision the **forbidden KMS ring (`aimos`/`marketplace-tokens`)** and the **singular `/v1/marketplace/...` redirect URIs**. | If the client or DevOps already ran these or filed them with Amazon or Flipkart, KMS unseal fails and the redirect URIs need a 2–4 week re-review. | now |
 | No status is recorded for any Day-2–4 external item: SP-API and Flipkart filing, domain/`<APEX>`, cloud org and billing, OpenAI key, categories, UAT users. BLOCKERS.md has no status column. | The launch-critical lead times are running blind. | now |
-| `rejected` is used by D13 (reviewer regenerate) and by "Reject with feedback", but it is not one of the 9 listing statuses. There is also no status for a partially published listing. | A reviewer's rejection has no persisted state. | S2, S7 |
+| `rejected` is used by D13 (reviewer regenerate) and by "Reject with feedback", but it is not one of the 9 listing statuses. There is also no status for a partially published listing. | A reviewer's rejection has no persisted state. | S2, S7 (S2: no 10th status (reject → `blocked`, `ListingResult.status` `partially_published`); S7 adds the columns) |
 | Emails are unique only per tenant `(tenant_id, lower(email))`, but login is by email and password with no tenant input. | The same email in two tenants makes login ambiguous. | S6, S10 |
 | The ops role (who clears BLOCKED, failed-publish and DLQ items), the analytics screen contents and the confidence-score formula are all undefined. | These are product gaps with no owner. | later |
 
@@ -20,13 +20,13 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 
 | Gap | Proposed direction | Step |
 |---|---|---|
-| The `rules` unique index and RuleSet shadowing key omit the rule type/attribute. | Add `rule_def->>'type'` and the attribute to the key. The seed's second required attribute on `attributes` collides. | S2, S7 |
+| The `rules` unique index and RuleSet shadowing key omit the rule type/attribute. | Add `rule_def->>'type'` and the attribute to the key. The seed's second required attribute on `attributes` collides. | S2, S7 (S2: shadow key and resolution in the RuleSet docstring (A§17 amended); S7 the unique index) |
 | Rule version selection and how `RuleSet.rules_version` is derived are unspecified. | Rule: the highest enabled version wins per key. | S7, S14 |
 | `banned_terms` `match="word"`: `\b#1\b` never matches, and `*` skips the keywords fields. | Define the tokenizer, and decide whether `*` includes keywords. | S14 |
-| The maker-checker 403 cannot be built as an `ErrorReport`: there is no `MAKER_CHECKER_VIOLATION` code and the field-path validator rejects non-listing paths. | Add the codes and a `request`/`listing` path for API-level errors. | S2, S10 |
-| `GenerationResult.terminal_state="generated"` has no mapping to a `listings.status` value. | Add an explicit mapping table. | S2, S13 |
-| `ImportReport` and `JWTClaims` exist only as prose, and `export.py` doesn't emit them. | Define the models and add them to MODELS. | S2 |
-| The S2 module list omits `rules.py`, `pipeline.py`, `export.py` and the 4 seam DTOs. The golden fixtures don't cover all 8 contracts. | Treat the Addendum §21 list as the S2 checklist. | S2 |
+| The maker-checker 403 cannot be built as an `ErrorReport`: there is no `MAKER_CHECKER_VIOLATION` code and the field-path validator rejects non-listing paths. | Add the codes and a `request`/`listing` path for API-level errors. | S2, S10 (S2: `MAKER_CHECKER_VIOLATION` and `request`/`listing` paths added; S10 uses them) |
+| `GenerationResult.terminal_state="generated"` has no mapping to a `listings.status` value. | Add an explicit mapping table. | S2, S13 (S2 freezes the 4 terminal states; the mapping is DATABASE.md:827, coded in S13/S18) |
+| `ImportReport` and `JWTClaims` exist only as prose, and `export.py` doesn't emit them. | Define the models and add them to MODELS. | Fixed in S2 (`imports.py`, `auth.py`, both in `export.MODELS`). |
+| The S2 module list omits `rules.py`, `pipeline.py`, `export.py` and the 4 seam DTOs. The golden fixtures don't cover all 8 contracts. | Treat the Addendum §21 list as the S2 checklist. | Fixed in S2 (the 17 A§21 modules; one golden fixture per exported model). |
 | RLS 0005 conflicts with `platform_scope` (no `app.tenant_id` GUC is set). CI connects as a superuser, which bypasses RLS. | Give platform scope a BYPASSRLS role, or a policy branch. Run the isolation test as `app_rw`. | S9, 0005 |
 | Rollups and cost views need `platform_scope`, but the import allowlist excludes worker code. | Extend the allowlist to a named rollup module. | S9, S14 |
 | `app_ro` is promised, but bootstrap never creates it, and the roles get no passwords while password auth is mandated. | Extend `0000_bootstrap.sql` (secrets set outside git). | S5 |
@@ -50,7 +50,7 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 | `app/db/session.py` | Commits in dependency teardown with `autoflush=False`, so constraint errors surface outside the handler. | Flush inside the service; map IntegrityError explicitly. |
 | `app/db/session.py`, `workers/main.py` | Import modules that exist nowhere (`app.core.security`, `app.db.guard`, `app.workers.settings`, `app.models`). | Create them in S9/S10/S13. Note `get_current_user` vs the Canon's `get_current_principal`. |
 | `scripts/seed.py` | Creates no `category_templates`, so every CSV row fails `CATEGORY_NOT_MAPPED`. `SEED_PASSWORD` is claimed but never read. `--reset` misses the later tables. `assert` fails ruff S101. No fixture export. | Rewrite as `app/cli.py` per A§5 with these fixes. |
-| `packages/schemas` (CONTRACTS reference code) | `ImageReport.model_dump()` emits `pass_`, not `pass` (needs `serialize_by_alias`). `value_submitted max_length=600` raises instead of truncating. `resolve()` rejects attribute paths with digits. The RuleDef discriminator is optional in JSON Schema. The rule message uses an undocumented `{allowed_values}` placeholder. | Fix in S2 with golden-fixture tests. |
+| `packages/schemas` (CONTRACTS reference code) | `ImageReport.model_dump()` emits `pass_`, not `pass` (needs `serialize_by_alias`). `value_submitted max_length=600` raises instead of truncating. `resolve()` rejects attribute paths with digits. The RuleDef discriminator is optional in JSON Schema. The rule message uses an undocumented `{allowed_values}` placeholder. | Fixed in S2 (`mkos-schemas` 1.0.0: `serialize_by_alias`, truncation, digit paths, required discriminator, documented placeholders). |
 | `packages/pipeline/.../state.py` (AI team) | `operator.add` channels keep stale errors across correction attempts. `brand_chunks` is typed `list[str]`, not `BrandChunkDTO`. | Tell the AI team; it is their file. |
 | `apps/web/eslint.config.mjs` (FE team) | Type-aware rules run on `.js` files without a project, so `eslint .` crashes. | Tell the FE team. |
 

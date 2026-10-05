@@ -176,6 +176,9 @@ Source: `CANON.md:142`; `docs/STATE.md` header and "Decided" (S1 plan decisions;
   when ready.
 - MINOR (additive optional field) any day. MAJOR (rename, removal, type change) only on Day 14
   (Sun 4 Oct), Day 28 (Sun 18 Oct) or Day 42 (Sun 1 Nov).
+- Adding a member to a closed vocabulary (an enum, a `Literal`, a `RuleDef` union or a path
+  pattern) is MAJOR: pinned consumers reject an unknown value (user, 2026-10-05, S2 Decision 3;
+  overrides "widening is MINOR" at `DATABASE.md:1195`).
 - Generated `openapi.json` and `.d.ts` files are machine-owned: `make -C packages/schemas all`.
 - Versioned releases: `@mkos/schemas` on GitHub Packages; Python pins `mkos-schemas` by git tag.
 

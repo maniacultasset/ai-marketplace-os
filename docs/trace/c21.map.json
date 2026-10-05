@@ -458,10 +458,10 @@
   },
   {
    "id": "R12615b",
-   "status": "conflict",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "docs/canon/CANON.md:122; docs/drafts/CONTRACTS.md:89-95; T100",
-   "note": "Seam types are WireModel extra=ignore: unknown fields dropped, not rejected"
+   "ref": "packages/schemas/src/mkos_schemas/base.py (WireModel extra=ignore); TEAM-QUESTIONS T100",
+   "note": "Built as the T100 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R12615c",

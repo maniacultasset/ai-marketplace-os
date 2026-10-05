@@ -325,17 +325,17 @@
   },
   {
    "id": "R11461d",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "BACKEND-ARCHITECTURE.md:1348; CONTRACTS.md:397-426 (pre-Canon draft only)",
-   "note": "ImageReport per-check shape (checks[], issues[].detail) only in pre-Canon CONTRACTS draft; aligned plan names the type only."
+   "ref": "packages/schemas/src/mkos_schemas/images.py (checks[], issues[].suggestion)",
+   "note": "Frozen from the CONTRACTS draft in mkos-schemas 1.0.0 (S2)."
   },
   {
    "id": "R11461e",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "BACKEND-ARCHITECTURE.md:1348; CONTRACTS.md:410 (pre-Canon draft only)",
-   "note": "ImageIssue.suggestion exists only in pre-Canon CONTRACTS draft; DATABASE/BACKEND never define ImageReport fields."
+   "ref": "packages/schemas/src/mkos_schemas/images.py (checks[], issues[].suggestion)",
+   "note": "Frozen from the CONTRACTS draft in mkos-schemas 1.0.0 (S2)."
   },
   {
    "id": "R11468",
@@ -1375,24 +1375,24 @@
   },
   {
    "id": "R11704",
-   "status": "conflict",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "DATABASE.md:520; DATABASE.md:1318; T84",
-   "note": "Plan emits error_code IMAGE_NON_COMPLIANT; BACKGROUND_OFF survives only as ImageIssueCode/raw code (draft), no ruling."
+   "ref": "packages/schemas/src/mkos_schemas/images.py, codes.py (IMAGE_NON_COMPLIANT + ImageIssueCode); TEAM-QUESTIONS T84",
+   "note": "Built as the T84 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R11704a",
-   "status": "conflict",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "DATABASE.md:520; DATABASE.md:1318; T84",
-   "note": "Plan emits IMAGE_NON_COMPLIANT; RESOLUTION_LOW only as ImageIssueCode/raw code (pre-Canon draft), no ruling."
+   "ref": "packages/schemas/src/mkos_schemas/images.py, codes.py (IMAGE_NON_COMPLIANT + ImageIssueCode); TEAM-QUESTIONS T84",
+   "note": "Built as the T84 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R11704b",
-   "status": "conflict",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "DATABASE.md:520; DATABASE.md:1318; TEAM-QUESTIONS.md:86 (T52); T84",
-   "note": "Plan emits IMAGE_NON_COMPLIANT; TEXT_DETECTED only as ImageIssueCode; Flipkart main-image text is a warning (T52)."
+   "ref": "packages/schemas/src/mkos_schemas/images.py, codes.py (IMAGE_NON_COMPLIANT + ImageIssueCode); TEAM-QUESTIONS T84",
+   "note": "Built as the T84 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R11706",
