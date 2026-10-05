@@ -60,6 +60,27 @@ def ci_env(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
     return env
 
 
+@pytest.fixture(scope="module")
+def v1_app(tmp_path_factory: pytest.TempPathFactory) -> Iterator[FastAPI]:
+    """One `create_app()` under the CI env block, shared by a module's parametrized surface tests
+    (the per-test `make_app` would rebuild the app and its OpenAPI for every case)."""
+    from app.core.config import get_settings
+    from app.main import create_app
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.chdir(tmp_path_factory.mktemp("v1_app"))
+        for name in (*settings_env_names(), *_EXTRA_ENV_NAMES):
+            mp.delenv(name, raising=False)
+        mp.setenv("APP_ENV", "local")
+        mp.setenv("DATABASE_URL", CI_DATABASE_URL)
+        mp.setenv("JWT_SECRET", CI_JWT_SECRET)
+        get_settings.cache_clear()
+        try:
+            yield create_app()
+        finally:
+            get_settings.cache_clear()
+
+
 @pytest.fixture
 def make_app(ci_env: dict[str, str]) -> Callable[[], FastAPI]:
     def factory() -> FastAPI:
