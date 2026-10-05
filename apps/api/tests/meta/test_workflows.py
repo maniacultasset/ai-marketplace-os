@@ -277,3 +277,13 @@ def test_schemas_drift_sets_up_node_pinned(
     assert re.fullmatch(r"pnpm@\d+\.\d+\.\d+\+sha512\.[0-9a-f]{128}", package["packageManager"])
     contracts_steps = workflows["contracts.yml"]["jobs"]["contracts"]["steps"]
     assert not [s for s in contracts_steps if "setup-node" in s.get("uses", "")]
+
+
+def test_contracts_job_runs_mock_smoke(workflows: dict[str, dict[str, Any]]) -> None:
+    # S3 T21: the mock answers on a real socket before the contracts check runs.
+    steps = workflows["contracts.yml"]["jobs"]["contracts"]["steps"]
+    runs = [s.get("run") for s in steps]
+    assert "make mock-smoke" in runs
+    assert runs.index("make mock-smoke") < len(steps) - 1
+    assert steps[-1] == {"run": "make contracts"}
+    assert steps[0]["with"]["fetch-depth"] == 0

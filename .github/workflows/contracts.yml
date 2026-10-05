@@ -24,6 +24,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
       - uses: ./.github/actions/py-setup
+      - run: make mock-smoke
       - run: make contracts
   schemas-drift:
     runs-on: ubuntu-latest
