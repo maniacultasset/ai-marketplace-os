@@ -121,9 +121,11 @@ app-rw-scram:
 
 # ---- tests (CANON.md:136-137; the CI env block is these three variables, CANON.md:21) ----
 TEST_DATABASE_URL ?= postgresql+psycopg://postgres:postgres@localhost:$(PG_HOST_PORT)/mos_test
-ISO_DATABASE_URL ?= postgresql+psycopg://postgres:postgres@localhost:$(PG_HOST_PORT)/mos_iso
 CI_JWT_SECRET := ci_only_not_a_real_secret_at_least_32_chars
 CI_APP_RW_PASSWORD := ci_only_app_rw_not_a_real_password
+# tenant-isolation: the admin login migrates mos_iso and builds fixtures; the suite logs in as app_rw.
+ISO_ADMIN_URL ?= postgresql+psycopg://postgres:postgres@localhost:$(PG_HOST_PORT)/mos_iso
+ISO_DATABASE_URL ?= postgresql+psycopg://app_rw:$(CI_APP_RW_PASSWORD)@localhost:$(PG_HOST_PORT)/mos_iso
 APP_RW_SCRAM_CMD = printf '%s' '$(CI_APP_RW_PASSWORD)' | uv run --frozen python scripts/db/scram_verifier.py
 COV_FAIL_UNDER ?= 70
 
@@ -133,7 +135,7 @@ COV_FAIL_UNDER ?= 70
 ALEMBIC := uv run --frozen alembic -c apps/api/alembic.ini
 MIGRATE_ENV = APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) ALEMBIC_DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET)
 
-# The isolation sentinel asserts mos_iso, so it runs only in its own job (ADR-0013 §4, until S9).
+# api-tests keeps `not tenant_isolation`: that suite needs app_rw on a migrated mos_iso (S9 D8).
 .PHONY: api-tests
 api-tests:
 	$(PG_PORT_GUARD)
@@ -151,7 +153,8 @@ api-tests:
 .PHONY: tenant-isolation
 tenant-isolation:
 	$(PG_PORT_GUARD)
-	APP_ENV=local DATABASE_URL=$(ISO_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) \
+	APP_ENV=local APP_ROLE=migrate ALEMBIC_DATABASE_URL=$(ISO_ADMIN_URL) uv run --frozen python -m app.cli db migrate
+	APP_ENV=local DATABASE_URL=$(ISO_DATABASE_URL) ALEMBIC_DATABASE_URL=$(ISO_ADMIN_URL) JWT_SECRET=$(CI_JWT_SECRET) \
 	  uv run --frozen pytest -q -m tenant_isolation --no-cov
 
 # 0000 (and the password file) as a Cloud SQL-style non-superuser CREATEROLE role, on a throwaway

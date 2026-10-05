@@ -79,7 +79,7 @@ seed_failing_test() {
 }
 seed_no_marker() {
   cp "$root/.env" .env
-  replace apps/api/tests/tenant_isolation/test_sentinel.py $'@pytest.mark.tenant_isolation\n' ''
+  replace apps/api/tests/tenant_isolation/conftest.py $'            item.add_marker(pytest.mark.tenant_isolation)\n' ''
 }
 seed_schemas_import_error() { append packages/schemas/src/mkos_schemas/__init__.py 'raise ImportError("seeded")'; }
 # One hex digit in each hatchling hash. Either artifact (wheel or sdist) satisfies

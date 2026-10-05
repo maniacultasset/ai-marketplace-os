@@ -148,3 +148,37 @@ def test_test_db_sets_app_rw_scram_from_constant(repo_root: Path) -> None:
     for line in test_db.splitlines():
         if "psql" in line:
             assert "CI_APP_RW_PASSWORD" not in line and "ci_only_app_rw" not in line
+
+
+def test_tenant_isolation_migrates_then_runs_as_app_rw(repo_root: Path) -> None:
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert (
+        "\nISO_ADMIN_URL ?= postgresql+psycopg://postgres:postgres@localhost:$(PG_HOST_PORT)/mos_iso\n"
+        in makefile
+    )
+    assert (
+        "\nISO_DATABASE_URL ?= postgresql+psycopg://app_rw:$(CI_APP_RW_PASSWORD)@localhost:"
+        "$(PG_HOST_PORT)/mos_iso\n" in makefile
+    )
+    recipe = _target(makefile, "tenant-isolation")
+    migrate = recipe.index(
+        "APP_ENV=local APP_ROLE=migrate ALEMBIC_DATABASE_URL=$(ISO_ADMIN_URL) "
+        "uv run --frozen python -m app.cli db migrate"
+    )
+    pytest_at = recipe.index("uv run --frozen pytest -q -m tenant_isolation --no-cov")
+    assert migrate < pytest_at
+    run = recipe[migrate:]
+    for part in (
+        "APP_ENV=local",
+        "DATABASE_URL=$(ISO_DATABASE_URL)",
+        "ALEMBIC_DATABASE_URL=$(ISO_ADMIN_URL)",
+        "JWT_SECRET=$(CI_JWT_SECRET)",
+    ):
+        assert part in run
+    assert '-m "not tenant_isolation and not cloudsql_mimic"' in _target(makefile, "api-tests")
+
+
+def test_no_sentinel_left(repo_root: Path) -> None:
+    folder = repo_root / "apps/api/tests/tenant_isolation"
+    assert not (folder / "test_sentinel.py").exists()
+    assert (folder / "conftest.py").is_file() and (folder / "test_app_rw.py").is_file()
