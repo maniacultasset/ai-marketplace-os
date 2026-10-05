@@ -53,9 +53,8 @@ def _bury(key: str, data: st.DataObject) -> object:
             node = {"k": node}
         elif wrap == "list":
             node = ["x", node]
-        elif not isinstance(node, str):
-            # JSON text of JSON text (a top-level JSON string literal) is a known gap, kept in
-            # docs/plans/s2/repro/test_s2_round2_repro.py, so it is not drawn here.
+        else:
+            # JSON text of JSON text (a top-level JSON string literal) is drawn too (round 2 R2-1).
             node = json.dumps(node)
     return node
 

@@ -25,6 +25,9 @@ SEAM_SECRET_DENY_NAMES: Final[frozenset[str]] = frozenset(
 
 SEAM_REDACTED: Final = "<redacted>"
 
+SEAM_JSON_SCAN_MAX_ATTEMPTS: Final = 64
+"""Decode attempts per string when looking for JSON embedded in text; past it the walk fails closed."""
+
 _CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
 
 
@@ -43,12 +46,62 @@ def is_seam_secret_key(key: str) -> bool:
     return any(norm == name or norm.endswith("_" + name) for name in SEAM_SECRET_DENY_NAMES)
 
 
+_JSON_DECODER: Final = json.JSONDecoder()
+
+# Only positions where a JSON object or array can really start cost a decode attempt: ``{`` must
+# be followed by a key or ``}``, ``[`` by a value or ``]``. Template braces such as ``{name}`` and
+# prose such as ``[see note]`` are skipped for free.
+_JSON_START = re.compile(r'\{\s*["}]|\[\s*[\]"{\[\-0-9tfnNI]')
+
+_JSON_TOO_DEEP: Final = "<json nested too deep>"
+_JSON_SCAN_LIMIT: Final = "<json scan limit reached>"
+
+
+def _decode_json_in_text(text: str) -> tuple[list[object], str | None]:
+    """Decode every JSON value found in ``text``: the whole text as a JSON string literal
+    (double-encoded JSON), or each object or array embedded anywhere in it.
+
+    Returns the decoded values, plus a marker when the walk must fail closed (nesting too deep to
+    parse, or more than ``SEAM_JSON_SCAN_MAX_ATTEMPTS`` candidates).
+    """
+    stripped = text.strip().lstrip("\ufeff").strip()
+    if stripped.startswith('"'):
+        try:
+            literal = json.loads(stripped)
+        except json.JSONDecodeError:
+            pass
+        except RecursionError:
+            return [], _JSON_TOO_DEEP
+        else:
+            if isinstance(literal, str):
+                return [literal], None
+    found: list[object] = []
+    attempts = 0
+    pos = 0
+    while (match := _JSON_START.search(stripped, pos)) is not None:
+        if attempts >= SEAM_JSON_SCAN_MAX_ATTEMPTS:
+            return found, _JSON_SCAN_LIMIT
+        attempts += 1
+        start = match.start()
+        try:
+            value, end = _JSON_DECODER.raw_decode(stripped, start)
+        except json.JSONDecodeError:
+            pos = start + 1
+            continue
+        except RecursionError:
+            return found, _JSON_TOO_DEEP
+        found.append(value)
+        pos = end
+    return found, None
+
+
 def find_seam_secret_key(value: object) -> str | None:
     """Return the first forbidden key name found in ``value``, or ``None``.
 
-    Walks dicts, lists and tuples at any depth. Every string is checked too: text that starts with
-    ``{`` or ``[`` is parsed as JSON and walked the same way. JSON nested too deeply to parse is
-    treated as forbidden (fail closed).
+    Walks dicts, lists and tuples at any depth. Every string is checked too: a JSON object or
+    array anywhere in the text (after a prefix, after a BOM) and a whole-text JSON string literal
+    (double-encoded JSON) are decoded and walked the same way. JSON nested too deeply to parse,
+    or text with more JSON candidates than the scan allows, is treated as forbidden (fail closed).
     """
     stack: list[object] = [value]
     while stack:
@@ -61,15 +114,10 @@ def find_seam_secret_key(value: object) -> str | None:
         elif isinstance(node, list | tuple):
             stack.extend(node)
         elif isinstance(node, str):
-            stripped = node.strip()
-            if not stripped.startswith(("{", "[")):
-                continue
-            try:
-                stack.append(json.loads(stripped))
-            except json.JSONDecodeError:
-                continue
-            except RecursionError:
-                return "<json nested too deep>"
+            decoded, fail_closed = _decode_json_in_text(node)
+            if fail_closed is not None:
+                return fail_closed
+            stack.extend(decoded)
     return None
 
 

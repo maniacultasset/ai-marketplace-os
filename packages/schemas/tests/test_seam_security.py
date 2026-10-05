@@ -10,8 +10,10 @@ from uuid import UUID
 
 import pytest
 from mkos_schemas.base import (
+    SEAM_JSON_SCAN_MAX_ATTEMPTS,
     SEAM_REDACTED,
     SEAM_SECRET_DENY_NAMES,
+    find_seam_secret_key,
     is_seam_secret_key,
     walk_seam_dicts_and_text,
 )
@@ -170,3 +172,67 @@ def test_error_item_checks_value_submitted_before_truncating() -> None:
     item = _error_item(value_submitted={"nested": [{"client_secret": "x"}]})
     assert item.value_submitted == SEAM_REDACTED
     assert _error_item(value_submitted="b" * 700).value_submitted == "b" * 600
+
+
+# Round 2 R2-1: JSON after a text prefix, a BOM-led cell and double-encoded JSON were not walked.
+_R2_SECRET = "sk-LIVE-ROUND2-SECRET-VALUE"
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"message": 'SP-API 401 body: {"access_token": "' + _R2_SECRET + '"}'},
+        {"suggestion": 'retry with {"client_secret": "' + _R2_SECRET + '"}'},
+        {"value_submitted": 'row 3: {"password": "' + _R2_SECRET + '"}'},
+        {"value_submitted": '\ufeff{"api_key": "' + _R2_SECRET + '"}'},
+        {"message": 'body: [1, {"x": [{"Authorization": "' + _R2_SECRET + '"}]}] tail'},
+        {"message": 'see {not json} then {"refresh_token": "' + _R2_SECRET + '"}'},
+    ],
+)
+def test_error_item_redacts_json_embedded_after_prefix(overrides: dict[str, object]) -> None:
+    dumped = _error_item(**overrides).model_dump_json()
+    assert _R2_SECRET not in dumped
+    assert SEAM_REDACTED in dumped
+
+
+def test_walk_decodes_double_encoded_json() -> None:
+    text = json.dumps(json.dumps({"access_token": _R2_SECRET}))
+    assert find_seam_secret_key(text) is not None
+    assert find_seam_secret_key(json.dumps(text)) is not None
+    raw = _golden_context()
+    raw["product"] = {**raw["product"], "raw": text}
+    with pytest.raises(ValidationError, match="forbidden seam key") as exc:
+        GenerationContext.model_validate(raw)
+    assert _R2_SECRET not in str(exc.value)
+
+
+def test_generation_context_rejects_json_embedded_after_prefix() -> None:
+    raw = _golden_context()
+    raw["product"] = {**raw["product"], "notes": 'imported: {"lwa_client_secret": "x"}'}
+    with pytest.raises(ValidationError, match="forbidden seam key"):
+        GenerationContext.model_validate(raw)
+
+
+def test_walk_keeps_text_without_secret_json() -> None:
+    message = 'SP-API 400 body: {"errors": [{"code": "InvalidInput"}]} at {row} [see note]'
+    assert find_seam_secret_key(message) is None
+    assert _error_item(message=message).message == message
+    assert find_seam_secret_key('"just a quoted string"') is None
+    # Braces that cannot start a JSON value cost no scan attempt, so long template text is legal.
+    templates = "{name} " * (SEAM_JSON_SCAN_MAX_ATTEMPTS * 4)
+    assert find_seam_secret_key(templates) is None
+
+
+def test_walk_fails_closed_when_scan_cap_is_hit() -> None:
+    # Each "[1" candidate fails to decode; past the cap the rest is unscanned, so it is refused.
+    text = "[1 " * SEAM_JSON_SCAN_MAX_ATTEMPTS + '{"api_key": "' + _R2_SECRET + '"}'
+    assert find_seam_secret_key(text) is not None
+    assert _error_item(value_submitted=text).value_submitted == SEAM_REDACTED
+    # Exactly the cap with nothing left to scan is legal; one candidate more is refused.
+    assert find_seam_secret_key("[1 " * SEAM_JSON_SCAN_MAX_ATTEMPTS) is None
+    assert find_seam_secret_key("[1 " * (SEAM_JSON_SCAN_MAX_ATTEMPTS + 1)) is not None
+
+
+def test_walk_fails_closed_on_deep_json_after_prefix() -> None:
+    text = "prefix " + "[" * 100_000 + "]" * 100_000
+    assert find_seam_secret_key(text) is not None
