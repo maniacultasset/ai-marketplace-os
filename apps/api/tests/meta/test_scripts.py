@@ -323,3 +323,33 @@ def test_prove_gates_has_s5_legs(repo_root: Path) -> None:
             "TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:"
             "${PG_HOST_PORT:-5432}/mos_prove" in line.group(0)
         )
+
+
+S17A_LEGS = {
+    "lint-imports-image-checks-sqla": (
+        "lint-imports",
+        "image checks are pure BROKEN",
+        "seed_image_checks_sqla",
+        "import sqlalchemy",
+    ),
+    "lint-imports-image-checks-repo": (
+        "lint-imports",
+        "image checks are pure BROKEN",
+        "seed_image_checks_repo",
+        "import app.repositories",
+    ),
+}
+
+
+def test_prove_gates_has_s17a_legs(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    code = _code(text)
+    for name, (gate, regex, seed_name, line) in S17A_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+        assert leg.group(2) == seed_name, name
+        seed = re.search(rf"(?m)^{seed_name}\(\) \{{(.*)\}}$", code)
+        assert seed is not None, seed_name
+        assert "apps/api/app/services/image_checks.py" in seed.group(1)
+        assert f"'{line}'" in seed.group(1)

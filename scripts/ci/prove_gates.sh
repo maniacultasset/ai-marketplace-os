@@ -141,6 +141,8 @@ seed_squawk_missing() {
 }
 seed_alembic_environ() { append apps/api/alembic/env.py $'\n\ndef _seeded() -> str | None:\n    import os\n\n    return os.environ.get("X")'; }
 seed_cli_imported() { append apps/api/app/main.py 'import app.cli'; }
+seed_image_checks_sqla() { append apps/api/app/services/image_checks.py 'import sqlalchemy'; }
+seed_image_checks_repo() { append apps/api/app/services/image_checks.py 'import app.repositories'; }
 seed_bootstrap_no_set_role() {
   cp .env.example .env
   replace scripts/db/0000_bootstrap.sql $'SET ROLE migrator;\n' ''
@@ -238,6 +240,8 @@ leg lint-imports-router-db lint-imports 'app.api never imports sqlalchemy or app
 leg lint-imports-service-db lint-imports 'app.services never imports app.db.session .*BROKEN' \
   seed_service_session make lint-imports
 leg lint-imports-cli-imported lint-imports 'nothing imports app.cli BROKEN' seed_cli_imported make lint-imports
+leg lint-imports-image-checks-sqla lint-imports 'image checks are pure BROKEN' seed_image_checks_sqla make lint-imports
+leg lint-imports-image-checks-repo lint-imports 'image checks are pure BROKEN' seed_image_checks_repo make lint-imports
 
 if [ "$with_docker" -eq 1 ]; then
   self_project="$(docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"

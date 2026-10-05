@@ -67,3 +67,24 @@ source_modules =
     app.main
 forbidden_modules =
     app.cli
+
+# The Pillow image checks are a pure library (S17a): no web, DB, worker, adapter or settings
+# import, so the function stays deterministic and testable without infrastructure.
+[importlinter:contract:image-checks-are-pure]
+name = image checks are pure
+type = forbidden
+source_modules =
+    app.services.image_checks
+forbidden_modules =
+    app.api
+    app.db
+    app.repositories
+    app.workers
+    app.adapters
+    app.core
+    sqlalchemy
+    psycopg
+    fastapi
+    starlette
+    pgvector
+    alembic
