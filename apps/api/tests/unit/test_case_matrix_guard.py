@@ -9,6 +9,7 @@ import pytest
 from app.api.errors import NotImplementedYet
 from app.api.v1.surface import OPS, cases, is_stub, route, stub
 from fastapi import APIRouter, FastAPI, WebSocket
+from fastapi.testclient import TestClient
 from tests.endpoint_cases import (
     REQUIRED_VARIANTS,
     Found,
@@ -162,6 +163,66 @@ def test_guard_ignores_routes_outside_api_v1() -> None:
         return {}
 
     assert guard_failures(app, scan_dir_empty()) == []
+
+
+async def _leak() -> dict[str, str]:
+    return {"rows": "every tenant's products"}
+
+
+def test_guard_flags_a_templated_prefix_route() -> None:
+    # R2-1: a path parameter in the prefix serves /api/v1 URLs from a non-/api/v1 declared path.
+    app = _app_with(fn_is_stub=True)
+    app.add_api_route("/api/{ver}/products/export", _leak, methods=["GET"], include_in_schema=False)
+    assert TestClient(app).get("/api/v1/products/export").status_code == 200
+    assert guard_failures(app, scan()) == [
+        "GET /api/{ver}/products/export: route is not in the registry"
+    ]
+
+
+def test_guard_flags_a_catch_all_route() -> None:
+    # R2-1: a catch-all glued to the prefix.
+    app = _app_with(fn_is_stub=True)
+    app.add_api_route("/api/v1{rest:path}", _leak, methods=["GET"], include_in_schema=False)
+    assert TestClient(app).get("/api/v1/products/export").status_code == 200
+    assert guard_failures(app, scan()) == ["GET /api/v1{rest:path}: route is not in the registry"]
+
+
+def test_guard_flags_a_route_in_a_sub_app_mounted_at_api() -> None:
+    # R2-1: a mount above /api/v1 whose sub-app serves /v1/...; its other routes stay out of scope.
+    app = _app_with(fn_is_stub=True)
+    sub = FastAPI()
+    sub.add_api_route("/v1/products/export", _leak, methods=["GET"])
+    app.mount("/api", sub)
+    assert TestClient(app).get("/api/v1/products/export").status_code == 200
+    assert guard_failures(app, scan()) == [
+        "GET /api/v1/products/export: route is not in the registry"
+    ]
+
+
+def test_guard_flags_an_opaque_mount_above_api_v1() -> None:
+    # A mounted ASGI app the guard cannot look into is flagged whole when it serves /api/v1 URLs.
+    async def raw(scope: object, receive: object, send: object) -> None: ...
+
+    app = _app_with(fn_is_stub=True)
+    app.mount("/api", raw)
+    assert guard_failures(app, scan()) == ["MOUNT /api: route is not in the registry"]
+
+
+def test_guard_flags_a_second_route_for_a_registry_op() -> None:
+    # A copy of a registry op served from a mounted sub-app must not pass as the op itself.
+    app = _app_with(fn_is_stub=True)
+
+    async def auth_me() -> NoReturn:
+        raise NotImplementedYet("auth_me")
+
+    sub_copy = FastAPI()
+    sub_copy.add_api_route(
+        "/v1/auth/me", stub(auth_me), methods=["GET"], operation_id="auth_me", response_model=None
+    )
+    app.mount("/api", sub_copy)
+    assert guard_failures(app, scan_dir_empty()) == [
+        "GET /api/v1/auth/me: duplicate route for auth_me"
+    ]
 
 
 def scan_dir_empty() -> Found:
