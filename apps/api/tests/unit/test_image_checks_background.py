@@ -1,4 +1,5 @@
-"""Background: corner squares plus per-edge strips with the longest off run forgiven."""
+"""Background: corner squares plus per-edge strips with the longest inward-continuing off run
+forgiven."""
 
 from __future__ import annotations
 
@@ -7,7 +8,7 @@ from typing import Any
 
 import pytest
 from mkos_schemas.images import ImageReport
-from PIL import Image
+from PIL import Image, ImageDraw
 from tests import image_fixtures as fx
 from tests.image_fixtures import codes, image_rule, run
 
@@ -157,12 +158,53 @@ def test_background_product_covering_corners_fails() -> None:
     assert passes(_png(img)) is False
 
 
-def test_background_single_edge_run_forgiven() -> None:
-    """Documented limit: one off run per edge is forgiven when the corners are clean; the
-    vision step confirms the background."""
+def test_background_run_inside_band_only_fails() -> None:
+    """An off run that stops at the band's inner edge is not a product continuing inward."""
     img = Image.new("RGB", (1000, 1000), fx.WHITE)
     img.paste((128, 128, 128), (300, 0, 400, 20))
+    assert passes(_png(img)) is False
+
+
+def test_background_disc_touching_edge_passes() -> None:
+    """A round product touching the bottom edge: most of its contact is partial band depth, but
+    it continues inward at every position, so the run is forgiven."""
+    img = Image.new("RGB", (1000, 1000), fx.WHITE)
+    ImageDraw.Draw(img).ellipse((200, 200, 800, 999), fill=fx.DARK)
     assert passes(_png(img)) is True
+
+
+# 6b. frames and stripes (fix round 1, F2; moved from docs/plans/s17a/repro)
+
+GREY = (128, 128, 128)
+
+
+def test_grey_frame_with_white_corners_fails() -> None:
+    img = Image.new("RGB", (1000, 1000), fx.WHITE)
+    for box in ((20, 0, 980, 20), (20, 980, 980, 1000), (0, 20, 20, 980), (980, 20, 1000, 980)):
+        img.paste(GREY, box)
+    assert codes(bg(_png(img))) == ["BACKGROUND_OFF"]
+
+
+def test_grey_stripe_along_bottom_edge_fails() -> None:
+    img = Image.new("RGB", (1000, 1000), fx.WHITE)
+    img.paste(GREY, (20, 990, 980, 1000))
+    assert codes(bg(_png(img))) == ["BACKGROUND_OFF"]
+
+
+def test_thick_grey_frame_with_white_corners_fails() -> None:
+    """A frame deeper than the band continues inward, so the run-length cap catches it."""
+    img = Image.new("RGB", (1000, 1000), fx.WHITE)
+    for box in ((20, 0, 980, 40), (20, 960, 980, 1000), (0, 20, 40, 980), (960, 20, 1000, 980)):
+        img.paste(GREY, box)
+    assert codes(bg(_png(img))) == ["BACKGROUND_OFF"]
+
+
+@pytest.mark.parametrize(("run_len", "expected"), [(863, True), (864, False)])
+def test_background_forgiven_run_cap(run_len: int, expected: bool) -> None:
+    """Top edge strip spans x 20-980 (960 positions); a run is forgiven only below 90 % (864)."""
+    img = Image.new("RGB", (1000, 1000), fx.WHITE)
+    img.paste(fx.DARK, (20, 0, 20 + run_len, 500))
+    assert passes(_png(img)) is expected
 
 
 # 7. only the band is converted

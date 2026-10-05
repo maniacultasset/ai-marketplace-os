@@ -52,11 +52,14 @@ MAX_JPEG_SCANS: Final = 64
 ASPECT_TOLERANCE_PERCENT: Final = 1
 # Background band: depth BAND_PERCENT % of each side (at least BAND_MIN_PX), a pixel matches when
 # opaque and every channel is within CHANNEL_TOLERANCE of the target, and a region passes at
-# MIN_MATCH % matching. Calibrated on synthetic images; revisited when real images arrive.
+# MIN_MATCH % matching. On an edge, one off run is forgiven as the product's contact only where the
+# line just inside the band is off too (the product continues inward) and the run is shorter than
+# MAX_RUN_PERCENT % of the edge. Calibrated on synthetic images; revisited when real images arrive.
 BAND_MIN_PX: Final = 2
 BAND_PERCENT: Final = 2
 CHANNEL_TOLERANCE: Final = 5
 MIN_MATCH: Final = 99
+MAX_RUN_PERCENT: Final = 90
 
 CHECK_CODES: Final[Mapping[CheckName, ImageIssueCode]] = MappingProxyType(
     {
@@ -265,12 +268,20 @@ class _Failure(Enum):
 
 
 @dataclass(frozen=True, slots=True)
+class _Edge:
+    crop: Image.Image  # band depth + 1 line
+    horizontal: bool  # runs along the top or bottom edge
+    inner_first: bool  # the inward line is the first row or column (bottom, right edges)
+
+
+@dataclass(frozen=True, slots=True)
 class _BandRegions:
-    """RGBA crops of the background band. `whole` is set instead when the image is too small to
-    hold separate corners and edges."""
+    """RGBA crops of the background band. Each edge crop is one line deeper than the band: that
+    line, just inside the band, shows whether an off run continues inward. `whole` is set instead
+    when the image is too small to hold separate corners and edges."""
 
     corners: tuple[Image.Image, ...] = ()
-    edges: tuple[tuple[Image.Image, bool], ...] = ()  # (crop, runs along a horizontal edge)
+    edges: tuple[_Edge, ...] = ()
     whole: Image.Image | None = None
 
 
@@ -313,15 +324,15 @@ def _band_regions(img: Image.Image) -> _BandRegions:
         (0, h - by, bx, h),
         (w - bx, h - by, w, h),
     )
-    edges = (
-        ((bx, 0, w - bx, by), True),
-        ((bx, h - by, w - bx, h), True),
-        ((0, by, bx, h - by), False),
-        ((w - bx, by, w, h - by), False),
+    edges = (  # (box including the inward line, horizontal, inward line first)
+        ((bx, 0, w - bx, by + 1), True, False),
+        ((bx, h - by - 1, w - bx, h), True, True),
+        ((0, by, bx + 1, h - by), False, False),
+        ((w - bx - 1, by, w, h - by), False, True),
     )
     return _BandRegions(
         corners=tuple(_rgba(img.crop(box)) for box in corners),
-        edges=tuple((_rgba(img.crop(box)), horizontal) for box, horizontal in edges),
+        edges=tuple(_Edge(_rgba(img.crop(box)), hz, first) for box, hz, first in edges),
     )
 
 
@@ -409,24 +420,38 @@ def _region_passes(mask: Image.Image) -> bool:
     return _mostly_matching(mask.histogram()[255], mask.width * mask.height)
 
 
-def _edge_passes(mask: Image.Image, horizontal: bool) -> bool:
-    """Collapse the strip to a 1 px profile along the edge (mismatches per position), forgive the
-    single longest run of mismatching positions (a product touching that edge), and judge the
-    rest of the strip."""
-    length, depth = (mask.width, mask.height) if horizontal else (mask.height, mask.width)
-    size = (length, 1) if horizontal else (1, length)
-    profile = mask.point(_INVERT).convert("F").resize(size, Image.Resampling.BOX)
+def _edge_passes(mask: Image.Image, edge: _Edge) -> bool:
+    """Split off the inward line, collapse the band strip to a 1 px profile along the edge
+    (mismatches per position), forgive the longest run of positions where the inward line is off
+    (a product touching that edge and continuing inward) if it is under MAX_RUN_PERCENT % of the
+    edge, and judge the rest of the strip."""
+    w, h = mask.size
+    if edge.horizontal:
+        length, depth, size = w, h - 1, (w, 1)
+        cut = 1 if edge.inner_first else h - 1
+        inner_box = (0, cut - 1, w, cut) if edge.inner_first else (0, cut, w, h)
+        band_box = (0, cut, w, h) if edge.inner_first else (0, 0, w, cut)
+    else:
+        length, depth, size = h, w - 1, (1, h)
+        cut = 1 if edge.inner_first else w - 1
+        inner_box = (cut - 1, 0, cut, h) if edge.inner_first else (cut, 0, w, h)
+        band_box = (cut, 0, w, h) if edge.inner_first else (0, 0, cut, h)
+    inward_off = [v == 0 for v in mask.crop(inner_box).tobytes()]
+    band = mask.crop(band_box)
+    profile = band.point(_INVERT).convert("F").resize(size, Image.Resampling.BOX)
     means = struct.unpack(f"={length}f", profile.tobytes())
     counts = [round(m * depth / 255) for m in means]
     best_start = best_len = 0
     start: int | None = None
-    for i, count in enumerate([*counts, 0]):
-        if count and start is None:
+    for i, off in enumerate([*inward_off, False]):
+        if off and start is None:
             start = i
-        elif not count and start is not None:
+        elif not off and start is not None:
             if i - start > best_len:
                 best_start, best_len = start, i - start
             start = None
+    if best_len * 100 >= length * MAX_RUN_PERCENT:
+        best_len = 0
     total = (length - best_len) * depth
     if total == 0:
         return True
@@ -438,7 +463,7 @@ def _background_passes(band: _BandRegions, rgb: tuple[int, int, int]) -> bool:
     if band.whole is not None:
         return _region_passes(_match_mask(band.whole, rgb))
     return all(_region_passes(_match_mask(c, rgb)) for c in band.corners) and all(
-        _edge_passes(_match_mask(crop, rgb), horizontal) for crop, horizontal in band.edges
+        _edge_passes(_match_mask(edge.crop, rgb), edge) for edge in band.edges
     )
 
 
