@@ -32,6 +32,7 @@ Conn = psycopg.Connection[tuple[Any, ...]]
 MakeConfig = Callable[[Path | None], Config]
 
 REVISION_0001 = "0001_core_tenancy"
+REVISION_0002B = "0002b_brand_chunks_hnsw"  # the 0002 head; 0003 on adds its own tables
 # DATABASE.md §8.2 ledger row 0002: the 11 Canon tables plus the five new ones.
 TABLES_0002 = frozenset(
     {
@@ -295,7 +296,7 @@ def test_0002_table_set(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None:
     before = _relations(scratch_db)
     command.upgrade(cfg, "0002_listing_pipeline")
     at_0002 = _relations(scratch_db)
-    command.upgrade(cfg, "head")
+    command.upgrade(cfg, REVISION_0002B)
     at_head = _relations(scratch_db)
     assert len(TABLES_0002) == 16
     assert at_head["r"] - before["r"] == TABLES_0002
@@ -359,7 +360,8 @@ def test_vocab_parity_with_mkos_schemas(db: Conn) -> None:
     marketplaces = members(Marketplace)
     names = db.execute(
         "SELECT conname FROM pg_constraint WHERE contype = 'c' AND conname LIKE '%%_marketplace' "
-        "AND connamespace = 'public'::regnamespace"
+        "AND connamespace = 'public'::regnamespace AND conrelid::regclass::text = ANY(%s)",
+        (sorted(TABLES_0002),),
     ).fetchall()
     assert len(names) == 7  # every 0002 table with a marketplace column
     for (name,) in names:

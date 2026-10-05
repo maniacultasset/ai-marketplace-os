@@ -13,12 +13,29 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import psycopg
+from psycopg import sql
+from psycopg.types.json import Jsonb
 
 from . import factories as f
 
 Conn = psycopg.Connection[tuple[Any, ...]]
 
 _counter = itertools.count(1)
+
+
+def insert_row(conn: Conn, table: str, columns: dict[str, Any], returning: str = "id") -> Any:
+    """`factories.insert` with the columns as a dict, for tables with a column named `key`."""
+    names = list(columns)
+    query = sql.SQL("INSERT INTO {} ({}) VALUES ({}) RETURNING {}").format(
+        sql.Identifier(table),
+        sql.SQL(", ").join(sql.Identifier(name) for name in names),
+        sql.SQL(", ").join(sql.Placeholder() for _ in names),
+        sql.Identifier(returning),
+    )
+    values = [Jsonb(v) if isinstance(v, dict) else v for v in columns.values()]
+    row = conn.execute(query, values).fetchone()
+    assert row is not None
+    return row[0]
 
 
 def digest(label: str | int) -> bytes:
@@ -77,3 +94,86 @@ def job_run(conn: Conn, tenant_id: UUID, **columns: Any) -> UUID:
         "correlation_id": uuid4(),
     }
     return f.insert(conn, "job_runs", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+# ---- platform tables (written as migrator) ----
+
+TEMPLATE_ATTRIBUTES: dict[str, Any] = {
+    "required_attributes": ["fabric_type"],
+    "optional_attributes": [],
+    "specs": {},
+}
+
+
+def category_template(conn: Conn, **columns: Any) -> UUID:
+    """Version 1, current, of a `manual` Amazon template for a fresh category."""
+    n = next(_counter)
+    defaults: dict[str, Any] = {
+        "marketplace": "amazon",
+        "category": f"category_{n}",
+        "version": 1,
+        "is_current": True,
+        "product_type": "SHIRT",
+        "source": "manual",
+        "attributes": TEMPLATE_ATTRIBUTES,
+    }
+    return f.insert(conn, "category_templates", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def error_map(conn: Conn, **columns: Any) -> UUID:
+    """An enabled, not auto-fixable Amazon `code` row for a fresh raw value."""
+    n = next(_counter)
+    defaults: dict[str, Any] = {
+        "marketplace": "amazon",
+        "match_on": "code",
+        "raw_value": f"{8000 + n}",
+        "version": 1,
+        "error_code": "VALUE_NOT_ALLOWED",
+        "error_class": "invalid_value",
+        "retry_class": "user_action",
+        "severity": "error",
+        "auto_fixable": False,
+        "plain_text": "The {field} value {value} is not accepted by {marketplace}.",
+        "enabled": True,
+    }
+    return f.insert(conn, "marketplace_error_map", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def attribute_definition(conn: Conn, **columns: Any) -> str:
+    """A non-critical `attributes`-backed text key at the style and standalone levels."""
+    n = next(_counter)
+    defaults: dict[str, Any] = {
+        "key": f"attr_{n}",
+        "section": "attributes",
+        "storage": "attributes",
+        "owner_levels": ["style", "standalone"],
+        "value_type": "text",
+        "input_aliases": [],
+        "is_critical": False,
+        "allowed_sources": ["seller", "ai"],
+        "confirm_agent_captures": False,
+        "enabled": True,
+    }
+    return insert_row(conn, "attribute_definitions", {**defaults, **columns}, "key")  # type: ignore[no-any-return]
+
+
+def attribute_column(conn: Conn, attribute_key: str, **columns: Any) -> str:
+    n = next(_counter)
+    defaults: dict[str, Any] = {
+        "table_name": "products",
+        "column_name": f"col_{n}",
+        "attribute_key": attribute_key,
+    }
+    return insert_row(conn, "attribute_columns", {**defaults, **columns}, "column_name")  # type: ignore[no-any-return]
+
+
+def category_attribute(conn: Conn, attribute_key: str, **columns: Any) -> str:
+    n = next(_counter)
+    defaults: dict[str, Any] = {
+        "category": f"category_{n}",
+        "attribute_key": attribute_key,
+        "relevance": "common",
+        "display_order": n,
+        "enabled": True,
+    }
+    return insert_row(conn, "category_attributes", {**defaults, **columns}, "category")  # type: ignore[no-any-return]
