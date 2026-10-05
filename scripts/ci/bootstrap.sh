@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# The `bootstrap` required check: CANON-ADDENDUM.md §7, reduced per ADR-0013 §4 (no seed until S9,
-# and the image import omits mkos_pipeline until S14). Alembic runs after bootstrap-db (S5), and the
-# image's `migrate` role runs once on the compose network before the Cloud SQL mimic.
+# The `bootstrap` required check: CANON-ADDENDUM.md §7, reduced per ADR-0013 §4 (the image import
+# omits mkos_pipeline until S14). Alembic runs after bootstrap-db (S5), then the demo seed (S9);
+# the image's `migrate` and `seed` roles run once each on the compose network before the Cloud
+# SQL mimic. The seed refuses any APP_ENV but local, so both runs pass APP_ENV=local.
 # It never copies .env and never runs `docker compose down -v`.
 # The API port, the compose project and the image tag follow .worktree.env (ADR-0011 amendment).
 set -euo pipefail
@@ -76,6 +77,7 @@ done
 
 make bootstrap-db
 uv run --frozen alembic -c apps/api/alembic.ini upgrade head
+uv run --frozen python -m app.cli seed --profile demo
 
 uv run --frozen uvicorn app.main:app --port "$api_port" --app-dir apps/api &
 server=$!
@@ -98,4 +100,6 @@ docker run --rm -e APP_ROLE=shell "$image" -c "import app, mkos_schemas"
 scripts/ci/check_image.sh "$image"
 # The Cloud Run migrate job's path through the image (local compose password only).
 docker run --rm --network "$network" -e APP_ENV=local -e APP_ROLE=migrate -e ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/marketplace_os "$image"
+# The image's seed role (SEED_PROFILE unset: the entrypoint's demo default); idempotent after the host seed.
+docker run --rm --network "$network" -e APP_ENV=local -e APP_ROLE=seed -e DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/marketplace_os -e ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/marketplace_os "$image"
 make bootstrap-mimic

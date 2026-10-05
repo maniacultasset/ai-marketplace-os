@@ -1,8 +1,8 @@
 #!/bin/sh
 # APP_ROLE is the only knob. Cloud Run sets $PORT; every role execs, so PID 1 receives SIGTERM
 # directly and in-flight work drains instead of being killed. `migrate` is the Cloud Run job's
-# role (max-retries 0, never at container start); the worker (S13) and seed (S9) roles return
-# with their steps.
+# role (max-retries 0, never at container start); `seed` loads the local demo data and refuses
+# any APP_ENV but local before connecting (S9). The worker role (S13) returns with its step.
 set -eu
 
 ROLE="${APP_ROLE:-api}"
@@ -18,11 +18,14 @@ case "$ROLE" in
     # alembic upgrade head as migrator, under the migration lock; one fixed output line.
     exec python -m app.cli db migrate
     ;;
+  seed)
+    exec python -m app.cli seed --profile "${SEED_PROFILE:-demo}"
+    ;;
   shell)
     exec python "$@"
     ;;
   *)
-    echo "entrypoint: unknown APP_ROLE='${ROLE}' (api|migrate|shell)" >&2
+    echo "entrypoint: unknown APP_ROLE='${ROLE}' (api|migrate|seed|shell)" >&2
     exit 64
     ;;
 esac

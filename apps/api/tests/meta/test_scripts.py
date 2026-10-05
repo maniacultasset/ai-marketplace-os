@@ -408,3 +408,22 @@ def test_prove_gates_has_s9_legs(repo_root: Path) -> None:
     superuser = re.search(r"(?m)^[ \t]*leg tenant-isolation-superuser .*$", code)
     assert superuser is not None
     assert "ISO_DATABASE_URL=postgresql+psycopg://postgres:postgres@" in superuser.group(0)
+
+
+def test_bootstrap_seeds_after_migrate(repo_root: Path) -> None:
+    """S9 T21 (A§7): the host seed runs after Alembic and before the API starts; the image's
+    seed role runs after its migrate role and before the Cloud SQL mimic."""
+    raw = (repo_root / "scripts" / "ci" / "bootstrap.sh").read_text(encoding="utf-8")
+    assert "no seed until S9" not in raw
+    text = _code(raw)
+    alembic = text.index("uv run --frozen alembic -c apps/api/alembic.ini upgrade head")
+    host_seed = text.index("uv run --frozen python -m app.cli seed --profile demo")
+    assert alembic < host_seed < text.index("uvicorn app.main:app")
+    image_migrate = text.index("APP_ROLE=migrate")
+    image_seed = text.index("APP_ROLE=seed")
+    assert image_migrate < image_seed < text.index("make bootstrap-mimic")
+    run = text[text.rindex("docker run", 0, image_seed) : text.index("\n", image_seed)]
+    assert '--network "$network"' in run and "APP_ENV=local" in run
+    assert "SEED_PROFILE" not in run  # unset: the entrypoint's demo default
+    for name in ("DATABASE_URL", "ALEMBIC_DATABASE_URL"):
+        assert f"-e {name}=postgresql+psycopg://postgres:postgres@postgres:5432/" in run
