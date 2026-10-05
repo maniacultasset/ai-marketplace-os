@@ -312,3 +312,41 @@ def listing_item(
         "seller_sku": f"ITEM-{n}",
     }
     return insert(conn, "listing_items", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def validation_run(conn: Conn, tenant_id: UUID, listing_id: UUID, **columns: Any) -> UUID:
+    """A passed first-attempt `schema` run on an Amazon listing."""
+    defaults: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "listing_id": listing_id,
+        "marketplace": "amazon",
+        "source": "schema",
+        "passed": True,
+        "error_report_json": {"errors": []},
+        "attempt": 1,
+    }
+    return insert(conn, "validation_runs", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def agent_run(conn: Conn, tenant_id: UUID, **columns: Any) -> UUID:
+    """A completed `content` agent call (one row per model call, invariant 7)."""
+    defaults: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "trigger": "generate",
+        "status": "completed",
+        "model_used": "model-x",
+        "request_id": "req-1",
+        "agent_name": "content",
+        "started_at": "2026-10-05T00:00:00Z",
+    }
+    return insert(conn, "agent_runs", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def performance(conn: Conn, tenant_id: UUID, listing_id: UUID, **columns: Any) -> UUID:
+    defaults: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "listing_id": listing_id,
+        "marketplace": "amazon",
+        "date": "2026-10-01",
+    }
+    return insert(conn, "performance", **{**defaults, **columns})  # type: ignore[no-any-return]

@@ -675,6 +675,194 @@ REVIEWS_DOWN: Final[tuple[str, ...]] = (
     "DROP TABLE public.review_decisions",
 )
 
+# ---- RUNS: validation_runs, agent_runs, performance (DATABASE.md §5.3, §5.4, §5.5) ----
+# validation_runs and agent_runs are append-only (0004), one ErrorReport shape (invariant 8);
+# every model call persists an agent_runs row (invariant 7). The template pins and job ids are
+# soft here: the template FK is added in 0003, job ids never get one. performance carries the
+# `(tenant_id, listing_id)` FK beside `→ l/mkt` (D7), so a row can't name another tenant's
+# listing.
+ERROR_SOURCES: Final = (
+    "'schema', 'rules_engine', 'vision_model', 'ai_model', 'amazon_adapter', "
+    "'flipkart_adapter', 'system'"
+)
+RUNS_UP: Final[tuple[str, ...]] = (
+    f"""
+    CREATE TABLE public.validation_runs (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      listing_id uuid NOT NULL,
+      listing_version_id uuid,
+      marketplace text NOT NULL,
+      source text NOT NULL,
+      passed boolean NOT NULL,
+      error_report_json jsonb NOT NULL,
+      attempt integer NOT NULL,
+      rules_version integer,
+      duration_ms integer,
+      request_id text,
+      category_template_id uuid,
+      template_version integer,
+      facts_digest bytea,
+      blocking_count integer NOT NULL DEFAULT 0,
+      warning_count integer NOT NULL DEFAULT 0,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_validation_runs PRIMARY KEY (id),
+      CONSTRAINT uq_validation_runs_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT fk_validation_runs_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_validation_runs_listing_id FOREIGN KEY (tenant_id, listing_id)
+        REFERENCES public.listings (tenant_id, id),
+      CONSTRAINT fk_validation_runs_listing_version_id
+        FOREIGN KEY (listing_id, listing_version_id)
+        REFERENCES public.listing_versions (listing_id, id),
+      CONSTRAINT ck_validation_runs_marketplace {MARKETPLACE_CHECK},
+      CONSTRAINT ck_validation_runs_source CHECK (source IN ({ERROR_SOURCES})),
+      CONSTRAINT ck_validation_runs_attempt CHECK (attempt BETWEEN 1 AND 4),
+      CONSTRAINT ck_validation_runs_passed CHECK (passed = (blocking_count = 0)),
+      CONSTRAINT ck_validation_runs_counts CHECK (blocking_count >= 0 AND warning_count >= 0),
+      CONSTRAINT ck_validation_runs_duration_ms CHECK (duration_ms >= 0),
+      CONSTRAINT ck_validation_runs_error_report_json
+        CHECK (jsonb_typeof(error_report_json) = 'object'),
+      CONSTRAINT ck_validation_runs_facts_digest CHECK (octet_length(facts_digest) = 32),
+      CONSTRAINT ck_validation_runs_template_pin
+        CHECK ((category_template_id IS NULL) = (template_version IS NULL)),
+      CONSTRAINT vr_rules_pins CHECK (
+        source <> 'rules_engine'
+        OR (rules_version IS NOT NULL AND category_template_id IS NOT NULL
+            AND template_version IS NOT NULL AND facts_digest IS NOT NULL)
+      )
+    )
+    """,
+    """
+    CREATE INDEX ix_validation_runs_listing_id_created_at
+      ON public.validation_runs (listing_id, created_at DESC)
+    """,
+    """
+    CREATE INDEX ix_validation_runs_listing_version_id
+      ON public.validation_runs (listing_version_id)
+    """,
+    """
+    CREATE INDEX ix_validation_runs_failed
+      ON public.validation_runs (tenant_id, source, created_at DESC) WHERE NOT passed
+    """,
+    """
+    CREATE INDEX validation_runs_errors_gin
+      ON public.validation_runs USING gin (error_report_json jsonb_path_ops) WHERE NOT passed
+    """,
+    """
+    CREATE TABLE public.agent_runs (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      product_id uuid,
+      listing_id uuid,
+      listing_version_id uuid,
+      job_id uuid,
+      trigger text NOT NULL,
+      model_used text,
+      tokens_in integer NOT NULL DEFAULT 0,
+      tokens_out integer NOT NULL DEFAULT 0,
+      tokens_cached_in integer NOT NULL DEFAULT 0,
+      duration_ms integer NOT NULL DEFAULT 0,
+      status text NOT NULL,
+      error_report_json jsonb,
+      cost_usd numeric(12, 6) NOT NULL DEFAULT 0,
+      request_id text NOT NULL,
+      agent_name text NOT NULL,
+      attempt integer NOT NULL DEFAULT 1,
+      prompt_version text,
+      started_at timestamptz NOT NULL,
+      finished_at timestamptz,
+      input_digest text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_agent_runs PRIMARY KEY (id),
+      CONSTRAINT uq_agent_runs_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT fk_agent_runs_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_agent_runs_product_id FOREIGN KEY (tenant_id, product_id)
+        REFERENCES public.products (tenant_id, id),
+      CONSTRAINT fk_agent_runs_listing_id FOREIGN KEY (tenant_id, listing_id)
+        REFERENCES public.listings (tenant_id, id),
+      CONSTRAINT fk_agent_runs_listing_version_id FOREIGN KEY (listing_id, listing_version_id)
+        REFERENCES public.listing_versions (listing_id, id),
+      CONSTRAINT ck_agent_runs_trigger
+        CHECK (trigger IN ('generate', 'correct', 'embed', 'vision')),
+      CONSTRAINT ck_agent_runs_status
+        CHECK (status IN ('running', 'completed', 'failed', 'timeout')),
+      CONSTRAINT ck_agent_runs_model_used CHECK (status = 'running' OR model_used IS NOT NULL),
+      CONSTRAINT ck_agent_runs_agent_name CHECK (agent_name IN ('content', 'keyword',
+        'attribute', 'image', 'correction', 'embedding', 'quality')),
+      CONSTRAINT ck_agent_runs_cost_usd CHECK (cost_usd >= 0 AND cost_usd <> 'NaN'),
+      CONSTRAINT ck_agent_runs_tokens
+        CHECK (tokens_in >= 0 AND tokens_out >= 0 AND tokens_cached_in >= 0),
+      CONSTRAINT ck_agent_runs_duration_ms CHECK (duration_ms >= 0),
+      CONSTRAINT ck_agent_runs_attempt CHECK (attempt BETWEEN 1 AND 3),
+      CONSTRAINT ck_agent_runs_finished_at CHECK (finished_at >= started_at),
+      CONSTRAINT ck_agent_runs_error_report_json
+        CHECK (jsonb_typeof(error_report_json) = 'object'),
+      -- MATCH SIMPLE skips the version FK when listing_id is NULL: a version needs its listing
+      CONSTRAINT ck_agent_runs_listing_version
+        CHECK (listing_version_id IS NULL OR listing_id IS NOT NULL)
+    )
+    """,
+    """
+    CREATE INDEX ix_agent_runs_tenant_id_started_at
+      ON public.agent_runs (tenant_id, started_at) INCLUDE (cost_usd)
+    """,
+    """
+    CREATE INDEX ix_agent_runs_started_at ON public.agent_runs (started_at) INCLUDE (cost_usd)
+    """,
+    "CREATE INDEX ix_agent_runs_job_id ON public.agent_runs (job_id)",
+    """
+    CREATE INDEX agent_runs_product_created_idx ON public.agent_runs (product_id, created_at)
+      INCLUDE (cost_usd, tokens_in, tokens_out, duration_ms) WHERE product_id IS NOT NULL
+    """,
+    """
+    CREATE INDEX agent_runs_errors_gin ON public.agent_runs
+      USING gin (error_report_json jsonb_path_ops) WHERE error_report_json IS NOT NULL
+    """,
+    f"""
+    CREATE TABLE public.performance (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      listing_id uuid NOT NULL,
+      marketplace text NOT NULL,
+      date date NOT NULL,
+      impressions integer NOT NULL DEFAULT 0,
+      clicks integer NOT NULL DEFAULT 0,
+      orders integer NOT NULL DEFAULT 0,
+      returns integer NOT NULL DEFAULT 0,
+      ranking_position integer,
+      revenue numeric(14, 2),
+      currency text NOT NULL DEFAULT 'INR',
+      metrics jsonb NOT NULL DEFAULT '{{}}'::jsonb,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_performance PRIMARY KEY (id),
+      CONSTRAINT uq_performance_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT performance_listing_date_key UNIQUE (listing_id, date),
+      CONSTRAINT fk_performance_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_performance_listing_id FOREIGN KEY (tenant_id, listing_id)
+        REFERENCES public.listings (tenant_id, id),
+      CONSTRAINT fk_performance_listing_id_marketplace FOREIGN KEY (listing_id, marketplace)
+        REFERENCES public.listings (id, marketplace),
+      CONSTRAINT ck_performance_marketplace {MARKETPLACE_CHECK},
+      CONSTRAINT ck_performance_counts
+        CHECK (impressions >= 0 AND clicks >= 0 AND orders >= 0 AND returns >= 0),
+      CONSTRAINT ck_performance_ranking_position CHECK (ranking_position >= 1),
+      CONSTRAINT ck_performance_revenue CHECK (revenue >= 0 AND revenue <> 'NaN'),
+      CONSTRAINT ck_performance_currency CHECK (currency = 'INR'),
+      CONSTRAINT ck_performance_metrics CHECK (jsonb_typeof(metrics) = 'object')
+    )
+    """,
+    _updated_at_trigger("performance"),
+)
+RUNS_DOWN: Final[tuple[str, ...]] = (
+    "DROP TABLE public.performance",
+    "DROP TABLE public.agent_runs",
+    "DROP TABLE public.validation_runs",
+)
+
 SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (RULES_UP, RULES_DOWN),
     (ACCOUNTS_UP, ACCOUNTS_DOWN),
@@ -682,6 +870,7 @@ SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (BATCHES_UP, BATCHES_DOWN),
     (LISTINGS_UP, LISTINGS_DOWN),
     (REVIEWS_UP, REVIEWS_DOWN),
+    (RUNS_UP, RUNS_DOWN),
 )
 
 
