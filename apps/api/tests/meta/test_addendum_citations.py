@@ -18,6 +18,7 @@ _HEADING = re.compile(r"^## (\d+)\. ")
 # docs/canon/CANON.md:13 cites A§2, A§7, A§8 and A§12 by their pre-S5 lines. Canon edits need a
 # recorded approval row, so it stays a known failure (strict xfail below) until one is recorded.
 _PENDING_CANON_EDIT = "docs/canon/CANON.md"
+_SELF = "apps/api/tests/meta/test_addendum_citations.py"  # its fixtures cite on purpose
 
 
 def _sections(addendum: list[str]) -> dict[int, range]:
@@ -59,7 +60,7 @@ def _tracked(root: Path) -> list[str]:
     return [
         p
         for p in listed.splitlines()
-        if p != ADDENDUM and not p.startswith("docs/archive/") and (root / p).is_file()
+        if p not in (ADDENDUM, _SELF) and not p.startswith("docs/archive/") and (root / p).is_file()
     ]
 
 
