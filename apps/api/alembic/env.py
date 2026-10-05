@@ -11,7 +11,8 @@ handlers of whatever process imports this file.
 
 `target_metadata` is the models' MetaData (`app.db.models` registers every table), unless the
 caller puts its own in `config.attributes["target_metadata"]`: tests that drive scratch revisions
-compare against an empty or probe MetaData that way.
+compare against an empty or probe MetaData that way. `include_name` keeps procrastinate's own
+tables (0003b) out of the comparison.
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from app.db.base import metadata
 from app.db.migrations import (
     acquire_migration_lock,
     assume_migration_role,
+    include_name,
     refuse_if_ahead,
     render_item,
     revoke_version_table_privileges,
@@ -65,6 +67,7 @@ def run_migrations_offline() -> None:
         compare_server_default=True,
         transaction_per_migration=True,
         render_item=render_item,
+        include_name=include_name,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -85,6 +88,7 @@ def run_migrations_online() -> None:
                 compare_server_default=True,
                 transaction_per_migration=True,
                 render_item=render_item,
+                include_name=include_name,
             )
             try:
                 with context.begin_transaction():

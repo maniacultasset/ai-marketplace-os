@@ -194,8 +194,9 @@ BACKEND-ARCHITECTURE.md §4.3; ADR-0012 §Decision 1; EXECUTION-PLAN.md
 | Alembic | `>=1.20,<2` | 1.20.0 (with Mako 1.4.3) | apps/api/pyproject.toml; CANON.md:20 |
 | pgvector (Python) | `>=0.5,<0.6` | 0.5.0 | apps/api/pyproject.toml; ADR-0003 |
 | PostgreSQL + pgvector | PG 17; pgvector `>=0.8.2`; image `pgvector/pgvector:0.8.5-pg17`, digest-pinned | — | ADR-0003; docker-compose.yml:8; .github/workflows/ci-api.yml |
+| procrastinate (the Postgres job queue) | `>=3.10,<3.11` | 3.10.0 (with croniter, psycopg-pool, python-dateutil) | apps/api/pyproject.toml; ADR-0004 §1; schema vendored by revision 0003b |
 | mkos-schemas | 0.0.0, no dependencies yet | 0.0.0 | packages/schemas/pyproject.toml |
-| Planned, not in the lock yet | procrastinate `>=3.10,<3.11` (S8); pyjwt[crypto] `>=2.15` (HS256); sqladmin `>=0.31.1`; pwdlib[argon2]; uuid-utils `<1.0` | — | ADR-0002/0003/0004/0005; ENV.md |
+| Planned, not in the lock yet | pyjwt[crypto] `>=2.15` (HS256); sqladmin `>=0.31.1`; pwdlib[argon2]; uuid-utils `<1.0` | — | ADR-0002/0003/0004/0005; ENV.md |
 | Checks tooling | ruff 0.16.9, black 26.5.1, mypy 2.3.1, pytest 9.1.1, import-linter 2.15, pip-audit 2.10.1, hypothesis 6.168.3, schemathesis 4.28.0, mutmut 3.8.0, squawk-cli 2.65.0 (lint only, report-only until the first prod tag), gitleaks 8.30.1 | same | pyproject.toml [dependency-groups]; scripts/ci/gitleaks.sh:12 |
 
 - Banned imports (ruff TID251): asyncpg, redis, arq, jose, passlib, numpy, and openai/langgraph outside

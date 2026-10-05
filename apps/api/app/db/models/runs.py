@@ -14,6 +14,7 @@ from sqlalchemy import (
     Boolean,
     Date,
     DateTime,
+    ForeignKeyConstraint,
     Index,
     Integer,
     LargeBinary,
@@ -50,6 +51,12 @@ class ValidationRun(Base):
         tenant_fk("validation_runs"),
         to_row("validation_runs", "listing_id", "listings"),
         to_version("validation_runs", "listing_version_id"),
+        # added by 0003 (NOT VALID + VALIDATE): the template pin, on `ct_id_version`
+        ForeignKeyConstraint(
+            ["category_template_id", "template_version"],
+            ["category_templates.id", "category_templates.version"],
+            name=conv("fk_validation_runs_category_template_id_category_templates"),
+        ),
         Index(
             conv("ix_validation_runs_listing_id_created_at"),
             "listing_id",

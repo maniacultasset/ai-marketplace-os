@@ -136,6 +136,10 @@ class ListingIssue(Base):
             ["rule_id"], ["rules.id"], name=conv("fk_listing_issues_rule_id_rules")
         ),
         to_membership("listing_issues", "resolved_by_user_id"),
+        # added by 0003 (NOT VALID + VALIDATE); error-map rows are never deleted (§5.2)
+        ForeignKeyConstraint(
+            ["error_map_id"], ["marketplace_error_map.id"], name=conv("li_error_map_fk")
+        ),
         # the issue sync's ON CONFLICT target
         Index(
             conv("li_one_open"),

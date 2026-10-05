@@ -368,6 +368,10 @@ def test_0001_unique_keys_on_tenant_tables_include_tenant_id(db: Conn) -> None:
           AND i.relname <> 'uq_product_colourways_id_style_product_id'
           -- global by design (pre-login accept lookup); the value is a sha256 of 32 random bytes
           AND i.relname <> 'uq_invitations_token_hash'
+          -- the same for 0003's refresh token and OAuth state: found by hash before any
+          -- tenant is known (the callback carries no JWT), each a sha256 of a random secret
+          AND i.relname <> 'uq_refresh_tokens_token_hash'
+          AND i.relname <> 'uq_oauth_states_state_hash'
           -- global by design (T31: one seller account, one tenant); seller_id comes from the
           -- marketplace OAuth callback, not from the brand
           AND i.relname <> 'uq_marketplace_accounts_marketplace_seller_id'

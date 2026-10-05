@@ -14,7 +14,6 @@ import pytest
 from psycopg.types.json import Jsonb
 
 from . import factories as f
-from .conftest import expect_sqlstate
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 
@@ -32,6 +31,14 @@ ERROR_SOURCES = [
 ]
 # Soft references (DATABASE.md §1): job ids, template pins (FKs arrive in 0003), and the
 # references from a longer-lived row to one pruned sooner.
+# The FKs revision 0003 adds onto 0002 columns (DATABASE.md §8.2 ledger row 0003).
+DEFERRED_0003_FKS = frozenset(
+    {
+        "li_error_map_fk",
+        "fk_validation_runs_category_template_id_category_templates",
+        "fk_listing_versions_category_template_id_category_templates",
+    }
+)
 SOFT_REFERENCE_COLUMNS = frozenset(
     {
         "job_id",
@@ -47,6 +54,18 @@ SOFT_REFERENCE_COLUMNS = frozenset(
         "source_id",
     }
 )
+
+
+@pytest.fixture(autouse=True)
+def _template(db: Conn) -> None:
+    """The `(TEMPLATE, 1)` category template the rules-engine pins name (the FK arrives in
+    0003, DATABASE.md §8.2)."""
+    db.execute(
+        "INSERT INTO category_templates (id, marketplace, category, version, is_current, "
+        "product_type, source, attributes) VALUES (%s, 'amazon', 't_shirts', 1, true, 'SHIRT', "
+        '\'manual\', \'{"required_attributes": [], "optional_attributes": [], "specs": {}}\')',
+        (TEMPLATE,),
+    )
 
 
 def _listing(db: Conn) -> tuple[UUID, UUID]:
@@ -332,25 +351,33 @@ def test_performance_defaults(db: Conn) -> None:
 
 
 def test_template_pin_and_job_id_have_no_fk(db: Conn) -> None:
-    """No FK in the schema covers a soft-reference column (DATABASE.md §1: job references,
-    template pins until 0003, and longer-lived rows pointing at rows pruned sooner)."""
+    """No FK on a 0002 table covers a soft-reference column (DATABASE.md §1: job references and
+    longer-lived rows pointing at rows pruned sooner). The template pins and the error-map link
+    are the exception 0003 adds (§8.2 ledger row 0003, NOT VALID + VALIDATE)."""
+    from .test_0002_catalog import TABLES_0002
+
     rows = db.execute(
         "SELECT con.conname, a.attname FROM pg_constraint con "
         "JOIN pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = ANY (con.conkey) "
-        "WHERE con.contype = 'f' AND con.connamespace = 'public'::regnamespace"
+        "WHERE con.contype = 'f' AND con.connamespace = 'public'::regnamespace "
+        "AND con.conrelid::regclass::text = ANY (%s)",
+        (sorted(TABLES_0002),),
     ).fetchall()
-    assert [r for r in rows if r[1] in SOFT_REFERENCE_COLUMNS] == []
+    soft = [r for r in rows if r[1] in SOFT_REFERENCE_COLUMNS and r[0] not in DEFERRED_0003_FKS]
+    assert soft == []
     present = db.execute(
         "SELECT count(*) FROM pg_attribute WHERE attrelid IN ('listing_versions'::regclass, "
         "'validation_runs'::regclass, 'agent_runs'::regclass) "
         "AND attname IN ('job_id', 'category_template_id', 'template_version')"
     ).fetchone()
     assert present == (5,)
-    expect_sqlstate(
-        db,
-        "42P01",
-        "SELECT 1 FROM job_runs",  # 0003: until then nothing could reference it
-    )
+    # no FK from a 0002 table into job_runs (0003): job references stay soft
+    into_jobs = db.execute(
+        "SELECT conname FROM pg_constraint WHERE contype = 'f' "
+        "AND confrelid = 'job_runs'::regclass AND conrelid::regclass::text = ANY (%s)",
+        (sorted(TABLES_0002),),
+    ).fetchall()
+    assert into_jobs == []
 
 
 # ---- cross-tenant FKs ----

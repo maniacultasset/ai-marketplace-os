@@ -32,6 +32,7 @@ Conn = psycopg.Connection[tuple[Any, ...]]
 MakeConfig = Callable[[Path | None], Config]
 
 REVISION_0001 = "0001_core_tenancy"
+REVISION_0002B = "0002b_brand_chunks_hnsw"  # the 0002 head; 0003 on adds its own tables
 # DATABASE.md §8.2 ledger row 0002: the 11 Canon tables plus the five new ones.
 TABLES_0002 = frozenset(
     {
@@ -144,10 +145,21 @@ def test_tenant_columns_catalog(db: Conn) -> None:
 def _pinned(
     fks: list[tuple[str, str, str, list[str], list[str]]], source: str, column: str
 ) -> bool:
-    """`column` of `source` sits in a tenant-composite FK, or is the row's own id."""
-    if column == "id":
-        return True
-    return any(fk[1] == source and fk[3] == ["tenant_id", column] for fk in fks)
+    """`column` of `source` sits in a tenant-composite FK, or is the row's own id, or (0003,
+    publish_field_results) sits in another companion FK of `source` that has such a column: that
+    FK ties it to a row the pinned column already fixes in the tenant."""
+    pinned = {"id"} | {
+        fk[3][1] for fk in fks if fk[1] == source and len(fk[3]) == 2 and fk[3][0] == "tenant_id"
+    }
+    companions = [fk[3] for fk in fks if fk[1] == source and "tenant_id" not in fk[3]]
+    grew = True
+    while grew:
+        grew = False
+        for columns in companions:
+            if pinned & set(columns) and not set(columns) <= pinned:
+                pinned |= set(columns)
+                grew = True
+    return column in pinned
 
 
 def test_tenant_fks_composite(db: Conn) -> None:
@@ -189,9 +201,11 @@ def test_updated_at_triggers_catalog(db: Conn) -> None:
 
 
 def test_no_enum_types(db: Conn) -> None:
+    """Vocabularies are TEXT + CHECK (DATABASE.md §1). The only enums are procrastinate's own
+    (vendored by 0003b, not ours to change)."""
     rows = db.execute(
         "SELECT typname FROM pg_type WHERE typnamespace = 'public'::regnamespace "
-        "AND typtype = 'e'"
+        "AND typtype = 'e' AND typname NOT LIKE 'procrastinate\\_%'"
     ).fetchall()
     assert rows == []
 
@@ -295,7 +309,7 @@ def test_0002_table_set(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None:
     before = _relations(scratch_db)
     command.upgrade(cfg, "0002_listing_pipeline")
     at_0002 = _relations(scratch_db)
-    command.upgrade(cfg, "head")
+    command.upgrade(cfg, REVISION_0002B)
     at_head = _relations(scratch_db)
     assert len(TABLES_0002) == 16
     assert at_head["r"] - before["r"] == TABLES_0002
@@ -359,7 +373,8 @@ def test_vocab_parity_with_mkos_schemas(db: Conn) -> None:
     marketplaces = members(Marketplace)
     names = db.execute(
         "SELECT conname FROM pg_constraint WHERE contype = 'c' AND conname LIKE '%%_marketplace' "
-        "AND connamespace = 'public'::regnamespace"
+        "AND connamespace = 'public'::regnamespace AND conrelid::regclass::text = ANY(%s)",
+        (sorted(TABLES_0002),),
     ).fetchall()
     assert len(names) == 7  # every 0002 table with a marketplace column
     for (name,) in names:

@@ -9,6 +9,8 @@ newer-database check, the version-table revoke and the autogenerate render hook.
   same connection, so an overlapping deploy cannot slip a newer revision in between.
 - Errors never carry connection detail: a revision id from the database passes through
   `safe_revision` before it reaches a message.
+- `include_name` hides procrastinate's own tables (revision 0003b vendors its schema SQL) from
+  autogenerate, so `alembic check` never wants to drop them (DATABASE.md:952).
 - `require_extension_version` is the gate a revision runs before it relies on an extension
   feature (0002b: pgvector >= 0.8.2, DATABASE.md §8.2). Versions compare as integer tuples, so
   0.10.0 is newer than 0.8.5, which a text comparison gets wrong.
@@ -23,6 +25,7 @@ from typing import Final, Literal
 from alembic.autogenerate.api import AutogenContext
 from alembic.config import Config
 from alembic.migration import MigrationContext
+from alembic.runtime.environment import NameFilterParentNames, NameFilterType
 from alembic.script import ScriptDirectory
 from pgvector.sqlalchemy import VECTOR
 from sqlalchemy import Connection, text
@@ -43,6 +46,7 @@ INVALID_REVISION: Final[str] = "<invalid revision id>"
 # alembic_version.version_num is VARCHAR(32).
 _REVISION_ID: Final[re.Pattern[str]] = re.compile(r"[0-9A-Za-z_]{1,32}")
 _VECTOR_IMPORT: Final[str] = "from pgvector.sqlalchemy import Vector"
+PROCRASTINATE_PREFIX: Final[str] = "procrastinate_"
 
 
 class MigrationLockBusy(RuntimeError):  # noqa: N818 - a state, not a fault; exit 4 in app.cli
@@ -155,6 +159,15 @@ def revoke_version_table_privileges(connection: Connection) -> None:
     if exists is not None:
         roles = ", ".join((*APP_ROLES, "PUBLIC"))
         connection.execute(text(f"REVOKE ALL ON TABLE alembic_version FROM {roles}"))
+
+
+def include_name(
+    name: str | None, type_: NameFilterType, parent_names: NameFilterParentNames
+) -> bool:
+    """Autogenerate filter: False for a `procrastinate_*` table, True for everything else. The
+    tables' indexes and constraints go with them, since Alembic never reflects a skipped table."""
+    del parent_names
+    return not (type_ == "table" and name is not None and name.startswith(PROCRASTINATE_PREFIX))
 
 
 def render_item(type_: str, obj: object, autogen_context: AutogenContext) -> str | Literal[False]:
