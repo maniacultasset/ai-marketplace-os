@@ -117,6 +117,20 @@ def test_alembic_config_online_order() -> None:
         positions.append(index)
         start = index + 1
     assert positions == sorted(positions)
+    # A failed revision still revokes: the handler around run_migrations rolls back, revokes,
+    # commits, and re-raises the original error.
+    (attempt,) = [
+        n
+        for n in ast.walk(_function(tree, "run_migrations_online"))
+        if isinstance(n, ast.Try)
+        and n.handlers
+        and "run_migrations" in {_call_name(c) for c in _calls_in_order(ast.Module(n.body, []))}
+    ]
+    (handler,) = attempt.handlers
+    handled = [_call_name(c) for c in _calls_in_order(ast.Module(handler.body, []))]
+    assert handled[:3] == ["rollback", "revoke_version_table_privileges", "commit"], handled
+    last = handler.body[-1]
+    assert isinstance(last, ast.Raise) and last.exc is None
     offline = {_call_name(c) for c in _calls_in_order(_function(tree, "run_migrations_offline"))}
     assert "assume_migration_role" not in offline
     assert "revoke_version_table_privileges" not in offline
