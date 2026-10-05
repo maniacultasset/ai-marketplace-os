@@ -28,7 +28,7 @@ from starlette.requests import Request
 from starlette.types import Scope
 
 CORRELATION_ID_PATTERN: Final = r"[A-Za-z0-9._:-]{1,128}"
-"""Inbound `X-Request-ID` kept as-is only when it matches (S11 D3, docs/plans/s11/PLAN.md:128)."""
+"""Inbound `X-Request-ID` kept as-is only when it matches (the S11 D3 pattern)."""
 _CORRELATION_RE: Final = re.compile(CORRELATION_ID_PATTERN)
 REQUEST_ID_HEADER: Final = "X-Request-ID"
 _STATE_KEY: Final = "correlation_id"
