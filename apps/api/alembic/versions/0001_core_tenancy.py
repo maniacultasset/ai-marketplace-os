@@ -109,8 +109,80 @@ FUNCTIONS_DOWN: Final[tuple[str, ...]] = (
     "DROP FUNCTION public.set_updated_at()",
 )
 
+# ---- FACT_MAP: fact_map_valid(m, require_value) (DATABASE.md §5.6 "Fact envelope", "SQL twin") ----
+# One ordered CASE per fact, so every cast runs only after its type test: the function returns
+# false on any input and never raises. `evidence_ref` takes no `#` fragment in v1; widening
+# the rules later means a new function name (DATABASE.md §8.3), never a replaced body.
+FACT_MAP_UP: Final[tuple[str, ...]] = (
+    """
+    CREATE FUNCTION public.fact_map_valid(m jsonb, require_value boolean) RETURNS boolean
+      LANGUAGE sql IMMUTABLE PARALLEL SAFE
+    BEGIN ATOMIC
+      RETURN CASE
+        WHEN m IS NULL OR require_value IS NULL THEN false
+        WHEN pg_catalog.jsonb_typeof(m) <> 'object' THEN false
+        WHEN pg_catalog.octet_length(m::text) > 131072 THEN false
+        ELSE coalesce((
+          SELECT pg_catalog.bool_and(CASE
+            WHEN e.k !~ '^[a-z][a-z0-9_]{1,63}$' THEN false
+            WHEN pg_catalog.jsonb_typeof(e.f) <> 'object' THEN false
+            WHEN EXISTS (
+              SELECT 1 FROM pg_catalog.jsonb_object_keys(e.f) AS x(name)
+              WHERE x.name <> ALL (ARRAY['value', 'normalized', 'unit', 'source', 'confidence',
+                'normalized_by', 'evidence_ref', 'evidence_snapshot', 'captured_via',
+                'agent_run_id', 'confirmed_by', 'confirmed_at', 'updated_at'])
+            ) THEN false
+            WHEN pg_catalog.jsonb_typeof(e.f -> 'source') IS DISTINCT FROM 'string'
+              OR (e.f ->> 'source') <> ALL (ARRAY['seller', 'document', 'pim', 'marketplace',
+                'derived', 'ai']) THEN false
+            WHEN pg_catalog.jsonb_typeof(e.f -> 'captured_via') IS DISTINCT FROM 'string'
+              OR (e.f ->> 'captured_via') <> ALL (ARRAY['form', 'import', 'api', 'agent',
+                'human_task', 'system']) THEN false
+            WHEN pg_catalog.jsonb_typeof(e.f -> 'updated_at') IS DISTINCT FROM 'string' THEN false
+            WHEN e.f ? 'normalized_by'
+              AND (pg_catalog.jsonb_typeof(e.f -> 'normalized_by') <> 'string'
+                OR (e.f ->> 'normalized_by') <> ALL (ARRAY['vocabulary', 'rule', 'ai', 'human']))
+              THEN false
+            WHEN e.f ? 'confidence'
+              AND pg_catalog.jsonb_typeof(e.f -> 'confidence') <> 'number' THEN false
+            WHEN e.f ? 'confidence'
+              AND NOT ((e.f -> 'confidence')::numeric BETWEEN 0 AND 1) THEN false
+            WHEN NOT e.f ? 'confidence'
+              AND ((e.f ->> 'source') IN ('derived', 'ai')
+                OR (e.f ->> 'normalized_by') IS NOT DISTINCT FROM 'ai') THEN false
+            WHEN e.f ? 'evidence_ref'
+              AND (pg_catalog.jsonb_typeof(e.f -> 'evidence_ref') <> 'string'
+                OR (e.f ->> 'evidence_ref') !~ ('^(image|import_row|human_task|listing|agent_run'
+                  '|rule|brand_profile):[A-Za-z0-9._:-]{1,128}$')) THEN false
+            WHEN NOT e.f ? 'evidence_ref' AND (e.f ->> 'source') <> 'seller' THEN false
+            WHEN e.f ? 'evidence_snapshot'
+              AND (pg_catalog.jsonb_typeof(e.f -> 'evidence_snapshot') <> 'object'
+                OR pg_catalog.octet_length((e.f -> 'evidence_snapshot')::text) > 2048) THEN false
+            WHEN (e.f ->> 'evidence_ref') ~ '^(import_row|human_task|agent_run):'
+              AND NOT e.f ? 'evidence_snapshot' THEN false
+            WHEN e.f ? 'agent_run_id'
+              AND pg_catalog.jsonb_typeof(e.f -> 'agent_run_id') <> 'string' THEN false
+            WHEN (e.f ->> 'captured_via') = 'agent' AND NOT e.f ? 'agent_run_id' THEN false
+            WHEN (e.f ? 'confirmed_by') <> (e.f ? 'confirmed_at') THEN false
+            WHEN e.f ? 'confirmed_by'
+              AND (pg_catalog.jsonb_typeof(e.f -> 'confirmed_by') <> 'string'
+                OR pg_catalog.jsonb_typeof(e.f -> 'confirmed_at') <> 'string') THEN false
+            WHEN e.f ? 'unit' AND pg_catalog.jsonb_typeof(e.f -> 'unit') <> 'string' THEN false
+            WHEN require_value AND NOT (e.f ? 'value' OR e.f ? 'normalized') THEN false
+            ELSE true
+          END)
+          FROM pg_catalog.jsonb_each(m) AS e(k, f)
+        ), true)
+      END;
+    END
+    """,
+    f"GRANT EXECUTE ON FUNCTION public.fact_map_valid(jsonb, boolean) TO {APP_ROLES}",
+)
+FACT_MAP_DOWN: Final[tuple[str, ...]] = ("DROP FUNCTION public.fact_map_valid(jsonb, boolean)",)
+
 SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (FUNCTIONS_UP, FUNCTIONS_DOWN),
+    (FACT_MAP_UP, FACT_MAP_DOWN),
 )
 
 

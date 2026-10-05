@@ -21,7 +21,7 @@ def _next() -> int:
     return next(_counter)
 
 
-def fact(source: str = "seller", captured_via: str = "form", **fields: Any) -> dict[str, Any]:
+def fact(source: Any = "seller", captured_via: Any = "form", **fields: Any) -> dict[str, Any]:
     """One fact envelope (DATABASE.md §5.6). `value` defaults to "x"; pass `value=None` to omit
     it. A non-seller source gets an `image:` evidence ref unless one is given."""
     envelope: dict[str, Any] = {
