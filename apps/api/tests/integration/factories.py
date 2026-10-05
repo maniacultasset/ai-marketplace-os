@@ -350,3 +350,62 @@ def performance(conn: Conn, tenant_id: UUID, listing_id: UUID, **columns: Any) -
         "date": "2026-10-01",
     }
     return insert(conn, "performance", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def audit(conn: Conn, tenant_id: UUID | None, **columns: Any) -> UUID:
+    """A `system` audit event of `tenant_id` (NULL: a platform event)."""
+    defaults: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "actor_type": "system",
+        "action": "listing.approved",
+        "entity_type": "listing",
+    }
+    return insert(conn, "audit_log", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def brand_document(conn: Conn, tenant_id: UUID, **columns: Any) -> UUID:
+    """An `uploaded` PDF brand document created by a new owner of `tenant_id`."""
+    n = _next()
+    defaults: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "filename": f"guide-{n}.pdf",
+        "storage_key": f"{tenant_id}/brand/{n}.pdf",
+        "content_type": "application/pdf",
+        "bytes": 1024,
+        "content_hash": f"hash-{n}",
+    }
+    if "created_by" not in columns:
+        defaults["created_by"] = member(conn, tenant_id)
+    return insert(conn, "brand_documents", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def embedding(value: float = 0.1, dims: int = 1536) -> str:
+    """A pgvector text literal."""
+    return "[" + ",".join([str(value)] * dims) + "]"
+
+
+def brand_chunk(conn: Conn, tenant_id: UUID, **columns: Any) -> UUID:
+    """An active `tone_rule` chunk of a brand document; `embedding` is a vector literal."""
+    n = _next()
+    values: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "type": "tone_rule",
+        "text": f"Chunk {n}",
+        "embedding": embedding(),
+        "embedding_model": "text-embedding-3-small",
+        "content_hash": f"chunk-{n}",
+        "source_type": "brand_document",
+        "source_id": UUID(int=n),
+        "chunk_index": 0,
+        **columns,
+    }
+    names = list(values)
+    query = sql.SQL("INSERT INTO brand_chunks ({}) VALUES ({}) RETURNING id").format(
+        sql.SQL(", ").join(sql.Identifier(name) for name in names),
+        sql.SQL(", ").join(
+            sql.SQL("%s::vector") if name == "embedding" else sql.Placeholder() for name in names
+        ),
+    )
+    row = conn.execute(query, [_adapt(values[name]) for name in names]).fetchone()
+    assert row is not None
+    return row[0]  # type: ignore[no-any-return]

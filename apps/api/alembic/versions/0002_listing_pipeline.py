@@ -863,6 +863,150 @@ RUNS_DOWN: Final[tuple[str, ...]] = (
     "DROP TABLE public.validation_runs",
 )
 
+# ---- AUDIT_BRAND: audit_log, brand_documents, brand_chunks (DATABASE.md §5.1, §5.5) ----
+# audit_log: NOT partitioned; tenant_id is NULL only for a platform event (system or staff
+# actor), and its FK is NO ACTION (KI-B: CASCADE would delete an append-only trail). Inserts go
+# through audit() (0004), never with RETURNING. brand_documents.storage_key follows the images
+# rule (shape CHECK, one row per key per tenant; D1 replaces `gcs_uri`). brand_chunks needs its
+# embedding (a chunk without one can't be retrieved); its HNSW and `(tenant_id, type)` indexes
+# are 0002b.
+AUDIT_BRAND_UP: Final[tuple[str, ...]] = (
+    """
+    CREATE TABLE public.audit_log (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid,
+      actor_type text NOT NULL,
+      actor_user_id uuid,
+      actor_email text,
+      action text NOT NULL,
+      entity_type text NOT NULL,
+      entity_id uuid,
+      before jsonb,
+      after jsonb,
+      request_id text,
+      reason text,
+      job_id uuid,
+      ip inet,
+      occurred_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_audit_log PRIMARY KEY (id),
+      CONSTRAINT fk_audit_log_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id),
+      CONSTRAINT fk_audit_log_actor_user_id FOREIGN KEY (tenant_id, actor_user_id)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT ck_audit_log_actor_type CHECK (actor_type IN ('user', 'system', 'staff')),
+      CONSTRAINT ck_audit_log_platform_actor
+        CHECK (tenant_id IS NOT NULL OR actor_type IN ('system', 'staff')),
+      CONSTRAINT ck_audit_log_user_actor
+        CHECK (actor_type <> 'user' OR actor_user_id IS NOT NULL),
+      CONSTRAINT ck_audit_log_staff_actor
+        CHECK (actor_type <> 'staff' OR actor_email IS NOT NULL),
+      CONSTRAINT ck_audit_log_reason CHECK (char_length(reason) <= 1000)
+    )
+    """,
+    """
+    CREATE INDEX ix_audit_log_tenant_id_occurred_at
+      ON public.audit_log (tenant_id, occurred_at DESC, id DESC)
+    """,
+    """
+    CREATE INDEX ix_audit_log_tenant_id_entity
+      ON public.audit_log (tenant_id, entity_type, entity_id, occurred_at DESC)
+    """,
+    """
+    CREATE INDEX ix_audit_log_tenant_id_actor
+      ON public.audit_log (tenant_id, actor_user_id, occurred_at DESC)
+    """,
+    """
+    CREATE INDEX ix_audit_log_platform ON public.audit_log (occurred_at DESC)
+      WHERE tenant_id IS NULL
+    """,
+    "CREATE INDEX ix_audit_log_job_id ON public.audit_log (job_id) WHERE job_id IS NOT NULL",
+    f"""
+    CREATE TABLE public.brand_documents (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      filename text NOT NULL,
+      storage_key text NOT NULL,
+      status text NOT NULL DEFAULT 'uploaded',
+      job_id uuid,
+      chunk_count integer NOT NULL DEFAULT 0,
+      created_by uuid NOT NULL,
+      content_type text NOT NULL,
+      bytes bigint NOT NULL,
+      content_hash text NOT NULL,
+      error_report_json jsonb,
+      deleted_at timestamptz,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_brand_documents PRIMARY KEY (id),
+      CONSTRAINT uq_brand_documents_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT uq_brand_documents_tenant_id_storage_key UNIQUE (tenant_id, storage_key),
+      CONSTRAINT fk_brand_documents_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_brand_documents_created_by FOREIGN KEY (tenant_id, created_by)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT ck_brand_documents_status
+        CHECK (status IN ('uploaded', 'processing', 'ready', 'failed')),
+      CONSTRAINT ck_brand_documents_error_report_json CHECK (
+        (status <> 'failed' OR error_report_json IS NOT NULL)
+        AND jsonb_typeof(error_report_json) = 'object'
+      ),
+      CONSTRAINT ck_brand_documents_bytes CHECK (bytes BETWEEN 1 AND 10485760),
+      CONSTRAINT ck_brand_documents_chunk_count CHECK (chunk_count >= 0),
+      CONSTRAINT ck_brand_documents_filename CHECK (char_length(filename) BETWEEN 1 AND 255),
+      CONSTRAINT ck_brand_documents_storage_key CHECK ({STORAGE_KEY_SHAPE.format(col="storage_key")}
+      )
+    )
+    """,
+    """
+    CREATE UNIQUE INDEX uq_brand_documents_tenant_id_content_hash
+      ON public.brand_documents (tenant_id, content_hash) WHERE deleted_at IS NULL
+    """,
+    """
+    CREATE INDEX ix_brand_documents_job_id ON public.brand_documents (job_id)
+      WHERE job_id IS NOT NULL
+    """,
+    _updated_at_trigger("brand_documents"),
+    """
+    CREATE TABLE public.brand_chunks (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      type text NOT NULL,
+      text text NOT NULL,
+      embedding vector(1536) NOT NULL,
+      embedding_model text NOT NULL,
+      content_hash text NOT NULL,
+      source_type text NOT NULL,
+      source_id uuid NOT NULL,
+      chunk_index integer NOT NULL DEFAULT 0,
+      token_count integer,
+      is_active boolean NOT NULL DEFAULT true,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_brand_chunks PRIMARY KEY (id),
+      CONSTRAINT uq_brand_chunks_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT fk_brand_chunks_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT ck_brand_chunks_type
+        CHECK (type IN ('tone_rule', 'glossary', 'compliance', 'example')),
+      CONSTRAINT ck_brand_chunks_source_type
+        CHECK (source_type IN ('brand_document', 'brand_profile', 'listing_version')),
+      CONSTRAINT ck_brand_chunks_chunk_index CHECK (chunk_index >= 0),
+      CONSTRAINT ck_brand_chunks_token_count CHECK (token_count >= 0)
+    )
+    """,
+    """
+    CREATE UNIQUE INDEX uq_brand_chunks_active_source
+      ON public.brand_chunks (tenant_id, source_type, source_id, chunk_index, embedding_model)
+      WHERE is_active
+    """,
+    _updated_at_trigger("brand_chunks"),
+)
+AUDIT_BRAND_DOWN: Final[tuple[str, ...]] = (
+    "DROP TABLE public.brand_chunks",
+    "DROP TABLE public.brand_documents",
+    "DROP TABLE public.audit_log",
+)
+
 SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (RULES_UP, RULES_DOWN),
     (ACCOUNTS_UP, ACCOUNTS_DOWN),
@@ -871,6 +1015,7 @@ SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (LISTINGS_UP, LISTINGS_DOWN),
     (REVIEWS_UP, REVIEWS_DOWN),
     (RUNS_UP, RUNS_DOWN),
+    (AUDIT_BRAND_UP, AUDIT_BRAND_DOWN),
 )
 
 
