@@ -241,6 +241,26 @@ def test_octagon_grey_background_fails(cut: int) -> None:
     assert codes(bg(_png(img))) == ["BACKGROUND_OFF"]
 
 
+@pytest.mark.parametrize(
+    ("size", "radius"),
+    [((2000, 1000), 150), ((2000, 1000), 300), ((1000, 2000), 300), ((1000, 750), 200)],
+)
+def test_rounded_grey_background_non_square_fails(size: tuple[int, int], radius: int) -> None:
+    """Non-square canvases: the short edges' bands are deeper (2 % of the long side), so their
+    inward line is in the grey card too and every edge counts as wide."""
+    w, h = size
+    img = Image.new("RGB", size, fx.WHITE)
+    ImageDraw.Draw(img).rounded_rectangle((0, 0, w - 1, h - 1), radius=radius, fill=GREY)
+    assert codes(bg(_png(img))) == ["BACKGROUND_OFF"]
+
+
+@pytest.mark.parametrize("radius", [300, 350])
+def test_rounded_grey_background_large_radius_fails(radius: int) -> None:
+    """The inward line meets the arc deeper than the outer edge, so a radius of 35 % of the side
+    still leaves every edge's forgiven run over half the edge."""
+    assert codes(bg(_png(_rounded_grey(radius)))) == ["BACKGROUND_OFF"]
+
+
 def test_background_inscribed_disc_passes() -> None:
     """A disc touching all four edges covers about 28 % of each edge strip, under the 50 % cut."""
     img = Image.new("RGB", (1000, 1000), fx.WHITE)
