@@ -458,3 +458,56 @@ def test_rule_message_is_capped_like_error_item() -> None:
     MaxLength.model_validate({"type": "max_length", "message": "x" * 1000, "limit": 1})
     with pytest.raises(ValidationError):
         MaxLength.model_validate({"type": "max_length", "message": "x" * 1001, "limit": 1})
+
+
+def _pattern(regex: str) -> Pattern:
+    return Pattern.model_validate(
+        {"type": "pattern", "message": "m", "name": "n", "regex": regex, "must": "match"}
+    )
+
+
+# Round 1 R1-7/R1-9: ordinary platform patterns pass; invalid, nested, alternation-in-repeat and
+# RE2-unsupported patterns fail.
+@pytest.mark.parametrize(
+    "regex",
+    [
+        r"^\d+(\.\d+)?$",
+        r"^[A-Z]+-[0-9]+$",
+        r"https?://.*",
+        r"^[A-Z]?\d+$",
+        r"^\w+\s\w+$",
+        r"^[A-Z0-9]{10}$",
+        r"^(?:ab)+$",
+        r"^(?:foo|bar)$",
+        r"^[(|)]+$",
+        r"^\(a|b\)+$",
+        r"^\d{1,3}(,\d{3})*$",
+        r"^(\d{2}-){2}\d{4}$",
+    ],
+)
+def test_pattern_regex_accepts_ordinary_patterns(regex: str) -> None:
+    _pattern(regex)
+
+
+@pytest.mark.parametrize(
+    "regex",
+    [
+        "(",
+        "[a-",
+        r"(a+)+",
+        r"(a+){2,}",
+        r"(.*a){20}",
+        r"(a?)*",
+        r"(\w|\d)+$",
+        r"(a|aa)+$",
+        r"(?:x|y){2}",
+        r"(a)\1",
+        r"(?=a)b",
+        r"(?<!a)b",
+        r"(?>a+)b",
+        r"a++",
+    ],
+)
+def test_pattern_regex_rejects_unsafe_or_invalid(regex: str) -> None:
+    with pytest.raises(ValidationError):
+        _pattern(regex)

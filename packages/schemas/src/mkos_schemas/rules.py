@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import importlib
 import re
 import string
 from datetime import date
-from typing import Annotated, Literal
+from typing import Annotated, Any, Final, Literal
 from uuid import UUID
 
 from pydantic import AwareDatetime, Field, field_validator, model_validator
@@ -20,7 +21,125 @@ PLACEHOLDERS: frozenset[str] = frozenset(
 )
 
 MAX_RULESET_RULES: int = 500
-_NESTED_QUANT = re.compile(r"(\+|\*|\?|\{)[^}]*(\+|\*|\?)")
+# The stdlib regex parser (no public API; typeshed has no stubs for it). Python is pinned ==3.13.*.
+_sre: Any = importlib.import_module("re._constants")
+_sre_parser: Any = importlib.import_module("re._parser")
+_QUANT_AFTER_GROUP = re.compile(r"\+|\*|\{(\d*)(,?)(\d*)\}")
+_REPEATS: Final = frozenset({_sre.MAX_REPEAT, _sre.MIN_REPEAT})
+# RE2 runs rule patterns (DATABASE.md pattern row): no lookaround, backreference, atomic group or
+# possessive repeat.
+_RE2_UNSUPPORTED: Final = frozenset(
+    {
+        _sre.ASSERT,
+        _sre.ASSERT_NOT,
+        _sre.GROUPREF,
+        _sre.GROUPREF_EXISTS,
+        _sre.ATOMIC_GROUP,
+        _sre.POSSESSIVE_REPEAT,
+    }
+)
+
+
+def _children(op: Any, av: Any) -> list[Any]:
+    """Sub-patterns below one parse node (shapes from ``re._parser``)."""
+    if op in _REPEATS or op is _sre.POSSESSIVE_REPEAT:
+        return [av[2]]
+    if op is _sre.SUBPATTERN:
+        return [av[3]]
+    if op is _sre.BRANCH:
+        return list(av[1])
+    if op in (_sre.ASSERT, _sre.ASSERT_NOT):
+        return [av[1]]
+    if op is _sre.ATOMIC_GROUP:
+        return [av]
+    if op is _sre.GROUPREF_EXISTS:
+        return [x for x in av[1:] if x is not None]
+    return []
+
+
+def _has_variable_repeat_or_branch(sub: Any) -> bool:
+    for op, av in sub:
+        if op is _sre.BRANCH or (op in _REPEATS and av[0] != av[1]):
+            return True  # a fixed count such as \d{3} cannot backtrack
+        if any(_has_variable_repeat_or_branch(child) for child in _children(op, av)):
+            return True
+    return False
+
+
+def _unsafe_node(sub: Any) -> str | None:
+    for op, av in sub:
+        if op in _RE2_UNSUPPORTED:
+            return "lookaround, backreference, atomic group and possessive repeat are not RE2"
+        if op in _REPEATS and av[1] > 1 and _has_variable_repeat_or_branch(av[2]):
+            return "nested quantifier or alternation inside a repeated group"
+        for child in _children(op, av):
+            reason = _unsafe_node(child)
+            if reason is not None:
+                return reason
+    return None
+
+
+def _repeats_many(regex: str, pos: int) -> bool:
+    m = _QUANT_AFTER_GROUP.match(regex, pos)
+    if m is None:
+        return False
+    if m.group(0) in ("+", "*"):
+        return True
+    low, comma, high = m.groups()
+    if comma:
+        return high == "" or int(high) > 1
+    return low != "" and int(low) > 1
+
+
+def _alternation_group_repeated(regex: str) -> bool:
+    """``(\\w|\\d)+``: the parser folds such a branch into a set, so check the source text."""
+    bars: list[bool] = []
+    i, n = 0, len(regex)
+    while i < n:
+        c = regex[i]
+        if c == "\\":
+            i += 2
+            continue
+        if c == "[":
+            i += 1
+            if i < n and regex[i] == "^":
+                i += 1
+            if i < n and regex[i] == "]":
+                i += 1
+            while i < n and regex[i] != "]":
+                i += 2 if regex[i] == "\\" else 1
+            i += 1
+            continue
+        if c == "(":
+            bars.append(False)
+        elif c == "|" and bars:
+            bars[-1] = True
+        elif c == ")" and bars and bars.pop() and _repeats_many(regex, i + 1):
+            return True
+        i += 1
+    return False
+
+
+def check_rule_regex(regex: str) -> str:
+    """Refuse a rule regex that does not compile, is not RE2, or can backtrack badly.
+
+    Rejected: a group repeated more than once whose body holds a quantifier or an alternation
+    (``(a+)+``, ``(a+){2,}``, ``(.*a){20}``, ``(a|aa)+``, ``(\\w|\\d)+``). Allowed: a single quantifier
+    on an atom or set, and optional groups (``^\\d+(\\.\\d+)?$``, ``https?://.*``). The S14a engine
+    still runs patterns in RE2 with a timeout; this is the contract-side gate.
+    """
+    try:
+        tree = _sre_parser.parse(regex)
+        reason = _unsafe_node(tree)
+        if reason is None and _alternation_group_repeated(regex):
+            reason = "nested quantifier or alternation inside a repeated group"
+        if reason is None:
+            re.compile(regex)
+    except (re.error, OverflowError, RecursionError) as exc:
+        raise ValueError(f"invalid regex: {exc}") from None
+    if reason is not None:
+        raise ValueError(reason)
+    return regex
 
 
 class PolicyRef(WireModel):
@@ -242,9 +361,7 @@ class Pattern(_RuleBase):
     @field_validator("regex")
     @classmethod
     def _regex_safe(cls, regex: str) -> str:
-        if _NESTED_QUANT.search(regex):
-            raise ValueError("nested quantifiers forbidden")
-        return regex
+        return check_rule_regex(regex)
 
 
 FactAttribute = Literal["*critical"] | AttrKey
