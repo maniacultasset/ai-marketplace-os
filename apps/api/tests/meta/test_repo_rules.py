@@ -58,6 +58,12 @@ def test_flags_env_access_outside_config(rules: ModuleType, tmp_path: Path, body
     assert rules.main(["--root", str(root)]) == 1
 
 
+def test_flags_env_access_in_alembic_env(rules: ModuleType, tmp_path: Path) -> None:
+    root = _tree(tmp_path, {"apps/api/alembic/env.py": "import os\nX = os.environ['X']\n"})
+    assert _found(rules, root) == [("apps/api/alembic/env.py", 2, "R1")]
+    assert rules.main(["--root", str(root)]) == 1
+
+
 def test_allows_env_access_in_config_py(rules: ModuleType, tmp_path: Path) -> None:
     body = "import os\nX = os.environ.get('A')\n"
     root = _tree(tmp_path, {"apps/api/app/core/config.py": body})

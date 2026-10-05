@@ -8,8 +8,8 @@
 - R3: nothing in `apps/api/app/services/**` imports `sqlalchemy.ext.asyncio`: engine-level SQL
   from a service would bypass the tenant guard (import-linter forbids only package roots).
 
-Scope: `apps/api/app/**`, `packages/schemas/src/**` and `scripts/**`, less the Python 3.9 doc
-tooling in `scripts/docgen/**` and `scripts/trace/**`. Stdlib only.
+Scope: `apps/api/app/**`, `apps/api/alembic/**`, `packages/schemas/src/**` and `scripts/**`,
+less the Python 3.9 doc tooling in `scripts/docgen/**` and `scripts/trace/**`. Stdlib only.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
-SCOPE = ("apps/api/app", "packages/schemas/src", "scripts")
+SCOPE = ("apps/api/app", "apps/api/alembic", "packages/schemas/src", "scripts")
 EXCLUDED = ("scripts/docgen", "scripts/trace")
 CONFIG_MODULE = "apps/api/app/core/config.py"
 SERVICES = "apps/api/app/services"

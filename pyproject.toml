@@ -36,6 +36,7 @@ dev = [
   "pyyaml==6.0.3",
   "ruff==0.16.9",
   "schemathesis==4.28.0",
+  "squawk-cli==2.65.0",
   "types-pyyaml==6.0.12.20260906",
 ]
 
@@ -76,6 +77,8 @@ plugins = ["pydantic.mypy"]
 files = ["apps/api", "packages/schemas/src", "packages/schemas/tests"]
 explicit_package_bases = true
 mypy_path = ["apps/api", "packages/schemas/src"]
+# Generated revision files (CANON.md:135).
+exclude = ["^apps/api/alembic/versions/"]
 
 [tool.pytest.ini_options]
 testpaths = ["apps/api/tests", "packages/schemas/tests"]

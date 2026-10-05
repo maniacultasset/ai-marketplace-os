@@ -90,6 +90,41 @@ def test_runtime_pins_match_adr_0005(repo_root: Path) -> None:
     assert by_name["mkos-schemas"] == "mkos-schemas"
 
 
+def test_api_runtime_pins_alembic_and_pgvector(repo_root: Path) -> None:
+    # The image runs migrations (APP_ROLE=migrate) and S7 maps Vector(1536), so both are runtime.
+    deps = _toml(repo_root / "apps/api/pyproject.toml")["project"]["dependencies"]
+    by_name = {re.split(r"[\[=<>!~ ]", d, maxsplit=1)[0].lower(): d for d in deps}
+    assert by_name["alembic"] == "alembic>=1.20,<2"
+    assert by_name["pgvector"] == "pgvector>=0.5,<0.6"
+
+
+# squawk-cli 2.65.0 wheels (PyPI sha256), the newest release at least 14 days old at S5.
+SQUAWK_WHEEL_SHA256 = frozenset(
+    {
+        "9afb0db939ff7de10e02c4d7a0752ef6f7e076f6cbb34d479f78e4fc61e1724a",
+        "16b1e4ecccbe15958415ab4f2532e12c1694884e9cfe06d005422977a1adae88",
+        "d3ce2d832791c8e736454f354b2d1241fb672162d1273933807ba832c2fb30f2",
+        "b016159ca6e7be2618e677791fc7476ba08f15b2fe3862986feeaadc8e60b025",
+    }
+)
+SQUAWK_SDIST_SHA256 = "cd429a528ebb55a7eb97e6571d4c029ca672037e356012f72642e2b57b4fd3b6"
+
+
+def test_lock_resolves_s5_tools(repo_root: Path) -> None:
+    packages = {pkg["name"]: pkg for pkg in _toml(repo_root / "uv.lock")["package"]}
+    assert re.fullmatch(r"1\.20\.\d+", packages["alembic"]["version"])
+    assert re.fullmatch(r"0\.5\.\d+", packages["pgvector"]["version"])
+    squawk = packages["squawk-cli"]
+    assert squawk["version"] == "2.65.0"
+    assert squawk["sdist"]["hash"] == f"sha256:{SQUAWK_SDIST_SHA256}"
+    wheel_hashes = {wheel["hash"].removeprefix("sha256:") for wheel in squawk["wheels"]}
+    assert wheel_hashes >= SQUAWK_WHEEL_SHA256
+    api_deps = {dep["name"] for dep in packages["mkos-api"]["dependencies"]}
+    assert {"alembic", "pgvector"} <= api_deps
+    dev = _toml(repo_root / "pyproject.toml")["dependency-groups"]["dev"]
+    assert "squawk-cli==2.65.0" in dev
+
+
 def test_dev_dependencies_exact_pinned(repo_root: Path) -> None:
     dev = _toml(repo_root / "pyproject.toml")["dependency-groups"]["dev"]
     assert dev, "the dev group is empty"
