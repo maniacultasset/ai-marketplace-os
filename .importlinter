@@ -51,3 +51,19 @@ layers =
     app.api
     app.services
     app.repositories
+
+# app.cli is an entry point (`python -m app.cli`): it imports the app, never the other way round.
+[importlinter:contract:nothing-imports-the-cli]
+name = nothing imports app.cli
+type = forbidden
+source_modules =
+    app.api
+    app.services
+    app.repositories
+    app.workers
+    app.adapters
+    app.core
+    app.db
+    app.main
+forbidden_modules =
+    app.cli

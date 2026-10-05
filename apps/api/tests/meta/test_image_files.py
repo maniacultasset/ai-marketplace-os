@@ -115,10 +115,33 @@ def test_entrypoint_roles(entrypoint: Path) -> None:
     assert subprocess.run(["sh", "-n", str(entrypoint)], check=False).returncode == 0
     bogus = _run_entrypoint(entrypoint, "bogus")
     assert bogus.returncode == 64
-    assert "api|shell" in bogus.stderr
+    assert "api|migrate|shell" in bogus.stderr
     shell = _run_entrypoint(entrypoint, "shell", "-c", "print(1)")
     assert shell.returncode == 0, shell.stderr
     assert shell.stdout == "1\n"
+
+
+def test_entrypoint_migrate_role_runs_the_cli(entrypoint: Path, tmp_path: Path) -> None:
+    env = {
+        "PATH": f"{Path(sys.executable).parent}:/usr/bin:/bin",
+        "APP_ROLE": "migrate",
+        "APP_ENV": "local",
+        "ALEMBIC_DATABASE_URL": "postgresql+psycopg://leakuser_s5:leakpw_s5@127.0.0.1:1/x",
+    }
+    result = subprocess.run(
+        ["sh", str(entrypoint)],
+        env=env,
+        cwd=tmp_path,  # no developer .env
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 1, result.stderr
+    assert result.stderr.startswith("migrate: failed (OperationalError")
+    assert result.stderr.count("\n") == 1
+    for token in ("leakuser_s5", "leakpw_s5", "127.0.0.1", "@"):
+        assert token not in result.stdout + result.stderr, token
 
 
 def test_dockerignore_secret_globs_nested_and_ordered(repo_root: Path) -> None:

@@ -145,3 +145,11 @@ def test_contracts_script_installs_only_hashed_deps(repo_root: Path) -> None:
     ).replace(
         '"$venv/bin/pip" install --no-build-isolation --no-index -e packages/schemas', ""
     )
+
+
+def test_mypy_excludes_alembic_versions(repo_root: Path) -> None:
+    # CANON.md:135: revision files are generated; mypy strict skips them.
+    import tomllib
+
+    mypy = tomllib.loads((repo_root / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mypy"]
+    assert mypy["exclude"] == ["^apps/api/alembic/versions/"]

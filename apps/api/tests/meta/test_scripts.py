@@ -273,3 +273,53 @@ def test_readme_documents_track_b(repo_root: Path) -> None:
         if ".env" in line and ".worktree.env" not in line and ".env.example" not in line:
             for key in keys:
                 assert f"{key}=" not in line
+
+
+def test_bootstrap_runs_alembic_image_migrate_and_mimic(repo_root: Path) -> None:
+    """CANON-ADDENDUM.md §7: bootstrap-db, then Alembic, then the app; the image's `migrate` role
+    runs on the compose network before the Cloud SQL mimic."""
+    text = _code((repo_root / "scripts" / "ci" / "bootstrap.sh").read_text(encoding="utf-8"))
+    alembic = "uv run --frozen alembic -c apps/api/alembic.ini upgrade head"
+    assert text.index("make bootstrap-db") < text.index(alembic) < text.index("uvicorn")
+    migrate_at = text.index("APP_ROLE=migrate")
+    assert text.index("scripts/ci/check_image.sh") < migrate_at < text.index("make bootstrap-mimic")
+    run = text[text.rindex("docker run", 0, migrate_at) : text.index("\n", migrate_at)]
+    assert '--network "$network"' in run
+    assert "ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/" in run
+    assert '"$image"' in run
+    assert "networks" in text and '"default"' in text
+
+
+S5_LEGS = {
+    "api-tests-alembic-drift": ("api-tests", "New upgrade operations detected"),
+    "api-tests-roundtrip-broken": ("api-tests", "seeded downgrade failure"),
+    "api-tests-squawk-missing": ("api-tests", "squawk did not check the SQL"),
+    "api-lint-alembic-environ": ("api-lint", ": R1 "),
+    "lint-imports-cli-imported": ("lint-imports", "nothing imports app.cli BROKEN"),
+}
+
+
+def test_prove_gates_has_s5_legs(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    code = _code(text)
+    for name, (gate, regex) in S5_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+    seed = re.search(r"(?m)^seed_alembic_environ\(\) \{(.*)\}$", code)
+    assert seed is not None
+    assert "apps/api/alembic/env.py" in seed.group(1)
+    assert "def _seeded()" in seed.group(1) and "import os" in seed.group(1)
+    created = code.index("createdb -U postgres mos_prove")
+    dropped = code.index("dropdb -U postgres --force mos_prove")
+    seeded = ("api-tests-alembic-drift", "api-tests-roundtrip-broken", "api-tests-squawk-missing")
+    api_legs = [code.index(f"leg {name} ") for name in seeded]
+    assert created < min(api_legs) and max(api_legs) < dropped
+    assert "0000_bootstrap.sql" in code[created : min(api_legs)]
+    for name in seeded:
+        line = re.search(rf"(?m)^[ \t]*leg {name}.*$", code)
+        assert line is not None
+        assert (
+            "TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:"
+            "${PG_HOST_PORT:-5432}/mos_prove" in line.group(0)
+        )

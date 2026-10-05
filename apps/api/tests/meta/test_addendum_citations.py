@@ -9,15 +9,10 @@ import subprocess
 from collections.abc import Callable, Iterable
 from pathlib import Path
 
-import pytest
-
 ADDENDUM = "docs/canon/CANON-ADDENDUM.md"
 _PLAIN = re.compile(r"CANON-ADDENDUM\.md:(\d+)")
 _SECTION = re.compile(r"A§(\d+)[a-z]?:(\d+)")
 _HEADING = re.compile(r"^## (\d+)\. ")
-# docs/canon/CANON.md:13 cites A§2, A§7, A§8 and A§12 by their pre-S5 lines. Canon edits need a
-# recorded approval row, so it stays a known failure (strict xfail below) until one is recorded.
-_PENDING_CANON_EDIT = "docs/canon/CANON.md"
 _SELF = "apps/api/tests/meta/test_addendum_citations.py"  # its fixtures cite on purpose
 
 
@@ -81,12 +76,6 @@ def test_checker_flags_blank_and_out_of_section_lines() -> None:
 
 
 def test_addendum_citations_point_at_text(repo_root: Path) -> None:
-    paths = [p for p in _tracked(repo_root) if p != _PENDING_CANON_EDIT]
+    paths = list(_tracked(repo_root))
     addendum = (repo_root / ADDENDUM).read_text(encoding="utf-8")
     assert citation_errors(paths, _reader(repo_root), addendum) == []
-
-
-@pytest.mark.xfail(strict=True, reason="CANON.md:13 addendum lines need a Canon-edit approval")
-def test_canon_header_addendum_citations_point_at_text(repo_root: Path) -> None:
-    addendum = (repo_root / ADDENDUM).read_text(encoding="utf-8")
-    assert citation_errors([_PENDING_CANON_EDIT], _reader(repo_root), addendum) == []

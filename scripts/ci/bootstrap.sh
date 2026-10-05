@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# The `bootstrap` required check: CANON-ADDENDUM.md §7, reduced per ADR-0013 §4 (no alembic until
-# S5, no seed until S9, and the image import omits mkos_pipeline until S14).
+# The `bootstrap` required check: CANON-ADDENDUM.md §7, reduced per ADR-0013 §4 (no seed until S9,
+# and the image import omits mkos_pipeline until S14). Alembic runs after bootstrap-db (S5), and the
+# image's `migrate` role runs once on the compose network before the Cloud SQL mimic.
 # It never copies .env and never runs `docker compose down -v`.
 # The API port, the compose project and the image tag follow .worktree.env (ADR-0011 amendment).
 set -euo pipefail
@@ -11,7 +12,7 @@ eval "$worktree_exports"
 scripts/ci/worktree_env.sh check
 api_port="${API_HOST_PORT:-8000}"
 python3 -c 'import socket, sys; s = socket.socket(); s.bind(("127.0.0.1", int(sys.argv[1]))); s.close()' "$api_port" 2>/dev/null || { echo "bootstrap: port $api_port on 127.0.0.1 is already in use" >&2; exit 1; }
-project="$(docker compose config --format json | python3 -c '
+compose_info="$(docker compose config --format json | python3 -c '
 import json, sys
 data = json.load(sys.stdin)
 for name, svc in (data.get("services") or {}).items():
@@ -19,8 +20,12 @@ for name, svc in (data.get("services") or {}).items():
         host_ip = entry.get("host_ip") if isinstance(entry, dict) else None
         if host_ip != "127.0.0.1":
             sys.exit("bootstrap: service %s publishes on %s, want 127.0.0.1" % (name, host_ip))
-sys.stdout.write(str(data.get("name") or ""))
+network = ((data.get("networks") or {}).get("default") or {}).get("name") or ""
+if not network:
+    sys.exit("bootstrap: compose has no default network name")
+sys.stdout.write("%s %s" % (data.get("name") or "", network))
 ')"
+read -r project network <<<"$compose_info"
 image="mkos-api:ci-${project}"
 
 docker compose up -d --wait postgres minio
@@ -70,6 +75,7 @@ for bucket in "${buckets[@]}"; do
 done
 
 make bootstrap-db
+uv run --frozen alembic -c apps/api/alembic.ini upgrade head
 
 uv run --frozen uvicorn app.main:app --port "$api_port" --app-dir apps/api &
 server=$!
@@ -90,4 +96,6 @@ echo
 docker build -f apps/api/Dockerfile -t "$image" .
 docker run --rm -e APP_ROLE=shell "$image" -c "import app, mkos_schemas"
 scripts/ci/check_image.sh "$image"
+# The Cloud Run migrate job's path through the image (local compose password only).
+docker run --rm --network "$network" -e APP_ENV=local -e APP_ROLE=migrate -e ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/marketplace_os "$image"
 make bootstrap-mimic
