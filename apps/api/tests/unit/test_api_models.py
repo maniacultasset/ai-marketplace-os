@@ -12,7 +12,9 @@ from typing import Any
 import app.api.v1.schemas as schemas_pkg
 import pytest
 from app.api.v1.schemas.auth import LoginRequest, LogoutRequest, RefreshRequest
+from app.api.v1.schemas.batches import ApproveRequest, PublishRequest, RegenerateItem
 from app.api.v1.schemas.common import StorageKey
+from app.api.v1.schemas.listings import ListingContentPatch, RegenerateRequest
 from app.api.v1.schemas.products import ProductCreate, ProductPage
 from hypothesis import given, settings
 from hypothesis import strategies as st
@@ -244,3 +246,91 @@ def test_storage_key_never_traverses(raw: str) -> None:
     assert not key.startswith("/")
     assert "//" not in key
     assert ":" not in key
+
+
+# ---- T8: listings and batches (D11) ----
+
+
+def _approve(n: int, **extra: Any) -> dict[str, Any]:
+    return {
+        "items": [
+            {
+                "listing_id": str(uuid.UUID(int=i + 1)),
+                "listing_version_id": str(uuid.UUID(int=10_000 + i)),
+                "decision": "approve",
+                **extra,
+            }
+            for i in range(n)
+        ]
+    }
+
+
+@pytest.mark.parametrize(("n", "ok"), [(0, False), (1, True), (200, True), (201, False)])
+def test_batch_item_bounds(n: int, ok: bool) -> None:
+    publish = {"items": [{"listing_id": str(uuid.UUID(int=i + 1))} for i in range(n)]}
+    if ok:
+        ApproveRequest.model_validate(_approve(n))
+        PublishRequest.model_validate(publish)
+    else:
+        with pytest.raises(ValidationError):
+            ApproveRequest.model_validate(_approve(n))
+        with pytest.raises(ValidationError):
+            PublishRequest.model_validate(publish)
+
+
+def test_reviewer_id_rejected() -> None:
+    with pytest.raises(ValidationError):
+        ApproveRequest.model_validate({**_approve(1), "reviewer_id": PID})
+    with pytest.raises(ValidationError):
+        ApproveRequest.model_validate(_approve(1, reviewer_id=PID))
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [{}, {"reason_code": "off_brand"}, {"feedback": "too long title"}],
+)
+def test_reject_needs_reason_and_feedback(extra: dict[str, Any]) -> None:
+    body = _approve(1, **extra)
+    body["items"][0]["decision"] = "reject"
+    with pytest.raises(ValidationError):
+        ApproveRequest.model_validate(body)
+
+
+def test_reject_with_reason_and_feedback_ok() -> None:
+    body = _approve(1, reason_code="off_brand", feedback="Tone is off.", regenerate=True)
+    body["items"][0]["decision"] = "reject"
+    assert ApproveRequest.model_validate(body).items[0].regenerate is True
+
+
+def test_approve_cannot_regenerate() -> None:
+    with pytest.raises(ValidationError):
+        ApproveRequest.model_validate(_approve(1, regenerate=True))
+
+
+def test_duplicate_listing_ids_rejected() -> None:
+    body = _approve(2)
+    body["items"][1]["listing_id"] = body["items"][0]["listing_id"]
+    with pytest.raises(ValidationError):
+        ApproveRequest.model_validate(body)
+    with pytest.raises(ValidationError):
+        PublishRequest.model_validate({"items": [{"listing_id": PID}, {"listing_id": PID}]})
+
+
+@pytest.mark.parametrize(("size", "ok"), [(2000, True), (2001, False)])
+def test_regenerate_instructions_cap(size: int, ok: bool) -> None:
+    for model, body in (
+        (RegenerateRequest, {"instructions": "x" * size}),
+        (RegenerateItem, {"listing_id": PID, "instructions": "x" * size}),
+    ):
+        if ok:
+            model.model_validate(body)
+        else:
+            with pytest.raises(ValidationError):
+                model.model_validate(body)
+
+
+def test_content_patch_shape() -> None:
+    content = {"title": "T", "bullets": ["b"], "description": "d"}
+    ListingContentPatch.model_validate({"content": content})
+    with pytest.raises(ValidationError):
+        ListingContentPatch.model_validate({"content": content, "listing_id": PID})
