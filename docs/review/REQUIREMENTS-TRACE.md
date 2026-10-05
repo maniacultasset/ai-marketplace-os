@@ -8,24 +8,18 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 - **Every line of the client spec is traced.** All 13,711 lines of the snapshot are in the register:
   11,167 entries, of which 8,916 are checkable statements. `scripts/trace/check_coverage.py` proves 100% line coverage.
 - **Every statement has a verdict**, with a reference, adversarially verified per chunk (`scripts/trace/check_mapping.py`).
-- **7,014 of 8,916 (79%) are covered by our plan**: 6,071 as written and
-  943 deliberately changed by an ADR, Canon row or recorded decision.
-- **533 are gaps** (backend/DB 276, shared seams 132, ops 105, AI team 4, FE team 0, client 16).
-- **7,011 of 8,916 (79%) are covered by our plan**: 6,063 as written and
-  948 deliberately changed by an ADR, Canon row or recorded decision.
-- **536 are gaps** (backend/DB 270, shared seams 141, ops 105, AI team 4, FE team 0, client 16).
+- **7,021 of 8,916 (79%) are covered by our plan**: 6,072 as written and
+  949 deliberately changed by an ADR, Canon row or recorded decision.
+- **526 are gaps** (backend/DB 269, shared seams 132, ops 105, AI team 4, FE team 0, client 16).
 - **319 need the team or client** (54 conflicts, 265 questions);
   each points to a row in `TEAM-QUESTIONS.md`.
 - 511 belong to the AI or FE team, and 539 are marked Phase 2/3 by the site itself.
 
 | Status | Statements | Share |
 |---|---:|---:|
-| ✅ covered | 6,071 | 68.1% |
-| 🔁 covered-changed | 943 | 10.6% |
-| ⚠️ gap | 533 | 6.0% |
-| ✅ covered | 6,063 | 68.0% |
-| 🔁 covered-changed | 948 | 10.6% |
-| ⚠️ gap | 536 | 6.0% |
+| ✅ covered | 6,072 | 68.1% |
+| 🔁 covered-changed | 949 | 10.6% |
+| ⚠️ gap | 526 | 5.9% |
 | ❌ conflict | 54 | 0.6% |
 | ❓ needs-client | 265 | 3.0% |
 | 🧩 other-team | 511 | 5.7% |
@@ -51,8 +45,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [10] Acceptance Criteria, Metrics & Lead Handoff (§22–26) | 86 | 4 | 11 | 0 | 4 | 0 | 2 | 15 |
 | [01] 45-Day Plan & Definition of Done | 85 | 3 | 1 | 0 | 2 | 0 | 0 | 3 |
 | [02] Phase-1 Scope Lock & Non-Goals | 49 | 1 | 1 | 0 | 4 | 6 | 36 | 5 |
-| [03] Day-by-Day Execution Plan (45 Days) | 439 | 74 | 109 | 1 | 76 | 49 | 0 | 186 |
-| [03] Day-by-Day Execution Plan (45 Days) | 438 | 74 | 110 | 1 | 76 | 49 | 0 | 187 |
+| [03] Day-by-Day Execution Plan (45 Days) | 440 | 74 | 108 | 1 | 76 | 49 | 0 | 185 |
 | [04] Team Structure & Solo Sprint | 57 | 7 | 3 | 0 | 13 | 16 | 0 | 16 |
 | [05] GCP Tech Stack & Architecture | 85 | 19 | 6 | 0 | 0 | 11 | 0 | 6 |
 | [06] Consolidated Data Model & Schema | 162 | 34 | 0 | 3 | 3 | 0 | 0 | 6 |
@@ -1036,8 +1029,7 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 | R13665 | L13665 | Production launch checklist: All Phase 1 features implemented. | T16; VISION Q25 | Phase-1 set per plan scope lock (T16); steps after S14 unsequenced |
 | R13668 | L13668 | Production launch checklist: Marketplace OAuth flows verified with production accounts. | T77 | Prod filings/app approval status unknown (STATE open decision 5); verify step itself unplanned |
 
-## ⚠️ Gaps we own: backend + DB (276)
-## ⚠️ Gaps we own: backend + DB (270)
+## ⚠️ Gaps we own: backend + DB (269)
 
 Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITECTURE.md and the build steps.
 
