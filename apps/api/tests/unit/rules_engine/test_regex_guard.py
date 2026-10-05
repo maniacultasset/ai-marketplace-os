@@ -106,3 +106,20 @@ def test_regex_overlap_guard_must_fail(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(text_mod, "_overlapping_repeat", lambda *_a, **_k: None)
     for regex in AC15_REFUSED:
         compile_rule_regex(regex, ignore_case=False).search("x" * 20)
+
+
+def test_regex_unsafe_rule_makes_evaluate_raise() -> None:
+    # Rule validation runs the S2 gate only, so the polynomial patterns reach the engine, which
+    # must refuse them (fail closed, never "passed").
+    from app.services.rules_engine import evaluate
+    from tests.rules_engine_builders import listing, rule, ruleset
+
+    for regex in AC15_REFUSED:
+        pattern_rule = rule(
+            {"type": "pattern", "name": "p", "regex": regex, "must": "not_match"},
+            field="content.description",
+        )
+        banned_rule = rule({"type": "banned_terms", "terms": [regex], "match": "regex"}, field="*")
+        for r in (pattern_rule, banned_rule):
+            with pytest.raises(UnsafeRuleRegexError):
+                evaluate(listing(), ruleset(r))
