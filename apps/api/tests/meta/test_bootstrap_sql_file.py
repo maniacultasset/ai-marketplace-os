@@ -141,6 +141,7 @@ def test_password_file_is_psql_only_and_verifier_only(repo_root: Path) -> None:
     query = "\n".join(lines[check:pw_safe])
     for setting in (
         "'log_statement'",
+        "'log_min_error_statement'",
         "'log_min_duration_statement'",
         "'log_min_duration_sample'",
         "'log_transaction_sample_rate'",
@@ -151,6 +152,12 @@ def test_password_file_is_psql_only_and_verifier_only(repo_root: Path) -> None:
         "'pg_stat_statements.track_utility'",
     ):
         assert setting in query, setting
+    # A failing ALTER ROLE logs no statement (panic) and leaves no password half-applied.
+    assert "current_setting('log_min_error_statement') = 'panic'" in query
+    begin = lines.index("BEGIN;")
+    commit = lines.index("COMMIT;")
+    alter_lines = [i for i, line in enumerate(lines) if line.startswith("ALTER ROLE ")]
+    assert pw_safe < begin < min(alter_lines) and max(alter_lines) < commit
 
 
 def test_makefile_passes_scram_vars_by_name(repo_root: Path) -> None:

@@ -10,7 +10,14 @@ from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from .conftest import BOOTSTRAP_SQL, Mimic
-from .test_bootstrap_mimic import ROLES, _passwords, _reset_passwords, _run_passwords, _verifier
+from .test_bootstrap_mimic import (
+    QUIET,
+    ROLES,
+    _passwords,
+    _reset_passwords,
+    _run_passwords,
+    _verifier,
+)
 
 pytestmark = [pytest.mark.cloudsql_mimic, pytest.mark.allow_hosts(["127.0.0.1"])]
 
@@ -29,7 +36,7 @@ def _connect(mimic: Mimic, role: str, password: str) -> psycopg.Connection[tuple
 )
 @given(password=st.text(alphabet=PRINTABLE_ASCII, min_size=1, max_size=64))
 def test_role_passwords_any_printable_ascii_password_logs_in(mimic: Mimic, password: str) -> None:
-    _reset_passwords(mimic, boot_settings=("log_statement = 'none'",))
+    _reset_passwords(mimic, boot_settings=QUIET)
     try:
         verifier = _verifier(password)
         run = _run_passwords(mimic, {"APP_RO_SCRAM": verifier})
@@ -42,7 +49,7 @@ def test_role_passwords_any_printable_ascii_password_logs_in(mimic: Mimic, passw
 
 
 def test_role_passwords_all_three_set_and_roles_get_their_settings(mimic: Mimic) -> None:
-    _reset_passwords(mimic, boot_settings=("log_statement = 'none'",))
+    _reset_passwords(mimic, boot_settings=QUIET)
     plain = {role: f"pw-tester-{role}-s5a" for role in ROLES}
     env = {f"{role.upper()}_SCRAM": _verifier(plain[role]) for role in ROLES}
     try:
@@ -74,7 +81,7 @@ def test_role_passwords_all_three_set_and_roles_get_their_settings(mimic: Mimic)
 def test_bootstrap_rerun_keeps_passwords_and_repairs_extension(mimic: Mimic) -> None:
     """0000 is additive (DATABASE.md:1815): a rerun as the CREATEROLE role never touches a role
     password, and restores a trusted extension dropped since."""
-    _reset_passwords(mimic, boot_settings=("log_statement = 'none'",))
+    _reset_passwords(mimic, boot_settings=QUIET)
     try:
         env = {"APP_RW_SCRAM": _verifier("pw-tester-rerun-s5a")}
         assert _run_passwords(mimic, env).returncode == 0

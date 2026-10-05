@@ -6,6 +6,9 @@ from __future__ import annotations
 import secrets
 import subprocess
 import sys
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 import psycopg
 import pytest
@@ -65,6 +68,10 @@ PASSWORD_SQL = REPO_ROOT / "scripts/db/0000_role_passwords.sql"
 SCRAM_HELPER = REPO_ROOT / "scripts/db/scram_verifier.py"
 ROLES = ("app_rw", "app_ro", "migrator")
 LEAK = "leakpw_s5"
+# log_min_error_statement=panic keeps a failing ALTER ROLE (and its verifier) out of the server log;
+# on Cloud SQL it is an instance flag, here boot's role setting (or the file sets it, see below).
+PANIC = "log_min_error_statement = panic"
+QUIET = ("log_statement = 'none'", PANIC)
 
 
 def _reset_passwords(mimic: Mimic, *, boot_settings: tuple[str, ...] = ()) -> None:
@@ -136,7 +143,7 @@ def test_role_passwords_bad_value_refused_before_send(mimic: Mimic, bad: str, lo
     """The shell check alone stops a bad value: under boot `none` the server check passes, and
     the other values look like verifiers. A value PostgreSQL cannot parse as a verifier would be
     hashed as a plaintext password, so the shell checks every field of the helper format."""
-    _reset_passwords(mimic, boot_settings=("log_statement = 'none'",) if logging == "none" else ())
+    _reset_passwords(mimic, boot_settings=QUIET if logging == "none" else ())
     shaped = _verifier("pw-s5-valid-0")
     value = {
         "plaintext": LEAK,
@@ -161,7 +168,7 @@ def test_role_passwords_bad_value_refused_before_send(mimic: Mimic, bad: str, lo
 
 
 def test_role_passwords_verifier_sets_and_logs_in(mimic: Mimic) -> None:
-    _reset_passwords(mimic, boot_settings=("log_statement = 'none'",))
+    _reset_passwords(mimic, boot_settings=QUIET)
     plaintext = secrets.token_urlsafe(18)
     verifier = _verifier(plaintext)
     run = _run_passwords(mimic, {"APP_RW_SCRAM": verifier})
@@ -182,14 +189,14 @@ def test_role_passwords_verifier_sets_and_logs_in(mimic: Mimic) -> None:
 @pytest.mark.parametrize(
     "boot_settings",
     [
-        ("log_statement = 'all'",),
-        ("log_statement = 'ddl'",),
-        ("log_statement = 'mod'",),
-        ("log_statement = 'none'", "log_min_duration_statement = 0"),
-        ("log_statement = 'none'", "log_transaction_sample_rate = 1"),
-        ("log_statement = 'none'", "debug_print_parse = on"),
-        ("log_statement = 'none'", "debug_print_rewritten = on"),
-        ("log_statement = 'none'", "debug_print_plan = on"),
+        ("log_statement = 'all'", PANIC),
+        ("log_statement = 'ddl'", PANIC),
+        ("log_statement = 'mod'", PANIC),
+        (*QUIET, "log_min_duration_statement = 0"),
+        (*QUIET, "log_transaction_sample_rate = 1"),
+        (*QUIET, "debug_print_parse = on"),
+        (*QUIET, "debug_print_rewritten = on"),
+        (*QUIET, "debug_print_plan = on"),
     ],
     ids=[
         "all",
@@ -224,7 +231,7 @@ def test_role_passwords_refused_while_pg_stat_statements_tracks_utility(pgss_mim
     """pg_stat_statements keeps utility-statement text verbatim and on disk, so the file refuses
     until utility tracking is off for its session (the Cloud SQL flag
     pg_stat_statements.track_utility=off), then sets the password without storing the verifier."""
-    _reset_passwords(pgss_mimic)
+    _reset_passwords(pgss_mimic, boot_settings=(PANIC,))
     verifier = _verifier(secrets.token_urlsafe(18))
     server_key = verifier.rsplit(":", 1)[1]
     try:
@@ -233,7 +240,9 @@ def test_role_passwords_refused_while_pg_stat_statements_tracks_utility(pgss_mim
         assert "no password was set" in run.stderr
         assert _all_null(pgss_mimic)
         assert server_key not in _pgss_text(pgss_mimic)
-        _reset_passwords(pgss_mimic, boot_settings=("pg_stat_statements.track_utility = off",))
+        _reset_passwords(
+            pgss_mimic, boot_settings=("pg_stat_statements.track_utility = off", PANIC)
+        )
         run = _run_passwords(pgss_mimic, {"APP_RW_SCRAM": verifier})
         assert run.returncode == 0, run.stderr
         assert _passwords(pgss_mimic) == {"app_rw": verifier, "app_ro": "", "migrator": ""}
@@ -244,12 +253,15 @@ def test_role_passwords_refused_while_pg_stat_statements_tracks_utility(pgss_mim
 
 
 def test_role_passwords_refused_without_admin_on_roles(mimic: Mimic) -> None:
-    _reset_passwords(mimic, boot_settings=("log_statement = 'none'",))
+    _reset_passwords(mimic, boot_settings=QUIET)
     mimic.psql("CREATE ROLE boot2 LOGIN CREATEROLE")
     try:
-        mimic.psql("ALTER ROLE boot2 SET log_statement = 'none'")
+        for setting in QUIET:
+            mimic.psql(f"ALTER ROLE boot2 SET {setting}")
         run = _run_passwords(mimic, {"APP_RW_SCRAM": _verifier("pw-s5-valid-2")}, user="boot2")
         assert run.returncode == 3, run.stderr
+        # Refused by pw_safe before any ALTER ROLE, not by the ALTER failing.
+        assert "no password was set" in run.stderr
         assert _all_null(mimic)
         # A failing ALTER ROLE would put the verifier in the log (log_min_error_statement).
         assert "SCRAM-SHA-256$" not in mimic.logs()
@@ -258,13 +270,123 @@ def test_role_passwords_refused_without_admin_on_roles(mimic: Mimic) -> None:
 
 
 def test_role_passwords_refused_when_a_role_is_missing(mimic: Mimic) -> None:
-    _reset_passwords(mimic, boot_settings=("log_statement = 'none'",))
+    _reset_passwords(mimic, boot_settings=QUIET)
     mimic.psql("ALTER ROLE app_ro RENAME TO app_ro_s5_away")
     try:
         run = _run_passwords(mimic, {"APP_RW_SCRAM": _verifier("pw-s5-valid-3")})
         assert run.returncode == 3, run.stderr
+        assert "no password was set" in run.stderr
         rows = mimic.psql("SELECT rolpassword IS NULL FROM pg_authid WHERE rolname = 'app_rw'")
         assert rows == [("t",)]
         assert "SCRAM-SHA-256$" not in mimic.logs()
     finally:
         mimic.psql("ALTER ROLE app_ro_s5_away RENAME TO app_ro")
+
+
+# ---- an ALTER ROLE that fails after pw_safe (fix round 2: F5, F6) ----
+
+HOLDER_APP = "s5_role_lock_holder"
+_HOLDER_WAITING = (
+    "SELECT count(*) FROM pg_stat_activity "
+    "WHERE application_name = 's5_role_lock_holder' AND query LIKE '%pg_sleep%'"
+)
+_HOLDER_KILL = (
+    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+    "WHERE application_name = 's5_role_lock_holder'"
+)
+
+
+@contextmanager
+def _role_row_locked(mimic: Mimic, role: str) -> Iterator[None]:
+    """Another session holds `role`'s pg_authid row (an open ALTER ROLE), so an ALTER ROLE of it
+    waits; with lock_timeout the wait fails after the pw_safe check has passed."""
+    holder = subprocess.Popen(
+        [
+            *("docker", "exec", "-i", mimic.name, "psql", "-h", "127.0.0.1"),
+            *("-U", "postgres", "-d", "mimic", "-X", "-q"),
+        ],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    )
+    assert holder.stdin is not None
+    holder.stdin.write(
+        f"SET application_name = '{HOLDER_APP}';\n"
+        f"BEGIN; ALTER ROLE {role} CONNECTION LIMIT 7; SELECT pg_sleep(60); ROLLBACK;\n"
+    )
+    holder.stdin.close()
+    try:
+        deadline = time.monotonic() + 30
+        while mimic.psql(_HOLDER_WAITING) != [("1",)]:
+            assert time.monotonic() < deadline, "the lock holder never started"
+            time.sleep(0.2)
+        yield
+    finally:
+        mimic.psql(_HOLDER_KILL)
+        holder.wait(timeout=30)
+
+
+@contextmanager
+def _boot_may_set_panic(mimic: Mimic, granted: bool) -> Iterator[None]:
+    """With `granted`, boot may SET log_min_error_statement (as a superuser may), so the file sets
+    panic itself; otherwise panic comes from boot's role setting, as from a Cloud SQL flag."""
+    if granted:
+        mimic.psql("GRANT SET ON PARAMETER log_min_error_statement TO boot")
+    try:
+        yield
+    finally:
+        if granted:
+            mimic.psql("REVOKE SET ON PARAMETER log_min_error_statement FROM boot")
+
+
+@pytest.mark.parametrize("panic_from", ["role-setting", "file-set"])
+@pytest.mark.parametrize("cause", ["lock-timeout", "read-only"])
+def test_role_passwords_failing_alter_never_logs_verifier(
+    mimic: Mimic, cause: str, panic_from: str
+) -> None:
+    """pw_safe passes, then the ALTER ROLE fails. At the default log_min_error_statement=error
+    the server would log the failing statement, verifier included."""
+    granted = panic_from == "file-set"
+    _reset_passwords(mimic, boot_settings=("log_statement = 'none'",) if granted else QUIET)
+    verifier = _verifier(secrets.token_urlsafe(18))
+    env = {"APP_RW_SCRAM": verifier}
+    with _boot_may_set_panic(mimic, granted):
+        if cause == "lock-timeout":
+            with _role_row_locked(mimic, "app_rw"):
+                run = _run_passwords(mimic, {**env, "PGOPTIONS": "-c lock_timeout=1s"})
+            assert "lock timeout" in run.stderr
+        else:
+            run = _run_passwords(mimic, {**env, "PGOPTIONS": "-c default_transaction_read_only=on"})
+            assert "read-only transaction" in run.stderr
+    assert run.returncode == 3, run.stderr
+    assert _all_null(mimic)
+    logs = mimic.logs()
+    assert "SCRAM-SHA-256$" not in logs
+    assert verifier.rsplit(":", 1)[1] not in logs
+
+
+def test_role_passwords_refused_while_failing_statements_are_logged(mimic: Mimic) -> None:
+    """boot may not SET log_min_error_statement and it is not panic: refused before any ALTER."""
+    _reset_passwords(mimic, boot_settings=("log_statement = 'none'",))
+    run = _run_passwords(mimic, {"APP_RW_SCRAM": _verifier("pw-s5-valid-4")})
+    assert run.returncode == 3, run.stderr
+    assert "no password was set" in run.stderr
+    assert _all_null(mimic)
+    assert "SCRAM-SHA-256$" not in mimic.logs()
+
+
+def test_role_passwords_all_or_nothing_when_a_later_alter_fails(mimic: Mimic) -> None:
+    """app_rw's ALTER succeeds, app_ro's then times out: the transaction leaves both NULL."""
+    _reset_passwords(mimic, boot_settings=QUIET)
+    env = {
+        "APP_RW_SCRAM": _verifier("pw-s5-valid-5"),
+        "APP_RO_SCRAM": _verifier("pw-s5-valid-6"),
+        "PGOPTIONS": "-c lock_timeout=1s",
+    }
+    with _role_row_locked(mimic, "app_ro"):
+        run = _run_passwords(mimic, env)
+    assert run.returncode == 3, run.stderr
+    assert "lock timeout" in run.stderr
+    assert _all_null(mimic)
+    assert "SCRAM-SHA-256$" not in mimic.logs()

@@ -7,7 +7,11 @@
 -- parse as a verifier as a plaintext password; one bad value stops the run before any value is
 -- sent. Then the server must not log statements or keep their text (pg_stat_statements with utility
 -- tracking: set the Cloud SQL flag pg_stat_statements.track_utility=off first), and every target
--- role must exist and be alterable, so no ALTER ROLE carrying a verifier is logged, kept or fails.
+-- role must exist and be alterable. An ALTER ROLE can still fail (lock or statement timeout, cancel,
+-- read-only session, replica), and log_min_error_statement would then log it with its verifier, so
+-- it must be panic: the file sets it when the login may (superuser, or GRANT SET), otherwise set the
+-- Cloud SQL flag log_min_error_statement=panic first. The ALTER ROLEs run in one transaction, so a
+-- failure sets no password, and no ALTER ROLE carrying a verifier is logged or kept.
 \set ON_ERROR_STOP on
 \set VERBOSITY terse
 \set scram_ok `for v in "${APP_RW_SCRAM-}" "${APP_RO_SCRAM-}" "${MIGRATOR_SCRAM-}"; do case "$v" in '') continue ;; *[!A-Za-z0-9+/=:\$-]*) echo false; exit 0 ;; 'SCRAM-SHA-256$'[1-9]*:*'$'*:*) ;; *) echo false; exit 0 ;; esac; r=${v#'SCRAM-SHA-256$'}; i=${r%%:*}; r=${r#*:}; s=${r%%'$'*}; r=${r#*'$'}; k=${r%%:*}; e=${r#*:}; case "$i" in *[!0-9]*|??????????*) echo false; exit 0 ;; esac; case "$s" in ''|*[!A-Za-z0-9+/=]*|*=*[!=]*|*===) echo false; exit 0 ;; esac; [ $((${#s} % 4)) -eq 0 ] && [ "$e" != "$r" ] || { echo false; exit 0; }; for x in "$k" "$e"; do case "${x%=}" in *[!A-Za-z0-9+/]*) echo false; exit 0 ;; esac; [ ${#x} -eq 44 ] && [ "${x%=}" != "$x" ] || { echo false; exit 0; }; done; done; echo true`
@@ -17,7 +21,13 @@ DO $$ BEGIN RAISE EXCEPTION 'a *_SCRAM value is not a SCRAM-SHA-256 verifier; no
 \endif
 \set any_set `for v in "${APP_RW_SCRAM-}" "${APP_RO_SCRAM-}" "${MIGRATOR_SCRAM-}"; do test -n "$v" && { echo true; exit 0; }; done; echo false`
 \if :any_set
+SELECT current_setting('log_min_error_statement') <> 'panic'
+   AND has_parameter_privilege('log_min_error_statement', 'SET') AS lmes_settable \gset
+\if :lmes_settable
+SET log_min_error_statement = panic;
+\endif
 SELECT current_setting('log_statement') = 'none'
+   AND current_setting('log_min_error_statement') = 'panic'
    AND current_setting('log_min_duration_statement') = '-1'
    AND current_setting('log_min_duration_sample') = '-1'
    AND current_setting('log_transaction_sample_rate') = '0'
@@ -32,8 +42,9 @@ SELECT current_setting('log_statement') = 'none'
         FROM pg_roles r WHERE r.rolname = current_user) AS pw_safe \gset
 \if :pw_safe
 \else
-DO $$ BEGIN RAISE EXCEPTION 'the server logs or keeps statements, or a target role is missing or not alterable; no password was set'; END $$;
+DO $$ BEGIN RAISE EXCEPTION 'the server logs or keeps statements or failing statements, or a target role is missing or not alterable; no password was set'; END $$;
 \endif
+BEGIN;
 \endif
 \getenv app_rw_scram APP_RW_SCRAM
 \set app_rw_set `test -n "${APP_RW_SCRAM-}" && echo true || echo false`
@@ -49,4 +60,7 @@ ALTER ROLE app_ro PASSWORD :'app_ro_scram';
 \set migrator_set `test -n "${MIGRATOR_SCRAM-}" && echo true || echo false`
 \if :migrator_set
 ALTER ROLE migrator PASSWORD :'migrator_scram';
+\endif
+\if :any_set
+COMMIT;
 \endif
