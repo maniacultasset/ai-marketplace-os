@@ -165,7 +165,7 @@ def test_ruledef_default_error_codes() -> None:
         (
             FactSource,
             ErrorCode.FACT_SOURCE_FORBIDDEN,
-            {"attribute": "facts.mrp", "forbidden_sources": ["agent"]},
+            {"attribute": "mrp", "forbidden_sources": ["agent"]},
         ),
         (
             FactBackedAttribute,
@@ -409,3 +409,37 @@ def test_rule_base_pack_defaults_core() -> None:
     )
     with pytest.raises(ValidationError):
         MaxLength.model_validate({"type": "max_length", "message": "m", "limit": 1, "pack": "Bad"})
+
+
+# Round 1 R1-5: cross_field and fact_* paths are checked against the vocabulary.
+@pytest.mark.parametrize(
+    ("left", "right"),
+    [
+        ("__class__.__init__.__globals__", "attributes.price"),
+        ("facts.mrp", "content.titel"),
+        ("model_config", "attributes.price"),
+    ],
+)
+def test_cross_field_paths_use_the_field_vocabulary(left: str, right: str) -> None:
+    with pytest.raises(ValidationError):
+        CrossField.model_validate(
+            {
+                "type": "cross_field",
+                "message": "m",
+                "name": "n",
+                "left": left,
+                "op": "lte",
+                "right": right,
+            }
+        )
+
+
+@pytest.mark.parametrize("cls", [FactSource, FactBackedAttribute])
+def test_fact_rule_attribute_is_a_key_or_critical(cls: type[BaseModel]) -> None:
+    tag = "fact_source" if cls is FactSource else "fact_backed_attribute"
+    extra: dict[str, Any] = {"forbidden_sources": ["agent"]} if cls is FactSource else {}
+    for good in ("mrp", "*critical"):
+        cls.model_validate({"type": tag, "message": "m", "attribute": good, **extra})
+    for bad in ("facts.mrp", "content.title", "*", "MRP"):
+        with pytest.raises(ValidationError):
+            cls.model_validate({"type": tag, "message": "m", "attribute": bad, **extra})

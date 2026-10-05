@@ -13,7 +13,7 @@ from pydantic import AwareDatetime, Field, field_validator, model_validator
 from .base import AttrKey, NonBlankStr, Slug, StrictModel, WireModel
 from .codes import ErrorCode
 from .enums import ErrorClass, Marketplace, RetryClass, Severity
-from .paths import is_valid_condition_path, is_valid_rule_field
+from .paths import is_valid_condition_path, is_valid_field_path, is_valid_rule_field
 
 PLACEHOLDERS: frozenset[str] = frozenset(
     {"value", "limit", "term", "attribute", "allowed_values", "slot", "threshold"}
@@ -190,6 +190,13 @@ class CrossField(_RuleBase):
     right: str
     error_code: ErrorCode = ErrorCode.CROSS_FIELD_MISMATCH
 
+    @field_validator("left", "right")
+    @classmethod
+    def _side_path(cls, value: str) -> str:
+        if not is_valid_field_path(value):
+            raise ValueError("illegal cross_field path")
+        return value
+
 
 class ClaimRequiresAttribute(_RuleBase):
     type: Literal["claim_requires_attribute"]
@@ -236,9 +243,13 @@ class Pattern(_RuleBase):
         return regex
 
 
+FactAttribute = Literal["*critical"] | AttrKey
+"""A fact key, or ``*critical`` for every critical fact (DATABASE.md fact_source row)."""
+
+
 class FactSource(_RuleBase):
     type: Literal["fact_source"]
-    attribute: str
+    attribute: FactAttribute
     forbidden_sources: list[str]
     min_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     require_confirmation_if_agent_captured: bool = False
@@ -247,7 +258,7 @@ class FactSource(_RuleBase):
 
 class FactBackedAttribute(_RuleBase):
     type: Literal["fact_backed_attribute"]
-    attribute: str
+    attribute: FactAttribute
     compare: Literal["normalized"] = "normalized"
     error_code: ErrorCode = ErrorCode.FACT_MISMATCH
 

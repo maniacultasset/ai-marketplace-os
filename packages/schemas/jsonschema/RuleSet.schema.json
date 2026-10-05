@@ -693,8 +693,17 @@
     "FactBackedAttribute": {
       "properties": {
         "attribute": {
-          "title": "Attribute",
-          "type": "string"
+          "anyOf": [
+            {
+              "const": "*critical",
+              "type": "string"
+            },
+            {
+              "pattern": "^[a-z0-9_]{1,64}$",
+              "type": "string"
+            }
+          ],
+          "title": "Attribute"
         },
         "compare": {
           "const": "normalized",
@@ -781,8 +790,17 @@
     "FactSource": {
       "properties": {
         "attribute": {
-          "title": "Attribute",
-          "type": "string"
+          "anyOf": [
+            {
+              "const": "*critical",
+              "type": "string"
+            },
+            {
+              "pattern": "^[a-z0-9_]{1,64}$",
+              "type": "string"
+            }
+          ],
+          "title": "Attribute"
         },
         "error_class": {
           "anyOf": [

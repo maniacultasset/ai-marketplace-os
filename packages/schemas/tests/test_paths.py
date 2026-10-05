@@ -194,3 +194,13 @@ def test_condition_paths() -> None:
     assert not is_valid_condition_path("product.")
     assert not is_valid_condition_path("account..x")
     assert not is_valid_condition_path("facts.mrp")
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["__class__.__init__.__globals__", "model_config", "content.__class__", "content.titel"],
+)
+def test_resolve_refuses_paths_the_vocabulary_rejects(path: str) -> None:
+    # Round 1 R1-5: resolve() walked any identifier with getattr, dunders included.
+    with pytest.raises(ValueError, match="field path"):
+        resolve(_sample_listing(), path)

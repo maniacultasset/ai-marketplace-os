@@ -68,6 +68,8 @@ def resolve(listing: CanonicalListing, path: str) -> object:
         raise ValueError(f"non-listing root in path {path!r}")
     if path == "listing":
         return listing
+    if not is_valid_field_path(path):
+        raise ValueError(f"not a legal field path: {path!r}")
     node: object = listing
     for part in path.split("."):
         m = _SEGMENT.match(part)
@@ -78,6 +80,8 @@ def resolve(listing: CanonicalListing, path: str) -> object:
             if key not in node:
                 raise KeyError(key)
             node = node[key]
+        elif key.startswith("_"):
+            raise ValueError(f"private segment in field path: {part!r}")
         else:
             node = getattr(node, key)
         if idx is not None:
