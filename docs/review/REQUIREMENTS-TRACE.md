@@ -11,6 +11,9 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 - **7,014 of 8,916 (79%) are covered by our plan**: 6,071 as written and
   943 deliberately changed by an ADR, Canon row or recorded decision.
 - **533 are gaps** (backend/DB 276, shared seams 132, ops 105, AI team 4, FE team 0, client 16).
+- **7,011 of 8,916 (79%) are covered by our plan**: 6,063 as written and
+  948 deliberately changed by an ADR, Canon row or recorded decision.
+- **536 are gaps** (backend/DB 270, shared seams 141, ops 105, AI team 4, FE team 0, client 16).
 - **319 need the team or client** (54 conflicts, 265 questions);
   each points to a row in `TEAM-QUESTIONS.md`.
 - 511 belong to the AI or FE team, and 539 are marked Phase 2/3 by the site itself.
@@ -20,6 +23,9 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 | ✅ covered | 6,071 | 68.1% |
 | 🔁 covered-changed | 943 | 10.6% |
 | ⚠️ gap | 533 | 6.0% |
+| ✅ covered | 6,063 | 68.0% |
+| 🔁 covered-changed | 948 | 10.6% |
+| ⚠️ gap | 536 | 6.0% |
 | ❌ conflict | 54 | 0.6% |
 | ❓ needs-client | 265 | 3.0% |
 | 🧩 other-team | 511 | 5.7% |
@@ -46,13 +52,14 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [01] 45-Day Plan & Definition of Done | 85 | 3 | 1 | 0 | 2 | 0 | 0 | 3 |
 | [02] Phase-1 Scope Lock & Non-Goals | 49 | 1 | 1 | 0 | 4 | 6 | 36 | 5 |
 | [03] Day-by-Day Execution Plan (45 Days) | 439 | 74 | 109 | 1 | 76 | 49 | 0 | 186 |
+| [03] Day-by-Day Execution Plan (45 Days) | 438 | 74 | 110 | 1 | 76 | 49 | 0 | 187 |
 | [04] Team Structure & Solo Sprint | 57 | 7 | 3 | 0 | 13 | 16 | 0 | 16 |
 | [05] GCP Tech Stack & Architecture | 85 | 19 | 6 | 0 | 0 | 11 | 0 | 6 |
 | [06] Consolidated Data Model & Schema | 162 | 34 | 0 | 3 | 3 | 0 | 0 | 6 |
 | [07] State Machine, LangGraph & Rules | 74 | 20 | 4 | 0 | 10 | 10 | 0 | 14 |
 | [08] AI Agent Layer & Brand RAG | 74 | 3 | 4 | 0 | 1 | 13 | 0 | 5 |
 | [09] Image Compliance & Adapters | 57 | 6 | 6 | 6 | 6 | 0 | 0 | 18 |
-| [10] Security, Multi-Tenancy & Reliability | 59 | 13 | 7 | 0 | 0 | 1 | 0 | 7 |
+| [10] Security, Multi-Tenancy & Reliability | 59 | 19 | 1 | 0 | 0 | 1 | 0 | 1 |
 | [11] Testing Strategy, Launch Gate & Risks | 61 | 12 | 29 | 1 | 5 | 7 | 17 | 35 |
 | [12] API Surface, Dev Setup & Appendix | 91 | 57 | 2 | 0 | 1 | 9 | 0 | 3 |
 | [1] System Overview | 129 | 1 | 0 | 0 | 11 | 20 | 3 | 11 |
@@ -1030,6 +1037,7 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 | R13668 | L13668 | Production launch checklist: Marketplace OAuth flows verified with production accounts. | T77 | Prod filings/app approval status unknown (STATE open decision 5); verify step itself unplanned |
 
 ## ⚠️ Gaps we own: backend + DB (276)
+## ⚠️ Gaps we own: backend + DB (270)
 
 Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITECTURE.md and the build steps.
 
@@ -1160,7 +1168,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R05047b | L5047 | Chunking strategy document covers overlap. |  | chunk overlap not specified |
 | R05047c | L5047 | Chunking strategy document covers per-artifact rules. |  | per-artifact chunking rules not specified |
 | R05073 | L5073 | Benchmark Cloud SQL HNSW index with synthetic 5,000-chunk dataset. | DATABASE.md:1068; T66 | no 5,000-chunk HNSW benchmark; year-1 path is exact search |
-| R05075 | L5075 | Day 15 DoD: brand profile created for demo tenant with guideline text. | CANON.md:79 | demo seed carries no brand guideline text |
 | R05075a | L5075 | Vector index retrieves top-k in < 50ms. |  | no top-k retrieval latency target (<50 ms) |
 | R05085a | L5085 | Brand guide upload formats: PDF/markdown. | DATABASE.md:1054 | accepted document formats (PDF, markdown) not specified |
 | R05088 | L5088 | Day 16 DoD: a 2-page guideline doc produces embedded chunks in < 30s. |  | no embedding latency target (2-page doc < 30 s) |
@@ -1216,17 +1223,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 |---|---|---|---|---|
 | R06427 | L6427–6429 | Image step 3, on deterministic Fail: Immediate rejection without calling expensive vision model. | BACKEND-ARCHITECTURE.md:1540 | Order stated; skipping vision after a deterministic failure is not stated. |
 | R06501 | L6501 | Adapter code file: marketplace_adapter.py | drafts/BUILD-SEQUENCE.md:14; BACKEND-ARCHITECTURE.md:1204 | apps/api/app/adapters/ planned; marketplace_adapter.py file name not specified (trivial). |
-
-### [10] Security, Multi-Tenancy & Reliability
-
-| R-id | Lines | The site says | Ref | What is missing / differs |
-|---|---|---|---|---|
-| R06596 | L6596 | Repository code file: tenant_repository.py | drafts/BUILD-SEQUENCE.md:14 | apps/api/app/repositories/ planned; tenant_repository.py file name not specified (trivial). |
-| R06600 | L6600 | TenantScopedRepository.__init__(self, db_session, tenant_id: UUID) | drafts/BUILD-SEQUENCE.md:150 (S9) | Constructor (db_session, tenant_id: UUID) not specified; draft has generic TenantScopedRepository[ModelT]. |
-| R06601 | L6601 | TenantScopedRepository.__init__ sets self.db = db_session | drafts/BUILD-SEQUENCE.md:150 (S9) | self.db session attribute not specified. |
-| R06602 | L6602 | TenantScopedRepository.__init__ sets self.tenant_id = tenant_id | BACKEND-ARCHITECTURE.md:1952; drafts/BUILD-SEQUENCE.md:150 | Repository filters by the JWT tid; holding it as self.tenant_id not specified. |
-| R06608 | L6608 | TenantScopedRepository: async def get_by_id(self, model, entity_id: UUID) | drafts/BUILD-SEQUENCE.md:150 (S9) | get_by_id(model, entity_id) not named in our plan. |
-| R06613 | L6613–6614 | get_by_id returns (await self.db.execute(stmt)).scalar_one_or_none() | drafts/BUILD-SEQUENCE.md:150 (S9) | Return convention (scalar_one_or_none, None when missing) not specified. |
 
 ### [11] Testing Strategy, Launch Gate & Risks
 

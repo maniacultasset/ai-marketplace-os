@@ -62,7 +62,7 @@ Every step runs locally on Docker PostgreSQL 17 + pgvector; Cloud SQL is for sta
 | S8 | `0003` + `0003b` procrastinate | S7, spike | — | — | built (local) on `feat/s8-ops-tables`: `0003_ops_tables` (14 tables, the 3 validated FKs onto 0002, read-only grants) and `0003b_procrastinate` (vendored 3.10.0 schema + `app_rw` EXECUTE); review and merge pending; spike criterion 6 and the GRANT loop on `aimos-db` wait on billing (STATE 2.9) |
 | S4 | OpenTofu: import, KMS, GCS, secrets, WIF, audit, Scheduler, `deploy-staging.yml` | S1, P0-U8, EP dec. 15 | written and checked locally (`tofu fmt -check`, `tofu validate`); `tofu plan`/`apply` by the user after billing (P10) | GCP billing | not started |
 | S11 | Observability spine | S8 | — | Sentry DSN (D18) | not started |
-| S9 | Repository guard, isolation gate, seed | S7, S8 | — | — | not started |
+| S9 | Repository guard, isolation gate, seed | S7, S8 | — | — | built (local) on `feat/s9-repository-guard`: `TenantScoped`, the guard and `AppSession`, `unit_of_work` + GUCs, read-only `platform_scope`, `TenantScopedRepository`, `BrandChunkRepository.search`, repo rules R4-R6, `seed`, the `app_rw` isolation suite; review and merge pending |
 | S14a | Rules Engine (pure function) + fixtures | S2, S7, categories | — | 2 launch categories (D18) | not started |
 | S10 | Auth, RBAC, maker-checker, `0004_integrity`, `0005_rls` | S9, T7 | — | — | not started |
 | S25 | Prod via OpenTofu, `deploy-prod.yml`, `v0.1.0`, rollback + PITR drills | S4, domain | — | billing, domain | not started |

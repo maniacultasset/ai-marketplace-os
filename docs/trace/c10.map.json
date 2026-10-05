@@ -1018,10 +1018,10 @@
   },
   {
    "id": "R06596",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "drafts/BUILD-SEQUENCE.md:14",
-   "note": "apps/api/app/repositories/ planned; tenant_repository.py file name not specified (trivial)."
+   "ref": "apps/api/app/repositories/base.py",
+   "note": "Built in S9 as apps/api/app/repositories/base.py (TenantScopedRepository), not tenant_repository.py."
   },
   {
    "id": "R06598",
@@ -1032,24 +1032,24 @@
   },
   {
    "id": "R06600",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "drafts/BUILD-SEQUENCE.md:150 (S9)",
-   "note": "Constructor (db_session, tenant_id: UUID) not specified; draft has generic TenantScopedRepository[ModelT]."
+   "ref": "apps/api/app/repositories/base.py",
+   "note": "S9: TenantScopedRepository.__init__(self, db, tenant_id: UUID); the model is a class attribute of the generic subclass, not an argument; None or a non-UUID tenant is a ValueError."
   },
   {
    "id": "R06601",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "drafts/BUILD-SEQUENCE.md:150 (S9)",
-   "note": "self.db session attribute not specified."
+   "ref": "apps/api/app/repositories/base.py",
+   "note": "S9: the session is held as self.db."
   },
   {
    "id": "R06602",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "BACKEND-ARCHITECTURE.md:1952; drafts/BUILD-SEQUENCE.md:150",
-   "note": "Repository filters by the JWT tid; holding it as self.tenant_id not specified."
+   "ref": "apps/api/app/repositories/base.py",
+   "note": "S9: the tenant is held as self.tenant_id and every statement filters on it."
   },
   {
    "id": "R06604",
@@ -1074,10 +1074,10 @@
   },
   {
    "id": "R06608",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "drafts/BUILD-SEQUENCE.md:150 (S9)",
-   "note": "get_by_id(model, entity_id) not named in our plan."
+   "ref": "apps/api/app/repositories/base.py",
+   "note": "S9: get_by_id(id) on the generic TenantScopedRepository[ModelT] subclass instead of get_by_id(model, entity_id)."
   },
   {
    "id": "R06609",
@@ -1088,10 +1088,10 @@
   },
   {
    "id": "R06613",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "drafts/BUILD-SEQUENCE.md:150 (S9)",
-   "note": "Return convention (scalar_one_or_none, None when missing) not specified."
+   "ref": "apps/api/app/repositories/base.py",
+   "note": "S9: get_by_id returns scalar_one_or_none(); another tenant's id reads as None, like a missing one."
   },
   {
    "id": "R06620",

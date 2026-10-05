@@ -8,7 +8,7 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | Variable | Local value | Source | Required | Notes |
 |---|---|---|---|---|
 | `APP_ENV` | `local` | local .env | required | local \| staging \| production. THE single environment switch: admin kill-switch, Sentry environment tag and LocalKmsStub selection all read this. `ENV` is forbidden. |
-| `APP_ROLE` | `api` | local .env | optional | api \| worker \| migrate \| shell; default api (ADR-0013 §1). Picks the boot requirements: api needs DATABASE_URL and JWT_SECRET, worker needs DATABASE_URL, migrate needs ALEMBIC_DATABASE_URL, shell nothing more. The image sets it per role. |
+| `APP_ROLE` | `api` | local .env | optional | api \| worker \| migrate \| seed \| shell; default api (ADR-0013 §1). Picks the boot requirements: api needs DATABASE_URL and JWT_SECRET, worker needs DATABASE_URL, migrate needs ALEMBIC_DATABASE_URL, seed needs DATABASE_URL and ALEMBIC_DATABASE_URL (S9; the seed itself refuses any APP_ENV but local), shell nothing more. The image sets it per role. |
 | `APP_NAME` | `marketplace-os-api` | local .env | optional | Worker deployment overrides to marketplace-os-worker. |
 | `API_V1_PREFIX` | `/api/v1` | local .env | required | Never change. /healthz, /readyz, /openapi.json, /docs, /internal/admin sit outside it. |
 | `LOG_LEVEL` | `INFO` | local .env | optional | DEBUG locally if you want SQL echo context; INFO everywhere else. |
