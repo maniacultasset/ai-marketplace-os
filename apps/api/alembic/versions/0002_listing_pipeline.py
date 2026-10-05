@@ -304,11 +304,236 @@ BATCHES_UP: Final[tuple[str, ...]] = (
 )
 BATCHES_DOWN: Final[tuple[str, ...]] = ("DROP TABLE public.batches",)
 
+# ---- LISTINGS: listings, listing_versions and the version pointers (DATABASE.md §5.3) ----
+# Every `→ lv` FK is `(listing_id, col) → listing_versions (listing_id, id)`: it pins the version
+# to its own listing, whose tenant the version's `(tenant_id, listing_id)` FK pins. The listing's
+# own pointers use `(id, col)`, are DEFERRABLE INITIALLY IMMEDIATE (the purge defers them, §9)
+# and are added after listing_versions exists; downgrade drops them first. The status guard,
+# lv_guard and the column grants are 0004.
+LISTING_STATUSES: Final = (
+    "'created', 'generating', 'validated', 'needs_review', 'approved', 'publishing', "
+    "'published', 'blocked', 'failed'"
+)
+LISTING_STATES: Final = (
+    "'not_submitted', 'processing', 'pending_review', 'live', 'partially_live', 'inactive', "
+    "'rejected', 'removed'"
+)
+HTTPS_URL: Final = "{col} ~ '^https://[^[:space:]]+$' AND char_length({col}) <= 2048"
+VERSION_POINTERS: Final = (
+    "current_version_id",
+    "approved_version_id",
+    "published_version_id",
+    "live_version_id",
+)
+LISTINGS_UP: Final[tuple[str, ...]] = (
+    f"""
+    CREATE TABLE public.listings (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      product_id uuid NOT NULL,
+      marketplace text NOT NULL,
+      status text NOT NULL DEFAULT 'created',
+      status_reason text,
+      last_event text NOT NULL DEFAULT 'create',
+      last_event_at timestamptz NOT NULL DEFAULT now(),
+      category text NOT NULL,
+      status_changed_at timestamptz NOT NULL DEFAULT now(),
+      current_version_id uuid,
+      approved_version_id uuid,
+      published_version_id uuid,
+      live_version_id uuid,
+      first_published_at timestamptz,
+      last_published_at timestamptz,
+      external_id text,
+      marketplace_sku text,
+      marketplace_state text NOT NULL DEFAULT 'not_submitted',
+      marketplace_state_changed_at timestamptz,
+      live_url text,
+      live_confirmed_at timestamptz,
+      last_synced_at timestamptz,
+      next_sync_at timestamptz,
+      sync_poll_count smallint NOT NULL DEFAULT 0,
+      marketplace_account_id uuid,
+      paused_at timestamptz,
+      paused_by_user_id uuid,
+      archived_at timestamptz,
+      archived_by_user_id uuid,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_listings PRIMARY KEY (id),
+      CONSTRAINT uq_listings_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT uq_listings_product_id_marketplace UNIQUE (product_id, marketplace),
+      CONSTRAINT uq_listings_id_marketplace UNIQUE (id, marketplace),
+      CONSTRAINT fk_listings_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_listings_product_id FOREIGN KEY (tenant_id, product_id)
+        REFERENCES public.products (tenant_id, id),
+      CONSTRAINT fk_listings_marketplace_account_id
+        FOREIGN KEY (tenant_id, marketplace_account_id)
+        REFERENCES public.marketplace_accounts (tenant_id, id),
+      CONSTRAINT fk_listings_marketplace_account_id_marketplace
+        FOREIGN KEY (marketplace_account_id, marketplace)
+        REFERENCES public.marketplace_accounts (id, marketplace),
+      CONSTRAINT fk_listings_paused_by_user_id FOREIGN KEY (tenant_id, paused_by_user_id)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT fk_listings_archived_by_user_id FOREIGN KEY (tenant_id, archived_by_user_id)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT ck_listings_marketplace {MARKETPLACE_CHECK},
+      CONSTRAINT ck_listings_status CHECK (status IN ({LISTING_STATUSES})),
+      CONSTRAINT ck_status_reason CHECK (coalesce(
+        CASE status
+          WHEN 'blocked' THEN status_reason IN ('corrections_exhausted', 'validation_errors',
+            'rejected', 'human_task_open', 'marketplace_action_required',
+            'publish_attempts_exhausted')
+          WHEN 'failed' THEN status_reason IN ('generation_failed', 'publish_failed',
+            'publish_partial', 'marketplace_rejected')
+          ELSE status_reason IS NULL
+        END, false)
+      ),
+      CONSTRAINT ck_listings_marketplace_state CHECK (marketplace_state IN ({LISTING_STATES})),
+      CONSTRAINT ck_published CHECK (
+        status <> 'published'
+        OR (published_version_id IS NOT NULL AND first_published_at IS NOT NULL
+            AND marketplace_state IN ('processing', 'pending_review', 'live', 'partially_live'))
+      ),
+      CONSTRAINT ck_live_minimum CHECK (
+        marketplace_state NOT IN ('live', 'partially_live')
+        OR (live_version_id IS NOT NULL AND live_confirmed_at IS NOT NULL
+            AND last_synced_at IS NOT NULL)
+      ),
+      CONSTRAINT ck_listings_published_at CHECK (
+        last_published_at IS NULL
+        OR (first_published_at IS NOT NULL AND last_published_at >= first_published_at)
+      ),
+      CONSTRAINT ck_listings_live_url CHECK ({HTTPS_URL.format(col="live_url")}),
+      CONSTRAINT ck_listings_sync_poll_count CHECK (sync_poll_count BETWEEN 0 AND 9),
+      CONSTRAINT ck_listings_pause_archive CHECK (
+        (paused_by_user_id IS NULL OR paused_at IS NOT NULL)
+        AND (archived_by_user_id IS NULL OR archived_at IS NOT NULL)
+        AND (paused_at IS NULL OR archived_at IS NULL)
+        AND ((paused_at IS NULL AND archived_at IS NULL)
+             OR status NOT IN ('generating', 'publishing'))
+      )
+    )
+    """,
+    """
+    CREATE INDEX ix_listings_tenant_id_status_marketplace
+      ON public.listings (tenant_id, status, marketplace)
+    """,
+    """
+    CREATE INDEX ix_listings_review_queue ON public.listings (tenant_id, status_changed_at, id)
+      WHERE status IN ('validated', 'needs_review') AND paused_at IS NULL AND archived_at IS NULL
+    """,
+    """
+    CREATE INDEX ix_listings_human_action
+      ON public.listings (tenant_id, status_reason, status_changed_at DESC)
+      WHERE status IN ('blocked', 'failed')
+    """,
+    """
+    CREATE INDEX ix_listings_tenant_id_marketplace_marketplace_state
+      ON public.listings (tenant_id, marketplace, marketplace_state)
+    """,
+    """
+    CREATE INDEX ix_listings_last_activity
+      ON public.listings (tenant_id, last_event_at DESC, id DESC)
+    """,
+    """
+    CREATE INDEX ix_listings_tenant_id_marketplace_external_id
+      ON public.listings (tenant_id, marketplace, external_id) WHERE external_id IS NOT NULL
+    """,
+    """
+    CREATE INDEX ix_listings_sync_due ON public.listings (next_sync_at)
+      WHERE next_sync_at IS NOT NULL AND paused_at IS NULL AND archived_at IS NULL
+    """,
+    """
+    CREATE INDEX ix_listings_ops_queue ON public.listings (status, status_changed_at)
+      WHERE status IN ('blocked', 'failed', 'publishing')
+    """,
+    _updated_at_trigger("listings"),
+    """
+    CREATE TABLE public.listing_versions (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      listing_id uuid NOT NULL,
+      version integer NOT NULL,
+      content_json jsonb NOT NULL,
+      image_reports_json jsonb NOT NULL DEFAULT '[]'::jsonb,
+      generated_by_user_id uuid NOT NULL,
+      edited_by_user_id uuid,
+      approved_by_user_id uuid,
+      approved_at timestamptz,
+      origin text NOT NULL,
+      parent_version_id uuid,
+      changed_paths text[],
+      locale text NOT NULL DEFAULT 'en-IN',
+      rules_version integer,
+      category_template_id uuid,
+      job_id uuid,
+      attempts_used integer NOT NULL DEFAULT 0,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_listing_versions PRIMARY KEY (id),
+      CONSTRAINT uq_listing_versions_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT uq_listing_versions_listing_id_id UNIQUE (listing_id, id),
+      CONSTRAINT listing_versions_listing_version_idx UNIQUE (listing_id, version),
+      CONSTRAINT fk_listing_versions_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_listing_versions_listing_id FOREIGN KEY (tenant_id, listing_id)
+        REFERENCES public.listings (tenant_id, id),
+      CONSTRAINT fk_listing_versions_generated_by_user_id
+        FOREIGN KEY (tenant_id, generated_by_user_id)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT fk_listing_versions_edited_by_user_id
+        FOREIGN KEY (tenant_id, edited_by_user_id)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT fk_listing_versions_approved_by_user_id
+        FOREIGN KEY (tenant_id, approved_by_user_id)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT fk_listing_versions_parent_version_id FOREIGN KEY (listing_id, parent_version_id)
+        REFERENCES public.listing_versions (listing_id, id),
+      CONSTRAINT ck_maker_checker CHECK (
+        approved_by_user_id IS NULL
+        OR (approved_by_user_id <> generated_by_user_id
+            AND approved_by_user_id IS DISTINCT FROM edited_by_user_id)
+      ),
+      CONSTRAINT ck_approval_ts CHECK ((approved_by_user_id IS NULL) = (approved_at IS NULL)),
+      CONSTRAINT ck_listing_versions_version CHECK (version >= 1),
+      CONSTRAINT ck_listing_versions_content_json CHECK (jsonb_typeof(content_json) = 'object'),
+      CONSTRAINT ck_listing_versions_origin
+        CHECK (origin IN ('generation', 'regeneration', 'edit', 'import')),
+      CONSTRAINT ck_listing_versions_changed_paths CHECK (
+        (changed_paths IS NULL OR (origin IN ('edit', 'regeneration')
+                                   AND cardinality(changed_paths) > 0))
+        AND (origin <> 'edit' OR changed_paths IS NOT NULL)
+      ),
+      CONSTRAINT ck_listing_versions_locale CHECK (locale ~ '^[a-z]{2,3}-[A-Z]{2}$'),
+      CONSTRAINT ck_listing_versions_attempts_used CHECK (attempts_used BETWEEN 0 AND 3)
+    )
+    """,
+    """
+    CREATE INDEX ix_listing_versions_job_id ON public.listing_versions (job_id)
+      WHERE job_id IS NOT NULL
+    """,
+    *(f"""
+    ALTER TABLE public.listings ADD CONSTRAINT fk_listings_{pointer}
+      FOREIGN KEY (id, {pointer}) REFERENCES public.listing_versions (listing_id, id)
+      DEFERRABLE INITIALLY IMMEDIATE
+    """ for pointer in VERSION_POINTERS),
+)
+LISTINGS_DOWN: Final[tuple[str, ...]] = (
+    *(
+        f"ALTER TABLE public.listings DROP CONSTRAINT fk_listings_{pointer}"
+        for pointer in VERSION_POINTERS
+    ),
+    "DROP TABLE public.listing_versions",
+    "DROP TABLE public.listings",
+)
+
 SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (RULES_UP, RULES_DOWN),
     (ACCOUNTS_UP, ACCOUNTS_DOWN),
     (IMAGES_UP, IMAGES_DOWN),
     (BATCHES_UP, BATCHES_DOWN),
+    (LISTINGS_UP, LISTINGS_DOWN),
 )
 
 
