@@ -489,12 +489,108 @@ FACT_OWNERS_DOWN: Final[tuple[str, ...]] = (
     "DROP TABLE public.business_parties",
 )
 
+
+# ---- CATALOG: products, identity + family + fact columns (DATABASE.md §5.2, §5.6; ADR-0007) ----
+# One row per style (family parent), variant (child) or standalone product. The parent FK is
+# composite (`→ t`), so a child can never sit under another tenant's style. `variant_key` is
+# written by the 0004 variant guard; until then the unique index compares what is stored.
+CATALOG_UP: Final[tuple[str, ...]] = (
+    r"""
+    CREATE TABLE public.products (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      sku text NOT NULL,
+      title text NOT NULL,
+      status text NOT NULL DEFAULT 'draft',
+      category text NOT NULL,
+      brand_name text,
+      style_number text,
+      sub_category text,
+      product_type text,
+      gender text,
+      stock_ref text,
+      description text,
+      source_image_urls jsonb NOT NULL DEFAULT '[]',
+      parent_product_id uuid,
+      variation_theme text,
+      size_run text[],
+      variant_attributes jsonb NOT NULL DEFAULT '{}',
+      variant_key text,
+      attributes jsonb NOT NULL DEFAULT '{}',
+      provenance jsonb NOT NULL DEFAULT '{}',
+      created_by uuid,
+      deleted_at timestamptz,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_products PRIMARY KEY (id),
+      CONSTRAINT uq_products_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT products_tenant_sku_idx UNIQUE (tenant_id, sku),
+      CONSTRAINT fk_products_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_products_parent_product_id FOREIGN KEY (tenant_id, parent_product_id)
+        REFERENCES public.products (tenant_id, id) ON DELETE RESTRICT,
+      CONSTRAINT fk_products_created_by FOREIGN KEY (tenant_id, created_by)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT ck_products_sku CHECK (sku ~ '^[^]\s]{1,64}$'),
+      CONSTRAINT ck_products_title CHECK (char_length(title) BETWEEN 1 AND 500),
+      CONSTRAINT ck_products_status CHECK (status IN ('draft', 'active')),
+      CONSTRAINT ck_products_category CHECK (category ~ '^[a-z0-9_]{2,64}$'),
+      CONSTRAINT ck_products_brand_name CHECK (char_length(brand_name) BETWEEN 1 AND 100),
+      CONSTRAINT ck_products_style_number CHECK (char_length(style_number) BETWEEN 1 AND 64),
+      CONSTRAINT ck_products_sub_category CHECK (sub_category ~ '^[a-z0-9_]{2,64}$'),
+      CONSTRAINT ck_products_product_type CHECK (product_type ~ '^[a-z0-9_]{2,64}$'),
+      CONSTRAINT ck_products_gender
+        CHECK (gender IN ('men', 'women', 'unisex', 'boys', 'girls')),
+      CONSTRAINT ck_products_stock_ref CHECK (char_length(stock_ref) BETWEEN 1 AND 128),
+      CONSTRAINT ck_products_source_image_urls
+        CHECK (jsonb_typeof(source_image_urls) = 'array'),
+      CONSTRAINT ck_products_variation_theme
+        CHECK (variation_theme IN ('size', 'color', 'size_color')),
+      CONSTRAINT ck_products_variant_attributes
+        CHECK (jsonb_typeof(variant_attributes) = 'object'),
+      CONSTRAINT ck_products_not_own_parent CHECK (parent_product_id <> id),
+      CONSTRAINT ck_products_theme_on_style
+        CHECK (variation_theme IS NULL OR parent_product_id IS NULL),
+      CONSTRAINT ck_products_attributes_iff_parent
+        CHECK ((parent_product_id IS NULL) = (variant_attributes = '{}'::jsonb)),
+      CONSTRAINT ck_products_style_owned CHECK (
+        parent_product_id IS NULL
+        OR (brand_name IS NULL AND style_number IS NULL AND sub_category IS NULL
+            AND product_type IS NULL AND gender IS NULL)
+      ),
+      CONSTRAINT ck_products_size_run CHECK (
+        size_run IS NULL
+        OR (parent_product_id IS NULL
+            AND coalesce(variation_theme IN ('size', 'size_color'), false)
+            AND cardinality(size_run) BETWEEN 1 AND 40
+            AND array_position(size_run, NULL) IS NULL)
+      )
+    )
+    """,
+    """
+    CREATE INDEX ix_products_keyset ON public.products (tenant_id, created_at DESC, id DESC)
+      WHERE deleted_at IS NULL
+    """,
+    """
+    CREATE INDEX ix_products_tenant_id_parent_product_id
+      ON public.products (tenant_id, parent_product_id)
+    """,
+    """
+    CREATE UNIQUE INDEX uq_products_parent_product_id_variant_key
+      ON public.products (parent_product_id, variant_key)
+      WHERE parent_product_id IS NOT NULL AND deleted_at IS NULL
+    """,
+    _updated_at_trigger("products"),
+)
+CATALOG_DOWN: Final[tuple[str, ...]] = ("DROP TABLE public.products",)
+
 SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (FUNCTIONS_UP, FUNCTIONS_DOWN),
     (FACT_MAP_UP, FACT_MAP_DOWN),
     (IDENTITY_A_UP, IDENTITY_A_DOWN),
     (IDENTITY_B_UP, IDENTITY_B_DOWN),
     (FACT_OWNERS_UP, FACT_OWNERS_DOWN),
+    (CATALOG_UP, CATALOG_DOWN),
 )
 
 
