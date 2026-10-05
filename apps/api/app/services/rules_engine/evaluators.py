@@ -37,6 +37,7 @@ from mkos_schemas.rules import (
 )
 
 from .report import Draft, RuleSetMismatchError, build_report, submitted_text
+from .template import template_checks
 from .text import (
     SlotValue,
     compiled_rule_regex,
@@ -399,5 +400,5 @@ def evaluate(
     """
     _check_scope(listing, ruleset, template)
     ctx = Ctx(listing=listing, template=template, product=product, account=account)
-    drafts = collect_drafts(ruleset, ctx)
+    drafts = collect_drafts(ruleset, ctx) + template_checks(ctx)
     return build_report(drafts, listing_id=listing.listing_id, marketplace=ruleset.marketplace)
