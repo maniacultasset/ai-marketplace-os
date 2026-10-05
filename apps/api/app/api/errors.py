@@ -18,6 +18,7 @@ from typing import Annotated, Any, Final
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.routing import iter_route_contexts
 from mkos_schemas.base import RequestId, WireModel
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
 from mkos_schemas.enums import ErrorSource, RetryClass
@@ -262,10 +263,28 @@ async def _api_error(request: Request, exc: Exception) -> JSONResponse:
     )
 
 
+def _allowed_methods(request: Request) -> str | None:
+    """Every method any route serves at this path. Starlette's own `Allow` names only the first
+    route whose path matched, so `DELETE /products` would advertise POST but not GET."""
+    path = request.scope.get("path", "")
+    methods: set[str] = set()
+    for candidate in iter_route_contexts(getattr(request.app, "routes", ())):
+        regex = getattr(candidate, "path_regex", None)
+        served = candidate.methods
+        if regex is not None and served and regex.match(path):
+            methods |= served
+    return ", ".join(sorted(methods)) if methods else None
+
+
 async def _http_exception(request: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, StarletteHTTPException)  # noqa: S101
     # `detail` is never echoed; only server-set headers (`Allow` on 405) are kept.
-    return error_response_for_scope(request.scope, exc.status_code, headers=dict(exc.headers or {}))
+    headers = dict(exc.headers or {})
+    if exc.status_code == 405:
+        allowed = _allowed_methods(request)
+        if allowed:
+            headers["Allow"] = allowed
+    return error_response_for_scope(request.scope, exc.status_code, headers=headers)
 
 
 async def _validation_error(request: Request, exc: Exception) -> JSONResponse:
