@@ -2770,7 +2770,7 @@
    "id": "R04893a",
    "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "CANON-ADDENDUM.md:155",
+   "ref": "CANON-ADDENDUM.md:181",
    "note": "session lives in app/db/session.py, not core/database.py"
   },
   {
@@ -2805,7 +2805,7 @@
    "id": "R04893f",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "CANON-ADDENDUM.md:181",
+   "ref": "CANON-ADDENDUM.md:207",
    "note": "one apps/api Dockerfile"
   },
   {
@@ -3274,14 +3274,14 @@
    "id": "R04937",
    "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "CANON-ADDENDUM.md:134; CANON.md:79",
+   "ref": "CANON-ADDENDUM.md:160; CANON.md:79",
    "note": "demo seed has 2 tenants (acme, bharat), not 1"
   },
   {
    "id": "R04937a",
    "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "CANON-ADDENDUM.md:136-137",
+   "ref": "CANON-ADDENDUM.md:162-163",
    "note": "demo = 4 products per tenant (3 shared + 1); isolation = 3; §21 style added (DATABASE.md:1224)"
   },
   {
@@ -3442,7 +3442,7 @@
    "id": "R04963",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "CANON-ADDENDUM.md:181",
+   "ref": "CANON-ADDENDUM.md:207",
    "note": "one API image; web Dockerfile is FE's"
   },
   {

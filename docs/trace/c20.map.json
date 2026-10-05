@@ -852,7 +852,7 @@
    "id": "R12216c",
    "status": "covered-changed",
    "owner": "shared",
-   "ref": "docs/canon/CANON-ADDENDUM.md:355; AGENTS.md:82",
+   "ref": "docs/canon/CANON-ADDENDUM.md:381; AGENTS.md:82",
    "note": "Marketplace length limits are max_length rules, not canonical schema (inv 4)"
   },
   {
@@ -1671,7 +1671,7 @@
    "id": "R12470a",
    "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "docs/architecture/DATABASE.md:110; docs/architecture/DATABASE.md:950; docs/canon/CANON-ADDENDUM.md:146 §6",
+   "ref": "docs/architecture/DATABASE.md:110; docs/architecture/DATABASE.md:950; docs/canon/CANON-ADDENDUM.md:172 §6",
    "note": "Repository WHERE tenant_id; named exceptions jr_by_id and platform_scope"
   },
   {

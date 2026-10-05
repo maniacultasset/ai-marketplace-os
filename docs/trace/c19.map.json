@@ -705,14 +705,14 @@
    "id": "R11554a",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "CANON-ADDENDUM.md:355; DATABASE.md:514",
+   "ref": "CANON-ADDENDUM.md:381; DATABASE.md:514",
    "note": "max_length / min_length."
   },
   {
    "id": "R11554b",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "CANON-ADDENDUM.md:355; DATABASE.md:514",
+   "ref": "CANON-ADDENDUM.md:381; DATABASE.md:514",
    "note": "banned_terms."
   },
   {
@@ -747,28 +747,28 @@
    "id": "R11559b",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "CANON-ADDENDUM.md:355; BACKEND-ARCHITECTURE.md:1200",
+   "ref": "CANON-ADDENDUM.md:381; BACKEND-ARCHITECTURE.md:1200",
    "note": "max_length counts characters deterministically."
   },
   {
    "id": "R11559c",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "CANON-ADDENDUM.md:355; DATABASE.md:504; scaffold/packages/schemas/fixtures/rules.seed.json",
+   "ref": "CANON-ADDENDUM.md:381; DATABASE.md:504; scaffold/packages/schemas/fixtures/rules.seed.json",
    "note": "banned_terms string match (word; regex platform-only); no semantic match."
   },
   {
    "id": "R11559d",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "CANON-ADDENDUM.md:355",
+   "ref": "CANON-ADDENDUM.md:381",
    "note": "required_attribute presence check."
   },
   {
    "id": "R11569",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "CANON-ADDENDUM.md:355",
+   "ref": "CANON-ADDENDUM.md:381",
    "note": "max_length rule type."
   },
   {
@@ -782,14 +782,14 @@
    "id": "R11573",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "CANON-ADDENDUM.md:355",
+   "ref": "CANON-ADDENDUM.md:381",
    "note": "Character count."
   },
   {
    "id": "R11575",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "CANON-ADDENDUM.md:355",
+   "ref": "CANON-ADDENDUM.md:381",
    "note": "banned_terms rule type."
   },
   {
@@ -817,14 +817,14 @@
    "id": "R11579",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "CANON-ADDENDUM.md:355",
+   "ref": "CANON-ADDENDUM.md:381",
    "note": "String matching."
   },
   {
    "id": "R11581",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "CANON-ADDENDUM.md:355",
+   "ref": "CANON-ADDENDUM.md:381",
    "note": "required_attribute rule type."
   },
   {
@@ -845,7 +845,7 @@
    "id": "R11585",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "CANON-ADDENDUM.md:355",
+   "ref": "CANON-ADDENDUM.md:381",
    "note": "Presence check."
   },
   {
@@ -908,7 +908,7 @@
    "id": "R11603b",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "DATABASE.md:490; CANON-ADDENDUM.md:92",
+   "ref": "DATABASE.md:490; CANON-ADDENDUM.md:118",
    "note": "rules table with rule_def JSONB."
   },
   {
@@ -1468,7 +1468,7 @@
    "id": "R11720a",
    "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "DATABASE.md:1369; CANON-ADDENDUM.md:420 (§19)",
+   "ref": "DATABASE.md:1369; CANON-ADDENDUM.md:446 (§19)",
    "note": "Code exists, but Addendum §19 binds CATEGORY_NOT_MAPPED to source rules_engine (import lookup), not flipkart_adapter; class system_failure."
   },
   {
@@ -1503,7 +1503,7 @@
    "id": "R11728a",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "DATABASE.md:1369; CANON-ADDENDUM.md:434 (§20); CONTRACTS.md:178",
+   "ref": "DATABASE.md:1369; CANON-ADDENDUM.md:460 (§20); CONTRACTS.md:178",
    "note": "TIMEOUT (model call), distinct from JOB_TIMEOUT."
   },
   {
@@ -2287,7 +2287,7 @@
    "id": "R11911a",
    "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "CANON.md:51; CANON-ADDENDUM.md:434",
+   "ref": "CANON.md:51; CANON-ADDENDUM.md:460",
    "note": "JOB_TIMEOUT error code on a failed row."
   },
   {
@@ -2329,7 +2329,7 @@
    "id": "R11911g",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "CANON-ADDENDUM.md:434",
+   "ref": "CANON-ADDENDUM.md:460",
    "note": "JOB_TIMEOUT, source=system."
   },
   {

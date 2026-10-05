@@ -78,7 +78,7 @@ as "EP decision N"; `docs/STATE.md` has its own "open decision" list.
 | 13 | Prod approval | **You publish the GitHub Release in the browser.** It is both the approval and the trigger. GCP issues prod credentials only when your account id, a `v*` tag, `deploy-prod.yml` and run attempt 1 all match (§4.6). | S25 |
 | 14 | When prod exists | **S25 moves to D23–25.** At least 2 real `v0.x` prod releases plus a rollback drill before D43. **No `-rc` tags to prod**: the "dry run" is a real `v0.9.x`. | D20 |
 | 15 | KMS grants | **API: encrypt only** (it seals tokens at the OAuth callback). **Worker: encrypt + decrypt.** Anything needing plaintext (revoke, connection health) runs as a worker job. No human gets either role. Record it as a Canon/ADR row before S4. | S4 plan |
-| 16 | `BOOTSTRAP_DATABASE_URL` | **You only**, not the migrator (it is a `127.0.0.1:5433` proxy URL Cloud Run can't use anyway). Rotate the `postgres` password after `0000`. This amends CANON-ADDENDUM.md:72, so it needs a TEAM-QUESTIONS row. | S5 |
+| 16 | `BOOTSTRAP_DATABASE_URL` | **You only**, not the migrator (it is a `127.0.0.1:5433` proxy URL Cloud Run can't use anyway). Rotate the `postgres` password after `0000`. This amends CANON-ADDENDUM.md:98, so it needs a TEAM-QUESTIONS row. | S5 |
 | 17 | Dependency updates | **Self-hosted Renovate, no auto-merge:** drop ADR-0005:42, which conflicts with "the user approves every merge". pip-audit, osv-scanner and Renovate send only package names and versions; record that as a `docs/PROCESS.md` §1 exception. | S1 |
 | 18 | Names (not in the Canon) | Services `aimos-api`, `aimos-worker`, `aimos-migrate`. Accounts `aimos-api`, `aimos-worker`, `aimos-migrator`, `aimos-deployer`, `aimos-scheduler`, `aimos-tofu`. AR `aimos`, image `backend`. **Secret id = env var name.** Workflows `ci-api.yml`, `contracts.yml`, `ci-web.yml` (CANON.md:77), plus new `ci-meta.yml`. | §5.2 step 9 |
 | 19 | What goes into git | **Yes:** `docs/` (with `docs/source/`), `scaffold/`, `scripts/` (agent tooling stays local-only; see §10). **No:** `deliverables/*.docx` (39 MB of generated binaries; share them through the client's channel). | P0-U5 |
@@ -121,7 +121,7 @@ Work top to bottom within each group. STATE records the done IDs.
 
 | Item | By | For | If late |
 |---|---|---|---|
-| Apex domain + DNS (**your choice**; agents never pick one) | D12 to file, DNS live D19 | Amazon redirect URIs (CANON-ADDENDUM.md:547–550), S12 TLS | no TLS at S12; the Amazon filing waits |
+| Apex domain + DNS (**your choice**; agents never pick one) | D12 to file, DNS live D19 | Amazon redirect URIs (CANON-ADDENDUM.md:573–576), S12 TLS | no TLS at S12; the Amazon filing waits |
 | Amazon Professional seller, SP-API **private** app (Listings, Inventory, Catalog), public-app filing | now | S15, S20 | Amazon publish slips (public review takes 2–4 weeks) |
 | Flipkart partner application + written sandbox question (T78) | now | S22 | cut C7 |
 | Sentry org + DSN | D18 | S11 | Sentry off in staging |

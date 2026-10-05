@@ -40,7 +40,7 @@
    "id": "R13596",
    "status": "covered",
    "owner": "backend-db",
-   "ref": "docs/canon/CANON-ADDENDUM.md:61; docs/adr/0009-environments-and-release.md:18; docs/architecture/BACKEND-ARCHITECTURE.md:2424",
+   "ref": "docs/canon/CANON-ADDENDUM.md:87; docs/adr/0009-environments-and-release.md:18; docs/architecture/BACKEND-ARCHITECTURE.md:2424",
    "note": "docker compose: PG17+pgvector, MinIO; no Redis container (ADR-0004)"
   },
   {

@@ -17,9 +17,9 @@ if TYPE_CHECKING:
     from app.core.config import Settings
 
 LOCAL_URL = "postgresql+psycopg://postgres:postgres@localhost:5432/marketplace_os"
-CI_LITERAL = "ci_only_not_a_real_secret_at_least_32_chars"  # A§11:264
+CI_LITERAL = "ci_only_not_a_real_secret_at_least_32_chars"  # A§11:290
 DEV_LITERAL = "dev_only_change_me_at_least_32_characters_long"  # ENV.md JWT_SECRET row
-EXPORT_LITERAL = "local_only_schema_export_secret_32_chars"  # A§13:293
+EXPORT_LITERAL = "local_only_schema_export_secret_32_chars"  # A§13:319
 SOCKET_URL = (
     "postgresql+psycopg://app_rw:pw@/aimos?host=/cloudsql/aimos-staging:asia-south1:aimos-db"
 )
@@ -198,7 +198,7 @@ def test_committed_jwt_secrets_refused_outside_local(
     clean_env: Path, monkeypatch: pytest.MonkeyPatch, app_env: str, secret: str
 ) -> None:
     env = {"APP_ENV": app_env, "DATABASE_URL": LOCAL_URL, "JWT_SECRET": secret}
-    # A§14:312's "x" * 32 is the control: S14's production fixture must keep booting.
+    # A§14:338's "x" * 32 is the control: S14's production fixture must keep booting.
     if app_env == "local" or secret == "x" * 32:
         assert boot(monkeypatch, **env).jwt_secret == secret
         return
