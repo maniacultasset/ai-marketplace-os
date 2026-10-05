@@ -10,10 +10,12 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from types import MappingProxyType
 from typing import Any
 
 from sqlalchemy import (
     DateTime,
+    FetchedValue,
     ForeignKeyConstraint,
     Index,
     Integer,
@@ -24,10 +26,12 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Uuid,
+    event,
+    inspect,
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, INET, JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, Mapper, mapped_column
 from sqlalchemy.sql.elements import conv
 
 from app.db.base import Base
@@ -98,12 +102,15 @@ class JobRun(Base):
         # `WITH (fillfactor = 80)` lives in the revision only: SQLAlchemy 2.0 has no Table
         # storage-parameter option, and Alembic does not compare reloptions.
     )
+    __mapper_args__ = MappingProxyType({"eager_defaults": True})
 
     id: Mapped[uuid.UUID] = id_column()
     tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     kind: Mapped[str] = mapped_column(Text)
-    # set by the BEFORE INSERT trigger job_runs_set_queue(), whatever the caller sends
-    queue: Mapped[str] = mapped_column(Text)
+    # set by the BEFORE INSERT trigger job_runs_set_queue(), whatever the caller sends;
+    # FetchedValue + eager_defaults make the INSERT ... RETURNING load the trigger's value, and
+    # _drop_caller_queue() keeps a caller's value from shadowing it on the object
+    queue: Mapped[str] = mapped_column(Text, server_default=FetchedValue())
     status: Mapped[str] = mapped_column(Text, server_default=text("'queued'"))
     node: Mapped[str | None] = mapped_column(Text)
     attempt: Mapped[int] = mapped_column(Integer, server_default=text("0"))
@@ -127,6 +134,13 @@ class JobRun(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+@event.listens_for(JobRun, "before_insert")
+def _drop_caller_queue(_mapper: Mapper[JobRun], _connection: Any, target: JobRun) -> None:
+    """The trigger overwrites any queue the caller set; drop it from the pending state so the
+    ORM treats `queue` as server-generated and loads the trigger's value from RETURNING."""
+    inspect(target).dict.pop("queue", None)
 
 
 class Import(Base):
