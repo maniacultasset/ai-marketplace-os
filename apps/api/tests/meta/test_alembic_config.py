@@ -6,6 +6,7 @@ from __future__ import annotations
 import ast
 import configparser
 import fnmatch
+import re
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,7 @@ API = Path(__file__).resolve().parents[2]
 ALEMBIC_DIR = API / "alembic"
 ENV_PY = ALEMBIC_DIR / "env.py"
 LOCK_TIMEOUT_STMT = "SET lock_timeout = '5s'"
+LEDGER_ROW = re.compile(r"^\| `([0-9]{4}[a-z]?_[a-z0-9_]+)` \|", re.MULTILINE)
 CONFIGURE_FLAGS = ("compare_type", "compare_server_default", "transaction_per_migration")
 
 
@@ -160,10 +162,60 @@ def test_alembic_config_template_sets_lock_timeout_first(tmp_path: Path) -> None
         assert [ast.literal_eval(a) for a in call.args] == [LOCK_TIMEOUT_STMT], name
 
 
-def test_alembic_config_versions_holds_no_revision() -> None:
+def _ledger_ids(repo_root: Path) -> set[str]:
+    canon = (repo_root / "docs/canon/CANON.md").read_text(encoding="utf-8")
+    return set(LEDGER_ROW.findall(canon))
+
+
+def test_alembic_config_versions_hold_only_ledger_ids(repo_root: Path) -> None:
+    """Every revision file is named after its id, and the id is claimed in the Canon ledger
+    before the file is written (CANON.md, migration ledger)."""
+    ledger = _ledger_ids(repo_root)
+    assert "0001_core_tenancy" in ledger
     versions = ALEMBIC_DIR / "versions"
     assert versions.is_dir()
-    assert sorted(p.name for p in versions.iterdir() if p.name != "__pycache__") == [".gitkeep"]
+    names = sorted(p.name for p in versions.iterdir() if p.name != "__pycache__")
+    assert ".gitkeep" in names
+    for name in names:
+        if name == ".gitkeep":
+            continue
+        path = versions / name
+        assert path.suffix == ".py", name
+        assert path.stem in ledger, f"{name} is not a Canon ledger id"
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        assigned = {
+            target.id: node.value
+            for node in tree.body
+            if isinstance(node, ast.Assign | ast.AnnAssign)
+            for target in (node.targets if isinstance(node, ast.Assign) else [node.target])
+            if isinstance(target, ast.Name)
+        }
+        revision = assigned.get("revision")
+        assert isinstance(revision, ast.Constant) and revision.value == path.stem, name
+
+
+def test_env_imports_models() -> None:
+    """env.py registers the models, and a caller may swap the compared MetaData through
+    `config.attributes` (scratch-revision tests compare against their own)."""
+    tree = _env_tree()
+    imports = {
+        alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Import)
+        for alias in node.names
+    }
+    assert "app.db.models" in imports
+    reads = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "get"
+        and ast.unparse(node.func.value) == "context.config.attributes"
+    ]
+    assert len(reads) == 1
+    (read,) = reads
+    assert [ast.unparse(arg) for arg in read.args] == ["'target_metadata'", "metadata"]
 
 
 def _dockerignore_patterns(repo_root: Path) -> list[str]:

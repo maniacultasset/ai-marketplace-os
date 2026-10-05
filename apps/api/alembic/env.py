@@ -8,16 +8,21 @@ its own transaction; then revoke the app roles' privileges on `alembic_version` 
 revoke also runs when a revision fails, since the revisions before it are already committed.
 Logging is configured by `python -m app.cli`, never here: `fileConfig` would replace the root
 handlers of whatever process imports this file.
+
+`target_metadata` is the models' MetaData (`app.db.models` registers every table), unless the
+caller puts its own in `config.attributes["target_metadata"]`: tests that drive scratch revisions
+compare against an empty or probe MetaData that way.
 """
 
 from __future__ import annotations
 
 import logging
 
+import app.db.models  # noqa: F401 - registers every table on the shared MetaData
 from alembic import context
 from alembic.script import ScriptDirectory
 from app.core.config import get_settings
-from app.db.base import metadata as target_metadata
+from app.db.base import metadata
 from app.db.migrations import (
     acquire_migration_lock,
     assume_migration_role,
@@ -29,6 +34,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.pool import NullPool
 
 _log = logging.getLogger("alembic.env")
+
+target_metadata = context.config.attributes.get("target_metadata", metadata)
 
 
 def _url() -> str:
