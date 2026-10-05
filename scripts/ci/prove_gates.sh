@@ -143,6 +143,7 @@ seed_alembic_environ() { append apps/api/alembic/env.py $'\n\ndef _seeded() -> s
 seed_cli_imported() { append apps/api/app/main.py 'import app.cli'; }
 seed_image_checks_sqla() { append apps/api/app/services/image_checks.py 'import sqlalchemy'; }
 seed_image_checks_repo() { append apps/api/app/services/image_checks.py 'import app.repositories'; }
+seed_app_imports_mock() { append apps/api/app/main.py 'import app_mock'; }
 # S3 AC9: an implemented route without its case matrix, then one still on presence-only auth.
 seed_case_matrix() {
   cp "$root/.env" .env
@@ -272,6 +273,7 @@ leg lint-imports-service-db lint-imports 'app.services never imports app.db.sess
 leg lint-imports-cli-imported lint-imports 'nothing imports app.cli BROKEN' seed_cli_imported make lint-imports
 leg lint-imports-image-checks-sqla lint-imports 'image checks are pure BROKEN' seed_image_checks_sqla make lint-imports
 leg lint-imports-image-checks-repo lint-imports 'image checks are pure BROKEN' seed_image_checks_repo make lint-imports
+leg lint-imports-app-imports-mock lint-imports 'app never imports app_mock BROKEN' seed_app_imports_mock make lint-imports
 
 if [ "$with_docker" -eq 1 ]; then
   self_project="$(docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"

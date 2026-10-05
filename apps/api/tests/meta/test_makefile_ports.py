@@ -17,6 +17,7 @@ _SCRUB = (
     "MINIO_API_HOST_PORT",
     "MINIO_CONSOLE_HOST_PORT",
     "API_HOST_PORT",
+    "MOCK_HOST_PORT",
     "TEST_DATABASE_URL",
     "ISO_DATABASE_URL",
     "DATABASE_URL",
@@ -26,7 +27,7 @@ _SCRUB = (
     "CI",
     "MAKEFLAGS",
 )
-_PORT_KEYS = ("PG_HOST_PORT", "API_HOST_PORT", "MINIO_API_HOST_PORT")
+_PORT_KEYS = ("PG_HOST_PORT", "API_HOST_PORT", "MINIO_API_HOST_PORT", "MOCK_HOST_PORT")
 _BAD_PORTS = (
     "abc",
     "0",
@@ -40,7 +41,7 @@ _BAD_PORTS = (
 _PROBE = (
     "probe: ; @env | grep -E "
     "'^(COMPOSE_PROJECT_NAME|PG_HOST_PORT|MINIO_API_HOST_PORT|"
-    "MINIO_CONSOLE_HOST_PORT|API_HOST_PORT)=' || true\n"
+    "MINIO_CONSOLE_HOST_PORT|API_HOST_PORT|MOCK_HOST_PORT)=' || true\n"
 )
 
 
@@ -103,6 +104,18 @@ def test_defaults_without_file(sandbox: Path) -> None:
     assert dev.returncode == 0, dev.stderr
     assert "--port 8000" in dev.stdout
     assert "--host" not in dev.stdout
+
+
+def test_mock_port_default_and_override(sandbox: Path) -> None:
+    # S3 D5: `make mock` binds 127.0.0.1 on MOCK_HOST_PORT (default 4010), per checkout.
+    default = _make(sandbox, ["-n", "mock"])
+    assert default.returncode == 0, default.stderr
+    assert "--host 127.0.0.1 --port 4010" in default.stdout
+    (sandbox / ".worktree.env").write_text("MOCK_HOST_PORT=4011\n", encoding="utf-8")
+    override = _make(sandbox, ["-n", "mock"])
+    assert override.returncode == 0, override.stderr
+    assert "--host 127.0.0.1 --port 4011" in override.stdout
+    assert _probe(sandbox).stdout.splitlines() == ["MOCK_HOST_PORT=4011"]
 
 
 def test_file_overrides_urls_and_port(sandbox: Path) -> None:
