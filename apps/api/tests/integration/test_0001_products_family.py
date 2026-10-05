@@ -169,7 +169,7 @@ def test_product_family_variant_key_collides(db: Conn) -> None:
     _fails(
         db,
         psycopg.errors.UniqueViolation,
-        "uq_products_parent_product_id_variant_key",
+        "uq_products_tenant_id_parent_product_id_variant_key",
         tenant_id=tenant_id,
         kind="child",
         parent=style,

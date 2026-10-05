@@ -88,7 +88,8 @@ class Product(Base):
         ),
         Index(conv("ix_products_tenant_id_parent_product_id"), "tenant_id", "parent_product_id"),
         Index(
-            conv("uq_products_parent_product_id_variant_key"),
+            conv("uq_products_tenant_id_parent_product_id_variant_key"),
+            "tenant_id",
             "parent_product_id",
             "variant_key",
             unique=True,
@@ -163,7 +164,8 @@ class ProductColourway(Base):
         tenant_fk("product_colourways"),
         to_product("product_colourways", "style_product_id"),
         Index(
-            conv("uq_product_colourways_style_product_id_colour_key"),
+            conv("uq_product_colourways_tenant_id_style_product_id_colour_key"),
+            "tenant_id",
             "style_product_id",
             "colour_key",
             unique=True,
@@ -201,6 +203,7 @@ class VariantMatrixCell(Base):
         PrimaryKeyConstraint("id", name=conv("pk_variant_matrix_cells")),
         anchor("variant_matrix_cells"),
         UniqueConstraint(
+            "tenant_id",
             "style_product_id",
             "colourway_id",
             "size_key",

@@ -677,8 +677,8 @@ CATALOG_UP: Final[tuple[str, ...]] = (
       ON public.products (tenant_id, parent_product_id)
     """,
     """
-    CREATE UNIQUE INDEX uq_products_parent_product_id_variant_key
-      ON public.products (parent_product_id, variant_key)
+    CREATE UNIQUE INDEX uq_products_tenant_id_parent_product_id_variant_key
+      ON public.products (tenant_id, parent_product_id, variant_key)
       WHERE parent_product_id IS NOT NULL AND deleted_at IS NULL
     """,
     _updated_at_trigger("products"),
@@ -692,7 +692,10 @@ CATALOG_DOWN: Final[tuple[str, ...]] = ("DROP TABLE public.products",)
 # isolation. The cell's colourway is pinned by the same-style key: its style is the cell's
 # style, which the composite style FK keeps in the cell's tenant. The variant key is
 # `UNIQUE (tenant_id, variant_product_id)`: a cell in tenant A naming B's variant then fails
-# at the FK (23503), never at the key (23505), which would reveal that B's row exists.
+# at the FK (23503), never at the key (23505), which would reveal that B's row exists. The
+# natural keys (cell axes, colour key, and the products variant key above) lead with
+# `tenant_id` for the same reason: a unique check runs at index insertion, before the
+# statement-end FK check, and RLS does not hide it.
 VARIANTS_UP: Final[tuple[str, ...]] = (
     r"""
     CREATE TABLE public.product_colourways (
@@ -725,8 +728,9 @@ VARIANTS_UP: Final[tuple[str, ...]] = (
     )
     """,
     """
-    CREATE UNIQUE INDEX uq_product_colourways_style_product_id_colour_key
-      ON public.product_colourways (style_product_id, colour_key) WHERE deleted_at IS NULL
+    CREATE UNIQUE INDEX uq_product_colourways_tenant_id_style_product_id_colour_key
+      ON public.product_colourways (tenant_id, style_product_id, colour_key)
+      WHERE deleted_at IS NULL
     """,
     """
     CREATE UNIQUE INDEX uq_product_colourways_tenant_id_colour_sku
@@ -754,7 +758,8 @@ VARIANTS_UP: Final[tuple[str, ...]] = (
       updated_at timestamptz NOT NULL DEFAULT now(),
       CONSTRAINT pk_variant_matrix_cells PRIMARY KEY (id),
       CONSTRAINT uq_variant_matrix_cells_tenant_id_id UNIQUE (tenant_id, id),
-      CONSTRAINT vmc_cell_uq UNIQUE NULLS NOT DISTINCT (style_product_id, colourway_id, size_key),
+      CONSTRAINT vmc_cell_uq
+        UNIQUE NULLS NOT DISTINCT (tenant_id, style_product_id, colourway_id, size_key),
       CONSTRAINT uq_variant_matrix_cells_tenant_id_variant_product_id
         UNIQUE (tenant_id, variant_product_id),
       CONSTRAINT fk_variant_matrix_cells_tenant_id_tenants FOREIGN KEY (tenant_id)

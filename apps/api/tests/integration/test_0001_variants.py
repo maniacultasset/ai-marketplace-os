@@ -53,7 +53,9 @@ def test_colourways_colour_key_collides(db: Conn) -> None:
     assert row == ("jet black",)
     with pytest.raises(psycopg.errors.UniqueViolation) as info, db.transaction():
         f.colourway(db, tenant_id, style, attributes=_colour("jet black "))
-    assert info.value.diag.constraint_name == "uq_product_colourways_style_product_id_colour_key"
+    assert info.value.diag.constraint_name == (
+        "uq_product_colourways_tenant_id_style_product_id_colour_key"
+    )
     f.colourway(db, tenant_id, f.product(db, tenant_id, "style"), attributes=_colour("Jet Black"))
     db.execute("UPDATE product_colourways SET deleted_at = now() WHERE id = %s", (first,))
     f.colourway(db, tenant_id, style, attributes=_colour("Jet Black"))
@@ -299,6 +301,75 @@ def test_matrix_cells_cross_tenant_variant_in_use_is_23503(db: Conn) -> None:
         (tenant_a, style_a, child_b),
         constraint="fk_variant_matrix_cells_variant_product_id",
     )
+
+
+def _victim(conn: Conn) -> tuple[UUID, UUID]:
+    """Tenant B's style with a Navy colourway, a Navy/m cell and its Navy/m child."""
+    tenant_b = f.tenant(conn)
+    style = f.product(conn, tenant_b, "style")
+    colourway = f.colourway(conn, tenant_b, style, attributes=_colour("Navy"))
+    f.cell(conn, tenant_b, style, colourway_id=colourway, size_key="m")
+    f.product(conn, tenant_b, "child", parent=style, variant_key="color=navy|size=m")
+    return style, colourway
+
+
+def _first_error(conn: Conn, write: Any) -> psycopg.Error:
+    with pytest.raises(psycopg.Error) as info, conn.transaction():
+        write()
+    return info.value
+
+
+@pytest.mark.parametrize(
+    ("write", "constraint"),
+    [
+        (
+            lambda db, a, style, cw: f.cell(db, a, style, colourway_id=cw, size_key="m"),
+            "fk_variant_matrix_cells_style_product_id",
+        ),
+        (
+            lambda db, a, style, cw: f.colourway(db, a, style, attributes=_colour("navy")),
+            "fk_product_colourways_style_product_id",
+        ),
+        (
+            lambda db, a, style, cw: f.product(
+                db, a, "child", parent=style, variant_key="color=navy|size=m"
+            ),
+            "fk_products_parent_product_id",
+        ),
+    ],
+    ids=["cell", "colourway", "child"],
+)
+def test_0001_cross_tenant_natural_key_is_23503(db: Conn, write: Any, constraint: str) -> None:
+    """A write in A that names B's style and repeats B's natural key fails at the composite FK
+    (23503), never at the unique key (23505): unique checks run at index insertion, before the
+    statement-end FK check, and ignore RLS, so a key without `tenant_id` would reveal that B's
+    colour, size or variant exists."""
+    style, colourway = _victim(db)
+    tenant_a = f.tenant(db)
+    error = _first_error(db, lambda: write(db, tenant_a, style, colourway))
+    assert error.sqlstate == "23503", f"a unique key answered first: {error}"
+    assert error.diag.constraint_name == constraint
+
+
+def test_0001_unique_keys_on_tenant_tables_include_tenant_id(db: Conn) -> None:
+    """Catalog form: every non-PK unique index on a table with `tenant_id` includes it."""
+    rows = db.execute("""
+        SELECT c.relname, i.relname
+        FROM pg_index x
+        JOIN pg_class i ON i.oid = x.indexrelid
+        JOIN pg_class c ON c.oid = x.indrelid
+        WHERE c.relnamespace = 'public'::regnamespace AND x.indisunique AND NOT x.indisprimary
+          AND EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid
+                      AND a.attname = 'tenant_id' AND NOT a.attisdropped)
+          AND NOT EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid
+                          AND a.attname = 'tenant_id' AND a.attnum = ANY (x.indkey))
+          -- (id, style_product_id) is the PK plus a column: no wider than the PK oracle
+          AND i.relname <> 'uq_product_colourways_id_style_product_id'
+          -- global by design (pre-login accept lookup); the value is a sha256 of 32 random bytes
+          AND i.relname <> 'uq_invitations_token_hash'
+        ORDER BY 1, 2
+    """).fetchall()
+    assert rows == [], f"unique keys without tenant_id: {rows}"
 
 
 def test_variant_fks_restrict_deletes(db: Conn) -> None:
