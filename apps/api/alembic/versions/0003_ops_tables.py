@@ -214,7 +214,142 @@ PLATFORM_DOWN: Final[tuple[str, ...]] = (
     "DROP TABLE public.category_templates",
 )
 
-SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = ((PLATFORM_UP, PLATFORM_DOWN),)
+# ---- JOBS: job_runs + the queue trigger (DATABASE.md §5.4; Canon 0003, ADR-0004) ----
+# No created_at/updated_at: queued_at, started_at, lease_expires_at, finished_at. `queue` is a
+# plain column set by the BEFORE INSERT trigger (never GENERATED, §8.3): the publish family
+# shares the per-account limiter. `parent_job_id` stays in its tenant: `(tenant_id,
+# parent_job_id) → job_runs (tenant_id, id)` NO ACTION, on the row's own anchor (a requeue copies
+# the tenant). The terminal-row, edge and publish-gate triggers are 0004.
+JOB_KINDS: Final = (
+    "'listing_generate', 'listing_publish', 'listing_status_sync', 'bulk_import', "
+    "'image_compliance', 'brand_embed'"
+)
+JOB_STATES: Final = (
+    "'queued', 'running', 'succeeded', 'partial', 'failed', 'cancelled', 'dead_letter'"
+)
+JOB_TERMINAL: Final = "'succeeded', 'partial', 'failed', 'cancelled', 'dead_letter'"
+LISTING_JOB_KINDS: Final = "'listing_generate', 'listing_publish', 'listing_status_sync'"
+PIPELINE_STAGES: Final = (
+    "'load_context', 'retrieve_brand', 'content_agent', 'keyword_agent', 'attribute_agent', "
+    "'image_agent', 'merge_outputs', 'validate_schema', 'validate_rules', 'validate_vision', "
+    "'correct', 'quality_check'"
+)
+JOBS_UP: Final[tuple[str, ...]] = (
+    f"""
+    CREATE TABLE public.job_runs (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      kind text NOT NULL,
+      queue text NOT NULL,
+      status text NOT NULL DEFAULT 'queued',
+      node text,
+      attempt integer NOT NULL DEFAULT 0,
+      max_attempts integer NOT NULL DEFAULT 3,
+      queue_job_id text,
+      listing_id uuid,
+      entity_type text NOT NULL,
+      entity_id uuid NOT NULL,
+      idempotency_key text,
+      payload_json jsonb NOT NULL,
+      result_json jsonb,
+      error_report_json jsonb,
+      correlation_id uuid NOT NULL,
+      request_id text,
+      parent_job_id uuid,
+      created_by uuid,
+      batch_id uuid,
+      error_code text,
+      cost_reserved_usd numeric(12, 6) NOT NULL DEFAULT 0,
+      queued_at timestamptz NOT NULL DEFAULT now(),
+      started_at timestamptz,
+      lease_expires_at timestamptz,
+      finished_at timestamptz,
+      CONSTRAINT pk_job_runs PRIMARY KEY (id),
+      CONSTRAINT uq_job_runs_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT uq_job_runs_parent_job_id UNIQUE (parent_job_id),
+      CONSTRAINT fk_job_runs_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_job_runs_listing_id FOREIGN KEY (tenant_id, listing_id)
+        REFERENCES public.listings (tenant_id, id),
+      CONSTRAINT fk_job_runs_created_by FOREIGN KEY (tenant_id, created_by)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT fk_job_runs_batch_id FOREIGN KEY (tenant_id, batch_id)
+        REFERENCES public.batches (tenant_id, id),
+      CONSTRAINT fk_job_runs_parent_job_id FOREIGN KEY (tenant_id, parent_job_id)
+        REFERENCES public.job_runs (tenant_id, id),
+      CONSTRAINT ck_job_runs_kind CHECK (kind IN ({JOB_KINDS})),
+      CONSTRAINT ck_job_runs_queue CHECK (queue IN ('default', 'publish')),
+      CONSTRAINT ck_job_runs_status CHECK (status IN ({JOB_STATES})),
+      CONSTRAINT ck_job_runs_entity_type
+        CHECK (entity_type IN ('listing', 'import', 'image', 'brand_document')),
+      CONSTRAINT ck_job_runs_node CHECK (
+        node IS NULL OR (kind = 'listing_generate' AND node IN ({PIPELINE_STAGES}))
+      ),
+      CONSTRAINT ck_job_runs_attempt CHECK (attempt >= 0 AND attempt <= max_attempts),
+      CONSTRAINT ck_job_runs_max_attempts CHECK (max_attempts BETWEEN 1 AND 3),
+      CONSTRAINT ck_job_runs_finished
+        CHECK ((status IN ({JOB_TERMINAL})) = (finished_at IS NOT NULL)),
+      CONSTRAINT ck_job_runs_lease CHECK (status <> 'running' OR lease_expires_at IS NOT NULL),
+      CONSTRAINT ck_job_runs_failure_report CHECK (
+        status NOT IN ('failed', 'dead_letter') OR error_report_json IS NOT NULL
+      ),
+      CONSTRAINT ck_job_runs_no_auto_publish
+        CHECK (kind <> 'listing_publish' OR created_by IS NOT NULL),
+      CONSTRAINT ck_job_runs_listing_kinds
+        CHECK (kind NOT IN ({LISTING_JOB_KINDS}) OR listing_id IS NOT NULL)
+    ) WITH (fillfactor = 80)
+    """,
+    """
+    CREATE UNIQUE INDEX ux_job_runs_live ON public.job_runs (tenant_id, listing_id, kind)
+      WHERE status IN ('queued', 'running')
+    """,
+    """
+    CREATE UNIQUE INDEX ux_job_runs_idempotency_key ON public.job_runs (tenant_id, idempotency_key)
+      WHERE idempotency_key IS NOT NULL
+    """,
+    """
+    CREATE INDEX ix_job_runs_lease ON public.job_runs (lease_expires_at)
+      WHERE status = 'running'
+    """,
+    """
+    CREATE INDEX ix_job_runs_dead_letter_tenant ON public.job_runs (tenant_id, finished_at DESC)
+      WHERE status = 'dead_letter'
+    """,
+    """
+    CREATE INDEX ix_job_runs_dead_letter ON public.job_runs (finished_at DESC)
+      WHERE status = 'dead_letter'
+    """,
+    """
+    CREATE INDEX ix_job_runs_batch ON public.job_runs (tenant_id, batch_id)
+      WHERE batch_id IS NOT NULL
+    """,
+    "CREATE INDEX ix_job_runs_recent ON public.job_runs (tenant_id, queued_at DESC, id DESC)",
+    "CREATE INDEX ix_job_runs_entity ON public.job_runs (tenant_id, entity_type, entity_id)",
+    """
+    CREATE FUNCTION public.job_runs_set_queue() RETURNS trigger
+      LANGUAGE plpgsql
+    AS $$
+    BEGIN
+      NEW.queue := CASE WHEN NEW.kind IN ('listing_publish', 'listing_status_sync')
+                        THEN 'publish' ELSE 'default' END;
+      RETURN NEW;
+    END
+    $$
+    """,
+    """
+    CREATE TRIGGER job_runs_set_queue BEFORE INSERT ON public.job_runs
+      FOR EACH ROW EXECUTE FUNCTION public.job_runs_set_queue()
+    """,
+)
+JOBS_DOWN: Final[tuple[str, ...]] = (
+    "DROP TABLE public.job_runs",
+    "DROP FUNCTION public.job_runs_set_queue()",
+)
+
+SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
+    (PLATFORM_UP, PLATFORM_DOWN),
+    (JOBS_UP, JOBS_DOWN),
+)
 
 
 def upgrade() -> None:
