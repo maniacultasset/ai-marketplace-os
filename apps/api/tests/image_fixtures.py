@@ -3,11 +3,18 @@ arguments give the same bytes) and generates its image in memory; no binary file
 
 from __future__ import annotations
 
+import itertools
 import struct
 import zlib
+from collections.abc import Sequence
+from datetime import UTC, datetime
 from io import BytesIO
 from typing import Any
+from uuid import UUID
 
+from mkos_schemas.enums import ImageSlot, Marketplace
+from mkos_schemas.images import ImageReport
+from mkos_schemas.rules import Rule
 from PIL import Image, PngImagePlugin
 
 RGB = tuple[int, int, int]
@@ -50,7 +57,11 @@ def jpeg(
 ) -> bytes:
     img = canvas(w, h, border=border, product=product, fill=fill)
     save: dict[str, Any] = {"quality": quality, "progressive": progressive}
-    if exif_orientation is not None:
+    if isinstance(exif_orientation, str):  # Pillow writes the tag only as SHORT; hand-build ASCII
+        value = exif_orientation.encode("ascii")[:3].ljust(4, b"\x00")
+        entry = struct.pack(">HHI", 0x0112, 2, 2) + value
+        save["exif"] = b"Exif\x00\x00MM\x00*" + struct.pack(">IH", 8, 1) + entry + b"\x00" * 4
+    elif exif_orientation is not None:
         exif = Image.Exif()
         exif[0x0112] = exif_orientation
         save["exif"] = exif.tobytes()
@@ -178,3 +189,84 @@ def jpeg_with_exif_thumbnail() -> bytes:
     exif = Image.Exif()
     exif[0x0112] = 1
     return encode(canvas(64, 64), "JPEG", quality=90, exif=exif.tobytes() + thumb)
+
+
+# --- rule and call helpers (the module under test is imported lazily) ---
+
+NOW = datetime(2026, 10, 5, 12, 0, tzinfo=UTC)
+IMAGE_ID = UUID("00000000-0000-4000-8000-000000000017")
+_RULE_IDS = itertools.count(1)
+
+
+def image_rule(
+    check: str,
+    *,
+    marketplace: str = "amazon",
+    slot: str = "main",
+    severity: str = "error",
+    pack: str = "core",
+    enabled: bool = True,
+    suggestion: str | None = None,
+    version: int = 1,
+    **params: Any,
+) -> Rule:
+    """One `images` rule row with a fresh id."""
+    return Rule.model_validate(
+        {
+            "id": str(UUID(int=next(_RULE_IDS))),
+            "marketplace": marketplace,
+            "field": "images",
+            "severity": severity,
+            "version": version,
+            "enabled": enabled,
+            "rule_def": {
+                "type": "image_requirement",
+                "message": f"image {check}",
+                "suggestion": suggestion,
+                "pack": pack,
+                "slot": slot,
+                "check": check,
+                "params": params,
+            },
+        }
+    )
+
+
+def run(
+    data: bytes,
+    rules: Sequence[Rule] = (),
+    *,
+    marketplace: str = "amazon",
+    slot: str = "main",
+    now: datetime = NOW,
+) -> ImageReport:
+    from app.services.image_checks import check_image
+
+    return check_image(
+        data,
+        image_id=IMAGE_ID,
+        marketplace=Marketplace(marketplace),
+        slot=ImageSlot(slot),
+        rules=rules,
+        now=now,
+    )
+
+
+def names(report: ImageReport) -> list[str]:
+    return [c.check for c in report.checks]
+
+
+def codes(report: ImageReport) -> list[str]:
+    return [i.code.value for i in report.issues]
+
+
+def amazon_rules() -> list[Rule]:
+    """The Amazon main seed shape (DATABASE.md image seed), thresholds as test data."""
+    return [
+        image_rule("max_bytes", slot="any", max_bytes=10 * 1024 * 1024),
+        image_rule("format", slot="any", allowed_formats=["jpeg", "png", "tiff"]),
+        image_rule("min_resolution", min_px=1000),
+        image_rule("aspect_ratio", ratio_w=1, ratio_h=1),
+        image_rule("background", rgb=(255, 255, 255)),
+        image_rule("fill_ratio", severity="warning", min_fill=0.85),
+    ]
