@@ -15,7 +15,7 @@ map any exception to a report entry. Our own code stays outside them, so a misco
 from __future__ import annotations
 
 import struct
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -57,8 +57,11 @@ ASPECT_TOLERANCE_PERCENT: Final = 1
 # MAX_RUN_PERCENT % of the edge. At most MAX_WIDE_RUN_EDGES edges may have a forgiven run over
 # WIDE_RUN_PERCENT % of the edge: a grey card with rounded or cut white corners continues inward on
 # every edge, while an inscribed disc covers about 28 % of each. A full-bleed product touching three
-# or four edges over half their length fails closed (vision confirms). Calibrated on synthetic
-# images; revisited when real images arrive.
+# or four edges over half their length fails closed (vision confirms). When two opposite edges both
+# have a wide run and the runs line up (start and end within max(BAND_MIN_PX, 1 % of the edge)),
+# the full line just inside each run boundary is read: off over MAX_RUN_PERCENT % of it is a
+# straight boundary, a photo letterboxed or pillarboxed onto the canvas, and fails. Calibrated on
+# synthetic images; revisited when real images arrive.
 BAND_MIN_PX: Final = 2
 BAND_PERCENT: Final = 2
 CHANNEL_TOLERANCE: Final = 5
@@ -287,15 +290,20 @@ class _BandRegions:
     when the image is too small to hold separate corners and edges."""
 
     corners: tuple[Image.Image, ...] = ()
-    edges: tuple[_Edge, ...] = ()
+    edges: tuple[_Edge, ...] = ()  # top, bottom, left, right
     whole: Image.Image | None = None
+    size: tuple[int, int] = (0, 0)  # full image width, height
+    inset: tuple[int, int] = (0, 0)  # band depth bx, by: where the edge strips start along the edge
 
 
 @dataclass(frozen=True, slots=True)
 class _Decoded:
     width: int  # measured: EXIF orientation 5-8 swapped
     height: int
-    band: _BandRegions | None
+    background: tuple[bool, ...]  # one verdict per requested background colour, in order
+
+
+_Line = Callable[[tuple[int, int, int, int]], Image.Image]
 
 
 def _orientation(img: Image.Image) -> int:
@@ -339,13 +347,25 @@ def _band_regions(img: Image.Image) -> _BandRegions:
     return _BandRegions(
         corners=tuple(_rgba(img.crop(box)) for box in corners),
         edges=tuple(_Edge(_rgba(img.crop(box)), hz, first) for box, hz, first in edges),
+        size=(w, h),
+        inset=(bx, by),
     )
 
 
-def _decode(data: bytes, fmt: str, *, want_band: bool) -> _Decoded | _Failure:
+_DECODE_TOO_LARGE: Final = (
+    Image.DecompressionBombError,
+    Image.DecompressionBombWarning,
+    MemoryError,
+)
+
+
+def _decode(
+    data: bytes, fmt: str, backgrounds: Sequence[tuple[int, int, int]]
+) -> _Decoded | _Failure:
     """Open with the sniffed decoder only, cap pixels and side length on the header, verify,
-    reopen and load frame 0, then crop the background band if a rule needs it. Pixels are never
-    rotated."""
+    reopen and load frame 0, then crop the background band and judge each requested background
+    colour while the loaded image is still open (a padded-photo test reads one full line). Pixels
+    are never rotated. The judging runs outside the decode boundary, so a bug in it raises."""
     try:
         with Image.open(BytesIO(data), formats=[fmt]) as probe:
             width, height = probe.size
@@ -354,17 +374,28 @@ def _decode(data: bytes, fmt: str, *, want_band: bool) -> _Decoded | _Failure:
             if width == 0 or height == 0:
                 return _Failure.CORRUPT
             probe.verify()
-        with Image.open(BytesIO(data), formats=[fmt]) as img:
-            img.load()
-            orientation = _orientation(img)
-            band = _band_regions(img) if want_band else None
-    except (Image.DecompressionBombError, Image.DecompressionBombWarning, MemoryError):
+        img = Image.open(BytesIO(data), formats=[fmt])
+    except _DECODE_TOO_LARGE:
         return _Failure.TOO_LARGE
     except Exception:  # decode boundary: any decoder failure on hostile bytes is CORRUPT
         return _Failure.CORRUPT
+    with img:
+        try:
+            img.load()
+            orientation = _orientation(img)
+            band = _band_regions(img) if backgrounds else None
+        except _DECODE_TOO_LARGE:
+            return _Failure.TOO_LARGE
+        except Exception:  # decode boundary (as above)
+            return _Failure.CORRUPT
+
+        def line(box: tuple[int, int, int, int]) -> Image.Image:
+            return _rgba(img.crop(box))
+
+        verdicts = tuple(_background_passes(band, rgb, line) for rgb in backgrounds) if band else ()
     if orientation in _SWAPPING_ORIENTATIONS:
         width, height = height, width
-    return _Decoded(width, height, band)
+    return _Decoded(width, height, verdicts)
 
 
 # --- geometry ---
@@ -426,11 +457,12 @@ def _region_passes(mask: Image.Image) -> bool:
     return _mostly_matching(mask.histogram()[255], mask.width * mask.height)
 
 
-def _edge_passes(mask: Image.Image, edge: _Edge) -> tuple[bool, bool]:
+def _edge_passes(mask: Image.Image, edge: _Edge) -> tuple[bool, tuple[int, int] | None]:
     """Split off the inward line, collapse the band strip to a 1 px profile along the edge
     (mismatches per position), forgive the longest run of positions where the inward line is off
     (a product touching that edge and continuing inward) if it is under MAX_RUN_PERCENT % of the
-    edge, and judge the rest of the strip. Returns (passes, forgiven run over WIDE_RUN_PERCENT %).
+    edge, and judge the rest of the strip. Returns (passes, the forgiven run as (start, length)
+    along the strip when it covers over WIDE_RUN_PERCENT % of the edge, else None).
     """
     w, h = mask.size
     if edge.horizontal:
@@ -459,7 +491,7 @@ def _edge_passes(mask: Image.Image, edge: _Edge) -> tuple[bool, bool]:
             start = None
     if best_len * 100 >= length * MAX_RUN_PERCENT:
         best_len = 0
-    wide = best_len * 100 > length * WIDE_RUN_PERCENT
+    wide = (best_start, best_len) if best_len * 100 > length * WIDE_RUN_PERCENT else None
     total = (length - best_len) * depth
     if total == 0:
         return True, wide
@@ -467,18 +499,51 @@ def _edge_passes(mask: Image.Image, edge: _Edge) -> tuple[bool, bool]:
     return _mostly_matching(total - mismatching, total), wide
 
 
-def _background_passes(band: _BandRegions, rgb: tuple[int, int, int]) -> bool:
+def _straight_boundary(
+    band: _BandRegions,
+    rgb: tuple[int, int, int],
+    line: _Line,
+    horizontal: bool,
+    runs: tuple[tuple[int, int], tuple[int, int]],
+) -> bool:
+    """True when two opposite edges' wide runs line up and the full line just inside either run
+    boundary is off over MAX_RUN_PERCENT %: a photo padded onto the canvas, not a product."""
+    (s0, n0), (s1, n1) = runs
+    w, h = band.size
+    length = (w if horizontal else h) - 2 * (band.inset[0] if horizontal else band.inset[1])
+    tolerance = max(BAND_MIN_PX, length // 100)
+    if abs(s0 - s1) > tolerance or abs((s0 + n0) - (s1 + n1)) > tolerance:
+        return False
+    offset = band.inset[0] if horizontal else band.inset[1]
+    for at in (offset + max(s0, s1), offset + min(s0 + n0, s1 + n1) - 1):
+        crop = line((at, 0, at + 1, h) if horizontal else (0, at, w, at + 1))
+        off = crop.width * crop.height - _match_mask(crop, rgb).histogram()[255]
+        if off * 100 >= crop.width * crop.height * MAX_RUN_PERCENT:
+            return True
+    return False
+
+
+def _background_passes(band: _BandRegions, rgb: tuple[int, int, int], line: _Line) -> bool:
     if band.whole is not None:
         return _region_passes(_match_mask(band.whole, rgb))
     if not all(_region_passes(_match_mask(c, rgb)) for c in band.corners):
         return False
-    wide_edges = 0
+    runs: list[tuple[int, int] | None] = []
     for edge in band.edges:
         passes, wide = _edge_passes(_match_mask(edge.crop, rgb), edge)
         if not passes:
             return False
-        wide_edges += wide
-    return wide_edges <= MAX_WIDE_RUN_EDGES
+        runs.append(wide)
+    if sum(r is not None for r in runs) > MAX_WIDE_RUN_EDGES:
+        return False
+    for horizontal, (a, b) in ((True, (runs[0], runs[1])), (False, (runs[2], runs[3]))):
+        if (
+            a is not None
+            and b is not None
+            and _straight_boundary(band, rgb, line, horizontal, (a, b))
+        ):
+            return False
+    return True
 
 
 # --- entry point ---
@@ -526,7 +591,13 @@ def check_image(
             checks.add("corruption", False)
             return done()
     background = by_check.get("background", [])
-    decoded = _decode(data, fmt, want_band=bool(background))
+    rgbs: list[tuple[int, int, int]] = []
+    for rule, req in background:
+        rgb = req.params.rgb
+        if rgb is None:  # unreachable after _require; keeps the types honest
+            raise ValueError(f"image rule {rule.id}: background needs rgb")
+        rgbs.append(rgb)
+    decoded = _decode(data, fmt, rgbs)
     if isinstance(decoded, _Failure):
         checks.add("file_size" if decoded is _Failure.TOO_LARGE else "corruption", False)
         return done()
@@ -536,10 +607,6 @@ def check_image(
     resolution = [item for item in selected if item[1].check in _RESOLUTION_RULES]
     _resolution(checks, resolution, decoded.width, decoded.height)
     _aspect(checks, by_check.get("aspect_ratio", []), decoded.width, decoded.height)
-    if decoded.band is not None:
-        for rule, req in background:
-            rgb = req.params.rgb
-            if rgb is None:  # unreachable after _require; keeps the types honest
-                raise ValueError(f"image rule {rule.id}: background needs rgb")
-            checks.add("background", _background_passes(decoded.band, rgb), rule)
+    for (rule, _req), verdict in zip(background, decoded.background, strict=True):
+        checks.add("background", verdict, rule)
     return done()

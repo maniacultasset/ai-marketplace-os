@@ -30,9 +30,13 @@ def _png(img: Image.Image) -> bytes:
 
 
 def _touching(w: int = 1000) -> Image.Image:
-    """White canvas, dark product 600 px wide from the top edge to the bottom edge."""
+    """White canvas, dark product touching the top and bottom edges 600 px wide, with a narrower
+    waist between (not a straight pillarbox: its side outline is not a full-height line)."""
     img = Image.new("RGB", (w, w), fx.WHITE)
-    img.paste(fx.DARK, (200, 0, 800, w))
+    foot = w // 25
+    img.paste(fx.DARK, (w // 5, 0, w * 4 // 5, foot))
+    img.paste(fx.DARK, (w // 5, w - foot, w * 4 // 5, w))
+    img.paste(fx.DARK, (w * 7 // 20, foot, w * 13 // 20, w - foot))
     return img
 
 
@@ -278,11 +282,58 @@ def test_background_full_bleed_three_edges_fails() -> None:
 
 
 def test_background_two_wide_edges_pass() -> None:
-    """Two edges with a forgiven run over half their length stay within the cross-edge limit."""
+    """Two opposite edges with an aligned forgiven run over half their length pass when the
+    outline at the run boundary is not a straight full line (a product, not a padded photo)."""
     assert passes(_png(_touching())) is True
     img = Image.new("RGB", (1000, 1000), fx.WHITE)
-    img.paste(fx.DARK, (0, 200, 1000, 800))
+    bowtie = [
+        (0, 200), (60, 200), (500, 400), (940, 200), (999, 200),
+        (999, 800), (940, 800), (500, 600), (60, 800), (0, 800),
+    ]  # fmt: skip
+    ImageDraw.Draw(img).polygon(bowtie, fill=fx.DARK)
     assert passes(_png(img)) is True
+
+
+@pytest.mark.parametrize("photo", [600, 750, 850])
+@pytest.mark.parametrize("box", ["letterbox", "pillarbox"])
+def test_background_padded_photo_fails(box: str, photo: int) -> None:
+    """Round-3 F5: a grey photo padded to 1:1 with white bars. Two opposite edges forgive aligned
+    wide runs, and the line just inside each run boundary is straight and full: a padded photo."""
+    img = Image.new("RGB", (1000, 1000), fx.WHITE)
+    a = (1000 - photo) // 2
+    img.paste(GREY, (0, a, 1000, a + photo) if box == "letterbox" else (a, 0, a + photo, 1000))
+    assert codes(bg(_png(img))) == ["BACKGROUND_OFF"]
+
+
+@pytest.mark.parametrize(("step", "expected"), [(9, False), (10, True)])
+def test_background_padded_photo_alignment(step: int, expected: bool) -> None:
+    """Opposite runs line up when start and end differ by at most max(BAND_MIN_PX, 1 % of the
+    edge) = 9 of 960 positions; past that the boundary line is not read (two wide edges pass)."""
+    img = Image.new("RGB", (1000, 1000), fx.WHITE)
+    img.paste(GREY, (0, 200, 500, 800))
+    img.paste(GREY, (500, 200 + step, 1000, 800 + step))
+    assert passes(_png(img)) is expected
+
+
+def test_background_wide_octagon_card_fails() -> None:
+    """A 2:1 grey card with corners cut 30 % of its height: the top and bottom runs are wide and
+    aligned, and the cut's boundary column is off over 90 % of the height."""
+    w, h, c = 2000, 1000, 300
+    img = Image.new("RGB", (w, h), fx.WHITE)
+    pts = [
+        (c, 0), (w - 1 - c, 0), (w - 1, c), (w - 1, h - 1 - c),
+        (w - 1 - c, h - 1), (c, h - 1), (0, h - 1 - c), (0, c),
+    ]  # fmt: skip
+    ImageDraw.Draw(img).polygon(pts, fill=GREY)
+    assert codes(bg(_png(img))) == ["BACKGROUND_OFF"]
+
+
+@pytest.mark.parametrize("radius", [400, 450])
+def test_background_rounded_card_large_radius_accepted_limit(radius: int) -> None:
+    """Accepted limit (D3, T110 (3)): a square grey card with corner radius >= 40 % of the side
+    leaves every edge run under half the edge, so it reads as an inscribed product and passes;
+    the vision step confirms the background."""
+    assert passes(_png(_rounded_grey(radius))) is True
 
 
 @pytest.mark.parametrize(("arm", "expected"), [(480, True), (481, False)])
