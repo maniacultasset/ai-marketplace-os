@@ -1007,6 +1007,277 @@ AUDIT_BRAND_DOWN: Final[tuple[str, ...]] = (
     "DROP TABLE public.audit_log",
 )
 
+# ---- ISSUES: human_tasks, then listing_issues (DATABASE.md §5.7; T20, T50, T56) ----
+# One live question per fact (NULLS NOT DISTINCT: a brand fact is one task for the brand) and
+# per account target. `listing_issues.rule_id` is the documented plain FK (a composite FK can't
+# reach a platform rule; the 0004 guard checks "platform or same tenant"). `human_task_id`,
+# `recurrence_of_id`, the run ids, `job_id` and `error_map_id` are soft: closed issues and
+# terminal tasks are pruned at 13 months (the error-map FK arrives in 0003). The state guards
+# are 0004.
+FACT_KINDS: Final = (
+    "'missing_fact', 'conflicting_facts', 'unverified_declaration', 'approval_or_evidence'"
+)
+ACCOUNT_KINDS: Final = "'permission_decision', 'reconnect_account', 'marketplace_error_review'"
+ISSUES_UP: Final[tuple[str, ...]] = (
+    f"""
+    CREATE TABLE public.human_tasks (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      kind text NOT NULL,
+      product_id uuid,
+      colourway_id uuid,
+      target_path text,
+      marketplace_account_id uuid,
+      image_id uuid,
+      question text NOT NULL,
+      reason text NOT NULL,
+      expected_answer jsonb NOT NULL,
+      suggestions jsonb NOT NULL DEFAULT '[]'::jsonb,
+      evidence jsonb NOT NULL DEFAULT '[]'::jsonb,
+      status text NOT NULL DEFAULT 'open',
+      answer jsonb,
+      answered_by_user_id uuid,
+      answered_at timestamptz,
+      resume_from text NOT NULL,
+      applied_at timestamptz,
+      resume_batch_id uuid,
+      cancelled_reason text,
+      request_id text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_human_tasks PRIMARY KEY (id),
+      CONSTRAINT uq_human_tasks_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT fk_human_tasks_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_human_tasks_product_id FOREIGN KEY (tenant_id, product_id)
+        REFERENCES public.products (tenant_id, id),
+      CONSTRAINT fk_human_tasks_colourway_id FOREIGN KEY (tenant_id, colourway_id)
+        REFERENCES public.product_colourways (tenant_id, id),
+      CONSTRAINT fk_human_tasks_marketplace_account_id
+        FOREIGN KEY (tenant_id, marketplace_account_id)
+        REFERENCES public.marketplace_accounts (tenant_id, id),
+      CONSTRAINT fk_human_tasks_image_id FOREIGN KEY (tenant_id, image_id)
+        REFERENCES public.images (tenant_id, id),
+      CONSTRAINT fk_human_tasks_answered_by_user_id FOREIGN KEY (tenant_id, answered_by_user_id)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT fk_human_tasks_resume_batch_id FOREIGN KEY (tenant_id, resume_batch_id)
+        REFERENCES public.batches (tenant_id, id),
+      CONSTRAINT ck_human_tasks_kind CHECK (kind IN ({FACT_KINDS}, {ACCOUNT_KINDS},
+        'image_replacement')),
+      CONSTRAINT ck_human_tasks_status
+        CHECK (status IN ('open', 'answered', 'applied', 'cancelled')),
+      CONSTRAINT ck_human_tasks_resume_from
+        CHECK (resume_from IN ('generate', 'validate', 'publish')),
+      CONSTRAINT ck_human_tasks_cancelled_reason CHECK (cancelled_reason IN ('issues_closed',
+        'listing_archived', 'product_deleted', 'superseded')),
+      CONSTRAINT ck_human_tasks_target_path
+        CHECK (target_path ~ '^(facts|brand|account)(\\.[a-z0-9_]{{1,64}}){{1,2}}$'),
+      CONSTRAINT ck_human_tasks_question CHECK (char_length(question) BETWEEN 5 AND 500),
+      CONSTRAINT ck_human_tasks_reason CHECK (char_length(reason) BETWEEN 5 AND 500),
+      CONSTRAINT ck_human_tasks_expected_answer CHECK (jsonb_typeof(expected_answer) = 'object'),
+      CONSTRAINT ck_human_tasks_suggestions CHECK (
+        jsonb_typeof(suggestions) = 'array' AND jsonb_array_length(suggestions) <= 10
+      ),
+      CONSTRAINT ck_human_tasks_evidence CHECK (jsonb_typeof(evidence) = 'array'),
+      CONSTRAINT ck_human_tasks_fact_target CHECK (
+        kind NOT IN ({FACT_KINDS})
+        OR (target_path IS NOT NULL AND target_path !~ '^account\\.'
+            AND (target_path ~ '^brand\\.') = (product_id IS NULL))
+      ),
+      CONSTRAINT ck_human_tasks_colourway CHECK (colourway_id IS NULL OR product_id IS NOT NULL),
+      CONSTRAINT ck_human_tasks_account_target CHECK (
+        kind NOT IN ({ACCOUNT_KINDS})
+        OR (marketplace_account_id IS NOT NULL AND target_path ~ '^account\\.')
+      ),
+      CONSTRAINT ck_human_tasks_image CHECK (kind <> 'image_replacement' OR image_id IS NOT NULL),
+      CONSTRAINT ck_human_tasks_open_unanswered CHECK (
+        status <> 'open'
+        OR (answer IS NULL AND answered_by_user_id IS NULL AND answered_at IS NULL)
+      ),
+      CONSTRAINT ck_human_tasks_answered CHECK (
+        status NOT IN ('answered', 'applied')
+        OR (answer IS NOT NULL AND answered_by_user_id IS NOT NULL AND answered_at IS NOT NULL)
+      ),
+      CONSTRAINT ck_human_tasks_applied CHECK ((status = 'applied') = (applied_at IS NOT NULL)),
+      CONSTRAINT ck_human_tasks_cancelled
+        CHECK ((status = 'cancelled') = (cancelled_reason IS NOT NULL))
+    )
+    """,
+    """
+    CREATE UNIQUE INDEX ht_one_live_fact
+      ON public.human_tasks (tenant_id, product_id, colourway_id, target_path) NULLS NOT DISTINCT
+      WHERE status IN ('open', 'answered') AND target_path IS NOT NULL
+        AND marketplace_account_id IS NULL
+    """,
+    """
+    CREATE UNIQUE INDEX ht_one_live_account
+      ON public.human_tasks (tenant_id, marketplace_account_id, kind, target_path)
+      WHERE status IN ('open', 'answered') AND marketplace_account_id IS NOT NULL
+    """,
+    """
+    CREATE INDEX ix_human_tasks_inbox
+      ON public.human_tasks (tenant_id, status, created_at DESC, id DESC)
+    """,
+    """
+    CREATE INDEX ix_human_tasks_tenant_id_product_id ON public.human_tasks (tenant_id, product_id)
+    """,
+    """
+    CREATE INDEX ix_human_tasks_tenant_id_resume_batch_id
+      ON public.human_tasks (tenant_id, resume_batch_id) WHERE resume_batch_id IS NOT NULL
+    """,
+    _updated_at_trigger("human_tasks"),
+    f"""
+    CREATE TABLE public.listing_issues (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      listing_id uuid NOT NULL,
+      marketplace text NOT NULL,
+      listing_item_id uuid,
+      listing_version_id uuid,
+      validation_run_id uuid,
+      last_validation_run_id uuid,
+      job_id uuid,
+      source text NOT NULL,
+      field_path text NOT NULL,
+      error_code text NOT NULL,
+      error_class text NOT NULL,
+      retry_class text NOT NULL,
+      severity text NOT NULL,
+      auto_fixable boolean NOT NULL DEFAULT false,
+      fix_action text,
+      rule_id uuid,
+      error_map_id uuid,
+      marketplace_code text,
+      raw_message text,
+      message text NOT NULL,
+      plain_message text,
+      suggestion text,
+      value_submitted text,
+      dedupe_key text NOT NULL,
+      occurrences integer NOT NULL DEFAULT 1,
+      first_seen_at timestamptz NOT NULL DEFAULT now(),
+      last_seen_at timestamptz NOT NULL DEFAULT now(),
+      status text NOT NULL DEFAULT 'open',
+      resolution text,
+      action_taken text,
+      resolved_at timestamptz,
+      resolved_by_user_id uuid,
+      human_task_id uuid,
+      recurrence_of_id uuid,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_listing_issues PRIMARY KEY (id),
+      CONSTRAINT uq_listing_issues_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT fk_listing_issues_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_listing_issues_listing_id FOREIGN KEY (tenant_id, listing_id)
+        REFERENCES public.listings (tenant_id, id),
+      CONSTRAINT fk_listing_issues_listing_id_marketplace FOREIGN KEY (listing_id, marketplace)
+        REFERENCES public.listings (id, marketplace),
+      CONSTRAINT fk_listing_issues_listing_item_id_listing_id
+        FOREIGN KEY (listing_item_id, listing_id)
+        REFERENCES public.listing_items (id, listing_id),
+      CONSTRAINT fk_listing_issues_listing_version_id
+        FOREIGN KEY (listing_id, listing_version_id)
+        REFERENCES public.listing_versions (listing_id, id),
+      CONSTRAINT fk_listing_issues_rule_id_rules FOREIGN KEY (rule_id)
+        REFERENCES public.rules (id),
+      CONSTRAINT fk_listing_issues_resolved_by_user_id FOREIGN KEY (tenant_id, resolved_by_user_id)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT ck_listing_issues_marketplace {MARKETPLACE_CHECK},
+      CONSTRAINT ck_listing_issues_source CHECK (source IN ('schema', 'rules_engine',
+        'vision_model', 'amazon_adapter', 'flipkart_adapter')),
+      CONSTRAINT ck_listing_issues_error_class CHECK (error_class IN ('missing_data',
+        'invalid_value', 'category_mismatch', 'variation_error', 'media_error', 'content_error',
+        'identifier_error', 'compliance_error', 'account_permission', 'marketplace_technical',
+        'unknown')),
+      CONSTRAINT ck_listing_issues_retry_class CHECK (retry_class IN ('auto_retry', 'ai_correct',
+        'user_action', 'system_failure')),
+      CONSTRAINT ck_listing_issues_severity CHECK (severity IN ('error', 'warning')),
+      CONSTRAINT ck_listing_issues_fix_action CHECK (fix_action IN ('remap_value', 'reformat',
+        'derive_field', 'rebuild_variation')),
+      CONSTRAINT li_fix CHECK (auto_fixable = (fix_action IS NOT NULL)),
+      CONSTRAINT ck_listing_issues_status
+        CHECK (status IN ('open', 'auto_fixed', 'resolved', 'dismissed')),
+      CONSTRAINT ck_listing_issues_resolution CHECK (resolution IN ('deterministic_fix',
+        'ai_correction', 'human_answer', 'human_edit', 'regenerated', 'revalidated_clean',
+        'marketplace_cleared', 'accepted_warning')),
+      CONSTRAINT ck_listing_issues_open CHECK (
+        (status = 'open') = (resolved_at IS NULL) AND (status = 'open') = (resolution IS NULL)
+      ),
+      CONSTRAINT ck_listing_issues_auto_fixed
+        CHECK (status <> 'auto_fixed' OR resolution = 'deterministic_fix'),
+      CONSTRAINT ck_listing_issues_resolved CHECK (
+        status <> 'resolved' OR resolution IN ('ai_correction', 'human_answer', 'human_edit',
+          'regenerated', 'revalidated_clean', 'marketplace_cleared')
+      ),
+      CONSTRAINT ck_listing_issues_dismissed CHECK (
+        status <> 'dismissed'
+        OR (resolution = 'accepted_warning' AND severity = 'warning'
+            AND resolved_by_user_id IS NOT NULL)
+      ),
+      CONSTRAINT ck_listing_issues_seen CHECK (last_seen_at >= first_seen_at),
+      CONSTRAINT ck_listing_issues_occurrences CHECK (occurrences >= 1),
+      CONSTRAINT li_key_prefix CHECK (
+        starts_with(dedupe_key, source || '|' || field_path || '|' || error_code || '|')
+      ),
+      CONSTRAINT ck_listing_issues_field_path CHECK (char_length(field_path) <= 192),
+      CONSTRAINT ck_listing_issues_marketplace_code CHECK (char_length(marketplace_code) <= 128),
+      CONSTRAINT ck_listing_issues_raw_message CHECK (char_length(raw_message) <= 4000),
+      CONSTRAINT ck_listing_issues_message CHECK (
+        char_length(message) <= 1000 AND char_length(plain_message) <= 1000
+        AND char_length(suggestion) <= 1000
+      ),
+      CONSTRAINT ck_listing_issues_value_submitted CHECK (char_length(value_submitted) <= 600)
+    )
+    """,
+    """
+    CREATE UNIQUE INDEX li_one_open ON public.listing_issues (listing_id, dedupe_key)
+      WHERE status = 'open'
+    """,
+    """
+    CREATE INDEX ix_listing_issues_recurrence
+      ON public.listing_issues (listing_id, dedupe_key, resolved_at DESC)
+    """,
+    """
+    CREATE INDEX ix_listing_issues_open_by_listing ON public.listing_issues (tenant_id, listing_id)
+      WHERE status = 'open'
+    """,
+    """
+    CREATE INDEX ix_listing_issues_open_inbox
+      ON public.listing_issues (tenant_id, created_at DESC, id DESC) WHERE status = 'open'
+    """,
+    """
+    CREATE INDEX ix_listing_issues_inbox
+      ON public.listing_issues (tenant_id, created_at DESC, id DESC)
+    """,
+    """
+    CREATE INDEX ix_listing_issues_tenant_id_error_code
+      ON public.listing_issues (tenant_id, error_code, created_at DESC)
+    """,
+    """
+    CREATE INDEX ix_listing_issues_human_task_id ON public.listing_issues (human_task_id)
+      WHERE human_task_id IS NOT NULL
+    """,
+    """
+    CREATE INDEX ix_listing_issues_recurrence_of_id ON public.listing_issues (recurrence_of_id)
+      WHERE recurrence_of_id IS NOT NULL
+    """,
+    """
+    CREATE INDEX ix_listing_issues_job_id ON public.listing_issues (job_id)
+      WHERE job_id IS NOT NULL
+    """,
+    """
+    CREATE INDEX li_unknown_codes ON public.listing_issues (marketplace, marketplace_code)
+      WHERE error_class = 'unknown' AND status = 'open'
+    """,
+    _updated_at_trigger("listing_issues"),
+)
+ISSUES_DOWN: Final[tuple[str, ...]] = (
+    "DROP TABLE public.listing_issues",
+    "DROP TABLE public.human_tasks",
+)
+
 SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (RULES_UP, RULES_DOWN),
     (ACCOUNTS_UP, ACCOUNTS_DOWN),
@@ -1016,6 +1287,7 @@ SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (REVIEWS_UP, REVIEWS_DOWN),
     (RUNS_UP, RUNS_DOWN),
     (AUDIT_BRAND_UP, AUDIT_BRAND_DOWN),
+    (ISSUES_UP, ISSUES_DOWN),
 )
 
 

@@ -409,3 +409,40 @@ def brand_chunk(conn: Conn, tenant_id: UUID, **columns: Any) -> UUID:
     row = conn.execute(query, [_adapt(values[name]) for name in names]).fetchone()
     assert row is not None
     return row[0]  # type: ignore[no-any-return]
+
+
+def human_task(conn: Conn, tenant_id: UUID, **columns: Any) -> UUID:
+    """An open `missing_fact` question on `facts.fabric` of a new product."""
+    defaults: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "kind": "missing_fact",
+        "target_path": "facts.fabric",
+        "question": "What is the fabric?",
+        "reason": "Amazon requires the fabric.",
+        "expected_answer": {"kind": "text", "max_length": 100},
+        "resume_from": "generate",
+    }
+    if "product_id" not in columns:
+        defaults["product_id"] = product(conn, tenant_id)
+    return insert(conn, "human_tasks", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def listing_issue(conn: Conn, tenant_id: UUID, listing_id: UUID, **columns: Any) -> UUID:
+    """An open `rules_engine` error on `content.title` of an Amazon listing."""
+    values: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "listing_id": listing_id,
+        "marketplace": "amazon",
+        "source": "rules_engine",
+        "field_path": "content.title",
+        "error_code": "FIELD_TOO_LONG",
+        "error_class": "content_error",
+        "retry_class": "ai_correct",
+        "severity": "error",
+        "message": "The title is too long.",
+        **columns,
+    }
+    if "dedupe_key" not in values:
+        prefix = f"{values['source']}|{values['field_path']}|{values['error_code']}|"
+        values["dedupe_key"] = prefix + str(values.get("rule_id") or "")
+    return insert(conn, "listing_issues", **values)  # type: ignore[no-any-return]
