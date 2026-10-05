@@ -71,11 +71,15 @@ ENGINE_NAMES = frozenset(
         "AsyncEngine",
     }
 )
-ENGINE_ATTRS = frozenset({"sync_engine"})
+# `.bind` / `.sync_session` reach the engine from a session (`s.bind.begin()` runs Core, so the
+# guard's do_orm_execute never fires).
+ENGINE_ATTRS = frozenset({"sync_engine", "sync_session", "bind"})
 ENGINE_EXEMPT_FILES = ("apps/api/app/cli.py",)
+MODELS_REEXPORT_BANNED = RAW_SQL_NAMES | ENGINE_NAMES | ENGINE_ATTRS
 # The only `app.db` names app code outside app/db and app/repositories may use; every name of
-# `app.db.models` (and its submodules) is allowed. Anything else, a re-export such as
-# `app.db.session.text` or `get_engine` included, is R4.
+# `app.db.models` (and its submodules) is allowed except the raw-SQL and engine names the model
+# modules import from sqlalchemy (`app.db.models.catalog.text`). Anything else, a re-export such
+# as `app.db.session.text` or `get_engine` included, is R4.
 APP_DB = "app.db"
 APP_DB_MODELS = "models"
 APP_DB_ALLOWED: dict[str, frozenset[str]] = {
@@ -259,7 +263,9 @@ def _app_db_allowed(dotted: str) -> bool:
     if dotted != APP_DB and not dotted.startswith(APP_DB + "."):
         return True
     parts = dotted.split(".")[2:]
-    if not parts or parts[0] == APP_DB_MODELS or parts[-1] in APP_DB_DEFERRED_NAMES:
+    if parts and parts[0] == APP_DB_MODELS:
+        return not any(part in MODELS_REEXPORT_BANNED for part in parts[1:])
+    if not parts or parts[-1] in APP_DB_DEFERRED_NAMES:
         return True
     allowed = APP_DB_ALLOWED.get(parts[0])
     return allowed is not None and (len(parts) == 1 or parts[1] in allowed)
@@ -293,8 +299,8 @@ def _app_db_names(relative: str, tree: ast.AST) -> Iterator[tuple[int, str]]:
             for alias in node.names:
                 dotted = f"{module}.{alias.name}"
                 if alias.name == "*" and (module == APP_DB or module.startswith(APP_DB + ".")):
-                    deferred = module in APP_DB_DEFERRED_STARS
-                    if not (deferred or module.startswith(f"{APP_DB}.{APP_DB_MODELS}")):
+                    # A star import of a model module would bring in its `text` import too.
+                    if module not in APP_DB_DEFERRED_STARS:
                         yield node.lineno, f"`from {module} import *` {where}"
                 elif not _app_db_allowed(dotted):
                     yield node.lineno, f"`from {module} import {alias.name}` {where}"

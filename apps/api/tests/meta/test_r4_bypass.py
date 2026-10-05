@@ -1,7 +1,8 @@
 """S9 fix round 2 (F1, F3, F4): R4 bypasses. Raw SQL or an engine reached through a re-export
 from `app.db`, Core lightweight `table()` / `DDL`, and the engine route (`get_engine().begin()`,
 `.sync_engine.raw_connection()`) are flagged outside app/db, app/repositories and app/cli.py;
-the allowlisted `app.db` names stay legal."""
+the allowlisted `app.db` names stay legal. Round 3 (F3-F6): the model modules' `text` re-export
+(named, attribute or star import) and a session's engine via `.bind` / `.sync_session`."""
 
 from __future__ import annotations
 
@@ -48,6 +49,28 @@ RULES = "scripts/ci/check_repo_rules.py"
         ("workers/x.py", "import sqlalchemy as sa\nE = sa.create_engine('x')\n"),
         ("workers/x.py", "from sqlalchemy import Engine\n"),
         ("api/x.py", "from sqlalchemy.ext.asyncio import AsyncEngine\n"),
+        # Round 3 (F3/F4/F6): the model modules import `text` from sqlalchemy.
+        (
+            "services/x.py",
+            "from app.db.models.catalog import text\nQ = text('SELECT * FROM products')\n",
+        ),
+        (
+            "services/x.py",
+            "from app.db.models import catalog\nQ = catalog.text('SELECT * FROM products')\n",
+        ),
+        (
+            "services/x.py",
+            "import app.db.models.catalog as cm\nQ = cm.text('SELECT * FROM products')\n",
+        ),
+        ("services/x.py", "import app.db.models\nQ = app.db.models.catalog.text('x')\n"),
+        ("services/x.py", "from app.db.models.catalog import *\nQ = text('x')\n"),
+        # Round 3 (F5): a session's engine through `.bind` / `.sync_session`.
+        (
+            "workers/x.py",
+            "async def f(s):\n    async with s.bind.begin() as c:\n        return c\n",
+        ),
+        ("workers/x.py", "def f(s):\n    return s.sync_session.bind.begin()\n"),
+        ("services/x.py", "def f(s):\n    return s.sync_session\n"),
     ],
 )
 def test_r4_flags_bypass(
