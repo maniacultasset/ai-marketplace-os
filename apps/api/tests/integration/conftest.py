@@ -239,3 +239,17 @@ def expect_sqlstate(
             assert error.diag.constraint_name == constraint, error.diag.constraint_name
         return error
     raise AssertionError(f"wanted SQLSTATE {code}, the statement succeeded")
+
+
+# ---- S9: tests that commit tenant rows into mos_test ----
+
+LOCAL_HOSTS = ["localhost", "127.0.0.1", "::1"]
+
+
+@pytest.fixture
+def clean_tenant_db(superuser_conn: Conn) -> None:
+    """Empty every tenant table (through the `tenants`/`users` cascade) and the platform seed
+    tables before the test. Schema objects are untouched, so `alembic check` stays clean."""
+    superuser_conn.execute(
+        "TRUNCATE tenants, users, category_templates, rules RESTART IDENTITY CASCADE"
+    )
