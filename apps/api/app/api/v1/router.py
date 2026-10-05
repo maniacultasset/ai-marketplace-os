@@ -7,8 +7,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.v1.routers import auth, brand, imports, products, tenants
+from app.api.v1.routers import auth, brand, imports, listings, products, tenants
 
 router = APIRouter()
-for module in (auth, tenants, brand, products, imports):
+for module in (auth, tenants, brand, products, imports, listings):
     router.include_router(module.router)
