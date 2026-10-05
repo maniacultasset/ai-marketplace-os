@@ -279,8 +279,24 @@ class _RefusedError(Exception):
     pass
 
 
+def _walk_optional(body: Any, open_set: frozenset[_CharSet], flags: int) -> frozenset[_CharSet]:
+    """The open set after an optional body; raises ``_RefusedError`` when the body can consume
+    characters an open repeat could also take (an open repeat survives it unclosed)."""
+    after = _walk(body, open_set, flags)
+    atoms = _atoms(body, flags)
+    if _overlaps_any(atoms, after - _walk(body, frozenset(), flags)):
+        raise _RefusedError
+    return open_set | after | atoms
+
+
 def _walk(sub: Any, open_set: frozenset[_CharSet], flags: int) -> frozenset[_CharSet]:
-    """Walk one sequence left to right, returning the open unbounded repeats after it."""
+    """Walk one sequence left to right, returning the open variable-width repeats after it.
+
+    A repeat with a variable count above one (``*``, ``+``, ``{n,}`` and ``{n,m}`` with m > n)
+    is open, bounded or not: stacked overlapping bounded repeats backtrack too (``\\d{0,8}`` six
+    times, ``\\d{0,1000}`` three times). An optional body (``?``) is walked, refused when no
+    mandatory atom of it closes an open repeat it overlaps (``\\d*\\d?``), and leaves its atoms
+    open (``\\d?`` twenty times). A fixed count ``{n}`` is walked as its body."""
     for op, av in sub:
         if op in _ZERO_WIDTH_OPS:
             continue
@@ -291,14 +307,15 @@ def _walk(sub: Any, open_set: frozenset[_CharSet], flags: int) -> frozenset[_Cha
             continue
         if op in _REPEAT_OPS:
             low, high, body = av
-            if high == _sre.MAXREPEAT:
+            if high > max(low, 1):  # a variable count above one, bounded or not
                 atoms = _atoms(body, flags)
                 if _overlaps_any(atoms, open_set):
                     raise _RefusedError
                 open_set = open_set | atoms if low == 0 else atoms
-            else:
-                after = _walk(body, open_set, flags)
-                open_set = open_set | after if low == 0 else after
+            elif high > low:  # optional (``?``, ``{0,1}``)
+                open_set = _walk_optional(body, open_set, flags)
+            else:  # a fixed count ``{n}``
+                open_set = _walk(body, open_set, flags)
             continue
         if op is _sre.SUBPATTERN:
             open_set = _walk(av[3], open_set, _sub_flags(flags, av))
@@ -315,15 +332,16 @@ def _walk(sub: Any, open_set: frozenset[_CharSet], flags: int) -> frozenset[_Cha
 
 
 def _overlapping_repeat(tree: Any, *, ignore_case: bool = False) -> str | None:
-    """A reason when two unbounded repeats can match the same character with no disjoint
-    mandatory atom between them (``\\s*\\s*x``, ``.*foo.*``); else ``None``."""
+    """A reason when two variable-width repeats can match the same character with no disjoint
+    mandatory atom between them (``\\s*\\s*x``, ``.*foo.*``, ``\\d{0,99}\\d{0,99}x``); else
+    ``None``."""
     flags = tree.state.flags & _FLAG_MASK
     if ignore_case:
         flags |= re.IGNORECASE
     try:
         _walk(tree, frozenset(), flags)
     except _RefusedError:
-        return "adjacent overlapping unbounded repeats can backtrack polynomially"
+        return "adjacent overlapping variable-width repeats can backtrack polynomially"
     return None
 
 
