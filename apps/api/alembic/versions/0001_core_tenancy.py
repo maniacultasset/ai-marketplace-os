@@ -180,9 +180,84 @@ FACT_MAP_UP: Final[tuple[str, ...]] = (
 )
 FACT_MAP_DOWN: Final[tuple[str, ...]] = ("DROP FUNCTION public.fact_map_valid(jsonb, boolean)",)
 
+
+def _updated_at_trigger(table: str) -> str:
+    return (
+        f"CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.{table} "
+        "FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()"
+    )
+
+
+# ---- IDENTITY_A: tenants, global users (DATABASE.md §5.1; ADR-0006 §1, ADR-0008 §2) ----
+IDENTITY_A_UP: Final[tuple[str, ...]] = (
+    """
+    CREATE TABLE public.tenants (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      name text NOT NULL,
+      slug text NOT NULL,
+      tone text,
+      guidelines jsonb,
+      glossary jsonb,
+      status text NOT NULL,
+      plan text,
+      trial_ends_at timestamptz,
+      auto_publish boolean NOT NULL DEFAULT false,
+      llm_daily_budget_usd numeric(10, 2),
+      offboarded_at timestamptz,
+      purge_after timestamptz,
+      data_purged_at timestamptz,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_tenants PRIMARY KEY (id),
+      CONSTRAINT uq_tenants_slug UNIQUE (slug),
+      CONSTRAINT ck_tenants_slug CHECK (slug ~ '^[a-z0-9][a-z0-9-]{1,39}$'),
+      CONSTRAINT ck_tenants_guidelines CHECK (jsonb_typeof(guidelines) = 'array'),
+      CONSTRAINT ck_tenants_glossary CHECK (jsonb_typeof(glossary) = 'object'),
+      CONSTRAINT ck_tenants_status
+        CHECK (status IN ('trial', 'active', 'suspended', 'offboarded')),
+      CONSTRAINT ck_tenants_trial CHECK (status <> 'trial' OR trial_ends_at IS NOT NULL),
+      CONSTRAINT ck_tenants_auto_publish CHECK (auto_publish = false),
+      CONSTRAINT ck_tenants_llm_daily_budget_usd
+        CHECK (llm_daily_budget_usd >= 0 AND llm_daily_budget_usd <> 'NaN'),
+      CONSTRAINT ck_tenants_offboarded
+        CHECK ((status = 'offboarded') = (offboarded_at IS NOT NULL))
+    )
+    """,
+    _updated_at_trigger("tenants"),
+    r"""
+    CREATE TABLE public.users (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      email text NOT NULL,
+      hashed_password text,
+      auth_provider text,
+      is_active boolean NOT NULL DEFAULT true,
+      display_name text,
+      email_verified_at timestamptz,
+      last_login_at timestamptz,
+      erased_at timestamptz,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_users PRIMARY KEY (id),
+      CONSTRAINT ck_users_email CHECK (
+        email = btrim(email) AND email ~ '^[^@\s]+@[^@\s]+$' AND octet_length(email) <= 254
+      ),
+      CONSTRAINT ck_users_credential CHECK (
+        hashed_password IS NOT NULL OR auth_provider IS NOT NULL OR erased_at IS NOT NULL
+      )
+    )
+    """,
+    "CREATE UNIQUE INDEX uq_users_email_lower ON public.users (lower(email))",
+    _updated_at_trigger("users"),
+)
+IDENTITY_A_DOWN: Final[tuple[str, ...]] = (
+    "DROP TABLE public.users",
+    "DROP TABLE public.tenants",
+)
+
 SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (FUNCTIONS_UP, FUNCTIONS_DOWN),
     (FACT_MAP_UP, FACT_MAP_DOWN),
+    (IDENTITY_A_UP, IDENTITY_A_DOWN),
 )
 
 
