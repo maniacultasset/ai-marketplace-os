@@ -390,3 +390,69 @@ def test_role_passwords_all_or_nothing_when_a_later_alter_fails(mimic: Mimic) ->
     assert "lock timeout" in run.stderr
     assert _all_null(mimic)
     assert "SCRAM-SHA-256$" not in mimic.logs()
+
+
+# ---- a deadlock with the file's transaction (fix round 3: F7, F8) ----
+
+DEADLOCK_APP = "s5_role_deadlock_holder"
+_DEADLOCK_WAITING = (
+    "SELECT count(*) FROM pg_stat_activity "
+    "WHERE application_name = 's5_role_deadlock_holder' AND query LIKE '%pg_sleep%'"
+)
+
+
+@pytest.mark.parametrize("victim", ["holder", "file"])
+def test_role_passwords_deadlock_report_never_logs_verifier(mimic: Mimic, victim: str) -> None:
+    """A deadlock report logs every waiting session's statement (errdetail_log), whatever
+    log_min_error_statement says. The holder takes migrator's row, sleeps while the file takes
+    app_rw's and waits on migrator, then alters app_rw: a lock cycle. With `holder` the holder
+    detects it first and the file commits; with `file` the file's session detects it and fails.
+    Either way no statement carrying a verifier may wait on a lock, so none is in the report."""
+    file_detects = victim == "file"
+    # boot's longer deadlock_timeout lets the cycle form before the file's detector runs.
+    settings = (*QUIET, "deadlock_timeout = '5s'") if file_detects else QUIET
+    _reset_passwords(mimic, boot_settings=settings)
+    reports_before = mimic.logs().count("deadlock detected")
+    rw = _verifier(secrets.token_urlsafe(18))
+    mig = _verifier(secrets.token_urlsafe(18))
+    holder = subprocess.Popen(
+        [
+            *("docker", "exec", "-i", mimic.name, "psql", "-h", "127.0.0.1"),
+            *("-U", "postgres", "-d", "mimic", "-X", "-q"),
+        ],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    )
+    assert holder.stdin is not None
+    holder.stdin.write(
+        f"SET application_name = '{DEADLOCK_APP}';\n"
+        f"SET deadlock_timeout = '{'60s' if file_detects else '1s'}';\n"
+        "BEGIN; ALTER ROLE migrator CONNECTION LIMIT 7; SELECT pg_sleep(3);\n"
+        "ALTER ROLE app_rw CONNECTION LIMIT 7; ROLLBACK;\n"
+    )
+    holder.stdin.close()
+    try:
+        deadline = time.monotonic() + 30
+        while mimic.psql(_DEADLOCK_WAITING) != [("1",)]:
+            assert time.monotonic() < deadline, "the deadlock holder never started"
+            time.sleep(0.1)
+        run = _run_passwords(mimic, {"APP_RW_SCRAM": rw, "MIGRATOR_SCRAM": mig})
+        holder.wait(timeout=60)
+    finally:
+        if holder.poll() is None:
+            holder.kill()
+    logs = mimic.logs()
+    # The cycle did form and was reported, so the report's text is what this test checks.
+    assert logs.count("deadlock detected") == reports_before + 1, logs[-2000:]
+    if file_detects:
+        assert run.returncode == 3, run.stderr
+        assert "deadlock detected" in run.stderr
+        assert _all_null(mimic)
+    else:
+        assert run.returncode == 0, run.stderr
+        assert _passwords(mimic) == {"app_rw": rw, "app_ro": "", "migrator": mig}
+    assert "SCRAM-SHA-256$" not in logs
+    for verifier in (rw, mig):
+        assert verifier.rsplit(":", 1)[1] not in logs

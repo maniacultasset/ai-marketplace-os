@@ -158,6 +158,17 @@ def test_password_file_is_psql_only_and_verifier_only(repo_root: Path) -> None:
     commit = lines.index("COMMIT;")
     alter_lines = [i for i, line in enumerate(lines) if line.startswith("ALTER ROLE ")]
     assert pw_safe < begin < min(alter_lines) and max(alter_lines) < commit
+    # A deadlock report logs every waiting statement whatever log_min_error_statement says, so
+    # each target row is taken by a verifier-free no-op before any PASSWORD ALTER may wait on it.
+    locks = [
+        i
+        for i, line in enumerate(lines)
+        if re.fullmatch(r"ALTER ROLE (app_rw|app_ro|migrator) CONNECTION LIMIT :\1_limit;", line)
+    ]
+    assert len(locks) == 3
+    passwords = [i for i in alter_lines if "PASSWORD" in lines[i]]
+    assert begin < min(locks) and max(locks) < min(passwords)
+    assert sorted(locks + passwords) == alter_lines
 
 
 def test_makefile_passes_scram_vars_by_name(repo_root: Path) -> None:

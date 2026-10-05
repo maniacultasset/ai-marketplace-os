@@ -10,8 +10,13 @@
 -- role must exist and be alterable. An ALTER ROLE can still fail (lock or statement timeout, cancel,
 -- read-only session, replica), and log_min_error_statement would then log it with its verifier, so
 -- it must be panic: the file sets it when the login may (superuser, or GRANT SET), otherwise set the
--- Cloud SQL flag log_min_error_statement=panic first. The ALTER ROLEs run in one transaction, so a
--- failure sets no password, and no ALTER ROLE carrying a verifier is logged or kept.
+-- Cloud SQL flag log_min_error_statement=panic first. A deadlock report logs every waiting
+-- statement whatever log_min_error_statement says, so after BEGIN the file first takes each target
+-- role's pg_authid row with a no-op ALTER ROLE ... CONNECTION LIMIT (its current value); the
+-- PASSWORD ALTERs then never wait on a lock, so none appears in a deadlock report.
+-- The ALTER ROLEs run in one transaction, so a failure sets no password, and no ALTER ROLE carrying
+-- a verifier is logged or kept. Each one is visible in pg_stat_activity.query (superusers,
+-- pg_read_all_stats) until the next statement runs, milliseconds later.
 \set ON_ERROR_STOP on
 \set VERBOSITY terse
 \set scram_ok `for v in "${APP_RW_SCRAM-}" "${APP_RO_SCRAM-}" "${MIGRATOR_SCRAM-}"; do case "$v" in '') continue ;; *[!A-Za-z0-9+/=:\$-]*) echo false; exit 0 ;; 'SCRAM-SHA-256$'[1-9]*:*'$'*:*) ;; *) echo false; exit 0 ;; esac; r=${v#'SCRAM-SHA-256$'}; i=${r%%:*}; r=${r#*:}; s=${r%%'$'*}; r=${r#*'$'}; k=${r%%:*}; e=${r#*:}; case "$i" in *[!0-9]*|??????????*) echo false; exit 0 ;; esac; case "$s" in ''|*[!A-Za-z0-9+/=]*|*=*[!=]*|*===) echo false; exit 0 ;; esac; [ $((${#s} % 4)) -eq 0 ] && [ "$e" != "$r" ] || { echo false; exit 0; }; for x in "$k" "$e"; do case "${x%=}" in *[!A-Za-z0-9+/]*) echo false; exit 0 ;; esac; [ ${#x} -eq 44 ] && [ "${x%=}" != "$x" ] || { echo false; exit 0; }; done; done; echo true`
@@ -45,19 +50,32 @@ SELECT current_setting('log_statement') = 'none'
 DO $$ BEGIN RAISE EXCEPTION 'the server logs or keeps statements or failing statements, or a target role is missing or not alterable; no password was set'; END $$;
 \endif
 BEGIN;
+SELECT max(rolconnlimit) FILTER (WHERE rolname = 'app_rw') AS app_rw_limit,
+       max(rolconnlimit) FILTER (WHERE rolname = 'app_ro') AS app_ro_limit,
+       max(rolconnlimit) FILTER (WHERE rolname = 'migrator') AS migrator_limit
+  FROM pg_roles WHERE rolname IN ('app_rw', 'app_ro', 'migrator') \gset
+\endif
+\set app_rw_set `test -n "${APP_RW_SCRAM-}" && echo true || echo false`
+\set app_ro_set `test -n "${APP_RO_SCRAM-}" && echo true || echo false`
+\set migrator_set `test -n "${MIGRATOR_SCRAM-}" && echo true || echo false`
+\if :app_rw_set
+ALTER ROLE app_rw CONNECTION LIMIT :app_rw_limit;
+\endif
+\if :app_ro_set
+ALTER ROLE app_ro CONNECTION LIMIT :app_ro_limit;
+\endif
+\if :migrator_set
+ALTER ROLE migrator CONNECTION LIMIT :migrator_limit;
 \endif
 \getenv app_rw_scram APP_RW_SCRAM
-\set app_rw_set `test -n "${APP_RW_SCRAM-}" && echo true || echo false`
 \if :app_rw_set
 ALTER ROLE app_rw PASSWORD :'app_rw_scram';
 \endif
 \getenv app_ro_scram APP_RO_SCRAM
-\set app_ro_set `test -n "${APP_RO_SCRAM-}" && echo true || echo false`
 \if :app_ro_set
 ALTER ROLE app_ro PASSWORD :'app_ro_scram';
 \endif
 \getenv migrator_scram MIGRATOR_SCRAM
-\set migrator_set `test -n "${MIGRATOR_SCRAM-}" && echo true || echo false`
 \if :migrator_set
 ALTER ROLE migrator PASSWORD :'migrator_scram';
 \endif
