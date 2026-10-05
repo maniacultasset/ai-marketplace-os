@@ -232,3 +232,15 @@ def test_background_converts_band_only(mode: str, monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(Image.Image, "convert", spy)
     assert passes(data) is True
     assert sizes and (1000, 1000) not in sizes
+
+
+def test_background_rows_are_anded_across_packs() -> None:
+    """Pins TEAM-QUESTIONS T110 (2): background rows are not pack alternatives (only aspect ratio
+    is), so a second row cannot express "white or light"; every selected row must pass."""
+    rules = [
+        image_rule("background", marketplace="flipkart", rgb=(255, 255, 255)),
+        image_rule("background", marketplace="flipkart", pack="light_bg", rgb=(240, 240, 240)),
+    ]
+    for border in (fx.WHITE, (240, 240, 240)):
+        report = run(fx.png(1000, 1000, border=border), rules, marketplace="flipkart")
+        assert codes(report) == ["BACKGROUND_OFF"]
