@@ -149,3 +149,24 @@ def test_imports_only_stdlib_and_mkos_schemas(repo_root: Path) -> None:
                 "sys",
                 "pathlib",
             }
+
+
+def test_fails_when_default_dump_emits_pass_underscore(repo_root: Path, tmp_path: Path) -> None:
+    """AC 3: a plain `ImageReport.model_dump()` (no `by_alias`) must emit `pass`."""
+    wrapper = tmp_path / "run_check.py"
+    wrapper.write_text(
+        "import runpy, sys\n"
+        "from mkos_schemas.images import ImageReport\n"
+        "ImageReport.model_config['serialize_by_alias'] = False\n"
+        "ImageReport.model_rebuild(force=True)\n"
+        f"sys.argv = ['contracts_check', '--fixtures', {str(tmp_path / 'fixtures')!r}]\n"
+        f"runpy.run_path({str(repo_root / 'scripts/ci/contracts_check.py')!r}, run_name='__main__')\n",
+        encoding="utf-8",
+    )
+    fixtures = tmp_path / "fixtures"
+    _copy_repo_fixtures(repo_root, fixtures)
+    out = subprocess.run(
+        [sys.executable, str(wrapper)], cwd=repo_root, capture_output=True, text=True
+    )
+    assert out.returncode != 0
+    assert "pass_ emitted" in out.stderr

@@ -153,7 +153,11 @@ leg contracts-import-error contracts 'ImportError: seeded' seed_schemas_import_e
 leg contracts-bad-hash contracts '[Hh]ash' seed_bad_build_hash make contracts
 leg schemas-drift-byte schemas-drift 'diff --git' seed_drift_byte make schemas-drift
 seed_contracts_ebay() { replace packages/schemas/fixtures/CanonicalListing.json '"marketplace": "amazon"' '"marketplace": "ebay"'; }
-seed_pass_underscore() { replace packages/schemas/src/mkos_schemas/base.py 'serialize_by_alias=True' 'serialize_by_alias=False'; }
+seed_pass_underscore() {  # WireModel's flag (ImageReport is a WireModel), not StrictModel's
+  replace packages/schemas/src/mkos_schemas/base.py \
+    $'extra="ignore",\n        validate_by_name=True,\n        validate_by_alias=True,\n        serialize_by_alias=True,' \
+    $'extra="ignore",\n        validate_by_name=True,\n        validate_by_alias=True,\n        serialize_by_alias=False,'
+}
 seed_missing_import_fixture() { rm -f packages/schemas/fixtures/ImportReport.json; }
 seed_no_fixtures() { rm -rf packages/schemas/fixtures; }
 seed_drift_hand_edit() {

@@ -46,10 +46,9 @@ def main(argv: list[str] | None = None) -> int:
         dumped = obj.model_dump(by_alias=True, mode="json")
         if dumped != raw:
             return _fail(f"round-trip changed: {model.__name__}")
-    schema = json.dumps(ImageReport.model_json_schema(mode="serialization"))
-    if "pass_" in schema:
-        return _fail("pass_ emitted")
-    if "pass" not in schema:
+    # AC 3: the serialization schema and a plain model_dump() (no by_alias) both say `pass`.
+    props = ImageReport.model_json_schema(mode="serialization").get("properties", {})
+    if "pass_" in props or "pass" not in props:
         return _fail("pass_ emitted")
     dumped = ImageReport.model_validate(
         {
@@ -59,8 +58,8 @@ def main(argv: list[str] | None = None) -> int:
             "pass": True,
             "processed_at": "2026-01-01T00:00:00Z",
         }
-    ).model_dump(by_alias=True, mode="json")
-    if "pass_" in json.dumps(dumped):
+    ).model_dump(mode="json")
+    if "pass_" in dumped or "pass" not in dumped:
         return _fail("pass_ emitted")
     return 0
 
