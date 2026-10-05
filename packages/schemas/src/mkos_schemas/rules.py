@@ -70,7 +70,14 @@ class ImageRequirementParams(StrictModel):
     min_fill: float | None = Field(default=None, ge=0.0, le=1.0)
     max_bytes: int | None = Field(default=None, gt=0)
     allowed_formats: Annotated[list[NonBlankStr], Field(max_length=8)] = Field(default_factory=list)
-    rgb: tuple[Annotated[int, Field(ge=0, le=255)], Annotated[int, Field(ge=0, le=255)], Annotated[int, Field(ge=0, le=255)]] | None = None
+    rgb: (
+        tuple[
+            Annotated[int, Field(ge=0, le=255)],
+            Annotated[int, Field(ge=0, le=255)],
+            Annotated[int, Field(ge=0, le=255)],
+        ]
+        | None
+    ) = None
 
     @model_validator(mode="after")
     def _at_least_one(self) -> ImageRequirementParams:

@@ -4,16 +4,14 @@ from __future__ import annotations
 
 import inspect
 import json
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any, cast, get_args
 from uuid import UUID
 
 import pytest
-from pydantic import BaseModel, TypeAdapter, ValidationError
-
 from mkos_schemas.codes import ErrorCode
-from mkos_schemas.enums import Marketplace, Severity
+from mkos_schemas.enums import Marketplace
 from mkos_schemas.rules import (
     PLACEHOLDERS,
     AllowedValues,
@@ -24,7 +22,6 @@ from mkos_schemas.rules import (
     FactBackedAttribute,
     FactSource,
     ImageRequirement,
-    ImageRequirementParams,
     MaxItems,
     MaxLength,
     MinItems,
@@ -36,19 +33,20 @@ from mkos_schemas.rules import (
     RuleDef,
     RuleSet,
 )
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 _RID = UUID("11111111-1111-1111-1111-111111111111")
-_TS = datetime(2026, 1, 1, tzinfo=timezone.utc)
+_TS = datetime(2026, 1, 1, tzinfo=UTC)
 _RULE_DEF_ADAPTER: TypeAdapter[RuleDef] = TypeAdapter(RuleDef)
 
 
 def _rule(**overrides: object) -> Rule:
-    base = dict(
-        id=_RID,
-        marketplace=Marketplace.AMAZON,
-        field="content.title",
-        rule_def={"type": "max_length", "message": "too long {limit}", "limit": 200},
-    )
+    base = {
+        "id": _RID,
+        "marketplace": Marketplace.AMAZON,
+        "field": "content.title",
+        "rule_def": {"type": "max_length", "message": "too long {limit}", "limit": 200},
+    }
     base.update(overrides)
     return Rule.model_validate(base)
 
@@ -78,11 +76,10 @@ def test_ruledef_discriminator() -> None:
 
 
 def test_ruledef_members_match_sources() -> None:
-    from . import canon_sources
 
-    a16 = (
-        Path(__file__).resolve().parents[3] / "docs/canon/CANON-ADDENDUM.md"
-    ).read_text(encoding="utf-8")
+    a16 = (Path(__file__).resolve().parents[3] / "docs/canon/CANON-ADDENDUM.md").read_text(
+        encoding="utf-8"
+    )
     idx = a16.find("## 16. RuleSet")
     section = a16[idx : idx + 800]
     canon_five = {
@@ -94,9 +91,9 @@ def test_ruledef_members_match_sources() -> None:
     }
     for name in canon_five:
         assert name in section
-    db = (
-        Path(__file__).resolve().parents[3] / "docs/architecture/DATABASE.md"
-    ).read_text(encoding="utf-8")
+    db = (Path(__file__).resolve().parents[3] / "docs/architecture/DATABASE.md").read_text(
+        encoding="utf-8"
+    )
     for name in (
         "min_items",
         "allowed_values",
@@ -109,11 +106,7 @@ def test_ruledef_members_match_sources() -> None:
         "fact_backed_attribute",
     ):
         assert f"`{name}`" in db
-    members = {
-        c.__name__
-        for c in get_args(get_args(RuleDef)[0])
-        if inspect.isclass(c)
-    }
+    members = {c.__name__ for c in get_args(get_args(RuleDef)[0]) if inspect.isclass(c)}
     expected = {
         "MaxLength",
         "MinLength",
@@ -134,7 +127,7 @@ def test_ruledef_members_match_sources() -> None:
 
 
 def test_ruledef_default_error_codes() -> None:
-    cases = [
+    cases: list[tuple[type[BaseModel], ErrorCode, dict[str, Any]]] = [
         (MaxLength, ErrorCode.FIELD_TOO_LONG, {"limit": 10}),
         (MinLength, ErrorCode.FIELD_TOO_SHORT, {"limit": 1}),
         (BannedTerms, ErrorCode.BANNED_TERM, {"terms": ["bad"]}),
@@ -178,7 +171,7 @@ def test_ruledef_default_error_codes() -> None:
             {"attribute": "price"},
         ),
     ]
-    type_literals = {
+    type_literals: dict[type[BaseModel], str] = {
         MaxLength: "max_length",
         MinLength: "min_length",
         BannedTerms: "banned_terms",
@@ -195,10 +188,9 @@ def test_ruledef_default_error_codes() -> None:
         FactBackedAttribute: "fact_backed_attribute",
     }
     for cls, code, extra in cases:
-        model = cast(type[BaseModel], cls)
         payload: dict[str, Any] = {"type": type_literals[cls], "message": "m", **extra}
-        obj = model.model_validate(payload)
-        assert obj.error_code is code
+        obj = cls.model_validate(payload)
+        assert obj.model_dump()["error_code"] is code
 
 
 def test_rule_fields_match_a16() -> None:
@@ -250,27 +242,26 @@ def test_ruleset_docstring() -> None:
 
 def test_rule_message_placeholders_documented() -> None:
     with pytest.raises(ValidationError):
-        MaxLength.model_validate(
-            {"type": "max_length", "message": "bad {price}", "limit": 1}
-        )
+        MaxLength.model_validate({"type": "max_length", "message": "bad {price}", "limit": 1})
     with pytest.raises(ValidationError):
         MaxLength.model_validate({"type": "max_length", "message": "{", "limit": 1})
     MaxLength.model_validate(
         {"type": "max_length", "message": "allowed {allowed_values}", "limit": 1}
     )
-    assert PLACEHOLDERS == frozenset(
-        {"value", "limit", "term", "attribute", "allowed_values", "slot", "threshold"}
+    assert (
+        frozenset({"value", "limit", "term", "attribute", "allowed_values", "slot", "threshold"})
+        == PLACEHOLDERS
     )
 
 
 def test_rule_field_vocabulary() -> None:
-    img = dict(
-        type="image_requirement",
-        message="img",
-        slot="main",
-        check="format",
-        params={"min_px": 100},
-    )
+    img = {
+        "type": "image_requirement",
+        "message": "img",
+        "slot": "main",
+        "check": "format",
+        "params": {"min_px": 100},
+    }
     _rule(field="images", rule_def=img)
     with pytest.raises(ValidationError):
         _rule(field="content.title", rule_def=img)
@@ -281,12 +272,8 @@ def test_rule_field_vocabulary() -> None:
 def test_condition_operator_value_rules() -> None:
     from mkos_schemas.rules import Condition
 
-    Condition.model_validate(
-        {"path": "attributes.color", "op": "in", "values": ["red"]}
-    )
-    Condition.model_validate(
-        {"path": "attributes.color", "op": "eq", "value": "red"}
-    )
+    Condition.model_validate({"path": "attributes.color", "op": "in", "values": ["red"]})
+    Condition.model_validate({"path": "attributes.color", "op": "eq", "value": "red"})
     Condition.model_validate({"path": "attributes.color", "op": "present"})
     with pytest.raises(ValidationError):
         Condition.model_validate({"path": "attributes.color", "op": "in"})
@@ -330,17 +317,11 @@ def test_pattern_regex_no_nested_quantifiers() -> None:
 
 
 def test_banned_terms_caps() -> None:
-    BannedTerms.model_validate(
-        {"type": "banned_terms", "message": "m", "terms": ["x"] * 500}
-    )
+    BannedTerms.model_validate({"type": "banned_terms", "message": "m", "terms": ["x"] * 500})
     with pytest.raises(ValidationError):
-        BannedTerms.model_validate(
-            {"type": "banned_terms", "message": "m", "terms": ["x"] * 501}
-        )
+        BannedTerms.model_validate({"type": "banned_terms", "message": "m", "terms": ["x"] * 501})
     with pytest.raises(ValidationError):
-        BannedTerms.model_validate(
-            {"type": "banned_terms", "message": "m", "terms": [" "]}
-        )
+        BannedTerms.model_validate({"type": "banned_terms", "message": "m", "terms": [" "]})
 
 
 def test_rule_suggestion_max_1000() -> None:
@@ -366,41 +347,39 @@ def test_rule_suggestion_max_1000() -> None:
 def test_ruleset_rules_count_cap() -> None:
     one = _rule()
     RuleSet.model_validate(
-        dict(
-            marketplace="amazon",
-            category="apparel",
-            rules=[one] * 500,
-            loaded_at=_TS,
-        )
+        {
+            "marketplace": "amazon",
+            "category": "apparel",
+            "rules": [one] * 500,
+            "loaded_at": _TS,
+        }
     )
     with pytest.raises(ValidationError):
         RuleSet.model_validate(
-            dict(
-                marketplace="amazon",
-                category="apparel",
-                rules=[one] * 501,
-                loaded_at=_TS,
-            )
+            {
+                "marketplace": "amazon",
+                "category": "apparel",
+                "rules": [one] * 501,
+                "loaded_at": _TS,
+            }
         )
 
 
 def test_ruleset_version_and_loaded_at() -> None:
     with pytest.raises(ValidationError):
         RuleSet.model_validate(
-            dict(
-                marketplace="amazon",
-                category="apparel",
-                loaded_at=datetime(2026, 1, 1),
-            )
+            {
+                "marketplace": "amazon",
+                "category": "apparel",
+                "loaded_at": datetime(2026, 1, 1),
+            }
         )
 
 
 def test_policy_ref_source_vocabulary() -> None:
-    PolicyRef.model_validate(
-        dict(source="platform", title="t", retrieved_on=date(2026, 1, 1))
-    )
+    PolicyRef.model_validate({"source": "platform", "title": "t", "retrieved_on": date(2026, 1, 1)})
     with pytest.raises(ValidationError):
-        PolicyRef.model_validate(dict(source="unknown", title="t"))
+        PolicyRef.model_validate({"source": "unknown", "title": "t"})
 
 
 def test_rule_category_slug_or_null() -> None:
@@ -417,6 +396,4 @@ def test_rule_base_pack_defaults_core() -> None:
         {"type": "max_length", "message": "m", "limit": 1, "pack": "brand_tone"}
     )
     with pytest.raises(ValidationError):
-        MaxLength.model_validate(
-            {"type": "max_length", "message": "m", "limit": 1, "pack": "Bad"}
-        )
+        MaxLength.model_validate({"type": "max_length", "message": "m", "limit": 1, "pack": "Bad"})

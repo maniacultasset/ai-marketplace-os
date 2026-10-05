@@ -5,22 +5,21 @@ from __future__ import annotations
 from uuid import UUID
 
 import pytest
-from pydantic import ValidationError
-
 from mkos_schemas.enums import ItemMarketplaceState, Marketplace, MarketplaceState
 from mkos_schemas.publish import FieldResult, ItemResult, ListingResult
+from pydantic import ValidationError
 
 _LID = UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 _PID = UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
 
 
 def _listing(**overrides: object) -> ListingResult:
-    base = dict(
-        listing_id=_LID,
-        marketplace=Marketplace.AMAZON,
-        status="published",
-        idempotency_key="key-1",
-    )
+    base = {
+        "listing_id": _LID,
+        "marketplace": Marketplace.AMAZON,
+        "status": "published",
+        "idempotency_key": "key-1",
+    }
     base.update(overrides)
     return ListingResult.model_validate(base)
 
@@ -33,9 +32,9 @@ def test_listing_result_status_vocabulary() -> None:
 
 
 def test_field_result_field_is_legal_path() -> None:
-    FieldResult.model_validate(dict(field="content.title", status="succeeded"))
+    FieldResult.model_validate({"field": "content.title", "status": "succeeded"})
     with pytest.raises(ValidationError):
-        FieldResult.model_validate(dict(field="title", status="succeeded"))
+        FieldResult.model_validate({"field": "title", "status": "succeeded"})
 
 
 def test_listing_result_rev3_fields() -> None:
@@ -43,11 +42,11 @@ def test_listing_result_rev3_fields() -> None:
         submission_ref="sub-1",
         marketplace_state=MarketplaceState.LIVE,
         items=[
-            dict(
-                product_id=_PID,
-                seller_sku="SKU1",
-                marketplace_state=ItemMarketplaceState.LIVE,
-            )
+            {
+                "product_id": _PID,
+                "seller_sku": "SKU1",
+                "marketplace_state": ItemMarketplaceState.LIVE,
+            }
         ],
     )
     assert obj.submission_ref == "sub-1"
@@ -58,11 +57,11 @@ def test_listing_result_rev3_fields() -> None:
 def test_item_result_uses_item_marketplace_state() -> None:
     with pytest.raises(ValidationError):
         ItemResult.model_validate(
-            dict(
-                product_id=_PID,
-                seller_sku="s",
-                marketplace_state=MarketplaceState.PARTIALLY_LIVE,
-            )
+            {
+                "product_id": _PID,
+                "seller_sku": "s",
+                "marketplace_state": MarketplaceState.PARTIALLY_LIVE,
+            }
         )
     _listing(marketplace_state=MarketplaceState.PARTIALLY_LIVE)
 
@@ -70,7 +69,7 @@ def test_item_result_uses_item_marketplace_state() -> None:
 def test_listing_result_idempotency_key_required() -> None:
     with pytest.raises(ValidationError):
         ListingResult.model_validate(
-            dict(listing_id=_LID, marketplace="amazon", status="published")
+            {"listing_id": _LID, "marketplace": "amazon", "status": "published"}
         )
     with pytest.raises(ValidationError):
         _listing(idempotency_key="  ")

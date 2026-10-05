@@ -10,7 +10,6 @@ from pathlib import Path
 
 from mkos_schemas.export import MODELS
 from mkos_schemas.images import ImageReport
-from pydantic import BaseModel
 
 
 def _fail(reason: str) -> int:

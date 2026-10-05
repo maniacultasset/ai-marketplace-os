@@ -3,30 +3,29 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID
 
 import pytest
+from mkos_schemas.agent import AgentRunRecord
 from pydantic import ValidationError
 
-from mkos_schemas.agent import AgentName, AgentRunRecord, Trigger
-
-_TS = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+_TS = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
 _TID = UUID("11111111-1111-1111-1111-111111111111")
 
 
 def _run(**overrides: object) -> AgentRunRecord:
-    base = dict(
-        id=UUID("22222222-2222-2222-2222-222222222222"),
-        tenant_id=_TID,
-        request_id="req-1",
-        agent_name="content",
-        trigger="generate",
-        status="completed",
-        started_at=_TS,
-        created_at=_TS,
-    )
+    base = {
+        "id": UUID("22222222-2222-2222-2222-222222222222"),
+        "tenant_id": _TID,
+        "request_id": "req-1",
+        "agent_name": "content",
+        "trigger": "generate",
+        "status": "completed",
+        "started_at": _TS,
+        "created_at": _TS,
+    }
     base.update(overrides)
     return AgentRunRecord.model_validate(base)
 

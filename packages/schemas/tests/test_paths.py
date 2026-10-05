@@ -8,7 +8,6 @@ from uuid import UUID
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
-
 from mkos_schemas.enums import ImageSlot, ListingStatus, Marketplace
 from mkos_schemas.listing import CanonicalListing, ImageRef, ListingContent, ListingKeywords
 from mkos_schemas.paths import (

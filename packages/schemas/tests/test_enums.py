@@ -7,6 +7,7 @@ from enum import StrEnum
 
 import mkos_schemas.enums as enums_mod
 from mkos_schemas.enums import (
+    PUBLISHABLE_SLOTS,
     ErrorClass,
     ErrorSource,
     FixAction,
@@ -18,7 +19,6 @@ from mkos_schemas.enums import (
     Marketplace,
     MarketplaceState,
     PipelineStage,
-    PUBLISHABLE_SLOTS,
     RetryClass,
     Severity,
 )
@@ -63,9 +63,7 @@ def _enum_block_values(block: str, class_name: str) -> list[str]:
 
 
 def test_enum_listing_status_matches_canon() -> None:
-    expected = set(
-        canon_sources.canon_row_values("Listing status — persisted vocabulary")
-    )
+    expected = set(canon_sources.canon_row_values("Listing status — persisted vocabulary"))
     assert _values(ListingStatus) == expected
 
 
@@ -73,9 +71,7 @@ def test_enum_pipeline_stage_matches_canon() -> None:
     block = canon_sources.addendum_block("18")
     from_block = set(_enum_block_values(block, "PipelineStage"))
     canon = set(
-        canon_sources.canon_row_values(
-            "Pipeline stage — transient vocabulary and where it lives"
-        )
+        canon_sources.canon_row_values("Pipeline stage — transient vocabulary and where it lives")
     )
     assert _values(PipelineStage) == from_block == canon
 
@@ -101,7 +97,11 @@ def test_enum_image_slot_matches_canon() -> None:
 
 def test_enum_marketplace_matches_draft() -> None:
     block = canon_sources.draft_block("enums.py — the shared vocabularies")
-    assert _values(Marketplace) == {"amazon", "flipkart"}
+    body = block[block.find("class Marketplace(") :]
+    body = body[: body.find("\nclass ", 1)]
+    expected = set(re.findall(r'= "([^"]+)"', body))
+    assert expected == {"amazon", "flipkart"}
+    assert _values(Marketplace) == expected
 
 
 def test_enum_severity_matches_rules_check() -> None:

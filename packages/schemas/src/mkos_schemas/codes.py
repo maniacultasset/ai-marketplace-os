@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from types import MappingProxyType
-from typing import Mapping
 
 from .enums import ErrorClass, FixAction, RetryClass
 
@@ -165,7 +165,7 @@ class ErrorCode(StrEnum):
     # --- ai ---
     TIMEOUT = "TIMEOUT"
 
-    TOKEN_LIMIT = "TOKEN_LIMIT"
+    TOKEN_LIMIT = "TOKEN_LIMIT"  # noqa: S105 - an error code name, not a credential
 
     # --- facts ---
     UNKNOWN_FACT_KEY = "UNKNOWN_FACT_KEY"
@@ -211,7 +211,9 @@ def _meta() -> dict[ErrorCode, CodeMeta]:
         ErrorCode,
         CodeMeta | tuple[ErrorClass | None, RetryClass, FixAction | None],
     ] = {
-        ErrorCode.ACCOUNT_PERMISSION_DENIED: CodeMeta(ErrorClass.ACCOUNT_PERMISSION, RetryClass.USER_ACTION),
+        ErrorCode.ACCOUNT_PERMISSION_DENIED: CodeMeta(
+            ErrorClass.ACCOUNT_PERMISSION, RetryClass.USER_ACTION
+        ),
         ErrorCode.API_REJECTED_PARTIAL: CodeMeta(ErrorClass.UNKNOWN, RetryClass.USER_ACTION),
         ErrorCode.AUTH_EXPIRED: CodeMeta(ErrorClass.ACCOUNT_PERMISSION, RetryClass.USER_ACTION),
         ErrorCode.BANNED_TERM: CodeMeta(ErrorClass.CONTENT_ERROR, RetryClass.AI_CORRECT),
@@ -221,23 +223,33 @@ def _meta() -> dict[ErrorCode, CodeMeta]:
         ErrorCode.BYTE_BUDGET_EXCEEDED: CodeMeta(ErrorClass.CONTENT_ERROR, RetryClass.AI_CORRECT),
         ErrorCode.CATEGORY_MISMATCH: CodeMeta(ErrorClass.CATEGORY_MISMATCH, RetryClass.USER_ACTION),
         ErrorCode.CATEGORY_NOT_MAPPED: CodeMeta(None, RetryClass.SYSTEM_FAILURE),
-        ErrorCode.COMPLIANCE_DECLARATION_MISSING: CodeMeta(ErrorClass.COMPLIANCE_ERROR, RetryClass.USER_ACTION),
+        ErrorCode.COMPLIANCE_DECLARATION_MISSING: CodeMeta(
+            ErrorClass.COMPLIANCE_ERROR, RetryClass.USER_ACTION
+        ),
         ErrorCode.CRITICAL_FACT_MISSING: CodeMeta(ErrorClass.MISSING_DATA, RetryClass.USER_ACTION),
         ErrorCode.CROSS_FIELD_MISMATCH: CodeMeta(ErrorClass.INVALID_VALUE, RetryClass.USER_ACTION),
-        ErrorCode.DUPLICATE_SKU_IN_FILE: CodeMeta(ErrorClass.IDENTIFIER_ERROR, RetryClass.USER_ACTION),
+        ErrorCode.DUPLICATE_SKU_IN_FILE: CodeMeta(
+            ErrorClass.IDENTIFIER_ERROR, RetryClass.USER_ACTION
+        ),
         ErrorCode.DUPLICATE_SUBMISSION_BLOCKED: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.FACTS_CHANGED_SINCE_APPROVAL: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.FACT_LEVEL_INVALID: CodeMeta(ErrorClass.INVALID_VALUE, RetryClass.USER_ACTION),
         ErrorCode.FACT_MISMATCH: CodeMeta(ErrorClass.INVALID_VALUE, RetryClass.AI_CORRECT),
-        ErrorCode.FACT_NEEDS_CONFIRMATION: CodeMeta(ErrorClass.MISSING_DATA, RetryClass.USER_ACTION),
+        ErrorCode.FACT_NEEDS_CONFIRMATION: CodeMeta(
+            ErrorClass.MISSING_DATA, RetryClass.USER_ACTION
+        ),
         ErrorCode.FACT_SOURCE_FORBIDDEN: CodeMeta(ErrorClass.INVALID_VALUE, RetryClass.USER_ACTION),
         ErrorCode.FIELD_TOO_LONG: CodeMeta(ErrorClass.CONTENT_ERROR, RetryClass.AI_CORRECT),
         ErrorCode.FIELD_TOO_SHORT: CodeMeta(ErrorClass.CONTENT_ERROR, RetryClass.AI_CORRECT),
         ErrorCode.GENERATION_FAILED: CodeMeta(None, RetryClass.USER_ACTION),
-        ErrorCode.HEADER_DUPLICATE_COLUMN: CodeMeta(ErrorClass.INVALID_VALUE, RetryClass.USER_ACTION),
+        ErrorCode.HEADER_DUPLICATE_COLUMN: CodeMeta(
+            ErrorClass.INVALID_VALUE, RetryClass.USER_ACTION
+        ),
         ErrorCode.HEADER_MISSING_COLUMN: CodeMeta(ErrorClass.MISSING_DATA, RetryClass.USER_ACTION),
         ErrorCode.HEADER_UNKNOWN_COLUMN: CodeMeta(ErrorClass.INVALID_VALUE, RetryClass.USER_ACTION),
-        ErrorCode.IDENTIFIER_DUPLICATE: CodeMeta(ErrorClass.IDENTIFIER_ERROR, RetryClass.USER_ACTION),
+        ErrorCode.IDENTIFIER_DUPLICATE: CodeMeta(
+            ErrorClass.IDENTIFIER_ERROR, RetryClass.USER_ACTION
+        ),
         ErrorCode.IDENTIFIER_INVALID: CodeMeta(ErrorClass.IDENTIFIER_ERROR, RetryClass.USER_ACTION),
         ErrorCode.IDENTIFIER_MISSING: CodeMeta(ErrorClass.IDENTIFIER_ERROR, RetryClass.USER_ACTION),
         ErrorCode.IMAGE_NON_COMPLIANT: CodeMeta(ErrorClass.MEDIA_ERROR, RetryClass.USER_ACTION),
@@ -246,13 +258,21 @@ def _meta() -> dict[ErrorCode, CodeMeta]:
         ErrorCode.INVALID_STATUS_TRANSITION: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.JOB_TIMEOUT: CodeMeta(None, RetryClass.SYSTEM_FAILURE),
         ErrorCode.JSON_INVALID: CodeMeta(None, RetryClass.AUTO_RETRY),
-        ErrorCode.KEYWORD_DUPLICATE: (ErrorClass.CONTENT_ERROR, RetryClass.AI_CORRECT, FixAction.REFORMAT),
+        ErrorCode.KEYWORD_DUPLICATE: (
+            ErrorClass.CONTENT_ERROR,
+            RetryClass.AI_CORRECT,
+            FixAction.REFORMAT,
+        ),
         ErrorCode.LISTING_ARCHIVED: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.LISTING_BUSY: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.LISTING_PAUSED: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.MAKER_CHECKER_VIOLATION: CodeMeta(None, RetryClass.USER_ACTION),
-        ErrorCode.MARKETPLACE_UNAVAILABLE: CodeMeta(ErrorClass.MARKETPLACE_TECHNICAL, RetryClass.AUTO_RETRY),
-        ErrorCode.MARKETPLACE_UNCONFIRMED: CodeMeta(ErrorClass.MARKETPLACE_TECHNICAL, RetryClass.AUTO_RETRY),
+        ErrorCode.MARKETPLACE_UNAVAILABLE: CodeMeta(
+            ErrorClass.MARKETPLACE_TECHNICAL, RetryClass.AUTO_RETRY
+        ),
+        ErrorCode.MARKETPLACE_UNCONFIRMED: CodeMeta(
+            ErrorClass.MARKETPLACE_TECHNICAL, RetryClass.AUTO_RETRY
+        ),
         ErrorCode.MARKETPLACE_UNKNOWN_ERROR: CodeMeta(ErrorClass.UNKNOWN, RetryClass.USER_ACTION),
         ErrorCode.MISSING_ATTRIBUTE: CodeMeta(ErrorClass.MISSING_DATA, RetryClass.USER_ACTION),
         ErrorCode.MODEL_UNAVAILABLE: CodeMeta(None, RetryClass.AUTO_RETRY),
@@ -263,19 +283,29 @@ def _meta() -> dict[ErrorCode, CodeMeta]:
         ErrorCode.REQUIRED_FIELD_MISSING: CodeMeta(ErrorClass.MISSING_DATA, RetryClass.USER_ACTION),
         ErrorCode.RETRY_EXHAUSTED: CodeMeta(None, RetryClass.SYSTEM_FAILURE),
         ErrorCode.SCHEMA_INVALID: CodeMeta(ErrorClass.CONTENT_ERROR, RetryClass.AI_CORRECT),
-        ErrorCode.SELLER_SKU_CONFLICT: CodeMeta(ErrorClass.IDENTIFIER_ERROR, RetryClass.USER_ACTION),
+        ErrorCode.SELLER_SKU_CONFLICT: CodeMeta(
+            ErrorClass.IDENTIFIER_ERROR, RetryClass.USER_ACTION
+        ),
         ErrorCode.SKU_CONFLICT: CodeMeta(ErrorClass.IDENTIFIER_ERROR, RetryClass.USER_ACTION),
         ErrorCode.SUBMISSION_ATTEMPTS_EXHAUSTED: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.SUBMISSION_IN_FLIGHT: CodeMeta(None, RetryClass.USER_ACTION),
-        ErrorCode.SUBMISSION_NOT_APPLIED: CodeMeta(ErrorClass.MARKETPLACE_TECHNICAL, RetryClass.AUTO_RETRY),
+        ErrorCode.SUBMISSION_NOT_APPLIED: CodeMeta(
+            ErrorClass.MARKETPLACE_TECHNICAL, RetryClass.AUTO_RETRY
+        ),
         ErrorCode.TIMEOUT: CodeMeta(None, RetryClass.AUTO_RETRY),
         ErrorCode.TOKEN_LIMIT: CodeMeta(None, RetryClass.AUTO_RETRY),
         ErrorCode.UNKNOWN_FACT_KEY: CodeMeta(ErrorClass.INVALID_VALUE, RetryClass.USER_ACTION),
         ErrorCode.UNSUPPORTED_CLAIM: CodeMeta(ErrorClass.CONTENT_ERROR, RetryClass.AI_CORRECT),
         ErrorCode.VALIDATION_FAILED: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.VALUE_NOT_ALLOWED: CodeMeta(ErrorClass.INVALID_VALUE, RetryClass.USER_ACTION),
-        ErrorCode.VARIANT_MATRIX_INCOMPLETE: CodeMeta(ErrorClass.VARIATION_ERROR, RetryClass.USER_ACTION),
-        ErrorCode.VARIATION_INVALID: (ErrorClass.VARIATION_ERROR, RetryClass.USER_ACTION, FixAction.REBUILD_VARIATION),
+        ErrorCode.VARIANT_MATRIX_INCOMPLETE: CodeMeta(
+            ErrorClass.VARIATION_ERROR, RetryClass.USER_ACTION
+        ),
+        ErrorCode.VARIATION_INVALID: (
+            ErrorClass.VARIATION_ERROR,
+            RetryClass.USER_ACTION,
+            FixAction.REBUILD_VARIATION,
+        ),
     }
     out: dict[ErrorCode, CodeMeta] = {}
     for code, item in raw.items():

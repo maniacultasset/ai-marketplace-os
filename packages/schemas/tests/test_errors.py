@@ -2,28 +2,26 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 from uuid import UUID
 
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
-from pydantic import ValidationError
-
 from mkos_schemas.codes import ErrorCode
-from mkos_schemas.enums import ErrorClass, ErrorSource, FixAction, Marketplace, RetryClass, Severity
+from mkos_schemas.enums import ErrorSource, FixAction, RetryClass, Severity
 from mkos_schemas.errors import MAX_ERROR_ITEMS, VALUE_SUBMITTED_MAX, ErrorItem, ErrorReport
+from pydantic import ValidationError
 
 
 def _item(**overrides: object) -> ErrorItem:
-    base = dict(
-        field="content.title",
-        error_code=ErrorCode.FIELD_TOO_LONG,
-        message="Title too long",
-        source=ErrorSource.RULES_ENGINE,
-        retryable=True,
-    )
+    base = {
+        "field": "content.title",
+        "error_code": ErrorCode.FIELD_TOO_LONG,
+        "message": "Title too long",
+        "source": ErrorSource.RULES_ENGINE,
+        "retryable": True,
+    }
     base.update(overrides)
     return ErrorItem.model_validate(base)
 
@@ -113,15 +111,15 @@ def test_error_item_raw_code_max_128() -> None:
 
 def test_error_report_attempts_capped_at_3() -> None:
     ErrorReport.model_validate(
-        dict(status="failed", attempts_used=3, max_attempts=3, errors=[])
+        {"status": "failed", "attempts_used": 3, "max_attempts": 3, "errors": []}
     )
     with pytest.raises(ValidationError):
         ErrorReport.model_validate(
-            dict(status="failed", attempts_used=4, max_attempts=3, errors=[])
+            {"status": "failed", "attempts_used": 4, "max_attempts": 3, "errors": []}
         )
     with pytest.raises(ValidationError):
         ErrorReport.model_validate(
-            dict(status="failed", attempts_used=0, max_attempts=0, errors=[])
+            {"status": "failed", "attempts_used": 0, "max_attempts": 0, "errors": []}
         )
 
 
@@ -129,26 +127,24 @@ def test_error_report_blocking_and_passed() -> None:
     err = _item(severity=Severity.ERROR)
     warn = _item(severity=Severity.WARNING, field="content.bullets[0]")
     report = ErrorReport.model_validate(
-        dict(status="failed", errors=[err, warn], attempts_used=1)
+        {"status": "failed", "errors": [err, warn], "attempts_used": 1}
     )
     assert len(report.blocking) == 1
     assert report.blocking[0].severity is Severity.ERROR
     assert report.passed is False
-    ok = ErrorReport.model_validate(
-        dict(status="passed", errors=[warn], attempts_used=0)
-    )
+    ok = ErrorReport.model_validate({"status": "passed", "errors": [warn], "attempts_used": 0})
     assert ok.passed is True
 
 
 def test_error_report_properties_not_serialized() -> None:
     report = ErrorReport.model_validate(
-        dict(
-            status="failed",
-            errors=[_item()],
-            attempts_used=1,
-            blocking=[],
-            passed=True,
-        )
+        {
+            "status": "failed",
+            "errors": [_item()],
+            "attempts_used": 1,
+            "blocking": [],
+            "passed": True,
+        }
     )
     dumped = report.model_dump()
     assert "blocking" not in dumped
@@ -213,9 +209,9 @@ def test_error_item_suggestion_max_1000() -> None:
 def test_error_report_errors_list_cap() -> None:
     one = _item()
     ErrorReport.model_validate(
-        dict(status="failed", errors=[one] * MAX_ERROR_ITEMS, attempts_used=0)
+        {"status": "failed", "errors": [one] * MAX_ERROR_ITEMS, "attempts_used": 0}
     )
     with pytest.raises(ValidationError):
         ErrorReport.model_validate(
-            dict(status="failed", errors=[one] * (MAX_ERROR_ITEMS + 1), attempts_used=0)
+            {"status": "failed", "errors": [one] * (MAX_ERROR_ITEMS + 1), "attempts_used": 0}
         )

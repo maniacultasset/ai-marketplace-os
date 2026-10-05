@@ -134,7 +134,7 @@ def test_contracts_script_installs_only_hashed_deps(repo_root: Path) -> None:
     assert "--seed" not in script
     assert "uv export --frozen --package mkos-schemas" in script
     assert "--require-hashes -r build-constraints.txt" in script
-    assert "--require-hashes -r \"$work/runtime.txt\"" in script
+    assert '--require-hashes -r "$work/runtime.txt"' in script
     assert "--no-build-isolation --no-index -e packages/schemas" in script
     assert "from mkos_schemas.listing import CanonicalListing" in script
     assert "contracts_check.py --fixtures packages/schemas/fixtures" in script

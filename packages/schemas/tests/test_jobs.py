@@ -4,16 +4,12 @@ from __future__ import annotations
 
 import json
 import math
-from datetime import datetime, timezone
-from decimal import Decimal
+from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
-from pydantic import SecretStr, ValidationError
-
 from mkos_schemas.agent import AgentRunRecord
-from mkos_schemas.base import SEAM_SECRET_DENY_NAMES, walk_seam_dicts_and_text
-from mkos_schemas.enums import JobState, Marketplace
+from mkos_schemas.enums import JobState
 from mkos_schemas.jobs import (
     AttributeSpec,
     BrandChunkDTO,
@@ -27,8 +23,9 @@ from mkos_schemas.jobs import (
 )
 from mkos_schemas.listing import CanonicalListing
 from mkos_schemas.rules import RuleSet
+from pydantic import SecretStr, ValidationError
 
-_TS = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
+_TS = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
 _TID = UUID("11111111-1111-1111-1111-111111111111")
 _PID = UUID("22222222-2222-2222-2222-222222222222")
 _LID = UUID("33333333-3333-3333-3333-333333333333")
@@ -37,30 +34,30 @@ _JID = UUID("44444444-4444-4444-4444-444444444444")
 
 def _ruleset() -> RuleSet:
     return RuleSet.model_validate(
-        dict(marketplace="amazon", category="apparel", loaded_at=_TS, rules=[])
+        {"marketplace": "amazon", "category": "apparel", "loaded_at": _TS, "rules": []}
     )
 
 
 def _template(**overrides: object) -> CategoryTemplate:
-    base = dict(marketplace="amazon", category="apparel")
+    base: dict[str, object] = {"marketplace": "amazon", "category": "apparel"}
     base.update(overrides)
     return CategoryTemplate.model_validate(base)
 
 
 def _context(**overrides: object) -> GenerationContext:
-    base = dict(
-        request_id="req-1",
-        job_id=_JID,
-        tenant_id=_TID,
-        product_id=_PID,
-        listing_id=_LID,
-        marketplace="amazon",
-        category="apparel",
-        product={"title": "Product"},
-        brand_profile={"tone": "warm"},
-        marketplace_rules=_ruleset(),
-        category_template=_template(),
-    )
+    base = {
+        "request_id": "req-1",
+        "job_id": _JID,
+        "tenant_id": _TID,
+        "product_id": _PID,
+        "listing_id": _LID,
+        "marketplace": "amazon",
+        "category": "apparel",
+        "product": {"title": "Product"},
+        "brand_profile": {"tone": "warm"},
+        "marketplace_rules": _ruleset(),
+        "category_template": _template(),
+    }
     base.update(overrides)
     return GenerationContext.model_validate(base)
 
@@ -76,70 +73,70 @@ def test_job_envelope_fields() -> None:
 
 def test_job_envelope_status_vocabulary() -> None:
     JobEnvelope.model_validate(
-        dict(
-            job_id=_JID,
-            kind="listing_generate",
-            status="queued",
-            request_id="r",
-            queued_at=_TS,
-        )
+        {
+            "job_id": _JID,
+            "kind": "listing_generate",
+            "status": "queued",
+            "request_id": "r",
+            "queued_at": _TS,
+        }
     )
     with pytest.raises(ValidationError):
         JobEnvelope.model_validate(
-            dict(
-                job_id=_JID,
-                kind="listing_generate",
-                status="timeout",
-                request_id="r",
-                queued_at=_TS,
-            )
+            {
+                "job_id": _JID,
+                "kind": "listing_generate",
+                "status": "timeout",
+                "request_id": "r",
+                "queued_at": _TS,
+            }
         )
 
 
 def test_job_envelope_bounds() -> None:
     JobEnvelope.model_validate(
-        dict(
-            job_id=_JID,
-            kind="listing_generate",
-            status="running",
-            progress_pct=100,
-            attempt=3,
-            max_attempts=3,
-            request_id="r",
-            queued_at=_TS,
-        )
+        {
+            "job_id": _JID,
+            "kind": "listing_generate",
+            "status": "running",
+            "progress_pct": 100,
+            "attempt": 3,
+            "max_attempts": 3,
+            "request_id": "r",
+            "queued_at": _TS,
+        }
     )
     with pytest.raises(ValidationError):
         JobEnvelope.model_validate(
-            dict(
-                job_id=_JID,
-                kind="listing_generate",
-                status="running",
-                progress_pct=101,
-                request_id="r",
-                queued_at=_TS,
-            )
+            {
+                "job_id": _JID,
+                "kind": "listing_generate",
+                "status": "running",
+                "progress_pct": 101,
+                "request_id": "r",
+                "queued_at": _TS,
+            }
         )
 
 
 def test_generate_request_is_strict_without_tenant_id() -> None:
     with pytest.raises(ValidationError):
         GenerateListingRequest.model_validate(
-            dict(product_id=_PID, marketplace="amazon", tenant_id=str(_TID))
+            {"product_id": _PID, "marketplace": "amazon", "tenant_id": str(_TID)}
         )
 
 
 def test_generate_request_user_instructions_cap() -> None:
     GenerateListingRequest.model_validate(
-        dict(product_id=_PID, marketplace="amazon", user_instructions="x" * 2000)
+        {"product_id": _PID, "marketplace": "amazon", "user_instructions": "x" * 2000}
     )
     with pytest.raises(ValidationError):
         GenerateListingRequest.model_validate(
-            dict(product_id=_PID, marketplace="amazon", user_instructions="x" * 2001)
+            {"product_id": _PID, "marketplace": "amazon", "user_instructions": "x" * 2001}
         )
     with pytest.raises(ValidationError):
         GenerateListingRequest.model_validate(
-            dict(product_id=_PID, marketplace="amazon", user_instructions="   ")
+            {"product_id": _PID, "marketplace": "amazon", "user_instructions": "   "}
         )
 
 
@@ -190,48 +187,48 @@ def test_generation_context_review_feedback_caps() -> None:
 
 def test_seam_fields_generation_result() -> None:
     GenerationResult.model_validate(
-        dict(
-            request_id="r",
-            job_id=_JID,
-            terminal_state="generated",
-            attempts_used=3,
-        )
+        {
+            "request_id": "r",
+            "job_id": _JID,
+            "terminal_state": "generated",
+            "attempts_used": 3,
+        }
     )
     with pytest.raises(ValidationError):
         GenerationResult.model_validate(
-            dict(
-                request_id="r",
-                job_id=_JID,
-                terminal_state="approved",
-                attempts_used=0,
-            )
+            {
+                "request_id": "r",
+                "job_id": _JID,
+                "terminal_state": "approved",
+                "attempts_used": 0,
+            }
         )
 
 
 def test_seam_fields_brand_chunk_dto() -> None:
     BrandChunkDTO.model_validate(
-        dict(
-            id=_JID,
-            tenant_id=_TID,
-            type="tone_rule",
-            text="hello",
-            similarity=0.5,
-            source_type="brand_document",
-            source_id=_PID,
-            chunk_index=0,
-        )
+        {
+            "id": _JID,
+            "tenant_id": _TID,
+            "type": "tone_rule",
+            "text": "hello",
+            "similarity": 0.5,
+            "source_type": "brand_document",
+            "source_id": _PID,
+            "chunk_index": 0,
+        }
     )
     with pytest.raises(ValidationError):
         BrandChunkDTO.model_validate(
-            dict(
-                id=_JID,
-                tenant_id=_TID,
-                type="tone_rule",
-                text="h",
-                similarity=math.nan,
-                source_type="brand_document",
-                source_id=_PID,
-            )
+            {
+                "id": _JID,
+                "tenant_id": _TID,
+                "type": "tone_rule",
+                "text": "h",
+                "similarity": math.nan,
+                "source_type": "brand_document",
+                "source_id": _PID,
+            }
         )
 
 
@@ -240,7 +237,7 @@ def test_seam_fields_category_template() -> None:
         variation_themes=[["size", "color"]],
         conditional_attributes=["size"],
         unsupported_attributes=[],
-        specs={"size": dict(requirement="required", value_type="text")},
+        specs={"size": {"requirement": "required", "value_type": "text"}},
     )
     assert t.variation_themes[0] == ["size", "color"]
 
@@ -248,12 +245,12 @@ def test_seam_fields_category_template() -> None:
 def test_category_template_for_generation_strips_adapter_fields() -> None:
     t = _template(
         specs={
-            "size": dict(
-                requirement="required",
-                value_type="text",
-                marketplace_field="SizeName",
-                value_map={"s": "S"},
-            )
+            "size": {
+                "requirement": "required",
+                "value_type": "text",
+                "marketplace_field": "SizeName",
+                "value_map": {"s": "S"},
+            }
         }
     )
     gen = t.for_generation()
@@ -265,11 +262,11 @@ def test_category_template_for_generation_strips_adapter_fields() -> None:
 def test_generation_context_rejects_adapter_populated_template() -> None:
     t = _template(
         specs={
-            "size": dict(
-                requirement="required",
-                value_type="text",
-                marketplace_field="SizeName",
-            )
+            "size": {
+                "requirement": "required",
+                "value_type": "text",
+                "marketplace_field": "SizeName",
+            }
         }
     )
     with pytest.raises(ValidationError):
@@ -278,9 +275,9 @@ def test_generation_context_rejects_adapter_populated_template() -> None:
 
 
 def test_attribute_spec_vocabularies() -> None:
-    AttributeSpec.model_validate(dict(requirement="required", value_type="text"))
+    AttributeSpec.model_validate({"requirement": "required", "value_type": "text"})
     with pytest.raises(ValidationError):
-        AttributeSpec.model_validate(dict(requirement="bogus", value_type="text"))
+        AttributeSpec.model_validate({"requirement": "bogus", "value_type": "text"})
 
 
 def test_seam_fields_model_credentials() -> None:
@@ -312,9 +309,7 @@ def test_model_credentials_secret_hidden() -> None:
 
 def test_model_credentials_validation_hides_api_key_in_errors() -> None:
     with pytest.raises(ValidationError) as exc:
-        ModelCredentials.model_validate(
-            dict(provider="bogus", api_key="sk-leak", model="m")
-        )
+        ModelCredentials.model_validate({"provider": "bogus", "api_key": "sk-leak", "model": "m"})
     blob = str(exc.value) + json.dumps(exc.value.errors(), default=str)
     assert "sk-leak" not in blob
 
@@ -353,36 +348,36 @@ def test_model_credentials_field_types() -> None:
 
 def test_brand_chunk_text_max_code_points() -> None:
     BrandChunkDTO.model_validate(
-        dict(
-            id=_JID,
-            tenant_id=_TID,
-            type="glossary",
-            text="w" * 2000,
-            similarity=0.0,
-            source_type="brand_profile",
-            source_id=_PID,
-        )
+        {
+            "id": _JID,
+            "tenant_id": _TID,
+            "type": "glossary",
+            "text": "w" * 2000,
+            "similarity": 0.0,
+            "source_type": "brand_profile",
+            "source_id": _PID,
+        }
     )
     with pytest.raises(ValidationError):
         BrandChunkDTO.model_validate(
-            dict(
-                id=_JID,
-                tenant_id=_TID,
-                type="glossary",
-                text="w" * 2001,
-                similarity=0.0,
-                source_type="brand_profile",
-                source_id=_PID,
-            )
+            {
+                "id": _JID,
+                "tenant_id": _TID,
+                "type": "glossary",
+                "text": "w" * 2001,
+                "similarity": 0.0,
+                "source_type": "brand_profile",
+                "source_id": _PID,
+            }
         )
 
 
 def test_agent_block_status_vocabulary() -> None:
     from mkos_schemas.jobs import AgentBlockStatus
 
-    AgentBlockStatus.model_validate(dict(agent="content", status="ok"))
+    AgentBlockStatus.model_validate({"agent": "content", "status": "ok"})
     with pytest.raises(ValidationError):
-        AgentBlockStatus.model_validate(dict(agent="content", status="pending"))
+        AgentBlockStatus.model_validate({"agent": "content", "status": "pending"})
 
 
 def test_seam_tenant_id_placement() -> None:
@@ -395,6 +390,6 @@ def test_seam_tenant_id_placement() -> None:
 
 def test_job_accepted_default_status() -> None:
     ja = JobAccepted.model_validate(
-        dict(job_id=_JID, poll_url="/jobs/1", estimated_duration_seconds=10)
+        {"job_id": _JID, "poll_url": "/jobs/1", "estimated_duration_seconds": 10}
     )
     assert ja.status is JobState.QUEUED

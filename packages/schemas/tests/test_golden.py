@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
 import pytest
-from pydantic import BaseModel
-
 from mkos_schemas.export import MODELS
+from pydantic import BaseModel
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 SECRET_MARKERS = (
@@ -67,7 +65,10 @@ def test_fixtures_hold_no_secrets() -> None:
 def test_fixtures_are_canonically_formatted_and_seeded() -> None:
     listing_path = FIXTURES / "CanonicalListing.json"
     listing = json.loads(listing_path.read_text(encoding="utf-8"))
-    assert listing_path.read_text(encoding="utf-8") == json.dumps(listing, indent=2, ensure_ascii=False) + "\n"
+    assert (
+        listing_path.read_text(encoding="utf-8")
+        == json.dumps(listing, indent=2, ensure_ascii=False) + "\n"
+    )
     assert (
         listing["content"]["title"]
         == "Fabrica Organic Cotton Kurta Set for Women | Indigo | Handloom Weave"

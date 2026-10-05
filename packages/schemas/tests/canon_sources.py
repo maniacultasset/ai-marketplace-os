@@ -63,11 +63,7 @@ def addendum_block(section: str) -> str:
 
 
 def database_cell_values(line_marker: str) -> list[str]:
-    needle_parts = [
-        p.strip()
-        for p in line_marker.replace("\\|", "|").split("|")
-        if p.strip()
-    ]
+    needle_parts = [p.strip() for p in line_marker.replace("\\|", "|").split("|") if p.strip()]
     text = _read(_DATABASE)
     candidates: list[list[str]] = []
     for line in text.splitlines():

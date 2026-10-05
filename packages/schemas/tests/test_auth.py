@@ -5,27 +5,26 @@ from __future__ import annotations
 from uuid import UUID
 
 import pytest
-from pydantic import ValidationError
-
 from mkos_schemas.auth import JWTClaims
+from pydantic import ValidationError
 
 _SUB = UUID("11111111-1111-1111-1111-111111111111")
 _TID = UUID("22222222-2222-2222-2222-222222222222")
 
 
 def _claims(**overrides: object) -> JWTClaims:
-    base = dict(
-        sub=_SUB,
-        tid=_TID,
-        roles=["owner"],
-        email="u@example.com",
-        typ="access",
-        jti="jti-1",
-        iss="https://api.mkos.internal",
-        aud="mkos",
-        iat=1_700_000_000,
-        exp=1_700_000_600,
-    )
+    base = {
+        "sub": _SUB,
+        "tid": _TID,
+        "roles": ["owner"],
+        "email": "u@example.com",
+        "typ": "access",
+        "jti": "jti-1",
+        "iss": "https://api.mkos.internal",
+        "aud": "mkos",
+        "iat": 1_700_000_000,
+        "exp": 1_700_000_600,
+    }
     base.update(overrides)
     return JWTClaims.model_validate(base)
 

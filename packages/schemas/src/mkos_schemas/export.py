@@ -59,9 +59,7 @@ def export(out: Path) -> list[Path]:
     out.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
     for model in MODELS:
-        schema = model.model_json_schema(
-            mode="serialization", ref_template="#/$defs/{model}"
-        )
+        schema = model.model_json_schema(mode="serialization", ref_template="#/$defs/{model}")
         schema["$id"] = f"{SCHEMA_ID_BASE}{model.__name__}.schema.json"
         schema["title"] = model.__name__
         path = out / f"{model.__name__}.schema.json"

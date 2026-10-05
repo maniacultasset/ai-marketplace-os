@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 from mkos_schemas.enums import ItemMarketplaceState, MarketplaceState
 from mkos_schemas.export import MODELS, SCHEMA_ID_BASE, export, main
-from mkos_schemas.images import ImageReport
 
 PKG = Path(__file__).resolve().parents[1]
 OUT = PKG / "jsonschema"
@@ -28,7 +28,7 @@ def test_export_is_deterministic(tmp_path: Path) -> None:
     subprocess.run(
         [sys.executable, "-m", "mkos_schemas.export", "--out", str(tmp_path)],
         check=True,
-        env={**subprocess.os.environ, **env},
+        env={**os.environ, **env},
         cwd=PKG.parent.parent,
     )
     second = {p.name: p.read_bytes() for p in tmp_path.glob("*.schema.json")}

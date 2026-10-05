@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 from math import isfinite
-from typing import Annotated, Any, Final
+from typing import Annotated, Final
 from uuid import UUID
 
 from pydantic import AwareDatetime, Field, field_validator, model_validator
@@ -25,7 +25,9 @@ def _max_code_points(value: str, limit: int) -> str:
 
 class ListingContent(WireModel):
     title: Annotated[NonBlankStr, Field(max_length=500)]
-    bullets: Annotated[list[Annotated[NonBlankStr, Field(max_length=1000)]], Field(min_length=1, max_length=10)]
+    bullets: Annotated[
+        list[Annotated[NonBlankStr, Field(max_length=1000)]], Field(min_length=1, max_length=10)
+    ]
     description: Annotated[NonBlankStr, Field(max_length=5000)]
 
 

@@ -22,17 +22,17 @@ from .listing import CanonicalListing
 from .rules import Rule, RuleSet
 
 __all__ = [
-    "PipelineDeps",
-    "run_listing_pipeline",
-    "GenerationContext",
-    "GenerationResult",
     "AgentBlockStatus",
     "AgentRunRecord",
     "BrandChunkDTO",
     "CategoryTemplate",
+    "GenerationContext",
+    "GenerationResult",
     "ModelCredentials",
+    "PipelineDeps",
     "Rule",
     "RuleSet",
+    "run_listing_pipeline",
 ]
 
 
@@ -61,8 +61,6 @@ class PipelineDeps(Protocol):
     ) -> None: ...
 
 
-async def run_listing_pipeline(
-    ctx: GenerationContext, deps: PipelineDeps
-) -> GenerationResult:
+async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> GenerationResult:
     """Implemented in mkos_pipeline.graph; this module declares the contract only."""
     raise NotImplementedError("run_listing_pipeline is implemented in mkos_pipeline.graph")

@@ -71,7 +71,9 @@ class ErrorReport(WireModel):
     retryable: bool = False
     attempts_used: Annotated[int, Field(ge=0, le=3)] = 0
     max_attempts: Annotated[int, Field(ge=1, le=3)] = 3
-    errors: Annotated[list[ErrorItem], Field(max_length=MAX_ERROR_ITEMS)] = Field(default_factory=list)
+    errors: Annotated[list[ErrorItem], Field(max_length=MAX_ERROR_ITEMS)] = Field(
+        default_factory=list
+    )
     request_id: RequestId | None = None
     listing_id: UUID | None = None
 

@@ -3,23 +3,20 @@
 from __future__ import annotations
 
 import json
-import math
 from typing import Any
 from uuid import UUID
 
 import pytest
-from pydantic import ValidationError
-
-from mkos_schemas.enums import ImageSlot, ListingStatus, Marketplace
+from mkos_schemas.enums import ImageSlot, Marketplace
 from mkos_schemas.listing import (
     MAX_LISTING_ATTRIBUTES,
     MAX_LISTING_IMAGES,
-    AttributeValue,
     CanonicalListing,
     ImageRef,
     ListingContent,
     ListingKeywords,
 )
+from pydantic import ValidationError
 
 FORBIDDEN = {
     "backend_keywords",
@@ -36,12 +33,12 @@ FORBIDDEN = {
 
 
 def _listing(**overrides: object) -> CanonicalListing:
-    base = dict(
-        product_id=UUID("11111111-1111-1111-1111-111111111111"),
-        marketplace=Marketplace.AMAZON,
-        category="apparel",
-        content=ListingContent(title="Title", bullets=["b"], description="desc"),
-    )
+    base = {
+        "product_id": UUID("11111111-1111-1111-1111-111111111111"),
+        "marketplace": Marketplace.AMAZON,
+        "category": "apparel",
+        "content": ListingContent(title="Title", bullets=["b"], description="desc"),
+    }
     base.update(overrides)
     return CanonicalListing.model_validate(base)
 
@@ -105,9 +102,7 @@ def test_listing_content_bounds() -> None:
     with pytest.raises(ValidationError):
         _listing(content=ListingContent(title="t", bullets=["x"] * 11, description="d"))
     with pytest.raises(ValidationError):
-        _listing(
-            content=ListingContent(title="t", bullets=["x"], description="d" * 5001)
-        )
+        _listing(content=ListingContent(title="t", bullets=["x"], description="d" * 5001))
     with pytest.raises(ValidationError):
         _listing(content=ListingContent(title="   ", bullets=["x"], description="d"))
 
@@ -116,7 +111,7 @@ def test_listing_keywords_caps() -> None:
     terms = [f"t{i}" for i in range(50)]
     _listing(keywords=ListingKeywords(search_terms=terms))
     with pytest.raises(ValidationError):
-        _listing(keywords=ListingKeywords(search_terms=terms + ["extra"]))
+        _listing(keywords=ListingKeywords(search_terms=[*terms, "extra"]))
     with pytest.raises(ValidationError):
         _listing(keywords=ListingKeywords(search_terms=[" "]))
     with pytest.raises(ValidationError):
@@ -124,15 +119,10 @@ def test_listing_keywords_caps() -> None:
 
 
 def test_listing_images_and_attributes_count_caps() -> None:
-    imgs = [
-        ImageRef(image_id=UUID(int=i), slot=ImageSlot.MAIN) for i in range(MAX_LISTING_IMAGES)
-    ]
+    imgs = [ImageRef(image_id=UUID(int=i), slot=ImageSlot.MAIN) for i in range(MAX_LISTING_IMAGES)]
     _listing(images=imgs)
     with pytest.raises(ValidationError):
-        _listing(
-            images=imgs
-            + [ImageRef(image_id=UUID(int=999), slot=ImageSlot.MAIN)]
-        )
+        _listing(images=[*imgs, ImageRef(image_id=UUID(int=999), slot=ImageSlot.MAIN)])
     attrs = {f"k{i}": "v" for i in range(MAX_LISTING_ATTRIBUTES)}
     _listing(attributes=attrs)
     with pytest.raises(ValidationError):

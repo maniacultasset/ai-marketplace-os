@@ -6,11 +6,11 @@ import asyncio
 import importlib
 import inspect
 import pkgutil
-
-import pytest
+from typing import cast
 
 import mkos_schemas
 import mkos_schemas.pipeline as pipeline_mod
+import pytest
 from mkos_schemas.jobs import GenerationContext
 from mkos_schemas.pipeline import PipelineDeps, run_listing_pipeline
 
@@ -57,7 +57,7 @@ def test_deleted_ports_are_members_nowhere() -> None:
 
 
 def test_pipeline_reexports() -> None:
-    expected_all = [
+    expected_all = {
         "PipelineDeps",
         "run_listing_pipeline",
         "GenerationContext",
@@ -69,8 +69,9 @@ def test_pipeline_reexports() -> None:
         "ModelCredentials",
         "Rule",
         "RuleSet",
-    ]
-    assert pipeline_mod.__all__ == expected_all
+    }
+    assert len(pipeline_mod.__all__) == len(expected_all)
+    assert set(pipeline_mod.__all__) == expected_all
 
 
 def test_pipeline_defines_only_protocol_and_signature() -> None:
@@ -87,14 +88,15 @@ def test_run_listing_pipeline_signature() -> None:
     assert inspect.iscoroutinefunction(run_listing_pipeline)
 
     class _Deps:
-        async def retrieve_brand_chunks(self, *a, **k): ...
-        async def validate_rules(self, *a, **k): ...
-        async def validate_images(self, *a, **k): ...
-        async def get_model_credentials(self, *a, **k): ...
-        async def emit_node_event(self, *a, **k): ...
+        async def retrieve_brand_chunks(self, *a: object, **k: object) -> None: ...
+        async def validate_rules(self, *a: object, **k: object) -> None: ...
+        async def validate_images(self, *a: object, **k: object) -> None: ...
+        async def get_model_credentials(self, *a: object, **k: object) -> None: ...
+        async def emit_node_event(self, *a: object, **k: object) -> None: ...
 
+    ctx = GenerationContext.model_construct(**{})
     with pytest.raises(NotImplementedError):
-        asyncio.run(run_listing_pipeline(GenerationContext.model_construct(), _Deps()))
+        asyncio.run(run_listing_pipeline(ctx, cast(PipelineDeps, _Deps())))
 
 
 def test_agent_state_and_telemetry_absent() -> None:

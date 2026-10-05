@@ -6,7 +6,7 @@ import re
 from types import MappingProxyType
 
 from mkos_schemas.codes import ERROR_CODE_META, CodeMeta, ErrorCode, ImageIssueCode
-from mkos_schemas.enums import ErrorClass, FixAction, RetryClass
+from mkos_schemas.enums import RetryClass
 
 from . import canon_sources
 
@@ -49,11 +49,7 @@ def _assignment_members(block: str) -> set[str]:
 def _a20_import_codes() -> set[str]:
     block = canon_sources.addendum_block("20")
     members = _assignment_members(block)
-    return {
-        c
-        for c in members
-        if c.startswith("HEADER_") or c == "DUPLICATE_SKU_IN_FILE"
-    }
+    return {c for c in members if c.startswith("HEADER_") or c == "DUPLICATE_SKU_IN_FILE"}
 
 
 def _a20_all_codes() -> set[str]:
@@ -99,7 +95,7 @@ def test_codes_job_timeout_beside_timeout() -> None:
     assert "JOB_TIMEOUT" in a20
     assert ErrorCode.JOB_TIMEOUT.value == "JOB_TIMEOUT"
     assert ErrorCode.TIMEOUT.value == "TIMEOUT"
-    assert ErrorCode.JOB_TIMEOUT.value != ErrorCode.TIMEOUT.value
+    assert len({ErrorCode.JOB_TIMEOUT, ErrorCode.TIMEOUT}) == 2
 
 
 def test_codes_only_field_too_long() -> None:
@@ -109,10 +105,7 @@ def test_codes_only_field_too_long() -> None:
 
 def test_codes_match_sources() -> None:
     expected = (
-        _draft_error_codes()
-        | _a20_all_codes()
-        | _database_merged_codes()
-        | {"BUDGET_EXCEEDED"}
+        _draft_error_codes() | _a20_all_codes() | _database_merged_codes() | {"BUDGET_EXCEEDED"}
     )
     assert {m.name for m in ErrorCode} == expected
     assert len(ErrorCode) == 65

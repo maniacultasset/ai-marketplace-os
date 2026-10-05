@@ -4,30 +4,28 @@ from __future__ import annotations
 
 import json
 import math
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import get_args
 from uuid import UUID
 
 import pytest
-from pydantic import ValidationError
-
 from mkos_schemas.codes import ImageIssueCode
 from mkos_schemas.enums import ImageSlot, Marketplace
-from typing import get_args
-
 from mkos_schemas.images import CheckName, ImageIssue, ImageReport
+from pydantic import ValidationError
 
-_TS = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+_TS = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
 _IID = UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 
 
 def _report(**overrides: object) -> ImageReport:
-    base = dict(
-        image_id=_IID,
-        marketplace=Marketplace.AMAZON,
-        slot=ImageSlot.MAIN,
-        pass_=True,
-        processed_at=_TS,
-    )
+    base = {
+        "image_id": _IID,
+        "marketplace": Marketplace.AMAZON,
+        "slot": ImageSlot.MAIN,
+        "pass_": True,
+        "processed_at": _TS,
+    }
     base.update(overrides)
     return ImageReport.model_validate(base)
 
@@ -95,13 +93,13 @@ def test_image_report_confidence_bounds_and_nan() -> None:
 def test_image_report_processed_at_requires_timezone() -> None:
     with pytest.raises(ValidationError):
         ImageReport.model_validate(
-            dict(
-                image_id=_IID,
-                marketplace="amazon",
-                slot="main",
-                pass_=True,
-                processed_at=datetime(2026, 1, 1, 12, 0, 0),
-            )
+            {
+                "image_id": _IID,
+                "marketplace": "amazon",
+                "slot": "main",
+                "pass_": True,
+                "processed_at": datetime(2026, 1, 1, 12, 0, 0),
+            }
         )
 
 
