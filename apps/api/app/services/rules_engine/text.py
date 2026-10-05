@@ -208,6 +208,7 @@ _PROBE_SAMPLES: Final = tuple(
     chr(c) for c in (0x5F, 0x967, 0x915, 0x901, 0xA0, 0x3000, 0xFF21, 0x1F600)
 )
 _BASE_PROBES: Final = tuple(chr(c) for c in range(256)) + _PROBE_SAMPLES
+_BASE_PROBE_TEXT: Final = "".join(_BASE_PROBES)
 _CATEGORY_CLASS: Final = {
     "CATEGORY_DIGIT": r"\d",
     "CATEGORY_NOT_DIGIT": r"\D",
@@ -267,33 +268,22 @@ def _charset(op: Any, av: Any, flags: int) -> _CharSet:
     return _CharSet(f"[{negate}{''.join(parts)}]", flags, tuple(probes))
 
 
-def _overlap(a: _CharSet, b: _CharSet) -> bool:
-    pa = _charset_pattern(a.source, a.flags)
-    pb = _charset_pattern(b.source, b.flags)
-    for probe in (*_BASE_PROBES, *a.probes, *b.probes):
-        if pa.fullmatch(probe) is not None and pb.fullmatch(probe) is not None:
-            return True
-    return False
+_GUARD_STEP_BUDGET: Final = 20_000
+"""Guard work units (nodes walked plus atom pairs compared) per regex; above it the guard
+refuses (fail closed). A 256-char regex that is not hostile stays far below it (R2-1, R2-2)."""
+_MAX_OPEN_ATOMS: Final = 64
+"""Distinct atoms an open set may hold; above it the guard refuses (fail closed, R2-2)."""
 
 
-def _overlaps_any(atoms: frozenset[_CharSet], open_set: frozenset[_CharSet]) -> bool:
-    return any(_overlap(a, b) for a in atoms for b in open_set)
-
-
-def _atoms(sub: Any, flags: int) -> frozenset[_CharSet]:
-    """Every single-character atom anywhere below ``sub``."""
-    found: set[_CharSet] = set()
-    for op, av in sub:
-        if op in _ATOM_OPS:
-            found.add(_charset(op, av, flags))
-        elif op in _REPEAT_OPS:
-            found |= _atoms(av[2], flags)
-        elif op is _sre.SUBPATTERN:
-            found |= _atoms(av[3], _sub_flags(flags, av))
-        elif op is _sre.BRANCH:
-            for alt in av[1]:
-                found |= _atoms(alt, flags)
-    return frozenset(found)
+@lru_cache(maxsize=_CACHE_SIZE)
+def _base_mask(atom: _CharSet) -> int:
+    """Bit ``i`` set when the atom matches ``_BASE_PROBES[i]``: one ``finditer`` over the
+    probes joined, since an atom always consumes exactly one character."""
+    pattern = _charset_pattern(atom.source, atom.flags)
+    mask = 0
+    for m in pattern.finditer(_BASE_PROBE_TEXT):
+        mask |= 1 << m.start()
+    return mask
 
 
 def _sub_flags(flags: int, av: Any) -> int:
@@ -303,72 +293,159 @@ def _sub_flags(flags: int, av: Any) -> int:
 
 
 class _RefusedError(Exception):
-    pass
+    def __init__(
+        self, reason: str = "adjacent overlapping variable-width repeats can backtrack polynomially"
+    ) -> None:
+        super().__init__(reason)
+        self.reason = reason
 
 
-def _walk_optional(body: Any, open_set: frozenset[_CharSet], flags: int) -> frozenset[_CharSet]:
-    """The open set after an optional body; raises ``_RefusedError`` when the body can consume
-    characters an open repeat could also take (an open repeat survives it unclosed)."""
-    after = _walk(body, open_set, flags)
-    atoms = _atoms(body, flags)
-    if _overlaps_any(atoms, after - _walk(body, frozenset(), flags)):
-        raise _RefusedError
-    return open_set | after | atoms
+_TOO_COMPLEX: Final = "regex too complex for the backtracking guard (fail closed)"
 
 
-def _walk(sub: Any, open_set: frozenset[_CharSet], flags: int) -> frozenset[_CharSet]:
-    """Walk one sequence left to right, returning the open variable-width repeats after it.
+_WalkKey = tuple[int, frozenset[_CharSet], int]
 
-    A repeat with a variable count above one (``*``, ``+``, ``{n,}`` and ``{n,m}`` with m > n)
-    is open, bounded or not: stacked overlapping bounded repeats backtrack too (``\\d{0,8}`` six
-    times, ``\\d{0,1000}`` three times). An optional body (``?``) is walked, refused when no
-    mandatory atom of it closes an open repeat it overlaps (``\\d*\\d?``), and leaves its atoms
-    open (``\\d?`` twenty times). A fixed count ``{n}`` is walked as its body."""
-    for op, av in sub:
-        if op in _ZERO_WIDTH_OPS:
-            continue
-        if op in _ATOM_OPS:
-            atom = _charset(op, av, flags)
-            if not _overlaps_any(frozenset({atom}), open_set):
-                open_set = frozenset()
-            continue
-        if op in _REPEAT_OPS:
-            low, high, body = av
-            if high > max(low, 1):  # a variable count above one, bounded or not
-                atoms = _atoms(body, flags)
-                if _overlaps_any(atoms, open_set):
-                    raise _RefusedError
-                open_set = open_set | atoms if low == 0 else atoms
-            elif high > low:  # optional (``?``, ``{0,1}``)
-                open_set = _walk_optional(body, open_set, flags)
-            else:  # a fixed count ``{n}``
-                open_set = _walk(body, open_set, flags)
-            continue
-        if op is _sre.SUBPATTERN:
-            open_set = _walk(av[3], open_set, _sub_flags(flags, av))
-            continue
-        if op is _sre.BRANCH:
-            merged: frozenset[_CharSet] = frozenset()
-            for alt in av[1]:
-                merged |= _walk(alt, open_set, flags)
-            open_set = merged
-            continue
-        # Any other node (the S2 gate refuses lookaround and backreferences): it matches
-        # something unknown, so it closes nothing.
-    return open_set
+
+class _Guard:
+    """One guard run over one parsed regex: memoised walks and atom sets (keyed on the node's
+    ``id``, valid while the tree is alive) and a fail-closed step budget, so the guard is linear
+    in the regex for nested optional groups (R2-1) and bounded for wide open sets (R2-2)."""
+
+    def __init__(self, tree: Any, flags: int) -> None:
+        self.steps = 0
+        self._walks: dict[_WalkKey, frozenset[_CharSet]] = {}
+        self._atom_sets: dict[tuple[int, int], frozenset[_CharSet]] = {}
+        self._masks: dict[_CharSet, int] = {}
+        extras = {p for atom in self.atoms(tree, flags) for p in atom.probes}
+        self._extra_text = "".join(sorted(extras))
+
+    def mask(self, atom: _CharSet) -> int:
+        """The probes the atom matches: the base probes, then every atom's own probe of this
+        regex (bits from ``len(_BASE_PROBES)`` up). Two atoms overlap when their masks meet."""
+        cached = self._masks.get(atom)
+        if cached is None:
+            pattern = _charset_pattern(atom.source, atom.flags)
+            cached = _base_mask(atom)
+            offset = len(_BASE_PROBES)
+            for m in pattern.finditer(self._extra_text):
+                cached |= 1 << (offset + m.start())
+            self._masks[atom] = cached
+        return cached
+
+    def _charge(self, units: int) -> None:
+        self.steps += units
+        if self.steps > _GUARD_STEP_BUDGET:
+            raise _RefusedError(_TOO_COMPLEX)
+
+    def overlaps_any(self, atoms: frozenset[_CharSet], open_set: frozenset[_CharSet]) -> bool:
+        if not atoms or not open_set:
+            return False
+        if len(open_set) > _MAX_OPEN_ATOMS:
+            raise _RefusedError(_TOO_COMPLEX)
+        self._charge(len(atoms) + len(open_set))
+        open_mask = 0
+        for b in open_set:
+            open_mask |= self.mask(b)
+        return any(self.mask(a) & open_mask for a in atoms)
+
+    def atoms(self, sub: Any, flags: int) -> frozenset[_CharSet]:
+        """Every single-character atom anywhere below ``sub``."""
+        key = (id(sub), flags)
+        cached = self._atom_sets.get(key)
+        if cached is not None:
+            return cached
+        self._charge(1)
+        found: set[_CharSet] = set()
+        for op, av in sub:
+            if op in _ATOM_OPS:
+                found.add(_charset(op, av, flags))
+            elif op in _REPEAT_OPS:
+                found |= self.atoms(av[2], flags)
+            elif op is _sre.SUBPATTERN:
+                found |= self.atoms(av[3], _sub_flags(flags, av))
+            elif op is _sre.BRANCH:
+                for alt in av[1]:
+                    found |= self.atoms(alt, flags)
+        result = frozenset(found)
+        self._atom_sets[key] = result
+        return result
+
+    def walk_optional(
+        self, body: Any, open_set: frozenset[_CharSet], flags: int
+    ) -> frozenset[_CharSet]:
+        """The open set after an optional body; raises ``_RefusedError`` when the body can
+        consume characters an open repeat could also take (an open repeat survives it unclosed).
+        Both walks are memoised, so nested optional groups stay linear (R2-1)."""
+        after = self.walk(body, open_set, flags)
+        atoms = self.atoms(body, flags)
+        if self.overlaps_any(atoms, after - self.walk(body, frozenset(), flags)):
+            raise _RefusedError
+        return open_set | after | atoms
+
+    def walk(self, sub: Any, open_set: frozenset[_CharSet], flags: int) -> frozenset[_CharSet]:
+        """Walk one sequence left to right, returning the open variable-width repeats after it.
+
+        A repeat with a variable count above one (``*``, ``+``, ``{n,}`` and ``{n,m}`` with
+        m > n) is open, bounded or not: stacked overlapping bounded repeats backtrack too
+        (``\\d{0,8}`` six times, ``\\d{0,1000}`` three times). An optional body (``?``) is
+        walked, refused when no mandatory atom of it closes an open repeat it overlaps
+        (``\\d*\\d?``), and leaves its atoms open (``\\d?`` twenty times). A fixed count
+        ``{n}`` is walked as its body."""
+        key = (id(sub), open_set, flags)
+        cached = self._walks.get(key)
+        if cached is not None:
+            return cached
+        self._charge(1)
+        start = open_set
+        for op, av in sub:
+            self._charge(1)
+            if op in _ZERO_WIDTH_OPS:
+                continue
+            if op in _ATOM_OPS:
+                atom = _charset(op, av, flags)
+                if not self.overlaps_any(frozenset({atom}), open_set):
+                    open_set = frozenset()
+                continue
+            if op in _REPEAT_OPS:
+                low, high, body = av
+                if high > max(low, 1):  # a variable count above one, bounded or not
+                    atoms = self.atoms(body, flags)
+                    if self.overlaps_any(atoms, open_set):
+                        raise _RefusedError
+                    open_set = open_set | atoms if low == 0 else atoms
+                elif high > low:  # optional (``?``, ``{0,1}``)
+                    open_set = self.walk_optional(body, open_set, flags)
+                else:  # a fixed count ``{n}``
+                    open_set = self.walk(body, open_set, flags)
+                continue
+            if op is _sre.SUBPATTERN:
+                open_set = self.walk(av[3], open_set, _sub_flags(flags, av))
+                continue
+            if op is _sre.BRANCH:
+                merged: frozenset[_CharSet] = frozenset()
+                for alt in av[1]:
+                    merged |= self.walk(alt, open_set, flags)
+                open_set = merged
+                continue
+            # Any other node (the S2 gate refuses lookaround and backreferences): it matches
+            # something unknown, so it closes nothing.
+        if len(open_set) > _MAX_OPEN_ATOMS:
+            raise _RefusedError(_TOO_COMPLEX)
+        self._walks[(id(sub), start, flags)] = open_set
+        return open_set
 
 
 def _overlapping_repeat(tree: Any, *, ignore_case: bool = False) -> str | None:
     """A reason when two variable-width repeats can match the same character with no disjoint
-    mandatory atom between them (``\\s*\\s*x``, ``.*foo.*``, ``\\d{0,99}\\d{0,99}x``); else
-    ``None``."""
+    mandatory atom between them (``\\s*\\s*x``, ``.*foo.*``, ``\\d{0,99}\\d{0,99}x``), or when
+    the guard's own work exceeds its budget (fail closed); else ``None``."""
     flags = tree.state.flags & _FLAG_MASK
     if ignore_case:
         flags |= re.IGNORECASE
     try:
-        _walk(tree, frozenset(), flags)
-    except _RefusedError:
-        return "adjacent overlapping variable-width repeats can backtrack polynomially"
+        _Guard(tree, flags).walk(tree, frozenset(), flags)
+    except _RefusedError as exc:
+        return exc.reason
     return None
 
 
@@ -387,9 +464,20 @@ def compile_rule_regex(regex: str, *, ignore_case: bool) -> re.Pattern[str]:
 
 
 @lru_cache(maxsize=_CACHE_SIZE)
+def _compiled_or_refusal(regex: str, ignore_case: bool) -> re.Pattern[str] | str:
+    try:
+        return compile_rule_regex(regex, ignore_case=ignore_case)
+    except UnsafeRuleRegexError as exc:
+        return str(exc)
+
+
 def compiled_rule_regex(regex: str, *, ignore_case: bool) -> re.Pattern[str]:
-    """Memoised ``compile_rule_regex`` (a refusal is not cached and raises every time)."""
-    return compile_rule_regex(regex, ignore_case=ignore_case)
+    """Memoised ``compile_rule_regex``. A refusal is memoised too (its reason), so a refused
+    rule regex costs the guard once per process, then raises from the cache (R2-2)."""
+    result = _compiled_or_refusal(regex, ignore_case)
+    if isinstance(result, str):
+        raise UnsafeRuleRegexError(result)
+    return result
 
 
 # ---------------------------------------------------------------------------------------------
