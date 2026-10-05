@@ -235,6 +235,9 @@ def test_params_field_only_on_image_requirement() -> None:
 def test_ruleset_docstring() -> None:
     doc = RuleSet.__doc__ or ""
     assert "Rows group by" in doc
+    # A§17 keeps everything but its shadowing sentence (Decision 11).
+    assert "PipelineDeps has NO load_rules port" in doc
+    assert "the AI package fetches nothing" in doc
     assert "category rule shadows" in doc
     assert "a tenant rule shadows" not in doc
     assert "never shadow" in doc
