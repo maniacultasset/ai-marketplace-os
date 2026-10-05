@@ -195,6 +195,11 @@ mock-smoke:
 hooks:
 	uv run --frozen pre-commit install
 
+# The local demo data (CANON-ADDENDUM.md A§5); the command refuses any APP_ENV but local.
+.PHONY: seed
+seed:
+	uv run --frozen python -m app.cli seed --profile demo
+
 .PHONY: bootstrap
 bootstrap:
 	scripts/ci/bootstrap.sh
