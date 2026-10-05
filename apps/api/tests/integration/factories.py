@@ -94,6 +94,31 @@ def brand_profile(conn: Conn, tenant_id: UUID, **columns: Any) -> UUID:
     )
 
 
+# Typed fact column → its `provenance` key (DATABASE.md §5.6 `ck_products_typed_facts_sourced`).
+TYPED_FACT_KEYS: dict[str, str] = {
+    "mrp": "mrp",
+    "selling_price": "selling_price",
+    "tax_rate": "tax_rate",
+    "hsn_code": "hsn_code",
+    "country_of_origin": "country_of_origin",
+    "generic_name": "generic_name",
+    "net_quantity": "net_quantity",
+    "identifier_status": "identifier",
+    "package_length_cm": "package_dimensions",
+    "package_weight_g": "package_weight",
+    "product_weight_g": "product_weight",
+    "manufacturer_party_id": "manufacturer",
+    "marketer_party_id": "marketer",
+    "packer_party_id": "packer",
+    "importer_party_id": "importer",
+    "consumer_care_party_id": "consumer_care",
+    "brand_name": "brand_name",
+    "sub_category": "sub_category",
+    "product_type": "product_type",
+    "gender": "gender",
+}
+
+
 def product(
     conn: Conn,
     tenant_id: UUID,
@@ -102,16 +127,20 @@ def product(
     parent: UUID | None = None,
     **columns: Any,
 ) -> UUID:
-    """A `style` (theme `size_color`), a `child` of `parent` or a `standalone` product, with the
-    minimum `provenance` that `ck_products_typed_facts_sourced` needs (title, category)."""
+    """A `style` (theme `size_color`), a `child` of `parent` or a `standalone` product. Unless
+    `provenance` is given, it holds a seller fact for title, category and every typed fact
+    column passed, which is what `ck_products_typed_facts_sourced` needs."""
     n = _next()
     defaults: dict[str, Any] = {
         "tenant_id": tenant_id,
         "sku": f"SKU-{n}",
         "title": f"Product {n}",
         "category": "t_shirts",
-        "provenance": {"title": fact(), "category": fact()},
     }
+    if "provenance" not in columns:
+        keys = ["title", "category"]
+        keys += [key for col, key in TYPED_FACT_KEYS.items() if columns.get(col) is not None]
+        defaults["provenance"] = {key: fact() for key in keys}
     if kind == "style":
         defaults["variation_theme"] = "size_color"
     elif kind == "child":

@@ -516,6 +516,28 @@ CATALOG_UP: Final[tuple[str, ...]] = (
       size_run text[],
       variant_attributes jsonb NOT NULL DEFAULT '{}',
       variant_key text,
+      mrp numeric(12, 2),
+      selling_price numeric(12, 2),
+      currency text NOT NULL DEFAULT 'INR',
+      tax_rate numeric(5, 2),
+      hsn_code text,
+      country_of_origin text,
+      generic_name text,
+      net_quantity numeric(10, 3),
+      net_quantity_unit text,
+      manufacturer_party_id uuid,
+      marketer_party_id uuid,
+      packer_party_id uuid,
+      importer_party_id uuid,
+      consumer_care_party_id uuid,
+      identifier_type text,
+      identifier_value text,
+      identifier_status text,
+      package_length_cm numeric(7, 2),
+      package_breadth_cm numeric(7, 2),
+      package_height_cm numeric(7, 2),
+      package_weight_g integer,
+      product_weight_g integer,
       attributes jsonb NOT NULL DEFAULT '{}',
       provenance jsonb NOT NULL DEFAULT '{}',
       created_by uuid,
@@ -531,6 +553,16 @@ CATALOG_UP: Final[tuple[str, ...]] = (
         REFERENCES public.products (tenant_id, id) ON DELETE RESTRICT,
       CONSTRAINT fk_products_created_by FOREIGN KEY (tenant_id, created_by)
         REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT fk_products_manufacturer_party_id FOREIGN KEY (tenant_id, manufacturer_party_id)
+        REFERENCES public.business_parties (tenant_id, id) ON DELETE RESTRICT,
+      CONSTRAINT fk_products_marketer_party_id FOREIGN KEY (tenant_id, marketer_party_id)
+        REFERENCES public.business_parties (tenant_id, id) ON DELETE RESTRICT,
+      CONSTRAINT fk_products_packer_party_id FOREIGN KEY (tenant_id, packer_party_id)
+        REFERENCES public.business_parties (tenant_id, id) ON DELETE RESTRICT,
+      CONSTRAINT fk_products_importer_party_id FOREIGN KEY (tenant_id, importer_party_id)
+        REFERENCES public.business_parties (tenant_id, id) ON DELETE RESTRICT,
+      CONSTRAINT fk_products_consumer_care_party_id FOREIGN KEY (tenant_id, consumer_care_party_id)
+        REFERENCES public.business_parties (tenant_id, id) ON DELETE RESTRICT,
       CONSTRAINT ck_products_sku CHECK (sku ~ '^[^]\s]{1,64}$'),
       CONSTRAINT ck_products_title CHECK (char_length(title) BETWEEN 1 AND 500),
       CONSTRAINT ck_products_status CHECK (status IN ('draft', 'active')),
@@ -564,8 +596,77 @@ CATALOG_UP: Final[tuple[str, ...]] = (
             AND coalesce(variation_theme IN ('size', 'size_color'), false)
             AND cardinality(size_run) BETWEEN 1 AND 40
             AND array_position(size_run, NULL) IS NULL)
+      ),
+      -- fact columns (DATABASE.md §5.6); NaN sorts above every number, so `> 0` alone admits it
+      CONSTRAINT ck_products_mrp CHECK (mrp > 0 AND mrp <> 'NaN'),
+      CONSTRAINT ck_products_selling_price
+        CHECK (selling_price > 0 AND selling_price <> 'NaN'),
+      CONSTRAINT ck_price_le_mrp CHECK (selling_price <= mrp),
+      CONSTRAINT ck_products_currency CHECK (currency = 'INR'),
+      CONSTRAINT ck_products_tax_rate
+        CHECK (tax_rate >= 0 AND tax_rate <= 100 AND tax_rate <> 'NaN'),
+      CONSTRAINT ck_products_hsn_code CHECK (hsn_code ~ '^([0-9]{4}|[0-9]{6}|[0-9]{8})$'),
+      CONSTRAINT ck_products_country_of_origin CHECK (country_of_origin ~ '^[A-Z]{2}$'),
+      CONSTRAINT ck_products_generic_name CHECK (char_length(generic_name) BETWEEN 1 AND 100),
+      CONSTRAINT ck_products_net_quantity CHECK (net_quantity > 0 AND net_quantity <> 'NaN'),
+      CONSTRAINT ck_products_net_quantity_unit
+        CHECK (net_quantity_unit IN ('N', 'U', 'pair', 'set', 'g', 'kg', 'm', 'cm')),
+      CONSTRAINT ck_products_net_quantity_pair
+        CHECK ((net_quantity IS NULL) = (net_quantity_unit IS NULL)),
+      CONSTRAINT ck_products_dims_all_or_none CHECK (
+        (package_length_cm IS NULL) = (package_breadth_cm IS NULL)
+        AND (package_breadth_cm IS NULL) = (package_height_cm IS NULL)
+      ),
+      CONSTRAINT ck_products_package_length_cm
+        CHECK (package_length_cm > 0 AND package_length_cm <> 'NaN'),
+      CONSTRAINT ck_products_package_breadth_cm
+        CHECK (package_breadth_cm > 0 AND package_breadth_cm <> 'NaN'),
+      CONSTRAINT ck_products_package_height_cm
+        CHECK (package_height_cm > 0 AND package_height_cm <> 'NaN'),
+      CONSTRAINT ck_products_package_weight_g CHECK (package_weight_g > 0),
+      CONSTRAINT ck_products_product_weight_g CHECK (product_weight_g > 0),
+      CONSTRAINT ck_products_identifier_type CHECK (identifier_type IN ('gtin', 'ean', 'upc')),
+      CONSTRAINT ck_products_identifier_status
+        CHECK (identifier_status IN ('provided', 'exempt', 'not_applicable')),
+      CONSTRAINT ck_products_identifier_pair
+        CHECK ((identifier_type IS NULL) = (identifier_value IS NULL)),
+      CONSTRAINT ck_products_identifier_valid
+        CHECK (identifier_value IS NULL OR public.gtin_valid(identifier_value)),
+      CONSTRAINT ck_products_identifier_provided
+        CHECK ((identifier_value IS NULL) = (identifier_status IS DISTINCT FROM 'provided')),
+      CONSTRAINT ck_products_identifier_not_on_style
+        CHECK (variation_theme IS NULL OR (identifier_type IS NULL AND identifier_value IS NULL)),
+      CONSTRAINT ck_products_attributes CHECK (public.fact_map_valid(attributes, true)),
+      CONSTRAINT ck_products_provenance CHECK (public.fact_map_valid(provenance, false)),
+      CONSTRAINT ck_products_typed_facts_sourced CHECK (
+        provenance ? 'title' AND provenance ? 'category'
+        AND (mrp IS NULL OR provenance ? 'mrp')
+        AND (selling_price IS NULL OR provenance ? 'selling_price')
+        AND (tax_rate IS NULL OR provenance ? 'tax_rate')
+        AND (hsn_code IS NULL OR provenance ? 'hsn_code')
+        AND (country_of_origin IS NULL OR provenance ? 'country_of_origin')
+        AND (generic_name IS NULL OR provenance ? 'generic_name')
+        AND (net_quantity IS NULL OR provenance ? 'net_quantity')
+        AND (identifier_status IS NULL OR provenance ? 'identifier')
+        AND (package_length_cm IS NULL OR provenance ? 'package_dimensions')
+        AND (package_weight_g IS NULL OR provenance ? 'package_weight')
+        AND (product_weight_g IS NULL OR provenance ? 'product_weight')
+        AND (manufacturer_party_id IS NULL OR provenance ? 'manufacturer')
+        AND (marketer_party_id IS NULL OR provenance ? 'marketer')
+        AND (packer_party_id IS NULL OR provenance ? 'packer')
+        AND (importer_party_id IS NULL OR provenance ? 'importer')
+        AND (consumer_care_party_id IS NULL OR provenance ? 'consumer_care')
+        AND (brand_name IS NULL OR provenance ? 'brand_name')
+        AND (sub_category IS NULL OR provenance ? 'sub_category')
+        AND (product_type IS NULL OR provenance ? 'product_type')
+        AND (gender IS NULL OR provenance ? 'gender')
       )
     )
+    """,
+    """
+    CREATE UNIQUE INDEX products_identifier_uq
+      ON public.products (tenant_id, lpad(identifier_value, 14, '0'))
+      WHERE identifier_value IS NOT NULL AND deleted_at IS NULL
     """,
     """
     CREATE INDEX ix_products_keyset ON public.products (tenant_id, created_at DESC, id DESC)

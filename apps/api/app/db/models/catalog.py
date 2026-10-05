@@ -7,16 +7,20 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
     DateTime,
     ForeignKeyConstraint,
     Index,
+    Integer,
+    Numeric,
     PrimaryKeyConstraint,
     Text,
     UniqueConstraint,
     Uuid,
+    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -24,6 +28,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql.elements import conv
 
 from app.db.base import Base
+from app.db.models.facts import to_party
 from app.db.models.tenancy import (
     anchor,
     created_at_column,
@@ -31,6 +36,14 @@ from app.db.models.tenancy import (
     tenant_fk,
     to_membership,
     updated_at_column,
+)
+
+PRODUCT_PARTY_COLUMNS = (
+    "manufacturer_party_id",
+    "marketer_party_id",
+    "packer_party_id",
+    "importer_party_id",
+    "consumer_care_party_id",
 )
 
 EMPTY_OBJECT = text("'{}'::jsonb")
@@ -56,6 +69,14 @@ class Product(Base):
         tenant_fk("products"),
         to_product("products", "parent_product_id"),
         to_membership("products", "created_by"),
+        *(to_party("products", column) for column in PRODUCT_PARTY_COLUMNS),
+        Index(
+            conv("products_identifier_uq"),
+            "tenant_id",
+            func.lpad(text("identifier_value"), 14, text("'0'")),
+            unique=True,
+            postgresql_where=text("identifier_value IS NOT NULL AND deleted_at IS NULL"),
+        ),
         Index(
             conv("ix_products_keyset"),
             "tenant_id",
@@ -93,6 +114,29 @@ class Product(Base):
     size_run: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
     variant_attributes: Mapped[dict[str, str]] = mapped_column(JSONB, server_default=EMPTY_OBJECT)
     variant_key: Mapped[str | None] = mapped_column(Text)
+    # fact columns (DATABASE.md §5.6); each non-null one has its `provenance` key
+    mrp: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    selling_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    currency: Mapped[str] = mapped_column(Text, server_default=text("'INR'"))
+    tax_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    hsn_code: Mapped[str | None] = mapped_column(Text)
+    country_of_origin: Mapped[str | None] = mapped_column(Text)
+    generic_name: Mapped[str | None] = mapped_column(Text)
+    net_quantity: Mapped[Decimal | None] = mapped_column(Numeric(10, 3))
+    net_quantity_unit: Mapped[str | None] = mapped_column(Text)
+    manufacturer_party_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    marketer_party_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    packer_party_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    importer_party_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    consumer_care_party_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    identifier_type: Mapped[str | None] = mapped_column(Text)
+    identifier_value: Mapped[str | None] = mapped_column(Text)
+    identifier_status: Mapped[str | None] = mapped_column(Text)
+    package_length_cm: Mapped[Decimal | None] = mapped_column(Numeric(7, 2))
+    package_breadth_cm: Mapped[Decimal | None] = mapped_column(Numeric(7, 2))
+    package_height_cm: Mapped[Decimal | None] = mapped_column(Numeric(7, 2))
+    package_weight_g: Mapped[int | None] = mapped_column(Integer)
+    product_weight_g: Mapped[int | None] = mapped_column(Integer)
     attributes: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=EMPTY_OBJECT)
     provenance: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=EMPTY_OBJECT)
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
