@@ -190,6 +190,33 @@ def test_role_passwords_refused_while_server_logs_statements(
     assert plaintext not in logs
 
 
+def _pgss_text(mimic: Mimic) -> str:
+    return "\n".join(row[0] for row in mimic.psql("SELECT query FROM pg_stat_statements"))
+
+
+def test_role_passwords_refused_while_pg_stat_statements_tracks_utility(pgss_mimic: Mimic) -> None:
+    """pg_stat_statements keeps utility-statement text verbatim and on disk, so the file refuses
+    until utility tracking is off for its session (the Cloud SQL flag
+    pg_stat_statements.track_utility=off), then sets the password without storing the verifier."""
+    _reset_passwords(pgss_mimic)
+    verifier = _verifier(secrets.token_urlsafe(18))
+    server_key = verifier.rsplit(":", 1)[1]
+    try:
+        run = _run_passwords(pgss_mimic, {"APP_RW_SCRAM": verifier})
+        assert run.returncode == 3, run.stderr
+        assert "no password was set" in run.stderr
+        assert _all_null(pgss_mimic)
+        assert server_key not in _pgss_text(pgss_mimic)
+        _reset_passwords(pgss_mimic, boot_settings=("pg_stat_statements.track_utility = off",))
+        run = _run_passwords(pgss_mimic, {"APP_RW_SCRAM": verifier})
+        assert run.returncode == 0, run.stderr
+        assert _passwords(pgss_mimic) == {"app_rw": verifier, "app_ro": "", "migrator": ""}
+        assert server_key not in _pgss_text(pgss_mimic)
+        assert "SCRAM-SHA-256$" not in pgss_mimic.logs()
+    finally:
+        _reset_passwords(pgss_mimic)
+
+
 def test_role_passwords_refused_without_admin_on_roles(mimic: Mimic) -> None:
     _reset_passwords(mimic, boot_settings=("log_statement = 'none'",))
     mimic.psql("CREATE ROLE boot2 LOGIN CREATEROLE")

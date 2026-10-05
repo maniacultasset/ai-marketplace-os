@@ -150,38 +150,59 @@ def _wait_ready(name: str) -> None:
     raise AssertionError(f"mimic postgres not ready in {READY_TIMEOUT_S}s:\n{tail.stderr}")
 
 
+def _start(name: str, *server_args: str) -> Mimic:
+    """A container from the compose image with `boot` (CREATEROLE, not superuser) owning
+    `mimic`, where the Cloud SQL superuser-equivalent has created `vector` (it is untrusted)."""
+    _docker(
+        "run",
+        "-d",
+        "--rm",
+        "--name",
+        name,
+        "-p",
+        "127.0.0.1::5432",
+        "-e",
+        "POSTGRES_PASSWORD",
+        compose_postgres_image(),
+        *server_args,
+        env={"POSTGRES_PASSWORD": secrets.token_urlsafe(24)},
+    )
+    _wait_ready(name)
+    port = int(_docker("port", name, "5432/tcp").splitlines()[0].rsplit(":", 1)[1])
+    box = Mimic(name=name, host_port=port)
+    box.psql("CREATE ROLE boot LOGIN CREATEROLE", db="postgres")
+    box.psql("CREATE DATABASE mimic OWNER boot", db="postgres")
+    box.psql("CREATE EXTENSION vector", db="mimic")
+    return box
+
+
 @pytest.fixture(scope="session")
 def mimic() -> Iterator[Mimic]:
     name = f"mkos-s5-mimic-{secrets.token_hex(4)}"
     try:
-        _docker(
-            "run",
-            "-d",
-            "--rm",
-            "--name",
-            name,
-            "-p",
-            "127.0.0.1::5432",
-            "-e",
-            "POSTGRES_PASSWORD",
-            compose_postgres_image(),
-            "-c",
-            "log_statement=all",
-            env={"POSTGRES_PASSWORD": secrets.token_urlsafe(24)},
-        )
-        _wait_ready(name)
-        port = int(_docker("port", name, "5432/tcp").splitlines()[0].rsplit(":", 1)[1])
-        box = Mimic(name=name, host_port=port)
-        box.psql("CREATE ROLE boot LOGIN CREATEROLE", db="postgres")
-        box.psql("CREATE DATABASE mimic OWNER boot", db="postgres")
+        box = _start(name, "-c", "log_statement=all")
         box.psql("CREATE DATABASE ref", db="postgres")
-        # vector is untrusted, so the Cloud SQL superuser-equivalent creates it (cloudsqlsuperuser).
-        box.psql("CREATE EXTENSION vector", db="mimic")
         sql = BOOTSTRAP_SQL.read_text(encoding="utf-8")
         box.bootstrap_runs["mimic"] = [box.run_sql_file(sql, db="mimic", user="boot")]
         box.bootstrap_runs["mimic"].append(box.run_sql_file(sql, db="mimic", user="boot"))
         box.bootstrap_runs["ref"] = [box.run_sql_file(sql, db="ref", user="postgres")]
         box.bootstrap_runs["ref"].append(box.run_sql_file(sql, db="ref", user="postgres"))
+        yield box
+    finally:
+        subprocess.run(["docker", "rm", "-f", name], capture_output=True, timeout=60, check=False)
+
+
+@pytest.fixture(scope="session")
+def pgss_mimic() -> Iterator[Mimic]:
+    """The mimic with pg_stat_statements preloaded at its defaults (track_utility on), as Cloud
+    SQL Query Insights runs it; 0000 has run once as `boot`."""
+    name = f"mkos-s5-pgss-{secrets.token_hex(4)}"
+    try:
+        box = _start(name, "-c", "shared_preload_libraries=pg_stat_statements")
+        run = box.run_sql_file(BOOTSTRAP_SQL.read_text(encoding="utf-8"), db="mimic", user="boot")
+        if run.returncode != 0:
+            raise AssertionError(f"pgss mimic bootstrap exited {run.returncode}: {run.stderr}")
+        box.psql("CREATE EXTENSION pg_stat_statements", db="mimic")
         yield box
     finally:
         subprocess.run(["docker", "rm", "-f", name], capture_output=True, timeout=60, check=False)
