@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0.0",
+  "job_id": "44444444-4444-4444-4444-444444444444",
+  "kind": "listing_generate",
+  "status": "running",
+  "stage": null,
+  "progress_pct": 0,
+  "attempt": 0,
+  "max_attempts": 3,
+  "listing_id": null,
+  "result_url": null,
+  "error": null,
+  "request_id": "req-golden-1",
+  "queued_at": "2026-09-22T10:30:00Z",
+  "started_at": null,
+  "finished_at": null
+}

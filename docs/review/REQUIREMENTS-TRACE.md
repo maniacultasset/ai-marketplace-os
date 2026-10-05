@@ -8,20 +8,20 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 - **Every line of the client spec is traced.** All 13,711 lines of the snapshot are in the register:
   11,167 entries, of which 8,916 are checkable statements. `scripts/trace/check_coverage.py` proves 100% line coverage.
 - **Every statement has a verdict**, with a reference, adversarially verified per chunk (`scripts/trace/check_mapping.py`).
-- **6,981 of 8,916 (78%) are covered by our plan**: 6,060 as written and
-  921 deliberately changed by an ADR, Canon row or recorded decision.
-- **545 are gaps** (backend/DB 279, shared seams 141, ops 105, AI team 4, FE team 0, client 16).
-- **340 need the team or client** (67 conflicts, 273 questions);
+- **7,004 of 8,916 (79%) are covered by our plan**: 6,062 as written and
+  942 deliberately changed by an ADR, Canon row or recorded decision.
+- **543 are gaps** (backend/DB 277, shared seams 141, ops 105, AI team 4, FE team 0, client 16).
+- **319 need the team or client** (54 conflicts, 265 questions);
   each points to a row in `TEAM-QUESTIONS.md`.
 - 511 belong to the AI or FE team, and 539 are marked Phase 2/3 by the site itself.
 
 | Status | Statements | Share |
 |---|---:|---:|
-| ✅ covered | 6,060 | 68.0% |
-| 🔁 covered-changed | 921 | 10.3% |
-| ⚠️ gap | 545 | 6.1% |
-| ❌ conflict | 67 | 0.8% |
-| ❓ needs-client | 273 | 3.1% |
+| ✅ covered | 6,062 | 68.0% |
+| 🔁 covered-changed | 942 | 10.6% |
+| ⚠️ gap | 543 | 6.1% |
+| ❌ conflict | 54 | 0.6% |
+| ❓ needs-client | 265 | 3.0% |
 | 🧩 other-team | 511 | 5.7% |
 | ⏭ later-phase | 539 | 6.0% |
 
@@ -48,8 +48,8 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [03] Day-by-Day Execution Plan (45 Days) | 437 | 74 | 111 | 1 | 76 | 49 | 0 | 188 |
 | [04] Team Structure & Solo Sprint | 57 | 7 | 3 | 0 | 13 | 16 | 0 | 16 |
 | [05] GCP Tech Stack & Architecture | 85 | 19 | 6 | 0 | 0 | 11 | 0 | 6 |
-| [06] Consolidated Data Model & Schema | 162 | 23 | 0 | 8 | 9 | 0 | 0 | 17 |
-| [07] State Machine, LangGraph & Rules | 74 | 16 | 4 | 3 | 11 | 10 | 0 | 18 |
+| [06] Consolidated Data Model & Schema | 162 | 34 | 0 | 3 | 3 | 0 | 0 | 6 |
+| [07] State Machine, LangGraph & Rules | 74 | 20 | 4 | 0 | 10 | 10 | 0 | 14 |
 | [08] AI Agent Layer & Brand RAG | 74 | 3 | 4 | 0 | 1 | 13 | 0 | 5 |
 | [09] Image Compliance & Adapters | 57 | 6 | 6 | 6 | 6 | 0 | 0 | 18 |
 | [10] Security, Multi-Tenancy & Reliability | 59 | 13 | 7 | 0 | 0 | 1 | 0 | 7 |
@@ -73,7 +73,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [16] Agent Orchestration | 63 | 58 | 2 | 0 | 2 | 27 | 0 | 4 |
 | [17] Agent State Machine | 12 | 28 | 0 | 0 | 0 | 1 | 0 | ✔ |
 | [18] Agent Execution Graph | 7 | 0 | 0 | 0 | 0 | 18 | 0 | ✔ |
-| [19] Agent Run Lifecycle | 21 | 6 | 0 | 0 | 2 | 0 | 0 | 2 |
+| [19] Agent Run Lifecycle | 21 | 7 | 0 | 0 | 1 | 0 | 0 | 1 |
 | [20] Context Assembly | 24 | 4 | 0 | 0 | 0 | 2 | 0 | ✔ |
 | [21] Prompt Construction | 14 | 0 | 1 | 0 | 0 | 26 | 0 | 1 |
 | [22] Structured Output | 5 | 0 | 2 | 0 | 0 | 12 | 0 | 2 |
@@ -102,7 +102,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [45] Image Processing Flow | 19 | 1 | 2 | 0 | 0 | 0 | 0 | 2 |
 | [46] Deterministic Image Checks | 24 | 0 | 3 | 0 | 0 | 0 | 0 | 3 |
 | [47] Vision Model Checks | 16 | 0 | 2 | 0 | 0 | 0 | 0 | 2 |
-| [48] ImageReport Schema | 32 | 0 | 0 | 1 | 1 | 0 | 0 | 2 |
+| [48] ImageReport Schema | 32 | 1 | 0 | 0 | 1 | 0 | 0 | 1 |
 | [49] Image Error Taxonomy | 15 | 0 | 6 | 0 | 1 | 0 | 0 | 7 |
 | [50] Image Correction Loop | 12 | 0 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [51] Marketplace Image Rules | 15 | 0 | 0 | 0 | 1 | 0 | 0 | 1 |
@@ -166,7 +166,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [109] Publishing APIs | 8 | 1 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [110] Marketplace Connection APIs | 7 | 1 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [111] Analytics APIs | 0 | 2 | 3 | 0 | 2 | 0 | 0 | 5 |
-| [112] Image APIs | 5 | 3 | 2 | 0 | 0 | 0 | 0 | 2 |
+| [112] Image APIs | 7 | 3 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [113] Agent APIs | 7 | 0 | 1 | 0 | 0 | 0 | 0 | 1 |
 | [114] Error APIs | 5 | 0 | 4 | 0 | 0 | 0 | 0 | 4 |
 | [115] Webhook Architecture | 0 | 0 | 0 | 0 | 0 | 0 | 10 | ✔ |
@@ -176,7 +176,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [119] Rules Engine | 29 | 0 | 2 | 0 | 2 | 0 | 0 | 4 |
 | [120] Validation Architecture | 12 | 0 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [121] Structured Error Contract | 34 | 1 | 1 | 0 | 0 | 3 | 0 | 1 |
-| [122] Error Source Taxonomy | 26 | 3 | 1 | 3 | 3 | 1 | 0 | 7 |
+| [122] Error Source Taxonomy | 26 | 6 | 1 | 0 | 3 | 1 | 0 | 4 |
 | [123] Retry Classification | 19 | 0 | 1 | 0 | 0 | 0 | 0 | 1 |
 | [124] Human Approval Gate | 13 | 1 | 1 | 0 | 0 | 0 | 1 | 1 |
 | [125] Maker-Checker Model | 3 | 0 | 0 | 0 | 0 | 0 | 0 | ✔ |
@@ -220,7 +220,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [163] API Security | 11 | 0 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [164] Auditability | 8 | 3 | 1 | 0 | 0 | 0 | 0 | 1 |
 | [165] AI Data Security | 4 | 1 | 0 | 0 | 1 | 0 | 0 | 1 |
-| [166] Prompt Injection Considerations | 5 | 0 | 1 | 1 | 0 | 1 | 0 | 2 |
+| [166] Prompt Injection Considerations | 5 | 1 | 1 | 0 | 0 | 1 | 0 | 1 |
 | [167] Marketplace Credential Security | 8 | 0 | 1 | 0 | 0 | 0 | 0 | 1 |
 | [168] Logging | 12 | 0 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [169] Metrics | 4 | 0 | 10 | 0 | 0 | 0 | 0 | 10 |
@@ -277,7 +277,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [220] Production Launch Checklist | 8 | 0 | 4 | 0 | 2 | 0 | 0 | 6 |
 | [221] Architectural Invariants | 27 | 1 | 0 | 0 | 0 | 0 | 1 | ✔ |
 
-## ❌ Conflicts: our plan contradicts the site (67)
+## ❌ Conflicts: our plan contradicts the site (54)
 
 Each row names its TEAM-QUESTIONS row. Until the team answers, we build the default recorded there.
 
@@ -301,19 +301,6 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 | R05914 | L5914 | products.images JSONB | DATABASE.md:414; DATABASE.md:2095; TEAM-QUESTIONS T62 | No products.images; renamed source_image_urls, images table authoritative. [06]/[85]/[89] agree; no Canon row. |
 | R05927 | L5927 | marketplace_accounts.token_enc BYTEA NOT NULL | DATABASE.md:1006; TEAM-QUESTIONS T27 | token_enc nullable (NULL after revoke, crypto-shred); site pages agree on NOT NULL. |
 | R06068 | L6068 | keywords."backend_keywords": array of strings. | DATABASE.md:2132; TEAM-QUESTIONS T26 | Renamed keywords.hidden_terms; [06] and [35] agree on backend_keywords; no Canon row. |
-| R06069 | L6069 | Example backend_keywords value: "cotton kurta set". | CONTRACTS.md:802; TEAM-QUESTIONS T26 | Same value kept, but under keywords.hidden_terms; same conflict as R06068. |
-| R06070 | L6070 | Example backend_keywords value: "indigo kurta". | CONTRACTS.md:802; TEAM-QUESTIONS T26 | Same value kept, but under keywords.hidden_terms; same conflict as R06068. |
-| R06071 | L6071 | Example backend_keywords value: "artisan ethnic". | CONTRACTS.md:802; TEAM-QUESTIONS T26 | Same value kept, but under keywords.hidden_terms; same conflict as R06068. |
-| R06092 | L6092 | CanonicalListing field "generated_by" (example "agent_run_552"). | DATABASE.md:2137; TEAM-QUESTIONS T61 | Renamed generated_by_agent_run_id (UUID); only [06] defines generated_by; no Canon row. |
-| R06093 | L6093 | CanonicalListing field "schema_version" (example "1.0"). | DATABASE.md:2137; CONTRACTS.md:782; TEAM-QUESTIONS T61 | schema_version '1.0.0' vs site '1.0'; only [06] defines it; no Canon row. |
-
-### [07] State Machine, LangGraph & Rules
-
-| R-id | Lines | The site says | Ref | What is missing / differs |
-|---|---|---|---|---|
-| R06242 | L6242 | vision_model error code `BACKGROUND_OFF`. | CONTRACTS.md:182; CONTRACTS.md:196; DATABASE.md:520; T84 | [07] L6242 and [122] use BACKGROUND_OFF as error_code; plan emits IMAGE_NON_COMPLIANT, code only as ImageIssueCode/raw_code. |
-| R06242a | L6242 | vision_model error code `RESOLUTION_LOW`. | CONTRACTS.md:182; CONTRACTS.md:196; DATABASE.md:520; T84 | Same as R06242: RESOLUTION_LOW only an ImageIssueCode; ErrorItem code IMAGE_NON_COMPLIANT. |
-| R06242b | L6242 | vision_model error code `TEXT_DETECTED`. | CONTRACTS.md:182; CONTRACTS.md:197; DATABASE.md:520; T84 | Same as R06242: TEXT_DETECTED only an ImageIssueCode; ErrorItem code IMAGE_NON_COMPLIANT. |
 
 ### [09] Image Compliance & Adapters
 
@@ -369,12 +356,6 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 | R09389 | L9389 | Style preferences example content: "Never use exclamation marks. Bullets start with verbs." | docs/architecture/DATABASE.md:1035; docs/architecture/DATABASE.md:1062; T90 | Example is one guideline per chunk; ours a ~200-word window; no style type (R09368b) |
 | R09391 | L9391–9393 | Vectorized artifact: Glossary / terminology, chunked Per term. | docs/architecture/DATABASE.md:1035; docs/architecture/DATABASE.md:1062; T90; T38 | DATABASE.md:1062 sets ~200-word text for all types; site chunks glossary per term (L6387 per term pair) |
 | R09403 | L9403–9405 | Vectorized artifact: Compliance preferences, chunked Per rule. | docs/architecture/DATABASE.md:1035; docs/architecture/DATABASE.md:1062; T90 | Plan chunks ~200-word windows; site chunks compliance preferences per rule (also L6393) |
-
-### [48] ImageReport Schema
-
-| R-id | Lines | The site says | Ref | What is missing / differs |
-|---|---|---|---|---|
-| R10031 | L10031 | Issue field `type` (sample "background"). | CONTRACTS.md:406-407; T84 | Draft drops "type" for code (ImageIssueCode) + check (CheckName). |
 
 ### [54] Brand Voice Vectorization
 
@@ -436,14 +417,6 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 |---|---|---|---|---|
 | R11531f | L11531 | Authorization middleware checks user roles from JWT claims. | BACKEND-ARCHITECTURE.md:1196; DATABASE.md:311; T95 | Proposed per-request membership probe overrides JWT roles (up to 30 min stale). |
 
-### [122] Error Source Taxonomy
-
-| R-id | Lines | The site says | Ref | What is missing / differs |
-|---|---|---|---|---|
-| R11704 | L11704 | `vision_model` example error code: BACKGROUND_OFF. | DATABASE.md:520; DATABASE.md:1318; T84 | Plan emits error_code IMAGE_NON_COMPLIANT; BACKGROUND_OFF survives only as ImageIssueCode/raw code (draft), no ruling. |
-| R11704a | L11704 | `vision_model` example error code: RESOLUTION_LOW. | DATABASE.md:520; DATABASE.md:1318; T84 | Plan emits IMAGE_NON_COMPLIANT; RESOLUTION_LOW only as ImageIssueCode/raw code (pre-Canon draft), no ruling. |
-| R11704b | L11704 | `vision_model` example error code: TEXT_DETECTED. | DATABASE.md:520; DATABASE.md:1318; TEAM-QUESTIONS.md:86 (T52); T84 | Plan emits IMAGE_NON_COMPLIANT; TEXT_DETECTED only as ImageIssueCode; Flipkart main-image text is a warning (T52). |
-
 ### [131] Job Lifecycle
 
 | R-id | Lines | The site says | Ref | What is missing / differs |
@@ -482,19 +455,13 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 |---|---|---|---|---|
 | R12540f | L12540 | Secret rotation is supported without deployment. | docs/architecture/BACKEND-ARCHITECTURE.md:2111; docs/review/VISION-ALIGNMENT.md:303; T98 | Env-var secrets rotate only by redeploy; no T-row yet |
 
-### [166] Prompt Injection Considerations
-
-| R-id | Lines | The site says | Ref | What is missing / differs |
-|---|---|---|---|---|
-| R12615b | L12615 | Structured output validation: Pydantic rejects unexpected fields. | docs/canon/CANON.md:122; docs/drafts/CONTRACTS.md:89-95; T100 | Seam types are WireModel extra=ignore: unknown fields dropped, not rejected |
-
 ### [214] Backend Checklist
 
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
 | R13528 | L13528 | Backend checklist: JWT authentication middleware. | docs/architecture/BACKEND-ARCHITECTURE.md:1196; docs/architecture/BACKEND-ARCHITECTURE.md:3001; T95 | Auth as per-route dependency (Proposed, S10); candidate T-row, none yet |
 
-## ❓ Needs the team or client (273)
+## ❓ Needs the team or client (265)
 
 
 ### [★] Complete Founder BRD (End-to-End)
@@ -700,12 +667,6 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 |---|---|---|---|---|
 | R06033b | L6033 | The `brand_chunks` HNSW index is for ultra-fast cosine similarity retrieval. | DATABASE.md:1068-1075; TEAM-QUESTIONS T66 | HNSW built, but year-1 queries use exact filtered scan (<~20k chunks/tenant); T66 open, no Canon row. |
 | R06037a | L6037 | The mandatory indices are applied on Day 5. | CANON.md:94-95; DATABASE.md:1758; TEAM-QUESTIONS T16 | Canon ledger put 0002/0002b on Day 5 (25 Sep); slipped, re-baseline pending (T16, Q25). |
-| R06055 | L6055 | CanonicalListing field "title" (example "Organic Cotton Kurta Set — Women's Ethnic Wear, Playful Premium"). | DATABASE.md:2131; TEAM-QUESTIONS T61 | Site conflict: [06] flat title vs [35] content.title; plan picks nested, no Canon row. |
-| R06056 | L6056 | CanonicalListing field "bullets": array of strings. | DATABASE.md:2131; TEAM-QUESTIONS T61 | content.bullets list[str] per [35]; [06] top-level bullets; T61 open, no Canon row. |
-| R06057 | L6057 | Example bullet 1: "Breathable 100% organic cotton, GOTS-certified fabric". | DATABASE.md:2131; TEAM-QUESTIONS T61 | Example value; fits bullets, placement (content.bullets) follows R06056/T61. |
-| R06058 | L6058 | Example bullet 2: "Relaxed fit designed for all-day comfort and movement". | DATABASE.md:2131; TEAM-QUESTIONS T61 | Example value; fits bullets, placement (content.bullets) follows R06056/T61. |
-| R06059 | L6059 | Example bullet 3: "Hand-block print crafted by verified artisan cooperatives". | DATABASE.md:2131; TEAM-QUESTIONS T61 | Example value; fits bullets, placement (content.bullets) follows R06056/T61. |
-| R06061 | L6061 | CanonicalListing field "description": string (example "Experience effortless elegance with our pure organic cotton kurta set..."). | DATABASE.md:2131; TEAM-QUESTIONS T61 | content.description per [35]; [06] top-level description; T61 open, no Canon row. |
 | R06077 | L6077 | attributes."material" (example "Organic Cotton"). | DATABASE.md:1169; TEAM-QUESTIONS T32 | Site conflict ([28]/[104] material vs BRD fabric_type); plan key fabric_type, material only alias. |
 
 ### [07] State Machine, LangGraph & Rules
@@ -719,7 +680,6 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 | R06191d | L6191 | Reject competitor trademarks. | DATABASE.md:504; TEAM-QUESTIONS T48 | No platform competitor-trademark list; only per-brand tenant banned_terms (T48 open). Which marks is a business choice. |
 | R06192c | L6192 | Mandatory field: material. | DATABASE.md:1169; TEAM-QUESTIONS T32 | Required as fabric_type; material only an input alias; key names open in T32. |
 | R06209 | L6209 | errors[]."field" (example "title"). | BACKEND-ARCHITECTURE.md:1383; CONTRACTS.md:18; TEAM-QUESTIONS T61 | ErrorItem.field present; path value content.title under T61 nesting, not bare title. |
-| R06210 | L6210 | errors[]."error_code" (example "TITLE_TOO_LONG"). | DATABASE.md:1369; CONTRACTS.md:168; T83 | Site contradicts itself; codes.py drafts FIELD_TOO_LONG but BACKEND-ARCHITECTURE.md:1384 still shows TITLE_TOO_LONG. |
 | R06236 | L6236 | rules_engine errors: Retryable by AI? Yes. | DATABASE.md:1369; TEAM-QUESTIONS T47 | Content codes ai_correct; MISSING_ATTRIBUTE defaults user_action (BRD vs [122] conflict, T47 open). |
 | R06246a | L6246 | vision_model: fixable issues route to repair. | DATABASE.md:1369; T85 | No image repair path; vision issues end as image_replacement task or warning. |
 | R06254a | L6254 | amazon_adapter: SKU conflicts require human operator resolution. | DATABASE.md:1463; VISION-ALIGNMENT.md:151 Q18; T82 | publishing -> blocked for a human exists; who acts is undefined (Q18 default: tenant owner; no T-row). |
@@ -850,7 +810,6 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
-| R08742 | L8742 | AgentRun field trigger, example "user_request". | docs/architecture/DATABASE.md:990; T89 | CHECK uses [06] vocabulary; [19] example user_request would be rejected |
 | R08756f | L8756 | Failed jobs are re-runnable with the same input. | docs/architecture/BACKEND-ARCHITECTURE.md:1794; Q26; T80 | Plan replays same request with fresh context; only input_digest stored |
 
 ### [33] Agent Responsibilities Matrix
@@ -1070,7 +1029,7 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 | R13665 | L13665 | Production launch checklist: All Phase 1 features implemented. | T16; VISION Q25 | Phase-1 set per plan scope lock (T16); steps after S14 unsequenced |
 | R13668 | L13668 | Production launch checklist: Marketplace OAuth flows verified with production accounts. | T77 | Prod filings/app approval status unknown (STATE open decision 5); verify step itself unplanned |
 
-## ⚠️ Gaps we own: backend + DB (279)
+## ⚠️ Gaps we own: backend + DB (277)
 
 Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITECTURE.md and the build steps.
 
@@ -1504,13 +1463,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R11447b | L11447 | `GET /analytics` supports date range filtering. | BUILD-SEQUENCE.md:48 | Analytics sub-routes named (timeseries); date-range parameters not specified. |
 | R11447c | L11447 | `GET /analytics` supports marketplace filtering. | BUILD-SEQUENCE.md:48 | marketplace-breakdown route only; marketplace filter parameter not specified. |
 | R11447d | L11447 | `GET /analytics` supports product-level drill-down. | BUILD-SEQUENCE.md:48 | No product-level analytics drill-down route planned. |
-
-### [112] Image APIs
-
-| R-id | Lines | The site says | Ref | What is missing / differs |
-|---|---|---|---|---|
-| R11461d | L11461 | Image report returns structured compliance results with per-check details. | BACKEND-ARCHITECTURE.md:1348; CONTRACTS.md:397-426 (pre-Canon draft only) | ImageReport per-check shape (checks[], issues[].detail) only in pre-Canon CONTRACTS draft; aligned plan names the type only. |
-| R11461e | L11461 | Image report compliance results include suggestions. | BACKEND-ARCHITECTURE.md:1348; CONTRACTS.md:410 (pre-Canon draft only) | ImageIssue.suggestion exists only in pre-Canon CONTRACTS draft; DATABASE/BACKEND never define ImageReport fields. |
 
 ### [113] Agent APIs
 

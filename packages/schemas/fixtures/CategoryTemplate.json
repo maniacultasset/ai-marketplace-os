@@ -1,0 +1,11 @@
+{
+  "marketplace": "amazon",
+  "category": "apparel",
+  "external_category_id": null,
+  "required_attributes": [],
+  "optional_attributes": [],
+  "conditional_attributes": [],
+  "unsupported_attributes": [],
+  "specs": {},
+  "variation_themes": []
+}

@@ -1,0 +1,266 @@
+{
+  "$defs": {
+    "AttributeSpec": {
+      "properties": {
+        "allowed_values": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Allowed Values"
+        },
+        "marketplace_field": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Marketplace Field"
+        },
+        "max_length": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Length"
+        },
+        "requirement": {
+          "enum": [
+            "required",
+            "conditional",
+            "optional",
+            "unsupported"
+          ],
+          "title": "Requirement",
+          "type": "string"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "value_map": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Value Map",
+          "type": "object"
+        },
+        "value_type": {
+          "enum": [
+            "text",
+            "enum",
+            "number",
+            "boolean",
+            "measurement"
+          ],
+          "title": "Value Type",
+          "type": "string"
+        },
+        "when": {
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "maxItems": 4,
+          "title": "When",
+          "type": "array"
+        }
+      },
+      "required": [
+        "requirement",
+        "value_type"
+      ],
+      "title": "AttributeSpec",
+      "type": "object"
+    },
+    "Condition": {
+      "properties": {
+        "op": {
+          "enum": [
+            "eq",
+            "ne",
+            "in",
+            "not_in",
+            "present",
+            "absent"
+          ],
+          "title": "Op",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "values": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Values"
+        }
+      },
+      "required": [
+        "path",
+        "op"
+      ],
+      "title": "Condition",
+      "type": "object"
+    },
+    "Marketplace": {
+      "enum": [
+        "amazon",
+        "flipkart"
+      ],
+      "title": "Marketplace",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mkos.internal/CategoryTemplate.schema.json",
+  "properties": {
+    "category": {
+      "pattern": "^[a-z0-9_]{2,64}$",
+      "title": "Category",
+      "type": "string"
+    },
+    "conditional_attributes": {
+      "items": {
+        "pattern": "^[a-z0-9_]{1,64}$",
+        "type": "string"
+      },
+      "title": "Conditional Attributes",
+      "type": "array"
+    },
+    "external_category_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "External Category Id"
+    },
+    "marketplace": {
+      "$ref": "#/$defs/Marketplace"
+    },
+    "optional_attributes": {
+      "items": {
+        "pattern": "^[a-z0-9_]{1,64}$",
+        "type": "string"
+      },
+      "title": "Optional Attributes",
+      "type": "array"
+    },
+    "required_attributes": {
+      "items": {
+        "pattern": "^[a-z0-9_]{1,64}$",
+        "type": "string"
+      },
+      "title": "Required Attributes",
+      "type": "array"
+    },
+    "specs": {
+      "patternProperties": {
+        "^[a-z0-9_]{1,64}$": {
+          "$ref": "#/$defs/AttributeSpec"
+        }
+      },
+      "title": "Specs",
+      "type": "object"
+    },
+    "unsupported_attributes": {
+      "items": {
+        "pattern": "^[a-z0-9_]{1,64}$",
+        "type": "string"
+      },
+      "title": "Unsupported Attributes",
+      "type": "array"
+    },
+    "variation_themes": {
+      "items": {
+        "items": {
+          "pattern": "^[a-z0-9_]{1,64}$",
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "title": "Variation Themes",
+      "type": "array"
+    }
+  },
+  "required": [
+    "marketplace",
+    "category"
+  ],
+  "title": "CategoryTemplate",
+  "type": "object"
+}

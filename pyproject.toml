@@ -50,6 +50,7 @@ ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "apps/api/tests/**" = ["S101", "S105", "S106", "S603", "S607"]
+"packages/schemas/tests/**" = ["S101", "S105", "S106", "S603", "S607"]
 "scripts/ci/**" = ["T201", "S603", "S607"]
 "apps/api/app/services/embeddings.py" = ["TID251"]
 "apps/api/app/services/vision.py" = ["TID251"]
@@ -72,12 +73,12 @@ extend-exclude = "^/(scaffold|scripts/docgen|scripts/trace|docs)/"
 [tool.mypy]
 strict = true
 plugins = ["pydantic.mypy"]
-files = ["apps/api", "packages/schemas/src"]
+files = ["apps/api", "packages/schemas/src", "packages/schemas/tests"]
 explicit_package_bases = true
 mypy_path = ["apps/api", "packages/schemas/src"]
 
 [tool.pytest.ini_options]
-testpaths = ["apps/api/tests"]
+testpaths = ["apps/api/tests", "packages/schemas/tests"]
 addopts = "--strict-markers --strict-config -ra --import-mode=importlib --disable-socket --allow-unix-socket"
 asyncio_mode = "auto"
 markers = [

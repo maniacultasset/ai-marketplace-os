@@ -1,0 +1,2016 @@
+{
+  "$defs": {
+    "AllowedValues": {
+      "properties": {
+        "attribute": {
+          "pattern": "^[a-z0-9_]{1,64}$",
+          "title": "Attribute",
+          "type": "string"
+        },
+        "error_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error_code": {
+          "$ref": "#/$defs/ErrorCode",
+          "default": "VALUE_NOT_ALLOWED"
+        },
+        "message": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "normalize": {
+          "const": "casefold_trim",
+          "default": "casefold_trim",
+          "title": "Normalize",
+          "type": "string"
+        },
+        "pack": {
+          "default": "core",
+          "pattern": "^[a-z_]{1,32}$",
+          "title": "Pack",
+          "type": "string"
+        },
+        "policy_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PolicyRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retry_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetryClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source": {
+          "enum": [
+            "inline",
+            "template"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        },
+        "type": {
+          "const": "allowed_values",
+          "title": "Type",
+          "type": "string"
+        },
+        "values": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Values"
+        }
+      },
+      "required": [
+        "message",
+        "type",
+        "attribute",
+        "source"
+      ],
+      "title": "AllowedValues",
+      "type": "object"
+    },
+    "BannedTerms": {
+      "properties": {
+        "case_sensitive": {
+          "default": false,
+          "title": "Case Sensitive",
+          "type": "boolean"
+        },
+        "error_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error_code": {
+          "$ref": "#/$defs/ErrorCode",
+          "default": "BANNED_TERM"
+        },
+        "match": {
+          "default": "word",
+          "enum": [
+            "word",
+            "substring",
+            "regex"
+          ],
+          "title": "Match",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "pack": {
+          "default": "core",
+          "pattern": "^[a-z_]{1,32}$",
+          "title": "Pack",
+          "type": "string"
+        },
+        "policy_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PolicyRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retry_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetryClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        },
+        "terms": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "title": "Terms",
+          "type": "array"
+        },
+        "type": {
+          "const": "banned_terms",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message",
+        "type",
+        "terms"
+      ],
+      "title": "BannedTerms",
+      "type": "object"
+    },
+    "ClaimRequirement": {
+      "description": "What a claim needs (DATABASE.md claim_requires_attribute row): the attribute must be\npresent and, when ``any_of`` is set, hold one of those values (``organic`` \u2192 certifications\nany_of ``gots``).",
+      "properties": {
+        "any_of": {
+          "anyOf": [
+            {
+              "items": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "maxItems": 50,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Any Of"
+        },
+        "attribute": {
+          "pattern": "^[a-z0-9_]{1,64}$",
+          "title": "Attribute",
+          "type": "string"
+        }
+      },
+      "required": [
+        "attribute"
+      ],
+      "title": "ClaimRequirement",
+      "type": "object"
+    },
+    "ClaimRequiresAttribute": {
+      "properties": {
+        "claim": {
+          "minLength": 1,
+          "title": "Claim",
+          "type": "string"
+        },
+        "error_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error_code": {
+          "$ref": "#/$defs/ErrorCode",
+          "default": "UNSUPPORTED_CLAIM"
+        },
+        "match": {
+          "default": "word",
+          "enum": [
+            "word",
+            "substring"
+          ],
+          "title": "Match",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "pack": {
+          "default": "core",
+          "pattern": "^[a-z_]{1,32}$",
+          "title": "Pack",
+          "type": "string"
+        },
+        "policy_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PolicyRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "requires": {
+          "$ref": "#/$defs/ClaimRequirement"
+        },
+        "retry_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetryClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        },
+        "terms": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "title": "Terms",
+          "type": "array"
+        },
+        "type": {
+          "const": "claim_requires_attribute",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message",
+        "type",
+        "claim",
+        "terms",
+        "requires"
+      ],
+      "title": "ClaimRequiresAttribute",
+      "type": "object"
+    },
+    "Condition": {
+      "properties": {
+        "op": {
+          "enum": [
+            "eq",
+            "ne",
+            "in",
+            "not_in",
+            "present",
+            "absent"
+          ],
+          "title": "Op",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "values": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Values"
+        }
+      },
+      "required": [
+        "path",
+        "op"
+      ],
+      "title": "Condition",
+      "type": "object"
+    },
+    "ConditionalRequired": {
+      "properties": {
+        "attribute": {
+          "pattern": "^[a-z0-9_]{1,64}$",
+          "title": "Attribute",
+          "type": "string"
+        },
+        "error_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error_code": {
+          "$ref": "#/$defs/ErrorCode",
+          "default": "MISSING_ATTRIBUTE"
+        },
+        "message": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "pack": {
+          "default": "core",
+          "pattern": "^[a-z_]{1,32}$",
+          "title": "Pack",
+          "type": "string"
+        },
+        "policy_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PolicyRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retry_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetryClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        },
+        "type": {
+          "const": "conditional_required",
+          "title": "Type",
+          "type": "string"
+        },
+        "when": {
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "title": "When",
+          "type": "array"
+        }
+      },
+      "required": [
+        "message",
+        "type",
+        "attribute",
+        "when"
+      ],
+      "title": "ConditionalRequired",
+      "type": "object"
+    },
+    "CrossField": {
+      "properties": {
+        "error_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error_code": {
+          "$ref": "#/$defs/ErrorCode",
+          "default": "CROSS_FIELD_MISMATCH"
+        },
+        "left": {
+          "title": "Left",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "op": {
+          "enum": [
+            "lte",
+            "lt",
+            "eq",
+            "ne",
+            "gte",
+            "gt",
+            "contains_value_of",
+            "not_contains_value_of"
+          ],
+          "title": "Op",
+          "type": "string"
+        },
+        "pack": {
+          "default": "core",
+          "pattern": "^[a-z_]{1,32}$",
+          "title": "Pack",
+          "type": "string"
+        },
+        "policy_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PolicyRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retry_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetryClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "right": {
+          "title": "Right",
+          "type": "string"
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        },
+        "type": {
+          "const": "cross_field",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message",
+        "type",
+        "name",
+        "left",
+        "op",
+        "right"
+      ],
+      "title": "CrossField",
+      "type": "object"
+    },
+    "ErrorClass": {
+      "enum": [
+        "missing_data",
+        "invalid_value",
+        "category_mismatch",
+        "variation_error",
+        "media_error",
+        "content_error",
+        "identifier_error",
+        "compliance_error",
+        "account_permission",
+        "marketplace_technical",
+        "unknown"
+      ],
+      "title": "ErrorClass",
+      "type": "string"
+    },
+    "ErrorCode": {
+      "description": "Every machine-readable error code in v1.0.0.",
+      "enum": [
+        "ACCOUNT_PERMISSION_DENIED",
+        "API_REJECTED_PARTIAL",
+        "AUTH_EXPIRED",
+        "BANNED_TERM",
+        "BATCH_TOO_LARGE",
+        "BUDGET_EXCEEDED",
+        "BULK_APPROVE_REQUIRES_VALIDATED",
+        "BYTE_BUDGET_EXCEEDED",
+        "CATEGORY_MISMATCH",
+        "CATEGORY_NOT_MAPPED",
+        "COMPLIANCE_DECLARATION_MISSING",
+        "CRITICAL_FACT_MISSING",
+        "CROSS_FIELD_MISMATCH",
+        "DUPLICATE_SKU_IN_FILE",
+        "DUPLICATE_SUBMISSION_BLOCKED",
+        "FACTS_CHANGED_SINCE_APPROVAL",
+        "FACT_LEVEL_INVALID",
+        "FACT_MISMATCH",
+        "FACT_NEEDS_CONFIRMATION",
+        "FACT_SOURCE_FORBIDDEN",
+        "FIELD_TOO_LONG",
+        "FIELD_TOO_SHORT",
+        "GENERATION_FAILED",
+        "HEADER_DUPLICATE_COLUMN",
+        "HEADER_MISSING_COLUMN",
+        "HEADER_UNKNOWN_COLUMN",
+        "IDENTIFIER_DUPLICATE",
+        "IDENTIFIER_INVALID",
+        "IDENTIFIER_MISSING",
+        "IMAGE_NON_COMPLIANT",
+        "IMPORT_FAILED",
+        "INTERNAL_ERROR",
+        "INVALID_STATUS_TRANSITION",
+        "JOB_TIMEOUT",
+        "JSON_INVALID",
+        "KEYWORD_DUPLICATE",
+        "LISTING_ARCHIVED",
+        "LISTING_BUSY",
+        "LISTING_PAUSED",
+        "MAKER_CHECKER_VIOLATION",
+        "MARKETPLACE_UNAVAILABLE",
+        "MARKETPLACE_UNCONFIRMED",
+        "MARKETPLACE_UNKNOWN_ERROR",
+        "MISSING_ATTRIBUTE",
+        "MODEL_UNAVAILABLE",
+        "PATTERN_MISMATCH",
+        "PRICE_ABOVE_MRP",
+        "PUBLISH_FAILED",
+        "RATE_LIMITED",
+        "REQUIRED_FIELD_MISSING",
+        "RETRY_EXHAUSTED",
+        "SCHEMA_INVALID",
+        "SELLER_SKU_CONFLICT",
+        "SKU_CONFLICT",
+        "SUBMISSION_ATTEMPTS_EXHAUSTED",
+        "SUBMISSION_IN_FLIGHT",
+        "SUBMISSION_NOT_APPLIED",
+        "TIMEOUT",
+        "TOKEN_LIMIT",
+        "UNKNOWN_FACT_KEY",
+        "UNSUPPORTED_CLAIM",
+        "VALIDATION_FAILED",
+        "VALUE_NOT_ALLOWED",
+        "VARIANT_MATRIX_INCOMPLETE",
+        "VARIATION_INVALID"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "FactBackedAttribute": {
+      "properties": {
+        "attribute": {
+          "anyOf": [
+            {
+              "const": "*critical",
+              "type": "string"
+            },
+            {
+              "pattern": "^[a-z0-9_]{1,64}$",
+              "type": "string"
+            }
+          ],
+          "title": "Attribute"
+        },
+        "compare": {
+          "const": "normalized",
+          "default": "normalized",
+          "title": "Compare",
+          "type": "string"
+        },
+        "error_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error_code": {
+          "$ref": "#/$defs/ErrorCode",
+          "default": "FACT_MISMATCH"
+        },
+        "message": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "pack": {
+          "default": "core",
+          "pattern": "^[a-z_]{1,32}$",
+          "title": "Pack",
+          "type": "string"
+        },
+        "policy_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PolicyRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retry_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetryClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        },
+        "type": {
+          "const": "fact_backed_attribute",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message",
+        "type",
+        "attribute"
+      ],
+      "title": "FactBackedAttribute",
+      "type": "object"
+    },
+    "FactSource": {
+      "properties": {
+        "attribute": {
+          "anyOf": [
+            {
+              "const": "*critical",
+              "type": "string"
+            },
+            {
+              "pattern": "^[a-z0-9_]{1,64}$",
+              "type": "string"
+            }
+          ],
+          "title": "Attribute"
+        },
+        "error_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error_code": {
+          "$ref": "#/$defs/ErrorCode",
+          "default": "FACT_SOURCE_FORBIDDEN"
+        },
+        "forbidden_sources": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbidden Sources",
+          "type": "array"
+        },
+        "message": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "min_confidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Confidence"
+        },
+        "pack": {
+          "default": "core",
+          "pattern": "^[a-z_]{1,32}$",
+          "title": "Pack",
+          "type": "string"
+        },
+        "policy_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PolicyRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "require_confirmation_if_agent_captured": {
+          "default": false,
+          "title": "Require Confirmation If Agent Captured",
+          "type": "boolean"
+        },
+        "retry_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetryClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        },
+        "type": {
+          "const": "fact_source",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message",
+        "type",
+        "attribute",
+        "forbidden_sources"
+      ],
+      "title": "FactSource",
+      "type": "object"
+    },
+    "ImageRequirement": {
+      "properties": {
+        "check": {
+          "enum": [
+            "min_resolution",
+            "recommended_resolution",
+            "aspect_ratio",
+            "background",
+            "fill_ratio",
+            "text_overlay",
+            "watermark",
+            "logo",
+            "format",
+            "max_bytes"
+          ],
+          "title": "Check",
+          "type": "string"
+        },
+        "error_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error_code": {
+          "$ref": "#/$defs/ErrorCode",
+          "default": "IMAGE_NON_COMPLIANT"
+        },
+        "issue_code": {
+          "$ref": "#/$defs/ErrorCode",
+          "default": "IMAGE_NON_COMPLIANT"
+        },
+        "message": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "pack": {
+          "default": "core",
+          "pattern": "^[a-z_]{1,32}$",
+          "title": "Pack",
+          "type": "string"
+        },
+        "params": {
+          "$ref": "#/$defs/ImageRequirementParams"
+        },
+        "policy_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PolicyRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retry_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetryClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "slot": {
+          "enum": [
+            "main",
+            "secondary",
+            "lifestyle",
+            "size_chart",
+            "any"
+          ],
+          "title": "Slot",
+          "type": "string"
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        },
+        "type": {
+          "const": "image_requirement",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message",
+        "type",
+        "slot",
+        "check",
+        "params"
+      ],
+      "title": "ImageRequirement",
+      "type": "object"
+    },
+    "ImageRequirementParams": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_formats": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Allowed Formats",
+          "type": "array"
+        },
+        "max_bytes": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Bytes"
+        },
+        "max_px": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Px"
+        },
+        "min_fill": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Fill"
+        },
+        "min_px": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Px"
+        },
+        "ratio_h": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ratio H"
+        },
+        "ratio_w": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ratio W"
+        },
+        "rgb": {
+          "anyOf": [
+            {
+              "maxItems": 3,
+              "minItems": 3,
+              "prefixItems": [
+                {
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rgb"
+        }
+      },
+      "title": "ImageRequirementParams",
+      "type": "object"
+    },
+    "Marketplace": {
+      "enum": [
+        "amazon",
+        "flipkart"
+      ],
+      "title": "Marketplace",
+      "type": "string"
+    },
+    "MaxItems": {
+      "properties": {
+        "error_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error_code": {
+          "$ref": "#/$defs/ErrorCode",
+          "default": "FIELD_TOO_LONG"
+        },
+        "limit": {
+          "exclusiveMinimum": 0,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "message": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "pack": {
+          "default": "core",
+          "pattern": "^[a-z_]{1,32}$",
+          "title": "Pack",
+          "type": "string"
+        },
+        "policy_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PolicyRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retry_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetryClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        },
+        "type": {
+          "const": "max_items",
+          "title": "Type",
+          "type": "string"
+        },
+        "unique": {
+          "default": false,
+          "title": "Unique",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "message",
+        "type",
+        "limit"
+      ],
+      "title": "MaxItems",
+      "type": "object"
+    },
+    "MaxLength": {
+      "properties": {
+        "error_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error_code": {
+          "$ref": "#/$defs/ErrorCode",
+          "default": "FIELD_TOO_LONG"
+        },
+        "limit": {
+          "exclusiveMinimum": 0,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "message": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "pack": {
+          "default": "core",
+          "pattern": "^[a-z_]{1,32}$",
+          "title": "Pack",
+          "type": "string"
+        },
+        "policy_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PolicyRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retry_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetryClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        },
+        "type": {
+          "const": "max_length",
+          "title": "Type",
+          "type": "string"
+        },
+        "unit": {
+          "default": "chars",
+          "enum": [
+            "chars",
+            "bytes",
+            "words"
+          ],
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message",
+        "type",
+        "limit"
+      ],
+      "title": "MaxLength",
+      "type": "object"
+    },
+    "MinItems": {
+      "properties": {
+        "error_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error_code": {
+          "$ref": "#/$defs/ErrorCode",
+          "default": "FIELD_TOO_SHORT"
+        },
+        "limit": {
+          "exclusiveMinimum": 0,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "message": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "pack": {
+          "default": "core",
+          "pattern": "^[a-z_]{1,32}$",
+          "title": "Pack",
+          "type": "string"
+        },
+        "policy_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PolicyRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retry_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetryClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        },
+        "type": {
+          "const": "min_items",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message",
+        "type",
+        "limit"
+      ],
+      "title": "MinItems",
+      "type": "object"
+    },
+    "MinLength": {
+      "properties": {
+        "error_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error_code": {
+          "$ref": "#/$defs/ErrorCode",
+          "default": "FIELD_TOO_SHORT"
+        },
+        "limit": {
+          "exclusiveMinimum": 0,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "message": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "pack": {
+          "default": "core",
+          "pattern": "^[a-z_]{1,32}$",
+          "title": "Pack",
+          "type": "string"
+        },
+        "policy_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PolicyRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retry_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetryClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        },
+        "type": {
+          "const": "min_length",
+          "title": "Type",
+          "type": "string"
+        },
+        "unit": {
+          "default": "chars",
+          "enum": [
+            "chars",
+            "bytes",
+            "words"
+          ],
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message",
+        "type",
+        "limit"
+      ],
+      "title": "MinLength",
+      "type": "object"
+    },
+    "Pattern": {
+      "properties": {
+        "error_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error_code": {
+          "$ref": "#/$defs/ErrorCode",
+          "default": "PATTERN_MISMATCH"
+        },
+        "flags": {
+          "items": {
+            "const": "i",
+            "type": "string"
+          },
+          "title": "Flags",
+          "type": "array"
+        },
+        "message": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "must": {
+          "enum": [
+            "match",
+            "not_match"
+          ],
+          "title": "Must",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "pack": {
+          "default": "core",
+          "pattern": "^[a-z_]{1,32}$",
+          "title": "Pack",
+          "type": "string"
+        },
+        "policy_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PolicyRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "regex": {
+          "maxLength": 256,
+          "title": "Regex",
+          "type": "string"
+        },
+        "retry_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetryClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        },
+        "type": {
+          "const": "pattern",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message",
+        "type",
+        "name",
+        "regex",
+        "must"
+      ],
+      "title": "Pattern",
+      "type": "object"
+    },
+    "PolicyRef": {
+      "properties": {
+        "retrieved_on": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retrieved On"
+        },
+        "section": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Section"
+        },
+        "source": {
+          "enum": [
+            "amazon_policy",
+            "flipkart_policy",
+            "legal_metrology",
+            "platform",
+            "brand"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "source",
+        "title"
+      ],
+      "title": "PolicyRef",
+      "type": "object"
+    },
+    "RequiredAttribute": {
+      "properties": {
+        "allowed_values": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Allowed Values"
+        },
+        "attribute": {
+          "pattern": "^[a-z0-9_]{1,64}$",
+          "title": "Attribute",
+          "type": "string"
+        },
+        "error_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error_code": {
+          "$ref": "#/$defs/ErrorCode",
+          "default": "MISSING_ATTRIBUTE"
+        },
+        "message": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "pack": {
+          "default": "core",
+          "pattern": "^[a-z_]{1,32}$",
+          "title": "Pack",
+          "type": "string"
+        },
+        "policy_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PolicyRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retry_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetryClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        },
+        "type": {
+          "const": "required_attribute",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message",
+        "type",
+        "attribute"
+      ],
+      "title": "RequiredAttribute",
+      "type": "object"
+    },
+    "RetryClass": {
+      "enum": [
+        "auto_retry",
+        "ai_correct",
+        "user_action",
+        "system_failure"
+      ],
+      "title": "RetryClass",
+      "type": "string"
+    },
+    "Rule": {
+      "properties": {
+        "category": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9_]{2,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "marketplace": {
+          "$ref": "#/$defs/Marketplace"
+        },
+        "rule_def": {
+          "discriminator": {
+            "mapping": {
+              "allowed_values": "#/$defs/AllowedValues",
+              "banned_terms": "#/$defs/BannedTerms",
+              "claim_requires_attribute": "#/$defs/ClaimRequiresAttribute",
+              "conditional_required": "#/$defs/ConditionalRequired",
+              "cross_field": "#/$defs/CrossField",
+              "fact_backed_attribute": "#/$defs/FactBackedAttribute",
+              "fact_source": "#/$defs/FactSource",
+              "image_requirement": "#/$defs/ImageRequirement",
+              "max_items": "#/$defs/MaxItems",
+              "max_length": "#/$defs/MaxLength",
+              "min_items": "#/$defs/MinItems",
+              "min_length": "#/$defs/MinLength",
+              "pattern": "#/$defs/Pattern",
+              "required_attribute": "#/$defs/RequiredAttribute"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/MaxLength"
+            },
+            {
+              "$ref": "#/$defs/MinLength"
+            },
+            {
+              "$ref": "#/$defs/BannedTerms"
+            },
+            {
+              "$ref": "#/$defs/RequiredAttribute"
+            },
+            {
+              "$ref": "#/$defs/MaxItems"
+            },
+            {
+              "$ref": "#/$defs/MinItems"
+            },
+            {
+              "$ref": "#/$defs/AllowedValues"
+            },
+            {
+              "$ref": "#/$defs/ConditionalRequired"
+            },
+            {
+              "$ref": "#/$defs/CrossField"
+            },
+            {
+              "$ref": "#/$defs/ClaimRequiresAttribute"
+            },
+            {
+              "$ref": "#/$defs/ImageRequirement"
+            },
+            {
+              "$ref": "#/$defs/Pattern"
+            },
+            {
+              "$ref": "#/$defs/FactSource"
+            },
+            {
+              "$ref": "#/$defs/FactBackedAttribute"
+            }
+          ],
+          "title": "Rule Def"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "default": "error"
+        },
+        "tenant_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tenant Id"
+        },
+        "version": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "marketplace",
+        "field",
+        "rule_def"
+      ],
+      "title": "Rule",
+      "type": "object"
+    },
+    "Severity": {
+      "enum": [
+        "error",
+        "warning"
+      ],
+      "title": "Severity",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mkos.internal/RuleSet.schema.json",
+  "description": "Carried on GenerationContext.marketplace_rules; the backend resolves it before enqueue.\nPipelineDeps has NO load_rules port \u2014 the AI package fetches nothing. Rows group by\n(tenant_id, field, rule_type, subject, pack); a category rule shadows the category=NULL\nrule and the highest enabled version wins. Tenant rules never shadow platform rules: both\nrun, so brand rules only tighten.",
+  "properties": {
+    "category": {
+      "pattern": "^[a-z0-9_]{2,64}$",
+      "title": "Category",
+      "type": "string"
+    },
+    "loaded_at": {
+      "format": "date-time",
+      "title": "Loaded At",
+      "type": "string"
+    },
+    "marketplace": {
+      "$ref": "#/$defs/Marketplace"
+    },
+    "rules": {
+      "items": {
+        "$ref": "#/$defs/Rule"
+      },
+      "maxItems": 500,
+      "title": "Rules",
+      "type": "array"
+    },
+    "rules_version": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Rules Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "marketplace",
+    "category",
+    "loaded_at"
+  ],
+  "title": "RuleSet",
+  "type": "object"
+}

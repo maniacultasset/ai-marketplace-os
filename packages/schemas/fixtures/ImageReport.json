@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0.0",
+  "image_id": "1f0b7c22-9d41-4a3e-b0f5-6c2a11e8d900",
+  "marketplace": "amazon",
+  "slot": "main",
+  "pass": false,
+  "checks": [],
+  "issues": [
+    {
+      "code": "BACKGROUND_OFF",
+      "check": "background",
+      "suggestion": "Use a pure white (#FFFFFF) background"
+    }
+  ],
+  "confidence": 0.82,
+  "model_used": null,
+  "agent_run_id": null,
+  "processed_at": "2026-09-22T10:31:00Z"
+}

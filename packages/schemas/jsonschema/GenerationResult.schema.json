@@ -1,0 +1,1344 @@
+{
+  "$defs": {
+    "AgentBlockStatus": {
+      "properties": {
+        "agent": {
+          "enum": [
+            "content",
+            "keyword",
+            "attribute",
+            "image"
+          ],
+          "title": "Agent",
+          "type": "string"
+        },
+        "agent_run_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Agent Run Id"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorReport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "failed",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "agent",
+        "status"
+      ],
+      "title": "AgentBlockStatus",
+      "type": "object"
+    },
+    "AgentRunRecord": {
+      "properties": {
+        "agent_name": {
+          "enum": [
+            "content",
+            "keyword",
+            "attribute",
+            "image",
+            "correction",
+            "embedding",
+            "quality"
+          ],
+          "title": "Agent Name",
+          "type": "string"
+        },
+        "attempt": {
+          "default": 1,
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Attempt",
+          "type": "integer"
+        },
+        "cost_usd": {
+          "description": "USD as a decimal string with at most 6 decimal places, e.g. '0.000413' (NUMERIC(12,6)). Producers must quantize with Decimal(...).quantize(Decimal('0.000001'), ROUND_HALF_UP) before sending; floats with more digits are rejected, never rounded.",
+          "title": "Cost Usd",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "duration_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "error_report": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorReport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "input_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Input Digest"
+        },
+        "job_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Job Id"
+        },
+        "listing_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Listing Id"
+        },
+        "listing_version_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Listing Version Id"
+        },
+        "model_used": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Used"
+        },
+        "product_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Product Id"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        },
+        "request_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Request Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "running",
+            "completed",
+            "failed",
+            "timeout"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "tenant_id": {
+          "format": "uuid",
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "tokens": {
+          "$ref": "#/$defs/TokenUsage"
+        },
+        "trigger": {
+          "enum": [
+            "generate",
+            "correct",
+            "embed",
+            "vision"
+          ],
+          "title": "Trigger",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "tenant_id",
+        "request_id",
+        "agent_name",
+        "trigger",
+        "status",
+        "started_at",
+        "created_at"
+      ],
+      "title": "AgentRunRecord",
+      "type": "object"
+    },
+    "CanonicalListing": {
+      "properties": {
+        "attributes": {
+          "patternProperties": {
+            "^[a-z0-9_]{1,64}$": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ]
+            }
+          },
+          "title": "Attributes",
+          "type": "object"
+        },
+        "category": {
+          "pattern": "^[a-z0-9_]{2,64}$",
+          "title": "Category",
+          "type": "string"
+        },
+        "confidence_score": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence Score"
+        },
+        "content": {
+          "$ref": "#/$defs/ListingContent"
+        },
+        "created_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Created At"
+        },
+        "generated_by_agent_run_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generated By Agent Run Id"
+        },
+        "images": {
+          "items": {
+            "$ref": "#/$defs/ImageRef"
+          },
+          "title": "Images",
+          "type": "array"
+        },
+        "keywords": {
+          "$ref": "#/$defs/ListingKeywords"
+        },
+        "listing_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Listing Id"
+        },
+        "locale": {
+          "const": "en-IN",
+          "default": "en-IN",
+          "title": "Locale",
+          "type": "string"
+        },
+        "marketplace": {
+          "$ref": "#/$defs/Marketplace"
+        },
+        "product_id": {
+          "format": "uuid",
+          "title": "Product Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/ListingStatus",
+          "default": "created"
+        },
+        "version": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "product_id",
+        "marketplace",
+        "category",
+        "content"
+      ],
+      "title": "CanonicalListing",
+      "type": "object"
+    },
+    "ErrorClass": {
+      "enum": [
+        "missing_data",
+        "invalid_value",
+        "category_mismatch",
+        "variation_error",
+        "media_error",
+        "content_error",
+        "identifier_error",
+        "compliance_error",
+        "account_permission",
+        "marketplace_technical",
+        "unknown"
+      ],
+      "title": "ErrorClass",
+      "type": "string"
+    },
+    "ErrorCode": {
+      "description": "Every machine-readable error code in v1.0.0.",
+      "enum": [
+        "ACCOUNT_PERMISSION_DENIED",
+        "API_REJECTED_PARTIAL",
+        "AUTH_EXPIRED",
+        "BANNED_TERM",
+        "BATCH_TOO_LARGE",
+        "BUDGET_EXCEEDED",
+        "BULK_APPROVE_REQUIRES_VALIDATED",
+        "BYTE_BUDGET_EXCEEDED",
+        "CATEGORY_MISMATCH",
+        "CATEGORY_NOT_MAPPED",
+        "COMPLIANCE_DECLARATION_MISSING",
+        "CRITICAL_FACT_MISSING",
+        "CROSS_FIELD_MISMATCH",
+        "DUPLICATE_SKU_IN_FILE",
+        "DUPLICATE_SUBMISSION_BLOCKED",
+        "FACTS_CHANGED_SINCE_APPROVAL",
+        "FACT_LEVEL_INVALID",
+        "FACT_MISMATCH",
+        "FACT_NEEDS_CONFIRMATION",
+        "FACT_SOURCE_FORBIDDEN",
+        "FIELD_TOO_LONG",
+        "FIELD_TOO_SHORT",
+        "GENERATION_FAILED",
+        "HEADER_DUPLICATE_COLUMN",
+        "HEADER_MISSING_COLUMN",
+        "HEADER_UNKNOWN_COLUMN",
+        "IDENTIFIER_DUPLICATE",
+        "IDENTIFIER_INVALID",
+        "IDENTIFIER_MISSING",
+        "IMAGE_NON_COMPLIANT",
+        "IMPORT_FAILED",
+        "INTERNAL_ERROR",
+        "INVALID_STATUS_TRANSITION",
+        "JOB_TIMEOUT",
+        "JSON_INVALID",
+        "KEYWORD_DUPLICATE",
+        "LISTING_ARCHIVED",
+        "LISTING_BUSY",
+        "LISTING_PAUSED",
+        "MAKER_CHECKER_VIOLATION",
+        "MARKETPLACE_UNAVAILABLE",
+        "MARKETPLACE_UNCONFIRMED",
+        "MARKETPLACE_UNKNOWN_ERROR",
+        "MISSING_ATTRIBUTE",
+        "MODEL_UNAVAILABLE",
+        "PATTERN_MISMATCH",
+        "PRICE_ABOVE_MRP",
+        "PUBLISH_FAILED",
+        "RATE_LIMITED",
+        "REQUIRED_FIELD_MISSING",
+        "RETRY_EXHAUSTED",
+        "SCHEMA_INVALID",
+        "SELLER_SKU_CONFLICT",
+        "SKU_CONFLICT",
+        "SUBMISSION_ATTEMPTS_EXHAUSTED",
+        "SUBMISSION_IN_FLIGHT",
+        "SUBMISSION_NOT_APPLIED",
+        "TIMEOUT",
+        "TOKEN_LIMIT",
+        "UNKNOWN_FACT_KEY",
+        "UNSUPPORTED_CLAIM",
+        "VALIDATION_FAILED",
+        "VALUE_NOT_ALLOWED",
+        "VARIANT_MATRIX_INCOMPLETE",
+        "VARIATION_INVALID"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "ErrorItem": {
+      "properties": {
+        "auto_fixable": {
+          "default": false,
+          "title": "Auto Fixable",
+          "type": "boolean"
+        },
+        "error_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error_code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "fix_action": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FixAction"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "marketplace": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Marketplace"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "message": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "raw_code": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Code"
+        },
+        "retry_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetryClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retryable": {
+          "title": "Retryable",
+          "type": "boolean"
+        },
+        "rule_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rule Id"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "default": "error"
+        },
+        "source": {
+          "$ref": "#/$defs/ErrorSource"
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        },
+        "value_submitted": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value Submitted"
+        }
+      },
+      "required": [
+        "field",
+        "error_code",
+        "message",
+        "source",
+        "retryable"
+      ],
+      "title": "ErrorItem",
+      "type": "object"
+    },
+    "ErrorReport": {
+      "properties": {
+        "attempts_used": {
+          "default": 0,
+          "maximum": 3,
+          "minimum": 0,
+          "title": "Attempts Used",
+          "type": "integer"
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "errors": {
+          "items": {
+            "$ref": "#/$defs/ErrorItem"
+          },
+          "maxItems": 500,
+          "title": "Errors",
+          "type": "array"
+        },
+        "listing_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Listing Id"
+        },
+        "max_attempts": {
+          "default": 3,
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Max Attempts",
+          "type": "integer"
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Request Id"
+        },
+        "retryable": {
+          "default": false,
+          "title": "Retryable",
+          "type": "boolean"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "failed",
+            "partial"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "ErrorReport",
+      "type": "object"
+    },
+    "ErrorSource": {
+      "enum": [
+        "schema",
+        "rules_engine",
+        "vision_model",
+        "ai_model",
+        "amazon_adapter",
+        "flipkart_adapter",
+        "system"
+      ],
+      "title": "ErrorSource",
+      "type": "string"
+    },
+    "FixAction": {
+      "enum": [
+        "remap_value",
+        "reformat",
+        "derive_field",
+        "rebuild_variation"
+      ],
+      "title": "FixAction",
+      "type": "string"
+    },
+    "ImageCheck": {
+      "properties": {
+        "check": {
+          "enum": [
+            "format",
+            "corruption",
+            "resolution",
+            "aspect_ratio",
+            "file_size",
+            "exif_orientation",
+            "background",
+            "fill_ratio",
+            "text_overlay",
+            "watermark",
+            "logo",
+            "product_visibility"
+          ],
+          "title": "Check",
+          "type": "string"
+        },
+        "method": {
+          "enum": [
+            "deterministic",
+            "vision"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "check",
+        "method",
+        "passed"
+      ],
+      "title": "ImageCheck",
+      "type": "object"
+    },
+    "ImageIssue": {
+      "properties": {
+        "check": {
+          "enum": [
+            "format",
+            "corruption",
+            "resolution",
+            "aspect_ratio",
+            "file_size",
+            "exif_orientation",
+            "background",
+            "fill_ratio",
+            "text_overlay",
+            "watermark",
+            "logo",
+            "product_visibility"
+          ],
+          "title": "Check",
+          "type": "string"
+        },
+        "code": {
+          "$ref": "#/$defs/ImageIssueCode"
+        },
+        "suggestion": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Suggestion",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "check",
+        "suggestion"
+      ],
+      "title": "ImageIssue",
+      "type": "object"
+    },
+    "ImageIssueCode": {
+      "enum": [
+        "BACKGROUND_OFF",
+        "RESOLUTION_LOW",
+        "TEXT_DETECTED",
+        "WATERMARK",
+        "FILL_RATIO_LOW",
+        "WRONG_ASPECT",
+        "FORMAT_UNSUPPORTED",
+        "FILE_TOO_LARGE",
+        "CORRUPT",
+        "LOGO_PROHIBITED"
+      ],
+      "title": "ImageIssueCode",
+      "type": "string"
+    },
+    "ImageRef": {
+      "properties": {
+        "image_id": {
+          "format": "uuid",
+          "title": "Image Id",
+          "type": "string"
+        },
+        "position": {
+          "default": 0,
+          "maximum": 99,
+          "minimum": 0,
+          "title": "Position",
+          "type": "integer"
+        },
+        "slot": {
+          "$ref": "#/$defs/ImageSlot"
+        }
+      },
+      "required": [
+        "image_id",
+        "slot"
+      ],
+      "title": "ImageRef",
+      "type": "object"
+    },
+    "ImageReport": {
+      "properties": {
+        "agent_run_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Agent Run Id"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/ImageCheck"
+          },
+          "title": "Checks",
+          "type": "array"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "image_id": {
+          "format": "uuid",
+          "title": "Image Id",
+          "type": "string"
+        },
+        "issues": {
+          "items": {
+            "$ref": "#/$defs/ImageIssue"
+          },
+          "title": "Issues",
+          "type": "array"
+        },
+        "marketplace": {
+          "$ref": "#/$defs/Marketplace"
+        },
+        "model_used": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Used"
+        },
+        "pass": {
+          "title": "Pass",
+          "type": "boolean"
+        },
+        "processed_at": {
+          "format": "date-time",
+          "title": "Processed At",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "slot": {
+          "$ref": "#/$defs/ImageSlot"
+        }
+      },
+      "required": [
+        "image_id",
+        "marketplace",
+        "slot",
+        "pass",
+        "processed_at"
+      ],
+      "title": "ImageReport",
+      "type": "object"
+    },
+    "ImageSlot": {
+      "enum": [
+        "main",
+        "secondary",
+        "lifestyle",
+        "size_chart",
+        "packaging_label"
+      ],
+      "title": "ImageSlot",
+      "type": "string"
+    },
+    "ListingContent": {
+      "properties": {
+        "bullets": {
+          "items": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Bullets",
+          "type": "array"
+        },
+        "description": {
+          "maxLength": 5000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "bullets",
+        "description"
+      ],
+      "title": "ListingContent",
+      "type": "object"
+    },
+    "ListingKeywords": {
+      "properties": {
+        "hidden_terms": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Hidden Terms",
+          "type": "array"
+        },
+        "search_terms": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Search Terms",
+          "type": "array"
+        }
+      },
+      "title": "ListingKeywords",
+      "type": "object"
+    },
+    "ListingStatus": {
+      "enum": [
+        "created",
+        "generating",
+        "validated",
+        "needs_review",
+        "approved",
+        "publishing",
+        "published",
+        "blocked",
+        "failed"
+      ],
+      "title": "ListingStatus",
+      "type": "string"
+    },
+    "Marketplace": {
+      "enum": [
+        "amazon",
+        "flipkart"
+      ],
+      "title": "Marketplace",
+      "type": "string"
+    },
+    "RetryClass": {
+      "enum": [
+        "auto_retry",
+        "ai_correct",
+        "user_action",
+        "system_failure"
+      ],
+      "title": "RetryClass",
+      "type": "string"
+    },
+    "Severity": {
+      "enum": [
+        "error",
+        "warning"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "TokenUsage": {
+      "properties": {
+        "cached_input": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Cached Input",
+          "type": "integer"
+        },
+        "input": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Input",
+          "type": "integer"
+        },
+        "output": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Output",
+          "type": "integer"
+        }
+      },
+      "title": "TokenUsage",
+      "type": "object"
+    },
+    "ValidationResult": {
+      "properties": {
+        "attempt": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Attempt",
+          "type": "integer"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "duration_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "listing_id": {
+          "format": "uuid",
+          "title": "Listing Id",
+          "type": "string"
+        },
+        "listing_version_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Listing Version Id"
+        },
+        "marketplace": {
+          "$ref": "#/$defs/Marketplace"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        },
+        "report": {
+          "$ref": "#/$defs/ErrorReport"
+        },
+        "rules_version": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rules Version"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/ErrorSource"
+        },
+        "tenant_id": {
+          "format": "uuid",
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "validation_run_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Validation Run Id"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "listing_id",
+        "marketplace",
+        "source",
+        "passed",
+        "report",
+        "created_at"
+      ],
+      "title": "ValidationResult",
+      "type": "object"
+    },
+    "ValidationSummary": {
+      "properties": {
+        "blocking_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Blocking Count",
+          "type": "integer"
+        },
+        "listing_id": {
+          "format": "uuid",
+          "title": "Listing Id",
+          "type": "string"
+        },
+        "listing_version_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Listing Version Id"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Request Id"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "stages": {
+          "items": {
+            "$ref": "#/$defs/ValidationResult"
+          },
+          "title": "Stages",
+          "type": "array"
+        },
+        "warning_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Warning Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "listing_id",
+        "passed"
+      ],
+      "title": "ValidationSummary",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mkos.internal/GenerationResult.schema.json",
+  "description": "Return value of run_listing_pipeline (implemented in mkos_pipeline.graph).",
+  "properties": {
+    "agent_runs": {
+      "items": {
+        "$ref": "#/$defs/AgentRunRecord"
+      },
+      "title": "Agent Runs",
+      "type": "array"
+    },
+    "attempts_used": {
+      "default": 0,
+      "maximum": 3,
+      "minimum": 0,
+      "title": "Attempts Used",
+      "type": "integer"
+    },
+    "blocks": {
+      "items": {
+        "$ref": "#/$defs/AgentBlockStatus"
+      },
+      "title": "Blocks",
+      "type": "array"
+    },
+    "error": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ErrorReport"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "image_reports": {
+      "items": {
+        "$ref": "#/$defs/ImageReport"
+      },
+      "title": "Image Reports",
+      "type": "array"
+    },
+    "job_id": {
+      "format": "uuid",
+      "title": "Job Id",
+      "type": "string"
+    },
+    "listing": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CanonicalListing"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "request_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "terminal_state": {
+      "enum": [
+        "generated",
+        "needs_review",
+        "blocked",
+        "failed"
+      ],
+      "title": "Terminal State",
+      "type": "string"
+    },
+    "validation": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ValidationSummary"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "request_id",
+    "job_id",
+    "terminal_state"
+  ],
+  "title": "GenerationResult",
+  "type": "object"
+}

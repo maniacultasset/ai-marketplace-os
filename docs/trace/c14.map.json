@@ -353,10 +353,10 @@
   },
   {
    "id": "R08742",
-   "status": "needs-client",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "docs/architecture/DATABASE.md:990; T89",
-   "note": "CHECK uses [06] vocabulary; [19] example user_request would be rejected"
+   "ref": "packages/schemas/src/mkos_schemas/agent.py (Trigger); TEAM-QUESTIONS T89",
+   "note": "Built as the T89 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R08743",

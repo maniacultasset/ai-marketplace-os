@@ -1,10 +1,10 @@
 [project]
 name = "mkos-schemas"
-version = "0.0.0"
+version = "1.0.0"
 description = "AI Marketplace OS shared contracts (Python side of @mkos/schemas)"
 requires-python = "==3.13.*"
-# pydantic arrives with the S2 models (CANON.md:113); the skeleton has none.
-dependencies = []
+# serialize_by_alias first appears in pydantic 2.11.0 (D12).
+dependencies = ["pydantic>=2.11,<3"]
 
 [build-system]
 requires = ["hatchling==1.31.0"]
@@ -12,6 +12,4 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mkos_schemas"]
-# Editable installs add src/ to sys.path with a .pth file, so a bare-venv editable install
-# (scripts/ci/contracts.sh) builds offline with only the hash-pinned build tools.
 dev-mode-dirs = ["src"]

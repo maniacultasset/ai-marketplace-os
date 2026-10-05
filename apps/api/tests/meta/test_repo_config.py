@@ -129,9 +129,19 @@ def test_worktree_env_is_ignored(repo_root: Path) -> None:
     assert sample.returncode == 1
 
 
-def test_contracts_script_installs_only_hashed_build_deps(repo_root: Path) -> None:
+def test_contracts_script_installs_only_hashed_deps(repo_root: Path) -> None:
     script = (repo_root / "scripts/ci/contracts.sh").read_text(encoding="utf-8")
     assert "--seed" not in script
+    assert "uv export --frozen --package mkos-schemas" in script
     assert "--require-hashes -r build-constraints.txt" in script
+    assert '--require-hashes -r "$work/runtime.txt"' in script
     assert "--no-build-isolation --no-index -e packages/schemas" in script
-    assert 'import mkos_schemas"' in script
+    assert "from mkos_schemas.listing import CanonicalListing" in script
+    assert "contracts_check.py --fixtures packages/schemas/fixtures" in script
+    assert "pip install" not in script.replace(
+        'uv pip install --python "$venv/bin/python" --require-hashes -r build-constraints.txt', ""
+    ).replace(
+        'uv pip install --python "$venv/bin/python" --require-hashes -r "$work/runtime.txt"', ""
+    ).replace(
+        '"$venv/bin/pip" install --no-build-isolation --no-index -e packages/schemas', ""
+    )

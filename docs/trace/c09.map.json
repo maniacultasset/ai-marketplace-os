@@ -1165,45 +1165,45 @@
   },
   {
    "id": "R06055",
-   "status": "needs-client",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "DATABASE.md:2131; TEAM-QUESTIONS T61",
-   "note": "Site conflict: [06] flat title vs [35] content.title; plan picks nested, no Canon row."
+   "ref": "packages/schemas/src/mkos_schemas/listing.py; CANON.md CanonicalListing row; TEAM-QUESTIONS T61",
+   "note": "Built as the T61 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R06056",
-   "status": "needs-client",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "DATABASE.md:2131; TEAM-QUESTIONS T61",
-   "note": "content.bullets list[str] per [35]; [06] top-level bullets; T61 open, no Canon row."
+   "ref": "packages/schemas/src/mkos_schemas/listing.py; CANON.md CanonicalListing row; TEAM-QUESTIONS T61",
+   "note": "Built as the T61 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R06057",
-   "status": "needs-client",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "DATABASE.md:2131; TEAM-QUESTIONS T61",
-   "note": "Example value; fits bullets, placement (content.bullets) follows R06056/T61."
+   "ref": "packages/schemas/src/mkos_schemas/listing.py; CANON.md CanonicalListing row; TEAM-QUESTIONS T61",
+   "note": "Built as the T61 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R06058",
-   "status": "needs-client",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "DATABASE.md:2131; TEAM-QUESTIONS T61",
-   "note": "Example value; fits bullets, placement (content.bullets) follows R06056/T61."
+   "ref": "packages/schemas/src/mkos_schemas/listing.py; CANON.md CanonicalListing row; TEAM-QUESTIONS T61",
+   "note": "Built as the T61 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R06059",
-   "status": "needs-client",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "DATABASE.md:2131; TEAM-QUESTIONS T61",
-   "note": "Example value; fits bullets, placement (content.bullets) follows R06056/T61."
+   "ref": "packages/schemas/src/mkos_schemas/listing.py; CANON.md CanonicalListing row; TEAM-QUESTIONS T61",
+   "note": "Built as the T61 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R06061",
-   "status": "needs-client",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "DATABASE.md:2131; TEAM-QUESTIONS T61",
-   "note": "content.description per [35]; [06] top-level description; T61 open, no Canon row."
+   "ref": "packages/schemas/src/mkos_schemas/listing.py; CANON.md CanonicalListing row; TEAM-QUESTIONS T61",
+   "note": "Built as the T61 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R06062",
@@ -1249,24 +1249,24 @@
   },
   {
    "id": "R06069",
-   "status": "conflict",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "CONTRACTS.md:802; TEAM-QUESTIONS T26",
-   "note": "Same value kept, but under keywords.hidden_terms; same conflict as R06068."
+   "ref": "packages/schemas/src/mkos_schemas/listing.py (ListingKeywords.hidden_terms); TEAM-QUESTIONS T26",
+   "note": "Built as the T26 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R06070",
-   "status": "conflict",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "CONTRACTS.md:802; TEAM-QUESTIONS T26",
-   "note": "Same value kept, but under keywords.hidden_terms; same conflict as R06068."
+   "ref": "packages/schemas/src/mkos_schemas/listing.py (ListingKeywords.hidden_terms); TEAM-QUESTIONS T26",
+   "note": "Built as the T26 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R06071",
-   "status": "conflict",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "CONTRACTS.md:802; TEAM-QUESTIONS T26",
-   "note": "Same value kept, but under keywords.hidden_terms; same conflict as R06068."
+   "ref": "packages/schemas/src/mkos_schemas/listing.py (ListingKeywords.hidden_terms); TEAM-QUESTIONS T26",
+   "note": "Built as the T26 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R06074",
@@ -1354,17 +1354,17 @@
   },
   {
    "id": "R06092",
-   "status": "conflict",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "DATABASE.md:2137; TEAM-QUESTIONS T61",
-   "note": "Renamed generated_by_agent_run_id (UUID); only [06] defines generated_by; no Canon row."
+   "ref": "packages/schemas/src/mkos_schemas/listing.py; CANON.md CanonicalListing row; TEAM-QUESTIONS T61",
+   "note": "Built as the T61 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R06093",
-   "status": "conflict",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "DATABASE.md:2137; CONTRACTS.md:782; TEAM-QUESTIONS T61",
-   "note": "schema_version '1.0.0' vs site '1.0'; only [06] defines it; no Canon row."
+   "ref": "packages/schemas/src/mkos_schemas/listing.py; CANON.md CanonicalListing row; TEAM-QUESTIONS T61",
+   "note": "Built as the T61 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R06102",
@@ -1956,10 +1956,10 @@
   },
   {
    "id": "R06210",
-   "status": "needs-client",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "DATABASE.md:1369; CONTRACTS.md:168; T83",
-   "note": "Site contradicts itself; codes.py drafts FIELD_TOO_LONG but BACKEND-ARCHITECTURE.md:1384 still shows TITLE_TOO_LONG."
+   "ref": "packages/schemas/src/mkos_schemas/codes.py (FIELD_TOO_LONG); TEAM-QUESTIONS T83",
+   "note": "Built as the T83 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R06211",
@@ -2061,24 +2061,24 @@
   },
   {
    "id": "R06242",
-   "status": "conflict",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "CONTRACTS.md:182; CONTRACTS.md:196; DATABASE.md:520; T84",
-   "note": "[07] L6242 and [122] use BACKGROUND_OFF as error_code; plan emits IMAGE_NON_COMPLIANT, code only as ImageIssueCode/raw_code."
+   "ref": "packages/schemas/src/mkos_schemas/images.py, codes.py (IMAGE_NON_COMPLIANT + ImageIssueCode); TEAM-QUESTIONS T84",
+   "note": "Built as the T84 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R06242a",
-   "status": "conflict",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "CONTRACTS.md:182; CONTRACTS.md:196; DATABASE.md:520; T84",
-   "note": "Same as R06242: RESOLUTION_LOW only an ImageIssueCode; ErrorItem code IMAGE_NON_COMPLIANT."
+   "ref": "packages/schemas/src/mkos_schemas/images.py, codes.py (IMAGE_NON_COMPLIANT + ImageIssueCode); TEAM-QUESTIONS T84",
+   "note": "Built as the T84 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R06242b",
-   "status": "conflict",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "CONTRACTS.md:182; CONTRACTS.md:197; DATABASE.md:520; T84",
-   "note": "Same as R06242: TEXT_DETECTED only an ImageIssueCode; ErrorItem code IMAGE_NON_COMPLIANT."
+   "ref": "packages/schemas/src/mkos_schemas/images.py, codes.py (IMAGE_NON_COMPLIANT + ImageIssueCode); TEAM-QUESTIONS T84",
+   "note": "Built as the T84 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R06244",

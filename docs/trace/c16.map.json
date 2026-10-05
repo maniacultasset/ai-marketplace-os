@@ -1200,10 +1200,10 @@
   },
   {
    "id": "R10031",
-   "status": "conflict",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "CONTRACTS.md:406-407; T84",
-   "note": "Draft drops \"type\" for code (ImageIssueCode) + check (CheckName)."
+   "ref": "packages/schemas/src/mkos_schemas/images.py, codes.py (IMAGE_NON_COMPLIANT + ImageIssueCode); TEAM-QUESTIONS T84",
+   "note": "Built as the T84 default in mkos-schemas 1.0.0 (S2); the team question stays open."
   },
   {
    "id": "R10032",

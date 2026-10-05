@@ -1,0 +1,59 @@
+{
+  "$defs": {
+    "JobState": {
+      "enum": [
+        "queued",
+        "running",
+        "succeeded",
+        "partial",
+        "failed",
+        "cancelled",
+        "dead_letter"
+      ],
+      "title": "JobState",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mkos.internal/JobAccepted.schema.json",
+  "properties": {
+    "estimated_duration_seconds": {
+      "default": 30,
+      "minimum": 0,
+      "title": "Estimated Duration Seconds",
+      "type": "integer"
+    },
+    "job_id": {
+      "format": "uuid",
+      "title": "Job Id",
+      "type": "string"
+    },
+    "listing_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Listing Id"
+    },
+    "poll_url": {
+      "minLength": 1,
+      "title": "Poll Url",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/JobState",
+      "default": "queued"
+    }
+  },
+  "required": [
+    "job_id",
+    "poll_url"
+  ],
+  "title": "JobAccepted",
+  "type": "object"
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0.0",
+  "listing_id": "9c1d2f6a-3b84-4f21-9a55-0c6f8b2e77d1",
+  "marketplace": "amazon",
+  "external_id": null,
+  "status": "published",
+  "idempotency_key": "idem-1",
+  "fields": [],
+  "submission_ref": null,
+  "marketplace_state": null,
+  "items": [],
+  "raw_response_digest": null,
+  "error": null,
+  "attempt": 1
+}
