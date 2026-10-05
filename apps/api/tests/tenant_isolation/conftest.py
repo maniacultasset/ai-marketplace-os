@@ -77,9 +77,35 @@ async def app_engine() -> AsyncIterator[AsyncEngine]:
     await engine.dispose()
 
 
+CLEAN_SQL = "TRUNCATE tenants, users, category_templates, rules RESTART IDENTITY CASCADE"
+
+
 @pytest.fixture
 def clean_tenants(admin_conn: Conn) -> None:
     """Empty every tenant and platform-seed table before the test (schema untouched)."""
-    admin_conn.execute(
-        "TRUNCATE tenants, users, category_templates, rules RESTART IDENTITY CASCADE"
-    )
+    admin_conn.execute(CLEAN_SQL)
+
+
+@pytest.fixture(scope="module")
+def clean_module_admin_conn() -> Iterator[Conn]:
+    """A module-wide admin connection on a freshly emptied mos_iso, for a module whose tests
+    share one read-only world (they never leave a write behind)."""
+    with _checked(psycopg.connect(libpq(_url("ALEMBIC_DATABASE_URL")), autocommit=True)) as conn:
+        conn.execute(CLEAN_SQL)
+        yield conn
+
+
+@pytest.fixture
+async def iso_settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[None]:
+    """App settings from the suite's env (DATABASE_URL logs in as app_rw), no developer `.env`,
+    and a fresh engine per test (one event loop per test)."""
+    from app.core.config import get_settings
+    from app.db.session import dispose_engine
+
+    _url("DATABASE_URL")
+    monkeypatch.chdir(tmp_path)
+    get_settings.cache_clear()
+    await dispose_engine()
+    yield
+    await dispose_engine()
+    get_settings.cache_clear()
