@@ -105,13 +105,35 @@ def _word_hit(text: str, term: str) -> bool:
     return False
 
 
+_GRAM: Final = 4
+
+
+@lru_cache(maxsize=_CACHE_SIZE * 4)
+def _grams(text: str, size: int) -> frozenset[str]:
+    """Every substring of ``text`` of length ``size``."""
+    return frozenset(text[i : i + size] for i in range(len(text) - size + 1))
+
+
 @dataclass(frozen=True)
 class _Matcher:
+    """One rule's term list, ready to scan. Literal keys are indexed by their first
+    ``_GRAM`` characters, so a text is checked only against the keys whose prefix it holds
+    (C-level set intersections instead of one substring search per term)."""
+
     terms: tuple[str, ...]
     keys: tuple[str, ...]
     match: MatchMode
     case_sensitive: bool
     patterns: tuple[re.Pattern[str], ...]
+    index: Mapping[int, Mapping[str, tuple[int, ...]]]
+
+    def _candidates(self, norm: str) -> list[int]:
+        found: list[int] = []
+        for size, by_prefix in self.index.items():
+            for prefix in by_prefix.keys() & _grams(norm, size):
+                found.extend(by_prefix[prefix])
+        found.sort()
+        return found
 
     def find(self, text: str) -> tuple[str, ...]:
         if self.match == "regex":
@@ -123,21 +145,29 @@ class _Matcher:
             )
         norm = normalise(text, case_sensitive=self.case_sensitive)
         hits: list[str] = []
-        for term, key in zip(self.terms, self.keys, strict=True):
-            if not key or key not in norm:
-                continue
-            if self.match == "substring" or _word_hit(norm, key):
-                hits.append(term)
+        for i in self._candidates(norm):
+            key = self.keys[i]
+            if key in norm and (self.match == "substring" or _word_hit(norm, key)):
+                hits.append(self.terms[i])
         return tuple(hits)
+
+
+def _prefix_index(keys: Sequence[str]) -> dict[int, dict[str, tuple[int, ...]]]:
+    index: dict[int, dict[str, list[int]]] = {}
+    for i, key in enumerate(keys):
+        if key:  # a term that normalises to "" never matches
+            prefix = key[:_GRAM]
+            index.setdefault(len(prefix), {}).setdefault(prefix, []).append(i)
+    return {size: {p: tuple(ix) for p, ix in group.items()} for size, group in index.items()}
 
 
 @lru_cache(maxsize=_CACHE_SIZE)
 def _matcher(terms: tuple[str, ...], match: MatchMode, case_sensitive: bool) -> _Matcher:
     if match == "regex":
         patterns = tuple(compiled_rule_regex(t, ignore_case=not case_sensitive) for t in terms)
-        return _Matcher(terms, terms, match, case_sensitive, patterns)
+        return _Matcher(terms, terms, match, case_sensitive, patterns, {})
     keys = tuple(normalise(t, case_sensitive=case_sensitive) for t in terms)
-    return _Matcher(terms, keys, match, case_sensitive, ())
+    return _Matcher(terms, keys, match, case_sensitive, (), _prefix_index(keys))
 
 
 @lru_cache(maxsize=_CACHE_SIZE * 8)
