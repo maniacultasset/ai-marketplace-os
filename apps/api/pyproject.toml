@@ -29,3 +29,13 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
+
+# Local mutation run over the Rules Engine (ADR-0010 §2; S14a T16): report-only,
+# `make mutation-rules`, run from apps/api so mutmut's module names match `app.*` (mutmut only
+# understands ./, src/ and source/ roots). The nightly workflow is S26.
+[tool.mutmut]
+source_paths = ["app"]
+only_mutate = ["app/services/rules_engine/*"]
+pytest_add_cli_args_test_selection = ["tests/unit/rules_engine"]
+pytest_add_cli_args = ["--no-cov", "-p", "no:randomly"]
+also_copy = ["tests"]

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any, cast, get_args
 from uuid import UUID
 
@@ -14,9 +13,8 @@ from mkos_schemas.jobs import CategoryTemplate
 from mkos_schemas.listing import CanonicalListing
 from mkos_schemas.rules import Rule, RuleDef
 from pydantic import ValidationError
-from tests.rules_engine_builders import CATEGORY, LISTING_ID, PRODUCT_ID, TENANT_ID
+from tests.rules_engine_builders import CATEGORY, FIXTURES, LISTING_ID, PRODUCT_ID, TENANT_ID
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
 RULEDEF_MEMBERS: tuple[Any, ...] = get_args(get_args(RuleDef)[0])
 
 VOCAB = [
@@ -445,9 +443,7 @@ def rule_lists(max_size: int = 40) -> st.SearchStrategy[list[Rule]]:
     return st.lists(rules_strategy(), min_size=1, max_size=max_size, unique_by=lambda r: r.id)
 
 
-FIXTURE_TEMPLATE = json.loads(
-    (REPO_ROOT / "packages/schemas/fixtures/CategoryTemplate.json").read_text(encoding="utf-8")
-)
+FIXTURE_TEMPLATE = json.loads((FIXTURES / "CategoryTemplate.json").read_text(encoding="utf-8"))
 RICH_TEMPLATE = CategoryTemplate.model_validate(
     {
         "marketplace": "amazon",

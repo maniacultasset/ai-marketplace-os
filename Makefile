@@ -153,6 +153,11 @@ api-tests:
 	  uv run --frozen coverage json -q --include='*/app/services/rules_engine/*' -o "$$cov" && \
 	  uv run --frozen python scripts/ci/branch_coverage.py "$$cov" --min 90 --label rules_engine
 
+# Mutation run over the Rules Engine (ADR-0010 §2): report-only, not a required check (S14a T16).
+.PHONY: mutation-rules
+mutation-rules:
+	cd apps/api && uv run --frozen mutmut run
+
 .PHONY: tenant-isolation
 tenant-isolation:
 	$(PG_PORT_GUARD)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -16,6 +17,12 @@ LISTING_ID = UUID("00000000-0000-0000-0000-0000000000bb")
 TENANT_ID = UUID("00000000-0000-0000-0000-0000000000cc")
 LOADED_AT = datetime(2026, 10, 5, tzinfo=UTC)
 CATEGORY = "ethnic_wear_kurta_sets"
+FIXTURES = next(
+    p / "packages/schemas/fixtures"
+    for p in Path(__file__).resolve().parents
+    if (p / "packages/schemas/fixtures").is_dir()
+)
+"""The contracts fixtures, found upwards (the tests also run from a mutmut copy)."""
 
 _ids = itertools.count(1)
 

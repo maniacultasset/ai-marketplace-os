@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 from app.services.rules_engine import evaluate
 from mkos_schemas.jobs import CategoryTemplate
-from tests.rules_engine_builders import TENANT_ID, listing, rule, ruleset, template
+from tests.rules_engine_builders import FIXTURES, TENANT_ID, listing, rule, ruleset, template
 
-FIXTURE = Path(__file__).resolve().parents[5] / "packages/schemas/fixtures/CategoryTemplate.json"
+FIXTURE = FIXTURES / "CategoryTemplate.json"
 
 
 def _errors(item: Any, tpl: Any, *rules: Any, **kw: Any) -> list[Any]:

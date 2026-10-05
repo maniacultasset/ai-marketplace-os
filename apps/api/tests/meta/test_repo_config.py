@@ -153,3 +153,20 @@ def test_mypy_excludes_alembic_versions(repo_root: Path) -> None:
 
     mypy = tomllib.loads((repo_root / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mypy"]
     assert mypy["exclude"] == ["^apps/api/alembic/versions/"]
+
+
+def test_mutmut_scoped_to_rules_engine(repo_root: Path) -> None:
+    import tomllib
+
+    config = tomllib.loads((repo_root / "apps/api/pyproject.toml").read_text(encoding="utf-8"))
+    mutmut = config["tool"]["mutmut"]
+    assert mutmut["source_paths"] == ["app"]
+    assert mutmut["only_mutate"] == ["app/services/rules_engine/*"]
+    assert mutmut["pytest_add_cli_args_test_selection"] == ["tests/unit/rules_engine"]
+    assert mutmut["pytest_add_cli_args"] == ["--no-cov", "-p", "no:randomly"]
+    assert mutmut["also_copy"] == ["tests"]
+    root = tomllib.loads((repo_root / "pyproject.toml").read_text(encoding="utf-8"))
+    assert "mutmut" not in root["tool"]
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert "mutation-rules:\n\tcd apps/api && uv run --frozen mutmut run\n" in makefile
+    assert "mutants/" in (repo_root / ".gitignore").read_text(encoding="utf-8")
