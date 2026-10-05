@@ -95,6 +95,6 @@ Gates: <name>=<pass|fail|skipped> …
 ## Test tooling
 
 Hypothesis, Schemathesis, squawk, mutmut, pytest-randomly, pytest-socket and pip-audit belong to
-ADR-0010 (proposed) and the ADR-0013 dependency set. All are pinned in `uv.lock` since S1 except
-squawk, which S5 adds. **No role adds or upgrades a dependency outside an approved plan.** If a tool isn't in `uv.lock` yet, the check
+ADR-0010 (proposed) and the ADR-0013 dependency set. All are pinned in `uv.lock`: squawk-cli
+(2.65.0) since S5, the rest since S1. **No role adds or upgrades a dependency outside an approved plan.** If a tool isn't in `uv.lock` yet, the check
 is reported as untested, with the reason.
