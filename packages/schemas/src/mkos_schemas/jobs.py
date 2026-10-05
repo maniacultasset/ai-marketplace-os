@@ -118,8 +118,10 @@ class CategoryTemplate(WireModel):
         return self
 
 
-class ModelCredentials(StrictModel):
-    model_config = StrictModel.model_config | ConfigDict(hide_input_in_errors=True)
+class ModelCredentials(WireModel):
+    """Seam type (CANON.md:122, WireModel): unknown keys from a newer backend are dropped."""
+
+    model_config = WireModel.model_config | ConfigDict(hide_input_in_errors=True)
 
     provider: Literal["openai", "deepseek"]
     api_key: SecretStr

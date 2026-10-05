@@ -393,3 +393,20 @@ def test_job_accepted_default_status() -> None:
         {"job_id": _JID, "poll_url": "/jobs/1", "estimated_duration_seconds": 10}
     )
     assert ja.status is JobState.QUEUED
+
+
+def test_model_credentials_is_a_wire_model() -> None:
+    # Round 1 R1-11: CANON.md:122 lists ModelCredentials among the WireModel seam types, so an
+    # additive field from a newer backend is dropped by a pinned AI package, not rejected.
+    from mkos_schemas.base import StrictModel, WireModel
+
+    assert issubclass(ModelCredentials, WireModel)
+    assert not issubclass(ModelCredentials, StrictModel)
+    assert ModelCredentials.model_config.get("hide_input_in_errors") is True
+    cred = ModelCredentials.model_validate(
+        {"provider": "openai", "api_key": "k", "model": "m", "org_id": "o"}
+    )
+    assert "org_id" not in cred.model_dump()
+    assert ModelCredentials.model_json_schema().get("additionalProperties") is not False
+    with pytest.raises(ValidationError):
+        ModelCredentials.model_validate({"provider": "openai", "api_key": "  ", "model": "m"})
