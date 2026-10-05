@@ -381,6 +381,7 @@ S9_LEGS = {
     "lint-imports-scope-ok-service": ("lint-imports", ": R6 "),
     "api-lint-text-in-service": ("api-lint", ": R4 "),
     "api-lint-text-attribute-chain": ("api-lint", ": R4 "),
+    "api-lint-engine-in-worker": ("api-lint", ": R4 "),
     "tenant-isolation-no-filter": ("tenant-isolation", "test_list_returns_only_own_rows"),
     "tenant-isolation-no-guard": ("tenant-isolation", "test_raw_select_raises_guard"),
     "tenant-isolation-superuser": ("tenant-isolation", "test_isolation_runs_as_app_rw"),

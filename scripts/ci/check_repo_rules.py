@@ -7,12 +7,19 @@
   `mkos_schemas/codes.py` only.
 - R3: nothing in `apps/api/app/services/**` imports `sqlalchemy.ext.asyncio`: engine-level SQL
   from a service would bypass the tenant guard (import-linter forbids only package roots).
-- R4: inside `apps/api/app/**` but outside `app/db/**` and `app/repositories/**`, no raw-SQL
-  constructor (`text`, `TextClause`, `literal_column`) from any `sqlalchemy` module, whether
-  imported by name or reached through an attribute chain off any `sqlalchemy` alias
-  (`sa.sql.text`, `sql.text`, `expression.text`), and no `.connection(`, `.connect(`,
-  `.exec_driver_sql(` or `.get_bind(` call: raw SQL and Core connections bypass the repository
-  layer (layer 2 of DATABASE.md §4).
+- R4: inside `apps/api/app/**` but outside `app/db/**` and `app/repositories/**`, no raw-SQL or
+  unmapped-table constructor (`text`, `TextClause`, `literal_column`, `table`, `TableClause`,
+  `DDL`) from any `sqlalchemy` module, whether imported by name or reached through an attribute
+  chain off any `sqlalchemy` alias (`sa.sql.text`, `sql.text`, `expression.text`), and no
+  `.connection(`, `.connect(`, `.exec_driver_sql(`, `.get_bind(` or `.raw_connection(` call: raw
+  SQL and Core connections bypass the repository layer (layer 2 of DATABASE.md §4). Outside
+  `apps/api/app/cli.py` (the admin entrypoint), no engine either: no `create_engine`,
+  `create_async_engine`, `Engine`, `AsyncEngine` (and friends) from `sqlalchemy`, no
+  `.sync_engine`, and only an allowlist of names from `app.db.*` (`APP_DB_ALLOWED`; any name from
+  `app.db.models`), whether imported by name, through a module alias (`import app.db.session as
+  s; s.text`) or a relative import. A connection off an engine never fires the guard or the
+  tenant GUCs, and `session.py` re-exports `text`, `get_engine` and `get_sessionmaker`.
+  `SCOPE_OK` and star imports of `app.db.session`/`app.db.guard` are left to R5/R6.
 - R5: `platform_scope` (the read-only cross-tenant bypass, CANON-ADDENDUM.md A§6) is named only in
   `apps/api/app/admin/**`, `apps/api/app/cli.py`, `scripts/**`, and `apps/api/app/db/session.py`,
   which defines it. Any import form counts, including `import app.db.session as s` plus the
@@ -49,8 +56,36 @@ PLATFORM_SCOPE_FILES = ("apps/api/app/cli.py", "apps/api/app/db/session.py")
 SCOPE_OK_ALLOWED = ("apps/api/app/db",)
 SCOPE_OK_FILES = ("apps/api/app/repositories/base.py",)
 SQLALCHEMY_TEXT_MODULES = frozenset({"sqlalchemy", "sqlalchemy.sql", "sqlalchemy.sql.expression"})
-RAW_SQL_NAMES = frozenset({"text", "TextClause", "literal_column"})
-RAW_SQL_CALLS = frozenset({"connection", "connect", "exec_driver_sql", "get_bind"})
+RAW_SQL_NAMES = frozenset({"text", "TextClause", "literal_column", "table", "TableClause", "DDL"})
+RAW_SQL_CALLS = frozenset(
+    {"connection", "connect", "exec_driver_sql", "get_bind", "raw_connection"}
+)
+ENGINE_NAMES = frozenset(
+    {
+        "create_engine",
+        "create_async_engine",
+        "create_mock_engine",
+        "engine_from_config",
+        "async_engine_from_config",
+        "Engine",
+        "AsyncEngine",
+    }
+)
+ENGINE_ATTRS = frozenset({"sync_engine"})
+ENGINE_EXEMPT_FILES = ("apps/api/app/cli.py",)
+# The only `app.db` names app code outside app/db and app/repositories may use; every name of
+# `app.db.models` (and its submodules) is allowed. Anything else, a re-export such as
+# `app.db.session.text` or `get_engine` included, is R4.
+APP_DB = "app.db"
+APP_DB_MODELS = "models"
+APP_DB_ALLOWED: dict[str, frozenset[str]] = {
+    "session": frozenset({"unit_of_work", "platform_scope", "dispose_engine", "ping"}),
+    "guard": frozenset({"CrossTenantQueryError"}),
+}
+# Reported by R5/R6 instead, so each violation names one rule: `SCOPE_OK`, and a star import of
+# the module R5 or R6 watches.
+APP_DB_DEFERRED_NAMES = frozenset({"SCOPE_OK"})
+APP_DB_DEFERRED_STARS = frozenset({"app.db.session", "app.db.guard"})
 ATTR_LOOKUPS = frozenset({"getattr", "setattr", "hasattr", "delattr"})
 ALL_RULES = frozenset({"R1", "R2", "R3", "R4", "R5", "R6"})
 
@@ -190,6 +225,93 @@ def _raw_sql(tree: ast.AST) -> Iterator[tuple[int, str]]:
             yield node.lineno, f"`.{node.func.attr}()` {where}"
 
 
+def _engine_names(tree: ast.AST) -> Iterator[tuple[int, str]]:
+    aliases = _sqlalchemy_aliases(tree)
+    where = "outside app/db, app/repositories and app/cli.py"
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.level == 0 and _is_sqlalchemy(node.module):
+            for alias in node.names:
+                if alias.name in ENGINE_NAMES:
+                    yield node.lineno, f"`from {node.module} import {alias.name}` {where}"
+        elif isinstance(node, ast.Attribute) and (
+            node.attr in ENGINE_ATTRS
+            or (node.attr in ENGINE_NAMES and _root_name(node.value) in aliases)
+        ):
+            yield node.lineno, f"`.{node.attr}` {where}"
+
+
+def _module_of(relative: str) -> list[str]:
+    """The package of a file as dotted parts, `apps/api/app/services/x.py` -> app.services."""
+    parts = relative.removeprefix("apps/api/").removesuffix(".py").split("/")
+    return parts[:-1]
+
+
+def _absolute(relative: str, node: ast.ImportFrom) -> str:
+    if node.level == 0:
+        return node.module or ""
+    package = _module_of(relative)
+    base = package[: len(package) - (node.level - 1)] if node.level > 1 else package
+    return ".".join(base + ([node.module] if node.module else []))
+
+
+def _app_db_allowed(dotted: str) -> bool:
+    """Whether `dotted` (a module path plus attributes) stays inside the app.db allowlist."""
+    if dotted != APP_DB and not dotted.startswith(APP_DB + "."):
+        return True
+    parts = dotted.split(".")[2:]
+    if not parts or parts[0] == APP_DB_MODELS or parts[-1] in APP_DB_DEFERRED_NAMES:
+        return True
+    allowed = APP_DB_ALLOWED.get(parts[0])
+    return allowed is not None and (len(parts) == 1 or parts[1] in allowed)
+
+
+def _dotted(node: ast.expr) -> list[str] | None:
+    attrs: list[str] = []
+    while isinstance(node, ast.Attribute):
+        attrs.append(node.attr)
+        node = node.value
+    if not isinstance(node, ast.Name):
+        return None
+    return [node.id, *reversed(attrs)]
+
+
+def _app_db_names(relative: str, tree: ast.AST) -> Iterator[tuple[int, str]]:
+    where = "outside app/db, app/repositories and app/cli.py"
+    aliases: dict[str, str] = {}  # local name -> dotted module it is bound to
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "app" or alias.name.startswith("app."):
+                    if alias.asname:
+                        aliases[alias.asname] = alias.name
+                    else:
+                        aliases["app"] = "app"
+                    if not _app_db_allowed(alias.name):
+                        yield node.lineno, f"`import {alias.name}` {where}"
+        elif isinstance(node, ast.ImportFrom):
+            module = _absolute(relative, node)
+            for alias in node.names:
+                dotted = f"{module}.{alias.name}"
+                if alias.name == "*" and (module == APP_DB or module.startswith(APP_DB + ".")):
+                    deferred = module in APP_DB_DEFERRED_STARS
+                    if not (deferred or module.startswith(f"{APP_DB}.{APP_DB_MODELS}")):
+                        yield node.lineno, f"`from {module} import *` {where}"
+                elif not _app_db_allowed(dotted):
+                    yield node.lineno, f"`from {module} import {alias.name}` {where}"
+                else:
+                    aliases[alias.asname or alias.name] = dotted
+    inner = {id(n.value) for n in ast.walk(tree) if isinstance(n, ast.Attribute)}  # whole chains
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Attribute) or id(node) in inner:
+            continue
+        chain = _dotted(node)
+        if chain is None or chain[0] not in aliases:
+            continue
+        dotted = ".".join([aliases[chain[0]], *chain[1:]])
+        if not _app_db_allowed(dotted):
+            yield node.lineno, f"`{'.'.join(chain)}` reaches `{dotted}` {where}"
+
+
 def _names(tree: ast.AST, name: str, star_module: str) -> Iterator[tuple[int, str]]:
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
@@ -221,6 +343,9 @@ def check_file(relative: str, path: Path) -> list[Violation]:
         found += [Violation(relative, n, "R3", m) for n, m in _async_engine_imports(tree)]
     if relative.startswith(APP + "/") and not _under(relative, RAW_SQL_ALLOWED):
         found += [Violation(relative, n, "R4", m) for n, m in _raw_sql(tree)]
+        if relative not in ENGINE_EXEMPT_FILES:
+            found += [Violation(relative, n, "R4", m) for n, m in _engine_names(tree)]
+            found += [Violation(relative, n, "R4", m) for n, m in _app_db_names(relative, tree)]
     if not (_under(relative, PLATFORM_SCOPE_ALLOWED) or relative in PLATFORM_SCOPE_FILES):
         found += [
             Violation(relative, n, "R5", f"{m} outside app/admin, app/cli.py and scripts")

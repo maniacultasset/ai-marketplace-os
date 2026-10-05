@@ -162,6 +162,7 @@ seed_platform_scope_worker() { new_file apps/api/app/workers/x.py $'"""Seeded.""
 seed_scope_ok_service() { new_file apps/api/app/services/x.py $'"""Seeded."""\n\nfrom app.db.guard import SCOPE_OK\n\n__all__ = ["SCOPE_OK"]'; }
 seed_text_in_service() { new_file apps/api/app/services/x.py $'"""Seeded."""\n\nfrom sqlalchemy import text\n\n__all__ = ["text"]'; }
 seed_text_attribute_chain() { new_file apps/api/app/services/x.py $'"""Seeded."""\n\nimport sqlalchemy as sa\n\nQUERY = sa.sql.text("SELECT 1")'; }
+seed_engine_in_worker() { new_file apps/api/app/workers/x.py $'"""Seeded."""\n\nfrom app.db.session import get_engine\n\n__all__ = ["get_engine"]'; }
 seed_iso_no_filter() {
   cp "$root/.env" .env
   replace apps/api/app/repositories/base.py 'select(self.model).where(criterion).execution_options' 'select(self.model).execution_options'
@@ -320,6 +321,7 @@ leg lint-imports-platform-scope-worker lint-imports ': R5 ' seed_platform_scope_
 leg lint-imports-scope-ok-service lint-imports ': R6 ' seed_scope_ok_service make lint-imports
 leg api-lint-text-in-service api-lint ': R4 ' seed_text_in_service make api-lint
 leg api-lint-text-attribute-chain api-lint ': R4 ' seed_text_attribute_chain make api-lint
+leg api-lint-engine-in-worker api-lint ': R4 ' seed_engine_in_worker make api-lint
 
 if [ "$with_docker" -eq 1 ]; then
   self_project="$(docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"
