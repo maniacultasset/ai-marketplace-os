@@ -346,9 +346,103 @@ JOBS_DOWN: Final[tuple[str, ...]] = (
     "DROP FUNCTION public.job_runs_set_queue()",
 )
 
+# ---- IMPORTS: imports, import_rows, idempotency_keys (DATABASE.md §5.4; T67, ADR-0007) ----
+# `imports.job_id` is a hard FK (same 90-day retention); `import_rows.job_id` is soft. The two
+# documented exceptions: import_rows go with their import (CASCADE), and a deleted product
+# clears only `product_id` (`SET NULL (product_id)`, PG 15+), never `tenant_id`.
+# idempotency_keys has no `id`: its PK is `(tenant_id, key)`.
+IMPORT_STATES: Final = "'queued', 'running', 'succeeded', 'partial', 'failed', 'cancelled'"
+IMPORTS_UP: Final[tuple[str, ...]] = (
+    f"""
+    CREATE TABLE public.imports (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      storage_key text NOT NULL,
+      filename text NOT NULL,
+      status text NOT NULL,
+      total_rows integer,
+      imported_rows integer NOT NULL,
+      failed_rows integer NOT NULL,
+      job_id uuid NOT NULL,
+      created_by uuid NOT NULL,
+      finished_at timestamptz,
+      error_report_json jsonb,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_imports PRIMARY KEY (id),
+      CONSTRAINT uq_imports_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT fk_imports_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_imports_job_id FOREIGN KEY (tenant_id, job_id)
+        REFERENCES public.job_runs (tenant_id, id),
+      CONSTRAINT fk_imports_created_by FOREIGN KEY (tenant_id, created_by)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT ck_imports_status CHECK (status IN ({IMPORT_STATES}))
+    )
+    """,
+    "CREATE INDEX ix_imports_job_id ON public.imports (job_id)",
+    """
+    CREATE TABLE public.import_rows (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      import_id uuid NOT NULL,
+      row_number integer NOT NULL,
+      sku text,
+      parent_sku text,
+      raw_row jsonb NOT NULL,
+      status text NOT NULL,
+      product_id uuid,
+      error_report_json jsonb,
+      job_id uuid,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_import_rows PRIMARY KEY (id),
+      CONSTRAINT uq_import_rows_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT uq_import_rows_tenant_id_import_id_row_number
+        UNIQUE (tenant_id, import_id, row_number),
+      CONSTRAINT fk_import_rows_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_import_rows_import_id FOREIGN KEY (tenant_id, import_id)
+        REFERENCES public.imports (tenant_id, id) ON DELETE CASCADE,
+      CONSTRAINT fk_import_rows_product_id FOREIGN KEY (tenant_id, product_id)
+        REFERENCES public.products (tenant_id, id) ON DELETE SET NULL (product_id),
+      CONSTRAINT ck_import_rows_row_number CHECK (row_number >= 2),
+      CONSTRAINT ck_import_rows_status CHECK (status IN ('pending', 'imported', 'failed'))
+    )
+    """,
+    """
+    CREATE INDEX ix_import_rows_tenant_id_import_id_status
+      ON public.import_rows (tenant_id, import_id, status, row_number)
+    """,
+    f"""
+    CREATE TABLE public.idempotency_keys (
+      tenant_id uuid NOT NULL,
+      key text NOT NULL,
+      endpoint text NOT NULL,
+      request_hash bytea NOT NULL,
+      response_status integer,
+      response_json jsonb,
+      user_id uuid NOT NULL,
+      expires_at timestamptz NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_idempotency_keys PRIMARY KEY (tenant_id, key),
+      CONSTRAINT fk_idempotency_keys_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_idempotency_keys_user_id FOREIGN KEY (tenant_id, user_id)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT ck_idempotency_keys_request_hash {_digest("request_hash")}
+    )
+    """,
+    "CREATE INDEX ix_idempotency_keys_expires_at ON public.idempotency_keys (expires_at)",
+)
+IMPORTS_DOWN: Final[tuple[str, ...]] = (
+    "DROP TABLE public.idempotency_keys",
+    "DROP TABLE public.import_rows",
+    "DROP TABLE public.imports",
+)
+
 SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (PLATFORM_UP, PLATFORM_DOWN),
     (JOBS_UP, JOBS_DOWN),
+    (IMPORTS_UP, IMPORTS_DOWN),
 )
 
 

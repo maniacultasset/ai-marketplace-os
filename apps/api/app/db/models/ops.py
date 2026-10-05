@@ -16,6 +16,7 @@ from sqlalchemy import (
     DateTime,
     Index,
     Integer,
+    LargeBinary,
     Numeric,
     PrimaryKeyConstraint,
     Text,
@@ -28,7 +29,15 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql.elements import conv
 
 from app.db.base import Base
-from app.db.models.tenancy import NOW, anchor, id_column, tenant_fk, to_membership, to_row
+from app.db.models.tenancy import (
+    NOW,
+    anchor,
+    created_at_column,
+    id_column,
+    tenant_fk,
+    to_membership,
+    to_row,
+)
 
 
 class JobRun(Base):
@@ -115,3 +124,90 @@ class JobRun(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Import(Base):
+    __tablename__ = "imports"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_imports")),
+        anchor("imports"),
+        tenant_fk("imports"),
+        to_row("imports", "job_id", "job_runs"),
+        to_membership("imports", "created_by"),
+        Index(conv("ix_imports_job_id"), "job_id"),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    storage_key: Mapped[str] = mapped_column(Text)
+    filename: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text)
+    total_rows: Mapped[int | None] = mapped_column(Integer)
+    imported_rows: Mapped[int] = mapped_column(Integer)
+    failed_rows: Mapped[int] = mapped_column(Integer)
+    job_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    created_by: Mapped[uuid.UUID] = mapped_column(Uuid)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error_report_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = created_at_column()
+
+
+class ImportRow(Base):
+    __tablename__ = "import_rows"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_import_rows")),
+        anchor("import_rows"),
+        UniqueConstraint(
+            "tenant_id",
+            "import_id",
+            "row_number",
+            name=conv("uq_import_rows_tenant_id_import_id_row_number"),
+        ),
+        tenant_fk("import_rows"),
+        to_row("import_rows", "import_id", "imports", ondelete="CASCADE"),
+        # a deleted product clears only product_id (PG 15+), never tenant_id
+        to_row("import_rows", "product_id", "products", ondelete="SET NULL (product_id)"),
+        Index(
+            conv("ix_import_rows_tenant_id_import_id_status"),
+            "tenant_id",
+            "import_id",
+            "status",
+            "row_number",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    import_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    row_number: Mapped[int] = mapped_column(Integer)
+    sku: Mapped[str | None] = mapped_column(Text)
+    parent_sku: Mapped[str | None] = mapped_column(Text)
+    # cells as uploaded: untrusted, may hold party contact data; no read-only grant
+    raw_row: Mapped[dict[str, Any]] = mapped_column(JSONB, deferred=True)
+    status: Mapped[str] = mapped_column(Text)
+    product_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    error_report_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # soft reference (DATABASE.md §1)
+    job_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    created_at: Mapped[datetime] = created_at_column()
+
+
+class IdempotencyKey(Base):
+    __tablename__ = "idempotency_keys"
+    __table_args__ = (
+        PrimaryKeyConstraint("tenant_id", "key", name=conv("pk_idempotency_keys")),
+        tenant_fk("idempotency_keys"),
+        to_membership("idempotency_keys", "user_id"),
+        Index(conv("ix_idempotency_keys_expires_at"), "expires_at"),
+    )
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    key: Mapped[str] = mapped_column(Text)
+    endpoint: Mapped[str] = mapped_column(Text)
+    # sha256 of endpoint + body; never granted to the read-only roles
+    request_hash: Mapped[bytes] = mapped_column(LargeBinary, deferred=True)
+    response_status: Mapped[int | None] = mapped_column(Integer)
+    response_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created_at_column()

@@ -177,3 +177,49 @@ def category_attribute(conn: Conn, attribute_key: str, **columns: Any) -> str:
         "enabled": True,
     }
     return insert_row(conn, "category_attributes", {**defaults, **columns}, "category")  # type: ignore[no-any-return]
+
+
+# ---- imports, import_rows, idempotency_keys ----
+
+
+def import_run(conn: Conn, side: TenantSeed, **columns: Any) -> UUID:
+    """A `queued` import of a CSV in `side`'s tenant, with its own `bulk_import` job."""
+    n = next(_counter)
+    defaults: dict[str, Any] = {
+        "tenant_id": side.tenant_id,
+        "storage_key": f"{side.tenant_id}/imports/{n}.csv",
+        "filename": f"catalog-{n}.csv",
+        "status": "queued",
+        "imported_rows": 0,
+        "failed_rows": 0,
+        "created_by": side.user_id,
+    }
+    if "job_id" not in columns:
+        defaults["job_id"] = job_run(conn, side.tenant_id)
+    return f.insert(conn, "imports", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def import_row(conn: Conn, tenant_id: UUID, import_id: UUID, **columns: Any) -> UUID:
+    """A `pending` CSV row (row number 2 onward; row 1 is the header)."""
+    n = next(_counter)
+    defaults: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "import_id": import_id,
+        "row_number": n + 1,
+        "raw_row": {"seller_sku": f"SKU-{n}"},
+        "status": "pending",
+    }
+    return f.insert(conn, "import_rows", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def idempotency_key(conn: Conn, side: TenantSeed, **columns: Any) -> str:
+    n = next(_counter)
+    defaults: dict[str, Any] = {
+        "tenant_id": side.tenant_id,
+        "key": f"idem-{n}",
+        "endpoint": "POST /api/v1/listings/generate",
+        "request_hash": digest(n),
+        "user_id": side.user_id,
+        "expires_at": "2026-10-06T00:00:00Z",
+    }
+    return insert_row(conn, "idempotency_keys", {**defaults, **columns}, "key")  # type: ignore[no-any-return]
