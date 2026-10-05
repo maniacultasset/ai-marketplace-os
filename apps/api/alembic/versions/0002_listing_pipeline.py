@@ -1278,6 +1278,59 @@ ISSUES_DOWN: Final[tuple[str, ...]] = (
     "DROP TABLE public.human_tasks",
 )
 
+# ---- GRANTS: SELECT for the read-only roles (DATABASE.md §8.1 "Read-only roles get no default
+# SELECT"). Per table, or per column where a table holds a secret, contact or personal data:
+# never `marketplace_accounts.token_enc` (invariant 6), `human_tasks.answer|suggestions|evidence`
+# (§8.1), `audit_log.actor_email|ip` (personal, redacted with the actor), nor a `*_hash` column
+# (the §8.2 catalog assertion on `(token|hash|password|secret|verifier|_enc)$`). app_rw writes
+# through the 0000 default privileges; its REVOKEs and column UPDATE grants are 0004.
+READ_ONLY_ROLES: Final = "app_ro, app_platform_ro"
+WHOLE_TABLES: Final = (
+    "public.rules, public.batches, public.listings, public.listing_versions, "
+    "public.review_decisions, public.listing_items, public.validation_runs, public.agent_runs, "
+    "public.performance, public.listing_issues"
+)
+MARKETPLACE_ACCOUNTS_READABLE: Final = (
+    "id, tenant_id, marketplace, seller_id, region, scopes, kms_key_version, expires_at, "
+    "last_refresh_at, connected_by_user_id, status, status_changed_at, needs_reconnect_since, "
+    "last_refresh_error_code, revoked_at, settings, settings_updated_at, settings_updated_by, "
+    "created_at, updated_at"
+)
+IMAGES_READABLE: Final = (
+    "id, tenant_id, product_id, colourway_id, storage_key, slot, status, metadata, "
+    "compliance_status, image_report_json, position, source_url, mime_type, width_px, "
+    "height_px, bytes, deleted_at, created_at, updated_at"
+)
+AUDIT_LOG_READABLE: Final = (
+    "id, tenant_id, actor_type, actor_user_id, action, entity_type, entity_id, before, after, "
+    "request_id, reason, job_id, occurred_at"
+)
+BRAND_DOCUMENTS_READABLE: Final = (
+    "id, tenant_id, filename, storage_key, status, job_id, chunk_count, created_by, "
+    "content_type, bytes, error_report_json, deleted_at, created_at, updated_at"
+)
+BRAND_CHUNKS_READABLE: Final = (
+    "id, tenant_id, type, text, embedding, embedding_model, source_type, source_id, "
+    "chunk_index, token_count, is_active, created_at, updated_at"
+)
+HUMAN_TASKS_READABLE: Final = (
+    "id, tenant_id, kind, product_id, colourway_id, target_path, marketplace_account_id, "
+    "image_id, question, reason, expected_answer, status, answered_by_user_id, answered_at, "
+    "resume_from, applied_at, resume_batch_id, cancelled_reason, request_id, created_at, "
+    "updated_at"
+)
+GRANTS_UP: Final[tuple[str, ...]] = (
+    f"GRANT SELECT ON {WHOLE_TABLES} TO {READ_ONLY_ROLES}",
+    f"GRANT SELECT ({MARKETPLACE_ACCOUNTS_READABLE}) ON public.marketplace_accounts TO {READ_ONLY_ROLES}",
+    f"GRANT SELECT ({IMAGES_READABLE}) ON public.images TO {READ_ONLY_ROLES}",
+    f"GRANT SELECT ({AUDIT_LOG_READABLE}) ON public.audit_log TO {READ_ONLY_ROLES}",
+    f"GRANT SELECT ({BRAND_DOCUMENTS_READABLE}) ON public.brand_documents TO {READ_ONLY_ROLES}",
+    f"GRANT SELECT ({BRAND_CHUNKS_READABLE}) ON public.brand_chunks TO {READ_ONLY_ROLES}",
+    f"GRANT SELECT ({HUMAN_TASKS_READABLE}) ON public.human_tasks TO {READ_ONLY_ROLES}",
+)
+# The grants go with their tables.
+GRANTS_DOWN: Final[tuple[str, ...]] = ()
+
 SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (RULES_UP, RULES_DOWN),
     (ACCOUNTS_UP, ACCOUNTS_DOWN),
@@ -1288,6 +1341,7 @@ SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (RUNS_UP, RUNS_DOWN),
     (AUDIT_BRAND_UP, AUDIT_BRAND_DOWN),
     (ISSUES_UP, ISSUES_DOWN),
+    (GRANTS_UP, GRANTS_DOWN),
 )
 
 

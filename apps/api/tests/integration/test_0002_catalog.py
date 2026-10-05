@@ -4,9 +4,10 @@ index and constraint names, and the 0002 round trip (DATABASE.md §1 conventions
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args
 
 import psycopg
 import pytest
@@ -15,6 +16,14 @@ from alembic.config import Config
 from sqlalchemy import Index, UniqueConstraint
 from sqlalchemy.schema import Constraint
 
+from . import (
+    test_0002_accounts_images,
+    test_0002_audit_brand,
+    test_0002_issues_tasks,
+    test_0002_listings,
+    test_0002_reviews_items,
+    test_0002_runs,
+)
 from .conftest import ScratchDb, catalog_snapshot
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
@@ -23,6 +32,27 @@ Conn = psycopg.Connection[tuple[Any, ...]]
 MakeConfig = Callable[[Path | None], Config]
 
 REVISION_0001 = "0001_core_tenancy"
+# DATABASE.md §8.2 ledger row 0002: the 11 Canon tables plus the five new ones.
+TABLES_0002 = frozenset(
+    {
+        "rules",
+        "marketplace_accounts",
+        "images",
+        "batches",
+        "listings",
+        "listing_versions",
+        "review_decisions",
+        "listing_items",
+        "validation_runs",
+        "agent_runs",
+        "performance",
+        "audit_log",
+        "brand_documents",
+        "brand_chunks",
+        "human_tasks",
+        "listing_issues",
+    }
+)
 
 # Nullable `tenant_id` by design: platform events (DATABASE.md §5.1 audit_log, KI-B) and platform
 # rules (§5.2 rules). Neither has a UNIQUE index led by tenant_id; each keeps its documented one.
@@ -243,3 +273,114 @@ def test_0002_downgrade_to_0001(alembic_env: MakeConfig, scratch_db: ScratchDb) 
     assert _objects(scratch_db) == at_0001
     command.upgrade(cfg, "head")
     assert _objects(scratch_db) == at_head
+
+
+def _relations(db: ScratchDb) -> dict[str, set[str]]:
+    with psycopg.connect(db.libpq, autocommit=True, connect_timeout=5) as conn:
+        rows = conn.execute(
+            "SELECT relkind, relname FROM pg_class WHERE relnamespace = 'public'::regnamespace "
+            "AND relkind IN ('r', 'S', 'p', 'v', 'm')"
+        ).fetchall()
+    kinds: dict[str, set[str]] = {}
+    for kind, name in rows:
+        kinds.setdefault(str(kind), set()).add(str(name))
+    return kinds
+
+
+def test_0002_table_set(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None:
+    """AC 7: between 0001 and head exactly the 16 ledger tables and `rules_revision_seq` are
+    added (no view, no partitioned table, no other sequence); 0002b adds no relation."""
+    cfg = alembic_env(None)
+    command.upgrade(cfg, REVISION_0001)
+    before = _relations(scratch_db)
+    command.upgrade(cfg, "0002_listing_pipeline")
+    at_0002 = _relations(scratch_db)
+    command.upgrade(cfg, "head")
+    at_head = _relations(scratch_db)
+    assert len(TABLES_0002) == 16
+    assert at_head["r"] - before["r"] == TABLES_0002
+    assert at_head.get("S", set()) - before.get("S", set()) == {"rules_revision_seq"}
+    assert {kind for kind in at_head if kind not in ("r", "S")} == set()
+    assert at_head == at_0002
+
+
+def _check_values(db: Conn, constraint: str) -> set[str]:
+    """The string literals of one CHECK (an `IN (…)` over text values)."""
+    row = db.execute(
+        "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = %s "
+        "AND connamespace = 'public'::regnamespace",
+        (constraint,),
+    ).fetchone()
+    assert row is not None, constraint
+    return set(re.findall(r"'([a-z_]+)'::text", str(row[0])))
+
+
+def test_vocab_parity_with_mkos_schemas(db: Conn) -> None:
+    """The CHECK vocabularies equal the `mkos_schemas` contract (S2): a value added on one side
+    only fails here."""
+    from mkos_schemas.agent import AgentName, Trigger
+    from mkos_schemas.enums import (
+        ErrorClass,
+        ErrorSource,
+        FixAction,
+        ImageSlot,
+        ItemMarketplaceState,
+        ListingStatus,
+        Marketplace,
+        MarketplaceState,
+        RetryClass,
+        Severity,
+    )
+    from mkos_schemas.jobs import BrandChunkType
+
+    def members(enum: Any) -> set[str]:
+        return {str(member.value) for member in enum}
+
+    def literal(alias: Any) -> set[str]:
+        return {str(value) for value in get_args(alias)}
+
+    pairs: dict[str, set[str]] = {
+        "ck_listings_status": members(ListingStatus),
+        "ck_validation_runs_source": members(ErrorSource),
+        "ck_images_slot": members(ImageSlot),
+        "ck_listings_marketplace_state": members(MarketplaceState),
+        "ck_listing_items_marketplace_state": members(ItemMarketplaceState),
+        "ck_listing_issues_error_class": members(ErrorClass),
+        "ck_listing_issues_retry_class": members(RetryClass),
+        "ck_listing_issues_fix_action": members(FixAction),
+        "ck_listing_issues_severity": members(Severity),
+        "ck_rules_severity": members(Severity),
+        "ck_agent_runs_trigger": literal(Trigger),
+        "ck_agent_runs_agent_name": literal(AgentName),
+        "ck_brand_chunks_type": literal(BrandChunkType),
+    }
+    for constraint, wanted in pairs.items():
+        assert _check_values(db, constraint) == wanted, constraint
+    marketplaces = members(Marketplace)
+    names = db.execute(
+        "SELECT conname FROM pg_constraint WHERE contype = 'c' AND conname LIKE '%%_marketplace' "
+        "AND connamespace = 'public'::regnamespace"
+    ).fetchall()
+    assert len(names) == 7  # every 0002 table with a marketplace column
+    for (name,) in names:
+        assert _check_values(db, str(name)) == marketplaces, name
+    # issue sources are the ErrorSource values a seller can act on (T56)
+    issue_sources = _check_values(db, "ck_listing_issues_source")
+    assert issue_sources == members(ErrorSource) - {"ai_model", "system"}
+
+
+CROSS_TENANT_FK_COLUMNS = frozenset().union(
+    test_0002_accounts_images.CROSS_TENANT_FK_COLUMNS,
+    test_0002_listings.CROSS_TENANT_FK_COLUMNS,
+    test_0002_reviews_items.CROSS_TENANT_FK_COLUMNS,
+    test_0002_runs.CROSS_TENANT_FK_COLUMNS,
+    test_0002_audit_brand.CROSS_TENANT_FK_COLUMNS,
+    test_0002_issues_tasks.CROSS_TENANT_FK_COLUMNS,
+)
+
+
+def test_0002_tenant_fks_cover_every_column(db: Conn) -> None:
+    """Every tenant-composite FK column of a 0002 table has a cross-tenant 23503 test: a new
+    FK column without one goes red."""
+    assert tenant_fk_columns(db, set(TABLES_0002)) == CROSS_TENANT_FK_COLUMNS
+    assert len(CROSS_TENANT_FK_COLUMNS) == 32
