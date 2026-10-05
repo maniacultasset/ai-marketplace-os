@@ -130,7 +130,186 @@ RULES_DOWN: Final[tuple[str, ...]] = (
     "DROP SEQUENCE public.rules_revision_seq",
 )
 
-SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = ((RULES_UP, RULES_DOWN),)
+# ---- ACCOUNTS: marketplace_accounts (DATABASE.md §5.5) ----
+# Only adapters decrypt `token_enc`, inside a call (invariant 6). A revoked account keeps
+# neither the wrapped token nor its key version (crypto-shred): `ck_ma_revoked_shredded`.
+# `uq_ma_id_marketplace` is the `(marketplace_account_id, marketplace)` target on listings.
+ACCOUNTS_UP: Final[tuple[str, ...]] = (
+    f"""
+    CREATE TABLE public.marketplace_accounts (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      marketplace text NOT NULL,
+      seller_id text NOT NULL,
+      region text,
+      scopes text[] NOT NULL DEFAULT '{{}}',
+      token_enc bytea,
+      kms_key_version text,
+      expires_at timestamptz,
+      last_refresh_at timestamptz,
+      connected_by_user_id uuid NOT NULL,
+      status text NOT NULL DEFAULT 'active',
+      status_changed_at timestamptz NOT NULL DEFAULT now(),
+      needs_reconnect_since timestamptz,
+      last_refresh_error_code text,
+      revoked_at timestamptz,
+      settings jsonb NOT NULL DEFAULT '{{}}'::jsonb,
+      settings_updated_at timestamptz,
+      settings_updated_by uuid,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_marketplace_accounts PRIMARY KEY (id),
+      CONSTRAINT uq_marketplace_accounts_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT uq_ma_id_marketplace UNIQUE (id, marketplace),
+      CONSTRAINT fk_marketplace_accounts_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_marketplace_accounts_connected_by_user_id
+        FOREIGN KEY (tenant_id, connected_by_user_id)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT fk_marketplace_accounts_settings_updated_by
+        FOREIGN KEY (tenant_id, settings_updated_by)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT ck_marketplace_accounts_marketplace {MARKETPLACE_CHECK},
+      CONSTRAINT ck_marketplace_accounts_status
+        CHECK (status IN ('active', 'needs_reconnect', 'revoked')),
+      CONSTRAINT ck_marketplace_accounts_token_required
+        CHECK (status = 'revoked' OR token_enc IS NOT NULL),
+      CONSTRAINT ck_ma_revoked_shredded
+        CHECK (status <> 'revoked' OR (token_enc IS NULL AND kms_key_version IS NULL)),
+      CONSTRAINT ma_reconnect
+        CHECK ((status = 'needs_reconnect') = (needs_reconnect_since IS NOT NULL)),
+      CONSTRAINT ck_marketplace_accounts_settings CHECK (
+        jsonb_typeof(settings) = 'object' AND octet_length(settings::text) <= 32768
+      )
+    )
+    """,
+    """
+    CREATE UNIQUE INDEX uq_marketplace_accounts_tenant_id_marketplace
+      ON public.marketplace_accounts (tenant_id, marketplace) WHERE status <> 'revoked'
+    """,
+    _updated_at_trigger("marketplace_accounts"),
+)
+ACCOUNTS_DOWN: Final[tuple[str, ...]] = ("DROP TABLE public.marketplace_accounts",)
+
+# ---- IMAGES: images (DATABASE.md §5.2; T28, T63) ----
+# `(colourway_id, product_id) → product_colourways (id, style_product_id)` makes product_id the
+# colourway's style (MATCH SIMPLE: no colourway, no check). The object key has the S6
+# `logo_storage_key` shape (no URL, no absolute path, no traversal); the tenant prefix waits on
+# TEAM-QUESTIONS T109. One tenant never has two rows on one key.
+STORAGE_KEY_SHAPE: Final = """
+        {col} ~ '^[A-Za-z0-9][A-Za-z0-9._/-]*$'
+        AND char_length({col}) <= 1024
+        AND strpos({col}, '..') = 0
+        AND strpos({col}, '//') = 0"""
+IMAGES_UP: Final[tuple[str, ...]] = (
+    f"""
+    CREATE TABLE public.images (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      product_id uuid NOT NULL,
+      colourway_id uuid,
+      storage_key text NOT NULL,
+      slot text NOT NULL,
+      status text NOT NULL DEFAULT 'uploaded',
+      metadata jsonb NOT NULL DEFAULT '{{}}'::jsonb,
+      compliance_status text NOT NULL DEFAULT 'pending',
+      image_report_json jsonb,
+      position integer NOT NULL DEFAULT 0,
+      source_url text,
+      content_hash text,
+      mime_type text,
+      width_px integer,
+      height_px integer,
+      bytes bigint,
+      deleted_at timestamptz,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_images PRIMARY KEY (id),
+      CONSTRAINT uq_images_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT uq_images_tenant_id_storage_key UNIQUE (tenant_id, storage_key),
+      CONSTRAINT fk_images_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_images_product_id FOREIGN KEY (tenant_id, product_id)
+        REFERENCES public.products (tenant_id, id),
+      CONSTRAINT fk_images_colourway_id FOREIGN KEY (tenant_id, colourway_id)
+        REFERENCES public.product_colourways (tenant_id, id) ON DELETE RESTRICT,
+      CONSTRAINT fk_images_colourway_id_product_id FOREIGN KEY (colourway_id, product_id)
+        REFERENCES public.product_colourways (id, style_product_id) ON DELETE RESTRICT,
+      CONSTRAINT ck_images_slot
+        CHECK (slot IN ('main', 'secondary', 'lifestyle', 'size_chart', 'packaging_label')),
+      CONSTRAINT ck_images_status CHECK (status IN ('pending', 'uploaded', 'failed')),
+      CONSTRAINT ck_images_compliance_status
+        CHECK (compliance_status IN ('pending', 'passed', 'failed')),
+      CONSTRAINT ck_images_metadata CHECK (jsonb_typeof(metadata) = 'object'),
+      CONSTRAINT ck_images_image_report_json CHECK (
+        jsonb_typeof(image_report_json) = 'object'
+        AND (image_report_json - ARRAY['amazon', 'flipkart']) = '{{}}'::jsonb
+      ),
+      CONSTRAINT ck_images_storage_key CHECK ({STORAGE_KEY_SHAPE.format(col="storage_key")}
+      ),
+      CONSTRAINT ck_images_position CHECK (position >= 0),
+      CONSTRAINT ck_images_dimensions CHECK (width_px > 0 AND height_px > 0),
+      CONSTRAINT ck_images_bytes CHECK (bytes > 0),
+      CONSTRAINT ck_images_source_url
+        CHECK (source_url ~ '^https?://[^[:space:]]+$' AND char_length(source_url) <= 2048)
+    )
+    """,
+    """
+    CREATE INDEX ix_images_product_id ON public.images (product_id) WHERE deleted_at IS NULL
+    """,
+    "CREATE INDEX ix_images_tenant_id_status ON public.images (tenant_id, status)",
+    """
+    CREATE INDEX ix_images_tenant_id_colourway_id ON public.images (tenant_id, colourway_id)
+      WHERE colourway_id IS NOT NULL
+    """,
+    """
+    CREATE UNIQUE INDEX images_one_main ON public.images (product_id, colourway_id)
+      NULLS NOT DISTINCT WHERE slot = 'main' AND deleted_at IS NULL
+    """,
+    _updated_at_trigger("images"),
+)
+IMAGES_DOWN: Final[tuple[str, ...]] = ("DROP TABLE public.images",)
+
+# ---- BATCHES: batches (DATABASE.md §5.3; G10, T42, T67) ----
+# Insert-only (no updated_at). A single action is a batch of one. `import_id` is a soft
+# reference (imports is 0003), set only on a `generate` batch.
+BATCHES_UP: Final[tuple[str, ...]] = (
+    """
+    CREATE TABLE public.batches (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      kind text NOT NULL,
+      item_count integer NOT NULL,
+      created_by_user_id uuid NOT NULL,
+      import_id uuid,
+      request_id text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_batches PRIMARY KEY (id),
+      CONSTRAINT uq_batches_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT fk_batches_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT fk_batches_created_by_user_id FOREIGN KEY (tenant_id, created_by_user_id)
+        REFERENCES public.tenant_memberships (tenant_id, user_id),
+      CONSTRAINT ck_batches_kind CHECK (
+        kind IN ('generate', 'regenerate', 'approve', 'reject', 'publish', 'status_refresh')
+      ),
+      CONSTRAINT ck_batches_item_count CHECK (item_count BETWEEN 1 AND 200),
+      CONSTRAINT ck_batches_import_id CHECK (import_id IS NULL OR kind = 'generate')
+    )
+    """,
+    """
+    CREATE INDEX ix_batches_tenant_id_created_at
+      ON public.batches (tenant_id, created_at DESC, id DESC)
+    """,
+)
+BATCHES_DOWN: Final[tuple[str, ...]] = ("DROP TABLE public.batches",)
+
+SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
+    (RULES_UP, RULES_DOWN),
+    (ACCOUNTS_UP, ACCOUNTS_DOWN),
+    (IMAGES_UP, IMAGES_DOWN),
+    (BATCHES_UP, BATCHES_DOWN),
+)
 
 
 def upgrade() -> None:

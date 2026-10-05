@@ -208,3 +208,51 @@ def rule(conn: Conn, tenant_id: UUID | None = None, **columns: Any) -> UUID:
         "rule_def": body,
     }
     return insert(conn, "rules", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def expect_violation(conn: Conn, code: str, constraint: str, build: Any) -> None:
+    """Run `build()` (row inserts) in a savepoint and assert it fails with `code` on
+    `constraint`; the connection stays usable."""
+    try:
+        with conn.transaction():
+            build()
+    except psycopg.Error as error:
+        assert error.sqlstate == code, f"wanted {code}, got {error.sqlstate}: {error}"
+        assert error.diag.constraint_name == constraint, error.diag.constraint_name
+        return
+    raise AssertionError(f"wanted SQLSTATE {code} on {constraint}, the insert succeeded")
+
+
+def marketplace_account(conn: Conn, tenant_id: UUID, **columns: Any) -> UUID:
+    """An `active` Amazon account with a token, connected by a new owner of `tenant_id`."""
+    n = _next()
+    defaults: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "marketplace": "amazon",
+        "seller_id": f"SELLER{n}",
+        "token_enc": b"\x01" * 48,
+        "kms_key_version": "1",
+    }
+    if "connected_by_user_id" not in columns:
+        defaults["connected_by_user_id"] = member(conn, tenant_id)
+    return insert(conn, "marketplace_accounts", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def image(conn: Conn, tenant_id: UUID, product_id: UUID, **columns: Any) -> UUID:
+    """A `secondary` image of `product_id` with a fresh object key."""
+    n = _next()
+    defaults: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "product_id": product_id,
+        "storage_key": f"{tenant_id}/images/{n}.jpg",
+        "slot": "secondary",
+    }
+    return insert(conn, "images", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def batch(conn: Conn, tenant_id: UUID, **columns: Any) -> UUID:
+    """An `approve` batch of one, created by a new owner of `tenant_id`."""
+    defaults: dict[str, Any] = {"tenant_id": tenant_id, "kind": "approve", "item_count": 1}
+    if "created_by_user_id" not in columns:
+        defaults["created_by_user_id"] = member(conn, tenant_id)
+    return insert(conn, "batches", **{**defaults, **columns})  # type: ignore[no-any-return]

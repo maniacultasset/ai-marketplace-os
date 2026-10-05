@@ -69,6 +69,18 @@ def to_membership(table: str, column: str) -> ForeignKeyConstraint:
     )
 
 
+def to_row(
+    table: str, column: str, target: str, *, ondelete: str | None = None
+) -> ForeignKeyConstraint:
+    """`→ t`: `(tenant_id, column) → target (tenant_id, id)`, NO ACTION unless `ondelete`."""
+    return ForeignKeyConstraint(
+        ["tenant_id", column],
+        [f"{target}.tenant_id", f"{target}.id"],
+        ondelete=ondelete,
+        name=conv(f"fk_{table}_{column}"),
+    )
+
+
 class Tenant(Base):
     __tablename__ = "tenants"
     __table_args__ = (

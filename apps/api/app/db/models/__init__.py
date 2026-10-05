@@ -6,6 +6,6 @@ Importing this package registers every table on `app.db.base.metadata`, which Al
 revisions: CHECK constraints live only there, because Alembic does not compare them.
 """
 
-from app.db.models import catalog, facts, rules, tenancy
+from app.db.models import catalog, catalog_assets, facts, rules, tenancy
 
-__all__ = ["catalog", "facts", "rules", "tenancy"]
+__all__ = ["catalog", "catalog_assets", "facts", "rules", "tenancy"]
