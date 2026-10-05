@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 from mkos_schemas.images import ImageReport
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 from tests import image_fixtures as fx
 from tests.image_fixtures import codes, image_rule, run
 
@@ -383,3 +383,20 @@ def test_background_rows_are_anded_across_packs() -> None:
     for border in (fx.WHITE, (240, 240, 240)):
         report = run(fx.png(1000, 1000, border=border), rules, marketplace="flipkart")
         assert codes(report) == ["BACKGROUND_OFF"]
+
+
+@pytest.mark.parametrize("variant", ["jpeg", "blurred", "off_centre", "dashed_boundary"])
+def test_background_padded_photo_variants_fail(variant: str) -> None:
+    """A padded photo still fails after JPEG artefacts, a soft boundary, unequal bars, or a few
+    white dashes on the boundary row (the line test needs only 90 % off)."""
+    img = Image.new("RGB", (1000, 1000), fx.WHITE)
+    top = 50 if variant == "off_centre" else 200
+    img.paste(GREY, (0, top, 1000, top + 600))
+    if variant == "blurred":
+        img = img.filter(ImageFilter.GaussianBlur(2))
+    if variant == "dashed_boundary":
+        draw = ImageDraw.Draw(img)
+        for x in range(0, 1000, 40):
+            draw.rectangle((x, 200, x + 5, 201), fill=fx.WHITE)
+    data = fx.encode(img, "JPEG") if variant == "jpeg" else _png(img)
+    assert codes(bg(data)) == ["BACKGROUND_OFF"]
