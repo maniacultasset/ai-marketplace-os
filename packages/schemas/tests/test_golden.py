@@ -43,8 +43,13 @@ def test_every_model_has_a_fixture() -> None:
         assert (FIXTURES / f"{model.__name__}.json").is_file()
 
 
+def golden_stems(directory: Path) -> set[str]:
+    """Golden fixture stems; `*.seed.json` is seed data (S9 D10), not a golden fixture."""
+    return {p.stem for p in directory.glob("*.json") if not p.stem.endswith(".seed")}
+
+
 def test_no_orphan_fixtures() -> None:
-    names = {p.stem for p in FIXTURES.glob("*.json")}
+    names = golden_stems(FIXTURES)
     expected = {m.__name__ for m in MODELS}
     assert names == expected
 

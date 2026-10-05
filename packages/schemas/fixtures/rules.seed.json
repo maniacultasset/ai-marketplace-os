@@ -1,0 +1,398 @@
+[
+  {
+    "marketplace": "amazon",
+    "category": "ethnic_wear_kurta_sets",
+    "rules": [
+      {
+        "id": "5eed0000-0000-4000-8000-000100010001",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "content.title",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "title longer than {limit} characters",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_LONG",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "max_length",
+          "limit": 200,
+          "unit": "chars"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100010002",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "content.title",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "title shorter than {limit} characters",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_SHORT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "min_length",
+          "limit": 5,
+          "unit": "chars"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100010003",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "content.title",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "title contains the banned term {term}",
+          "suggestion": null,
+          "error_code": "BANNED_TERM",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "banned_terms",
+          "terms": [
+            "best",
+            "guaranteed",
+            "free shipping",
+            "best seller",
+            "guaranteed cure"
+          ],
+          "match": "word",
+          "case_sensitive": false
+        }
+      }
+    ],
+    "rules_version": 0,
+    "loaded_at": "2026-10-05T00:00:00Z"
+  },
+  {
+    "marketplace": "amazon",
+    "category": "home_decor_lamps",
+    "rules": [
+      {
+        "id": "5eed0000-0000-4000-8000-000100020001",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "home_decor_lamps",
+        "field": "content.title",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "title longer than {limit} characters",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_LONG",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "max_length",
+          "limit": 200,
+          "unit": "chars"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100020002",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "home_decor_lamps",
+        "field": "content.title",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "title shorter than {limit} characters",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_SHORT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "min_length",
+          "limit": 5,
+          "unit": "chars"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100020003",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "home_decor_lamps",
+        "field": "content.title",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "title contains the banned term {term}",
+          "suggestion": null,
+          "error_code": "BANNED_TERM",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "banned_terms",
+          "terms": [
+            "best",
+            "guaranteed",
+            "free shipping",
+            "best seller",
+            "guaranteed cure"
+          ],
+          "match": "word",
+          "case_sensitive": false
+        }
+      }
+    ],
+    "rules_version": 0,
+    "loaded_at": "2026-10-05T00:00:00Z"
+  },
+  {
+    "marketplace": "flipkart",
+    "category": "ethnic_wear_kurta_sets",
+    "rules": [
+      {
+        "id": "5eed0000-0000-4000-8000-000200010001",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "content.title",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "title longer than {limit} characters",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_LONG",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "max_length",
+          "limit": 200,
+          "unit": "chars"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200010002",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "content.title",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "title shorter than {limit} characters",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_SHORT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "min_length",
+          "limit": 5,
+          "unit": "chars"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200010003",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "content.title",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "title contains the banned term {term}",
+          "suggestion": null,
+          "error_code": "BANNED_TERM",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "banned_terms",
+          "terms": [
+            "best",
+            "guaranteed",
+            "free shipping",
+            "best seller",
+            "guaranteed cure"
+          ],
+          "match": "word",
+          "case_sensitive": false
+        }
+      }
+    ],
+    "rules_version": 0,
+    "loaded_at": "2026-10-05T00:00:00Z"
+  },
+  {
+    "marketplace": "flipkart",
+    "category": "home_decor_lamps",
+    "rules": [
+      {
+        "id": "5eed0000-0000-4000-8000-000200020001",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "home_decor_lamps",
+        "field": "content.title",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "title longer than {limit} characters",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_LONG",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "max_length",
+          "limit": 200,
+          "unit": "chars"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200020002",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "home_decor_lamps",
+        "field": "content.title",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "title shorter than {limit} characters",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_SHORT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "min_length",
+          "limit": 5,
+          "unit": "chars"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200020003",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "home_decor_lamps",
+        "field": "content.title",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "title contains the banned term {term}",
+          "suggestion": null,
+          "error_code": "BANNED_TERM",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "banned_terms",
+          "terms": [
+            "best",
+            "guaranteed",
+            "free shipping",
+            "best seller",
+            "guaranteed cure"
+          ],
+          "match": "word",
+          "case_sensitive": false
+        }
+      }
+    ],
+    "rules_version": 0,
+    "loaded_at": "2026-10-05T00:00:00Z"
+  }
+]

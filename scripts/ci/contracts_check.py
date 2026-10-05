@@ -12,6 +12,11 @@ from mkos_schemas.export import MODELS
 from mkos_schemas.images import ImageReport
 
 
+def is_seed_fixture(path: Path) -> bool:
+    """`<name>.seed.json` is seed data validated by its own tests (S9 D10), not a golden fixture."""
+    return path.stem.endswith(".seed") and path.stem != ".seed"
+
+
 def _fail(reason: str) -> int:
     print(f"contracts_check: {reason}", file=sys.stderr)
     return 1
@@ -24,7 +29,7 @@ def main(argv: list[str] | None = None) -> int:
     fixtures_dir = args.fixtures
     if not fixtures_dir.is_dir():
         return _fail("no golden fixtures")
-    paths = sorted(fixtures_dir.glob("*.json"))
+    paths = sorted(p for p in fixtures_dir.glob("*.json") if not is_seed_fixture(p))
     if not paths:
         return _fail("no golden fixtures")
     by_stem = {p.stem: p for p in paths}
