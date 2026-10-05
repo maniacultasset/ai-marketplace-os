@@ -1,14 +1,16 @@
 -- scripts/db/0000_role_passwords.sql: psql only (\getenv, \if, backquotes); never run by psycopg.
 -- Sets role passwords from SCRAM-SHA-256 verifiers made by scripts/db/scram_verifier.py and held in
 -- the operator's environment as APP_RW_SCRAM, APP_RO_SCRAM and MIGRATOR_SCRAM; unset or empty skips
--- that role. The shell checks every value first, reading the environment (never argv), and one bad
--- value stops the run before any value is sent. Then the server must not log statements or keep
--- their text (pg_stat_statements with utility tracking: set the Cloud SQL flag
--- pg_stat_statements.track_utility=off first), and every target role must exist and be alterable,
--- so no ALTER ROLE carrying a verifier is logged, stored or fails.
+-- that role. The shell checks every value first, reading the environment (never argv), against the
+-- helper's format (iterations 1-9 digits, no leading zero; a non-empty base64 salt; StoredKey and
+-- ServerKey of 44 base64 characters ending in one '='), since PostgreSQL hashes any value it cannot
+-- parse as a verifier as a plaintext password; one bad value stops the run before any value is
+-- sent. Then the server must not log statements or keep their text (pg_stat_statements with utility
+-- tracking: set the Cloud SQL flag pg_stat_statements.track_utility=off first), and every target
+-- role must exist and be alterable, so no ALTER ROLE carrying a verifier is logged, kept or fails.
 \set ON_ERROR_STOP on
 \set VERBOSITY terse
-\set scram_ok `for v in "${APP_RW_SCRAM-}" "${APP_RO_SCRAM-}" "${MIGRATOR_SCRAM-}"; do case "$v" in '') ;; *[!A-Za-z0-9+/=:\$-]*) echo false; exit 0 ;; 'SCRAM-SHA-256$'[0-9]*:*'$'*:*) ;; *) echo false; exit 0 ;; esac; done; echo true`
+\set scram_ok `for v in "${APP_RW_SCRAM-}" "${APP_RO_SCRAM-}" "${MIGRATOR_SCRAM-}"; do case "$v" in '') continue ;; *[!A-Za-z0-9+/=:\$-]*) echo false; exit 0 ;; 'SCRAM-SHA-256$'[1-9]*:*'$'*:*) ;; *) echo false; exit 0 ;; esac; r=${v#'SCRAM-SHA-256$'}; i=${r%%:*}; r=${r#*:}; s=${r%%'$'*}; r=${r#*'$'}; k=${r%%:*}; e=${r#*:}; case "$i" in *[!0-9]*|??????????*) echo false; exit 0 ;; esac; case "$s" in ''|*[!A-Za-z0-9+/=]*|*=*[!=]*|*===) echo false; exit 0 ;; esac; [ $((${#s} % 4)) -eq 0 ] && [ "$e" != "$r" ] || { echo false; exit 0; }; for x in "$k" "$e"; do case "${x%=}" in *[!A-Za-z0-9+/]*) echo false; exit 0 ;; esac; [ ${#x} -eq 44 ] && [ "${x%=}" != "$x" ] || { echo false; exit 0; }; done; done; echo true`
 \if :scram_ok
 \else
 DO $$ BEGIN RAISE EXCEPTION 'a *_SCRAM value is not a SCRAM-SHA-256 verifier; no password was set'; END $$;

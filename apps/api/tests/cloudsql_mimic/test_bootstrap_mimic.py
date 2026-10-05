@@ -117,13 +117,39 @@ def test_role_passwords_unset_or_empty_skip(mimic: Mimic) -> None:
 
 
 @pytest.mark.parametrize("logging", ["all", "none"])
-@pytest.mark.parametrize("bad", ["plaintext", "quote", "space"])
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "plaintext",
+        "quote",
+        "space",
+        "truncated",
+        "shaped",
+        "zero-iterations",
+        "bad-salt",
+        "inner-pad-salt",
+        "short-key",
+        "unpadded-key",
+    ],
+)
 def test_role_passwords_bad_value_refused_before_send(mimic: Mimic, bad: str, logging: str) -> None:
     """The shell check alone stops a bad value: under boot `none` the server check passes, and
-    the quote and space values otherwise look like verifiers."""
+    the other values look like verifiers. A value PostgreSQL cannot parse as a verifier would be
+    hashed as a plaintext password, so the shell checks every field of the helper format."""
     _reset_passwords(mimic, boot_settings=("log_statement = 'none'",) if logging == "none" else ())
     shaped = _verifier("pw-s5-valid-0")
-    value = {"plaintext": LEAK, "quote": f"{shaped}'{LEAK}", "space": f"{shaped} {LEAK}"}[bad]
+    value = {
+        "plaintext": LEAK,
+        "quote": f"{shaped}'{LEAK}",
+        "space": f"{shaped} {LEAK}",
+        "truncated": shaped[:-20],
+        "shaped": "SCRAM-SHA-256$4096:x$y:z",
+        "zero-iterations": shaped.replace("$4096:", "$0:", 1),
+        "bad-salt": "SCRAM-SHA-256$4096:x$" + shaped.split("$", 2)[2],
+        "inner-pad-salt": "SCRAM-SHA-256$4096:c2=sdA==$" + shaped.split("$", 2)[2],
+        "short-key": shaped[:-20] + "=",
+        "unpadded-key": shaped[:-1],
+    }[bad]
     env = {"APP_RW_SCRAM": _verifier("pw-s5-valid-1"), "APP_RO_SCRAM": value}
     run = _run_passwords(mimic, env)
     assert run.returncode == 3, run.stderr
