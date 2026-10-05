@@ -1402,8 +1402,8 @@ never called directly: it picks jobs up from PostgreSQL (§8.2).
   - This comes from two exception handlers plus an override for request-validation errors.
   - `error_report` carries the ErrorReport above.
 - **Gaps before API-level 403 and 409 errors fit ErrorReport** (`DATABASE.md` §11.1 #12; `VISION-ALIGNMENT.md` §4.10):
-  - `MAKER_CHECKER_VIOLATION` and a stale-version code are not yet in `codes.py`.
-  - `paths.py` needs `request` and `listing` paths.
+  - API error codes (S3): `UNAUTHENTICATED`, `PERMISSION_DENIED`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `IDEMPOTENCY_KEY_REUSED`, `STALE_VERSION`, `PAYLOAD_TOO_LARGE`, `NOT_IMPLEMENTED`, `OAUTH_STATE_INVALID`, `LAST_OWNER_REQUIRED` (S10) and `MARKETPLACE_ACCOUNT_CONFLICT` (S15), Tech Lead 2026-10-05. They close this gap: the maker-checker code already exists and `STALE_VERSION` is the stale-version code.
+  - `paths.py` has the `request` and `listing` paths (S2).
 
 ### 5.4 List pagination (keyset)
 

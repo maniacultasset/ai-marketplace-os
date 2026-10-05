@@ -103,12 +103,37 @@ def test_codes_only_field_too_long() -> None:
     assert too_long == {"FIELD_TOO_LONG"}
 
 
+API_CODES = frozenset(
+    {
+        "UNAUTHENTICATED",
+        "PERMISSION_DENIED",
+        "NOT_FOUND",
+        "METHOD_NOT_ALLOWED",
+        "IDEMPOTENCY_KEY_REUSED",
+        "STALE_VERSION",
+        "PAYLOAD_TOO_LARGE",
+        "NOT_IMPLEMENTED",
+        "OAUTH_STATE_INVALID",
+        "LAST_OWNER_REQUIRED",
+        "MARKETPLACE_ACCOUNT_CONFLICT",
+    }
+)
+
+
 def test_codes_match_sources() -> None:
     expected = (
-        _draft_error_codes() | _a20_all_codes() | _database_merged_codes() | {"BUDGET_EXCEEDED"}
+        _draft_error_codes()
+        | _a20_all_codes()
+        | _database_merged_codes()
+        | {"BUDGET_EXCEEDED"}
+        | canon_sources.ba_api_codes()
     )
     assert {m.name for m in ErrorCode} == expected
-    assert len(ErrorCode) == 65
+    assert len(ErrorCode) == 76
+
+
+def test_ba_api_codes_line_names_the_eleven() -> None:
+    assert canon_sources.ba_api_codes() == API_CODES
 
 
 def test_codes_name_equals_value() -> None:
@@ -124,8 +149,9 @@ def test_codes_budget_exceeded_present() -> None:
     assert ErrorCode.BUDGET_EXCEEDED.value == "BUDGET_EXCEEDED"
 
 
-def test_codes_no_stale_version_code() -> None:
-    assert not any("STALE" in m.name for m in ErrorCode)
+def test_stale_version_is_the_only_stale_code() -> None:
+    # S2 Decision 5 kept STALE_* out of 1.0.0; S3 D2 adds exactly one, STALE_VERSION (409).
+    assert {m.name for m in ErrorCode if "STALE" in m.name} == {"STALE_VERSION"}
 
 
 def test_image_issue_codes_match_draft() -> None:
@@ -212,9 +238,34 @@ def test_error_code_meta_matches_appendix_a() -> None:
         ErrorCode.BATCH_TOO_LARGE: (None, "user_action", None),
         ErrorCode.BULK_APPROVE_REQUIRES_VALIDATED: (None, "user_action", None),
         ErrorCode.BUDGET_EXCEEDED: (None, "system_failure", None),
+        # S3 API codes (CODE-PLAN s3 T2; D2, D3, S15 hand-off)
+        ErrorCode.UNAUTHENTICATED: (None, "user_action", None),
+        ErrorCode.PERMISSION_DENIED: (None, "user_action", None),
+        ErrorCode.NOT_FOUND: (None, "user_action", None),
+        ErrorCode.METHOD_NOT_ALLOWED: (None, "user_action", None),
+        ErrorCode.IDEMPOTENCY_KEY_REUSED: (None, "user_action", None),
+        ErrorCode.STALE_VERSION: (None, "user_action", None),
+        ErrorCode.PAYLOAD_TOO_LARGE: (None, "user_action", None),
+        ErrorCode.OAUTH_STATE_INVALID: (None, "user_action", None),
+        ErrorCode.NOT_IMPLEMENTED: (None, "system_failure", None),
+        ErrorCode.LAST_OWNER_REQUIRED: (None, "user_action", None),
+        ErrorCode.MARKETPLACE_ACCOUNT_CONFLICT: (None, "user_action", None),
     }
     for code, exp in expected.items():
         assert _meta_tuple(ERROR_CODE_META[code]) == exp, code.name
+
+
+def test_http_codes_meta() -> None:
+    # Every S3 API code is an HTTP-layer failure: no ErrorClass, no auto-fix, and only
+    # NOT_IMPLEMENTED is a system failure (retrying the request will not help a user either way).
+    for name in API_CODES:
+        meta = ERROR_CODE_META[ErrorCode(name)]
+        assert meta.error_class is None, name
+        assert meta.fix_action is None, name
+        expected = (
+            RetryClass.SYSTEM_FAILURE if name == "NOT_IMPLEMENTED" else RetryClass.USER_ACTION
+        )
+        assert meta.retry_class is expected, name
 
 
 def test_error_code_meta_is_read_only() -> None:

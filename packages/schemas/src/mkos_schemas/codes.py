@@ -91,6 +91,9 @@ class ErrorCode(StrEnum):
     # --- summary ---
     IMPORT_FAILED = "IMPORT_FAILED"
 
+    # --- api ---
+    IDEMPOTENCY_KEY_REUSED = "IDEMPOTENCY_KEY_REUSED"
+
     # --- system ---
     INTERNAL_ERROR = "INTERNAL_ERROR"
 
@@ -105,6 +108,9 @@ class ErrorCode(StrEnum):
 
     # --- rules ---
     KEYWORD_DUPLICATE = "KEYWORD_DUPLICATE"
+
+    # --- api ---
+    LAST_OWNER_REQUIRED = "LAST_OWNER_REQUIRED"
 
     # --- api ---
     LISTING_ARCHIVED = "LISTING_ARCHIVED"
@@ -122,11 +128,27 @@ class ErrorCode(StrEnum):
 
     MARKETPLACE_UNKNOWN_ERROR = "MARKETPLACE_UNKNOWN_ERROR"
 
+    # --- api ---
+    MARKETPLACE_ACCOUNT_CONFLICT = "MARKETPLACE_ACCOUNT_CONFLICT"
+
+    METHOD_NOT_ALLOWED = "METHOD_NOT_ALLOWED"
+
     # --- rules ---
     MISSING_ATTRIBUTE = "MISSING_ATTRIBUTE"
 
     # --- ai ---
     MODEL_UNAVAILABLE = "MODEL_UNAVAILABLE"
+
+    # --- api ---
+    NOT_FOUND = "NOT_FOUND"
+
+    NOT_IMPLEMENTED = "NOT_IMPLEMENTED"
+
+    OAUTH_STATE_INVALID = "OAUTH_STATE_INVALID"
+
+    PAYLOAD_TOO_LARGE = "PAYLOAD_TOO_LARGE"
+
+    PERMISSION_DENIED = "PERMISSION_DENIED"
 
     # --- rules ---
     PATTERN_MISMATCH = "PATTERN_MISMATCH"
@@ -155,6 +177,9 @@ class ErrorCode(StrEnum):
     SKU_CONFLICT = "SKU_CONFLICT"
 
     # --- api ---
+    STALE_VERSION = "STALE_VERSION"
+
+    # --- api ---
     SUBMISSION_ATTEMPTS_EXHAUSTED = "SUBMISSION_ATTEMPTS_EXHAUSTED"
 
     SUBMISSION_IN_FLIGHT = "SUBMISSION_IN_FLIGHT"
@@ -166,6 +191,9 @@ class ErrorCode(StrEnum):
     TIMEOUT = "TIMEOUT"
 
     TOKEN_LIMIT = "TOKEN_LIMIT"  # noqa: S105 - an error code name, not a credential
+
+    # --- api ---
+    UNAUTHENTICATED = "UNAUTHENTICATED"
 
     # --- facts ---
     UNKNOWN_FACT_KEY = "UNKNOWN_FACT_KEY"
@@ -252,6 +280,7 @@ def _meta() -> dict[ErrorCode, CodeMeta]:
         ),
         ErrorCode.IDENTIFIER_INVALID: CodeMeta(ErrorClass.IDENTIFIER_ERROR, RetryClass.USER_ACTION),
         ErrorCode.IDENTIFIER_MISSING: CodeMeta(ErrorClass.IDENTIFIER_ERROR, RetryClass.USER_ACTION),
+        ErrorCode.IDEMPOTENCY_KEY_REUSED: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.IMAGE_NON_COMPLIANT: CodeMeta(ErrorClass.MEDIA_ERROR, RetryClass.USER_ACTION),
         ErrorCode.IMPORT_FAILED: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.INTERNAL_ERROR: CodeMeta(None, RetryClass.SYSTEM_FAILURE),
@@ -263,10 +292,12 @@ def _meta() -> dict[ErrorCode, CodeMeta]:
             RetryClass.AI_CORRECT,
             FixAction.REFORMAT,
         ),
+        ErrorCode.LAST_OWNER_REQUIRED: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.LISTING_ARCHIVED: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.LISTING_BUSY: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.LISTING_PAUSED: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.MAKER_CHECKER_VIOLATION: CodeMeta(None, RetryClass.USER_ACTION),
+        ErrorCode.MARKETPLACE_ACCOUNT_CONFLICT: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.MARKETPLACE_UNAVAILABLE: CodeMeta(
             ErrorClass.MARKETPLACE_TECHNICAL, RetryClass.AUTO_RETRY
         ),
@@ -274,8 +305,14 @@ def _meta() -> dict[ErrorCode, CodeMeta]:
             ErrorClass.MARKETPLACE_TECHNICAL, RetryClass.AUTO_RETRY
         ),
         ErrorCode.MARKETPLACE_UNKNOWN_ERROR: CodeMeta(ErrorClass.UNKNOWN, RetryClass.USER_ACTION),
+        ErrorCode.METHOD_NOT_ALLOWED: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.MISSING_ATTRIBUTE: CodeMeta(ErrorClass.MISSING_DATA, RetryClass.USER_ACTION),
         ErrorCode.MODEL_UNAVAILABLE: CodeMeta(None, RetryClass.AUTO_RETRY),
+        ErrorCode.NOT_FOUND: CodeMeta(None, RetryClass.USER_ACTION),
+        ErrorCode.NOT_IMPLEMENTED: CodeMeta(None, RetryClass.SYSTEM_FAILURE),
+        ErrorCode.OAUTH_STATE_INVALID: CodeMeta(None, RetryClass.USER_ACTION),
+        ErrorCode.PAYLOAD_TOO_LARGE: CodeMeta(None, RetryClass.USER_ACTION),
+        ErrorCode.PERMISSION_DENIED: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.PATTERN_MISMATCH: CodeMeta(ErrorClass.CONTENT_ERROR, RetryClass.AI_CORRECT),
         ErrorCode.PRICE_ABOVE_MRP: CodeMeta(ErrorClass.INVALID_VALUE, RetryClass.USER_ACTION),
         ErrorCode.PUBLISH_FAILED: CodeMeta(None, RetryClass.USER_ACTION),
@@ -287,6 +324,7 @@ def _meta() -> dict[ErrorCode, CodeMeta]:
             ErrorClass.IDENTIFIER_ERROR, RetryClass.USER_ACTION
         ),
         ErrorCode.SKU_CONFLICT: CodeMeta(ErrorClass.IDENTIFIER_ERROR, RetryClass.USER_ACTION),
+        ErrorCode.STALE_VERSION: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.SUBMISSION_ATTEMPTS_EXHAUSTED: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.SUBMISSION_IN_FLIGHT: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.SUBMISSION_NOT_APPLIED: CodeMeta(
@@ -294,6 +332,7 @@ def _meta() -> dict[ErrorCode, CodeMeta]:
         ),
         ErrorCode.TIMEOUT: CodeMeta(None, RetryClass.AUTO_RETRY),
         ErrorCode.TOKEN_LIMIT: CodeMeta(None, RetryClass.AUTO_RETRY),
+        ErrorCode.UNAUTHENTICATED: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.UNKNOWN_FACT_KEY: CodeMeta(ErrorClass.INVALID_VALUE, RetryClass.USER_ACTION),
         ErrorCode.UNSUPPORTED_CLAIM: CodeMeta(ErrorClass.CONTENT_ERROR, RetryClass.AI_CORRECT),
         ErrorCode.VALIDATION_FAILED: CodeMeta(None, RetryClass.USER_ACTION),
