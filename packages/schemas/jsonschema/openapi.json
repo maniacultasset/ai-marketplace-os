@@ -2798,7 +2798,7 @@
             "type": "string"
           },
           "slug": {
-            "pattern": "^[a-z0-9_]{2,64}$",
+            "pattern": "^[a-z0-9][a-z0-9-]{1,39}$",
             "title": "Slug",
             "type": "string"
           },

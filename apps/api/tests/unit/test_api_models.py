@@ -409,3 +409,59 @@ def test_connect_marketplace_enum() -> None:
     ConnectRequest.model_validate({"marketplace": "amazon"})
     with pytest.raises(ValidationError):
         ConnectRequest.model_validate({"marketplace": "ebay"})
+
+
+# ---- S3 fix round 1 (R1-3): TenantOut.slug follows ck_tenants_slug, not the category Slug ----
+def _ck_tenants_slug_pattern() -> str:
+    from pathlib import Path
+
+    source = (
+        Path(__file__).resolve().parents[2] / "alembic/versions/0001_core_tenancy.py"
+    ).read_text("utf-8")
+    found: list[str] = re.findall(r"CONSTRAINT ck_tenants_slug CHECK \(slug ~ '([^']+)'\)", source)
+    assert len(found) == 1, found
+    return found[0]
+
+
+def test_tenant_slug_pattern_matches_the_db_check() -> None:
+    from app.api.v1.schemas.tenants import TenantOut
+
+    schema = TenantOut.model_json_schema(mode="serialization")
+    assert schema["properties"]["slug"]["pattern"] == _ck_tenants_slug_pattern()
+
+
+@pytest.mark.parametrize(
+    ("slug", "ok"),
+    [
+        ("acme-brand", True),
+        ("ab", True),
+        ("a" * 40, True),
+        ("a" * 41, False),
+        ("a", False),
+        ("acme_brand", False),
+        ("-acme", False),
+        ("Acme", False),
+    ],
+)
+def test_tenant_out_accepts_what_the_db_accepts(slug: str, ok: bool) -> None:
+    from app.api.v1.schemas.tenants import TenantOut
+
+    body = {"id": PID, "name": "Acme", "slug": slug, "status": "active"}
+    assert (re.fullmatch(_ck_tenants_slug_pattern(), slug) is not None) is ok
+    if ok:
+        assert TenantOut.model_validate(body).slug == slug
+    else:
+        with pytest.raises(ValidationError):
+            TenantOut.model_validate(body)
+
+
+def test_published_contract_carries_the_tenant_slug_pattern() -> None:
+    from pathlib import Path
+
+    spec = json.loads(
+        (
+            Path(__file__).resolve().parents[4] / "packages/schemas/jsonschema/openapi.json"
+        ).read_text("utf-8")
+    )
+    slug = spec["components"]["schemas"]["TenantOut"]["properties"]["slug"]
+    assert slug["pattern"] == _ck_tenants_slug_pattern()
