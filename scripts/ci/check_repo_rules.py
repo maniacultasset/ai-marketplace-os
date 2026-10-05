@@ -7,13 +7,16 @@
   `mkos_schemas/codes.py` only.
 - R3: nothing in `apps/api/app/services/**` imports `sqlalchemy.ext.asyncio`: engine-level SQL
   from a service would bypass the tenant guard (import-linter forbids only package roots).
-- R4: inside `apps/api/app/**` but outside `app/db/**` and `app/repositories/**`, no
-  `sqlalchemy.text` (any import form, or `sa.text`) and no `.connection(` call: raw SQL and Core
-  connections bypass the repository layer (layer 2 of DATABASE.md §4).
+- R4: inside `apps/api/app/**` but outside `app/db/**` and `app/repositories/**`, no raw-SQL
+  constructor (`text`, `TextClause`, `literal_column`) from any `sqlalchemy` module, whether
+  imported by name or reached through an attribute chain off any `sqlalchemy` alias
+  (`sa.sql.text`, `sql.text`, `expression.text`), and no `.connection(`, `.connect(`,
+  `.exec_driver_sql(` or `.get_bind(` call: raw SQL and Core connections bypass the repository
+  layer (layer 2 of DATABASE.md §4).
 - R5: `platform_scope` (the read-only cross-tenant bypass, CANON-ADDENDUM.md A§6) is named only in
   `apps/api/app/admin/**`, `apps/api/app/cli.py`, `scripts/**`, and `apps/api/app/db/session.py`,
   which defines it. Any import form counts, including `import app.db.session as s` plus the
-  attribute.
+  attribute, and a `getattr`/`setattr`/`hasattr`/`delattr` lookup by string.
 - R6: `SCOPE_OK` is named only in `apps/api/app/db/**` and `apps/api/app/repositories/base.py`. Its
   two writers are `platform_scope` (`session.info`) and `TenantScopedRepository._select()` /
   `_scoped_outer()` (the statement option); the guard in `app/db/guard.py` is its only reader.
@@ -46,6 +49,9 @@ PLATFORM_SCOPE_FILES = ("apps/api/app/cli.py", "apps/api/app/db/session.py")
 SCOPE_OK_ALLOWED = ("apps/api/app/db",)
 SCOPE_OK_FILES = ("apps/api/app/repositories/base.py",)
 SQLALCHEMY_TEXT_MODULES = frozenset({"sqlalchemy", "sqlalchemy.sql", "sqlalchemy.sql.expression"})
+RAW_SQL_NAMES = frozenset({"text", "TextClause", "literal_column"})
+RAW_SQL_CALLS = frozenset({"connection", "connect", "exec_driver_sql", "get_bind"})
+ATTR_LOOKUPS = frozenset({"getattr", "setattr", "hasattr", "delattr"})
 ALL_RULES = frozenset({"R1", "R2", "R3", "R4", "R5", "R6"})
 
 
@@ -134,36 +140,54 @@ def _under(relative: str, dirs: tuple[str, ...]) -> bool:
     return any(relative.startswith(d + "/") for d in dirs)
 
 
+def _is_sqlalchemy(module: str | None) -> bool:
+    return module is not None and (module == "sqlalchemy" or module.startswith("sqlalchemy."))
+
+
 def _sqlalchemy_aliases(tree: ast.AST) -> set[str]:
+    """Every local name bound to a sqlalchemy module: `import sqlalchemy[.x] [as a]` and
+    `from sqlalchemy[.x] import <lowercase submodule-like name> [as a]` (e.g. `sql`,
+    `expression`). Lowercase non-raw names such as `select` are harmless: they have no `.text`."""
     aliases: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                if alias.name in SQLALCHEMY_TEXT_MODULES:
+                if _is_sqlalchemy(alias.name):
                     aliases.add(alias.asname or alias.name.split(".")[0])
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and _is_sqlalchemy(node.module):
+            for alias in node.names:
+                if alias.name != "*" and alias.name.islower() and alias.name not in RAW_SQL_NAMES:
+                    aliases.add(alias.asname or alias.name)
     return aliases
+
+
+def _root_name(node: ast.expr) -> str | None:
+    while isinstance(node, ast.Attribute):
+        node = node.value
+    return node.id if isinstance(node, ast.Name) else None
 
 
 def _raw_sql(tree: ast.AST) -> Iterator[tuple[int, str]]:
     aliases = _sqlalchemy_aliases(tree)
     where = "outside app/db and app/repositories"
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module in SQLALCHEMY_TEXT_MODULES:
-            if any(a.name in ("text", "*") for a in node.names):
-                yield node.lineno, f"`sqlalchemy.text` {where}"
+        if isinstance(node, ast.ImportFrom) and node.level == 0 and _is_sqlalchemy(node.module):
+            for alias in node.names:
+                star = alias.name == "*" and node.module in SQLALCHEMY_TEXT_MODULES
+                if alias.name in RAW_SQL_NAMES or star:
+                    yield node.lineno, f"`from {node.module} import {alias.name}` {where}"
         elif (
             isinstance(node, ast.Attribute)
-            and node.attr == "text"
-            and isinstance(node.value, ast.Name)
-            and node.value.id in aliases
+            and node.attr in RAW_SQL_NAMES
+            and _root_name(node.value) in aliases
         ):
-            yield node.lineno, f"`{node.value.id}.text` {where}"
+            yield node.lineno, f"`{_root_name(node.value)}...{node.attr}` {where}"
         elif (
             isinstance(node, ast.Call)
             and isinstance(node.func, ast.Attribute)
-            and node.func.attr == "connection"
+            and node.func.attr in RAW_SQL_CALLS
         ):
-            yield node.lineno, f"`.connection()` {where}"
+            yield node.lineno, f"`.{node.func.attr}()` {where}"
 
 
 def _names(tree: ast.AST, name: str, star_module: str) -> Iterator[tuple[int, str]]:
@@ -174,6 +198,13 @@ def _names(tree: ast.AST, name: str, star_module: str) -> Iterator[tuple[int, st
                     yield node.lineno, f"imports `{name}`"
         elif isinstance(node, ast.Attribute) and node.attr == name:
             yield node.lineno, f"uses `{name}`"
+        elif (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in ATTR_LOOKUPS
+            and any(isinstance(a, ast.Constant) and a.value == name for a in node.args[1:2])
+        ):
+            yield node.lineno, f"looks up `{name}` by string"
 
 
 def check_file(relative: str, path: Path) -> list[Violation]:
