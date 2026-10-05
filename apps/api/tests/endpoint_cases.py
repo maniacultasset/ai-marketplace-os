@@ -120,6 +120,7 @@ _PROBE_PARAM_VALUES: Final = (
     "__guard_probe__",
 )
 _PARAM: Final = re.compile(r"{[^}]*}")
+_PATH_TAIL_VALUES: Final = ("", "/", "/__guard_probe__", "/__guard_probe__/x")
 
 
 def _under_v1(path: str) -> bool:
@@ -144,9 +145,44 @@ def _fill(path_format: str) -> set[str]:
     return out
 
 
+def _aligned(path_format: str) -> set[str]:
+    """URLs `path_format` could serve that start with `/api/v1` (R3-1): each parameter met inside
+    that prefix takes every slice of it that it could match, so a parameter glued to a literal
+    (`/api/{x}1/...` -> `x=v`) or spanning a slash (`/{p:path}`) still lands on `/api/v1`. The
+    parameters past the prefix take the `_fill` probe values; the router decides what matches."""
+    tokens = re.split(r"({[^}]*})", path_format)
+    out: set[str] = set()
+
+    def step(i: int, pos: int, built: str) -> None:
+        if pos == len(API_V1):
+            out.update(built + rest for rest in _fill("".join(tokens[i:])))
+            if i < len(tokens) and tokens[i].endswith(":path}"):
+                out.update(built + tail for tail in _PATH_TAIL_VALUES)
+            return
+        if i == len(tokens):
+            return
+        token, want = tokens[i], API_V1[pos:]
+        if not token.startswith("{"):
+            if token.startswith(want):
+                out.update(built + token + rest for rest in _fill("".join(tokens[i + 1 :])))
+            elif want.startswith(token):
+                step(i + 1, pos + len(token), built + token)
+            return
+        spans_slash = token.endswith(":path}")
+        for end in range(pos + 1, len(API_V1) + 1):
+            piece = API_V1[pos:end]
+            if "/" in piece and not spans_slash:
+                break
+            step(i + 1, end, built + piece)
+
+    step(0, 0, "")
+    return out
+
+
 def _probe_paths(app: Any) -> set[str]:
-    """`/api/v1` URLs to match every route against: the prefix, unknown paths below it, each
-    registry op's path, and each route's own path with its parameters filled in."""
+    """`/api/v1` URLs to dispatch through the app: the prefix, unknown paths below it, each
+    registry op's path, and each route's full path (mount prefixes applied) with its parameters
+    filled in or aligned on `/api/v1`."""
     probes = {API_V1, f"{API_V1}/", f"{API_V1}/__guard_probe__", f"{API_V1}/__guard_probe__/x"}
     for op in OPS.values():
         probes |= _fill(f"{API_V1}{op.path}")
@@ -155,10 +191,13 @@ def _probe_paths(app: Any) -> set[str]:
         for context in iter_route_contexts(list(routes)):
             served = _served(context)
             if isinstance(served, (Mount, Host)):
-                walk(getattr(served, "routes", None) or (), prefix + _mount_path(served))
+                path = prefix + _mount_path(served)
+                probes.update(_fill(path) | _aligned(path) | _aligned(f"{path}/{{rest:path}}"))
+                walk(getattr(served, "routes", None) or (), path)
                 continue
             path_format = getattr(served, "path_format", None) or getattr(served, "path", "")
-            probes.update(_fill(f"{prefix}{path_format}"))
+            full = f"{prefix}{path_format}"
+            probes.update(_fill(full) | _aligned(full))
 
     walk(app.routes, "")
     return {p for p in probes if _under_v1(p)}
@@ -176,10 +215,10 @@ def _mount_path(route: Any) -> str:
     return str(getattr(route, "path", "") or "") if isinstance(route, Mount) else ""
 
 
-def _matches(context: Any, path: str) -> bool:
-    """Whether the route claims `path`: a FULL or PARTIAL (wrong method) match, http or ws."""
-    for kind in ("http", "websocket"):
-        scope: dict[str, Any] = {
+def _probe_scopes(path: str) -> list[dict[str, Any]]:
+    """One http and one websocket scope for `path`, as the top-level router would see them."""
+    return [
+        {
             "type": kind,
             "path": path,
             "root_path": "",
@@ -188,35 +227,40 @@ def _matches(context: Any, path: str) -> bool:
             "query_string": b"",
             "path_params": {},
         }
-        match, _ = context.matches(scope)
-        if match in (Match.FULL, Match.PARTIAL):
-            return True
-    return False
+        for kind in ("http", "websocket")
+    ]
 
 
 def v1_routes(app: Any) -> Iterable[V1Route]:
-    """Every route that serves `/api/v1` URLs, picked by what it matches and not only by its
-    declared path (R2-1): a templated prefix (`/api/{ver}/...`), a catch-all (`/api/v1{rest:path}`)
-    and a route in a sub-app mounted above `/api/v1` are all in scope. Routes without an
-    `operation_id` (`include_in_schema=False`) count too (R1-2). A mount the guard cannot look into
-    is yielded whole when it serves `/api/v1` URLs."""
-    probes = _probe_paths(app)
+    """Every route that serves `/api/v1` URLs, picked by real dispatch and not by its declared
+    path (R2-1, R3-1): each probe URL goes through `route.matches`, and a mount is entered only
+    with the child scopes of the probes it FULL-matches, so a templated prefix (`/api/{ver}/...`),
+    a catch-all (`/api/v1{rest:path}`), a templated or nested mount and a parameter glued to a
+    literal are all in scope. Routes without an `operation_id` (`include_in_schema=False`) count
+    too (R1-2). A mount the guard cannot look into is yielded whole when it serves `/api/v1` URLs;
+    a `Host` is entered as is, since the probes carry no host header."""
+    scopes = [s for p in sorted(_probe_paths(app)) for s in _probe_scopes(p)]
 
-    def walk(routes: Iterable[Any], prefix: str) -> Iterable[V1Route]:
+    def walk(routes: Iterable[Any], prefix: str, scopes: list[dict[str, Any]]) -> Iterable[V1Route]:
         for context in iter_route_contexts(list(routes)):
             served = _served(context)
             declared = f"{prefix}{getattr(served, 'path', '') or ''}"
-            # Starlette strips a mount's prefix only at a path boundary.
-            local = [
-                p[len(prefix) :] or "/" for p in probes if p == prefix or p.startswith(f"{prefix}/")
-            ]
             mounted = isinstance(served, (Mount, Host))
-            claims = _under_v1(declared) or any(_matches(served, p) for p in local)
-            if mounted and not _under_v1(declared) and getattr(served, "routes", None):
-                # Look inside: only the sub-app routes that serve /api/v1 URLs are in scope.
-                yield from walk(served.routes, prefix + _mount_path(served))
+            subroutes = getattr(served, "routes", None) if mounted else None
+            if isinstance(served, Host) and subroutes:
+                yield from walk(subroutes, prefix, scopes)
                 continue
-            if not claims:
+            matched: list[dict[str, Any]] = []
+            for scope in scopes:
+                match, child = served.matches(scope)
+                if match in (Match.FULL, Match.PARTIAL):
+                    matched.append({**scope, **child})
+            if isinstance(served, Mount) and subroutes and not _under_v1(declared):
+                # Look inside with the stripped child scopes: only the sub-app routes that serve
+                # /api/v1 URLs are in scope.
+                yield from walk(subroutes, declared, matched)
+                continue
+            if not (_under_v1(declared) or matched):
                 continue
             methods = frozenset(getattr(served, "methods", None) or ())
             kind = "MOUNT" if mounted else "WEBSOCKET"
@@ -229,7 +273,7 @@ def v1_routes(app: Any) -> Iterable[V1Route]:
                 context=context,
             )
 
-    yield from walk(app.routes, "")
+    yield from walk(app.routes, "", scopes)
 
 
 def _registered(route: V1Route) -> Operation | None:
