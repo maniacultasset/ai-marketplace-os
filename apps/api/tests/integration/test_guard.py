@@ -11,7 +11,7 @@ from uuid import UUID
 import psycopg
 import pytest
 from psycopg import sql
-from sqlalchemy import delete, exists, func, select, update
+from sqlalchemy import delete, exists, func, select, table, update
 
 from . import factories as f
 from .conftest import LOCAL_HOSTS
@@ -48,6 +48,7 @@ def _shapes() -> dict[str, Callable[[], Any]]:
         "cte": lambda: select(_listing_cte().c.id),
         "select_from": lambda: select(func.count()).select_from(Listing),
         "core_table": lambda: select(Listing.__table__),
+        "table_clause": lambda: select(func.count()).select_from(table("listings")),
     }
 
 
@@ -82,7 +83,7 @@ async def test_guard_raises_unscoped_delete() -> None:
 
 
 @pytest.mark.parametrize(
-    "shape", ["join", "subquery", "exists", "cte", "select_from", "core_table"]
+    "shape", ["join", "subquery", "exists", "cte", "select_from", "core_table", "table_clause"]
 )
 async def test_guard_raises_referenced_tenant_table(shape: str) -> None:
     from app.db.guard import CrossTenantQueryError

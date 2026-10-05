@@ -174,6 +174,11 @@ seed_iso_all_mappers() {
   cp "$root/.env" .env
   replace apps/api/app/db/guard.py 'hits = referenced_tables(state.statement) & tenant_tables()' 'hits = {m.local_table.name for m in state.all_mappers} & tenant_tables()'
 }
+seed_iso_table_only() {
+  cp "$root/.env" .env
+  replace apps/api/app/db/guard.py $'if isinstance(element, TableClause):\n' $'if isinstance(element, Table):\n'
+  replace apps/api/app/db/guard.py 'if isinstance(table, TableClause):' 'if isinstance(table, Table):'
+}
 seed_iso_no_before_flush() {
   cp "$root/.env" .env
   replace apps/api/app/db/session.py $'event.listen(AppSession, "before_flush", check_flush)\n' ''
@@ -339,6 +344,7 @@ if [ "$with_docker" -eq 1 ]; then
   leg tenant-isolation-no-guard tenant-isolation 'test_raw_select_raises_guard' seed_iso_no_guard COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-superuser tenant-isolation 'test_isolation_runs_as_app_rw' seed_iso_env COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation ISO_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_iso
   leg tenant-isolation-guard-all-mappers tenant-isolation 'test_raw_select_raises_guard\[[a-z_]+-(join|subquery|exists|cte|select_from|core_table)\]' seed_iso_all_mappers COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
+  leg tenant-isolation-guard-table-only tenant-isolation 'test_raw_select_raises_guard\[[a-z_]+-table_clause\]' seed_iso_table_only COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-no-before-flush tenant-isolation 'test_flush_rejects_other_tenant' seed_iso_no_before_flush COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   # Bootstrap legs use their own project on this checkout's host ports; pause this stack meanwhile.
   docker compose stop >/dev/null 2>&1

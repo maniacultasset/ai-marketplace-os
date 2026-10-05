@@ -388,6 +388,10 @@ S9_LEGS = {
         "tenant-isolation",
         r"test_raw_select_raises_guard\[[a-z_]+-(join|subquery|exists|cte|select_from|core_table)\]",
     ),
+    "tenant-isolation-guard-table-only": (
+        "tenant-isolation",
+        r"test_raw_select_raises_guard\[[a-z_]+-table_clause\]",
+    ),
     "tenant-isolation-no-before-flush": ("tenant-isolation", "test_flush_rejects_other_tenant"),
     "tenant-isolation-no-marker": ("tenant-isolation", "deselected"),
 }

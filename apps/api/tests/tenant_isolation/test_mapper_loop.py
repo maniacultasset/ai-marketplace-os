@@ -17,7 +17,7 @@ from app.db.base import Base
 from app.db.models._tenant import TenantScoped
 from app.db.models.platform import CategoryTemplate
 from psycopg import sql
-from sqlalchemy import exists, func, inspect, select
+from sqlalchemy import exists, func, inspect, select, table
 from sqlalchemy.orm import make_transient
 
 from .factories import World, build_world
@@ -47,6 +47,7 @@ SHAPES: dict[str, Callable[[type[Any]], Any]] = {
     "cte": lambda m: select(select(m).cte().c[m.__tenant_column__]),
     "select_from": lambda m: select(func.count()).select_from(m),
     "core_table": lambda m: select(m.__table__),
+    "table_clause": lambda m: select(func.count()).select_from(table(m.__table__.name)),
 }
 
 
