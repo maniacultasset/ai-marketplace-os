@@ -27,6 +27,7 @@ from pydantic import BaseModel
 
 from app.api.errors import STATUS_MESSAGES, ErrorEnvelope, envelope_body
 from app.api.v1.deps import bearer_required
+from app.api.v1.examples import CALLBACK_LOCATION, SUCCESS_EXAMPLES
 from app.api.v1.schemas.analytics import AnalyticsSummary
 from app.api.v1.schemas.auth import MeOut, TokenResponse
 from app.api.v1.schemas.batches import BatchAccepted, BatchResult
@@ -201,6 +202,29 @@ def declared_responses(op: Operation) -> dict[int | str, dict[str, Any]]:
     return out
 
 
+def success_response(op: Operation) -> dict[int | str, dict[str, Any]]:
+    """The 2xx/3xx entry: the op's success example, or the 303 `Location` / 204 description."""
+    if op.status == 303:
+        return {
+            303: {
+                "description": (
+                    "Redirect to the app. `Location` carries only an opaque single-use "
+                    "`pending` handle: no code, token or account data."
+                ),
+                "headers": {
+                    "Location": {
+                        "description": "The fixed app route plus `?pending=<opaque>`.",
+                        "schema": {"type": "string"},
+                        "example": CALLBACK_LOCATION,
+                    }
+                },
+            }
+        }
+    if op.response_model is None:
+        return {op.status: {"description": "Done; no body."}}
+    return {op.status: {"content": {"application/json": {"example": SUCCESS_EXAMPLES[op.op_id]}}}}
+
+
 def stub[F: Callable[..., Any]](fn: F) -> F:
     """Marks a handler as the S3 501 stub; the case-matrix guard skips it."""
     fn.__mkos_stub__ = True  # type: ignore[attr-defined]
@@ -227,7 +251,7 @@ def route(
             methods=[op.method],
             status_code=op.status,
             response_model=op.response_model,
-            responses=declared_responses(op) | kwargs.pop("success_responses", {}),
+            responses=success_response(op) | declared_responses(op),
             operation_id=op.op_id,
             summary=op.summary,
             tags=[op.group],
