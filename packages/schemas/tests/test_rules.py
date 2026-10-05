@@ -150,7 +150,7 @@ def test_ruledef_default_error_codes() -> None:
         (
             ClaimRequiresAttribute,
             ErrorCode.UNSUPPORTED_CLAIM,
-            {"claim": "cotton", "terms": ["cotton"], "requires": {"material": True}},
+            {"claim": "cotton", "terms": ["cotton"], "requires": {"attribute": "material"}},
         ),
         (
             ImageRequirement,
@@ -511,3 +511,34 @@ def test_pattern_regex_accepts_ordinary_patterns(regex: str) -> None:
 def test_pattern_regex_rejects_unsafe_or_invalid(regex: str) -> None:
     with pytest.raises(ValidationError):
         _pattern(regex)
+
+
+def _claim(requires: object) -> ClaimRequiresAttribute:
+    return ClaimRequiresAttribute.model_validate(
+        {
+            "type": "claim_requires_attribute",
+            "message": "m",
+            "claim": "organic",
+            "terms": ["organic"],
+            "requires": requires,
+        }
+    )
+
+
+def test_claim_requires_is_attribute_and_any_of() -> None:
+    # Round 1 R1-8: DATABASE.md claim_requires_attribute row, `requires {attribute, any_of?}`.
+    rule = _claim({"attribute": "certifications", "any_of": ["gots"]})
+    assert rule.model_dump()["requires"] == {"attribute": "certifications", "any_of": ["gots"]}
+    assert _claim({"attribute": "fabric"}).model_dump()["requires"]["any_of"] is None
+    schema = ClaimRequiresAttribute.model_json_schema()
+    assert "$ref" in schema["properties"]["requires"]
+    for bad in (
+        {"fabric": True},
+        {"attribute": "Fabric"},
+        {"attribute": "fabric", "any_of": []},
+        {"attribute": "fabric", "any_of": [" "]},
+        {"attribute": "fabric", "any_of": ["x" * 257]},
+        {"attribute": "fabric", "any_of": ["x"] * 51},
+    ):
+        with pytest.raises(ValidationError):
+            _claim(bad)

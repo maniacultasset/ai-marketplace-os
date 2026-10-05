@@ -239,7 +239,8 @@
         ],
         "match": "word",
         "requires": {
-          "fabric": true
+          "attribute": "fabric",
+          "any_of": null
         }
       }
     },

@@ -16,6 +16,9 @@ from .codes import ErrorCode
 from .enums import ErrorClass, Marketplace, RetryClass, Severity
 from .paths import is_valid_condition_path, is_valid_field_path, is_valid_rule_field
 
+RuleTerm = Annotated[NonBlankStr, Field(max_length=256)]
+"""A banned term, claim term or allowed claim value: 1..256 characters (Appendix B)."""
+
 PLACEHOLDERS: frozenset[str] = frozenset(
     {"value", "limit", "term", "attribute", "allowed_values", "slot", "threshold"}
 )
@@ -321,12 +324,21 @@ class CrossField(_RuleBase):
         return value
 
 
+class ClaimRequirement(WireModel):
+    """What a claim needs (DATABASE.md claim_requires_attribute row): the attribute must be
+    present and, when ``any_of`` is set, hold one of those values (``organic`` → certifications
+    any_of ``gots``)."""
+
+    attribute: AttrKey
+    any_of: Annotated[list[RuleTerm], Field(min_length=1, max_length=50)] | None = None
+
+
 class ClaimRequiresAttribute(_RuleBase):
     type: Literal["claim_requires_attribute"]
     claim: NonBlankStr
     terms: Annotated[list[NonBlankStr], Field(min_length=1, max_length=50)]
     match: Literal["word", "substring"] = "word"
-    requires: dict[str, object]
+    requires: ClaimRequirement
     error_code: ErrorCode = ErrorCode.UNSUPPORTED_CLAIM
 
 

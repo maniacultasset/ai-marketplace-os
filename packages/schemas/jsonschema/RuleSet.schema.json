@@ -218,6 +218,40 @@
       "title": "BannedTerms",
       "type": "object"
     },
+    "ClaimRequirement": {
+      "description": "What a claim needs (DATABASE.md claim_requires_attribute row): the attribute must be\npresent and, when ``any_of`` is set, hold one of those values (``organic`` \u2192 certifications\nany_of ``gots``).",
+      "properties": {
+        "any_of": {
+          "anyOf": [
+            {
+              "items": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "maxItems": 50,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Any Of"
+        },
+        "attribute": {
+          "pattern": "^[a-z0-9_]{1,64}$",
+          "title": "Attribute",
+          "type": "string"
+        }
+      },
+      "required": [
+        "attribute"
+      ],
+      "title": "ClaimRequirement",
+      "type": "object"
+    },
     "ClaimRequiresAttribute": {
       "properties": {
         "claim": {
@@ -273,9 +307,7 @@
           "default": null
         },
         "requires": {
-          "additionalProperties": true,
-          "title": "Requires",
-          "type": "object"
+          "$ref": "#/$defs/ClaimRequirement"
         },
         "retry_class": {
           "anyOf": [
