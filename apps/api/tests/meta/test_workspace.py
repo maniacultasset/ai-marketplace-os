@@ -125,6 +125,16 @@ def test_lock_resolves_s5_tools(repo_root: Path) -> None:
     assert "squawk-cli==2.65.0" in dev
 
 
+def test_lock_pins_procrastinate_3_10_0(repo_root: Path) -> None:
+    # ADR-0004 §1: the queue is procrastinate >=3.10,<3.11; revision 0003b vendors 3.10.0's SQL.
+    deps = _toml(repo_root / "apps/api/pyproject.toml")["project"]["dependencies"]
+    assert "procrastinate>=3.10,<3.11" in deps
+    packages = {pkg["name"]: pkg for pkg in _toml(repo_root / "uv.lock")["package"]}
+    assert packages["procrastinate"]["version"] == "3.10.0"
+    api_deps = {dep["name"] for dep in packages["mkos-api"]["dependencies"]}
+    assert "procrastinate" in api_deps
+
+
 def test_dev_dependencies_exact_pinned(repo_root: Path) -> None:
     dev = _toml(repo_root / "pyproject.toml")["dependency-groups"]["dev"]
     assert dev, "the dev group is empty"
