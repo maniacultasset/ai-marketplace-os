@@ -125,3 +125,28 @@ def test_r4_exempts_cli_from_engine_rules(
     assert rules.find_violations(tmp_path, {"R4"}) == []
     path.write_text("from sqlalchemy import text\n", encoding="utf-8")
     assert {v.rule for v in rules.find_violations(tmp_path, {"R4"})} == {"R4"}
+
+
+# Round 4 (conductor): a Core connection through a method reference or a getattr string lookup
+# never fires do_orm_execute, so a query on it reads every tenant's rows.
+@pytest.mark.parametrize(
+    "body",
+    [
+        "async def f(s):\n    c = s.connection\n    return await c()\n",
+        "from sqlalchemy.orm import Session\n"
+        "async def f(s):\n    return await s.run_sync(Session.connection)\n",
+        "async def f(s):\n    return await getattr(s, 'connection')()\n",
+        "def f(s):\n    return getattr(s, 'bind')\n",
+        "async def f(s):\n    return await s.run_sync(lambda ss, g=Session.connection: g(ss))\n",
+        "def f(e):\n    return getattr(e, 'raw_connection')\n",
+        "def f(s):\n    return hasattr(s, 'get_bind')\n",
+    ],
+)
+def test_r4_flags_connection_references(
+    script: Callable[[str], ModuleType], tmp_path: Path, body: str
+) -> None:
+    rules = script(RULES)
+    path = tmp_path / "apps/api/app/workers/x.py"
+    path.parent.mkdir(parents=True)
+    path.write_text(body, encoding="utf-8")
+    assert {v.rule for v in rules.find_violations(tmp_path, {"R4"})} == {"R4"}

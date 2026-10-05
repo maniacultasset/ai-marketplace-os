@@ -221,12 +221,20 @@ def _raw_sql(tree: ast.AST) -> Iterator[tuple[int, str]]:
             and _root_name(node.value) in aliases
         ):
             yield node.lineno, f"`{_root_name(node.value)}...{node.attr}` {where}"
+        # Any reference, not only a direct call: `c = s.connection; await c()` and
+        # `run_sync(Session.connection)` reach the same Core connection.
+        elif isinstance(node, ast.Attribute) and node.attr in RAW_SQL_CALLS:
+            yield node.lineno, f"`.{node.attr}` {where}"
+        # `getattr(s, "connection")` / `getattr(s, "bind")` reach it by name.
         elif (
             isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Attribute)
-            and node.func.attr in RAW_SQL_CALLS
+            and isinstance(node.func, ast.Name)
+            and node.func.id in ATTR_LOOKUPS
+            and len(node.args) >= 2
+            and isinstance(node.args[1], ast.Constant)
+            and node.args[1].value in RAW_SQL_CALLS | ENGINE_ATTRS | RAW_SQL_NAMES
         ):
-            yield node.lineno, f"`.{node.func.attr}()` {where}"
+            yield node.lineno, f"`{node.func.id}(..., {node.args[1].value!r})` {where}"
 
 
 def _engine_names(tree: ast.AST) -> Iterator[tuple[int, str]]:
