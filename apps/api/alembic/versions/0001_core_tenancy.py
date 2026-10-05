@@ -334,11 +334,167 @@ IDENTITY_B_DOWN: Final[tuple[str, ...]] = (
     "DROP TABLE public.tenant_memberships",
 )
 
+
+# ---- FACT_OWNERS: business_parties, brand_profiles (DATABASE.md §5.6) ----
+# `dedupe_key` is built from IMMUTABLE functions only, every nullable part inside coalesce, so
+# it is never NULL (a NULL key would slip past bp_dedupe_uq). The six brand_profiles party FKs
+# are composite (`→ t`), so a profile can never name another tenant's party.
+FACT_OWNERS_UP: Final[tuple[str, ...]] = (
+    r"""
+    CREATE TABLE public.business_parties (
+      id uuid NOT NULL DEFAULT gen_random_uuid(),
+      tenant_id uuid NOT NULL,
+      roles text[] NOT NULL,
+      legal_name text,
+      address_line1 text,
+      address_line2 text,
+      city text,
+      state_code text,
+      postal_code text,
+      country_code text NOT NULL DEFAULT 'IN',
+      email text,
+      phone text,
+      gstin text,
+      source text NOT NULL,
+      evidence_ref text,
+      dedupe_key text NOT NULL GENERATED ALWAYS AS (
+        CASE WHEN legal_name IS NOT NULL THEN
+          lower(btrim(legal_name))
+          || '|' || coalesce(lower(regexp_replace(address_line1, '\s+', ' ', 'g')), '')
+          || '|' || coalesce(postal_code, '')
+          || '|' || country_code
+        ELSE
+          'cc|' || coalesce(lower(email), '')
+          || '|' || coalesce(regexp_replace(phone, '[^0-9]', '', 'g'), '')
+        END
+      ) STORED,
+      deleted_at timestamptz,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_business_parties PRIMARY KEY (id),
+      CONSTRAINT uq_business_parties_tenant_id_id UNIQUE (tenant_id, id),
+      CONSTRAINT fk_business_parties_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id) ON DELETE CASCADE,
+      CONSTRAINT ck_business_parties_roles CHECK (
+        cardinality(roles) BETWEEN 1 AND 6
+        AND array_position(roles, NULL) IS NULL
+        AND roles <@ ARRAY['seller', 'manufacturer', 'marketer', 'packer', 'importer',
+                           'consumer_care']::text[]
+      ),
+      CONSTRAINT ck_business_parties_legal_name
+        CHECK (char_length(legal_name) BETWEEN 1 AND 300 AND btrim(legal_name) <> ''),
+      CONSTRAINT ck_business_parties_address_line1
+        CHECK (char_length(address_line1) BETWEEN 1 AND 300),
+      CONSTRAINT ck_business_parties_address_line2
+        CHECK (char_length(address_line2) BETWEEN 1 AND 300),
+      CONSTRAINT ck_business_parties_city CHECK (char_length(city) BETWEEN 1 AND 100),
+      CONSTRAINT ck_business_parties_state_code CHECK (state_code ~ '^[A-Z]{2}$'),
+      CONSTRAINT ck_business_parties_postal_code CHECK (
+        char_length(postal_code) BETWEEN 1 AND 16
+        AND (country_code <> 'IN' OR postal_code ~ '^[1-9][0-9]{5}$')
+      ),
+      CONSTRAINT ck_business_parties_country_code CHECK (country_code ~ '^[A-Z]{2}$'),
+      CONSTRAINT ck_business_parties_email
+        CHECK (email ~ '^[^@\s]+@[^@\s]+$' AND octet_length(email) <= 254),
+      CONSTRAINT ck_business_parties_phone CHECK (phone ~ '^[+]?[0-9][0-9 -]{5,19}$'),
+      CONSTRAINT ck_business_parties_gstin
+        CHECK (gstin ~ '^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$'),
+      CONSTRAINT ck_business_parties_source CHECK (
+        source IN ('seller', 'document', 'pim', 'marketplace')
+        AND (source = 'seller' OR evidence_ref IS NOT NULL)
+      ),
+      CONSTRAINT ck_business_parties_evidence_ref
+        CHECK (evidence_ref ~ '^(image|brand_profile):[A-Za-z0-9._:-]{1,128}$'),
+      CONSTRAINT ck_business_parties_consumer_care CHECK (
+        NOT ('consumer_care' = ANY (roles)) OR email IS NOT NULL OR phone IS NOT NULL
+      ),
+      CONSTRAINT bp_named CHECK (
+        legal_name IS NOT NULL
+        OR (roles = '{consumer_care}' AND (email IS NOT NULL OR phone IS NOT NULL))
+      )
+    )
+    """,
+    """
+    CREATE UNIQUE INDEX bp_dedupe_uq ON public.business_parties (tenant_id, dedupe_key)
+      WHERE deleted_at IS NULL
+    """,
+    _updated_at_trigger("business_parties"),
+    r"""
+    CREATE TABLE public.brand_profiles (
+      tenant_id uuid NOT NULL,
+      brand_names text[] NOT NULL DEFAULT '{}',
+      brand_owner_type text,
+      website_url text,
+      brand_description text,
+      logo_storage_key text,
+      legal_entity_party_id uuid,
+      default_manufacturer_party_id uuid,
+      default_marketer_party_id uuid,
+      default_packer_party_id uuid,
+      default_importer_party_id uuid,
+      consumer_care_party_id uuid,
+      default_country_of_origin text,
+      content_locale text NOT NULL DEFAULT 'en-IN',
+      provenance jsonb NOT NULL DEFAULT '{}',
+      onboarding_completed_at timestamptz,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT pk_brand_profiles PRIMARY KEY (tenant_id),
+      CONSTRAINT fk_brand_profiles_tenant_id_tenants FOREIGN KEY (tenant_id)
+        REFERENCES public.tenants (id),
+      CONSTRAINT fk_brand_profiles_legal_entity_party_id
+        FOREIGN KEY (tenant_id, legal_entity_party_id)
+        REFERENCES public.business_parties (tenant_id, id) ON DELETE RESTRICT,
+      CONSTRAINT fk_brand_profiles_default_manufacturer_party_id
+        FOREIGN KEY (tenant_id, default_manufacturer_party_id)
+        REFERENCES public.business_parties (tenant_id, id) ON DELETE RESTRICT,
+      CONSTRAINT fk_brand_profiles_default_marketer_party_id
+        FOREIGN KEY (tenant_id, default_marketer_party_id)
+        REFERENCES public.business_parties (tenant_id, id) ON DELETE RESTRICT,
+      CONSTRAINT fk_brand_profiles_default_packer_party_id
+        FOREIGN KEY (tenant_id, default_packer_party_id)
+        REFERENCES public.business_parties (tenant_id, id) ON DELETE RESTRICT,
+      CONSTRAINT fk_brand_profiles_default_importer_party_id
+        FOREIGN KEY (tenant_id, default_importer_party_id)
+        REFERENCES public.business_parties (tenant_id, id) ON DELETE RESTRICT,
+      CONSTRAINT fk_brand_profiles_consumer_care_party_id
+        FOREIGN KEY (tenant_id, consumer_care_party_id)
+        REFERENCES public.business_parties (tenant_id, id) ON DELETE RESTRICT,
+      CONSTRAINT ck_brand_profiles_brand_names
+        CHECK (cardinality(brand_names) <= 20 AND array_position(brand_names, NULL) IS NULL),
+      CONSTRAINT ck_brand_profiles_brand_owner_type CHECK (
+        brand_owner_type IN ('brand_owner', 'manufacturer', 'reseller', 'distributor', 'trader')
+      ),
+      CONSTRAINT ck_brand_profiles_website_url
+        CHECK (website_url ~ '^https?://\S+$' AND char_length(website_url) <= 2000),
+      CONSTRAINT ck_brand_profiles_brand_description
+        CHECK (char_length(brand_description) <= 2000),
+      CONSTRAINT ck_brand_profiles_logo_storage_key CHECK (
+        logo_storage_key ~ '^[A-Za-z0-9][A-Za-z0-9._/-]*$'
+        AND char_length(logo_storage_key) <= 1024
+        AND strpos(logo_storage_key, '..') = 0
+        AND strpos(logo_storage_key, '//') = 0
+      ),
+      CONSTRAINT ck_brand_profiles_default_country_of_origin
+        CHECK (default_country_of_origin ~ '^[A-Z]{2}$'),
+      CONSTRAINT ck_brand_profiles_content_locale
+        CHECK (content_locale ~ '^[a-z]{2,3}-[A-Z]{2}$'),
+      CONSTRAINT ck_brand_profiles_provenance CHECK (public.fact_map_valid(provenance, false))
+    )
+    """,
+    _updated_at_trigger("brand_profiles"),
+)
+FACT_OWNERS_DOWN: Final[tuple[str, ...]] = (
+    "DROP TABLE public.brand_profiles",
+    "DROP TABLE public.business_parties",
+)
+
 SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (FUNCTIONS_UP, FUNCTIONS_DOWN),
     (FACT_MAP_UP, FACT_MAP_DOWN),
     (IDENTITY_A_UP, IDENTITY_A_DOWN),
     (IDENTITY_B_UP, IDENTITY_B_DOWN),
+    (FACT_OWNERS_UP, FACT_OWNERS_DOWN),
 )
 
 
