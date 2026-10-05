@@ -59,7 +59,7 @@ Every step runs locally on Docker PostgreSQL 17 + pgvector; Cloud SQL is for sta
 | S6 | `0001_core_tenancy` | S5, ADR-0006/0007 verdict, P0-U10 second half (ledger re-plan Canon PR, DATABASE.md:1758), row 0001 claimed in the S6 PR | — | team verdict | done (local): `0001_core_tenancy` on `feat/s6-core-tenancy`; the staging leg waits on billing (STATE 2.9) |
 | S3 | `/api/v1` OpenAPI, TS types, `@mkos/schemas` on GitHub Packages, mock | S2 | the mock stands in for the API for the FE team | FE team (P0-U9) | not started |
 | S7 | `0002` + `0002b` HNSW | S6 | — | — | done (local): `0002_listing_pipeline` (16 tables + `rules_revision_seq`) and `0002b_brand_chunks_hnsw` on `feat/s7-listing-pipeline`; the staging leg waits on billing (STATE 2.9) |
-| S8 | `0003` + `0003b` procrastinate | S7, spike | — | — | not started |
+| S8 | `0003` + `0003b` procrastinate | S7, spike | — | — | built (local) on `feat/s8-ops-tables`: `0003_ops_tables` (14 tables, the 3 validated FKs onto 0002, read-only grants) and `0003b_procrastinate` (vendored 3.10.0 schema + `app_rw` EXECUTE); review and merge pending; spike criterion 6 and the GRANT loop on `aimos-db` wait on billing (STATE 2.9) |
 | S4 | OpenTofu: import, KMS, GCS, secrets, WIF, audit, Scheduler, `deploy-staging.yml` | S1, P0-U8, EP dec. 15 | written and checked locally (`tofu fmt -check`, `tofu validate`); `tofu plan`/`apply` by the user after billing (P10) | GCP billing | not started |
 | S11 | Observability spine | S8 | — | Sentry DSN (D18) | not started |
 | S9 | Repository guard, isolation gate, seed | S7, S8 | — | — | not started |
