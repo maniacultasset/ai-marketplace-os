@@ -1,10 +1,31 @@
-"""The ORM models of revision 0001_core_tenancy (DATABASE.md §5.1, §5.2, §5.6).
+"""The ORM models of revisions 0001_core_tenancy (DATABASE.md §5.1, §5.2, §5.6) and
+0002_listing_pipeline (§5.1-§5.7).
 
 Importing this package registers every table on `app.db.base.metadata`, which Alembic's
 `env.py` compares against the database (`alembic check`). The DDL itself is hand-written in the
-revision: CHECK constraints live only there, because Alembic does not compare them.
+revisions: CHECK constraints live only there, because Alembic does not compare them.
 """
 
-from app.db.models import catalog, facts, tenancy
+from app.db.models import (
+    audit_brand,
+    catalog,
+    catalog_assets,
+    facts,
+    issues,
+    listings,
+    rules,
+    runs,
+    tenancy,
+)
 
-__all__ = ["catalog", "facts", "tenancy"]
+__all__ = [
+    "audit_brand",
+    "catalog",
+    "catalog_assets",
+    "facts",
+    "issues",
+    "listings",
+    "rules",
+    "runs",
+    "tenancy",
+]
