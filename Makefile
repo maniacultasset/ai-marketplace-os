@@ -109,10 +109,23 @@ ISO_DATABASE_URL ?= postgresql+psycopg://postgres:postgres@localhost:$(PG_HOST_P
 CI_JWT_SECRET := ci_only_not_a_real_secret_at_least_32_chars
 COV_FAIL_UNDER ?= 70
 
+# Alembic on mos_test before pytest (CANON.md:136): upgrade, check, downgrade, upgrade, then squawk
+# over the rendered SQL, report-only until the first prod tag (EXECUTION-PLAN.md:303-305). env.py
+# switches the postgres login to migrator. The CI env block stays three variables: the URL is here.
+ALEMBIC := uv run --frozen alembic -c apps/api/alembic.ini
+MIGRATE_ENV = APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) ALEMBIC_DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET)
+
 # The isolation sentinel asserts mos_iso, so it runs only in its own job (ADR-0013 §4, until S9).
 .PHONY: api-tests
 api-tests:
 	$(PG_PORT_GUARD)
+	$(MIGRATE_ENV) $(ALEMBIC) upgrade head
+	$(MIGRATE_ENV) $(ALEMBIC) check
+	$(MIGRATE_ENV) $(ALEMBIC) downgrade base
+	$(MIGRATE_ENV) $(ALEMBIC) upgrade head
+	sql="$$(mktemp)"; trap 'rm -f "$$sql"' EXIT; \
+	  $(MIGRATE_ENV) $(ALEMBIC) upgrade head --sql >"$$sql"; \
+	  uv run --frozen python scripts/ci/squawk_report.py "$$sql"
 	APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) \
 	  uv run --frozen pytest -q -m "not tenant_isolation and not cloudsql_mimic" --cov=app --cov-report=term-missing \
 	  --cov-fail-under=$(COV_FAIL_UNDER)
@@ -129,7 +142,7 @@ tenant-isolation:
 bootstrap-mimic:
 	uv run --frozen pytest -q -m cloudsql_mimic --no-cov apps/api/tests/cloudsql_mimic
 
-# ---- local development (CANON-ADDENDUM.md §2 order; Alembic joins in S5) ----
+# ---- local development (CANON-ADDENDUM.md §2 order: bootstrap-db, then Alembic) ----
 # uvicorn keeps its 127.0.0.1 default: never pass --host here.
 .PHONY: dev
 dev:
@@ -138,6 +151,7 @@ dev:
 	docker compose up -d minio-init
 	$(MAKE) bootstrap-db
 	uv sync --frozen --all-packages
+	uv run --frozen alembic -c apps/api/alembic.ini upgrade head
 	$(MAKE) hooks
 	uv run --frozen uvicorn app.main:app --reload --port $(API_HOST_PORT) --app-dir apps/api
 
