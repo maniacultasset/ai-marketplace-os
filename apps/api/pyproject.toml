@@ -15,6 +15,7 @@ dependencies = [
   "pgvector>=0.5,<0.6",
   "procrastinate>=3.10,<3.11",
   "pillow>=12.3,<13",
+  "python-multipart==0.0.32",
   "mkos-schemas",
 ]
 

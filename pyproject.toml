@@ -53,6 +53,8 @@ ignore = ["E501"]
 "apps/api/tests/**" = ["S101", "S105", "S106", "S603", "S607"]
 "packages/schemas/tests/**" = ["S101", "S105", "S106", "S603", "S607"]
 "scripts/ci/**" = ["T201", "S603", "S607"]
+"scripts/schemas/**" = ["T201"]
+"apps/api/app_mock/__main__.py" = ["T201"]
 "apps/api/app/services/embeddings.py" = ["TID251"]
 "apps/api/app/services/vision.py" = ["TID251"]
 
@@ -82,11 +84,13 @@ exclude = ["^apps/api/alembic/versions/"]
 
 [tool.pytest.ini_options]
 testpaths = ["apps/api/tests", "packages/schemas/tests"]
+pythonpath = ["apps/api"]
 addopts = "--strict-markers --strict-config -ra --import-mode=importlib --disable-socket --allow-unix-socket"
 asyncio_mode = "auto"
 markers = [
   "tenant_isolation: the tenant-isolation suite; runs in its own job against mos_iso (CANON.md:137)",
   "cloudsql_mimic: 0000 and the password file on a throwaway container as a non-superuser CREATEROLE role (make bootstrap-mimic)",
+  "endpoint(op_id, case, variant=None): one case of an /api/v1 operation's test matrix (S3 AC9; tests/endpoint_cases.py)",
 ]
 
 [tool.coverage.run]

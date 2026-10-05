@@ -87,10 +87,10 @@ Source: `apps/api/app/core/config.py:1-10`, `:177-178`; `scripts/ci/check_repo_r
 - Error codes come only from `mkos_schemas/codes.py`, never as literals (repo rule R2); a new code
   needs the Tech Lead's OK first.
 - Idempotency: `idempotency_keys` PK `(tenant_id, key)`; `job_runs` `UNIQUE (tenant_id, idempotency_key)`.
-  Proposed: `Idempotency-Key` on `POST /api/v1/listings/publish` and `POST /api/v1/products/bulk`;
-  same key and body replays, a different body gets 409. Other endpoints: not specified.
+  `Idempotency-Key` (1-255 visible ASCII) is required on the S3 D9 set (`openapi.json`); the same key
+  and body replay, a different body gets 409 `IDEMPOTENCY_KEY_REUSED`. Another tenant's id answers 404 `NOT_FOUND`, never 403 (S3 D8).
 - Rate limits: a Postgres-backed dependency, 120/min per tenant, 60/min per IP, 5/min on login.
-- Body cap 10 MiB; bigger CSVs use a signed upload URL.
+- Body cap 10 MiB (`REQUEST_MAX_BODY_BYTES`), enforced before any parsing or auth; `products/bulk` is multipart only in v1 (S3 CP5).
 - Publishing happens only through the publish endpoint and worker, after `approved`.
 
 Source: `BACKEND-ARCHITECTURE.md` §5.3-§5.6; `CANON.md:83`, `:124`; ADR-0005 §1; `README.md` "Quickstart".

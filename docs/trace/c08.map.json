@@ -437,10 +437,10 @@
   },
   {
    "id": "R05312",
-   "status": "gap",
+   "status": "covered",
    "owner": "shared",
-   "ref": "BACKEND-ARCHITECTURE.md:766; BUILD-SEQUENCE.md:48",
-   "note": "Journey step \"list drafts\" has no endpoint: §5.2 and S3 stubs lack a listings list/read route."
+   "ref": "packages/schemas/jsonschema/openapi.json: GET /api/v1/listings (ListingPage) and GET /api/v1/listings/{listing_id} (ListingDetail); apps/api/app/api/v1/surface.py listings_list, listings_get (S3 D1; handlers S19)",
+   "note": "S3 freezes the review-queue list (GET /api/v1/listings, status filter) for the approval screen; S19 implements it."
   },
   {
    "id": "R05312a",
@@ -451,10 +451,10 @@
   },
   {
    "id": "R05312b",
-   "status": "gap",
+   "status": "covered",
    "owner": "shared",
-   "ref": "DATABASE.md:772; BACKEND-ARCHITECTURE.md:1319",
-   "note": "content_json stored, but no GET listing/version content endpoint in §5.2 or S3 stubs."
+   "ref": "packages/schemas/jsonschema/openapi.json: GET /api/v1/listings (ListingPage) and GET /api/v1/listings/{listing_id} (ListingDetail); apps/api/app/api/v1/surface.py listings_list, listings_get (S3 D1; handlers S19)",
+   "note": "ListingDetail.content (CanonicalListing) serves the generated copy; S19 implements the read."
   },
   {
    "id": "R05312c",

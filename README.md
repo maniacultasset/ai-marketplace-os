@@ -64,7 +64,8 @@ Each choice and the alternatives considered are recorded in [`docs/adr/`](docs/a
 ## Quickstart
 
 Prerequisites: Docker Desktop and [uv](https://docs.astral.sh/uv/) 0.12.19 (the pinned version; uv
-installs Python 3.13 itself).
+installs Python 3.13 itself). Regenerating the contract types (`make -C packages/schemas all`,
+`make schemas-drift`) also needs Node 24 and pnpm (`corepack enable pnpm` picks the pinned version).
 
 ```sh
 cp .env.example .env
@@ -80,6 +81,21 @@ curl -s localhost:8000/healthz && curl -s localhost:8000/readyz
 - Trailing slashes are never redirected: `/api/v1/x/` is a 404 when the route is `/api/v1/x`, so
   clients must use the exact OpenAPI paths.
 - `make test-unit` runs the unit and meta tests without a database.
+
+The `/api/v1` contract is frozen as `packages/schemas/jsonschema/openapi.json`; until each endpoint's
+owner step lands, the API answers 501 `NOT_IMPLEMENTED` in the error envelope. To work against the
+contract without a database, run the local mock, which serves the committed examples on loopback:
+
+```sh
+make mock                      # 127.0.0.1:4010 (MOCK_HOST_PORT); `make mock-smoke` probes it
+curl -s localhost:4010/api/v1/products
+curl -s -H 'Prefer: code=404' localhost:4010/api/v1/products/0b1c2d3e-0000-4000-8000-000000000101
+make -C packages/schemas all   # regenerate jsonschema/, openapi.json and ts/src (never hand-edit)
+```
+
+`Prefer: code=<status>` answers that status's declared example; a status the operation does not
+declare is a 422. The FE installs the types as
+`"@mkos/schemas": "npm:@maniacultasset/schemas@<version>"` from GitHub Packages.
 - Without `make dev` (for example, to run only the checks): `cp .env.example .env`, then
   `make hooks` (or `uv run --frozen pre-commit install`) before your first commit (it installs the
   pre-commit and commit-msg hooks), and `docker compose up -d --wait postgres` to start Postgres
@@ -94,8 +110,8 @@ Each required check has a make target of the same name, and CI runs exactly that
 | `api-typecheck` | `make api-typecheck` | — |
 | `api-tests` | `make test-db api-tests` | the compose Postgres |
 | `tenant-isolation` | `make test-db tenant-isolation` | the compose Postgres |
-| `contracts` | `make contracts` | — |
-| `schemas-drift` | `make schemas-drift` | — |
+| `contracts` | `make contracts` | Docker (oasdiff) once the base branch has `openapi.json` |
+| `schemas-drift` | `make schemas-drift` | Node 24 + pnpm; network on the first run (pinned devDependencies) |
 | `commit-lint` | `PR_TITLE='feat(x): y' HEAD_REF=feat/x make commit-lint` | — |
 | `bootstrap` | `make bootstrap` | Docker, a `.env`, free host ports (defaults 5432, 8000, 9000, 9001) |
 | `lint-imports` | `make lint-imports` | — |
@@ -115,7 +131,7 @@ running stack disagrees with `.worktree.env`.
 git worktree add ../ai-marketplace-os-trackb -b <branch> origin/main
 cd ../ai-marketplace-os-trackb
 printf '%s\n' PG_HOST_PORT=5433 MINIO_API_HOST_PORT=9010 MINIO_CONSOLE_HOST_PORT=9011 \
-  API_HOST_PORT=8001 > .worktree.env
+  API_HOST_PORT=8001 MOCK_HOST_PORT=4011 > .worktree.env
 cp .env.example .env   # then change only the ports: DATABASE_URL and ALEMBIC_DATABASE_URL
                        # -> :5433, S3_ENDPOINT_URL -> :9010, PORT -> 8001
 make dev

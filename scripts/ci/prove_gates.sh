@@ -143,6 +143,16 @@ seed_alembic_environ() { append apps/api/alembic/env.py $'\n\ndef _seeded() -> s
 seed_cli_imported() { append apps/api/app/main.py 'import app.cli'; }
 seed_image_checks_sqla() { append apps/api/app/services/image_checks.py 'import sqlalchemy'; }
 seed_image_checks_repo() { append apps/api/app/services/image_checks.py 'import app.repositories'; }
+seed_app_imports_mock() { append apps/api/app/main.py 'import app_mock'; }
+# S3 AC9: an implemented route without its case matrix, then one still on presence-only auth.
+seed_case_matrix() {
+  cp "$root/.env" .env
+  replace apps/api/app/api/v1/routers/auth.py $'@stub\nasync def auth_me(' 'async def auth_me('
+}
+seed_presence_only_auth() {
+  seed_case_matrix
+  new_file apps/api/tests/unit/test_seeded_auth_me_cases.py $'import pytest\n\n\n@pytest.mark.endpoint("auth_me", case="success")\n@pytest.mark.endpoint("auth_me", case="missing_auth")\n@pytest.mark.endpoint("auth_me", case="wrong_tenant")\n@pytest.mark.endpoint("auth_me", case="invalid_token", variant="expired")\n@pytest.mark.endpoint("auth_me", case="invalid_token", variant="bad_signature")\n@pytest.mark.endpoint("auth_me", case="invalid_token", variant="wrong_typ")\ndef test_seeded() -> None:\n    pass'
+}
 seed_bootstrap_no_set_role() {
   cp .env.example .env
   replace scripts/db/0000_bootstrap.sql $'SET ROLE migrator;\n' ''
@@ -205,6 +215,35 @@ seed_drift_hand_edit() {
   git -c core.hooksPath=/dev/null -c user.name=prove-gates -c user.email=prove-gates@example.invalid \
     commit -q -m "test: seeded schema edit"
 }
+seed_commit() {  # seed_commit <path>: commit one seeded edit to a generated file
+  git add -- "$1"
+  git -c core.hooksPath=/dev/null -c user.name=prove-gates -c user.email=prove-gates@example.invalid \
+    commit -q -m "test: seeded generated-file edit"
+}
+# S3: a committed hand edit to the generated TS types or to openapi.json.
+seed_drift_api_dts() {
+  printf '\nexport type Seeded = 1;\n' >>packages/schemas/ts/src/api.d.ts
+  seed_commit packages/schemas/ts/src/api.d.ts
+}
+seed_drift_openapi() {
+  replace packages/schemas/jsonschema/openapi.json '"title": "AI Marketplace OS API"' '"title": "Seeded API"'
+  seed_commit packages/schemas/jsonschema/openapi.json
+}
+# S3: a response field removed from the contract (the leg re-exports openapi.json, then oasdiff
+# compares it with this checkout's committed copy).
+seed_response_field_removed() {
+  replace apps/api/app/api/v1/schemas/products.py $'class ProductOut(WireModel):\n    id: UUID\n    sku: Sku\n' $'class ProductOut(WireModel):\n    id: UUID\n'
+}
+# S3 fix round 1 (R1-1): oasdiff rates these INFO; scripts/ci/oasdiff-levels.txt makes them red.
+seed_optional_field_removed() {
+  replace apps/api/app/api/pagination.py \
+    $'    next_cursor: Annotated[str | None, Field(max_length=MAX_CURSOR_LENGTH)] = None\n' ''
+}
+seed_error_status_removed() {
+  replace apps/api/app/api/v1/surface.py \
+    $'    for status, codes in op.error_codes.items():\n        out[status] = {' \
+    $'    for status, codes in op.error_codes.items():\n        if status == 404:\n            continue\n        out[status] = {'
+}
 seed_drift_model_change() { replace packages/schemas/src/mkos_schemas/listing.py 'max_length=500' 'max_length=501'; }
 seed_schemas_sqlalchemy() { append packages/schemas/src/mkos_schemas/__init__.py 'import sqlalchemy'; }
 seed_schemas_type_error() { append packages/schemas/src/mkos_schemas/enums.py $'\n\ndef _seeded() -> int:\n    return "x"'; }
@@ -217,6 +256,8 @@ leg contracts-missing-fixture contracts 'missing golden fixture: ImportReport' s
 leg contracts-no-fixtures contracts 'no golden fixtures' seed_no_fixtures make contracts
 leg schemas-drift-hand-edit schemas-drift 'diff --git' seed_drift_hand_edit make schemas-drift
 leg schemas-drift-model-change schemas-drift 'diff --git' seed_drift_model_change make schemas-drift
+leg schemas-drift-api-dts schemas-drift 'diff --git a/packages/schemas/ts/src/api.d.ts' seed_drift_api_dts make schemas-drift
+leg schemas-drift-openapi schemas-drift 'diff --git a/packages/schemas/jsonschema/openapi.json' seed_drift_openapi make schemas-drift
 leg lint-imports-schemas-sqla lint-imports 'mkos_schemas imports no app, web or DB framework BROKEN' \
   seed_schemas_sqlalchemy make lint-imports
 leg api-typecheck-schemas api-typecheck 'Incompatible return value' seed_schemas_type_error make api-typecheck
@@ -242,11 +283,21 @@ leg lint-imports-service-db lint-imports 'app.services never imports app.db.sess
 leg lint-imports-cli-imported lint-imports 'nothing imports app.cli BROKEN' seed_cli_imported make lint-imports
 leg lint-imports-image-checks-sqla lint-imports 'image checks are pure BROKEN' seed_image_checks_sqla make lint-imports
 leg lint-imports-image-checks-repo lint-imports 'image checks are pure BROKEN' seed_image_checks_repo make lint-imports
+leg lint-imports-app-imports-mock lint-imports 'app never imports app_mock BROKEN' seed_app_imports_mock make lint-imports
+# S3 T22: a contract edit at an already tagged version. The tag is made only inside a throwaway
+# clone (a worktree shares this repo's tags), so no schemas-v* tag ever lands here.
+leg contracts-schemas-tagged-unbumped contracts 'already tagged; bump per CHANGELOG rule' seed_none \
+  sh -c 'd="$(mktemp -d)"; trap "rm -rf \"\$d\"" EXIT; git clone -q --no-checkout "$PWD" "$d/r" && cd "$d/r" && git checkout -q "$(git -C "$OLDPWD" rev-parse HEAD)" && git tag schemas-v1.0.0 && printf "\n" >>packages/schemas/jsonschema/openapi.json && git add packages/schemas/jsonschema/openapi.json && git -c core.hooksPath=/dev/null -c user.name=prove-gates -c user.email=prove-gates@example.invalid commit -q -m "test: seeded post-tag edit" && make contracts'
 
 if [ "$with_docker" -eq 1 ]; then
   self_project="$(docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"
   leg api-tests-failing-test api-tests 'test_seeded' seed_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-schema-test api-tests 'test_seeded' seed_schema_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-case-matrix api-tests 'auth_me: missing endpoint cases' seed_case_matrix COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-presence-only-auth api-tests 'auth_me: presence-only bearer_required' seed_presence_only_auth COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg contracts-response-field-removed contracts 'response-required-property-removed' seed_response_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
+  leg contracts-response-optional-property-removed contracts 'response-optional-property-removed' seed_optional_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
+  leg contracts-response-non-success-status-removed contracts 'response-non-success-status-removed' seed_error_status_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
   # A throwaway database with 0000, so the seeded revision legs never stamp mos_test. The broken
   # downgrade leaves its revision stamped there, so that leg runs last.
   docker compose exec -T postgres dropdb -U postgres --if-exists --force mos_prove

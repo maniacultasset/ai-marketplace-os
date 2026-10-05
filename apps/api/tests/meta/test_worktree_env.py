@@ -16,6 +16,7 @@ _SCRUB = (
     "MINIO_API_HOST_PORT",
     "MINIO_CONSOLE_HOST_PORT",
     "API_HOST_PORT",
+    "MOCK_HOST_PORT",
     "TEST_DATABASE_URL",
     "ISO_DATABASE_URL",
     "DATABASE_URL",
@@ -73,6 +74,7 @@ def test_valid_file_prints_exports(repo_root: Path, tmp_path: Path) -> None:
         "MINIO_API_HOST_PORT=9010\n"
         "MINIO_CONSOLE_HOST_PORT=9011\n"
         "API_HOST_PORT=8001\n"
+        "MOCK_HOST_PORT=4011\n"
     )
     (tmp_path / ".worktree.env").write_text(text, encoding="utf-8")
     result = _run(repo_root, tmp_path, ["exports"])
@@ -83,6 +85,7 @@ def test_valid_file_prints_exports(repo_root: Path, tmp_path: Path) -> None:
         "export MINIO_API_HOST_PORT=9010",
         "export MINIO_CONSOLE_HOST_PORT=9011",
         "export API_HOST_PORT=8001",
+        "export MOCK_HOST_PORT=4011",
     ]
 
 
@@ -290,6 +293,8 @@ def test_check_missing_dotenv_skips_absent_keys(repo_root: Path, tmp_path: Path)
     ("key", "value"),
     [
         ("API_HOST_PORT", "abc"),
+        ("MOCK_HOST_PORT", "abc"),
+        ("MOCK_HOST_PORT", "65536"),
         ("PG_HOST_PORT", "0.0.0.0:5433"),
         ("PG_HOST_PORT", "5433-5440"),
         ("PG_HOST_PORT", "5433\n"),

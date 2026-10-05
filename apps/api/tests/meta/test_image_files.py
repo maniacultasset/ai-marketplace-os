@@ -185,3 +185,9 @@ def test_entrypoint_api_role_trusts_proxy_headers(entrypoint: Path) -> None:
         "--proxy-headers",
         "--forwarded-allow-ips='*'",
     ]
+
+
+def test_dockerignore_excludes_mock(repo_root: Path) -> None:
+    # S3 D5: the local mock is dev tooling; the Dockerfile copies apps/api, so .dockerignore drops it.
+    lines = (repo_root / ".dockerignore").read_text(encoding="utf-8").splitlines()
+    assert "apps/api/app_mock/" in lines

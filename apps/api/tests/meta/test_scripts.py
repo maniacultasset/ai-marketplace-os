@@ -353,3 +353,24 @@ def test_prove_gates_has_s17a_legs(repo_root: Path) -> None:
         assert seed is not None, seed_name
         assert "apps/api/app/services/image_checks.py" in seed.group(1)
         assert f"'{line}'" in seed.group(1)
+
+
+def test_check_image_probes_the_api_surface(repo_root: Path) -> None:
+    # S3 T21: the built image serves the frozen surface and ships no local mock.
+    text = (repo_root / "scripts" / "ci" / "check_image.sh").read_text(encoding="utf-8")
+    assert "-o -path /src/apps/api/app_mock" in text
+    assert '[ "$code" = "401" ]' in text
+    assert '[ "$code" = "501" ]' in text
+    assert "-H 'Authorization: Bearer x'" in text
+    assert "x-request-id: " in text
+    assert "from app.api.v1.surface import OPS; print(len(OPS))" in text
+    assert '[ "$served" = "$registry" ]' in text
+    assert "35" not in text  # the count comes from the image's registry, never a literal
+
+
+def test_mock_smoke_script(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "ci" / "mock_smoke.sh").read_text(encoding="utf-8")
+    assert "--host 127.0.0.1" in text
+    assert "Prefer: code=404" in text
+    assert "/products/0b1c2d3e-" in text
+    assert "kill" in text

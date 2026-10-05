@@ -8,18 +8,18 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 - **Every line of the client spec is traced.** All 13,711 lines of the snapshot are in the register:
   11,167 entries, of which 8,916 are checkable statements. `scripts/trace/check_coverage.py` proves 100% line coverage.
 - **Every statement has a verdict**, with a reference, adversarially verified per chunk (`scripts/trace/check_mapping.py`).
-- **7,004 of 8,916 (79%) are covered by our plan**: 6,062 as written and
-  942 deliberately changed by an ADR, Canon row or recorded decision.
-- **543 are gaps** (backend/DB 277, shared seams 141, ops 105, AI team 4, FE team 0, client 16).
+- **7,014 of 8,916 (79%) are covered by our plan**: 6,071 as written and
+  943 deliberately changed by an ADR, Canon row or recorded decision.
+- **533 are gaps** (backend/DB 276, shared seams 132, ops 105, AI team 4, FE team 0, client 16).
 - **319 need the team or client** (54 conflicts, 265 questions);
   each points to a row in `TEAM-QUESTIONS.md`.
 - 511 belong to the AI or FE team, and 539 are marked Phase 2/3 by the site itself.
 
 | Status | Statements | Share |
 |---|---:|---:|
-| ✅ covered | 6,062 | 68.0% |
-| 🔁 covered-changed | 942 | 10.6% |
-| ⚠️ gap | 543 | 6.1% |
+| ✅ covered | 6,071 | 68.1% |
+| 🔁 covered-changed | 943 | 10.6% |
+| ⚠️ gap | 533 | 6.0% |
 | ❌ conflict | 54 | 0.6% |
 | ❓ needs-client | 265 | 3.0% |
 | 🧩 other-team | 511 | 5.7% |
@@ -45,7 +45,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [10] Acceptance Criteria, Metrics & Lead Handoff (§22–26) | 86 | 4 | 11 | 0 | 4 | 0 | 2 | 15 |
 | [01] 45-Day Plan & Definition of Done | 85 | 3 | 1 | 0 | 2 | 0 | 0 | 3 |
 | [02] Phase-1 Scope Lock & Non-Goals | 49 | 1 | 1 | 0 | 4 | 6 | 36 | 5 |
-| [03] Day-by-Day Execution Plan (45 Days) | 437 | 74 | 111 | 1 | 76 | 49 | 0 | 188 |
+| [03] Day-by-Day Execution Plan (45 Days) | 439 | 74 | 109 | 1 | 76 | 49 | 0 | 186 |
 | [04] Team Structure & Solo Sprint | 57 | 7 | 3 | 0 | 13 | 16 | 0 | 16 |
 | [05] GCP Tech Stack & Architecture | 85 | 19 | 6 | 0 | 0 | 11 | 0 | 6 |
 | [06] Consolidated Data Model & Schema | 162 | 34 | 0 | 3 | 3 | 0 | 0 | 6 |
@@ -66,7 +66,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [9] Marketplace Connection Flow | 22 | 2 | 0 | 0 | 0 | 2 | 0 | ✔ |
 | [10] Listing Generation Flow | 14 | 4 | 0 | 0 | 0 | 22 | 0 | ✔ |
 | [11] Validation Flow | 44 | 3 | 1 | 0 | 0 | 1 | 0 | 1 |
-| [12] Human Approval Flow | 20 | 1 | 11 | 0 | 0 | 0 | 0 | 11 |
+| [12] Human Approval Flow | 26 | 2 | 4 | 0 | 0 | 0 | 0 | 4 |
 | [13] Publishing Flow | 20 | 2 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [14] Performance Feedback Loop | 8 | 0 | 0 | 0 | 4 | 0 | 10 | 4 |
 | [15] AI Listing Agent Overview | 65 | 16 | 0 | 0 | 1 | 21 | 0 | 1 |
@@ -158,7 +158,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [101] Database Indexing Strategy | 7 | 1 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [102] Vector Storage | 5 | 1 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [103] API Architecture | 27 | 10 | 0 | 1 | 2 | 0 | 0 | 3 |
-| [104] Product APIs | 7 | 2 | 4 | 0 | 1 | 0 | 0 | 5 |
+| [104] Product APIs | 8 | 2 | 3 | 0 | 1 | 0 | 0 | 4 |
 | [105] Bulk Import APIs | 7 | 1 | 0 | 2 | 1 | 0 | 0 | 3 |
 | [106] Listing Generation APIs | 12 | 0 | 0 | 0 | 0 | 0 | 1 | ✔ |
 | [107] Validation APIs | 5 | 1 | 0 | 0 | 0 | 0 | 0 | ✔ |
@@ -1029,7 +1029,7 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 | R13665 | L13665 | Production launch checklist: All Phase 1 features implemented. | T16; VISION Q25 | Phase-1 set per plan scope lock (T16); steps after S14 unsequenced |
 | R13668 | L13668 | Production launch checklist: Marketplace OAuth flows verified with production accounts. | T77 | Prod filings/app approval status unknown (STATE open decision 5); verify step itself unplanned |
 
-## ⚠️ Gaps we own: backend + DB (277)
+## ⚠️ Gaps we own: backend + DB (276)
 
 Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITECTURE.md and the build steps.
 
@@ -1451,7 +1451,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
-| R11324 | L11324 | POST /products returns Response (201). | docs/architecture/BACKEND-ARCHITECTURE.md:1332 | 201 status for POST /api/v1/products not specified anywhere in plan |
 | R11326 | L11326 | POST /products response field "id" (example "prod_456"). | docs/architecture/DATABASE.md:1197; docs/architecture/BACKEND-ARCHITECTURE.md:1332 | ProductOut is named but its id/sku/created_at response fields are not specified |
 | R11327 | L11327 | POST /products response field "sku" (example "KS-001"). | docs/architecture/DATABASE.md:1197; docs/architecture/BACKEND-ARCHITECTURE.md:1332 | ProductOut is named but its id/sku/created_at response fields are not specified |
 | R11329 | L11329 | POST /products response field "created_at" (example "2024-01-15T10:30:00Z"). | docs/architecture/DATABASE.md:1197; docs/architecture/BACKEND-ARCHITECTURE.md:1332 | ProductOut is named but its id/sku/created_at response fields are not specified |
@@ -1706,7 +1705,7 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R13647 | L13647 | Security checklist: TLS on all connections. | docs/architecture/BACKEND-ARCHITECTURE.md:2263 | DB and storage connection encryption stated nowhere; doc gap for ADR-0001/S4 |
 | R13650 | L13650 | Security checklist: SQL injection prevention verified. | docs/architecture/BACKEND-ARCHITECTURE.md:2204 | SQL injection prevention is verified with the repository layer (S9) and the API routes (S10): parameterised queries and tests; ruff S608 (S1) is only the lint half |
 
-## ⚠️ Gaps on a shared seam (backend + AI or FE team) (141)
+## ⚠️ Gaps on a shared seam (backend + AI or FE team) (132)
 
 
 ### [★] Complete Founder BRD (End-to-End)
@@ -1783,9 +1782,7 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R05236a | L5236 | Failure injection test: malformed JSON. | BACKEND-ARCHITECTURE.md:2692 | LLM timeout / malformed-JSON injection unplanned |
 | R05240 | L5240 | Day 28 DoD: every injected failure results in a well-formed ErrorReport or clean blocked state. | BACKEND-ARCHITECTURE.md:2692 | no injection suite to prove it |
 | R05240a | L5240 | Day 28 DoD: zero silent crashes. | BACKEND-ARCHITECTURE.md:2692 | no injection suite to prove it |
-| R05312 | L5312 | FE: Human approval screen. | BACKEND-ARCHITECTURE.md:766; BUILD-SEQUENCE.md:48 | Journey step "list drafts" has no endpoint: §5.2 and S3 stubs lack a listings list/read route. |
 | R05312a | L5312 | Human approval screen shows side-by-side marketplace view. | BACKEND-ARCHITECTURE.md:834; BACKEND-ARCHITECTURE.md:1319 | No endpoint reads a product's listings across marketplaces; exact-payload preview is G11. |
-| R05312b | L5312 | Human approval screen shows generated copy. | DATABASE.md:772; BACKEND-ARCHITECTURE.md:1319 | content_json stored, but no GET listing/version content endpoint in §5.2 or S3 stubs. |
 | R05347 | L5347 | FE: Amazon vs Flipkart side-by-side listing comparison view. | BACKEND-ARCHITECTURE.md:834; BACKEND-ARCHITECTURE.md:1319 | No endpoint reads Amazon and Flipkart listings of a product together; view is FE's. |
 | R05348a | L5348 | Image compliance viewer shows visual bounding box highlights for vision errors. | packages/schemas ImageReport (MINOR) | ImageReport/ErrorItem carry no bounding-box field for vision errors. |
 | R05406 | L5406 | OPS: Full Playwright automated E2E regression suite across all critical user paths. | BACKEND-ARCHITECTURE.md:2694; ADR-0010 §1 | Staging gate runs only the §21 walkthrough E2E; Playwright owner unnamed. |
@@ -1864,13 +1861,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
-| R08091 | L8091 | Approval screen shows generated content: title. | BACKEND-ARCHITECTURE.md:796; BACKEND-ARCHITECTURE.md:1319 | Journey 3.5 lists drafts with content, but no review-queue or listing read endpoint in §5.2 or S3 stubs. |
-| R08091a | L8091 | Approval screen shows generated content: bullets. | BACKEND-ARCHITECTURE.md:796; BACKEND-ARCHITECTURE.md:1319; DATABASE.md:2131 | content.bullets stored in content_json; no review-queue or listing read endpoint in §5.2 or S3 stubs. |
-| R08091b | L8091 | Approval screen shows generated content: description. | BACKEND-ARCHITECTURE.md:796; BACKEND-ARCHITECTURE.md:1319; DATABASE.md:2131 | content.description stored in content_json; no review-queue or listing read endpoint in §5.2 or S3 stubs. |
-| R08091c | L8091 | Approval screen shows validation results. | BACKEND-ARCHITECTURE.md:796; BACKEND-ARCHITECTURE.md:1319; DATABASE.md:816 | validation_runs ErrorReport stored; JobEnvelope is per job; no review-queue read endpoint serves it. |
-| R08091d | L8091 | Approval screen shows warnings. | BACKEND-ARCHITECTURE.md:796; BACKEND-ARCHITECTURE.md:1319; DATABASE.md:820 | Warnings stored (severity warning, warning_count); no review-queue or listing read endpoint in §5.2. |
-| R08091e | L8091 | Approval screen shows errors. | BACKEND-ARCHITECTURE.md:796; BACKEND-ARCHITECTURE.md:1319; DATABASE.md:816 | Errors stored per validation_run ErrorReport; no review-queue or listing read endpoint in §5.2. |
-| R08091f | L8091 | Approval screen shows confidence score. | BACKEND-ARCHITECTURE.md:796; BACKEND-ARCHITECTURE.md:1319; DATABASE.md:2136; KNOWN-ISSUES.md:17 | confidence_score stored; formula undefined; not named in queue read; no listing read endpoint. |
 | R08127b | L8127 | Over time, the system learns what the brand approves and rejects. | DATABASE.md:806; VISION G13 | Rejects feed review_feedback; learning from approvals (approve -> brand_embed example chunks) is G13 gap. |
 | R08127c | L8127 | Learning from approvals/rejections creates a natural feedback loop that improves generation quality. | DATABASE.md:806; DATABASE.md:1064; VISION G13 | Reject half via proposed review_feedback; approval half (approved version -> example chunk) is gap G13. |
 

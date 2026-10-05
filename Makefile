@@ -6,7 +6,7 @@ SHELL := bash
 
 # Per-checkout host ports (ADR-0011 amendment):
 # `.worktree.env` is optional and git-ignored; the helper validates it before make reads it.
-WORKTREE_KEYS := COMPOSE_PROJECT_NAME PG_HOST_PORT MINIO_API_HOST_PORT MINIO_CONSOLE_HOST_PORT API_HOST_PORT
+WORKTREE_KEYS := COMPOSE_PROJECT_NAME PG_HOST_PORT MINIO_API_HOST_PORT MINIO_CONSOLE_HOST_PORT API_HOST_PORT MOCK_HOST_PORT
 ifneq ($(wildcard .worktree.env),)
 ifneq ($(shell scripts/ci/worktree_env.sh exports .worktree.env >/dev/null 2>&1; echo $$?),0)
 $(error .worktree.env rejected: $(shell scripts/ci/worktree_env.sh exports .worktree.env 2>&1 >/dev/null))
@@ -16,6 +16,7 @@ endif
 $(foreach k,$(WORKTREE_KEYS),$(if $(and $(filter file,$(origin $(k))),$(strip $($(k)))),$(eval export $(k))))
 PG_HOST_PORT := $(or $(PG_HOST_PORT),5432)
 API_HOST_PORT := $(or $(API_HOST_PORT),8000)
+MOCK_HOST_PORT := $(or $(MOCK_HOST_PORT),4010)
 
 # A reason when $(1) is not one all-digit word in 1..65535. Non-digits never reach the shell.
 _nondigit = $(subst 0,,$(subst 1,,$(subst 2,,$(subst 3,,$(subst 4,,$(subst 5,,$(subst 6,,$(subst 7,,$(subst 8,,$(subst 9,,$(1)))))))))))
@@ -28,6 +29,10 @@ endif
 api_port_problem := $(call port_problem,$(API_HOST_PORT))
 ifneq ($(api_port_problem),)
 $(error API_HOST_PORT is not a valid port: $(api_port_problem))
+endif
+mock_port_problem := $(call port_problem,$(MOCK_HOST_PORT))
+ifneq ($(mock_port_problem),)
+$(error MOCK_HOST_PORT is not a valid port: $(mock_port_problem))
 endif
 minio_api_port_problem := $(if $(strip $(MINIO_API_HOST_PORT)),$(call port_problem,$(MINIO_API_HOST_PORT)))
 ifneq ($(minio_api_port_problem),)
@@ -47,7 +52,7 @@ endif
 
 .PHONY: help
 help:
-	@echo "make dev | hooks | test-unit | bootstrap-db | test-db | <check-id>"
+	@echo "make dev | hooks | test-unit | bootstrap-db | test-db | mock | mock-smoke | <check-id>"
 
 .PHONY: test-unit
 test-unit:
@@ -67,7 +72,7 @@ api-lint:
 # only in apps/api/app/db/{guard,session}.py. Zero hits pass until S9 adds them.
 .PHONY: lint-imports
 lint-imports:
-	uv run --frozen lint-imports --config .importlinter
+	PYTHONPATH=apps/api uv run --frozen lint-imports --config .importlinter
 	@hits="$$(grep -rl --include='*.py' tenant_scope_checked apps packages scripts)" || [ $$? -eq 1 ]; \
 	bad=0; \
 	for hit in $$hits; do \
@@ -155,6 +160,21 @@ dev:
 	$(MAKE) hooks
 	uv run --frozen uvicorn app.main:app --reload --port $(API_HOST_PORT) --app-dir apps/api
 
+# The local /api/v1 mock (S3 D5): committed openapi.json examples on 127.0.0.1 only. `Prefer:
+# code=<status>` answers a declared error example. `mock-smoke` starts it on a free port and probes it.
+# Tag CI only (publish-schemas.yml); refuses to run anywhere else. Publishing is the user's go.
+.PHONY: publish-schemas
+publish-schemas:
+	scripts/ci/publish_schemas.sh
+
+.PHONY: mock
+mock:
+	uv run --frozen python -m app_mock --host 127.0.0.1 --port $(MOCK_HOST_PORT)
+
+.PHONY: mock-smoke
+mock-smoke:
+	scripts/ci/mock_smoke.sh
+
 .PHONY: hooks
 hooks:
 	uv run --frozen pre-commit install
@@ -180,11 +200,15 @@ api-typecheck:
 contracts:
 	scripts/ci/contracts.sh
 
-# The generators land in S2/S3; the drift check also fails on untracked generated files.
+# Full strength since S3 (CANON.md:139): regenerate the JSON Schemas, openapi.json and the TS types,
+# fail on any diff or untracked generated file, then prove the package packs only its generated
+# files and type-checks for an FE consumer importing `@mkos/schemas`.
 .PHONY: schemas-drift
 schemas-drift:
 	$(MAKE) -C packages/schemas all
 	git diff --exit-code -- packages/schemas/jsonschema packages/schemas/ts
 	@untracked="$$(git ls-files --others --exclude-standard -- packages/schemas/jsonschema packages/schemas/ts)"; \
-	if [ -n "$$untracked" ]; then echo "schemas-drift: untracked generated files:"; echo "$$untracked"; exit 1; fi; \
-	echo "schemas-drift: OK"
+	if [ -n "$$untracked" ]; then echo "schemas-drift: untracked generated files:"; echo "$$untracked"; exit 1; fi
+	$(MAKE) -C packages/schemas ts-pack-check
+	$(MAKE) -C packages/schemas ts-consumer-check
+	@echo "schemas-drift: OK"

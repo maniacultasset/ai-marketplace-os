@@ -29,6 +29,7 @@
 **/node_modules
 
 # not needed at runtime
+apps/api/app_mock/
 docs/
 deliverables/
 scaffold/

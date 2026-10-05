@@ -1,1 +1,2 @@
 packages/schemas/jsonschema/** linguist-generated=true
+packages/schemas/ts/src/** linguist-generated=true

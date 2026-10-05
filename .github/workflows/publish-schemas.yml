@@ -1,0 +1,38 @@
+# Publishes @maniacultasset/schemas (FE alias @mkos/schemas) to GitHub Packages when a schemas-v*
+# tag is pushed (ADR-0012 §2). Tagging is the user's go. GitHub Free has no environments or tag
+# rulesets on private repos (ADR-0013), so the release gate is inside scripts/ci/publish_schemas.sh:
+# tag CI only, the tag commit must be on main, outputs regenerate identically, versions agree and
+# the CHANGELOG heading is closed.
+name: publish-schemas
+on:
+  push:
+    tags: ["schemas-v*"]
+permissions: {}
+concurrency:
+  group: publish-schemas-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  publish-schemas:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    timeout-minutes: 10
+    env:
+      APP_ENV: local
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/mos_test
+      JWT_SECRET: ci_only_not_a_real_secret_at_least_32_chars
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: ./.github/actions/py-setup
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - run: corepack enable pnpm
+      - run: make publish-schemas
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

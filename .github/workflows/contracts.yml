@@ -1,4 +1,4 @@
-# Required checks: contracts, schemas-drift (reduced forms until S2/S3, ADR-0013 §4).
+# Required checks: contracts, schemas-drift (full strength since S3; ADR-0013 §4 reductions end).
 name: contracts
 on:
   pull_request:
@@ -18,10 +18,13 @@ jobs:
       DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/mos_test
       JWT_SECRET: ci_only_not_a_real_secret_at_least_32_chars
     steps:
+      # Full history: oasdiff reads origin/main's openapi.json, and the version check reads tags.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: ./.github/actions/py-setup
+      - run: make mock-smoke
       - run: make contracts
   schemas-drift:
     runs-on: ubuntu-latest
@@ -37,4 +40,10 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/py-setup
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      # pnpm at the integrity-pinned version from packages/schemas/ts/package.json `packageManager`.
+      - run: corepack enable pnpm
       - run: make schemas-drift

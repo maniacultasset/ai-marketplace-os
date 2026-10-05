@@ -17,52 +17,52 @@
   },
   {
    "id": "R08091",
-   "status": "gap",
+   "status": "covered",
    "owner": "shared",
-   "ref": "BACKEND-ARCHITECTURE.md:796; BACKEND-ARCHITECTURE.md:1319",
-   "note": "Journey 3.5 lists drafts with content, but no review-queue or listing read endpoint in §5.2 or S3 stubs."
+   "ref": "packages/schemas/jsonschema/openapi.json: GET /api/v1/listings (ListingPage) and GET /api/v1/listings/{listing_id} (ListingDetail); apps/api/app/api/v1/surface.py listings_list, listings_get (S3 D1; handlers S19)",
+   "note": "ListingDetail.content.content.title."
   },
   {
    "id": "R08091a",
-   "status": "gap",
+   "status": "covered",
    "owner": "shared",
-   "ref": "BACKEND-ARCHITECTURE.md:796; BACKEND-ARCHITECTURE.md:1319; DATABASE.md:2131",
-   "note": "content.bullets stored in content_json; no review-queue or listing read endpoint in §5.2 or S3 stubs."
+   "ref": "packages/schemas/jsonschema/openapi.json: GET /api/v1/listings (ListingPage) and GET /api/v1/listings/{listing_id} (ListingDetail); apps/api/app/api/v1/surface.py listings_list, listings_get (S3 D1; handlers S19)",
+   "note": "ListingDetail.content.content.bullets."
   },
   {
    "id": "R08091b",
-   "status": "gap",
+   "status": "covered",
    "owner": "shared",
-   "ref": "BACKEND-ARCHITECTURE.md:796; BACKEND-ARCHITECTURE.md:1319; DATABASE.md:2131",
-   "note": "content.description stored in content_json; no review-queue or listing read endpoint in §5.2 or S3 stubs."
+   "ref": "packages/schemas/jsonschema/openapi.json: GET /api/v1/listings (ListingPage) and GET /api/v1/listings/{listing_id} (ListingDetail); apps/api/app/api/v1/surface.py listings_list, listings_get (S3 D1; handlers S19)",
+   "note": "ListingDetail.content.content.description."
   },
   {
    "id": "R08091c",
-   "status": "gap",
+   "status": "covered",
    "owner": "shared",
-   "ref": "BACKEND-ARCHITECTURE.md:796; BACKEND-ARCHITECTURE.md:1319; DATABASE.md:816",
-   "note": "validation_runs ErrorReport stored; JobEnvelope is per job; no review-queue read endpoint serves it."
+   "ref": "packages/schemas/jsonschema/openapi.json: GET /api/v1/listings (ListingPage) and GET /api/v1/listings/{listing_id} (ListingDetail); apps/api/app/api/v1/surface.py listings_list, listings_get (S3 D1; handlers S19)",
+   "note": "ListingDetail.validation (ValidationSummary with per-stage ErrorReports)."
   },
   {
    "id": "R08091d",
-   "status": "gap",
+   "status": "covered",
    "owner": "shared",
-   "ref": "BACKEND-ARCHITECTURE.md:796; BACKEND-ARCHITECTURE.md:1319; DATABASE.md:820",
-   "note": "Warnings stored (severity warning, warning_count); no review-queue or listing read endpoint in §5.2."
+   "ref": "packages/schemas/jsonschema/openapi.json: GET /api/v1/listings (ListingPage) and GET /api/v1/listings/{listing_id} (ListingDetail); apps/api/app/api/v1/surface.py listings_list, listings_get (S3 D1; handlers S19)",
+   "note": "ListingDetail.validation warning_count and severity=warning items."
   },
   {
    "id": "R08091e",
-   "status": "gap",
+   "status": "covered",
    "owner": "shared",
-   "ref": "BACKEND-ARCHITECTURE.md:796; BACKEND-ARCHITECTURE.md:1319; DATABASE.md:816",
-   "note": "Errors stored per validation_run ErrorReport; no review-queue or listing read endpoint in §5.2."
+   "ref": "packages/schemas/jsonschema/openapi.json: GET /api/v1/listings (ListingPage) and GET /api/v1/listings/{listing_id} (ListingDetail); apps/api/app/api/v1/surface.py listings_list, listings_get (S3 D1; handlers S19)",
+   "note": "ListingDetail.validation blocking_count and severity=error items."
   },
   {
    "id": "R08091f",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "BACKEND-ARCHITECTURE.md:796; BACKEND-ARCHITECTURE.md:1319; DATABASE.md:2136; KNOWN-ISSUES.md:17",
-   "note": "confidence_score stored; formula undefined; not named in queue read; no listing read endpoint."
+   "ref": "packages/schemas/jsonschema/openapi.json: GET /api/v1/listings (ListingPage) and GET /api/v1/listings/{listing_id} (ListingDetail); apps/api/app/api/v1/surface.py listings_list, listings_get (S3 D1; handlers S19); KNOWN-ISSUES.md:17",
+   "note": "Served as ListingDetail.content.confidence_score; the formula is still undefined (KNOWN-ISSUES.md:17)."
   },
   {
    "id": "R08091g",

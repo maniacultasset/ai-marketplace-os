@@ -49,3 +49,17 @@
   deploy key or a GitHub App token.
 - These Canon rows are amended: CANON.md:41 (TypeScript package consumption), :46 (AI package home and
   workspace membership), :84 (repository layout) and the 12-check list (Addendum §12).
+
+## Amendment 1 (S3, 2026-10-05): the published npm name
+
+- **Status:** proposed (the user sets `accepted`). Approval to write it: Tech Lead and FE lead,
+  2026-10-05 (S3 CP1).
+- **Context:** GitHub Packages (npm) accepts only a scope equal to the owning account, so
+  `@mkos/schemas` under the `maniacultasset` org would be refused on publish day.
+- **Decision (amends item 2, TypeScript):** the package is published as `@maniacultasset/schemas`,
+  from `packages/schemas/ts`, at the `mkos-schemas` version, by `.github/workflows/publish-schemas.yml`
+  on a `schemas-v<version>` tag. The frontend installs it under the canonical name with an npm alias,
+  `"@mkos/schemas": "npm:@maniacultasset/schemas@<version>"`, so every import still reads
+  `@mkos/schemas` (CANON.md:41 note).
+- **Consequences:** the FE's `.npmrc` maps the `@maniacultasset` scope to `https://npm.pkg.github.com`
+  with a read token. Publishing to a registry that accepts `@mkos` would need a further amendment.

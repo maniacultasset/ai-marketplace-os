@@ -88,6 +88,21 @@ def test_runtime_pins_match_adr_0005(repo_root: Path) -> None:
     assert by_name["starlette"] == "starlette>=1.3.1"
     assert by_name["psycopg"] == "psycopg[binary]>=3.2"
     assert by_name["mkos-schemas"] == "mkos-schemas"
+    # CP2 (S3): FastAPI's File/Form params need it; exact pin, pip-audit clean.
+    assert re.fullmatch(r"python-multipart==\d+\.\d+\.\d+", by_name["python-multipart"])
+
+
+def test_multipart_importable() -> None:
+    # FastAPI refuses a File/Form route at definition time without python-multipart (CANON.md:83).
+    import python_multipart
+    from fastapi import FastAPI, File, UploadFile
+
+    assert python_multipart.__version__
+    app = FastAPI()
+
+    @app.post("/upload")
+    async def upload(file: UploadFile = File(...)) -> None:  # noqa: B008 - FastAPI idiom
+        return None
 
 
 def test_api_runtime_pins_alembic_and_pgvector(repo_root: Path) -> None:

@@ -10,6 +10,8 @@ _CANON = _REPO / "docs/canon/CANON.md"
 _ADDENDUM = _REPO / "docs/canon/CANON-ADDENDUM.md"
 _DATABASE = _REPO / "docs/architecture/DATABASE.md"
 _CONTRACTS = _REPO / "docs/drafts/CONTRACTS.md"
+_BACKEND = _REPO / "docs/architecture/BACKEND-ARCHITECTURE.md"
+_BA_API_CODES_MARKER = "API error codes (S3):"
 
 
 def _read(path: Path) -> str:
@@ -111,3 +113,15 @@ def draft_block(heading: str) -> str:
     if end < 0:
         raise LookupError(f"contracts heading {heading!r} fence unclosed")
     return rest[:end]
+
+
+def ba_api_codes() -> set[str]:
+    """The S3 API error codes named on the one BA §5.3 source line (CODE-PLAN s3 T2)."""
+    for line in _read(_BACKEND).splitlines():
+        if _BA_API_CODES_MARKER in line:
+            tail = line.split(_BA_API_CODES_MARKER, 1)[1]
+            codes = set(re.findall(r"`([A-Z][A-Z0-9_]+)`", tail.split(".", 1)[0]))
+            if not codes:
+                raise ValueError("BA API error codes line names no code")
+            return codes
+    raise LookupError(f"BA line {_BA_API_CODES_MARKER!r} not found")

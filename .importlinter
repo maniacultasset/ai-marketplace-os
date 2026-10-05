@@ -3,6 +3,7 @@
 [importlinter]
 root_packages =
     app
+    app_mock
     mkos_schemas
 include_external_packages = True
 
@@ -88,3 +89,22 @@ forbidden_modules =
     starlette
     pgvector
     alembic
+
+# The local mock (S3 D5) is dev tooling: the app never imports it, and it reads only openapi.json.
+[importlinter:contract:app-never-imports-mock]
+name = app never imports app_mock
+type = forbidden
+source_modules =
+    app
+forbidden_modules =
+    app_mock
+
+[importlinter:contract:mock-imports-no-app]
+name = app_mock imports no app, sqlalchemy or psycopg
+type = forbidden
+source_modules =
+    app_mock
+forbidden_modules =
+    app
+    sqlalchemy
+    psycopg

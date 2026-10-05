@@ -1,0 +1,3 @@
+response-optional-property-removed warn
+response-non-success-status-removed warn
+optional-response-header-removed warn
