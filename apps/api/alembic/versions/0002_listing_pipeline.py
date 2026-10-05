@@ -1087,7 +1087,8 @@ ISSUES_UP: Final[tuple[str, ...]] = (
       CONSTRAINT ck_human_tasks_colourway CHECK (colourway_id IS NULL OR product_id IS NOT NULL),
       CONSTRAINT ck_human_tasks_account_target CHECK (
         kind NOT IN ({ACCOUNT_KINDS})
-        OR (marketplace_account_id IS NOT NULL AND target_path ~ '^account\\.')
+        OR (marketplace_account_id IS NOT NULL AND target_path IS NOT NULL
+            AND target_path ~ '^account\\.')
       ),
       CONSTRAINT ck_human_tasks_image CHECK (kind <> 'image_replacement' OR image_id IS NOT NULL),
       CONSTRAINT ck_human_tasks_open_unanswered CHECK (

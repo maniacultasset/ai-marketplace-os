@@ -182,6 +182,21 @@ def test_checks_reject_tasks_needing_rows(db: Conn) -> None:
             db, tenant_id, **ACCOUNT_KIND, marketplace_account_id=account, target_path="facts.x"
         ),
     )
+    # account kind without target_path: `target_path ~ ...` is NULL, which a bare CHECK accepts,
+    # and a NULL path also escapes ht_one_live_account (NULLS DISTINCT)
+    for kind in ("reconnect_account", "permission_decision", "marketplace_error_review"):
+        f.expect_violation(
+            db,
+            "23514",
+            "ck_human_tasks_account_target",
+            lambda kind=kind: f.human_task(
+                db,
+                tenant_id,
+                **{**ACCOUNT_KIND, "kind": kind},
+                marketplace_account_id=account,
+                target_path=None,
+            ),
+        )
     answered = _answered(db, tenant_id)
     f.expect_violation(
         db,
