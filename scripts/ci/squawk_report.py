@@ -29,7 +29,7 @@ DATABASE_MD_RULES: Final = (
     "changing-column-type",
     "renaming-column",
     "ban-drop-column",
-    "prefer-timestamptz",
+    "prefer-timestamp-tz",
     "prefer-robust-stmts",
 )
 TIMEOUT_S: Final = 120

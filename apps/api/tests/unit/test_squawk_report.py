@@ -115,3 +115,15 @@ def test_squawk_main_takes_one_path(
     with pytest.raises(SystemExit) as info:
         squawk_report.main([])
     assert info.value.code == 2
+
+
+def test_squawk_tags_a_timestamp_column_with_the_reported_rule_name(
+    squawk_report: ModuleType, tmp_path: Path
+) -> None:
+    # squawk accepts `prefer-timestamptz` as an alias on the command line but reports the finding as
+    # `prefer-timestamp-tz`; the listed name must be the reported one or the finding is never tagged.
+    findings = squawk_report._run(_sql(tmp_path, "CREATE TABLE t (a timestamp);\n"), SQUAWK)
+    names = {str(f["rule_name"]) for f in findings}
+    timestamp_rules = {n for n in names if "timestamp" in n}
+    assert timestamp_rules, names
+    assert timestamp_rules <= set(squawk_report.DATABASE_MD_RULES), names
