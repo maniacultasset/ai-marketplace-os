@@ -798,6 +798,35 @@ VARIANTS_DOWN: Final[tuple[str, ...]] = (
     "DROP TABLE public.product_colourways",
 )
 
+
+# ---- GRANTS: SELECT for the read-only roles (DATABASE.md §8.1 "Read-only roles get no default
+# SELECT"). Per table, or per column where a table holds secrets or personal data: never
+# `users.hashed_password`, `invitations.token_hash`, the `business_parties` contact columns and
+# `gstin`, nor `dedupe_key`, which is built from those contact columns. app_rw writes through
+# the 0000 default privileges; its REVOKEs and column UPDATE grants are 0004.
+READ_ONLY_ROLES: Final = "app_ro, app_platform_ro"
+USERS_READABLE: Final = (
+    "id, email, auth_provider, is_active, display_name, email_verified_at, last_login_at, "
+    "erased_at, created_at, updated_at"
+)
+INVITATIONS_READABLE: Final = (
+    "id, tenant_id, email, role, invited_by_user_id, expires_at, accepted_at, accepted_user_id, "
+    "revoked_at, created_at, updated_at"
+)
+PARTIES_READABLE: Final = (
+    "id, tenant_id, roles, legal_name, city, state_code, country_code, source, evidence_ref, "
+    "deleted_at, created_at, updated_at"
+)
+GRANTS_UP: Final[tuple[str, ...]] = (
+    "GRANT SELECT ON public.tenants, public.tenant_memberships, public.brand_profiles, "
+    f"public.products, public.product_colourways, public.variant_matrix_cells TO {READ_ONLY_ROLES}",
+    f"GRANT SELECT ({USERS_READABLE}) ON public.users TO {READ_ONLY_ROLES}",
+    f"GRANT SELECT ({INVITATIONS_READABLE}) ON public.invitations TO {READ_ONLY_ROLES}",
+    f"GRANT SELECT ({PARTIES_READABLE}) ON public.business_parties TO {READ_ONLY_ROLES}",
+)
+# The grants go with their tables.
+GRANTS_DOWN: Final[tuple[str, ...]] = ()
+
 SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (FUNCTIONS_UP, FUNCTIONS_DOWN),
     (FACT_MAP_UP, FACT_MAP_DOWN),
@@ -806,6 +835,7 @@ SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (FACT_OWNERS_UP, FACT_OWNERS_DOWN),
     (CATALOG_UP, CATALOG_DOWN),
     (VARIANTS_UP, VARIANTS_DOWN),
+    (GRANTS_UP, GRANTS_DOWN),
 )
 
 
