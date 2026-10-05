@@ -1,7 +1,9 @@
 """Text primitives of the Rules Engine: normalisation, measuring, the term tokenizer, slots,
 value access and the rule-regex compiler with its backtracking guard (S14a PLAN D3, D6 B).
 
-Everything here is pure and deterministic. Caches are keyed on rule content and input text only.
+Everything here is pure and deterministic. Process-wide caches are keyed on rule content only
+(matchers, compiled regexes); work on listing text is memoised per ``evaluate`` call in a
+``TextMemo``, so a long-running worker never holds listing text (fix round 1, R1-3).
 """
 
 from __future__ import annotations
@@ -10,7 +12,7 @@ import importlib
 import re
 import unicodedata
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Final, Literal
 
@@ -48,7 +50,6 @@ class UnsafeRuleRegexError(ValueError):
 # Normalisation and measuring (D3a, D3c)
 
 
-@lru_cache(maxsize=_CACHE_SIZE * 8)
 def normalise(text: str, *, case_sensitive: bool) -> str:
     """NFKC, casefold unless ``case_sensitive``, whitespace runs collapsed, ends stripped."""
     folded = unicodedata.normalize("NFKC", text)
@@ -98,10 +99,33 @@ def _word_hit(text: str, term: str) -> bool:
 _GRAM: Final = 4
 
 
-@lru_cache(maxsize=_CACHE_SIZE * 4)
 def _grams(text: str, size: int) -> frozenset[str]:
     """Every substring of ``text`` of length ``size``."""
     return frozenset(text[i : i + size] for i in range(len(text) - size + 1))
+
+
+@dataclass
+class TextMemo:
+    """Scratch memo for one ``evaluate`` call: normalised texts, their n-grams and term hits.
+    It lives only as long as the call's ``Ctx``, so its size is bounded by one listing."""
+
+    norms: dict[tuple[str, bool], str] = field(default_factory=dict)
+    gram_sets: dict[tuple[str, int], frozenset[str]] = field(default_factory=dict)
+    hits: dict[tuple[str, tuple[str, ...], MatchMode, bool], tuple[str, ...]] = field(
+        default_factory=dict
+    )
+
+    def normalise(self, text: str, *, case_sensitive: bool) -> str:
+        key = (text, case_sensitive)
+        if key not in self.norms:
+            self.norms[key] = normalise(text, case_sensitive=case_sensitive)
+        return self.norms[key]
+
+    def grams(self, text: str, size: int) -> frozenset[str]:
+        key = (text, size)
+        if key not in self.gram_sets:
+            self.gram_sets[key] = _grams(text, size)
+        return self.gram_sets[key]
 
 
 @dataclass(frozen=True)
@@ -117,15 +141,15 @@ class _Matcher:
     patterns: tuple[re.Pattern[str], ...]
     index: Mapping[int, Mapping[str, tuple[int, ...]]]
 
-    def _candidates(self, norm: str) -> list[int]:
+    def _candidates(self, norm: str, memo: TextMemo) -> list[int]:
         found: list[int] = []
         for size, by_prefix in self.index.items():
-            for prefix in by_prefix.keys() & _grams(norm, size):
+            for prefix in by_prefix.keys() & memo.grams(norm, size):
                 found.extend(by_prefix[prefix])
         found.sort()
         return found
 
-    def find(self, text: str) -> tuple[str, ...]:
+    def find(self, text: str, memo: TextMemo) -> tuple[str, ...]:
         if self.match == "regex":
             nfkc = unicodedata.normalize("NFKC", text)
             return tuple(
@@ -133,9 +157,9 @@ class _Matcher:
                 for term, pattern in zip(self.terms, self.patterns, strict=True)
                 if pattern.search(nfkc) is not None
             )
-        norm = normalise(text, case_sensitive=self.case_sensitive)
+        norm = memo.normalise(text, case_sensitive=self.case_sensitive)
         hits: list[str] = []
-        for i in self._candidates(norm):
+        for i in self._candidates(norm, memo):
             key = self.keys[i]
             if key in norm and (self.match == "substring" or _word_hit(norm, key)):
                 hits.append(self.terms[i])
@@ -160,18 +184,21 @@ def _matcher(terms: tuple[str, ...], match: MatchMode, case_sensitive: bool) -> 
     return _Matcher(terms, keys, match, case_sensitive, (), _prefix_index(keys))
 
 
-@lru_cache(maxsize=_CACHE_SIZE * 8)
-def _find_cached(
-    text: str, terms: tuple[str, ...], match: MatchMode, case_sensitive: bool
-) -> tuple[str, ...]:
-    return _matcher(terms, match, case_sensitive).find(text)
-
-
 def find_terms(
-    text: str, terms: Sequence[str], *, match: MatchMode, case_sensitive: bool
+    text: str,
+    terms: Sequence[str],
+    *,
+    match: MatchMode,
+    case_sensitive: bool,
+    memo: TextMemo | None = None,
 ) -> tuple[str, ...]:
-    """The terms of ``terms`` found in ``text``, in rule order (each at most once)."""
-    return _find_cached(text, tuple(terms), match, case_sensitive)
+    """The terms of ``terms`` found in ``text``, in rule order (each at most once). ``memo``
+    shares work on the same text across the rules of one ``evaluate`` call."""
+    memo = TextMemo() if memo is None else memo
+    key = (text, tuple(terms), match, case_sensitive)
+    if key not in memo.hits:
+        memo.hits[key] = _matcher(key[1], match, case_sensitive).find(text, memo)
+    return memo.hits[key]
 
 
 # ---------------------------------------------------------------------------------------------

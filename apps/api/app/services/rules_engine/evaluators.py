@@ -13,7 +13,7 @@ Not evaluated: ``image_requirement`` (S17a/S17b, ImageReport) and ``fact_source`
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Final, cast
 
 from mkos_schemas.codes import ErrorCode
@@ -40,6 +40,7 @@ from .report import Draft, RuleSetMismatchError, build_report, submitted_text
 from .template import template_checks
 from .text import (
     SlotValue,
+    TextMemo,
     compiled_rule_regex,
     condition_holds,
     find_terms,
@@ -58,6 +59,7 @@ class Ctx:
     template: CategoryTemplate | None
     product: Mapping[str, object] | None
     account: Mapping[str, object] | None
+    memo: TextMemo = field(default_factory=TextMemo)
 
     def lookup(self, path: str) -> tuple[bool, object]:
         return lookup(self.listing, path, product=self.product, account=self.account)
@@ -127,7 +129,11 @@ def _banned_terms(rule: Rule, ctx: Ctx) -> list[Draft]:
 
     def hit(text: str) -> tuple[str, ...]:
         return find_terms(
-            text, rule_def.terms, match=rule_def.match, case_sensitive=rule_def.case_sensitive
+            text,
+            rule_def.terms,
+            match=rule_def.match,
+            case_sensitive=rule_def.case_sensitive,
+            memo=ctx.memo,
         )
 
     slots = iter_slots(ctx.listing, rule.field, kind="text")
@@ -157,7 +163,9 @@ def _claim(rule: Rule, ctx: Ctx) -> list[Draft]:
         return []
 
     def hit(text: str) -> tuple[str, ...]:
-        return find_terms(text, rule_def.terms, match=rule_def.match, case_sensitive=False)
+        return find_terms(
+            text, rule_def.terms, match=rule_def.match, case_sensitive=False, memo=ctx.memo
+        )
 
     slots = iter_slots(ctx.listing, rule.field, kind="text")
     return [
