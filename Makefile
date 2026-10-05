@@ -110,7 +110,7 @@ COV_FAIL_UNDER ?= 70
 api-tests:
 	$(PG_PORT_GUARD)
 	APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) \
-	  uv run --frozen pytest -q -m "not tenant_isolation" --cov=app --cov-report=term-missing \
+	  uv run --frozen pytest -q -m "not tenant_isolation and not cloudsql_mimic" --cov=app --cov-report=term-missing \
 	  --cov-fail-under=$(COV_FAIL_UNDER)
 
 .PHONY: tenant-isolation
@@ -118,6 +118,12 @@ tenant-isolation:
 	$(PG_PORT_GUARD)
 	APP_ENV=local DATABASE_URL=$(ISO_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) \
 	  uv run --frozen pytest -q -m tenant_isolation --no-cov
+
+# 0000 (and the password file) as a Cloud SQL-style non-superuser CREATEROLE role, on a throwaway
+# container from the compose postgres image (DATABASE.md:1754). Docker only; no database URL.
+.PHONY: bootstrap-mimic
+bootstrap-mimic:
+	uv run --frozen pytest -q -m cloudsql_mimic --no-cov apps/api/tests/cloudsql_mimic
 
 # ---- local development (CANON-ADDENDUM.md §2 order; Alembic joins in S5) ----
 # uvicorn keeps its 127.0.0.1 default: never pass --host here.

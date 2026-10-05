@@ -82,6 +82,7 @@ addopts = "--strict-markers --strict-config -ra --import-mode=importlib --disabl
 asyncio_mode = "auto"
 markers = [
   "tenant_isolation: the tenant-isolation suite; runs in its own job against mos_iso (CANON.md:137)",
+  "cloudsql_mimic: 0000 and the password file on a throwaway container as a non-superuser CREATEROLE role (make bootstrap-mimic)",
 ]
 
 [tool.coverage.run]

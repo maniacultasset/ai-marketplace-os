@@ -90,3 +90,4 @@ echo
 docker build -f apps/api/Dockerfile -t "$image" .
 docker run --rm -e APP_ROLE=shell "$image" -c "import app, mkos_schemas"
 scripts/ci/check_image.sh "$image"
+make bootstrap-mimic

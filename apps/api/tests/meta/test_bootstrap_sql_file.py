@@ -57,3 +57,33 @@ def test_execute_revoke_is_global(repo_root: Path) -> None:
     assert revoke == [
         "ALTER DEFAULT PRIVILEGES FOR ROLE migrator REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC"
     ]
+
+
+def test_mimic_suite_is_marked_and_split(repo_root: Path) -> None:
+    """AC 5 is proved by `make bootstrap-mimic` in the CI `bootstrap` job, never by api-tests."""
+    pyproject = (repo_root / "pyproject.toml").read_text(encoding="utf-8")
+    assert re.search(r'^\s*"cloudsql_mimic: ', pyproject, re.MULTILINE)
+    module = repo_root / "apps/api/tests/cloudsql_mimic/test_bootstrap_mimic.py"
+    assert "pytest.mark.cloudsql_mimic" in module.read_text(encoding="utf-8")
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    api_tests = re.search(r"^api-tests:\n((?:\t.+\n)+)", makefile, re.MULTILINE)
+    assert api_tests is not None
+    assert '-m "not tenant_isolation and not cloudsql_mimic"' in api_tests.group(1)
+    mimic = re.search(r"^bootstrap-mimic:\n((?:\t.+\n)+)", makefile, re.MULTILINE)
+    assert mimic is not None
+    assert mimic.group(1).strip() == (
+        "uv run --frozen pytest -q -m cloudsql_mimic --no-cov apps/api/tests/cloudsql_mimic"
+    )
+    lines = (repo_root / "scripts/ci/bootstrap.sh").read_text(encoding="utf-8").splitlines()
+    check_image = next(
+        i for i, line in enumerate(lines) if line.startswith("scripts/ci/check_image.sh")
+    )
+    assert "make bootstrap-mimic" in lines[check_image + 1 :]
+    prove = (repo_root / "scripts/ci/prove_gates.sh").read_text(encoding="utf-8")
+    assert re.search(
+        r"^\s*leg bootstrap-mimic-no-set-role bootstrap 'permission denied to change default "
+        r"privileges' seed_bootstrap_no_set_role ",
+        prove,
+        re.MULTILINE,
+    )
+    assert "seed_bootstrap_no_set_role() {" in prove
