@@ -443,3 +443,18 @@ def test_fact_rule_attribute_is_a_key_or_critical(cls: type[BaseModel]) -> None:
     for bad in ("facts.mrp", "content.title", "*", "MRP"):
         with pytest.raises(ValidationError):
             cls.model_validate({"type": tag, "message": "m", "attribute": bad, **extra})
+
+
+# Round 1 R1-6: a rule message must fit ErrorItem.message and never carry a format spec.
+@pytest.mark.parametrize(
+    "message", ["{value:>999999999}", "{value!r}", "{limit:,}", "{value!s:10}"]
+)
+def test_rule_message_rejects_format_spec_and_conversion(message: str) -> None:
+    with pytest.raises(ValidationError, match="format spec"):
+        MaxLength.model_validate({"type": "max_length", "message": message, "limit": 1})
+
+
+def test_rule_message_is_capped_like_error_item() -> None:
+    MaxLength.model_validate({"type": "max_length", "message": "x" * 1000, "limit": 1})
+    with pytest.raises(ValidationError):
+        MaxLength.model_validate({"type": "max_length", "message": "x" * 1001, "limit": 1})

@@ -23,6 +23,7 @@
           "default": "VALUE_NOT_ALLOWED"
         },
         "message": {
+          "maxLength": 1000,
           "minLength": 1,
           "title": "Message",
           "type": "string"
@@ -244,6 +245,7 @@
           "type": "string"
         },
         "message": {
+          "maxLength": 1000,
           "minLength": 1,
           "title": "Message",
           "type": "string"
@@ -568,6 +570,7 @@
           "type": "string"
         },
         "message": {
+          "maxLength": 1000,
           "minLength": 1,
           "title": "Message",
           "type": "string"
@@ -743,6 +746,7 @@
           "default": "MISSING_ATTRIBUTE"
         },
         "message": {
+          "maxLength": 1000,
           "minLength": 1,
           "title": "Message",
           "type": "string"
@@ -835,6 +839,7 @@
           "type": "string"
         },
         "message": {
+          "maxLength": 1000,
           "minLength": 1,
           "title": "Message",
           "type": "string"
@@ -1047,6 +1052,7 @@
           "default": "FACT_MISMATCH"
         },
         "message": {
+          "maxLength": 1000,
           "minLength": 1,
           "title": "Message",
           "type": "string"
@@ -1145,6 +1151,7 @@
           "type": "array"
         },
         "message": {
+          "maxLength": 1000,
           "minLength": 1,
           "title": "Message",
           "type": "string"
@@ -1288,6 +1295,7 @@
           "default": "IMAGE_NON_COMPLIANT"
         },
         "message": {
+          "maxLength": 1000,
           "minLength": 1,
           "title": "Message",
           "type": "string"
@@ -1605,6 +1613,7 @@
           "type": "integer"
         },
         "message": {
+          "maxLength": 1000,
           "minLength": 1,
           "title": "Message",
           "type": "string"
@@ -1693,6 +1702,7 @@
           "type": "integer"
         },
         "message": {
+          "maxLength": 1000,
           "minLength": 1,
           "title": "Message",
           "type": "string"
@@ -1786,6 +1796,7 @@
           "type": "integer"
         },
         "message": {
+          "maxLength": 1000,
           "minLength": 1,
           "title": "Message",
           "type": "string"
@@ -1869,6 +1880,7 @@
           "type": "integer"
         },
         "message": {
+          "maxLength": 1000,
           "minLength": 1,
           "title": "Message",
           "type": "string"
@@ -1965,6 +1977,7 @@
           "type": "array"
         },
         "message": {
+          "maxLength": 1000,
           "minLength": 1,
           "title": "Message",
           "type": "string"
@@ -2146,6 +2159,7 @@
           "default": "MISSING_ATTRIBUTE"
         },
         "message": {
+          "maxLength": 1000,
           "minLength": 1,
           "title": "Message",
           "type": "string"

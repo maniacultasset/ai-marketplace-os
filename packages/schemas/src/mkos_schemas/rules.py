@@ -102,7 +102,8 @@ class ImageRequirementParams(StrictModel):
 
 
 class _RuleBase(WireModel):
-    message: NonBlankStr
+    # Same cap as ErrorItem.message: the engine copies the formatted text into one.
+    message: Annotated[NonBlankStr, Field(max_length=1000)]
     suggestion: Annotated[NonBlankStr | None, Field(default=None, max_length=1000)] = None
     error_code: ErrorCode
     pack: Annotated[str, Field(pattern=r"^[a-z_]{1,32}$")] = "core"
@@ -114,11 +115,14 @@ class _RuleBase(WireModel):
     @classmethod
     def _placeholders(cls, message: str) -> str:
         formatter = string.Formatter()
-        for _literal, field_name, _spec, _ in formatter.parse(message):
+        for _literal, field_name, spec, conversion in formatter.parse(message):
             if field_name is None:
                 continue
             if field_name not in PLACEHOLDERS:
                 raise ValueError(f"unknown placeholder {{{field_name}}}")
+            # "{value:>999999999}" would make str.format allocate ~1 GB in the engine.
+            if spec or conversion:
+                raise ValueError(f"format spec or conversion not allowed in {{{field_name}}}")
         if message.count("{") != message.count("}"):
             raise ValueError("unbalanced braces")
         return message
