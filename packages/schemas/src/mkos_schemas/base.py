@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import json
-from typing import Annotated, Any, Final
+import re
+from typing import Annotated, Final
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError
 
@@ -22,45 +23,75 @@ SEAM_SECRET_DENY_NAMES: Final[frozenset[str]] = frozenset(
 )
 
 
+SEAM_REDACTED: Final = "<redacted>"
+
+_CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+
+
+def normalize_seam_key(key: str) -> str:
+    """``apiKey``, ``API_KEY``, ``X-Api-Key`` and ``api_key`` all normalize to snake_case."""
+    return _CAMEL_BOUNDARY.sub("_", key).casefold().replace("-", "_")
+
+
+def is_seam_secret_key(key: str) -> bool:
+    """True when ``key`` equals a deny name or ends with ``_<deny name>`` after normalizing.
+
+    Case-insensitive; a plain substring is not enough (``secret_sauce_flavor`` and ``token_count``
+    stay legal), but ``lwa_client_secret`` and ``x_api_key`` are refused.
+    """
+    norm = normalize_seam_key(key)
+    return any(norm == name or norm.endswith("_" + name) for name in SEAM_SECRET_DENY_NAMES)
+
+
+def find_seam_secret_key(value: object) -> str | None:
+    """Return the first forbidden key name found in ``value``, or ``None``.
+
+    Walks dicts, lists and tuples at any depth. Every string is checked too: text that starts with
+    ``{`` or ``[`` is parsed as JSON and walked the same way. JSON nested too deeply to parse is
+    treated as forbidden (fail closed).
+    """
+    stack: list[object] = [value]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, dict):
+            for key, item in node.items():
+                if isinstance(key, str) and is_seam_secret_key(key):
+                    return key
+                stack.append(item)
+        elif isinstance(node, list | tuple):
+            stack.extend(node)
+        elif isinstance(node, str):
+            stripped = node.strip()
+            if not stripped.startswith(("{", "[")):
+                continue
+            try:
+                stack.append(json.loads(stripped))
+            except json.JSONDecodeError:
+                continue
+            except RecursionError:
+                return "<json nested too deep>"
+    return None
+
+
 def walk_seam_dicts_and_text(root: BaseModel) -> None:
-    """Reject forbidden secret key names in nested dicts and embedded JSON text."""
+    """Reject forbidden secret key names anywhere in ``root``'s dump (AC 17).
 
-    def _walk_dict(d: dict[str, Any]) -> None:
-        for key, value in d.items():
-            if key in SEAM_SECRET_DENY_NAMES:
-                raise ValidationError.from_exception_data(
-                    root.__class__.__name__,
-                    [
-                        {
-                            "type": "value_error",
-                            "loc": ("__root__",),
-                            "input": d,
-                            "ctx": {"error": ValueError(f"forbidden seam key {key!r}")},
-                        }
-                    ],
-                )
-            if isinstance(value, dict):
-                _walk_dict(value)
-            elif isinstance(value, list):
-                for item in value:
-                    if isinstance(item, dict):
-                        _walk_dict(item)
-            elif isinstance(value, str):
-                _walk_text(value)
-
-    def _walk_text(text: str) -> None:
-        stripped = text.strip()
-        if not stripped.startswith("{"):
-            return
-        try:
-            parsed = json.loads(stripped)
-        except json.JSONDecodeError:
-            return
-        if isinstance(parsed, dict):
-            _walk_dict(parsed)
-
-    data = root.model_dump(mode="python")
-    _walk_dict(data)
+    The error never carries the offending value: ``input`` is always ``<redacted>``.
+    """
+    key = find_seam_secret_key(root.model_dump(mode="python"))
+    if key is None:
+        return
+    raise ValidationError.from_exception_data(
+        root.__class__.__name__,
+        [
+            {
+                "type": "value_error",
+                "loc": ("__root__",),
+                "input": SEAM_REDACTED,
+                "ctx": {"error": ValueError(f"forbidden seam key {key[:64]!r}")},
+            }
+        ],
+    )
 
 
 class StrictModel(BaseModel):

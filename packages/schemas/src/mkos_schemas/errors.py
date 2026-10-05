@@ -7,7 +7,14 @@ from uuid import UUID
 
 from pydantic import Field, field_validator, model_validator
 
-from .base import SCHEMA_VERSION, NonBlankStr, RequestId, WireModel, walk_seam_dicts_and_text
+from .base import (
+    SCHEMA_VERSION,
+    SEAM_REDACTED,
+    NonBlankStr,
+    RequestId,
+    WireModel,
+    find_seam_secret_key,
+)
 from .codes import ErrorCode
 from .enums import ErrorClass, ErrorSource, FixAction, Marketplace, RetryClass, Severity
 from .paths import is_valid_field_path
@@ -17,9 +24,16 @@ MAX_ERROR_ITEMS: Final = 500
 
 
 def _truncate_value_submitted(value: object) -> str | None:
+    """Redact a submitted value that carries a secret key name (AC 17), then cap it.
+
+    The check runs on the raw value, before the cut: truncated JSON no longer parses and would
+    hide the key.
+    """
     if value is None:
         return None
     text = str(value).replace("\x00", "")
+    if find_seam_secret_key(value) is not None or find_seam_secret_key(text) is not None:
+        return SEAM_REDACTED
     return text[:VALUE_SUBMITTED_MAX]
 
 
@@ -60,7 +74,12 @@ class ErrorItem(WireModel):
                 raise ValueError("retryable must match retry_class")
         if self.auto_fixable != (self.fix_action is not None):
             raise ValueError("auto_fixable must match fix_action")
-        walk_seam_dicts_and_text(self)
+        # AC 17: an error report must still be buildable when the failing input holds a secret
+        # (a CSV cell, a marketplace error body), so secret-bearing text is redacted, not raised.
+        for name in ("message", "value_submitted", "suggestion", "raw_code"):
+            text = getattr(self, name)
+            if text is not None and find_seam_secret_key(text) is not None:
+                setattr(self, name, SEAM_REDACTED)
         return self
 
 

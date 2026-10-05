@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
 import pytest
-from mkos_schemas.base import SEAM_SECRET_DENY_NAMES, walk_seam_dicts_and_text
+from mkos_schemas.base import (
+    SEAM_REDACTED,
+    SEAM_SECRET_DENY_NAMES,
+    is_seam_secret_key,
+    walk_seam_dicts_and_text,
+)
 from mkos_schemas.errors import ErrorItem
 from mkos_schemas.jobs import BrandChunkDTO, CategoryTemplate, GenerationContext, ModelCredentials
 from pydantic import BaseModel, ValidationError
@@ -70,16 +77,6 @@ def test_seam_secret_walk_rejects() -> None:
         GenerationContext.model_validate({**base, "product": {"api_key": "x"}, "brand_profile": {}})
     with pytest.raises(ValidationError):
         GenerationContext.model_validate({**base, "product": {}, "brand_profile": {"secret": "x"}})
-    with pytest.raises(ValidationError):
-        ErrorItem.model_validate(
-            {
-                "field": "content.title",
-                "error_code": "FIELD_TOO_LONG",
-                "message": '{"password": "leak"}',
-                "source": "rules_engine",
-                "retryable": False,
-            }
-        )
     GenerationContext.model_validate({**base, "product": {"title": "ok"}, "brand_profile": {}})
 
 
@@ -90,3 +87,86 @@ def test_emit_node_event_detail_walk() -> None:
     probe = _Probe(detail={"nested": {"api_key": "x"}})
     with pytest.raises(ValidationError):
         walk_seam_dicts_and_text(probe)
+
+
+_FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
+
+
+def _golden_context() -> dict[str, Any]:
+    raw: dict[str, Any] = json.loads(
+        (_FIXTURES / "GenerationContext.json").read_text(encoding="utf-8")
+    )
+    return raw
+
+
+def _error_item(**overrides: object) -> ErrorItem:
+    raw: dict[str, object] = {
+        "field": "content.title",
+        "error_code": "FIELD_TOO_LONG",
+        "message": "m",
+        "source": "rules_engine",
+        "retryable": False,
+    }
+    return ErrorItem.model_validate({**raw, **overrides})
+
+
+# Round 1 R1-2/R1-4: case, camelCase, suffixes, lists, nested lists and JSON arrays in text.
+@pytest.mark.parametrize(
+    "product",
+    [
+        {"headers": {"Authorization": "Bearer x"}},
+        {"API_KEY": "x"},
+        {"apiKey": "x"},
+        {"X-Api-Key": "x"},
+        {"lwa_client_secret": "x"},
+        {"meta": {"accessToken": "x"}},
+        {"notes": ['{"api_key": "x"}']},
+        {"notes": [[{"api_key": "x"}]]},
+        {"notes": ({"password": "x"},)},
+        {"notes": '[{"client_secret": "x"}]'},
+        {"notes": '{"outer": "[{\\"refresh_token\\": 1}]"}'},
+    ],
+)
+def test_seam_secret_walk_rejects_bypasses(product: dict[str, Any]) -> None:
+    raw = _golden_context()
+    raw["product"] = product
+    with pytest.raises(ValidationError, match="forbidden seam key"):
+        GenerationContext.model_validate(raw)
+
+
+@pytest.mark.parametrize(
+    "key", ["secret_sauce_flavor", "token_count", "max_tokens", "keywords", "api", "passwords_hint"]
+)
+def test_seam_secret_walk_keeps_legitimate_keys(key: str) -> None:
+    assert not is_seam_secret_key(key)
+    raw = _golden_context()
+    raw["product"] = {key: "x"}
+    GenerationContext.model_validate(raw)
+
+
+def test_seam_secret_walk_error_never_echoes_the_secret() -> None:
+    # Round 1 R1-3: the ValidationError went to logs and Sentry with the secret dict as input.
+    raw = _golden_context()
+    raw["product"] = {"meta": {"api_key": "sk-LEAKED123"}}
+    with pytest.raises(ValidationError) as exc:
+        GenerationContext.model_validate(raw)
+    assert "sk-LEAKED123" not in str(exc.value)
+    assert "sk-LEAKED123" not in json.dumps(exc.value.errors(include_url=False), default=str)
+    assert SEAM_REDACTED in str(exc.value)
+
+
+def test_error_item_redacts_secret_text_instead_of_raising() -> None:
+    # Round 1 R1-3: the error path must still produce an ErrorReport (CANON.md:57).
+    item = _error_item(message='{"password": "leak"}', suggestion='[{"Authorization": "x"}]')
+    assert item.message == SEAM_REDACTED
+    assert item.suggestion == SEAM_REDACTED
+    assert "leak" not in item.model_dump_json()
+
+
+def test_error_item_checks_value_submitted_before_truncating() -> None:
+    # Round 1 R1-2: a 700-char secret JSON was cut to 600, stopped parsing and slipped through.
+    item = _error_item(value_submitted='{"api_key": "' + "a" * 700 + '"}')
+    assert item.value_submitted == SEAM_REDACTED
+    item = _error_item(value_submitted={"nested": [{"client_secret": "x"}]})
+    assert item.value_submitted == SEAM_REDACTED
+    assert _error_item(value_submitted="b" * 700).value_submitted == "b" * 600
