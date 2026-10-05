@@ -24,9 +24,17 @@ def test_grant_migrator_precedes_owner_change(repo_root: Path) -> None:
 
 
 def test_workflows_have_no_password_literals(repo_root: Path) -> None:
-    text = (repo_root / ".github/workflows/ci-api.yml").read_text(encoding="utf-8")
-    assert "PASSWORD '" not in text
-    assert 'PASSWORD "' not in text
+    """No password or verifier literal in CI or make: CI and tests hold no secret (ADR-0013 §5)."""
+    paths = [
+        *sorted((repo_root / ".github/workflows").glob("*.yml")),
+        repo_root / "Makefile",
+        *sorted((repo_root / "scripts/ci").glob("*.sh")),
+    ]
+    assert len(paths) > 3
+    for path in paths:
+        text = path.read_text(encoding="utf-8")
+        for literal in ("PASSWORD '", 'PASSWORD "', "SCRAM-SHA-256$", "_SCRAM="):
+            assert literal not in text, (path.name, literal)
 
 
 def _statements(text: str) -> list[str]:
@@ -87,3 +95,55 @@ def test_mimic_suite_is_marked_and_split(repo_root: Path) -> None:
         re.MULTILINE,
     )
     assert "seed_bootstrap_no_set_role() {" in prove
+
+
+_SCRAM_NAMES = ("APP_RW_SCRAM", "APP_RO_SCRAM", "MIGRATOR_SCRAM")
+
+
+def test_password_file_is_psql_only_and_verifier_only(repo_root: Path) -> None:
+    """EXECUTION-PLAN.md:545: only pre-computed SCRAM verifiers, checked before anything is sent."""
+    text = (repo_root / "scripts/db/0000_role_passwords.sql").read_text(encoding="utf-8")
+    lines = text.splitlines()
+    alters = [line for line in lines if re.search(r"\bPASSWORD\b", line) and "ALTER ROLE" in line]
+    assert alters == [
+        "ALTER ROLE app_rw PASSWORD :'app_rw_scram';",
+        "ALTER ROLE app_ro PASSWORD :'app_ro_scram';",
+        "ALTER ROLE migrator PASSWORD :'migrator_scram';",
+    ]
+    getenvs = re.findall(r"^\\getenv (\w+) (\w+)$", text, re.MULTILINE)
+    assert getenvs == [(name.lower(), name) for name in _SCRAM_NAMES]
+    assert "_PASSWORD" not in text
+    assert not re.search(r"PASSWORD\s+['\"]", text)
+    shell = [line for line in lines if line.startswith("\\set ") and "`" in line]
+    assert shell
+    for line in shell:
+        assert ":'" not in line
+        assert re.search(r'"\$\{[A-Z_]+_SCRAM-\}"', line), line
+    check = next(i for i, line in enumerate(lines) if line.startswith("\\set scram_ok `"))
+    pw_safe = lines.index("\\if :pw_safe")
+    first_getenv = next(i for i, line in enumerate(lines) if line.startswith("\\getenv"))
+    assert check < pw_safe < first_getenv
+    query = "\n".join(lines[check:pw_safe])
+    for setting in (
+        "'log_statement'",
+        "'log_min_duration_statement'",
+        "'log_min_duration_sample'",
+        "'pgaudit.log'",
+    ):
+        assert setting in query, setting
+
+
+def test_makefile_passes_scram_vars_by_name(repo_root: Path) -> None:
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    body = re.search(r"^bootstrap-db:\n((?:\t.+\n)+)", makefile, re.MULTILINE)
+    assert body is not None
+    recipe = body.group(1)
+    assert "-e APP_RW_SCRAM -e APP_RO_SCRAM -e MIGRATOR_SCRAM postgres" in recipe
+    assert not re.search(r"_SCRAM=", recipe)
+    assert "-f - < scripts/db/0000_bootstrap.sql" in recipe
+    assert "-f - < scripts/db/0000_role_passwords.sql" in recipe
+    assert "/docker-entrypoint-initdb.d/" not in makefile
+    test_db = re.search(r"^test-db:\n((?:\t.+\n)+)", makefile, re.MULTILINE)
+    assert test_db is not None
+    assert "-f - < scripts/db/0000_bootstrap.sql" in test_db.group(1)
+    assert "role_passwords" not in test_db.group(1)

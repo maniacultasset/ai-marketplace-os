@@ -18,7 +18,6 @@ The file is `scripts/db/0000_bootstrap.sql`, exactly that name, exactly that pat
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./scripts/db/0000_bootstrap.sql:/docker-entrypoint-initdb.d/0000_bootstrap.sql:ro
-      - ./scripts/db/0000_role_passwords.sql:/docker-entrypoint-initdb.d/0000_role_passwords.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d marketplace_os"]
       interval: 5s

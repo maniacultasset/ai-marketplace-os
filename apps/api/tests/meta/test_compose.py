@@ -262,3 +262,11 @@ def test_init_creates_both_buckets_idempotently(compose: dict[str, Any], repo_ro
     ]
     raw = (repo_root / "docker-compose.yml").read_text(encoding="utf-8")
     assert raw.count("local/marketplace-csv") == 1
+
+
+def test_postgres_mounts_only_bootstrap_sql(compose: dict[str, Any]) -> None:
+    """initdb runs 0000 only; role passwords are set by `make bootstrap-db` from verifiers."""
+    assert compose["services"]["postgres"]["volumes"] == [
+        "pgdata:/var/lib/postgresql/data",
+        "./scripts/db/0000_bootstrap.sql:/docker-entrypoint-initdb.d/0000_bootstrap.sql:ro",
+    ]
