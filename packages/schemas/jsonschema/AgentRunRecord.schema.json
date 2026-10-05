@@ -412,6 +412,7 @@
       "type": "integer"
     },
     "cost_usd": {
+      "description": "USD as a decimal string with at most 6 decimal places, e.g. '0.000413' (NUMERIC(12,6)). Producers must quantize with Decimal(...).quantize(Decimal('0.000001'), ROUND_HALF_UP) before sending; floats with more digits are rejected, never rounded.",
       "title": "Cost Usd",
       "type": "string"
     },

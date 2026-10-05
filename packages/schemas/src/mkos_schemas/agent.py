@@ -44,7 +44,20 @@ class AgentRunRecord(WireModel):
     model_used: str | None = None
     prompt_version: str | None = None
     tokens: TokenUsage = Field(default_factory=TokenUsage)
-    cost_usd: Annotated[Decimal, Field(max_digits=12, decimal_places=6, ge=0)] = Decimal("0")
+    cost_usd: Annotated[
+        Decimal,
+        Field(
+            max_digits=12,
+            decimal_places=6,
+            ge=0,
+            description=(
+                "USD as a decimal string with at most 6 decimal places, e.g. '0.000413' "
+                "(NUMERIC(12,6)). Producers must quantize with "
+                "Decimal(...).quantize(Decimal('0.000001'), ROUND_HALF_UP) before sending; "
+                "floats with more digits are rejected, never rounded."
+            ),
+        ),
+    ] = Decimal("0")
     duration_ms: Annotated[int, Field(ge=0)] = 0
     status: Literal["running", "completed", "failed", "timeout"]
     error_report: ErrorReport | None = None

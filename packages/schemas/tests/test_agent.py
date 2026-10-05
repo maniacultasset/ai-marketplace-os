@@ -88,3 +88,14 @@ def test_agent_run_record_has_no_credential_fields() -> None:
     schema = json.dumps(AgentRunRecord.model_json_schema())
     for word in forbidden:
         assert f'"{word}"' not in schema
+
+
+@pytest.mark.parametrize("cost", [0.1 + 0.2, 0.000412500000001])
+def test_agent_run_record_cost_usd_float_is_rejected_not_rounded(cost: float) -> None:
+    # Round 1 R1-1: producers quantize to NUMERIC(12,6) before sending; the contract never rounds.
+    with pytest.raises(ValidationError, match="decimal"):
+        _run(cost_usd=cost)
+    _run(cost_usd=Decimal(str(cost)).quantize(Decimal("0.000001")))
+    description = AgentRunRecord.model_json_schema()["properties"]["cost_usd"]["description"]
+    assert "6 decimal places" in description
+    assert "ROUND_HALF_UP" in description
