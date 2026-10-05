@@ -105,6 +105,21 @@ seed_misspelled_bucket() {
   cp .env.example .env
   replace docker-compose.yml 'local/marketplace-csv' 'local/marketplace-csx'
 }
+# S5: Alembic and squawk in api-tests (on mos_prove, so a seeded revision never stamps mos_test).
+seed_alembic_drift() {
+  cp "$root/.env" .env
+  append apps/api/app/db/base.py $'\nfrom sqlalchemy import Column, Integer, Table  # noqa: E402\n\nTable("seeded_drift", metadata, Column("id", Integer, primary_key=True))'
+}
+seed_roundtrip_broken() {
+  cp "$root/.env" .env
+  new_file apps/api/alembic/versions/0999_seeded.py $'"""seeded"""\n\nrevision = "0999"\ndown_revision = None\nbranch_labels = None\ndepends_on = None\n\n\ndef upgrade() -> None:\n    pass\n\n\ndef downgrade() -> None:\n    raise RuntimeError("seeded downgrade failure")'
+}
+seed_squawk_missing() {
+  cp "$root/.env" .env
+  replace scripts/ci/squawk_report.py 'DEFAULT_SQUAWK: Final = "squawk"' 'DEFAULT_SQUAWK: Final = "squawk-seeded-missing"'
+}
+seed_alembic_environ() { append apps/api/alembic/env.py $'\n\ndef _seeded() -> str | None:\n    import os\n\n    return os.environ.get("X")'; }
+seed_cli_imported() { append apps/api/app/main.py 'import app.cli'; }
 seed_bootstrap_no_set_role() {
   cp .env.example .env
   replace scripts/db/0000_bootstrap.sql $'SET ROLE migrator;\n' ''
@@ -148,6 +163,7 @@ leg api-lint-asyncpg api-lint 'TID251' seed_asyncpg make api-lint
 leg api-lint-error-code api-lint ': R2 ' seed_error_code make api-lint
 leg api-lint-expired-ignore api-lint 'expired' seed_expired_ignore make api-lint
 leg api-lint-services-engine api-lint ': R3 ' seed_services_async_engine make api-lint
+leg api-lint-alembic-environ api-lint ': R1 ' seed_alembic_environ make api-lint
 leg api-typecheck-return api-typecheck 'Incompatible return value' seed_type_error make api-typecheck
 leg contracts-import-error contracts 'ImportError: seeded' seed_schemas_import_error make contracts
 leg contracts-bad-hash contracts '[Hh]ash' seed_bad_build_hash make contracts
@@ -200,11 +216,21 @@ leg lint-imports-router-db lint-imports 'app.api never imports sqlalchemy or app
   seed_router_db make lint-imports
 leg lint-imports-service-db lint-imports 'app.services never imports app.db.session .*BROKEN' \
   seed_service_session make lint-imports
+leg lint-imports-cli-imported lint-imports 'nothing imports app.cli BROKEN' seed_cli_imported make lint-imports
 
 if [ "$with_docker" -eq 1 ]; then
   self_project="$(docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"
   leg api-tests-failing-test api-tests 'test_seeded' seed_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-schema-test api-tests 'test_seeded' seed_schema_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  # A throwaway database with 0000, so the seeded revision legs never stamp mos_test. The broken
+  # downgrade leaves its revision stamped there, so that leg runs last.
+  docker compose exec -T postgres dropdb -U postgres --if-exists --force mos_prove
+  docker compose exec -T postgres createdb -U postgres mos_prove
+  docker compose exec -T postgres psql -U postgres -v ON_ERROR_STOP=1 -q -d mos_prove -f - <scripts/db/0000_bootstrap.sql
+  leg api-tests-alembic-drift api-tests 'New upgrade operations detected' seed_alembic_drift COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests
+  leg api-tests-squawk-missing api-tests 'squawk did not check the SQL' seed_squawk_missing COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests
+  leg api-tests-roundtrip-broken api-tests 'seeded downgrade failure' seed_roundtrip_broken COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests
+  docker compose exec -T postgres dropdb -U postgres --force mos_prove
   leg tenant-isolation-no-marker tenant-isolation 'deselected' seed_no_marker COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   # Bootstrap legs use their own project on this checkout's host ports; pause this stack meanwhile.
   docker compose stop >/dev/null 2>&1
