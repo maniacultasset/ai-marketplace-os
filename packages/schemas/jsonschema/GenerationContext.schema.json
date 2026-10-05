@@ -294,6 +294,7 @@
         },
         "terms": {
           "items": {
+            "maxLength": 256,
             "minLength": 1,
             "type": "string"
           },
@@ -656,6 +657,7 @@
         },
         "terms": {
           "items": {
+            "maxLength": 256,
             "minLength": 1,
             "type": "string"
           },

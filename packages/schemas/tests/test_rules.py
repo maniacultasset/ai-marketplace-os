@@ -542,3 +542,58 @@ def test_claim_requires_is_attribute_and_any_of() -> None:
     ):
         with pytest.raises(ValidationError):
             _claim(bad)
+
+
+# Round 1 R1-10: term caps (Appendix B), regex terms through the same check as Pattern, and the
+# DATABASE.md brand-rule limits (tenant rows: banned_terms without regex, claim_requires_attribute).
+def test_rule_terms_capped_at_256_chars() -> None:
+    BannedTerms.model_validate({"type": "banned_terms", "message": "m", "terms": ["x" * 256]})
+    with pytest.raises(ValidationError):
+        BannedTerms.model_validate({"type": "banned_terms", "message": "m", "terms": ["x" * 257]})
+    with pytest.raises(ValidationError):
+        ClaimRequiresAttribute.model_validate(
+            {
+                "type": "claim_requires_attribute",
+                "message": "m",
+                "claim": "c",
+                "terms": ["x" * 257],
+                "requires": {"attribute": "fabric"},
+            }
+        )
+
+
+def test_banned_terms_regex_terms_use_the_pattern_check() -> None:
+    ok = {"type": "banned_terms", "message": "m", "match": "regex", "terms": [r"^free\s+gift$"]}
+    BannedTerms.model_validate(ok)
+    for bad in (r"(a+)+$", "("):
+        with pytest.raises(ValidationError):
+            BannedTerms.model_validate({**ok, "terms": [bad]})
+    # A word or substring term is plain text, never parsed as a regex.
+    BannedTerms.model_validate({**ok, "match": "word", "terms": ["(a+)+"]})
+
+
+_TENANT = UUID("55555555-5555-5555-5555-555555555555")
+
+
+def test_tenant_rules_limited_to_brand_types() -> None:
+    _rule(tenant_id=_TENANT, rule_def={"type": "banned_terms", "message": "m", "terms": ["x"]})
+    _rule(
+        tenant_id=_TENANT,
+        field="content.description",
+        rule_def={
+            "type": "claim_requires_attribute",
+            "message": "m",
+            "claim": "c",
+            "terms": ["c"],
+            "requires": {"attribute": "fabric"},
+        },
+    )
+    for rule_def in (
+        {"type": "pattern", "message": "m", "name": "n", "regex": "^a$", "must": "match"},
+        {"type": "banned_terms", "message": "m", "terms": ["x"], "match": "regex"},
+        {"type": "max_length", "message": "m", "limit": 5},
+    ):
+        with pytest.raises(ValidationError, match="tenant rule"):
+            _rule(tenant_id=_TENANT, rule_def=rule_def)
+        if rule_def["type"] != "banned_terms":
+            _rule(rule_def=rule_def)

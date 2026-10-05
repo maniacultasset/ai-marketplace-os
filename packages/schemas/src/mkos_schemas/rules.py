@@ -266,10 +266,17 @@ class MinLength(_RuleBase):
 
 class BannedTerms(_RuleBase):
     type: Literal["banned_terms"]
-    terms: Annotated[list[NonBlankStr], Field(min_length=1, max_length=500)]
+    terms: Annotated[list[RuleTerm], Field(min_length=1, max_length=500)]
     match: Literal["word", "substring", "regex"] = "word"
     case_sensitive: bool = False
     error_code: ErrorCode = ErrorCode.BANNED_TERM
+
+    @model_validator(mode="after")
+    def _regex_terms_safe(self) -> BannedTerms:
+        if self.match == "regex":
+            for term in self.terms:
+                check_rule_regex(term)
+        return self
 
 
 class RequiredAttribute(_RuleBase):
@@ -336,7 +343,7 @@ class ClaimRequirement(WireModel):
 class ClaimRequiresAttribute(_RuleBase):
     type: Literal["claim_requires_attribute"]
     claim: NonBlankStr
-    terms: Annotated[list[NonBlankStr], Field(min_length=1, max_length=50)]
+    terms: Annotated[list[RuleTerm], Field(min_length=1, max_length=50)]
     match: Literal["word", "substring"] = "word"
     requires: ClaimRequirement
     error_code: ErrorCode = ErrorCode.UNSUPPORTED_CLAIM
@@ -435,6 +442,16 @@ class Rule(WireModel):
             raise ValueError("images field requires image_requirement")
         if is_image and self.field != "images":
             raise ValueError("image_requirement requires images field")
+        # DATABASE.md brand-rule CHECKs (rules_tenant_types, rules_platform_only_regex): a tenant
+        # row is banned_terms without regex, or claim_requires_attribute. Regex stays platform-only.
+        if self.tenant_id is not None:
+            brand_ok = isinstance(self.rule_def, ClaimRequiresAttribute) or (
+                isinstance(self.rule_def, BannedTerms) and self.rule_def.match != "regex"
+            )
+            if not brand_ok:
+                raise ValueError(
+                    "a tenant rule may only be banned_terms (no regex) or claim_requires_attribute"
+                )
         return self
 
 
