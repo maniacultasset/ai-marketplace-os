@@ -7,6 +7,13 @@ The package imports no database, web, clock, randomness or I/O module; the
 
 from .evaluators import evaluate
 from .report import RuleSetMismatchError
+from .resolver import RuleRow, resolve_ruleset
 from .text import UnsafeRuleRegexError
 
-__all__ = ["RuleSetMismatchError", "UnsafeRuleRegexError", "evaluate"]
+__all__ = [
+    "RuleRow",
+    "RuleSetMismatchError",
+    "UnsafeRuleRegexError",
+    "evaluate",
+    "resolve_ruleset",
+]
