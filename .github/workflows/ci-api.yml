@@ -99,6 +99,8 @@ jobs:
         run: |
           psql "postgresql://postgres:postgres@localhost:5432/mos_iso" \
             -v ON_ERROR_STOP=1 -f scripts/db/0000_bootstrap.sql
+          APP_RW_SCRAM="$(make -s app-rw-scram)" psql "postgresql://postgres:postgres@localhost:5432/mos_iso" \
+            -v ON_ERROR_STOP=1 -X -q -f scripts/db/0000_role_passwords.sql
       - run: make tenant-isolation
   lint-imports:
     runs-on: ubuntu-latest

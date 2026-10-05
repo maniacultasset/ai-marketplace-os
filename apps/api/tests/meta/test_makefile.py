@@ -123,3 +123,28 @@ def test_dev_upgrades_after_bootstrap_db_and_sync(repo_root: Path) -> None:
     upgrade = body.index("uv run --frozen alembic -c apps/api/alembic.ini upgrade head")
     serve = body.index("uvicorn")
     assert bootstrap < sync < upgrade < serve
+
+
+# ---- S9 D14: the CI-only app_rw password reaches 0000_role_passwords.sql as a SCRAM verifier ----
+
+
+def _target(makefile: str, name: str) -> str:
+    return makefile.split(f"\n{name}:\n", 1)[1].split("\n\n", 1)[0]
+
+
+def test_test_db_sets_app_rw_scram_from_constant(repo_root: Path) -> None:
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert "\nCI_APP_RW_PASSWORD := ci_only_app_rw_not_a_real_password\n" in makefile
+    assert (
+        "\nAPP_RW_SCRAM_CMD = printf '%s' '$(CI_APP_RW_PASSWORD)' | "
+        "uv run --frozen python scripts/db/scram_verifier.py\n" in makefile
+    )
+    assert _target(makefile, "app-rw-scram").strip() == "@$(APP_RW_SCRAM_CMD)"
+    test_db = _target(makefile, "test-db")
+    assert 'APP_RW_SCRAM="$$($(APP_RW_SCRAM_CMD))"' in test_db
+    assert "-e APP_RW_SCRAM postgres" in test_db
+    assert "-f - < scripts/db/0000_role_passwords.sql" in test_db
+    # the plaintext never sits on a psql argv: only the constant's printf feeds the helper's stdin
+    for line in test_db.splitlines():
+        if "psql" in line:
+            assert "CI_APP_RW_PASSWORD" not in line and "ci_only_app_rw" not in line

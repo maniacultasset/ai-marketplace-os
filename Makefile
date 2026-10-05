@@ -108,11 +108,23 @@ test-db:
 	  fi; \
 	  $(PSQL) -d "$$db" -f - < scripts/db/0000_bootstrap.sql; \
 	done
+	APP_RW_SCRAM="$$($(APP_RW_SCRAM_CMD))" \
+	  docker compose exec -T -e APP_RW_SCRAM postgres \
+	  psql -U postgres -v ON_ERROR_STOP=1 -X -q -d mos_iso -f - < scripts/db/0000_role_passwords.sql
+
+# The tenant-isolation suite logs in as app_rw (S9 D7, D14). Its CI-only password is this constant,
+# usable only against the local and CI test clusters; the helper reads it on stdin (printf is a
+# shell builtin, so it never sits on a process argv) and prints the SCRAM verifier.
+.PHONY: app-rw-scram
+app-rw-scram:
+	@$(APP_RW_SCRAM_CMD)
 
 # ---- tests (CANON.md:136-137; the CI env block is these three variables, CANON.md:21) ----
 TEST_DATABASE_URL ?= postgresql+psycopg://postgres:postgres@localhost:$(PG_HOST_PORT)/mos_test
 ISO_DATABASE_URL ?= postgresql+psycopg://postgres:postgres@localhost:$(PG_HOST_PORT)/mos_iso
 CI_JWT_SECRET := ci_only_not_a_real_secret_at_least_32_chars
+CI_APP_RW_PASSWORD := ci_only_app_rw_not_a_real_password
+APP_RW_SCRAM_CMD = printf '%s' '$(CI_APP_RW_PASSWORD)' | uv run --frozen python scripts/db/scram_verifier.py
 COV_FAIL_UNDER ?= 70
 
 # Alembic on mos_test before pytest (CANON.md:136): upgrade, check, downgrade, upgrade, then squawk
