@@ -30,6 +30,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql.elements import conv
 
 from app.db.base import Base
+from app.db.models._tenant import TenantScoped
 from app.db.models.facts import to_party
 from app.db.models.tenancy import (
     anchor,
@@ -62,7 +63,7 @@ def to_product(table: str, column: str) -> ForeignKeyConstraint:
     )
 
 
-class Product(Base):
+class Product(TenantScoped, Base):
     __tablename__ = "products"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_products")),
@@ -152,7 +153,7 @@ class Product(Base):
 COLOUR_KEY_SQL = "lower(btrim(((attributes -> 'color'::text) ->> 'value'::text)))"
 
 
-class ProductColourway(Base):
+class ProductColourway(TenantScoped, Base):
     __tablename__ = "product_colourways"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_product_colourways")),
@@ -197,7 +198,7 @@ class ProductColourway(Base):
     updated_at: Mapped[datetime] = updated_at_column()
 
 
-class VariantMatrixCell(Base):
+class VariantMatrixCell(TenantScoped, Base):
     __tablename__ = "variant_matrix_cells"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_variant_matrix_cells")),

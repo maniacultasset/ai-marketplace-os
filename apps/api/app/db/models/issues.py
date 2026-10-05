@@ -25,6 +25,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql.elements import conv
 
 from app.db.base import Base
+from app.db.models._tenant import TenantScoped
 from app.db.models.listings import to_listing_marketplace, to_version
 from app.db.models.tenancy import (
     anchor,
@@ -40,7 +41,7 @@ EMPTY_ARRAY = text("'[]'::jsonb")
 LIVE_TASK = "status IN ('open', 'answered')"
 
 
-class HumanTask(Base):
+class HumanTask(TenantScoped, Base):
     __tablename__ = "human_tasks"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_human_tasks")),
@@ -117,7 +118,7 @@ class HumanTask(Base):
     updated_at: Mapped[datetime] = updated_at_column()
 
 
-class ListingIssue(Base):
+class ListingIssue(TenantScoped, Base):
     __tablename__ = "listing_issues"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_listing_issues")),

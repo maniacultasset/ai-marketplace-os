@@ -26,6 +26,7 @@ from sqlalchemy.orm import Mapped, deferred, mapped_column
 from sqlalchemy.sql.elements import conv
 
 from app.db.base import Base
+from app.db.models._tenant import TenantScoped
 from app.db.models.tenancy import (
     anchor,
     created_at_column,
@@ -39,7 +40,7 @@ from app.db.models.tenancy import (
 EMPTY_OBJECT = text("'{}'::jsonb")
 
 
-class MarketplaceAccount(Base):
+class MarketplaceAccount(TenantScoped, Base):
     __tablename__ = "marketplace_accounts"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_marketplace_accounts")),
@@ -93,7 +94,7 @@ class MarketplaceAccount(Base):
     updated_at: Mapped[datetime] = updated_at_column()
 
 
-class Image(Base):
+class Image(TenantScoped, Base):
     __tablename__ = "images"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_images")),
@@ -154,7 +155,7 @@ class Image(Base):
     updated_at: Mapped[datetime] = updated_at_column()
 
 
-class Batch(Base):
+class Batch(TenantScoped, Base):
     __tablename__ = "batches"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_batches")),

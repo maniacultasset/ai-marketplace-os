@@ -30,6 +30,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql.elements import conv
 
 from app.db.base import Base
+from app.db.models._tenant import TenantScoped
 from app.db.models.tenancy import (
     anchor,
     created_at_column,
@@ -71,7 +72,7 @@ def to_listing_marketplace(table: str) -> ForeignKeyConstraint:
     )
 
 
-class Listing(Base):
+class Listing(TenantScoped, Base):
     __tablename__ = "listings"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_listings")),
@@ -188,7 +189,7 @@ class Listing(Base):
     updated_at: Mapped[datetime] = updated_at_column()
 
 
-class ListingVersion(Base):
+class ListingVersion(TenantScoped, Base):
     """Immutable except the one-time approval (lv_guard, 0004)."""
 
     __tablename__ = "listing_versions"
@@ -242,7 +243,7 @@ class ListingVersion(Base):
     created_at: Mapped[datetime] = created_at_column()
 
 
-class ReviewDecision(Base):
+class ReviewDecision(TenantScoped, Base):
     """Append-only (0004): one row per decision on an exact version."""
 
     __tablename__ = "review_decisions"
@@ -296,7 +297,7 @@ class ReviewDecision(Base):
     created_at: Mapped[datetime] = created_at_column()
 
 
-class ListingItem(Base):
+class ListingItem(TenantScoped, Base):
     """One row per sellable marketplace SKU (T45)."""
 
     __tablename__ = "listing_items"

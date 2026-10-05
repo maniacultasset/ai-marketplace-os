@@ -23,6 +23,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql.elements import conv
 
 from app.db.base import Base
+from app.db.models._tenant import TenantScoped
 from app.db.models.tenancy import (
     anchor,
     created_at_column,
@@ -65,7 +66,7 @@ def to_party(table: str, column: str) -> ForeignKeyConstraint:
     )
 
 
-class BusinessParty(Base):
+class BusinessParty(TenantScoped, Base):
     __tablename__ = "business_parties"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_business_parties")),
@@ -102,7 +103,7 @@ class BusinessParty(Base):
     updated_at: Mapped[datetime] = updated_at_column()
 
 
-class BrandProfile(Base):
+class BrandProfile(TenantScoped, Base):
     __tablename__ = "brand_profiles"
     __table_args__ = (
         PrimaryKeyConstraint("tenant_id", name=conv("pk_brand_profiles")),

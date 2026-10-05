@@ -25,12 +25,14 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql.elements import conv
 
 from app.db.base import Base
+from app.db.models._tenant import TenantScoped
 from app.db.models.tenancy import created_at_column, id_column, updated_at_column
 
 ZERO_UUID = text("'00000000-0000-0000-0000-000000000000'::uuid")
 
 
-class Rule(Base):
+class Rule(TenantScoped, Base):
+    __platform_rows__ = True
     __tablename__ = "rules"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_rules")),

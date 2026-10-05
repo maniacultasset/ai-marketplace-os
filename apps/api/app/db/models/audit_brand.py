@@ -27,6 +27,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql.elements import conv
 
 from app.db.base import Base
+from app.db.models._tenant import TenantScoped
 from app.db.models.tenancy import (
     anchor,
     created_at_column,
@@ -42,7 +43,7 @@ ZERO = text("0")
 TRUE = text("true")
 
 
-class AuditLog(Base):
+class AuditLog(TenantScoped, Base):
     """Append-only (0004), not partitioned. `tenant_id` is NULL only for a platform event."""
 
     __tablename__ = "audit_log"
@@ -102,7 +103,7 @@ class AuditLog(Base):
     )
 
 
-class BrandDocument(Base):
+class BrandDocument(TenantScoped, Base):
     __tablename__ = "brand_documents"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_brand_documents")),
@@ -145,7 +146,7 @@ class BrandDocument(Base):
     updated_at: Mapped[datetime] = updated_at_column()
 
 
-class BrandChunk(Base):
+class BrandChunk(TenantScoped, Base):
     """Maps 1:1 to `BrandChunkDTO`; the text is untrusted prompt data."""
 
     __tablename__ = "brand_chunks"
