@@ -6,15 +6,19 @@ import importlib
 import inspect
 import json
 import pkgutil
+import re
 import uuid
 from typing import Any
 
 import app.api.v1.schemas as schemas_pkg
 import pytest
+from app.api.v1.schemas.analytics import AnalyticsSummary
 from app.api.v1.schemas.auth import LoginRequest, LogoutRequest, RefreshRequest
 from app.api.v1.schemas.batches import ApproveRequest, PublishRequest, RegenerateItem
 from app.api.v1.schemas.common import StorageKey
+from app.api.v1.schemas.images import UploadUrlRequest
 from app.api.v1.schemas.listings import ListingContentPatch, RegenerateRequest
+from app.api.v1.schemas.marketplaces import ConnectRequest, MarketplaceAccountOut
 from app.api.v1.schemas.products import ProductCreate, ProductPage
 from hypothesis import given, settings
 from hypothesis import strategies as st
@@ -334,3 +338,74 @@ def test_content_patch_shape() -> None:
     ListingContentPatch.model_validate({"content": content})
     with pytest.raises(ValidationError):
         ListingContentPatch.model_validate({"content": content, "listing_id": PID})
+
+
+# ---- T9: marketplaces, images, rules, analytics ----
+_SECRETISH = re.compile(r"token|secret|password|key", re.IGNORECASE)
+
+
+def _all_property_names(schema: Any) -> set[str]:
+    names: set[str] = set()
+    if isinstance(schema, dict):
+        props = schema.get("properties")
+        if isinstance(props, dict):
+            names |= set(props)
+        for value in schema.values():
+            names |= _all_property_names(value)
+    elif isinstance(schema, list):
+        for value in schema:
+            names |= _all_property_names(value)
+    return names
+
+
+def test_account_out_has_no_secret_fields() -> None:
+    names = _all_property_names(MarketplaceAccountOut.model_json_schema(mode="serialization"))
+    assert names
+    assert not {n for n in names if _SECRETISH.search(n)}
+
+
+def _summary(**extra: Any) -> dict[str, Any]:
+    return {"from": "2026-10-01", "to": "2026-10-05", "listings_generated": 3, **extra}
+
+
+@pytest.mark.parametrize("rate", [0, 0.5, 1, None])
+def test_rates_in_range(rate: float | None) -> None:
+    AnalyticsSummary.model_validate(_summary(approval_rate=rate))
+
+
+@pytest.mark.parametrize("rate", [-0.01, 1.01, float("nan"), float("inf")])
+def test_rates_out_of_range(rate: float) -> None:
+    with pytest.raises(ValidationError):
+        AnalyticsSummary.model_validate(_summary(publish_success_rate=rate))
+
+
+def test_date_range_from_not_after_to() -> None:
+    AnalyticsSummary.model_validate(_summary(to="2026-10-01"))
+    with pytest.raises(ValidationError):
+        AnalyticsSummary.model_validate(_summary(to="2026-09-30"))
+
+
+def test_analytics_serializes_from_alias() -> None:
+    dumped = AnalyticsSummary.model_validate(_summary()).model_dump(mode="json")
+    assert "from" in dumped
+    assert "from_" not in dumped
+
+
+@pytest.mark.parametrize("size", [0, 10_485_761])
+def test_upload_url_bytes_bounds(size: int) -> None:
+    body = {"product_id": PID, "slot": "main", "content_type": "image/png", "bytes": size}
+    with pytest.raises(ValidationError):
+        UploadUrlRequest.model_validate(body)
+    UploadUrlRequest.model_validate({**body, "bytes": 10_485_760})
+
+
+def test_upload_url_content_type_images_only() -> None:
+    body = {"product_id": PID, "slot": "main", "content_type": "text/csv", "bytes": 1}
+    with pytest.raises(ValidationError):
+        UploadUrlRequest.model_validate(body)
+
+
+def test_connect_marketplace_enum() -> None:
+    ConnectRequest.model_validate({"marketplace": "amazon"})
+    with pytest.raises(ValidationError):
+        ConnectRequest.model_validate({"marketplace": "ebay"})
