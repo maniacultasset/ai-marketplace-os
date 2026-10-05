@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# contracts gate (S2): hash-pinned pydantic runtime, editable mkos-schemas, golden fixtures.
-# oasdiff remains S3.
+# contracts gate: hash-pinned pydantic runtime, editable mkos-schemas, golden fixtures (S2), then
+# the oasdiff breaking-change check on openapi.json against the base branch (S3).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -21,3 +21,4 @@ PIP_DISABLE_PIP_VERSION_CHECK=1 "$venv/bin/pip" install --no-build-isolation --n
 )
 "$venv/bin/python" scripts/ci/contracts_check.py --fixtures packages/schemas/fixtures
 echo "contracts: mkos-schemas bare venv, fixtures and pass alias OK"
+scripts/ci/oasdiff_check.sh "${CONTRACTS_BASE_REF:-origin/main}"

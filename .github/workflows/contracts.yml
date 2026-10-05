@@ -18,9 +18,11 @@ jobs:
       DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/mos_test
       JWT_SECRET: ci_only_not_a_real_secret_at_least_32_chars
     steps:
+      # Full history: oasdiff reads origin/main's openapi.json, and the version check reads tags.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: ./.github/actions/py-setup
       - run: make contracts
   schemas-drift:
