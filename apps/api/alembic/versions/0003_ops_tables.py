@@ -719,12 +719,47 @@ SUBMISSIONS_DOWN: Final[tuple[str, ...]] = (
     "DROP TABLE public.listing_submissions",
 )
 
+# ---- DEFERRED: the FKs onto 0002 columns (DATABASE.md §8.2 ledger row 0003) ----
+# Each is added NOT VALID (no scan under the lock) and then validated; the 0002 tables hold no
+# rows that reach here, so VALIDATE is instant. The template pins are plain NO ACTION: a
+# template is never deleted (validation runs and versions pin it forever, 0004 guard).
+DEFERRED_FKS: Final[tuple[tuple[str, str, str], ...]] = (
+    (
+        "listing_issues",
+        "li_error_map_fk",
+        "FOREIGN KEY (error_map_id) REFERENCES public.marketplace_error_map (id)",
+    ),
+    (
+        "validation_runs",
+        "fk_validation_runs_category_template_id_category_templates",
+        "FOREIGN KEY (category_template_id, template_version) "
+        "REFERENCES public.category_templates (id, version)",
+    ),
+    (
+        "listing_versions",
+        "fk_listing_versions_category_template_id_category_templates",
+        "FOREIGN KEY (category_template_id) REFERENCES public.category_templates (id)",
+    ),
+)
+DEFERRED_UP: Final[tuple[str, ...]] = tuple(
+    statement
+    for table, name, definition in DEFERRED_FKS
+    for statement in (
+        f"ALTER TABLE public.{table} ADD CONSTRAINT {name} {definition} NOT VALID",
+        f"ALTER TABLE public.{table} VALIDATE CONSTRAINT {name}",
+    )
+)
+DEFERRED_DOWN: Final[tuple[str, ...]] = tuple(
+    f"ALTER TABLE public.{table} DROP CONSTRAINT {name}" for table, name, _ in DEFERRED_FKS
+)
+
 SLICES: Final[tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = (
     (PLATFORM_UP, PLATFORM_DOWN),
     (JOBS_UP, JOBS_DOWN),
     (IMPORTS_UP, IMPORTS_DOWN),
     (AUTH_UP, AUTH_DOWN),
     (SUBMISSIONS_UP, SUBMISSIONS_DOWN),
+    (DEFERRED_UP, DEFERRED_DOWN),
 )
 
 

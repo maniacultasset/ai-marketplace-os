@@ -292,7 +292,7 @@ def test_issue_soft_refs_have_no_fk(db: Conn) -> None:
         "AND con.conrelid = 'listing_issues'::regclass AND EXISTS (SELECT 1 FROM pg_attribute a "
         "WHERE a.attrelid = con.conrelid AND a.attnum = ANY (con.conkey) AND a.attname IN "
         "('human_task_id', 'recurrence_of_id', 'job_id', 'validation_run_id', "
-        "'last_validation_run_id', 'error_map_id'))"
+        "'last_validation_run_id'))"
     ).fetchall()
     assert rows == []
     tenant_id, listing_id = _listing(db)
@@ -306,8 +306,8 @@ def test_issue_soft_refs_have_no_fk(db: Conn) -> None:
         job_id=ghost,
         validation_run_id=ghost,
         last_validation_run_id=ghost,
-        error_map_id=ghost,
     )
+    # error_map_id is a hard FK from 0003 on (li_error_map_fk; test_0003_deferred_fks.py)
 
 
 def test_issue_rule_fk_plain(db: Conn) -> None:

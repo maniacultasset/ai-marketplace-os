@@ -56,6 +56,18 @@ SOFT_REFERENCE_COLUMNS = frozenset(
 )
 
 
+@pytest.fixture(autouse=True)
+def _template(db: Conn) -> None:
+    """The `(TEMPLATE, 1)` category template the rules-engine pins name (the FK arrives in
+    0003, DATABASE.md §8.2)."""
+    db.execute(
+        "INSERT INTO category_templates (id, marketplace, category, version, is_current, "
+        "product_type, source, attributes) VALUES (%s, 'amazon', 't_shirts', 1, true, 'SHIRT', "
+        '\'manual\', \'{"required_attributes": [], "optional_attributes": [], "specs": {}}\')',
+        (TEMPLATE,),
+    )
+
+
 def _listing(db: Conn) -> tuple[UUID, UUID]:
     tenant_id = f.tenant(db)
     return tenant_id, f.listing(db, tenant_id)

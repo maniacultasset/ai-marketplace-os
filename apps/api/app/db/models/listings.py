@@ -206,6 +206,12 @@ class ListingVersion(Base):
         to_membership("listing_versions", "edited_by_user_id"),
         to_membership("listing_versions", "approved_by_user_id"),
         to_version("listing_versions", "parent_version_id"),
+        # added by 0003 (NOT VALID + VALIDATE): the template the AI was shown
+        ForeignKeyConstraint(
+            ["category_template_id"],
+            ["category_templates.id"],
+            name=conv("fk_listing_versions_category_template_id_category_templates"),
+        ),
         Index(
             conv("ix_listing_versions_job_id"),
             "job_id",
