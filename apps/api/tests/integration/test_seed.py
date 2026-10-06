@@ -321,6 +321,45 @@ async def test_seed_reset_clears_later_tables(superuser_conn: Conn) -> None:
     assert tombstones == (2,)  # purge_tenant 'data' and 'final'
 
 
+async def test_seed_reset_after_demo_and_login(superuser_conn: Conn, api: Any) -> None:
+    """S10 A21b (carried to S10c): the demo seed and real HTTP logins as app_rw, then
+    `seed --reset`: the reset goes through purge_tenant past the append-only login audit rows and
+    the refresh-token rows, and the reseeded world logs in again."""
+    from app.db.seed_ops import SEED_PASSWORD
+
+    assert await _seed("demo") == 0
+    login = await api.post(
+        "/api/v1/auth/login", json={"email": "owner@acme.test", "password": SEED_PASSWORD}
+    )
+    assert login.status_code == 200, login.text
+    old_refresh = login.json()["refresh_token"]
+    rotated = await api.post("/api/v1/auth/refresh", json={"refresh_token": old_refresh})
+    assert rotated.status_code == 200
+    failed = await api.post(
+        "/api/v1/auth/login", json={"email": "owner@acme.test", "password": "wrong-password"}
+    )
+    assert failed.status_code == 401
+    acme = _ids()["acme"]
+    assert _per_tenant(superuser_conn, "refresh_tokens") == {acme: 2}
+    assert _per_tenant(superuser_conn, "audit_log").get(acme) == 1  # auth.login
+    assert await _seed("demo", reset=True) == 0
+    assert _per_tenant(superuser_conn, "refresh_tokens") == {}
+    assert _per_tenant(superuser_conn, "audit_log").get(acme) is None
+    # the failed login's row has no tenant, so the purge leaves it (a platform row)
+    assert (
+        _scalar(superuser_conn, "SELECT count(*) FROM audit_log WHERE action = 'auth.login_failed'")
+        == 1
+    )
+    again = await api.post(
+        "/api/v1/auth/refresh", json={"refresh_token": rotated.json()["refresh_token"]}
+    )
+    assert again.status_code == 401
+    relogin = await api.post(
+        "/api/v1/auth/login", json={"email": "owner@acme.test", "password": SEED_PASSWORD}
+    )
+    assert relogin.status_code == 200
+
+
 async def test_seed_platform_rows_no_tenants_idempotent(superuser_conn: Conn) -> None:
     from app.cli import RULES_SEED_PATH
     from app.db.seed_ops import seed_platform_rows

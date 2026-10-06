@@ -66,11 +66,48 @@ def test_removed_rows_absent(repo_root: Path, register_names: list[str]) -> None
         assert not {name for name in source if name.startswith("ARQ_")}
 
 
+_APP_URL = (
+    "postgresql+psycopg://app_rw:ci_only_app_rw_not_a_real_password@localhost:5432/marketplace_os"
+)
+_MIGRATOR_URL = (
+    "postgresql+psycopg://migrator:ci_only_migrator_not_a_real_password@localhost:5432/"
+    "marketplace_os"
+)
+
+
+def _env_md_locals(repo_root: Path) -> dict[str, str]:
+    found: dict[str, str] = {}
+    for raw in (repo_root / "docs" / "canon" / "ENV.md").read_text(encoding="utf-8").splitlines():
+        match = _ENV_LOCAL.match(raw)
+        if match:
+            found[match.group(1)] = match.group(2)
+    return found
+
+
 def test_database_url_is_canon_local(repo_root: Path) -> None:
+    # ENV.md:34-35 (S10, user OK 2026-10-06): the app as app_rw, Alembic as migrator, psycopg 3
     values = dict(_env_example(repo_root))
-    local = "postgresql+psycopg://postgres:postgres@localhost:5432/marketplace_os"
-    assert values["DATABASE_URL"] == local
-    assert values["ALEMBIC_DATABASE_URL"] == local
+    canon = _env_md_locals(repo_root)
+    assert values["DATABASE_URL"] == canon["DATABASE_URL"] == _APP_URL
+    assert values["ALEMBIC_DATABASE_URL"] == canon["ALEMBIC_DATABASE_URL"] == _MIGRATOR_URL
+    assert "asyncpg" not in canon["DATABASE_URL"] + canon["ALEMBIC_DATABASE_URL"]
+
+
+def test_env_example_app_is_app_rw(repo_root: Path) -> None:
+    """CODE-PLAN S10 Q5: a superuser ignores RLS even under FORCE, so the local app must not log
+    in as one; the passwords are the Makefile's local dev-only constants bootstrap-db sets."""
+    from urllib.parse import urlsplit
+
+    values = dict(_env_example(repo_root))
+    app, migrator = urlsplit(values["DATABASE_URL"]), urlsplit(values["ALEMBIC_DATABASE_URL"])
+    assert (app.username, migrator.username) == ("app_rw", "migrator")
+    assert app.username != "postgres" and migrator.username != "postgres"
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert f"\nCI_APP_RW_PASSWORD := {app.password}\n" in makefile
+    assert f"\nCI_MIGRATOR_PASSWORD := {migrator.password}\n" in makefile
+    for url in (app, migrator):
+        assert str(url.password).startswith("ci_only_")
+        assert (url.hostname, url.port, url.path) == ("localhost", 5432, "/marketplace_os")
 
 
 _LOCAL_ONLY = re.compile(r"^local_only_[A-Za-z0-9_]+$")

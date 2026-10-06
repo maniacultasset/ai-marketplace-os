@@ -46,8 +46,14 @@ def test_workflows_have_no_password_literals(repo_root: Path) -> None:
         *sorted((repo_root / "scripts/ci").glob("*.sh")),
     ]
     assert len(paths) > 3
-    # S9 D14: the one allowed assignment computes app_rw's verifier from the CI-only constant.
-    computed = ('APP_RW_SCRAM="$(make -s app-rw-scram)"', 'APP_RW_SCRAM="$$($(APP_RW_SCRAM_CMD))"')
+    # S9 D14: the allowed assignments compute a verifier from a local/CI-only constant (S10 C14
+    # adds bootstrap-db's defaults for app_rw and migrator, which a caller's own value overrides).
+    computed = (
+        'APP_RW_SCRAM="$(make -s app-rw-scram)"',
+        'APP_RW_SCRAM="$$($(APP_RW_SCRAM_CMD))"',
+        'APP_RW_SCRAM="$${APP_RW_SCRAM:-$$($(APP_RW_SCRAM_CMD))}"',
+        'MIGRATOR_SCRAM="$${MIGRATOR_SCRAM:-$$($(MIGRATOR_SCRAM_CMD))}"',
+    )
     for path in paths:
         text = path.read_text(encoding="utf-8")
         for allowed in computed:
@@ -181,7 +187,11 @@ def test_makefile_passes_scram_vars_by_name(repo_root: Path) -> None:
     assert body is not None
     recipe = body.group(1)
     assert "-e APP_RW_SCRAM -e APP_RO_SCRAM -e MIGRATOR_SCRAM postgres" in recipe
-    assert not re.search(r"_SCRAM=", recipe)
+    # S10 C14: only the computed local defaults (a caller's own verifier wins); app_ro gets none
+    defaults = re.findall(r"([A-Z_]+_SCRAM)=", recipe)
+    assert defaults == ["APP_RW_SCRAM", "MIGRATOR_SCRAM"]
+    assert 'APP_RW_SCRAM="$${APP_RW_SCRAM:-$$($(APP_RW_SCRAM_CMD))}"' in recipe
+    assert 'MIGRATOR_SCRAM="$${MIGRATOR_SCRAM:-$$($(MIGRATOR_SCRAM_CMD))}"' in recipe
     assert "-f - < scripts/db/0000_bootstrap.sql" in recipe
     assert "-f - < scripts/db/0000_role_passwords.sql" in recipe
     assert "/docker-entrypoint-initdb.d/" not in makefile

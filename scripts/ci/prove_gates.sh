@@ -172,13 +172,25 @@ seed_image_checks_sqla() { append apps/api/app/services/image_checks.py 'import 
 seed_image_checks_repo() { append apps/api/app/services/image_checks.py 'import app.repositories'; }
 seed_app_imports_mock() { append apps/api/app/main.py 'import app_mock'; }
 # S3 AC9: an implemented route without its case matrix, then one still on presence-only auth.
+# S10 implemented auth_me, so the S3 case-matrix legs seed a route that is still a stub.
 seed_case_matrix() {
   cp "$root/.env" .env
-  replace apps/api/app/api/v1/routers/auth.py $'@stub\nasync def auth_me(' 'async def auth_me('
+  replace apps/api/app/api/v1/routers/tenants.py $'@stub\nasync def tenants_me(' 'async def tenants_me('
 }
 seed_presence_only_auth() {
   seed_case_matrix
-  new_file apps/api/tests/unit/test_seeded_auth_me_cases.py $'import pytest\n\n\n@pytest.mark.endpoint("auth_me", case="success")\n@pytest.mark.endpoint("auth_me", case="missing_auth")\n@pytest.mark.endpoint("auth_me", case="wrong_tenant")\n@pytest.mark.endpoint("auth_me", case="invalid_token", variant="expired")\n@pytest.mark.endpoint("auth_me", case="invalid_token", variant="bad_signature")\n@pytest.mark.endpoint("auth_me", case="invalid_token", variant="wrong_typ")\ndef test_seeded() -> None:\n    pass'
+  # S10's route() wires require()/public(); the seed adds S3's presence-only check back by hand.
+  replace apps/api/app/api/v1/routers/tenants.py 'router = APIRouter()' $'from fastapi import Depends\n\nfrom app.api.v1.deps import bearer_required\n\nrouter = APIRouter(dependencies=[Depends(bearer_required)])'
+  new_file apps/api/tests/unit/test_seeded_tenants_me_cases.py $'import pytest\n\n\n@pytest.mark.endpoint("tenants_me", case="success")\n@pytest.mark.endpoint("tenants_me", case="missing_auth")\n@pytest.mark.endpoint("tenants_me", case="wrong_tenant")\n@pytest.mark.endpoint("tenants_me", case="invalid_token", variant="expired")\n@pytest.mark.endpoint("tenants_me", case="invalid_token", variant="bad_signature")\n@pytest.mark.endpoint("tenants_me", case="invalid_token", variant="wrong_typ")\ndef test_seeded() -> None:\n    pass'
+}
+# S10c: a route registered with no policy, and the login limiter removed.
+seed_route_without_role() {
+  cp "$root/.env" .env
+  replace apps/api/app/api/v1/surface.py '            dependencies=[_policy(op)],' '            dependencies=[] if op.op_id == "rules_list" else [_policy(op)],'
+}
+seed_limiter_off() {
+  cp "$root/.env" .env
+  replace apps/api/app/api/v1/routers/auth.py $'    await enforce_login_limit(request, body.email)\n' ''
 }
 # S11: the redaction processor and the request-id column default are guards.
 seed_no_log_redaction() { replace apps/api/app/core/logging.py $'        _redact,\n        _finalise,' '        _finalise,'; }
@@ -377,10 +389,12 @@ if [ "$with_docker" -eq 1 ]; then
   self_project="$(docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"
   leg api-tests-failing-test api-tests 'test_seeded' seed_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-schema-test api-tests 'test_seeded' seed_schema_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-case-matrix api-tests 'auth_me: missing endpoint cases' seed_case_matrix COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-case-matrix api-tests 'tenants_me: missing endpoint cases' seed_case_matrix COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-no-log-redaction api-tests 'test_redaction_logs' seed_no_log_redaction COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-no-request-id-default api-tests 'test_request_id_stamped_on_rows|test_every_request_id_column_stamped' seed_no_request_id_default COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-presence-only-auth api-tests 'auth_me: presence-only bearer_required' seed_presence_only_auth COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-presence-only-auth api-tests 'tenants_me: presence-only bearer_required' seed_presence_only_auth COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-route-without-role api-tests 'test_every_route_declares_role' seed_route_without_role COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-limiter-off api-tests 'test_rate_limit_sixth_login_429' seed_limiter_off COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg contracts-response-field-removed contracts 'response-required-property-removed' seed_response_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
   leg contracts-response-optional-property-removed contracts 'response-optional-property-removed' seed_optional_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
   leg contracts-response-non-success-status-removed contracts 'response-non-success-status-removed' seed_error_status_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
@@ -411,13 +425,13 @@ if [ "$with_docker" -eq 1 ]; then
   leg tenant-isolation-no-before-flush tenant-isolation 'test_flush_rejects_other_tenant' seed_iso_no_before_flush COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   # Bootstrap legs use their own project on this checkout's host ports; pause this stack meanwhile.
   docker compose stop >/dev/null 2>&1
-  leg bootstrap-empty-venv bootstrap "No module named 'mkos_schemas'" seed_no_uv_project_env COMPOSE_PROJECT_NAME="prove-gates-bootstrap-${self_project}" DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/marketplace_os ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/marketplace_os S3_ENDPOINT_URL=http://localhost:${MINIO_API_HOST_PORT:-9000} PORT=${API_HOST_PORT:-8000} make bootstrap
+  leg bootstrap-empty-venv bootstrap "No module named 'mkos_schemas'" seed_no_uv_project_env COMPOSE_PROJECT_NAME="prove-gates-bootstrap-${self_project}" DATABASE_URL=postgresql+psycopg://app_rw:ci_only_app_rw_not_a_real_password@localhost:${PG_HOST_PORT:-5432}/marketplace_os ALEMBIC_DATABASE_URL=postgresql+psycopg://migrator:ci_only_migrator_not_a_real_password@localhost:${PG_HOST_PORT:-5432}/marketplace_os S3_ENDPOINT_URL=http://localhost:${MINIO_API_HOST_PORT:-9000} PORT=${API_HOST_PORT:-8000} make bootstrap
   docker compose -p "prove-gates-bootstrap-${self_project}" down -v >/dev/null 2>&1
   docker image rm -f "mkos-api:ci-prove-gates-bootstrap-${self_project}" >/dev/null 2>&1
-  leg bootstrap-misspelled-bucket bootstrap 'bucket marketplace-csv missing' seed_misspelled_bucket COMPOSE_PROJECT_NAME="prove-gates-bootstrap-${self_project}" DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/marketplace_os ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/marketplace_os S3_ENDPOINT_URL=http://localhost:${MINIO_API_HOST_PORT:-9000} PORT=${API_HOST_PORT:-8000} make bootstrap
+  leg bootstrap-misspelled-bucket bootstrap 'bucket marketplace-csv missing' seed_misspelled_bucket COMPOSE_PROJECT_NAME="prove-gates-bootstrap-${self_project}" DATABASE_URL=postgresql+psycopg://app_rw:ci_only_app_rw_not_a_real_password@localhost:${PG_HOST_PORT:-5432}/marketplace_os ALEMBIC_DATABASE_URL=postgresql+psycopg://migrator:ci_only_migrator_not_a_real_password@localhost:${PG_HOST_PORT:-5432}/marketplace_os S3_ENDPOINT_URL=http://localhost:${MINIO_API_HOST_PORT:-9000} PORT=${API_HOST_PORT:-8000} make bootstrap
   docker compose -p "prove-gates-bootstrap-${self_project}" down -v >/dev/null 2>&1
   docker image rm -f "mkos-api:ci-prove-gates-bootstrap-${self_project}" >/dev/null 2>&1
-  leg bootstrap-mimic-no-set-role bootstrap 'permission denied to change default privileges' seed_bootstrap_no_set_role COMPOSE_PROJECT_NAME="prove-gates-bootstrap-${self_project}" DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/marketplace_os ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/marketplace_os S3_ENDPOINT_URL=http://localhost:${MINIO_API_HOST_PORT:-9000} PORT=${API_HOST_PORT:-8000} make bootstrap
+  leg bootstrap-mimic-no-set-role bootstrap 'permission denied to change default privileges' seed_bootstrap_no_set_role COMPOSE_PROJECT_NAME="prove-gates-bootstrap-${self_project}" DATABASE_URL=postgresql+psycopg://app_rw:ci_only_app_rw_not_a_real_password@localhost:${PG_HOST_PORT:-5432}/marketplace_os ALEMBIC_DATABASE_URL=postgresql+psycopg://migrator:ci_only_migrator_not_a_real_password@localhost:${PG_HOST_PORT:-5432}/marketplace_os S3_ENDPOINT_URL=http://localhost:${MINIO_API_HOST_PORT:-9000} PORT=${API_HOST_PORT:-8000} make bootstrap
   docker compose -p "prove-gates-bootstrap-${self_project}" down -v >/dev/null 2>&1
   docker image rm -f "mkos-api:ci-prove-gates-bootstrap-${self_project}" >/dev/null 2>&1
   docker compose start >/dev/null 2>&1

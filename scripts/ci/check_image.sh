@@ -46,19 +46,21 @@ pythons="$(docker exec "$cid" sh -c \
   'for f in /proc/[0-9]*/cmdline; do tr "\0" " " < "$f" 2>/dev/null; echo; done' | grep -c python)"
 [ "$pythons" -eq 1 ] || fail "want exactly one python process, found $pythons"
 
-# S3: the frozen /api/v1 surface, through the image. No token is 401; a token reaches the stub (501);
-# both are the error envelope with X-Request-ID; openapi.json lists every registry operation.
+# S3: the frozen /api/v1 surface, through the image. No token is 401, and since S10 an unverified
+# token is 401 too (no database is reachable here, and none is needed to refuse it); both are the
+# error envelope with X-Request-ID; openapi.json lists every registry operation. A verified token
+# reaching a 501 stub is the bootstrap auth leg's (scripts/ci/auth_e2e.py, on the compose network).
 work="$(mktemp -d)"
 trap 'cleanup; rm -rf "$work"' EXIT
 api="http://127.0.0.1:${port}/api/v1/products"
 code="$(curl -s -o "$work/401.json" -w '%{http_code}' "$api")"
 [ "$code" = "401" ] || fail "GET /api/v1/products without a token gave $code, want 401"
-code="$(curl -s -D "$work/501.headers" -o "$work/501.json" -w '%{http_code}' -H 'Authorization: Bearer x' "$api")"
-[ "$code" = "501" ] || fail "GET /api/v1/products with a token gave $code, want 501"
-grep -qi '^x-request-id: ' "$work/501.headers" || fail "the 501 envelope has no X-Request-ID"
-python3 - "$work/401.json" "$work/501.json" <<'PY' || fail "a /api/v1 error is not the envelope"
+code="$(curl -s -D "$work/bad.headers" -o "$work/bad.json" -w '%{http_code}' -H 'Authorization: Bearer x' "$api")"
+[ "$code" = "401" ] || fail "GET /api/v1/products with an unverified token gave $code, want 401"
+grep -qi '^x-request-id: ' "$work/bad.headers" || fail "the 401 envelope has no X-Request-ID"
+python3 - "$work/401.json" "$work/bad.json" <<'PY' || fail "a /api/v1 error is not the envelope"
 import json, sys
-for path, code in zip(sys.argv[1:], ("UNAUTHENTICATED", "NOT_IMPLEMENTED")):
+for path, code in zip(sys.argv[1:], ("UNAUTHENTICATED", "UNAUTHENTICATED")):
     error = json.load(open(path))["error"]
     assert error["type"] == code and error["error_report"]["error_code"] == code, error
     assert error["correlation_id"] and error["error_report"]["errors"][0]["source"] == "system", error
@@ -68,4 +70,4 @@ curl -sf "http://127.0.0.1:${port}/openapi.json" >"$work/openapi.json" || fail "
 served="$(python3 -c 'import json, sys; spec = json.load(open(sys.argv[1])); print(sum(len(item) for path, item in spec["paths"].items() if path.startswith("/api/v1/")))' "$work/openapi.json")"
 [ "$served" = "$registry" ] || fail "/openapi.json lists $served /api/v1 operations, the registry $registry"
 
-echo "check_image: OK ($image: uid 10001, one uvicorn, no gunicorn, clean /src, /healthz 200, /api/v1 401/501 envelopes, $served operations)"
+echo "check_image: OK ($image: uid 10001, one uvicorn, no gunicorn, clean /src, /healthz 200, /api/v1 401 envelopes, $served operations)"
