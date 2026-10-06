@@ -14,6 +14,10 @@ RAW_INSERT = re.compile(
     r"(audit_log|review_decisions|validation_runs|batches|job_runs|agent_runs|human_tasks)\b",
     re.IGNORECASE,
 )
+# purge_tenant (0004/18) records its own run: a system actor with no request (it runs from the
+# migrator, never inside an HTTP request, so request_id is rightly NULL), and its `after` carries
+# mode and row counts, which audit()'s tenant allow-list would strip.
+ALLOWED = {"apps/api/alembic/sql/0004/18_purge_tenant.up.sql: INSERT INTO public.audit_log"}
 DEFINES_AUDIT = re.compile(r"CREATE\s+(OR\s+REPLACE\s+)?FUNCTION\s+(public\.)?audit\s*\(", re.I)
 
 
@@ -42,7 +46,7 @@ def _offenders(repo_root: Path) -> list[str]:
         if DEFINES_AUDIT.search(text):
             continue  # the one SQL-side writer: audit() inserts into audit_log
         found += [f"{path.relative_to(repo_root)}: {hit}" for hit in raw_insert_hits(text)]
-    return found
+    return [hit for hit in found if hit not in ALLOWED]
 
 
 def test_no_raw_sql_insert_into_request_id_tables(repo_root: Path) -> None:

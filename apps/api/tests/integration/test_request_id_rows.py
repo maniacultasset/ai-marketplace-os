@@ -84,13 +84,12 @@ def seed(head_db: ScratchDb) -> Iterator[TenantSeed]:
     with psycopg.connect(head_db.libpq, autocommit=True, connect_timeout=5) as conn:
         side = seed_tenant(conn)
     yield side
+    # agent_runs and validation_runs are append-only (0004): the database's own purge, as the
+    # migrator, is the one path that removes a tenant and every row it wrote
     with psycopg.connect(head_db.libpq, autocommit=True, connect_timeout=5) as conn:
-        for table in ("job_runs", "agent_runs", "validation_runs"):
-            conn.execute(
-                f"DELETE FROM {table} WHERE tenant_id = %s",  # noqa: S608 - fixed names
-                (side.tenant_id,),
-            )
-        conn.execute("DELETE FROM tenants WHERE id = %s", (side.tenant_id,))
+        conn.execute("SET SESSION AUTHORIZATION migrator")
+        for mode in ("data", "final"):
+            conn.execute("SELECT purge_tenant(%s, %s, force => true)", (side.tenant_id, mode))
 
 
 @pytest.fixture
