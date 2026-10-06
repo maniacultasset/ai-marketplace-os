@@ -90,8 +90,8 @@ def test_issue_error_never_dismissed(db: Conn) -> None:
 def test_issue_classification_immutable(db: Conn, assignment: str) -> None:
     """An open issue's classification is frozen like its identity: a retry_class change would move
     it off the publish gate's anti-loop check, a severity change would let an error be dismissed."""
-    _, issue = _issue(db, retry_class="user_action")
-    with as_app_rw(db):
+    tenant, issue = _issue(db, retry_class="user_action")
+    with as_app_rw(db, tenant):
         expect_sqlstate(
             db,
             "GRD01",
@@ -103,7 +103,7 @@ def test_issue_classification_immutable(db: Conn, assignment: str) -> None:
 def test_error_issue_downgraded_then_dismissed_refused(db: Conn) -> None:
     tenant, issue = _issue(db)  # an open `error`
     reviewer = f.member(db, tenant, role="reviewer")
-    with as_app_rw(db):
+    with as_app_rw(db, tenant):
         expect_sqlstate(
             db, "GRD01", "UPDATE listing_issues SET severity = 'warning' WHERE id = %s", (issue,)
         )

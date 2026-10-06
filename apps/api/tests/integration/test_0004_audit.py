@@ -99,7 +99,7 @@ def test_audit_inserts_one_row(db: Conn) -> None:
     tenant = f.tenant(db)
     owner = f.member(db, tenant)
     total = db.execute("SELECT count(*) FROM audit_log").fetchone()
-    with as_app_rw(db):
+    with as_app_rw(db, tenant):
         rid = call_audit(db, tenant, actor_type="user", actor_user_id=owner, entity_id=owner)
     assert db.execute("SELECT count(*) FROM audit_log").fetchone() == (total[0] + 1,)  # type: ignore[index]
     row = _row(db, rid)
@@ -109,7 +109,7 @@ def test_audit_inserts_one_row(db: Conn) -> None:
 
 def test_audit_filters_to_allowlist(db: Conn) -> None:
     tenant = f.tenant(db)
-    with as_app_rw(db):
+    with as_app_rw(db, tenant):
         rid = call_audit(
             db,
             tenant,
@@ -123,7 +123,7 @@ def test_audit_filters_to_allowlist(db: Conn) -> None:
 
 def test_audit_null_before_stays_null(db: Conn) -> None:
     tenant = f.tenant(db)
-    with as_app_rw(db):
+    with as_app_rw(db, tenant):
         rid = call_audit(db, tenant, after={"email": "a@x.test"})
     row = _row(db, rid)
     assert row[5] is None
@@ -132,7 +132,7 @@ def test_audit_null_before_stays_null(db: Conn) -> None:
 
 def test_audit_unknown_entity_raises(db: Conn) -> None:
     tenant = f.tenant(db)
-    with as_app_rw(db):
+    with as_app_rw(db, tenant):
         expect_sqlstate(
             db,
             "GRD01",
@@ -164,7 +164,7 @@ def test_audit_null_tenant_system_ok(db: Conn) -> None:
 def test_audit_null_tenant_user_actor_rejected(db: Conn) -> None:
     tenant = f.tenant(db)
     owner = f.member(db, tenant)
-    with as_app_rw(db):
+    with as_app_rw(db, tenant):
         expect_sqlstate(
             db,
             "23514",
@@ -176,7 +176,7 @@ def test_audit_null_tenant_user_actor_rejected(db: Conn) -> None:
 
 def test_audit_staff_needs_email(db: Conn) -> None:
     tenant = f.tenant(db)
-    with as_app_rw(db):
+    with as_app_rw(db, tenant):
         expect_sqlstate(
             db,
             "23514",
@@ -229,7 +229,7 @@ def test_audit_allowlist_exact(db: Conn, entity: str) -> None:
 @pytest.mark.parametrize("entity", ["brand_document", "user"])
 def test_audit_empty_allowlist_entity_ok(db: Conn, entity: str) -> None:
     tenant = f.tenant(db)
-    with as_app_rw(db):
+    with as_app_rw(db, tenant):
         rid = call_audit(db, tenant, entity_type=entity, before={}, after={"filename": "x.pdf"})
     row = _row(db, rid)
     assert row[4:7] == (entity, {}, {})

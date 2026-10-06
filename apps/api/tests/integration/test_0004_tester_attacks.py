@@ -95,8 +95,13 @@ def test_lv_guard_reads_the_versions_tenant_membership(db: Conn) -> None:
     dual = f.user(db)
     f.insert(db, "tenant_memberships", tenant_id=acme, user_id=dual, role="operator")
     f.insert(db, "tenant_memberships", tenant_id=bharat, user_id=dual, role="reviewer")
+    set_gucs(db, tenant_id=bharat)
+    # the superuser bypasses RLS: the guard alone, under a forged GUC naming B
+    expect_sqlstate(db, "MKC01", APPROVE_SQL, (dual, version))
     with as_app_rw(db):
-        set_gucs(db, tenant_id=bharat)
+        # as app_rw, 0005's RLS hides A's version under B's GUC: nothing to approve
+        assert db.execute(APPROVE_SQL, (dual, version)).rowcount == 0
+    with as_app_rw(db, acme):
         expect_sqlstate(db, "MKC01", APPROVE_SQL, (dual, version))
 
 
@@ -108,7 +113,7 @@ def test_lv_guard_stamps_approved_at_now(db: Conn) -> None:
         db, tenant, listing, None, "generation", f.member(db, tenant, role="operator")
     )
     reviewer = f.member(db, tenant, role="reviewer")
-    with as_app_rw(db):
+    with as_app_rw(db, tenant):
         db.execute(
             "UPDATE listing_versions SET approved_by_user_id = %s, "
             "approved_at = '2001-01-01T00:00:00Z' WHERE id = %s",

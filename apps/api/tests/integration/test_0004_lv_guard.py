@@ -17,7 +17,7 @@ from psycopg import sql
 
 from . import factories as f
 from .conftest import ScratchDb, expect_sqlstate, head_database
-from .integrity_support import APPROVE_SQL, approve, as_app_rw, next_version
+from .integrity_support import APPROVE_SQL, approve, as_app_rw, next_version, tenant_of
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 
@@ -34,7 +34,7 @@ def _setup(db: Conn) -> tuple[UUID, UUID, UUID, UUID]:
 
 
 def _refused(db: Conn, version: UUID, approver: UUID, code: str = "MKC01") -> None:
-    with as_app_rw(db):
+    with as_app_rw(db, tenant_of(db, "listing_versions", version)):
         expect_sqlstate(db, code, APPROVE_SQL, (approver, version))
 
 
@@ -98,7 +98,7 @@ def test_db_maker_checker_chain_reset_by_full_regen(db: Conn) -> None:
     v2 = next_version(db, tenant, listing, v1, "edit", generator, edited_by=editor)
     regenerator = f.member(db, tenant, role="operator")
     v3 = next_version(db, tenant, listing, v2, "regeneration", regenerator)
-    with as_app_rw(db):
+    with as_app_rw(db, tenant):
         approve(db, v3, editor)
     row = db.execute(
         "SELECT approved_by_user_id, approved_at = now() FROM listing_versions WHERE id = %s",
@@ -110,10 +110,10 @@ def test_db_maker_checker_chain_reset_by_full_regen(db: Conn) -> None:
 def test_db_maker_checker_approval_set_once(db: Conn) -> None:
     tenant, _, version, _ = _setup(db)
     first, second = f.member(db, tenant, role="reviewer"), f.member(db, tenant, role="owner")
-    with as_app_rw(db):
+    with as_app_rw(db, tenant):
         approve(db, version, first)
     _refused(db, version, second, code="GRD01")
-    with as_app_rw(db):
+    with as_app_rw(db, tenant):
         expect_sqlstate(
             db,
             "GRD01",
@@ -149,14 +149,16 @@ def test_db_maker_checker_content_immutable(db: Conn, assignment: str) -> None:
 
 def test_db_maker_checker_reviewer_passes(db: Conn) -> None:
     tenant, _, version, _ = _setup(db)
-    with as_app_rw(db):
-        approve(db, version, f.member(db, tenant, role="reviewer"))
+    approver = f.member(db, tenant, role="reviewer")
+    with as_app_rw(db, tenant):
+        approve(db, version, approver)
 
 
 def test_db_maker_checker_owner_passes(db: Conn) -> None:
     tenant, _, version, _ = _setup(db)
-    with as_app_rw(db):
-        approve(db, version, f.member(db, tenant, role="owner"))
+    approver = f.member(db, tenant, role="owner")
+    with as_app_rw(db, tenant):
+        approve(db, version, approver)
 
 
 def test_db_maker_checker_no_delete(db: Conn) -> None:
@@ -219,11 +221,11 @@ def test_db_maker_checker_insert_preapproved_app_rw(db: Conn) -> None:
     """The privilege path: app_rw holds no INSERT on the two approval columns (42501), while an
     unapproved INSERT of the other columns still works."""
     for name, (*values, approver) in _preapproved_cases(db).items():
-        with as_app_rw(db):
+        with as_app_rw(db, values[0]):
             err = expect_sqlstate(db, "42501", INSERT_APPROVED, (*values, approver, "2026-10-05"))
         assert "permission denied" in str(err), name
     tenant, listing, _, generator = _setup(db)
-    with as_app_rw(db):
+    with as_app_rw(db, tenant):
         db.execute(
             "INSERT INTO listing_versions (tenant_id, listing_id, version, content_json, origin, "
             "generated_by_user_id) VALUES (%s, %s, 7, '{\"title\": \"t\"}', 'generation', %s)",
@@ -256,6 +258,7 @@ def test_db_maker_checker_race_approve_vs_deactivate(race_db: ScratchDb, tmp_pat
 
         def run_approve() -> None:
             with psycopg.connect(race_db.libpq) as approver:
+                approver.execute("SELECT set_config('app.tenant_id', %s, true)", [str(tenant)])
                 approver.execute("SET ROLE app_rw")
                 try:
                     approve(approver, version, reviewer)
@@ -322,7 +325,7 @@ def test_db_maker_checker_property(
                 contributors = {users[maker]}
         refused = users[approver] in contributors
         try:
-            with as_app_rw(db), db.transaction():
+            with as_app_rw(db, tenant), db.transaction():
                 approve(db, version, users[approver])
         except psycopg.Error as error:
             assert refused and error.sqlstate == "MKC01", error

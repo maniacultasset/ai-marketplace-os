@@ -239,6 +239,9 @@ async def seed_users_and_memberships(session: AsyncSession, tenant: SeedTenant) 
     tenant_id = seed_tenant_id(tenant.slug)
     for role in ROLES:
         email = seed_user_email(role, tenant.slug)
+        # 0005's RLS: a user row is read and inserted by its login email (users_login and
+        # users_signup), as the login and signup flows do; transaction-local.
+        await session.execute(select(func.set_config("app.login_email", email.lower(), True)))
         user_id = await _user_id(session, email)
         if user_id is None:
             await session.execute(
@@ -254,6 +257,7 @@ async def seed_users_and_memberships(session: AsyncSession, tenant: SeedTenant) 
             .values(tenant_id=tenant_id, user_id=user_id, role=role)
             .on_conflict_do_nothing(constraint="uq_tenant_memberships_tenant_id_user_id")
         )
+    await session.execute(select(func.set_config("app.login_email", "", True)))
     return len(ROLES)
 
 

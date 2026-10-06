@@ -13,7 +13,7 @@ from psycopg import sql
 
 from . import factories as f
 from .conftest import expect_sqlstate
-from .integrity_support import disable_0004_guard
+from .integrity_support import disable_0004_guard, rls_tenant
 from .test_0001_catalog import TABLES_0001
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
@@ -47,7 +47,7 @@ def _set_role(conn: Conn, role: str) -> None:
 def test_updated_at_moves_under_app_rw(db: Conn) -> None:
     """`set_updated_at()` has no EXECUTE grant for app_rw; the trigger must still fire."""
     _set_role(db, "app_rw")
-    tenant_id = f.tenant(db)
+    tenant_id = rls_tenant(db)  # 0005: the tenant GUC comes first under RLS
     product_id = f.product(db, tenant_id)
     db.execute("SET LOCAL ROLE postgres")
     db.execute("SET LOCAL session_replication_role = replica")

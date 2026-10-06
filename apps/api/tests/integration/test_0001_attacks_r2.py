@@ -12,7 +12,7 @@ import pytest
 
 from . import factories as f
 from .conftest import expect_sqlstate
-from .integrity_support import disable_0004_guard
+from .integrity_support import disable_0004_guard, set_gucs
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 
@@ -52,6 +52,7 @@ def test_update_onto_other_tenants_colour_key_is_23503(db: Conn) -> None:
     b_style, _ = _victim(db)
     a = f.tenant(db)
     mine = f.colourway(db, a, f.product(db, a, "style"), attributes=_colour("Navy"))
+    set_gucs(db, tenant_id=a)  # 0005: A's unit of work
     db.execute("SET LOCAL ROLE app_rw")
     expect_sqlstate(
         db,
@@ -67,6 +68,7 @@ def test_update_onto_other_tenants_cell_is_23503(db: Conn) -> None:
     b_style, b_colourway = _victim(db)
     a = f.tenant(db)
     mine = f.cell(db, a, f.product(db, a, "style"), size_key="m")
+    set_gucs(db, tenant_id=a)  # 0005: A's unit of work
     db.execute("SET LOCAL ROLE app_rw")
     error = expect_sqlstate(
         db,
@@ -83,6 +85,7 @@ def test_update_onto_other_tenants_variant_key_is_23503(db: Conn) -> None:
     a = f.tenant(db)
     a_style = f.product(db, a, "style")
     child = f.product(db, a, "child", parent=a_style, variant_key="color=navy|size=m")
+    set_gucs(db, tenant_id=a)  # 0005: A's unit of work
     db.execute("SET LOCAL ROLE app_rw")
     expect_sqlstate(
         db,
@@ -97,6 +100,7 @@ def test_insert_as_app_rw_is_23503(db: Conn) -> None:
     """The app's own role gets the same FK-first answer on all three inserts."""
     b_style, b_colourway = _victim(db)
     a = f.tenant(db)
+    set_gucs(db, tenant_id=a)  # 0005: A's unit of work
     db.execute("SET LOCAL ROLE app_rw")
     writes: list[Callable[[], object]] = [
         lambda: f.cell(db, a, b_style, colourway_id=b_colourway, size_key="m"),

@@ -442,6 +442,7 @@ def test_ls_guard_race_two_jobs_one_wins(race_db: ScratchDb) -> None:
 
     def send(n: int) -> None:
         with psycopg.connect(race_db.libpq) as conn:
+            conn.execute("SELECT set_config('app.tenant_id', %s, true)", [str(fl.tenant_id)])
             conn.execute("SET ROLE app_rw")
             try:
                 barrier.wait(timeout=5)

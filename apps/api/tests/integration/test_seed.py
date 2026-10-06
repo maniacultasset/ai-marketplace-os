@@ -301,13 +301,14 @@ async def test_seed_reset_clears_later_tables(superuser_conn: Conn) -> None:
         "SELECT id FROM users WHERE lower(email) = 'owner@acme.test'"
     ).fetchone()
     assert owner is not None
-    superuser_conn.execute("SET ROLE app_rw")
-    superuser_conn.execute(
-        "SELECT audit(%s, 'user', %s, 'auth.login', 'user', %s, NULL, NULL, NULL, 'req-login', "
-        "NULL, '10.0.0.9', NULL)",
-        (acme, owner[0], owner[0]),
-    )
-    superuser_conn.execute("RESET ROLE")
+    with superuser_conn.transaction():  # the login's unit of work: acme's GUC (0005), app_rw
+        superuser_conn.execute("SELECT set_config('app.tenant_id', %s, true)", [str(acme)])
+        superuser_conn.execute("SET LOCAL ROLE app_rw")
+        superuser_conn.execute(
+            "SELECT audit(%s, 'user', %s, 'auth.login', 'user', %s, NULL, NULL, NULL, "
+            "'req-login', NULL, '10.0.0.9', NULL)",
+            (acme, owner[0], owner[0]),
+        )
     others = {t: _per_tenant(superuser_conn, t).get(other.tenant_id) for t in tables}
     assert await _seed("isolation", reset=True) == 0
     for table in tables:

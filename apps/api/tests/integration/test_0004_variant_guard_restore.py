@@ -141,6 +141,7 @@ def test_restore_races_style_change(race_db: ScratchDb, change: str, restore_fir
 
     def run_second() -> None:
         with psycopg.connect(race_db.libpq) as conn:
+            conn.execute("SELECT set_config('app.tenant_id', %s, true)", [str(tenant)])
             conn.execute("SET ROLE app_rw")
             try:
                 second(conn)
@@ -151,6 +152,7 @@ def test_restore_races_style_change(race_db: ScratchDb, change: str, restore_fir
                 outcome.append(error.sqlstate)
 
     with psycopg.connect(race_db.libpq) as one:
+        one.execute("SELECT set_config('app.tenant_id', %s, true)", [str(tenant)])
         one.execute("SET ROLE app_rw")
         first(one)
         thread = threading.Thread(target=run_second)

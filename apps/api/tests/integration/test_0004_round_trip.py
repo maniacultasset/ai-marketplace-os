@@ -95,12 +95,20 @@ def _names(db: ScratchDb) -> dict[str, set[str]]:
     }
 
 
+def _check_at_head(cfg: Config) -> None:
+    """`alembic check` runs only at the head (0005 and later sit above 0004): up, check, and back
+    down to 0004, which also round-trips every later revision."""
+    command.upgrade(cfg, "head")
+    command.check(cfg)
+    command.downgrade(cfg, REVISION)
+
+
 def test_0004_round_trip(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None:
     cfg = alembic_env(None)
     command.upgrade(cfg, PREVIOUS)
     at_previous, grants_previous = _objects(scratch_db), _grants(scratch_db)
     command.upgrade(cfg, REVISION)
-    command.check(cfg)
+    _check_at_head(cfg)
     at_head, grants_head = _objects(scratch_db), _grants(scratch_db)
     names = _names(scratch_db)
     assert names["functions"] >= FUNCTIONS_0004
@@ -121,6 +129,6 @@ def test_0004_round_trip(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None
     assert _objects(scratch_db) == at_previous
     assert _grants(scratch_db) == grants_previous
     command.upgrade(cfg, REVISION)
-    command.check(cfg)
+    _check_at_head(cfg)
     assert _objects(scratch_db) == at_head
     assert _grants(scratch_db) == grants_head
