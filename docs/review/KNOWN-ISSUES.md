@@ -15,6 +15,7 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 | `rejected` is used by D13 (reviewer regenerate) and by "Reject with feedback", but it is not one of the 9 listing statuses. There is also no status for a partially published listing. | A reviewer's rejection has no persisted state. | S2, S7 (S2: no 10th status (reject → `blocked`, `ListingResult.status` `partially_published`); S7 adds the columns) |
 | Emails are unique only per tenant `(tenant_id, lower(email))`, but login is by email and password with no tenant input. | The same email in two tenants makes login ambiguous. | S6, S10 |
 | The ops role (who clears BLOCKED, failed-publish and DLQ items), the analytics screen contents and the confidence-score formula are all undefined. | These are product gaps with no owner. | later |
+| `banned_terms` normalisation (S14a PLAN D3a: NFKC, casefold, whitespace collapse) keeps format characters (Cf: U+200B, U+00AD, U+2060, U+FEFF), so `be\u200bst` passes a `best` ban. The site asks for an exact match, not a semantic one (system-arch-llms-full.txt L11559). | A seller or a model can slip a banned claim past the engine with an invisible character. Proposed: drop default-ignorable Cf characters after NFKC in `normalise`, except ZWJ/ZWNJ (U+200C/U+200D), which change Devanagari rendering; needs a D3a ruling. | S14b (before tenant banned-term rows) |
 
 ## B. Canon/Addendum design gaps (need an ADR plus a Canon edit)
 
