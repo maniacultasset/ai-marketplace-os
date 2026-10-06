@@ -148,3 +148,15 @@ def without_correlation(body: dict[str, Any]) -> dict[str, Any]:
     report["request_id"] = "-"
     error["error_report"] = report
     return {"error": error}
+
+
+def site_body(sku: str = "S12-KURTA-1", **overrides: Any) -> dict[str, Any]:
+    """The spec's create body (L11317-11322), with a category (DEVIATIONS T0, D3)."""
+    body: dict[str, Any] = {
+        "sku": sku,
+        "title": "Organic Cotton Kurta",
+        "category": "kurtas",
+        "attributes": {"color": "navy blue", "material": "organic cotton"},
+    }
+    body.update(overrides)
+    return body

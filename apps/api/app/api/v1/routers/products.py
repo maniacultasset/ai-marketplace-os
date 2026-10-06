@@ -1,4 +1,6 @@
-"""Product stubs (owner steps S12, S13)."""
+"""Products (owner steps S12, S13). Create, list and read are S12's (CODE-PLAN S12 T9-T12): the
+route maps the request onto the service and the view onto `ProductOut`; domain errors render
+through the shared handlers (`app/api/errors.py`). The CSV import stays S13's stub."""
 
 from __future__ import annotations
 
@@ -10,19 +12,48 @@ from fastapi import Path as PathParam
 
 from app.api.errors import NotImplementedYet
 from app.api.pagination import PageParams
-from app.api.v1.deps import IdempotencyKey
-from app.api.v1.schemas.products import ProductCreate
+from app.api.v1.deps import IdempotencyKey, get_current_principal
+from app.api.v1.schemas.products import ProductCreate, ProductOut
 from app.api.v1.surface import OPS, route, stub
+from app.core.rbac import Principal
+from app.services import products
 
 router = APIRouter()
+CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
+
+
+def _out(view: products.ProductView) -> ProductOut:
+    return ProductOut.model_validate(
+        {
+            "id": view.id,
+            "sku": view.sku,
+            "title": view.title,
+            "status": view.status,
+            "category": view.category,
+            "attributes": view.attributes,
+            "images": view.images,
+            "parent_product_id": view.parent_product_id,
+            "created_at": view.created_at,
+            "updated_at": view.updated_at,
+        }
+    )
 
 
 @route(router, OPS["products_create"])
-@stub
-async def products_create(body: ProductCreate) -> NoReturn:
+async def products_create(body: ProductCreate, principal: CurrentPrincipal) -> ProductOut:
     """Create one product. The SKU is unique per brand (409 SKU_CONFLICT); an unknown attribute
     key is 422 UNKNOWN_FACT_KEY."""
-    raise NotImplementedYet("products_create")
+    view = await products.create_product(
+        principal,
+        products.NewProduct(
+            sku=body.sku,
+            title=body.title,
+            category=body.category,
+            images=tuple(body.images),
+            attributes=dict(body.attributes),
+        ),
+    )
+    return _out(view)
 
 
 @route(router, OPS["products_list"])
