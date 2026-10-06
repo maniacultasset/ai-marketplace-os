@@ -165,7 +165,7 @@ def without_correlation(body: dict[str, Any]) -> dict[str, Any]:
 
 
 def site_body(sku: str = "S12-KURTA-1", **overrides: Any) -> dict[str, Any]:
-    """The spec's create body (L11317-11322), with a category (DEVIATIONS T0, D3)."""
+    """The spec's create body (L11317-11322), with a category (`products.category` is NOT NULL)."""
     body: dict[str, Any] = {
         "sku": sku,
         "title": "Organic Cotton Kurta",

@@ -2,8 +2,8 @@
 
 - `create_product`: refusals that need no database come first, before any transaction:
   a NUL character in `sku`, `title` or a string attribute value (PostgreSQL rejects it as 22021,
-  which would be a 500) -> 422; no `category` (`products.category` is NOT NULL; DEVIATIONS T0)
-  -> 422; any `images` key (no tenant image can exist before S17b, CP2) -> 404 `images[0]`. Then
+  which would be a 500) -> 422; no `category` -> 422 (`products.category` is NOT NULL,
+  DATABASE.md:410, so a NULL category cannot be stored); any `images` key (no tenant image can exist before S17b, CP2) -> 404 `images[0]`. Then
   one `tenant_uow`: resolve the attribute keys, build the seller facts, insert the row, write the
   `product.created` audit row with the created facts. The SKU unique is the natural key: a
   duplicate or a lost-response retry is 409 `SKU_CONFLICT`.
