@@ -409,13 +409,13 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
-| R11517f | L11517 | Token validation happens in middleware before any handler executes. | BACKEND-ARCHITECTURE.md:1196; BUILD-SEQUENCE.md S10 (draft); T95 | Per-route dependency, not middleware; public routes need no exclusion list. |
+| R11517f | L11517 | Token validation happens in middleware before any handler executes. | BACKEND-ARCHITECTURE.md:1196; BUILD-SEQUENCE.md S10 (draft); T95 | Per-route dependency, not middleware; public routes need no exclusion list; built on default in S10, T95 open. |
 
 ### [117] API Authorization
 
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
-| R11531f | L11531 | Authorization middleware checks user roles from JWT claims. | BACKEND-ARCHITECTURE.md:1196; DATABASE.md:311; T95 | Proposed per-request membership probe overrides JWT roles (up to 30 min stale). |
+| R11531f | L11531 | Authorization middleware checks user roles from JWT claims. | BACKEND-ARCHITECTURE.md:1196; DATABASE.md:311; T95 | Proposed per-request membership probe overrides JWT roles (up to 30 min stale); built on default in S10, T95 open. |
 
 ### [131] Job Lifecycle
 
@@ -447,7 +447,7 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
-| R12484g | L12484 | Token validation in FastAPI middleware. | docs/architecture/BACKEND-ARCHITECTURE.md:1196; T95 | Plan validates tokens in a per-route dependency, not middleware (candidate row BA:3001) |
+| R12484g | L12484 | Token validation in FastAPI middleware. | docs/architecture/BACKEND-ARCHITECTURE.md:1196; T95 | Plan validates tokens in a per-route dependency, not middleware (candidate row BA:3001); built on default in S10, T95 open. |
 
 ### [161] Secrets Management
 
@@ -459,7 +459,7 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
-| R13528 | L13528 | Backend checklist: JWT authentication middleware. | docs/architecture/BACKEND-ARCHITECTURE.md:1196; docs/architecture/BACKEND-ARCHITECTURE.md:3001; T95 | Auth as per-route dependency (Proposed, S10); candidate T-row, none yet |
+| R13528 | L13528 | Backend checklist: JWT authentication middleware. | docs/architecture/BACKEND-ARCHITECTURE.md:1196; docs/architecture/BACKEND-ARCHITECTURE.md:3001; T95 | Auth as per-route dependency (Proposed, S10); candidate T-row, none yet; built on default in S10, T95 open. |
 
 ## ❓ Needs the team or client (265)
 
@@ -958,7 +958,7 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
-| R12498b | L12498 | Authorization middleware checks JWT claims against endpoint requirements. | docs/architecture/BACKEND-ARCHITECTURE.md:1196; docs/architecture/BACKEND-ARCHITECTURE.md:2021; docs/architecture/BACKEND-ARCHITECTURE.md:3001; T95 | Site contradicts itself (L4949 vs L11531/L12498); plan uses require_role dependency, role from membership row |
+| R12498b | L12498 | Authorization middleware checks JWT claims against endpoint requirements. | docs/architecture/BACKEND-ARCHITECTURE.md:1196; docs/architecture/BACKEND-ARCHITECTURE.md:2021; docs/architecture/BACKEND-ARCHITECTURE.md:3001; T95 | Site contradicts itself (L4949 vs L11531/L12498); plan uses require_role dependency, role from membership row; built on default in S10, T95 open. |
 
 ### [165] AI Data Security
 

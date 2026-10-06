@@ -580,7 +580,7 @@
    "status": "conflict",
    "owner": "backend-db",
    "ref": "BACKEND-ARCHITECTURE.md:1196; BUILD-SEQUENCE.md S10 (draft); T95",
-   "note": "Per-route dependency, not middleware; public routes need no exclusion list."
+   "note": "Per-route dependency, not middleware; public routes need no exclusion list; built on default in S10, T95 open."
   },
   {
    "id": "R11524",
@@ -643,7 +643,7 @@
    "status": "conflict",
    "owner": "backend-db",
    "ref": "BACKEND-ARCHITECTURE.md:1196; DATABASE.md:311; T95",
-   "note": "Proposed per-request membership probe overrides JWT roles (up to 30 min stale)."
+   "note": "Proposed per-request membership probe overrides JWT roles (up to 30 min stale); built on default in S10, T95 open."
   },
   {
    "id": "R11538",
