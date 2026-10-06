@@ -336,3 +336,33 @@ def test_attack_token_hash_guc_of_other_value_hides_rows(
             count = sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(table))
             row = app_conn.execute(count).fetchone()
             assert row == (0,), table
+
+
+# ---- guards stay fail-closed under RLS -------------------------------------------------------
+
+ISSUE_WITH_RULE = (
+    "INSERT INTO listing_issues (tenant_id, listing_id, marketplace, source, field_path, "
+    "error_code, error_class, retry_class, severity, message, dedupe_key, rule_id) "
+    "VALUES (%s, %s, 'amazon', 'rules_engine', 'content.title', 'BANNED_TERM', "
+    "'content_error', 'ai_correct', 'error', 'm', %s, %s)"
+)
+
+
+def _issue_with_rule(conn: Conn, tenant: UUID, listing: UUID, rule: UUID) -> None:
+    dedupe = f"rules_engine|content.title|BANNED_TERM|{rule}"
+    conn.execute(ISSUE_WITH_RULE, [tenant, listing, dedupe, rule])
+
+
+def test_attack_issue_cannot_link_other_tenants_rule(app_conn: Conn, world: World) -> None:
+    """`rules_read` hides B's rules from A, so listing_issues_guard must fail closed: A's issue
+    naming B's rule, or a rule id that does not exist, is GRD01 alike (the FK bypasses RLS, so
+    a fail-open guard would link across tenants and leak whether B's rule id exists)."""
+    a, b = world.tenants
+    listing = world.rows["listings"][a]
+    for rule in (world.rows["rules"][b], uuid4()):
+        with pytest.raises(psycopg.Error) as info, session(app_conn, a):
+            _issue_with_rule(app_conn, a, listing, rule)
+        assert info.value.sqlstate == "GRD01", info.value
+    for rule in (world.rows["rules"][a], world.platform_rows["rules"]):
+        with session(app_conn, a):
+            _issue_with_rule(app_conn, a, listing, rule)

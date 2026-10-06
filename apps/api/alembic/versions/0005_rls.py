@@ -14,6 +14,11 @@ The platform tables, `rate_limit_counters` and the procrastinate queue have no R
 "settings flag" is replaced by the migrator-run `scripts/db/rls_emergency_disable.sql`; recovery
 is `alembic downgrade 0004_integrity` then `upgrade head`.
 
+One 0004 function changes with RLS: `listing_issues_guard` refused a rule of *another* tenant by
+`EXISTS`, which RLS turns fail-open (app_rw cannot see B's rules, and the plain FK bypasses RLS).
+0005 replaces that check with the fail-closed `NOT EXISTS (platform or own-tenant rule)`, so a
+hidden or missing rule is GRD01 alike; downgrade restores the 0004 body from its SQL file.
+
 Revision ID: 0005_rls
 Revises: 0004_integrity
 Create Date: 2026-10-06
@@ -21,8 +26,10 @@ Create Date: 2026-10-06
 """
 
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Final
 
+import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -233,6 +240,42 @@ def _plan() -> list[tuple[str, list[tuple[str, str]]]]:
     return plan
 
 
+ISSUES_GUARDS_0004: Final = (
+    Path(__file__).resolve().parents[1] / "sql" / "0004" / "12_issues_tasks_guards.up.sql"
+)
+ISSUES_GUARD_HEAD: Final = "CREATE FUNCTION public.listing_issues_guard()"
+# The 0004 check, verbatim, and its fail-closed replacement: under RLS a rule the caller cannot
+# see (another tenant's) and a missing rule both fail `NOT EXISTS`, so neither reaches the FK.
+RULE_CHECK_0004: Final = """\
+     AND EXISTS (SELECT 1 FROM public.rules r  -- a missing rule is left to the plain FK (23503)
+                  WHERE r.id = NEW.rule_id AND r.tenant_id IS DISTINCT FROM NEW.tenant_id
+                    AND r.tenant_id IS NOT NULL) THEN"""
+RULE_CHECK_0005: Final = """\
+     AND NOT EXISTS (SELECT 1 FROM public.rules r  -- fail closed: a rule hidden by RLS (another
+                      WHERE r.id = NEW.rule_id     -- tenant's) or missing is GRD01, never the FK
+                        AND (r.tenant_id IS NULL OR r.tenant_id = NEW.tenant_id)) THEN"""
+
+
+def _issues_guard_0004() -> str:
+    """`listing_issues_guard` exactly as 0004 created it, as a CREATE OR REPLACE."""
+    text = ISSUES_GUARDS_0004.read_text(encoding="utf-8")
+    start = text.index(ISSUES_GUARD_HEAD)
+    end = text.index("$$;", start) + len("$$;")
+    return "CREATE OR REPLACE" + text[start:end].removeprefix("CREATE")
+
+
+def _issues_guard_0005() -> str:
+    body = _issues_guard_0004()
+    if body.count(RULE_CHECK_0004) != 1:
+        raise RuntimeError("0004 listing_issues_guard rule check not found verbatim")
+    return body.replace(RULE_CHECK_0004, RULE_CHECK_0005)
+
+
+def _run_function(statement: str) -> None:
+    # `:` would read as a bind parameter in sa.text (the `::regclass` casts), as in 0004.
+    op.execute(sa.text(statement.replace(":", "\\:")))
+
+
 def upgrade() -> None:
     op.execute("SET lock_timeout = '5s'")
     for table, policies in _plan():
@@ -240,10 +283,12 @@ def upgrade() -> None:
         op.execute(f"ALTER TABLE public.{table} FORCE ROW LEVEL SECURITY")
         for _, statement in policies:
             op.execute(statement)
+    _run_function(_issues_guard_0005())
 
 
 def downgrade() -> None:
     op.execute("SET lock_timeout = '5s'")
+    _run_function(_issues_guard_0004())
     for table, policies in reversed(_plan()):
         for name, _ in reversed(policies):
             op.execute(f"DROP POLICY {name} ON public.{table}")

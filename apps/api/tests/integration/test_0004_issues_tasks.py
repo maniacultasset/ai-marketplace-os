@@ -4,7 +4,7 @@ human_tasks_guard; §9 pruning of closed issues and terminal tasks)."""
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import psycopg
 import pytest
@@ -122,25 +122,53 @@ def test_issue_dismiss_needs_reviewer_or_owner(db: Conn) -> None:
     db.execute(DISMISS, (f.member(db, tenant, role="owner"), issue))
 
 
+ISSUE_WITH_RULE = (
+    "INSERT INTO listing_issues (tenant_id, listing_id, marketplace, source, field_path, "
+    "error_code, error_class, retry_class, severity, message, dedupe_key, rule_id) "
+    "VALUES (%s, %s, 'amazon', 'rules_engine', 'content.title', 'BANNED_TERM', "
+    "'content_error', 'ai_correct', 'error', 'm', %s, %s)"
+)
+
+
+def _issue_params(tenant: UUID, listing: UUID, rule: UUID) -> tuple[UUID, UUID, str, UUID]:
+    return tenant, listing, f"rules_engine|content.title|BANNED_TERM|{rule}", rule
+
+
 def test_issue_rule_other_tenant(db: Conn) -> None:
     tenant = f.tenant(db)
     foreign_rule = f.rule(db, f.tenant(db))
     expect_sqlstate(
-        db,
-        "GRD01",
-        "INSERT INTO listing_issues (tenant_id, listing_id, marketplace, source, field_path, "
-        "error_code, error_class, retry_class, severity, message, dedupe_key, rule_id) "
-        "VALUES (%s, %s, 'amazon', 'rules_engine', 'content.title', 'BANNED_TERM', "
-        "'content_error', 'ai_correct', 'error', 'm', %s, %s)",
-        (
-            tenant,
-            f.listing(db, tenant),
-            f"rules_engine|content.title|BANNED_TERM|{foreign_rule}",
-            foreign_rule,
-        ),
+        db, "GRD01", ISSUE_WITH_RULE, _issue_params(tenant, f.listing(db, tenant), foreign_rule)
     )
     own = f.rule(db, tenant)
     f.listing_issue(db, tenant, f.listing(db, tenant), rule_id=own, error_code="BANNED_TERM")
+
+
+def test_issue_rule_missing_is_guard_refusal(db: Conn) -> None:
+    """A missing rule is refused by the guard (GRD01), not left to the plain FK (23503): the
+    outcome never tells a caller whether some other tenant's rule id exists (0005_rls)."""
+    tenant = f.tenant(db)
+    expect_sqlstate(
+        db, "GRD01", ISSUE_WITH_RULE, _issue_params(tenant, f.listing(db, tenant), uuid4())
+    )
+
+
+def test_issue_rule_other_tenant_app_rw(db: Conn) -> None:
+    """As app_rw under FORCE RLS, `rules_read` hides tenant B's rules, so the guard must fail
+    closed: B's rule and a missing rule are both GRD01 (no cross-tenant link through the
+    RLS-bypassing FK, no existence oracle); a platform rule and the caller's own still pass."""
+    tenant, other = f.tenant(db), f.tenant(db)
+    listing = f.listing(db, tenant)
+    foreign_rule, own, platform = f.rule(db, other), f.rule(db, tenant), f.rule(db, None)
+    with as_app_rw(db, tenant):
+        for rule in (foreign_rule, uuid4()):
+            expect_sqlstate(db, "GRD01", ISSUE_WITH_RULE, _issue_params(tenant, listing, rule))
+        for rule in (own, platform):
+            db.execute(ISSUE_WITH_RULE, _issue_params(tenant, listing, rule))
+    linked = db.execute(
+        "SELECT count(*) FROM listing_issues WHERE rule_id = %s", (foreign_rule,)
+    ).fetchone()
+    assert linked == (0,)
 
 
 def test_issue_platform_rule_ok(db: Conn) -> None:
