@@ -279,5 +279,41 @@ def test_rules_flag_limits_rules(rules: ModuleType, tmp_path: Path) -> None:
 def test_lint_imports_runs_r5_r6(repo_root: Path) -> None:
     makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
     block = makefile.split("\nlint-imports:\n", 1)[1].split("\n\n", 1)[0]
-    assert "uv run --frozen python scripts/ci/check_repo_rules.py --rules R5,R6" in block
-    assert block.index("--rules R5,R6") < block.index("grep -rl")
+    assert "uv run --frozen python scripts/ci/check_repo_rules.py --rules R5,R6,R7" in block
+    assert block.index("--rules R5,R6,R7") < block.index("grep -rl")
+
+
+# ---- S10: R7 identity_scope only in app/repositories/identity.py (CODE-PLAN S10 Q4) ----
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "from app.db.session import identity_scope\n",
+        "from app.db.session import identity_scope as s\n",
+        "import app.db.session as m\nX = m.identity_scope\n",
+        "import app.db.session as m\nX = getattr(m, 'identity_scope')\n",
+    ],
+)
+@pytest.mark.parametrize(
+    "relative",
+    [
+        "apps/api/app/services/auth.py",
+        "apps/api/app/api/v1/deps.py",
+        "apps/api/app/repositories/products.py",
+        "apps/api/app/db/other.py",
+    ],
+)
+def test_identity_scope_importers(
+    rules: ModuleType, tmp_path: Path, relative: str, body: str
+) -> None:
+    root = _tree(tmp_path, {relative: body})
+    assert "R7" in {rule for _, _, rule in _found(rules, root)}
+
+
+@pytest.mark.parametrize(
+    "relative", ["apps/api/app/repositories/identity.py", "apps/api/app/db/session.py"]
+)
+def test_identity_scope_allowed_files(rules: ModuleType, tmp_path: Path, relative: str) -> None:
+    root = _tree(tmp_path, {relative: "from app.db.session import identity_scope\n"})
+    assert _found(rules, root) == []

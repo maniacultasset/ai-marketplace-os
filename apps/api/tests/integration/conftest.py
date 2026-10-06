@@ -259,3 +259,45 @@ def clean_tenant_db(superuser_conn: Conn) -> None:
         )
     finally:
         superuser_conn.execute("RESET session_replication_role")
+
+
+# ---- S10c: the app under test as app_rw, against a world the admin login builds ----
+
+
+@pytest.fixture
+async def auth_db(
+    db_settings: Settings,
+    clean_tenant_db: None,
+    superuser_conn: Conn,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> AsyncIterator[Conn]:
+    """An emptied test database with empty rate-limit counters; then DATABASE_URL logs in as
+    app_rw (FORCE RLS applies to the app) and ALEMBIC_DATABASE_URL keeps the admin login. Yields
+    the admin autocommit connection, which builds the world and reads results back."""
+    from app.core.config import get_settings
+    from app.db.session import dispose_engine
+    from tests.support.dsn import as_app_rw
+    from tests.support.rate_limits import reset_rate_limits
+
+    reset_rate_limits(superuser_conn)
+    admin = os.environ["DATABASE_URL"]
+    monkeypatch.setenv("ALEMBIC_DATABASE_URL", admin)
+    monkeypatch.setenv("DATABASE_URL", as_app_rw(admin))
+    monkeypatch.chdir(tmp_path)
+    get_settings.cache_clear()
+    await dispose_engine()
+    yield superuser_conn
+    await dispose_engine()
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+async def api(auth_db: Conn) -> AsyncIterator[Any]:
+    """An httpx client on `create_app()` over ASGI, from client address 203.0.113.7."""
+    import httpx
+    from app.main import create_app
+
+    transport = httpx.ASGITransport(app=create_app(), client=("203.0.113.7", 40000))
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        yield client

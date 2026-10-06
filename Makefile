@@ -68,12 +68,12 @@ api-lint:
 	uv run --frozen python scripts/ci/check_repo_rules.py
 	uv run --frozen python scripts/ci/run_pip_audit.py
 
-# import-linter, repo rules R5/R6 (platform_scope, SCOPE_OK), then the tenant_scope_checked grep (CANON-ADDENDUM.md §6): the literal may appear
+# import-linter, repo rules R5-R7 (platform_scope, SCOPE_OK, identity_scope), then the tenant_scope_checked grep (CANON-ADDENDUM.md §6): the literal may appear
 # only in apps/api/app/db/{guard,session}.py. Zero hits pass until S9 adds them.
 .PHONY: lint-imports
 lint-imports:
 	PYTHONPATH=apps/api uv run --frozen lint-imports --config .importlinter
-	uv run --frozen python scripts/ci/check_repo_rules.py --rules R5,R6
+	uv run --frozen python scripts/ci/check_repo_rules.py --rules R5,R6,R7
 	@hits="$$(grep -rl --include='*.py' tenant_scope_checked apps packages scripts)" || [ $$? -eq 1 ]; \
 	bad=0; \
 	for hit in $$hits; do \
