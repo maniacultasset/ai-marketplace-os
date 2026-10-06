@@ -5,8 +5,8 @@ only orchestrates; the SQL lives here, inside `app/db` (repo rule R4).
   the migrator engine (DATABASE.md:158), upserted on their natural keys.
 - Tenant rows go through one `unit_of_work(seed_tenant_id(slug))` per tenant (D16): the tenant
   is inserted with its fixed `uuid5` id, then read back through the scoped repository.
-- `reset_seed_tenants` deletes the two seed tenants' rows. Interim: S10 A21 replaces its body
-  with `purge_tenant(id, 'final')` once the append-only triggers land.
+- `reset_seed_tenants` purges the two seed tenants through the database's `purge_tenant`
+  ('data', then 'final'; revision 0004_integrity).
 
 Nothing here prints, asserts or logs a password or a DSN.
 """
@@ -198,20 +198,21 @@ async def _migrator_session(connection: AsyncConnection) -> None:
 
 
 async def reset_seed_tenants(connection: AsyncConnection) -> None:
-    """Delete every row of the two seed tenants, then the tenants and their users, in one
-    transaction on the migrator connection. The only reset entry point (S10 A21 swaps it)."""
+    """Purge the two seed tenants with the database's own `purge_tenant` ('data', then 'final';
+    revision 0004_integrity), then delete any seed tenant row and seed user left, in one
+    transaction on the migrator connection. The purge knows every tenant table and passes the
+    append-only guards, so this never has to track new tables."""
     await _migrator_session(connection)
-    await connection.execute(text("SET CONSTRAINTS ALL DEFERRED"))
     ids = [seed_tenant_id(t.slug) for t in TENANTS]
-    for tenant_id in ids:
-        # 0004's append-only triggers let the migrator delete only under the purge GUC.
-        await connection.execute(
-            text("SELECT set_config('app.purge_tenant', :t, true)"), {"t": str(tenant_id)}
-        )
-        for table in reversed(metadata.sorted_tables):
-            if table.name != "tenants" and "tenant_id" in table.c:
-                await connection.execute(delete(table).where(table.c.tenant_id == tenant_id))
     tenants, users = metadata.tables["tenants"], metadata.tables["users"]
+    for tenant_id in ids:
+        found = await connection.execute(select(tenants.c.id).where(tenants.c.id == tenant_id))
+        if found.first() is None:
+            continue
+        for mode in ("data", "final"):
+            await connection.execute(
+                text("SELECT purge_tenant(:t, :mode)"), {"t": tenant_id, "mode": mode}
+            )
     await connection.execute(delete(tenants).where(tenants.c.id.in_(ids)))
     domains = [f"%@{t.slug}.test" for t in TENANTS]
     await connection.execute(delete(users).where(or_(*(users.c.email.ilike(d) for d in domains))))

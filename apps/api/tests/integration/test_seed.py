@@ -295,12 +295,29 @@ async def test_seed_reset_clears_later_tables(superuser_conn: Conn) -> None:
         "validation_runs",
         "review_decisions",
     )
+    # a successful-login audit row for acme, written as the app writes it (audit() as app_rw):
+    # 0004 makes audit_log append-only, so the reset must go through purge_tenant
+    owner = superuser_conn.execute(
+        "SELECT id FROM users WHERE lower(email) = 'owner@acme.test'"
+    ).fetchone()
+    assert owner is not None
+    superuser_conn.execute("SET ROLE app_rw")
+    superuser_conn.execute(
+        "SELECT audit(%s, 'user', %s, 'auth.login', 'user', %s, NULL, NULL, NULL, 'req-login', "
+        "NULL, '10.0.0.9', NULL)",
+        (acme, owner[0], owner[0]),
+    )
+    superuser_conn.execute("RESET ROLE")
     others = {t: _per_tenant(superuser_conn, t).get(other.tenant_id) for t in tables}
     assert await _seed("isolation", reset=True) == 0
     for table in tables:
         counts = _per_tenant(superuser_conn, table)
         assert acme not in counts, table
         assert counts.get(other.tenant_id) == others[table], table
+    tombstones = superuser_conn.execute(
+        "SELECT count(*) FROM audit_log WHERE action = 'tenant.purged' AND entity_id = %s", (acme,)
+    ).fetchone()
+    assert tombstones == (2,)  # purge_tenant 'data' and 'final'
 
 
 async def test_seed_platform_rows_no_tenants_idempotent(superuser_conn: Conn) -> None:
@@ -324,7 +341,11 @@ async def test_seed_reset_then_seed_counts(superuser_conn: Conn) -> None:
     assert await _seed("demo") == 0
     first = _all_counts(superuser_conn)
     assert await _seed("demo", reset=True) == 0
-    assert _all_counts(superuser_conn) == first
+    after = _all_counts(superuser_conn)
+    # the reset purges both seed tenants: two `tenant.purged` platform tombstones each (accepted
+    # build-up in dev, CODE-PLAN A21b); every other count is back where it was
+    assert after.pop("audit_log") == first.pop("audit_log") + 4
+    assert after == first
 
 
 async def test_seed_rules_idempotent(superuser_conn: Conn) -> None:
