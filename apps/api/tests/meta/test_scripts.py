@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import re
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 from tests.meta.test_compose import canon_local_bucket_names
@@ -698,3 +700,26 @@ def test_prove_gates_has_s10c_legs(repo_root: Path) -> None:
     assert "tenants_me: missing endpoint cases" in code
     assert "tenants_me: presence-only bearer_required" in code
     assert "auth_me: " not in code
+
+
+def _env_example_value(repo_root: Path, key: str) -> str:
+    text = (repo_root / ".env.example").read_text(encoding="utf-8")
+    found = re.search(rf"(?m)^{key}=(.*)$", text)
+    assert found is not None, key
+    return found.group(1)
+
+
+def test_ci_bootstrap_job_env_uses_app_roles(
+    repo_root: Path, load_yaml: Callable[[Path], Any]
+) -> None:
+    """S10c round-1 H1: the process env wins over `.env` in bootstrap.sh's env_url(), so the
+    bootstrap job's own env must log in as app_rw (DATABASE_URL) and migrator
+    (ALEMBIC_DATABASE_URL), the same DSNs `.env.example` gives the local app."""
+    workflow = load_yaml(repo_root / ".github" / "workflows" / "ci-api.yml")
+    env = workflow["jobs"]["bootstrap"].get("env") or {}
+    if "DATABASE_URL" in env:
+        assert env["DATABASE_URL"].startswith("postgresql+psycopg://app_rw:")
+        assert env["DATABASE_URL"] == _env_example_value(repo_root, "DATABASE_URL")
+    if "ALEMBIC_DATABASE_URL" in env:
+        assert env["ALEMBIC_DATABASE_URL"].startswith("postgresql+psycopg://migrator:")
+        assert env["ALEMBIC_DATABASE_URL"] == _env_example_value(repo_root, "ALEMBIC_DATABASE_URL")
