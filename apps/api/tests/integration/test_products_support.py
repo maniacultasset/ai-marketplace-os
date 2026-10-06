@@ -44,10 +44,10 @@ async def test_products_world_resets_tenant_limiter(
     api: httpx.AsyncClient, products_world: Any, auth_db: Conn
 ) -> None:
     headers = bearer_for(products_world, "operator@acme.test")
-    assert (await api.get(PRODUCTS, headers=headers)).status_code in (200, 501)
+    assert (await api.get(PRODUCTS, headers=headers)).status_code == 200
     auth_db.execute("UPDATE rate_limit_counters SET n = 1000")
     limited = await api.get(PRODUCTS, headers=headers)
     assert limited.status_code == 429
     assert limited.json()["error"]["type"] == "RATE_LIMITED"
     reset_rate_limits(auth_db)
-    assert (await api.get(PRODUCTS, headers=headers)).status_code in (200, 501)
+    assert (await api.get(PRODUCTS, headers=headers)).status_code == 200

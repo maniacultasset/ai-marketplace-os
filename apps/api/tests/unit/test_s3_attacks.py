@@ -46,13 +46,13 @@ def _envelope(response: Any, status: int, code: str) -> dict[str, Any]:
     "value", ["a" * 129, "has space", "semi;colon", 'quote"x', "\u00e9t\u00e9".encode()]
 )
 def test_invalid_request_id_gets_fresh_uuid(client: TestClient, value: str | bytes) -> None:
-    r = client.get("/api/v1/products", headers={**BEARER, "X-Request-ID": value})
+    r = client.get("/api/v1/listings", headers={**BEARER, "X-Request-ID": value})
     body = _envelope(r, 501, "NOT_IMPLEMENTED")
     uuid.UUID(body["error"]["correlation_id"])
 
 
 def test_valid_request_id_is_kept(client: TestClient) -> None:
-    r = client.get("/api/v1/products", headers={**BEARER, "X-Request-ID": "fe:trace.01-x"})
+    r = client.get("/api/v1/listings", headers={**BEARER, "X-Request-ID": "fe:trace.01-x"})
     assert _envelope(r, 501, "NOT_IMPLEMENTED")["error"]["correlation_id"] == "fe:trace.01-x"
 
 

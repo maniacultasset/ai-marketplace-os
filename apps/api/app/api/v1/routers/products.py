@@ -11,9 +11,9 @@ from fastapi import APIRouter, Depends, File, UploadFile
 from fastapi import Path as PathParam
 
 from app.api.errors import NotImplementedYet
-from app.api.pagination import PageParams
+from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import IdempotencyKey, get_current_principal
-from app.api.v1.schemas.products import ProductCreate, ProductOut
+from app.api.v1.schemas.products import ProductCreate, ProductOut, ProductPage
 from app.api.v1.surface import OPS, route, stub
 from app.core.rbac import Principal
 from app.services import products
@@ -57,10 +57,17 @@ async def products_create(body: ProductCreate, principal: CurrentPrincipal) -> P
 
 
 @route(router, OPS["products_list"])
-@stub
-async def products_list(page: Annotated[PageParams, Depends()]) -> NoReturn:
+async def products_list(
+    page: Annotated[PageParams, Depends()], principal: CurrentPrincipal
+) -> ProductPage:
     """List the brand's products, newest first."""
-    raise NotImplementedYet("products_list")
+    views, has_more = await products.list_products(principal, limit=page.limit, after=page.after)
+    last = views[-1] if views else None
+    next_cursor = encode_cursor(last.created_at, last.id) if has_more and last else None
+    return ProductPage(
+        data=[_out(v) for v in views],
+        page=PageInfo(next_cursor=next_cursor, has_more=has_more, limit=page.limit),
+    )
 
 
 @route(router, OPS["products_bulk"])
