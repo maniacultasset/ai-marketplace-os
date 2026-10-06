@@ -444,7 +444,10 @@ def _tier_mask(atom: _CharSet, tier: int) -> int:
 def _sub_flags(flags: int, av: Any) -> int:
     add_flags: int = av[1]
     del_flags: int = av[2]
-    return ((flags | add_flags) & ~del_flags) & _FLAG_MASK
+    scoped = (flags | add_flags) & ~del_flags
+    if add_flags & re.UNICODE:  # (?u:...) under a global (?a) restores Unicode classes
+        scoped &= ~re.ASCII
+    return scoped & _FLAG_MASK
 
 
 class _RefusedError(Exception):

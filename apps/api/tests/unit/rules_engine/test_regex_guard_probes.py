@@ -78,6 +78,14 @@ def test_negated_classes_meeting_past_a_range_end_are_refused() -> None:
     assert _refused(r"[^\x00-\u4dff]*[^\x00-\x40\x42-\u4e10\uff21\U0001f600\U0010ffff]*x")
 
 
+def test_inline_unicode_group_under_global_ascii_is_refused() -> None:
+    # (?u:...) re-enables Unicode \w inside a global (?a), so the scoped \w matches é and
+    # the repeats overlap; modelling it as ASCII \w accepted it (~2 s on "é" * 3000).
+    assert re.fullmatch(r"(?a)(?u:\w)", "é")
+    assert _refused(r"(?a)(?u:\w)*é*x")
+    assert not _refused(r"(?a)\w*é*x")  # control: ASCII \w cannot match é
+
+
 def test_empty_class_after_open_repeat_fails_closed() -> None:
     assert _refused(r"x*[^\x00-\U0010ffff]*y")
 
