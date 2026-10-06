@@ -108,7 +108,8 @@ def test_append_only_allows_migrator_with_purge_guc(db: Conn, table: str) -> Non
     tenant, row = _row(db, table)
     with as_migrator(db):
         set_gucs(db, purge_tenant=tenant)
-        db.execute(_update(table), (row,))
+        # purge only deletes, and nulls audit email and ip (below): any other UPDATE is refused
+        expect_sqlstate(db, "GRD01", _update(table), (row,))
         db.execute(_delete(table), (row,))
     assert db.execute(
         sql.SQL("SELECT count(*) FROM {} WHERE id = %s").format(sql.Identifier(table)), (row,)
@@ -158,3 +159,29 @@ def test_append_only_insert_allowed(db: Conn) -> None:
     with as_app_rw(db):
         f.validation_run(db, tenant, listing)
         f.review_decision(db, tenant, listing, version, decided_by_user_id=f.member(db, tenant))
+
+
+NULL_OUT = "UPDATE audit_log SET actor_email = NULL, ip = NULL WHERE id = %s"
+FORGERIES = (
+    "UPDATE audit_log SET action = 'forged.action' WHERE id = %s",
+    "UPDATE audit_log SET actor_email = NULL, reason = 'forged' WHERE id = %s",
+    "UPDATE audit_log SET actor_email = 'someone@else.test' WHERE id = %s",
+    "UPDATE audit_log SET actor_user_id = NULL WHERE id = %s",
+)
+
+
+@pytest.mark.parametrize("forgery", FORGERIES)
+@pytest.mark.parametrize("guc", ["redact_user", "purge_tenant"])
+def test_append_only_audit_updates_only_null_email_and_ip(db: Conn, guc: str, forgery: str) -> None:
+    """redact_user and purge_tenant only null actor_email and ip (0004/18, 0004/19): under either
+    GUC the migrator cannot rewrite any other audit column, or set an email."""
+    tenant = f.tenant(db)
+    user = f.member(db, tenant)
+    row = f.audit(db, tenant, actor_type="user", actor_user_id=user, actor_email="a@x.test")
+    with as_migrator(db):
+        set_gucs(db, **{guc: user if guc == "redact_user" else tenant})
+        expect_sqlstate(db, "GRD01", forgery, (row,))
+        db.execute(NULL_OUT, (row,))
+    assert db.execute(
+        "SELECT actor_email, ip, action FROM audit_log WHERE id = %s", (row,)
+    ).fetchone() == (None, None, "listing.approved")
