@@ -76,3 +76,33 @@ def test_engine_settings_match_env_register(
     assert captured["pool_recycle"] == 1800
     assert captured["pool_pre_ping"] is True
     assert captured["connect_args"] == {"options": "-c statement_timeout=15000"}
+
+
+def test_engine_hides_parameters_and_never_echoes(
+    ci_env: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """S11 C5: bound parameters (a hashed_password INSERT) never reach a log line, and `echo=` is
+    not passed even with DATABASE_ECHO=true: configure_logging owns the sqlalchemy.engine level,
+    so SQLAlchemy never attaches its own plain-text stdout handler."""
+    from app.db import session
+
+    monkeypatch.setenv("DATABASE_ECHO", "true")
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    captured: dict[str, Any] = {}
+
+    def fake_create(url: str, **kwargs: Any) -> object:
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(session, "create_async_engine", fake_create)
+    session.get_engine.cache_clear()
+    try:
+        assert get_settings().database_echo is True
+        session.get_engine()
+    finally:
+        session.get_engine.cache_clear()
+        get_settings.cache_clear()
+    assert captured["hide_parameters"] is True
+    assert "echo" not in captured
