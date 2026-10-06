@@ -1963,17 +1963,17 @@
   },
   {
    "id": "R11326",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "docs/architecture/DATABASE.md:1197; docs/architecture/BACKEND-ARCHITECTURE.md:1332",
-   "note": "ProductOut is named but its id/sku/created_at response fields are not specified"
+   "ref": "apps/api/app/api/v1/schemas/products.py ProductOut; apps/api/tests/integration/test_products_create.py::test_products_create_success (S12)",
+   "note": "ProductOut.id is the product UUID, not a prod_ string; S12 returns it on 201"
   },
   {
    "id": "R11327",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "docs/architecture/DATABASE.md:1197; docs/architecture/BACKEND-ARCHITECTURE.md:1332",
-   "note": "ProductOut is named but its id/sku/created_at response fields are not specified"
+   "ref": "apps/api/app/api/v1/schemas/products.py ProductOut; apps/api/tests/integration/test_products_create.py::test_products_create_success (S12)",
+   "note": "ProductOut.sku echoes the stored SKU on 201 (S12)"
   },
   {
    "id": "R11328",
@@ -1984,10 +1984,10 @@
   },
   {
    "id": "R11329",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "docs/architecture/DATABASE.md:1197; docs/architecture/BACKEND-ARCHITECTURE.md:1332",
-   "note": "ProductOut is named but its id/sku/created_at response fields are not specified"
+   "ref": "apps/api/app/api/v1/schemas/products.py ProductOut; apps/api/tests/integration/test_products_create.py::test_products_create_success (S12)",
+   "note": "ProductOut.created_at is an aware ISO-8601 timestamp on 201 (S12)"
   },
   {
    "id": "R11338",
