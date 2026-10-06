@@ -1,0 +1,18 @@
+{
+  "listing_id": "5140f12a-0000-4000-8000-000400000001",
+  "product_id": "5140f12a-0000-4000-8000-000400000000",
+  "marketplace": "amazon",
+  "category": "tshirts",
+  "content": {
+    "title": "Women's Relaxed Fit Cotton T-Shirt, Black",
+    "bullets": [
+      "Relaxed fit in soft cotton",
+      "Available in sizes S, M, L and XL"
+    ],
+    "description": "A women's relaxed-fit cotton T-shirt in black."
+  },
+  "attributes": {
+    "color": "black",
+    "fabric_type": "cotton"
+  }
+}

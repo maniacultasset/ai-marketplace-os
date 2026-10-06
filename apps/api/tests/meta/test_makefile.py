@@ -182,3 +182,17 @@ def test_no_sentinel_left(repo_root: Path) -> None:
     folder = repo_root / "apps/api/tests/tenant_isolation"
     assert not (folder / "test_sentinel.py").exists()
     assert (folder / "conftest.py").is_file() and (folder / "test_app_rw.py").is_file()
+
+
+# ---- S14a: the rules_engine branch-coverage gate (ADR-0010 §2; CODE-PLAN T14) ----
+
+
+def test_api_tests_gates_rules_engine_branch_coverage(repo_root: Path) -> None:
+    lines = _dry_run(repo_root, "api-tests")
+    at = _first(lines, "pytest -q")
+    at = _first(lines, "coverage json", at + 1)
+    assert "--include='*/app/services/rules_engine/*'" in lines[at]
+    at = _first(lines, "branch_coverage.py", at)
+    assert "--min 90 --label rules_engine" in lines[at]
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert "COV_FAIL_UNDER ?= 70" in makefile

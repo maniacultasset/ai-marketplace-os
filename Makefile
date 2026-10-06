@@ -149,6 +149,14 @@ api-tests:
 	APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) \
 	  uv run --frozen pytest -q -m "not tenant_isolation and not cloudsql_mimic" --cov=app --cov-report=term-missing \
 	  --cov-fail-under=$(COV_FAIL_UNDER)
+	cov="$$(mktemp)"; trap 'rm -f "$$cov"' EXIT; \
+	  uv run --frozen coverage json -q --include='*/app/services/rules_engine/*' -o "$$cov" && \
+	  uv run --frozen python scripts/ci/branch_coverage.py "$$cov" --min 90 --label rules_engine
+
+# Mutation run over the Rules Engine (ADR-0010 §2): report-only, not a required check (S14a T16).
+.PHONY: mutation-rules
+mutation-rules:
+	cd apps/api && uv run --frozen mutmut run
 
 .PHONY: tenant-isolation
 tenant-isolation:

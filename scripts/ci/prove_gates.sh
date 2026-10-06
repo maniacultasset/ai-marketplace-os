@@ -323,6 +323,24 @@ leg api-lint-text-in-service api-lint ': R4 ' seed_text_in_service make api-lint
 leg api-lint-text-attribute-chain api-lint ': R4 ' seed_text_attribute_chain make api-lint
 leg api-lint-engine-in-worker api-lint ': R4 ' seed_engine_in_worker make api-lint
 
+# S14a: the Rules Engine stays pure (AC 11) and its branch coverage is gated (AC 12).
+seed_engine_openai() { new_file apps/api/app/services/rules_engine/x.py $'"""Seeded."""\n\nimport openai\n\nCLIENT = openai'; }
+seed_engine_sqla() { append apps/api/app/services/rules_engine/__init__.py 'import sqlalchemy'; }
+seed_engine_repositories() { append apps/api/app/services/rules_engine/__init__.py 'import app.repositories'; }
+seed_engine_impure() { append apps/api/app/services/rules_engine/text.py 'import time'; }
+seed_engine_coverage() {  # an untested function with enough branches to drop below 90%
+  python3 - <<'PY'
+import pathlib
+body = "".join(f"    if x == {i}:\n        return {i}\n" for i in range(40))
+path = pathlib.Path("apps/api/app/services/rules_engine/report.py")
+path.write_text(path.read_text(encoding="utf-8") + f"\n\ndef _seeded(x: int) -> int:\n{body}    return -1\n", encoding="utf-8")
+PY
+}
+leg api-lint-engine-openai api-lint 'TID251' seed_engine_openai make api-lint
+leg lint-imports-engine-sqla lint-imports 'app.services.rules_engine is pure .*BROKEN' seed_engine_sqla make lint-imports
+leg lint-imports-engine-repositories lint-imports 'app.services.rules_engine is pure .*BROKEN' \
+  seed_engine_repositories make lint-imports
+
 if [ "$with_docker" -eq 1 ]; then
   self_project="$(docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"
   leg api-tests-failing-test api-tests 'test_seeded' seed_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests
@@ -332,6 +350,8 @@ if [ "$with_docker" -eq 1 ]; then
   leg contracts-response-field-removed contracts 'response-required-property-removed' seed_response_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
   leg contracts-response-optional-property-removed contracts 'response-optional-property-removed' seed_optional_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
   leg contracts-response-non-success-status-removed contracts 'response-non-success-status-removed' seed_error_status_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
+  leg api-tests-engine-impure api-tests 'test_rules_engine_import_allowlist' seed_engine_impure COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-engine-coverage api-tests 'rules_engine branch coverage' seed_engine_coverage COMPOSE_PROJECT_NAME="$self_project" make api-tests
   # A throwaway database with 0000, so the seeded revision legs never stamp mos_test. The broken
   # downgrade leaves its revision stamped there, so that leg runs last.
   docker compose exec -T postgres dropdb -U postgres --if-exists --force mos_prove

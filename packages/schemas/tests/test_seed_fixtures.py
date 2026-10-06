@@ -8,13 +8,33 @@ import json
 import sys
 from pathlib import Path
 
-from mkos_schemas.rules import BannedTerms, RuleSet
+from mkos_schemas.rules import BannedTerms, RequiredAttribute, RuleSet
 from pydantic import TypeAdapter
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 SEED = FIXTURES / "rules.seed.json"
 REPO_ROOT = Path(__file__).resolve().parents[3]
 BANNED = {"best", "guaranteed", "free shipping", "best seller", "guaranteed cure"}
+STAR_TERMS = [  # scaffold/packages/schemas/fixtures/rules.seed.json:49-51, verbatim
+    "best seller",
+    "bestseller",
+    "#1",
+    "number 1",
+    "100% guaranteed",
+    "free shipping",
+    "cure",
+    "cures",
+    "doctor recommended",
+    "fda approved",
+    "sale",
+    "discount",
+    "cheapest",
+]
+REQUIRED = {
+    "ethnic_wear_kurta_sets": {"color", "fabric_type"},
+    "home_decor_lamps": {"color", "product_dimensions"},
+    "tshirts": {"color", "fabric_type"},
+}
 S9_SCOPES = {
     (m, c) for m in ("amazon", "flipkart") for c in ("ethnic_wear_kurta_sets", "home_decor_lamps")
 }
@@ -45,15 +65,114 @@ def test_rules_seed_platform_rows_only() -> None:
 
 def test_rules_seed_banned_terms_listed() -> None:
     for rule_set in _load():
-        banned = [r for r in rule_set.rules if isinstance(r.rule_def, BannedTerms)]
+        banned = [
+            r
+            for r in rule_set.rules
+            if isinstance(r.rule_def, BannedTerms) and r.field == "content.title"
+        ]
         assert len(banned) == 1
-        assert banned[0].field == "content.title"
         definition = banned[0].rule_def
         assert isinstance(definition, BannedTerms)
         assert set(definition.terms) == BANNED
-        by_type = {r.rule_def.type: r.rule_def for r in rule_set.rules}
-        assert by_type["max_length"].limit == 200  # type: ignore[union-attr]
+        by_type = {r.rule_def.type: r.rule_def for r in rule_set.rules if r.version == 1}
+        title_max = 150 if rule_set.category == "tshirts" and _is_flipkart(rule_set) else 200
+        assert by_type["max_length"].limit == title_max  # type: ignore[union-attr]
         assert by_type["min_length"].limit == 5  # type: ignore[union-attr]
+
+
+def _is_flipkart(rule_set: RuleSet) -> bool:
+    return rule_set.marketplace.value == "flipkart"
+
+
+def _by_scope() -> dict[tuple[str, str], RuleSet]:
+    return {(s.marketplace.value, s.category): s for s in _load()}
+
+
+def test_rules_seed_star_banned_terms_each_ruleset() -> None:
+    """S14a D12: one `*` banned_terms row per RuleSet, the scaffold list verbatim, in its own
+    marketplace's wording and citation (CODE-PLAN L4)."""
+    for rule_set in _load():
+        star = [r for r in rule_set.rules if r.field == "*"]
+        assert len(star) == 1, rule_set.category
+        definition = star[0].rule_def
+        assert isinstance(definition, BannedTerms)
+        assert definition.terms == STAR_TERMS
+        assert (definition.match, definition.case_sensitive) == ("word", False)
+        assert definition.suggestion
+        assert definition.policy_ref is not None
+        name = "Flipkart" if _is_flipkart(rule_set) else "Amazon"
+        assert definition.policy_ref.source == f"{rule_set.marketplace.value}_policy"
+        assert name in definition.message
+        other = "Amazon" if name == "Flipkart" else "Flipkart"
+        assert other not in definition.message and other not in (definition.suggestion or "")
+        assert star[0].category == rule_set.category
+
+
+def test_rules_seed_required_attributes_per_category() -> None:
+    for (_, category), rule_set in _by_scope().items():
+        required = {
+            r.rule_def.attribute: r
+            for r in rule_set.rules
+            if isinstance(r.rule_def, RequiredAttribute)
+        }
+        assert set(required) == REQUIRED[category], category
+        for attribute, row in required.items():
+            assert row.field == f"attributes.{attribute}"
+            assert row.rule_def.policy_ref is not None
+
+
+def test_rules_seed_flipkart_title_v2_150() -> None:
+    for category in ("ethnic_wear_kurta_sets", "home_decor_lamps"):
+        rule_set = _by_scope()[("flipkart", category)]
+        title_max = sorted(
+            (r for r in rule_set.rules if r.rule_def.type == "max_length"),
+            key=lambda r: r.version,
+        )
+        assert [(r.version, r.rule_def.limit) for r in title_max] == [(1, 200), (2, 150)]  # type: ignore[union-attr]
+        v1, v2 = title_max
+        assert (v1.field, v1.category, v1.rule_def.pack) == (
+            v2.field,
+            v2.category,
+            v2.rule_def.pack,
+        )
+        assert v2.enabled and v2.rule_def.policy_ref is not None
+    for category in ("ethnic_wear_kurta_sets", "home_decor_lamps"):
+        amazon = _by_scope()[("amazon", category)]
+        assert [r.version for r in amazon.rules if r.rule_def.type == "max_length"] == [1]
+
+
+def test_rules_seed_ids_unique() -> None:
+    ids = [str(r.id) for s in _load() for r in s.rules]
+    assert len(ids) == len(set(ids))
+    assert all(i.startswith("5eed0000-0000-4000-8000-") for i in ids)
+    keys = [
+        (r.marketplace, r.category, r.field, r.rule_def.type, r.rule_def.pack, r.version)
+        for s in _load()
+        for r in s.rules
+        if not isinstance(r.rule_def, RequiredAttribute)
+    ]
+    assert len(keys) == len(set(keys))  # rules_scope_key (subject is '' for these types)
+
+
+def test_rules_seed_tshirts_rulesets_present() -> None:
+    scopes = _by_scope()
+    for marketplace, title_max in (("amazon", 200), ("flipkart", 150)):
+        rule_set = scopes[(marketplace, "tshirts")]
+        rows = {(r.field, r.rule_def.type): r for r in rule_set.rules}
+        assert rows[("content.title", "max_length")].rule_def.limit == title_max  # type: ignore[union-attr]
+        assert rows[("content.title", "max_length")].version == 1
+        assert rows[("content.title", "min_length")].rule_def.limit == 5  # type: ignore[union-attr]
+        title_banned = rows[("content.title", "banned_terms")].rule_def
+        assert isinstance(title_banned, BannedTerms) and set(title_banned.terms) == BANNED
+        star = rows[("*", "banned_terms")].rule_def
+        assert isinstance(star, BannedTerms) and star.terms == STAR_TERMS
+        assert {
+            r.rule_def.attribute
+            for r in rule_set.rules
+            if isinstance(r.rule_def, RequiredAttribute)
+        } == {"color", "fabric_type"}
+        assert all(r.tenant_id is None and r.rule_def.policy_ref for r in rule_set.rules)
+    assert list(scopes)[-2:] == [("amazon", "tshirts"), ("flipkart", "tshirts")]
 
 
 def test_rules_seed_canonical_json() -> None:

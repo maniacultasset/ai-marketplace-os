@@ -68,4 +68,7 @@ async def test_seed_demo_end_to_end() -> None:
         )
         banned = [r for r in rules if r.rule_type == "banned_terms"]
         assert banned and all(r.tenant_id is None for r in banned)
-        assert "guaranteed" in banned[0].rule_def["terms"]
+        # S14a T12 adds a `*` banned row, which sorts before `content.title`.
+        assert {r.field for r in banned} == {"*", "content.title"}
+        (title_banned,) = [r for r in banned if r.field == "content.title"]
+        assert "guaranteed" in title_banned.rule_def["terms"]
