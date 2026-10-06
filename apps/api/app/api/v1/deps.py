@@ -17,6 +17,7 @@ from mkos_schemas.auth import JWTClaims
 from mkos_schemas.codes import ErrorCode
 
 from app.api.errors import ApiError
+from app.api.rate_limit import enforce_tenant_limit, limit_ip
 from app.core.rbac import PUBLIC, Action, Principal, allows, mark_policy
 from app.core.request_context import bind_tenant
 from app.core.security import InvalidToken, decode
@@ -78,11 +79,17 @@ async def access_claims(
     raise _unauthenticated()
 
 
+async def limit_tenant(claims: Annotated[JWTClaims, Depends(access_claims)]) -> JWTClaims:
+    """120 requests a minute per tenant, on the verified token's `tid` (no probe needed)."""
+    await enforce_tenant_limit(claims.tid)
+    return claims
+
+
 async def get_current_principal(
-    claims: Annotated[JWTClaims, Depends(access_claims)],
+    claims: Annotated[JWTClaims, Depends(limit_tenant)],
 ) -> Principal:
-    """The verified caller (CODE-PLAN S10 C5): the access token, then one membership probe in
-    its tenant; the role is the row's. Every failure is the same 401 UNAUTHENTICATED, and the
+    """The verified caller (CODE-PLAN S10 C5): the access token, the tenant limiter, then one
+    membership probe in its tenant; the role is the row's. Every failure is the same 401 UNAUTHENTICATED, and the
     tenant is bound to the request only after the probe passes."""
     principal = await probe_principal(claims)
     if principal is None:
@@ -106,16 +113,17 @@ def require(action: Action) -> Any:
     return Depends(mark_policy(dependency, action))
 
 
-async def _no_limit() -> None:
+async def _public_limited(_: Annotated[None, Depends(limit_ip)]) -> None:
+    return None
+
+
+async def _public_unlimited() -> None:
     return None
 
 
 @cache
 def public(*, rate_limited: bool = True) -> Any:
-    """The public-route marker. With `rate_limited` it carries the per-IP limiter."""
-
-    async def dependency() -> None:
-        return None
-
-    dependency.__name__ = "public_limited" if rate_limited else "public_unlimited"
+    """The public-route marker. It carries the per-IP limiter; only the probes and the docs use
+    `rate_limited=False` (a liveness probe must not depend on the database)."""
+    dependency = _public_limited if rate_limited else _public_unlimited
     return Depends(mark_policy(dependency, PUBLIC))
