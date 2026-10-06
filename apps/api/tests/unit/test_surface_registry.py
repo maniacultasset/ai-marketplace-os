@@ -17,13 +17,17 @@ from app.api.v1.surface import (
 from app.core.rbac import Action
 from mkos_schemas.codes import ErrorCode
 
-# The frozen list (PLAN D1): 35 operations, no dead-letter path. Later steps add ops as
+# The frozen list (PLAN D1): 35 operations at S3 plus S10's switch and members (38), no
+# dead-letter path. Later steps add ops as
 # "merged literal + N" (S10 38, S15 40, S16 43, S19 47, S20 48, S21 50).
 FROZEN: tuple[tuple[str, str, str], ...] = (
     ("auth_login", "POST", "/auth/login"),
     ("auth_refresh", "POST", "/auth/refresh"),
     ("auth_logout", "POST", "/auth/logout"),
     ("auth_me", "GET", "/auth/me"),
+    ("auth_switch_tenant", "POST", "/auth/switch-tenant"),
+    ("members_list", "GET", "/members"),
+    ("members_patch", "PATCH", "/members/{user_id}"),
     ("tenants_me", "GET", "/tenants/me"),
     ("brand_documents_upload", "POST", "/brand/documents"),
     ("products_create", "POST", "/products"),
@@ -61,7 +65,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 35
+    assert len(FROZEN) == 38
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -186,6 +190,7 @@ def test_error_codes_per_d2() -> None:
         "listings_content_patch": (E.STALE_VERSION,),
         "jobs_cancel": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "marketplaces_callback": (E.OAUTH_STATE_INVALID,),
+        "members_patch": (E.LAST_OWNER_REQUIRED,),
     }
     for op in OPS.values():
         codes = op.error_codes

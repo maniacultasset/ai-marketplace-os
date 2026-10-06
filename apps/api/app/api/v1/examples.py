@@ -12,6 +12,7 @@ T0: Final = "2026-10-05T09:30:00Z"
 T1: Final = "2026-10-05T09:31:00Z"
 TENANT: Final = "0b1c2d3e-0000-4000-8000-000000000001"
 USER: Final = "0b1c2d3e-0000-4000-8000-000000000002"
+USER_2: Final = "0b1c2d3e-0000-4000-8000-000000000003"
 PRODUCT_1: Final = "0b1c2d3e-0000-4000-8000-000000000101"
 PRODUCT_2: Final = "0b1c2d3e-0000-4000-8000-000000000102"
 LISTING: Final = "0b1c2d3e-0000-4000-8000-000000000201"
@@ -32,6 +33,14 @@ _TOKENS: Final = {
     "token_type": "bearer",
     "expires_in": 1800,
     "memberships": _MEMBERSHIPS,
+}
+
+_MEMBER: Final = {
+    "user_id": USER,
+    "email": "owner@fabrica.example",
+    "display_name": "Asha",
+    "role": "owner",
+    "is_active": True,
 }
 
 
@@ -206,6 +215,26 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "tenant_id": TENANT,
             "role": "owner",
             "memberships": _MEMBERSHIPS,
+        },
+        "auth_switch_tenant": _TOKENS,
+        "members_list": _page(
+            [
+                _MEMBER,
+                {
+                    **_MEMBER,
+                    "user_id": USER_2,
+                    "email": "ravi@fabrica.example",
+                    "display_name": "Ravi",
+                    "role": "reviewer",
+                },
+            ]
+        ),
+        "members_patch": {
+            **_MEMBER,
+            "user_id": USER_2,
+            "email": "ravi@fabrica.example",
+            "display_name": "Ravi",
+            "role": "operator",
         },
         "tenants_me": {
             "id": TENANT,

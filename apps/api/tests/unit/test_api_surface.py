@@ -244,6 +244,7 @@ def test_list_ops_are_the_page_models() -> None:
         "listings_list",
         "marketplaces_accounts",
         "rules_list",
+        "members_list",
     }
 
 

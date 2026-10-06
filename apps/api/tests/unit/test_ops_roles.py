@@ -18,6 +18,7 @@ Q7: dict[str, str] = {
     "auth_refresh": PUBLIC,
     "auth_logout": PUBLIC,
     "auth_me": "tenant:read",
+    "auth_switch_tenant": "tenant:read",
     "tenants_me": "tenant:read",
     "brand_documents_upload": "settings:manage",
     "products_create": "product:import",
@@ -49,6 +50,8 @@ Q7: dict[str, str] = {
     "jobs_cancel": "listing:generate",
     "analytics_get": "analytics:read",
     "analytics_summary": "analytics:read",
+    "members_list": "team:manage",
+    "members_patch": "team:manage",
 }
 NARROWED_BY_S10 = (
     "images_upload_url",
@@ -73,7 +76,7 @@ def _operation(spec: dict[str, Any], op_id: str) -> dict[str, Any]:
 
 
 def test_ops_are_the_q7_list() -> None:
-    assert len(OPS) == 35
+    assert len(OPS) == 38
     assert set(OPS) == set(Q7)
 
 

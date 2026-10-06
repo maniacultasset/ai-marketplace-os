@@ -1,6 +1,7 @@
 """The frozen `/api/v1` surface: one row per operation (S3; BACKEND-ARCHITECTURE.md §5.2).
 
-`OPS` is the frozen list (35 operations; no dead-letter path, which is staff tooling per T82). It
+`OPS` is the frozen list (35 operations at S3, 38 with S10's switch and members; no dead-letter path,
+which is staff tooling per T82). It
 drives the routers (`route()`), the declared OpenAPI responses (`declared_responses()`), the
 parametrized surface tests and the case-matrix guard (`cases()`), so a route, its contract and its
 required tests cannot drift apart.
@@ -31,7 +32,7 @@ from app.api.errors import STATUS_MESSAGES, ErrorEnvelope, envelope_body
 from app.api.v1.deps import bearer_required
 from app.api.v1.examples import CALLBACK_LOCATION, SUCCESS_EXAMPLES
 from app.api.v1.schemas.analytics import AnalyticsSummary
-from app.api.v1.schemas.auth import MeOut, TokenResponse
+from app.api.v1.schemas.auth import MemberOut, MemberPage, MeOut, TokenResponse
 from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.images import ImageAccepted, ImageReportOut, UploadUrlOut
 from app.api.v1.schemas.imports import ImportAccepted, ImportRowPage
@@ -296,6 +297,17 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "Revoke the refresh token", "S10", public=True, has_body=True),
     Operation("auth_me", "GET", "/auth/me", 200, MeOut, "auth",
               "The current principal and memberships", "S10", action=A.TENANT_READ),
+    Operation("auth_switch_tenant", "POST", "/auth/switch-tenant", 200, TokenResponse, "auth",
+              "Switch the active tenant: a new token pair for another of the caller's tenants",
+              "S10", has_body=True, body_ids=("target_tenant_id",), action=A.TENANT_READ),
+    # ---- members (S10) ----
+    Operation("members_list", "GET", "/members", 200, MemberPage, "members",
+              "List the tenant's members", "S10", query=("limit", "cursor"),
+              action=A.TEAM_MANAGE),
+    Operation("members_patch", "PATCH", "/members/{user_id}", 200, MemberOut, "members",
+              "Change a member's role or active flag (only an owner grants or removes owner)",
+              "S10", path_id="user_id", has_body=True, conflict_code=E.LAST_OWNER_REQUIRED,
+              action=A.TEAM_MANAGE),
     # ---- tenants and brand (S16) ----
     Operation("tenants_me", "GET", "/tenants/me", 200, TenantOut, "tenants",
               "The brand profile", "S16", action=A.TENANT_READ),

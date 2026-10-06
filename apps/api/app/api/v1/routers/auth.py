@@ -7,7 +7,12 @@ from typing import NoReturn
 from fastapi import APIRouter
 
 from app.api.errors import NotImplementedYet
-from app.api.v1.schemas.auth import LoginRequest, LogoutRequest, RefreshRequest
+from app.api.v1.schemas.auth import (
+    LoginRequest,
+    LogoutRequest,
+    RefreshRequest,
+    SwitchTenantRequest,
+)
 from app.api.v1.surface import OPS, route, stub
 
 router = APIRouter()
@@ -39,3 +44,10 @@ async def auth_logout(body: LogoutRequest) -> NoReturn:
 async def auth_me() -> NoReturn:
     """The current principal: user, active tenant, role and memberships."""
     raise NotImplementedYet("auth_me")
+
+
+@route(router, OPS["auth_switch_tenant"])
+@stub
+async def auth_switch_tenant(body: SwitchTenantRequest) -> NoReturn:
+    """A new token pair for another of the caller's active tenants."""
+    raise NotImplementedYet("auth_switch_tenant")

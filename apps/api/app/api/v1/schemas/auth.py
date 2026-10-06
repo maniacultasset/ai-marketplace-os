@@ -1,4 +1,4 @@
-"""Auth request and response models (owner step S10)."""
+"""Auth and members request and response models (owner step S10)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,10 @@ from uuid import UUID
 
 from mkos_schemas.auth import Role
 from mkos_schemas.base import NonBlankStr, StrictModel, WireModel
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, StrictBool, model_validator
+from pydantic_core import PydanticCustomError
+
+from app.api.pagination import Page
 
 Email = Annotated[str, Field(min_length=3, max_length=320, pattern=r"^[^@\s]+@[^@\s]+$")]
 RefreshToken = Annotated[SecretStr, Field(min_length=1, max_length=4096)]
@@ -47,3 +50,35 @@ class MeOut(WireModel):
     tenant_id: UUID
     role: Role
     memberships: list[MembershipOut]
+
+
+class SwitchTenantRequest(StrictModel):
+    """`target_tenant_id`, not `tenant_id`: the one body field naming a tenant is the switch
+    target, checked against the caller's own active memberships (ADR-0006; CODE-PLAN S10 Q9)."""
+
+    target_tenant_id: UUID
+
+
+class MemberOut(WireModel):
+    user_id: UUID
+    email: Email
+    display_name: str | None = None
+    role: Role
+    is_active: bool
+
+
+class MemberPage(Page[MemberOut]):
+    pass
+
+
+class MemberPatch(StrictModel):
+    """At least one of `role` and `is_active`."""
+
+    role: Role | None = None
+    is_active: StrictBool | None = None
+
+    @model_validator(mode="after")
+    def _one_change(self) -> MemberPatch:
+        if self.role is None and self.is_active is None:
+            raise PydanticCustomError("mkos_invalid", "Give role or is_active.")
+        return self
