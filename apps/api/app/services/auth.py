@@ -236,3 +236,59 @@ async def refresh(raw_token: str, *, ip: str | None, user_agent: str | None) -> 
         await tokens.rotate(row.tenant_id, row.id, new_id)
         listed = await memberships.list_active_for_user(row.user_id)
     return TokenPair(access, new_refresh, _access_ttl(), [_membership(m) for m in listed])
+
+
+# ---- logout and me (CODE-PLAN S10 C10) ----
+
+
+async def logout(raw_token: str, *, ip: str | None) -> None:
+    """Revoke the token's whole family. Idempotent: an invalid, expired, unknown or already
+    revoked token changes nothing (no database write for a token that does not verify)."""
+    try:
+        claims = decode(raw_token, typ="refresh")
+    except InvalidToken:
+        return
+    digest = token_hash(raw_token)
+    async with identity_session() as session:
+        await set_gucs(session, tenant_id=claims.tid, user_id=claims.sub, token_hash=digest)
+        tokens = RefreshTokenRepository(session)
+        row = await tokens.by_hash_for_update(digest)
+        if row is None or row.tenant_id != claims.tid or row.user_id != claims.sub:
+            return
+        if row.revoked_at is not None:
+            return
+        await tokens.revoke_family(row.tenant_id, row.family_id, "logout", expect_live=True)
+        await AuditRepository(session).write(
+            tenant_id=row.tenant_id,
+            actor_type="user",
+            actor_user_id=row.user_id,
+            action="auth.logout",
+            entity_type="user",
+            entity_id=row.user_id,
+            ip=_inet(ip),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class Me:
+    user_id: UUID
+    email: str
+    display_name: str | None
+    tenant_id: UUID
+    role: str
+    memberships: list[Membership]
+
+
+async def me(principal: Principal) -> Me:
+    """The caller with every live membership (the switcher lists them)."""
+    async with unit_of_work(principal.tenant_id, user_id=principal.user_id) as session:
+        rows = await MembershipRepository(session).list_active_for_user(principal.user_id)
+    current = next((r for r in rows if r.tenant_id == principal.tenant_id), None)
+    return Me(
+        user_id=principal.user_id,
+        email=principal.email,
+        display_name=current.display_name if current is not None else None,
+        tenant_id=principal.tenant_id,
+        role=principal.role,
+        memberships=[_membership(r) for r in rows],
+    )

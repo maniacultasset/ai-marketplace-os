@@ -2,22 +2,25 @@
 
 from __future__ import annotations
 
-from typing import NoReturn
+from typing import Annotated, NoReturn
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request, Response
 from mkos_schemas.codes import ErrorCode
 
 from app.api.errors import ApiError, NotImplementedYet
 from app.api.rate_limit import enforce_login_limit, request_ip
+from app.api.v1.deps import get_current_principal
 from app.api.v1.schemas.auth import (
     LoginRequest,
     LogoutRequest,
     MembershipOut,
+    MeOut,
     RefreshRequest,
     SwitchTenantRequest,
     TokenResponse,
 )
 from app.api.v1.surface import OPS, route, stub
+from app.core.rbac import Principal
 from app.services import auth
 
 router = APIRouter()
@@ -28,12 +31,7 @@ def _tokens(pair: auth.TokenPair) -> TokenResponse:
         access_token=pair.access_token,
         refresh_token=pair.refresh_token,
         expires_in=pair.expires_in,
-        memberships=[
-            MembershipOut.model_validate(
-                {"tenant_id": m.tenant_id, "tenant_name": m.tenant_name, "role": m.role}
-            )
-            for m in pair.memberships
-        ],
+        memberships=_memberships(pair.memberships),
     )
 
 
@@ -72,17 +70,38 @@ async def auth_refresh(body: RefreshRequest, request: Request) -> TokenResponse:
 
 
 @route(router, OPS["auth_logout"])
-@stub
-async def auth_logout(body: LogoutRequest) -> NoReturn:
-    """Revoke the refresh token."""
-    raise NotImplementedYet("auth_logout")
+async def auth_logout(body: LogoutRequest, request: Request) -> Response:
+    """Revoke the refresh token's whole family. Always 204: an invalid, expired, unknown or
+    already revoked token is a no-op. An access token already issued stays valid until it
+    expires (CANON.md:82)."""
+    await auth.logout(body.refresh_token.get_secret_value(), ip=request_ip(request))
+    return Response(status_code=204)
+
+
+def _memberships(items: list[auth.Membership]) -> list[MembershipOut]:
+    return [
+        MembershipOut.model_validate(
+            {"tenant_id": m.tenant_id, "tenant_name": m.tenant_name, "role": m.role}
+        )
+        for m in items
+    ]
 
 
 @route(router, OPS["auth_me"])
-@stub
-async def auth_me() -> NoReturn:
-    """The current principal: user, active tenant, role and memberships."""
-    raise NotImplementedYet("auth_me")
+async def auth_me(principal: Annotated[Principal, Depends(get_current_principal)]) -> MeOut:
+    """The current principal: user, active tenant, role (from the membership row) and the live
+    memberships."""
+    found = await auth.me(principal)
+    return MeOut.model_validate(
+        {
+            "user_id": found.user_id,
+            "email": found.email,
+            "display_name": found.display_name,
+            "tenant_id": found.tenant_id,
+            "role": found.role,
+            "memberships": _memberships(found.memberships),
+        }
+    )
 
 
 @route(router, OPS["auth_switch_tenant"])

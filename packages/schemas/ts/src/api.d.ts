@@ -76,7 +76,9 @@ export interface paths {
         put?: never;
         /**
          * Revoke the refresh token
-         * @description Revoke the refresh token.
+         * @description Revoke the refresh token's whole family. Always 204: an invalid, expired, unknown or
+         *     already revoked token is a no-op. An access token already issued stays valid until it
+         *     expires (CANON.md:82).
          */
         post: operations["auth_logout"];
         delete?: never;
@@ -94,7 +96,8 @@ export interface paths {
         };
         /**
          * The current principal and memberships
-         * @description The current principal: user, active tenant, role and memberships.
+         * @description The current principal: user, active tenant, role (from the membership row) and the live
+         *     memberships.
          */
         get: operations["auth_me"];
         put?: never;

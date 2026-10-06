@@ -3956,7 +3956,7 @@
     },
     "/api/v1/auth/logout": {
       "post": {
-        "description": "Revoke the refresh token.",
+        "description": "Revoke the refresh token's whole family. Always 204: an invalid, expired, unknown or\nalready revoked token is a no-op. An access token already issued stays valid until it\nexpires (CANON.md:82).",
         "operationId": "auth_logout",
         "requestBody": {
           "content": {
@@ -4143,7 +4143,7 @@
     },
     "/api/v1/auth/me": {
       "get": {
-        "description": "The current principal: user, active tenant, role and memberships.",
+        "description": "The current principal: user, active tenant, role (from the membership row) and the live\nmemberships.",
         "operationId": "auth_me",
         "responses": {
           "200": {
