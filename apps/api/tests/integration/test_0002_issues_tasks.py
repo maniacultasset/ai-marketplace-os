@@ -26,6 +26,8 @@ def _0004_guards_off(request: pytest.FixtureRequest) -> None:
     if "db" in request.fixturenames:
         db = request.getfixturevalue("db")
         disable_0004_guard(db, "listing_items", "li_guard")
+        disable_0004_guard(db, "listing_issues", "listing_issues_guard")
+        disable_0004_guard(db, "human_tasks", "human_tasks_guard")
 
 
 Conn = psycopg.Connection[tuple[Any, ...]]
