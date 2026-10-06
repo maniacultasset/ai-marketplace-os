@@ -206,8 +206,9 @@ class LogCapture:
         self.stream.truncate()
 
 
-def reset_logging() -> None:
-    """Undo `configure_logging()`: drop its root handler and structlog's configuration."""
+def reset_logging(root_level: int = logging.WARNING) -> None:
+    """Undo `configure_logging()`: drop its root handler, restore the root level, and reset
+    structlog and the trace-fields hook."""
     import structlog
 
     root = logging.getLogger()
@@ -215,7 +216,18 @@ def reset_logging() -> None:
         if getattr(handler, "_mkos_root_handler", False):
             root.removeHandler(handler)
             handler.close()
+    root.setLevel(root_level)
     structlog.reset_defaults()
+    if "app.core.logging" in sys.modules:
+        sys.modules["app.core.logging"].set_trace_fields_hook(None)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_logging() -> Iterator[None]:
+    """`create_app()` configures process-wide logging; no test may inherit another's."""
+    level = logging.getLogger().level
+    yield
+    reset_logging(level)
 
 
 @pytest.fixture
@@ -234,7 +246,6 @@ def log_lines() -> Iterator[Callable[..., LogCapture]]:
         return capture
 
     yield start
-    reset_logging()
 
 
 class SentryCapture:

@@ -29,7 +29,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql.elements import conv
 
-from app.db.base import Base
+from app.db.base import Base, request_id_column
 from app.db.models._tenant import TenantScoped
 from app.db.models.listings import to_listing_marketplace, to_version
 from app.db.models.tenancy import (
@@ -91,7 +91,7 @@ class ValidationRun(TenantScoped, Base):
     attempt: Mapped[int] = mapped_column(Integer)
     rules_version: Mapped[int | None] = mapped_column(Integer)
     duration_ms: Mapped[int | None] = mapped_column(Integer)
-    request_id: Mapped[str | None] = mapped_column(Text)
+    request_id: Mapped[str | None] = request_id_column()
     # `(category_template_id, template_version) → category_templates` arrives in 0003
     category_template_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     template_version: Mapped[int | None] = mapped_column(Integer)
@@ -152,7 +152,7 @@ class AgentRun(TenantScoped, Base):
     status: Mapped[str] = mapped_column(Text)
     error_report_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     cost_usd: Mapped[Decimal] = mapped_column(Numeric(12, 6), server_default=text("0"))
-    request_id: Mapped[str] = mapped_column(Text)
+    request_id: Mapped[str] = request_id_column()
     agent_name: Mapped[str] = mapped_column(Text)
     attempt: Mapped[int] = mapped_column(Integer, server_default=text("1"))
     prompt_version: Mapped[str | None] = mapped_column(Text)

@@ -34,7 +34,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, INET, JSONB
 from sqlalchemy.orm import Mapped, Mapper, mapped_column
 from sqlalchemy.sql.elements import conv
 
-from app.db.base import Base
+from app.db.base import Base, request_id_column
 from app.db.models._tenant import TenantScoped
 from app.db.models.listings import to_listing_marketplace, to_version
 from app.db.models.tenancy import (
@@ -125,7 +125,7 @@ class JobRun(TenantScoped, Base):
     result_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     error_report_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     correlation_id: Mapped[uuid.UUID] = mapped_column(Uuid)
-    request_id: Mapped[str | None] = mapped_column(Text)
+    request_id: Mapped[str | None] = request_id_column()
     parent_job_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     batch_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
