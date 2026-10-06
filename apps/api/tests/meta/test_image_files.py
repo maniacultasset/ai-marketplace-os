@@ -115,7 +115,7 @@ def test_entrypoint_roles(entrypoint: Path) -> None:
     assert subprocess.run(["sh", "-n", str(entrypoint)], check=False).returncode == 0
     bogus = _run_entrypoint(entrypoint, "bogus")
     assert bogus.returncode == 64
-    assert "api|migrate|shell" in bogus.stderr
+    assert "api|migrate|seed|shell" in bogus.stderr
     shell = _run_entrypoint(entrypoint, "shell", "-c", "print(1)")
     assert shell.returncode == 0, shell.stderr
     assert shell.stdout == "1\n"
@@ -191,3 +191,16 @@ def test_dockerignore_excludes_mock(repo_root: Path) -> None:
     # S3 D5: the local mock is dev tooling; the Dockerfile copies apps/api, so .dockerignore drops it.
     lines = (repo_root / ".dockerignore").read_text(encoding="utf-8").splitlines()
     assert "apps/api/app_mock/" in lines
+
+
+def test_entrypoint_seed_role_verbatim(entrypoint: Path) -> None:
+    """CANON-ADDENDUM.md A§5: the seed role line, verbatim."""
+    text = entrypoint.read_text(encoding="utf-8")
+    assert '    exec python -m app.cli seed --profile "${SEED_PROFILE:-demo}"\n' in text
+    assert "\n  seed)\n" in text
+
+
+def test_entrypoint_unknown_role_lists_seed(entrypoint: Path) -> None:
+    bogus = _run_entrypoint(entrypoint, "bogus")
+    assert bogus.returncode == 64
+    assert "unknown APP_ROLE='bogus' (api|migrate|seed|shell)" in bogus.stderr

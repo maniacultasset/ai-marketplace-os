@@ -41,7 +41,7 @@ class Settings(BaseSettings):
 
     # ---- app ----
     app_env: Literal["local", "staging", "production"]
-    app_role: Literal["api", "worker", "migrate", "shell"] = "api"
+    app_role: Literal["api", "worker", "migrate", "seed", "shell"] = "api"
     app_name: str = "marketplace-os-api"
     api_v1_prefix: Literal["/api/v1"] = "/api/v1"
     log_level: str = "INFO"
@@ -168,6 +168,7 @@ def _boot_errors(s: Settings) -> list[str]:
         "api": ("DATABASE_URL", "JWT_SECRET"),
         "worker": ("DATABASE_URL",),
         "migrate": ("ALEMBIC_DATABASE_URL",),
+        "seed": ("DATABASE_URL", "ALEMBIC_DATABASE_URL"),
         "shell": (),
     }[s.app_role]
     errors: list[str] = []

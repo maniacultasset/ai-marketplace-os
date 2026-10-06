@@ -4287,10 +4287,10 @@
   },
   {
    "id": "R05075",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "CANON.md:79",
-   "note": "demo seed carries no brand guideline text"
+   "ref": "apps/api/app/db/seed_ops.py",
+   "note": "S9: seed --profile demo writes tenant guidelines and glossary, a brand_profiles row and one brand chunk per type."
   },
   {
    "id": "R05075a",

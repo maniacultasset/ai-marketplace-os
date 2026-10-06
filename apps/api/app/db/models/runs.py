@@ -30,6 +30,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql.elements import conv
 
 from app.db.base import Base
+from app.db.models._tenant import TenantScoped
 from app.db.models.listings import to_listing_marketplace, to_version
 from app.db.models.tenancy import (
     anchor,
@@ -41,7 +42,7 @@ from app.db.models.tenancy import (
 )
 
 
-class ValidationRun(Base):
+class ValidationRun(TenantScoped, Base):
     """Append-only (0004): one row per stage per attempt, in the one ErrorReport shape."""
 
     __tablename__ = "validation_runs"
@@ -100,7 +101,7 @@ class ValidationRun(Base):
     created_at: Mapped[datetime] = created_at_column()
 
 
-class AgentRun(Base):
+class AgentRun(TenantScoped, Base):
     """Append-only (0004): one row per model call (invariant 7), written only by the backend."""
 
     __tablename__ = "agent_runs"
@@ -161,7 +162,7 @@ class AgentRun(Base):
     created_at: Mapped[datetime] = created_at_column()
 
 
-class Performance(Base):
+class Performance(TenantScoped, Base):
     __tablename__ = "performance"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_performance")),

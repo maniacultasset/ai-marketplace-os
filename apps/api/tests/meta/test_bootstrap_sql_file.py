@@ -46,8 +46,12 @@ def test_workflows_have_no_password_literals(repo_root: Path) -> None:
         *sorted((repo_root / "scripts/ci").glob("*.sh")),
     ]
     assert len(paths) > 3
+    # S9 D14: the one allowed assignment computes app_rw's verifier from the CI-only constant.
+    computed = ('APP_RW_SCRAM="$(make -s app-rw-scram)"', 'APP_RW_SCRAM="$$($(APP_RW_SCRAM_CMD))"')
     for path in paths:
         text = path.read_text(encoding="utf-8")
+        for allowed in computed:
+            text = text.replace(allowed, "")
         for literal in ("PASSWORD '", 'PASSWORD "', "SCRAM-SHA-256$", "_SCRAM="):
             assert literal not in text, (path.name, literal)
 
@@ -184,4 +188,6 @@ def test_makefile_passes_scram_vars_by_name(repo_root: Path) -> None:
     test_db = re.search(r"^test-db:\n((?:\t.+\n)+)", makefile, re.MULTILINE)
     assert test_db is not None
     assert "-f - < scripts/db/0000_bootstrap.sql" in test_db.group(1)
-    assert "role_passwords" not in test_db.group(1)
+    # S9 D14: test-db sets only app_rw's CI-only password, computed by the helper.
+    assert re.findall(r"[A-Z_]+_SCRAM\b", test_db.group(1)) == ["APP_RW_SCRAM", "APP_RW_SCRAM"]
+    assert 'APP_RW_SCRAM="$$($(APP_RW_SCRAM_CMD))"' in test_db.group(1)

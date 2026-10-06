@@ -374,3 +374,61 @@ def test_mock_smoke_script(repo_root: Path) -> None:
     assert "Prefer: code=404" in text
     assert "/products/0b1c2d3e-" in text
     assert "kill" in text
+
+
+S9_LEGS = {
+    "lint-imports-platform-scope-worker": ("lint-imports", ": R5 "),
+    "lint-imports-scope-ok-service": ("lint-imports", ": R6 "),
+    "api-lint-text-in-service": ("api-lint", ": R4 "),
+    "api-lint-text-attribute-chain": ("api-lint", ": R4 "),
+    "api-lint-engine-in-worker": ("api-lint", ": R4 "),
+    "tenant-isolation-no-filter": ("tenant-isolation", "test_list_returns_only_own_rows"),
+    "tenant-isolation-no-guard": ("tenant-isolation", "test_raw_select_raises_guard"),
+    "tenant-isolation-superuser": ("tenant-isolation", "test_isolation_runs_as_app_rw"),
+    "tenant-isolation-guard-all-mappers": (
+        "tenant-isolation",
+        r"test_raw_select_raises_guard\[[a-z_]+-(join|subquery|exists|cte|select_from|core_table)\]",
+    ),
+    "tenant-isolation-guard-table-only": (
+        "tenant-isolation",
+        r"test_raw_select_raises_guard\[[a-z_]+-table_clause\]",
+    ),
+    "tenant-isolation-no-before-flush": ("tenant-isolation", "test_flush_rejects_other_tenant"),
+    "tenant-isolation-no-marker": ("tenant-isolation", "deselected"),
+}
+
+
+def test_prove_gates_has_s9_legs(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    code = _code(text)
+    for name, (gate, regex) in S9_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+        assert re.search(rf"(?m)^{re.escape(leg.group(2))}\(\) \{{", code), leg.group(2)
+    docker = code.index('if [ "$with_docker" -eq 1 ]; then')
+    for name, (gate, _) in S9_LEGS.items():
+        if gate == "tenant-isolation":
+            assert code.index(f"leg {name} ") > docker, name
+    superuser = re.search(r"(?m)^[ \t]*leg tenant-isolation-superuser .*$", code)
+    assert superuser is not None
+    assert "ISO_DATABASE_URL=postgresql+psycopg://postgres:postgres@" in superuser.group(0)
+
+
+def test_bootstrap_seeds_after_migrate(repo_root: Path) -> None:
+    """S9 T21 (A§7): the host seed runs after Alembic and before the API starts; the image's
+    seed role runs after its migrate role and before the Cloud SQL mimic."""
+    raw = (repo_root / "scripts" / "ci" / "bootstrap.sh").read_text(encoding="utf-8")
+    assert "no seed until S9" not in raw
+    text = _code(raw)
+    alembic = text.index("uv run --frozen alembic -c apps/api/alembic.ini upgrade head")
+    host_seed = text.index("uv run --frozen python -m app.cli seed --profile demo")
+    assert alembic < host_seed < text.index("uvicorn app.main:app")
+    image_migrate = text.index("APP_ROLE=migrate")
+    image_seed = text.index("APP_ROLE=seed")
+    assert image_migrate < image_seed < text.index("make bootstrap-mimic")
+    run = text[text.rindex("docker run", 0, image_seed) : text.index("\n", image_seed)]
+    assert '--network "$network"' in run and "APP_ENV=local" in run
+    assert "SEED_PROFILE" not in run  # unset: the entrypoint's demo default
+    for name in ("DATABASE_URL", "ALEMBIC_DATABASE_URL"):
+        assert f"-e {name}=postgresql+psycopg://postgres:postgres@postgres:5432/" in run

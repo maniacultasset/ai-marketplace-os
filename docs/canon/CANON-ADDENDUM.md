@@ -149,7 +149,7 @@ The plain `UNIQUE (marketplace, category, field, version)` in the canon row is D
 
 ## 5. Seed — one entrypoint, one fixture set
 
-ONE invocation: `python -m app.cli seed --profile {demo|isolation}`. `--profile` is REQUIRED and has no default.
+ONE invocation: `python -m app.cli seed --profile {demo|isolation}`. `--profile` is REQUIRED and has no default. `seed`, `--reset` included, runs only under `APP_ENV=local`. Any other `APP_ENV` exits 3 with `seed: refused: APP_ENV=<env> (seed runs only under APP_ENV=local)` before any connection opens (S9 PLAN D9): the A§5 password is public, so a seed in staging or prod would create known-password logins.
 
 Mechanics: the seed body moves to `apps/api/app/cli.py` (argparse sub-command `seed`, flags `--profile` and `--reset`). `scripts/seed.py` is DELETED. The fixture path inside `app/cli.py` is `Path(__file__).resolve().parents[3] / "packages/schemas/fixtures/rules.seed.json"`. Callers:
 - root Makefile: `seed:\n\tuv run python -m app.cli seed --profile demo`
@@ -178,10 +178,10 @@ The products-uniqueness canon row's proof sentence becomes: "both tenants hold K
     if state.execution_options.get(SCOPE_OK) or state.session.info.get(SCOPE_OK):
         return
 ```
-2. `platform_scope(*, readonly: bool = True)` in `apps/api/app/db/session.py` sets `session.info[SCOPE_OK] = True` and issues `SET TRANSACTION READ ONLY` when `readonly` is true. It is the only place that writes `SCOPE_OK`.
-3. `readonly=False` carve-out: permitted from `apps/api/app/cli.py` and `scripts/**` ONLY (seeding, and DLQ requeue on staging). Every other caller uses the default.
+2. `platform_scope()` in `apps/api/app/db/session.py` takes no `readonly` parameter: it is always read-only. It sets `session.info[SCOPE_OK] = True`, every transaction it begins runs `SET TRANSACTION READ ONLY` and then `SET LOCAL ROLE app_platform_ro` before anything else, and the session is always rolled back on exit. It is the only writer of `session.info[SCOPE_OK]`; the only other writer of the `SCOPE_OK` key is `TenantScopedRepository` (`apps/api/app/repositories/base.py`), which stamps it as a statement execution option on its own tenant-filtered statements.
+3. No write carve-out (DATABASE.md:154-158, §11.2 row 17). Cross-tenant writes (the seed, a DLQ requeue) read through `platform_scope()` if they must, then write per tenant in `unit_of_work(tenant_id)`; platform-global rows are written only by migrator-run `app.cli` commands.
 4. The CI grep in the `lint-imports` job is: `grep -rn "tenant_scope_checked" --include='*.py' apps packages scripts` must return exactly two files — `apps/api/app/db/guard.py` and `apps/api/app/db/session.py`. Any third hit fails the job.
-5. import-linter forbidden contract: `platform_scope` importable only from `app.admin.*`, `app.cli`, `scripts.*`.
+5. `platform_scope` is named only in `apps/api/app/admin/**`, `apps/api/app/cli.py` and `scripts/**` (and defined in `apps/api/app/db/session.py`), enforced by repo rule R5 in `scripts/ci/check_repo_rules.py`, which `lint-imports` runs next to the grep (import-linter cannot express a per-name allowlist). Repo rule R6 confines the `SCOPE_OK` name to `apps/api/app/db/**` and `apps/api/app/repositories/base.py`.
 
 > **Supersedes:** The canon row 'a session stamped execution_options(tenant_scope_checked=True, readonly=True)' and its unqualified 'CI greps for any other occurrence'. Resolves internal conflict #8.
 

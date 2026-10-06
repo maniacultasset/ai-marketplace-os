@@ -35,6 +35,7 @@ from sqlalchemy.orm import Mapped, Mapper, mapped_column
 from sqlalchemy.sql.elements import conv
 
 from app.db.base import Base
+from app.db.models._tenant import TenantScoped
 from app.db.models.listings import to_listing_marketplace, to_version
 from app.db.models.tenancy import (
     NOW,
@@ -47,7 +48,7 @@ from app.db.models.tenancy import (
 )
 
 
-class JobRun(Base):
+class JobRun(TenantScoped, Base):
     __tablename__ = "job_runs"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_job_runs")),
@@ -143,7 +144,7 @@ def _drop_caller_queue(_mapper: Mapper[JobRun], _connection: Any, target: JobRun
     inspect(target).dict.pop("queue", None)
 
 
-class Import(Base):
+class Import(TenantScoped, Base):
     __tablename__ = "imports"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_imports")),
@@ -169,7 +170,7 @@ class Import(Base):
     created_at: Mapped[datetime] = created_at_column()
 
 
-class ImportRow(Base):
+class ImportRow(TenantScoped, Base):
     __tablename__ = "import_rows"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_import_rows")),
@@ -209,7 +210,7 @@ class ImportRow(Base):
     created_at: Mapped[datetime] = created_at_column()
 
 
-class IdempotencyKey(Base):
+class IdempotencyKey(TenantScoped, Base):
     __tablename__ = "idempotency_keys"
     __table_args__ = (
         PrimaryKeyConstraint("tenant_id", "key", name=conv("pk_idempotency_keys")),
@@ -230,7 +231,7 @@ class IdempotencyKey(Base):
     created_at: Mapped[datetime] = created_at_column()
 
 
-class RefreshToken(Base):
+class RefreshToken(TenantScoped, Base):
     __tablename__ = "refresh_tokens"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_refresh_tokens")),
@@ -265,7 +266,7 @@ class RefreshToken(Base):
     created_at: Mapped[datetime] = created_at_column()
 
 
-class OAuthState(Base):
+class OAuthState(TenantScoped, Base):
     __tablename__ = "oauth_states"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_oauth_states")),
@@ -316,7 +317,7 @@ def to_submission_anchor(table: str, column: str) -> ForeignKeyConstraint:
     )
 
 
-class ListingSubmission(Base):
+class ListingSubmission(TenantScoped, Base):
     __tablename__ = "listing_submissions"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_listing_submissions")),
@@ -408,7 +409,7 @@ class ListingSubmission(Base):
     created_at: Mapped[datetime] = created_at_column()
 
 
-class PublishFieldResult(Base):
+class PublishFieldResult(TenantScoped, Base):
     """Append-only per-field ledger, keyed by child SKU (the listing item)."""
 
     __tablename__ = "publish_field_results"

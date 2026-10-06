@@ -123,3 +123,62 @@ def test_dev_upgrades_after_bootstrap_db_and_sync(repo_root: Path) -> None:
     upgrade = body.index("uv run --frozen alembic -c apps/api/alembic.ini upgrade head")
     serve = body.index("uvicorn")
     assert bootstrap < sync < upgrade < serve
+
+
+# ---- S9 D14: the CI-only app_rw password reaches 0000_role_passwords.sql as a SCRAM verifier ----
+
+
+def _target(makefile: str, name: str) -> str:
+    return makefile.split(f"\n{name}:\n", 1)[1].split("\n\n", 1)[0]
+
+
+def test_test_db_sets_app_rw_scram_from_constant(repo_root: Path) -> None:
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert "\nCI_APP_RW_PASSWORD := ci_only_app_rw_not_a_real_password\n" in makefile
+    assert (
+        "\nAPP_RW_SCRAM_CMD = printf '%s' '$(CI_APP_RW_PASSWORD)' | "
+        "uv run --frozen python scripts/db/scram_verifier.py\n" in makefile
+    )
+    assert _target(makefile, "app-rw-scram").strip() == "@$(APP_RW_SCRAM_CMD)"
+    test_db = _target(makefile, "test-db")
+    assert 'APP_RW_SCRAM="$$($(APP_RW_SCRAM_CMD))"' in test_db
+    assert "-e APP_RW_SCRAM postgres" in test_db
+    assert "-f - < scripts/db/0000_role_passwords.sql" in test_db
+    # the plaintext never sits on a psql argv: only the constant's printf feeds the helper's stdin
+    for line in test_db.splitlines():
+        if "psql" in line:
+            assert "CI_APP_RW_PASSWORD" not in line and "ci_only_app_rw" not in line
+
+
+def test_tenant_isolation_migrates_then_runs_as_app_rw(repo_root: Path) -> None:
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert (
+        "\nISO_ADMIN_URL ?= postgresql+psycopg://postgres:postgres@localhost:$(PG_HOST_PORT)/mos_iso\n"
+        in makefile
+    )
+    assert (
+        "\nISO_DATABASE_URL ?= postgresql+psycopg://app_rw:$(CI_APP_RW_PASSWORD)@localhost:"
+        "$(PG_HOST_PORT)/mos_iso\n" in makefile
+    )
+    recipe = _target(makefile, "tenant-isolation")
+    migrate = recipe.index(
+        "APP_ENV=local APP_ROLE=migrate ALEMBIC_DATABASE_URL=$(ISO_ADMIN_URL) "
+        "uv run --frozen python -m app.cli db migrate"
+    )
+    pytest_at = recipe.index("uv run --frozen pytest -q -m tenant_isolation --no-cov")
+    assert migrate < pytest_at
+    run = recipe[migrate:]
+    for part in (
+        "APP_ENV=local",
+        "DATABASE_URL=$(ISO_DATABASE_URL)",
+        "ALEMBIC_DATABASE_URL=$(ISO_ADMIN_URL)",
+        "JWT_SECRET=$(CI_JWT_SECRET)",
+    ):
+        assert part in run
+    assert '-m "not tenant_isolation and not cloudsql_mimic"' in _target(makefile, "api-tests")
+
+
+def test_no_sentinel_left(repo_root: Path) -> None:
+    folder = repo_root / "apps/api/tests/tenant_isolation"
+    assert not (folder / "test_sentinel.py").exists()
+    assert (folder / "conftest.py").is_file() and (folder / "test_app_rw.py").is_file()

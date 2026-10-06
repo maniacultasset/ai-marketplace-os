@@ -325,3 +325,14 @@ def test_publish_token_only_in_env(workflows: dict[str, dict[str, Any]], repo_ro
         assert "NODE_AUTH_TOKEN" not in str(step)
     checkout = job["steps"][0]
     assert checkout["with"] == {"persist-credentials": False, "fetch-depth": 0}
+
+
+def test_isolation_job_sets_app_rw_password(workflows: dict[str, dict[str, Any]]) -> None:
+    """S9 D14: the job sets app_rw's CI-only password from the Makefile constant, as a verifier."""
+    jobs = {jid: job for _, jid, job in _jobs(workflows)}
+    runs = [str(step.get("run", "")) for step in jobs["tenant-isolation"]["steps"]]
+    bootstrap = next(run for run in runs if run.lstrip().startswith("psql "))
+    assert 'APP_RW_SCRAM="$(make -s app-rw-scram)" psql' in bootstrap
+    assert "-f scripts/db/0000_role_passwords.sql" in bootstrap
+    assert bootstrap.index("0000_bootstrap.sql") < bootstrap.index("0000_role_passwords.sql")
+    assert "ci_only_app_rw" not in bootstrap

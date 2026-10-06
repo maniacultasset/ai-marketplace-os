@@ -84,7 +84,7 @@ def test_unknown_env_file_key_aborts_and_names_it(
     assert "extra_forbidden" in message
 
 
-@pytest.mark.parametrize("role", ["api", "worker", "migrate", "shell"])
+@pytest.mark.parametrize("role", ["api", "worker", "migrate", "seed", "shell"])
 def test_missing_app_env_aborts_for_every_role(
     clean_env: Path, monkeypatch: pytest.MonkeyPatch, role: str
 ) -> None:
@@ -111,6 +111,11 @@ def test_missing_app_env_aborts_for_every_role(
         ({"APP_ROLE": "worker", "DATABASE_URL": LOCAL_URL}, []),
         ({"APP_ROLE": "migrate", "ALEMBIC_DATABASE_URL": LOCAL_URL}, []),
         ({"APP_ROLE": "shell"}, []),
+        # S9 D12: the seed role needs the app login and the migrator login.
+        ({"APP_ROLE": "seed"}, ["DATABASE_URL", "ALEMBIC_DATABASE_URL"]),
+        ({"APP_ROLE": "seed", "DATABASE_URL": LOCAL_URL}, ["ALEMBIC_DATABASE_URL"]),
+        ({"APP_ROLE": "seed", "ALEMBIC_DATABASE_URL": LOCAL_URL}, ["DATABASE_URL"]),
+        ({"APP_ROLE": "seed", "DATABASE_URL": LOCAL_URL, "ALEMBIC_DATABASE_URL": LOCAL_URL}, []),
     ],
 )
 def test_role_requirements(
@@ -138,7 +143,7 @@ def test_blank_required_value_counts_as_missing(
     assert name in message
 
 
-@pytest.mark.parametrize("role", ["seed", "API", ""])
+@pytest.mark.parametrize("role", ["bogus", "API", ""])
 def test_unknown_role_aborts(clean_env: Path, monkeypatch: pytest.MonkeyPatch, role: str) -> None:
     message = abort(
         monkeypatch, APP_ENV="local", APP_ROLE=role, DATABASE_URL=LOCAL_URL, JWT_SECRET=CI_LITERAL

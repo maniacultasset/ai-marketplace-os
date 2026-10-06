@@ -27,6 +27,7 @@ from sqlalchemy.orm import Mapped, deferred, mapped_column
 from sqlalchemy.sql.elements import conv
 
 from app.db.base import Base
+from app.db.models._tenant import TenantScoped
 
 GEN_UUID = text("gen_random_uuid()")
 NOW = text("now()")
@@ -81,7 +82,8 @@ def to_row(
     )
 
 
-class Tenant(Base):
+class Tenant(TenantScoped, Base):
+    __tenant_column__ = "id"
     __tablename__ = "tenants"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_tenants")),
@@ -127,7 +129,7 @@ class User(Base):
     updated_at: Mapped[datetime] = updated_at_column()
 
 
-class TenantMembership(Base):
+class TenantMembership(TenantScoped, Base):
     __tablename__ = "tenant_memberships"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_tenant_memberships")),
@@ -162,7 +164,7 @@ class TenantMembership(Base):
     updated_at: Mapped[datetime] = updated_at_column()
 
 
-class Invitation(Base):
+class Invitation(TenantScoped, Base):
     __tablename__ = "invitations"
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_invitations")),

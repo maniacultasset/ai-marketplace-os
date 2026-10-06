@@ -79,7 +79,7 @@ seed_failing_test() {
 }
 seed_no_marker() {
   cp "$root/.env" .env
-  replace apps/api/tests/tenant_isolation/test_sentinel.py $'@pytest.mark.tenant_isolation\n' ''
+  replace apps/api/tests/tenant_isolation/conftest.py $'            item.add_marker(pytest.mark.tenant_isolation)\n' ''
 }
 seed_schemas_import_error() { append packages/schemas/src/mkos_schemas/__init__.py 'raise ImportError("seeded")'; }
 # One hex digit in each hatchling hash. Either artifact (wheel or sdist) satisfies
@@ -157,6 +157,34 @@ seed_bootstrap_no_set_role() {
   cp .env.example .env
   replace scripts/db/0000_bootstrap.sql $'SET ROLE migrator;\n' ''
 }
+
+seed_platform_scope_worker() { new_file apps/api/app/workers/x.py $'"""Seeded."""\n\nfrom app.db.session import platform_scope\n\n__all__ = ["platform_scope"]'; }
+seed_scope_ok_service() { new_file apps/api/app/services/x.py $'"""Seeded."""\n\nfrom app.db.guard import SCOPE_OK\n\n__all__ = ["SCOPE_OK"]'; }
+seed_text_in_service() { new_file apps/api/app/services/x.py $'"""Seeded."""\n\nfrom sqlalchemy import text\n\n__all__ = ["text"]'; }
+seed_text_attribute_chain() { new_file apps/api/app/services/x.py $'"""Seeded."""\n\nimport sqlalchemy as sa\n\nQUERY = sa.sql.text("SELECT 1")'; }
+seed_engine_in_worker() { new_file apps/api/app/workers/x.py $'"""Seeded."""\n\nfrom app.db.session import get_engine\n\n__all__ = ["get_engine"]'; }
+seed_iso_no_filter() {
+  cp "$root/.env" .env
+  replace apps/api/app/repositories/base.py 'select(self.model).where(criterion).execution_options' 'select(self.model).execution_options'
+}
+seed_iso_no_guard() {
+  cp "$root/.env" .env
+  replace apps/api/app/db/session.py $'event.listen(AppSession, "do_orm_execute", check_scope)\n' ''
+}
+seed_iso_all_mappers() {
+  cp "$root/.env" .env
+  replace apps/api/app/db/guard.py 'hits = referenced_tables(state.statement) & tenant_tables()' 'hits = {m.local_table.name for m in state.all_mappers} & tenant_tables()'
+}
+seed_iso_table_only() {
+  cp "$root/.env" .env
+  replace apps/api/app/db/guard.py $'if isinstance(element, TableClause):\n' $'if isinstance(element, Table):\n'
+  replace apps/api/app/db/guard.py 'if isinstance(table, TableClause):' 'if isinstance(table, Table):'
+}
+seed_iso_no_before_flush() {
+  cp "$root/.env" .env
+  replace apps/api/app/db/session.py $'event.listen(AppSession, "before_flush", check_flush)\n' ''
+}
+seed_iso_env() { cp "$root/.env" .env; }
 
 # leg <name> <gate> <expected; ;-separated extended regexes> <seed fn> <command...>
 leg() {
@@ -289,6 +317,12 @@ leg lint-imports-app-imports-mock lint-imports 'app never imports app_mock BROKE
 leg contracts-schemas-tagged-unbumped contracts 'already tagged; bump per CHANGELOG rule' seed_none \
   sh -c 'd="$(mktemp -d)"; trap "rm -rf \"\$d\"" EXIT; git clone -q --no-checkout "$PWD" "$d/r" && cd "$d/r" && git checkout -q "$(git -C "$OLDPWD" rev-parse HEAD)" && git tag schemas-v1.0.0 && printf "\n" >>packages/schemas/jsonschema/openapi.json && git add packages/schemas/jsonschema/openapi.json && git -c core.hooksPath=/dev/null -c user.name=prove-gates -c user.email=prove-gates@example.invalid commit -q -m "test: seeded post-tag edit" && make contracts'
 
+leg lint-imports-platform-scope-worker lint-imports ': R5 ' seed_platform_scope_worker make lint-imports
+leg lint-imports-scope-ok-service lint-imports ': R6 ' seed_scope_ok_service make lint-imports
+leg api-lint-text-in-service api-lint ': R4 ' seed_text_in_service make api-lint
+leg api-lint-text-attribute-chain api-lint ': R4 ' seed_text_attribute_chain make api-lint
+leg api-lint-engine-in-worker api-lint ': R4 ' seed_engine_in_worker make api-lint
+
 if [ "$with_docker" -eq 1 ]; then
   self_project="$(docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"
   leg api-tests-failing-test api-tests 'test_seeded' seed_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests
@@ -308,6 +342,12 @@ if [ "$with_docker" -eq 1 ]; then
   leg api-tests-roundtrip-broken api-tests 'seeded downgrade failure' seed_roundtrip_broken COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests
   docker compose exec -T postgres dropdb -U postgres --force mos_prove
   leg tenant-isolation-no-marker tenant-isolation 'deselected' seed_no_marker COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
+  leg tenant-isolation-no-filter tenant-isolation 'test_list_returns_only_own_rows' seed_iso_no_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
+  leg tenant-isolation-no-guard tenant-isolation 'test_raw_select_raises_guard' seed_iso_no_guard COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
+  leg tenant-isolation-superuser tenant-isolation 'test_isolation_runs_as_app_rw' seed_iso_env COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation ISO_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_iso
+  leg tenant-isolation-guard-all-mappers tenant-isolation 'test_raw_select_raises_guard\[[a-z_]+-(join|subquery|exists|cte|select_from|core_table)\]' seed_iso_all_mappers COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
+  leg tenant-isolation-guard-table-only tenant-isolation 'test_raw_select_raises_guard\[[a-z_]+-table_clause\]' seed_iso_table_only COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
+  leg tenant-isolation-no-before-flush tenant-isolation 'test_flush_rejects_other_tenant' seed_iso_no_before_flush COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   # Bootstrap legs use their own project on this checkout's host ports; pause this stack meanwhile.
   docker compose stop >/dev/null 2>&1
   leg bootstrap-empty-venv bootstrap "No module named 'mkos_schemas'" seed_no_uv_project_env COMPOSE_PROJECT_NAME="prove-gates-bootstrap-${self_project}" DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/marketplace_os ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/marketplace_os S3_ENDPOINT_URL=http://localhost:${MINIO_API_HOST_PORT:-9000} PORT=${API_HOST_PORT:-8000} make bootstrap

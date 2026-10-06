@@ -68,11 +68,12 @@ api-lint:
 	uv run --frozen python scripts/ci/check_repo_rules.py
 	uv run --frozen python scripts/ci/run_pip_audit.py
 
-# import-linter, then the tenant_scope_checked grep (CANON-ADDENDUM.md §6): the literal may appear
+# import-linter, repo rules R5/R6 (platform_scope, SCOPE_OK), then the tenant_scope_checked grep (CANON-ADDENDUM.md §6): the literal may appear
 # only in apps/api/app/db/{guard,session}.py. Zero hits pass until S9 adds them.
 .PHONY: lint-imports
 lint-imports:
 	PYTHONPATH=apps/api uv run --frozen lint-imports --config .importlinter
+	uv run --frozen python scripts/ci/check_repo_rules.py --rules R5,R6
 	@hits="$$(grep -rl --include='*.py' tenant_scope_checked apps packages scripts)" || [ $$? -eq 1 ]; \
 	bad=0; \
 	for hit in $$hits; do \
@@ -107,11 +108,25 @@ test-db:
 	  fi; \
 	  $(PSQL) -d "$$db" -f - < scripts/db/0000_bootstrap.sql; \
 	done
+	APP_RW_SCRAM="$$($(APP_RW_SCRAM_CMD))" \
+	  docker compose exec -T -e APP_RW_SCRAM postgres \
+	  psql -U postgres -v ON_ERROR_STOP=1 -X -q -d mos_iso -f - < scripts/db/0000_role_passwords.sql
+
+# The tenant-isolation suite logs in as app_rw (S9 D7, D14). Its CI-only password is this constant,
+# usable only against the local and CI test clusters; the helper reads it on stdin (printf is a
+# shell builtin, so it never sits on a process argv) and prints the SCRAM verifier.
+.PHONY: app-rw-scram
+app-rw-scram:
+	@$(APP_RW_SCRAM_CMD)
 
 # ---- tests (CANON.md:136-137; the CI env block is these three variables, CANON.md:21) ----
 TEST_DATABASE_URL ?= postgresql+psycopg://postgres:postgres@localhost:$(PG_HOST_PORT)/mos_test
-ISO_DATABASE_URL ?= postgresql+psycopg://postgres:postgres@localhost:$(PG_HOST_PORT)/mos_iso
 CI_JWT_SECRET := ci_only_not_a_real_secret_at_least_32_chars
+CI_APP_RW_PASSWORD := ci_only_app_rw_not_a_real_password
+# tenant-isolation: the admin login migrates mos_iso and builds fixtures; the suite logs in as app_rw.
+ISO_ADMIN_URL ?= postgresql+psycopg://postgres:postgres@localhost:$(PG_HOST_PORT)/mos_iso
+ISO_DATABASE_URL ?= postgresql+psycopg://app_rw:$(CI_APP_RW_PASSWORD)@localhost:$(PG_HOST_PORT)/mos_iso
+APP_RW_SCRAM_CMD = printf '%s' '$(CI_APP_RW_PASSWORD)' | uv run --frozen python scripts/db/scram_verifier.py
 COV_FAIL_UNDER ?= 70
 
 # Alembic on mos_test before pytest (CANON.md:136): upgrade, check, downgrade, upgrade, then squawk
@@ -120,7 +135,7 @@ COV_FAIL_UNDER ?= 70
 ALEMBIC := uv run --frozen alembic -c apps/api/alembic.ini
 MIGRATE_ENV = APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) ALEMBIC_DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET)
 
-# The isolation sentinel asserts mos_iso, so it runs only in its own job (ADR-0013 §4, until S9).
+# api-tests keeps `not tenant_isolation`: that suite needs app_rw on a migrated mos_iso (S9 D8).
 .PHONY: api-tests
 api-tests:
 	$(PG_PORT_GUARD)
@@ -138,7 +153,8 @@ api-tests:
 .PHONY: tenant-isolation
 tenant-isolation:
 	$(PG_PORT_GUARD)
-	APP_ENV=local DATABASE_URL=$(ISO_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) \
+	APP_ENV=local APP_ROLE=migrate ALEMBIC_DATABASE_URL=$(ISO_ADMIN_URL) uv run --frozen python -m app.cli db migrate
+	APP_ENV=local DATABASE_URL=$(ISO_DATABASE_URL) ALEMBIC_DATABASE_URL=$(ISO_ADMIN_URL) JWT_SECRET=$(CI_JWT_SECRET) \
 	  uv run --frozen pytest -q -m tenant_isolation --no-cov
 
 # 0000 (and the password file) as a Cloud SQL-style non-superuser CREATEROLE role, on a throwaway
@@ -178,6 +194,11 @@ mock-smoke:
 .PHONY: hooks
 hooks:
 	uv run --frozen pre-commit install
+
+# The local demo data (CANON-ADDENDUM.md A§5); the command refuses any APP_ENV but local.
+.PHONY: seed
+seed:
+	uv run --frozen python -m app.cli seed --profile demo
 
 .PHONY: bootstrap
 bootstrap:

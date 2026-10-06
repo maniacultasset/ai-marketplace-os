@@ -58,6 +58,10 @@
      `mkos_pipeline` until S14.
    - `lint-imports`: contracts only over packages that exist.
    - An empty test selection (pytest exit 5) is always a failure.
+   - Closing note (S9): the sentinel is gone; `tenant-isolation` is the real suite (every
+     TenantScoped mapper, the vector search, `platform_scope`), run as `app_rw` on a migrated
+     `mos_iso`; `bootstrap` runs the seed again (host and image). `api-tests` keeps
+     `not tenant_isolation`, because that suite needs the `app_rw` login on `mos_iso`.
    - Amends CANON.md:136 and CANON-ADDENDUM.md:201-208 and :302 for the interim.
 5. **Free-plan operating mode** (EXECUTION-PLAN.md §4.3):
    - Checks are advisory. The user merges only when all 10 are green.

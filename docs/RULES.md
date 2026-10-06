@@ -92,6 +92,8 @@ Source: `apps/api/app/core/config.py:1-10`, `:177-178`; `scripts/ci/check_repo_r
 - Rate limits: a Postgres-backed dependency, 120/min per tenant, 60/min per IP, 5/min on login.
 - Body cap 10 MiB (`REQUEST_MAX_BODY_BYTES`), enforced before any parsing or auth; `products/bulk` is multipart only in v1 (S3 CP5).
 - Publishing happens only through the publish endpoint and worker, after `approved`.
+- Another tenant's id is "not found", never "forbidden": `TenantScopedRepository.get_by_id` returns
+  `None` for it exactly as for a missing id, so a response never confirms that the row exists.
 
 Source: `BACKEND-ARCHITECTURE.md` §5.3-§5.6; `CANON.md:83`, `:124`; ADR-0005 §1; `README.md` "Quickstart".
 
