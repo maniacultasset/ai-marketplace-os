@@ -1,6 +1,6 @@
-"""0004/02_audit (DATABASE.md §5.2 audit_log, §4 "Helper grants"; CODE-PLAN Q1): `audit()` filters
+"""0004/02_audit (DATABASE.md §5.2 audit_log, §4 "Helper grants"): `audit()` filters
 `before`/`after` to the per-entity allow-list, inserts one row without RETURNING, and raises for an
-entity type with no entry. The allow-list below is written from the plan's Q1 table."""
+entity type with no entry. The allow-list below is written out as a literal."""
 
 from __future__ import annotations
 

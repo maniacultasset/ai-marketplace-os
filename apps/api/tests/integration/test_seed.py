@@ -343,7 +343,7 @@ async def test_seed_reset_then_seed_counts(superuser_conn: Conn) -> None:
     assert await _seed("demo", reset=True) == 0
     after = _all_counts(superuser_conn)
     # the reset purges both seed tenants: two `tenant.purged` platform tombstones each (accepted
-    # build-up in dev, CODE-PLAN A21b); every other count is back where it was
+    # build-up in dev); every other count is back where it was
     assert after.pop("audit_log") == first.pop("audit_log") + 4
     assert after == first
 

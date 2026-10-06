@@ -5,7 +5,7 @@
 -- set_tenant_lifecycle(p_tenant, p_status, p_reason):
 --   * app_rw acts only on its own tenant (p_tenant = app_tenant_id()) and may only offboard a
 --     trial or active tenant; suspend, reactivate and every other move need the migrator login
---     (staff through app.cli) — CODE-PLAN review L9 default;
+--     (staff through app.cli);
 --   * the edges are the §9 diagram: trial → active | suspended | offboarded; active →
 --     suspended | offboarded; suspended → active | offboarded; offboarded → active before
 --     purge_after and before any data purge;
