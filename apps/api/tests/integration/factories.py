@@ -146,7 +146,8 @@ def product(
     elif kind == "child":
         assert parent is not None, "a child needs its style"
         defaults["parent_product_id"] = parent
-        defaults["variant_attributes"] = {"size": f"s{n}"}
+        # the axes of the factory style's `size_color` theme (0004's variant guard)
+        defaults["variant_attributes"] = {"size": f"s{n}", "color": f"colour {n}"}
     else:
         assert kind == "standalone", kind
     return insert(conn, "products", **{**defaults, **columns})  # type: ignore[no-any-return]
