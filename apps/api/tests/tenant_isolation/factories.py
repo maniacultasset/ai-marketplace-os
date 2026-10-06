@@ -102,9 +102,18 @@ def _tenant_rows(conn: Conn, world: World) -> None:
     put("idempotency_keys", None)
     put("refresh_tokens", ops.refresh_token(conn, side))
     put("oauth_states", ops.oauth_state(conn, side))
-    submission_id = ops.submission(conn, side)
+    # 0004's ls_guard admits a submission only for a publishing listing with an approved,
+    # validated version and its publish job. The isolation suite needs one row per table, not that
+    # flow (test_0004_* covers it), so these two rows skip user triggers on the admin login.
+    publish_job = ops.job_run(conn, t, created_by=side.user_id)  # with its triggers (queue)
+    conn.execute("SET session_replication_role = replica")
+    try:
+        submission_id = ops.submission(conn, side, job_id=publish_job)
+        result_id = ops.field_result(conn, side, submission_id)
+    finally:
+        conn.execute("RESET session_replication_role")
     put("listing_submissions", submission_id)
-    put("publish_field_results", ops.field_result(conn, side, submission_id))
+    put("publish_field_results", result_id)
 
 
 def build_world(conn: Conn, tenants: int = 2) -> World:
