@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Annotated, NoReturn
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
 from mkos_schemas.codes import ErrorCode
 
-from app.api.errors import ApiError, NotImplementedYet
+from app.api.errors import ApiError
 from app.api.rate_limit import enforce_login_limit, request_ip
 from app.api.v1.deps import get_current_principal
 from app.api.v1.schemas.auth import (
@@ -19,7 +19,7 @@ from app.api.v1.schemas.auth import (
     SwitchTenantRequest,
     TokenResponse,
 )
-from app.api.v1.surface import OPS, route, stub
+from app.api.v1.surface import OPS, route
 from app.core.rbac import Principal
 from app.services import auth
 
@@ -105,7 +105,20 @@ async def auth_me(principal: Annotated[Principal, Depends(get_current_principal)
 
 
 @route(router, OPS["auth_switch_tenant"])
-@stub
-async def auth_switch_tenant(body: SwitchTenantRequest) -> NoReturn:
-    """A new token pair for another of the caller's active tenants."""
-    raise NotImplementedYet("auth_switch_tenant")
+async def auth_switch_tenant(
+    body: SwitchTenantRequest,
+    request: Request,
+    principal: Annotated[Principal, Depends(get_current_principal)],
+) -> TokenResponse:
+    """A new token pair, in a new family, for another of the caller's active tenants (the one
+    body field naming a tenant: ADR-0006, CODE-PLAN S10 Q9). A tenant the caller is not an
+    active member of, or that is not live, is 404. Tokens already issued keep their `tid`."""
+    pair = await auth.switch_tenant(
+        principal,
+        body.target_tenant_id,
+        ip=request_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+    if pair is None:
+        raise ApiError(404, ErrorCode.NOT_FOUND)
+    return _tokens(pair)

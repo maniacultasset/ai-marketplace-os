@@ -34,7 +34,9 @@ def test_implemented_routes_not_presence_only(v1_app: FastAPI) -> None:
 
 
 # The ops S10 implements; every other /api/v1 route is still S3's 501 stub.
-IMPLEMENTED: frozenset[str] = frozenset({"auth_login", "auth_refresh", "auth_logout", "auth_me"})
+IMPLEMENTED: frozenset[str] = frozenset(
+    {"auth_login", "auth_refresh", "auth_logout", "auth_me", "auth_switch_tenant"}
+)
 
 
 def test_every_route_is_a_stub_in_s3(v1_app: FastAPI) -> None:

@@ -140,7 +140,9 @@ export interface paths {
         put?: never;
         /**
          * Switch the active tenant: a new token pair for another of the caller's tenants
-         * @description A new token pair for another of the caller's active tenants.
+         * @description A new token pair, in a new family, for another of the caller's active tenants (the one
+         *     body field naming a tenant: ADR-0006, CODE-PLAN S10 Q9). A tenant the caller is not an
+         *     active member of, or that is not live, is 404. Tokens already issued keep their `tid`.
          */
         post: operations["auth_switch_tenant"];
         delete?: never;

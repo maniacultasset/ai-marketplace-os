@@ -4544,7 +4544,7 @@
     },
     "/api/v1/auth/switch-tenant": {
       "post": {
-        "description": "A new token pair for another of the caller's active tenants.",
+        "description": "A new token pair, in a new family, for another of the caller's active tenants (the one\nbody field naming a tenant: ADR-0006, CODE-PLAN S10 Q9). A tenant the caller is not an\nactive member of, or that is not live, is 404. Tokens already issued keep their `tid`.",
         "operationId": "auth_switch_tenant",
         "requestBody": {
           "content": {

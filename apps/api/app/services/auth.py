@@ -292,3 +292,43 @@ async def me(principal: Principal) -> Me:
         role=principal.role,
         memberships=[_membership(r) for r in rows],
     )
+
+
+# ---- tenant switch (CODE-PLAN S10 C11; PLAN Decision 4; DATABASE.md:310) ----
+
+
+async def switch_tenant(
+    principal: Principal, target: UUID, *, ip: str | None, user_agent: str | None
+) -> TokenPair | None:
+    """A new pair (a new family) for another of the caller's live tenants, or None (404): the
+    target is checked against the caller's own active memberships only (memberships_own and
+    tenants_switcher under `app.user_id`), then every write runs under the target's GUC."""
+    async with identity_session() as session:
+        await set_gucs(session, user_id=principal.user_id)
+        memberships = MembershipRepository(session)
+        member = await memberships.probe(target, principal.user_id)
+        if member is None:
+            return None
+        await set_gucs(session, tenant_id=target)
+        await memberships.touch_last_used(target, principal.user_id)
+        access, refresh_token, _ = await _issue(
+            session,
+            user_id=principal.user_id,
+            tenant_id=target,
+            role=member.role,
+            email=member.email,
+            family_id=uuid.uuid4(),
+            ip=ip,
+            user_agent=user_agent,
+        )
+        await AuditRepository(session).write(
+            tenant_id=target,
+            actor_type="user",
+            actor_user_id=principal.user_id,
+            action="auth.tenant_switched",
+            entity_type="user",
+            entity_id=principal.user_id,
+            ip=_inet(ip),
+        )
+        listed = await memberships.list_active_for_user(principal.user_id)
+    return TokenPair(access, refresh_token, _access_ttl(), [_membership(m) for m in listed])
