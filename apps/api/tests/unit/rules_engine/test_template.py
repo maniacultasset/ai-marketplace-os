@@ -61,6 +61,21 @@ def test_template_checks_enum_value_map_key_allowed() -> None:
     assert _errors(listing(attributes={}), tpl) == []
 
 
+def test_template_checks_enum_value_map_only_is_checked() -> None:
+    # DATABASE.md "enum not mappable -> VALUE_NOT_ALLOWED": a value_map alone is the vocabulary,
+    # as for an allowed_values rule with source=template (tester round 1 repro).
+    tpl = _enum(value_map={"Red": "RED"})
+    errs = _errors(listing(attributes={"fabric_type": "Purple"}), tpl)
+    assert [(e.field, e.error_code.value, e.message) for e in errs] == [
+        (
+            "attributes.fabric_type",
+            "VALUE_NOT_ALLOWED",
+            "Value Purple is not allowed for fabric_type; allowed: Red",
+        )
+    ]
+    assert _errors(listing(attributes={"fabric_type": "red"}), tpl) == []
+
+
 def test_template_checks_enum_outside_fails() -> None:
     tpl = _enum(allowed_values=["Cotton", "Silk"])
     errs = _errors(listing(attributes={"fabric_type": "nylon"}), tpl)

@@ -37,7 +37,7 @@ from mkos_schemas.rules import (
 )
 
 from .report import Draft, RuleSetMismatchError, build_report, submitted_text
-from .template import template_checks
+from .template import template_allowed, template_checks
 from .text import (
     SlotValue,
     TextMemo,
@@ -204,16 +204,6 @@ def _required(rule: Rule, ctx: Ctx) -> list[Draft]:
     if allowed is not None and not _value_in(value, allowed):
         return [_not_allowed(rule, rule_def.attribute, value, allowed)]
     return []
-
-
-def template_allowed(template: CategoryTemplate | None, attribute: str) -> list[str] | None:
-    """``allowed_values`` plus the ``value_map`` keys of the template spec, or None (no check)."""
-    if template is None or attribute not in template.specs:
-        return None
-    spec = template.specs[attribute]
-    if spec.allowed_values is None and not spec.value_map:
-        return None
-    return [*(spec.allowed_values or []), *sorted(spec.value_map)]
 
 
 def _allowed_values(rule: Rule, ctx: Ctx) -> list[Draft]:
