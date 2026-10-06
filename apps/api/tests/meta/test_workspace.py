@@ -206,3 +206,36 @@ def test_build_constraints_header_names_editables(repo_root: Path) -> None:
         "editables==",
     ):
         assert pin in recipe, pin
+
+
+# S11: the observability packages. Exporters and instrumentation stay out until S24 (no extra
+# beta packages; the request middleware opens the server span itself).
+OBSERVABILITY_PACKAGES = ("structlog", "sentry-sdk", "opentelemetry-api", "opentelemetry-sdk")
+
+
+def test_api_runtime_pins_observability(repo_root: Path) -> None:
+    deps = _toml(repo_root / "apps/api/pyproject.toml")["project"]["dependencies"]
+    by_name = {re.split(r"[\[=<>!~ ]", d, maxsplit=1)[0].lower(): d for d in deps}
+    for name in OBSERVABILITY_PACKAGES:
+        assert name in by_name, name
+        assert re.fullmatch(rf"{re.escape(name)}>=\d+\.\d+(\.\d+)?,<\d+", by_name[name]), by_name[
+            name
+        ]
+
+
+def test_lock_resolves_observability(repo_root: Path) -> None:
+    packages = {pkg["name"]: pkg for pkg in _toml(repo_root / "uv.lock")["package"]}
+    api_deps = {dep["name"] for dep in packages["mkos-api"]["dependencies"]}
+    for name in OBSERVABILITY_PACKAGES:
+        assert name in packages, name
+        assert name in api_deps, name
+
+
+def test_lock_has_no_otel_exporter_or_instrumentation(repo_root: Path) -> None:
+    names = _lock_package_names(repo_root)
+    bad = {
+        n
+        for n in names
+        if n.startswith("opentelemetry-exporter") or n.startswith("opentelemetry-instrumentation")
+    }
+    assert not bad, sorted(bad)
