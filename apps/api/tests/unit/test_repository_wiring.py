@@ -32,6 +32,10 @@ def test_repository_subclass_requires_model() -> None:
             pass
 
 
+# CODE-PLAN S12 T3: readers of platform-global tables (no `tenant_id`, DATABASE.md:158).
+PLATFORM_READERS = frozenset({"AttributeDefinitionRepository"})
+
+
 def test_every_repository_subclasses_tenant_base() -> None:
     import app.repositories
     from app.repositories.base import TenantScopedRepository
@@ -52,12 +56,33 @@ def test_every_repository_subclasses_tenant_base() -> None:
         for name, obj in pyinspect.getmembers(module, pyinspect.isclass):
             if name.endswith("Repository") and obj.__module__ == module.__name__:
                 found.append(name)
-                if name in identity.get(module.__name__, set()):
+                if name in identity.get(module.__name__, set()) or name in PLATFORM_READERS:
                     assert not issubclass(obj, TenantScopedRepository), name
                     continue
                 assert issubclass(obj, TenantScopedRepository), name
     assert "RuleRepository" in found
     assert identity["app.repositories.identity"] <= set(found)
+    assert set(PLATFORM_READERS) <= set(found)
+
+
+def _repository_classes() -> dict[str, Any]:
+    import app.repositories
+
+    out: dict[str, Any] = {}
+    for module_info in pkgutil.iter_modules(app.repositories.__path__):
+        module = importlib.import_module(f"app.repositories.{module_info.name}")
+        for name, obj in pyinspect.getmembers(module, pyinspect.isclass):
+            if name.endswith("Repository") and obj.__module__ == module.__name__:
+                out[name] = obj
+    return out
+
+
+def test_platform_readers_have_no_tenant_column() -> None:
+    # A platform reader is exempt from the tenant base only because its table has no tenant.
+    classes = _repository_classes()
+    for name in PLATFORM_READERS:
+        table = classes[name].model.__table__
+        assert "tenant_id" not in table.c, name
 
 
 class _Session:
