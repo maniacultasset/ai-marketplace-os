@@ -25,8 +25,23 @@ from . import (
     test_0001_variants,
 )
 from .conftest import ScratchDb, catalog_snapshot, expect_sqlstate
+from .integrity_support import disable_0004_guard
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
+
+
+@pytest.fixture(autouse=True)
+def _0004_guards_off(request: pytest.FixtureRequest) -> None:
+    """These suites test 0001's CHECKs, keys and FKs on rows the 0004 guards would refuse first (each guard
+    is proven by its own test_0004_* suite); the guards are off in the rolled-back `db`
+    transaction."""
+    if "db" in request.fixturenames:
+        db = request.getfixturevalue("db")
+        disable_0004_guard(db, "variant_matrix_cells", "variant_matrix_guard")
+        disable_0004_guard(db, "products", "variant_guard")
+        disable_0004_guard(db, "products", "variant_matrix_complete")
+        disable_0004_guard(db, "variant_matrix_cells", "variant_matrix_complete")
+
 
 Conn = psycopg.Connection[tuple[Any, ...]]
 MakeConfig = Callable[[Path | None], Config]
@@ -286,8 +301,11 @@ def test_0001_round_trip(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None
     relations = {str(r[0]) for r in at_head["relations"]}
     assert set(TABLES_0001) <= relations
     assert {str(r[0]) for r in at_head["functions"]} >= set(FUNCTIONS_0001)
-    # one set_updated_at trigger per 0001 table (later revisions add their own tables' triggers)
-    triggers_0001 = [r for r in at_head["triggers"] if r[0] in TABLES_0001]
+    # one set_updated_at trigger per 0001 table (later revisions add their own tables' triggers,
+    # and 0004 its guards on 0001 tables)
+    triggers_0001 = [
+        r for r in at_head["triggers"] if r[0] in TABLES_0001 and r[1] == "set_updated_at"
+    ]
     assert sorted(triggers_0001) == sorted((t, "set_updated_at") for t in TABLES_0001)
     command.downgrade(cfg, "base")
     after = _public_0001_objects(scratch_db)

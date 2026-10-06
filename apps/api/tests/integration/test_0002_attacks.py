@@ -23,6 +23,7 @@ from . import factories as f
 from . import test_0002_catalog as catalog
 from . import test_0002_rules as rules
 from .conftest import ScratchDb, expect_sqlstate
+from .integrity_support import as_migrator, set_gucs
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 
@@ -144,7 +145,8 @@ def test_purge_order_over_full_0002_graph(db: Conn) -> None:
     _graph(db, tenant_b)
     before_b = _counts(db, tenant_b)
     assert all(count > 0 for count in _counts(db, tenant_a).values())
-    with db.transaction():
+    with as_migrator(db), db.transaction():  # 0004: append-only tables need the purge GUC
+        set_gucs(db, purge_tenant=tenant_a)
         db.execute("SET CONSTRAINTS ALL DEFERRED")
         for table in PURGE_ORDER:
             db.execute(
@@ -163,7 +165,9 @@ def test_tenant_delete_cascades_whole_0002_graph(db: Conn) -> None:
     _graph(db, tenant_a)
     _graph(db, tenant_b)
     before_b = _counts(db, tenant_b)
-    db.execute("DELETE FROM tenants WHERE id = %s", (tenant_a,))
+    with as_migrator(db):  # 0004: review_decisions and validation_runs are append-only
+        set_gucs(db, purge_tenant=tenant_a)
+        db.execute("DELETE FROM tenants WHERE id = %s", (tenant_a,))
     assert set(_counts(db, tenant_a).values()) == {0}
     assert _counts(db, tenant_b) == before_b
 

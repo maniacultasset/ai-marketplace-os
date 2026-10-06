@@ -12,6 +12,7 @@ from psycopg.types.json import Jsonb
 
 from . import factories as f
 from .conftest import expect_sqlstate
+from .integrity_support import as_migrator, set_gucs
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 
@@ -245,7 +246,9 @@ def test_rules_tenant_delete_cascades(db: Conn) -> None:
     tenant_id = f.tenant(db)
     tenant_rule = f.rule(db, tenant_id)
     platform_rule = f.rule(db)
-    db.execute("DELETE FROM tenants WHERE id = %s", (tenant_id,))
+    with as_migrator(db):  # 0004: rules are deleted only by the purge
+        set_gucs(db, purge_tenant=tenant_id)
+        db.execute("DELETE FROM tenants WHERE id = %s", (tenant_id,))
     assert db.execute("SELECT id FROM rules WHERE id = %s", (tenant_rule,)).fetchone() is None
     assert db.execute("SELECT id FROM rules WHERE id = %s", (platform_rule,)).fetchone() == (
         platform_rule,

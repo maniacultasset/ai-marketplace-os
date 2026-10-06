@@ -11,8 +11,23 @@ from psycopg import sql
 
 from . import factories as f
 from .conftest import expect_sqlstate
+from .integrity_support import disable_0004_guard
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
+
+
+@pytest.fixture(autouse=True)
+def _0004_guards_off(request: pytest.FixtureRequest) -> None:
+    """These suites test 0001's CHECKs, keys and FKs on rows the 0004 guards would refuse first (each guard
+    is proven by its own test_0004_* suite); the guards are off in the rolled-back `db`
+    transaction."""
+    if "db" in request.fixturenames:
+        db = request.getfixturevalue("db")
+        disable_0004_guard(db, "variant_matrix_cells", "variant_matrix_guard")
+        disable_0004_guard(db, "products", "variant_guard")
+        disable_0004_guard(db, "products", "variant_matrix_complete")
+        disable_0004_guard(db, "variant_matrix_cells", "variant_matrix_complete")
+
 
 Conn = psycopg.Connection[tuple[Any, ...]]
 
@@ -163,6 +178,9 @@ def _functions(conn: Conn) -> list[tuple[str, int]]:
     return [(str(name), int(oid)) for name, oid in rows]
 
 
+DEFINERS_0004 = frozenset({"set_tenant_lifecycle(uuid,text,text)", "expire_trials()"})
+
+
 def test_0001_privileges_no_public_execute(db: Conn) -> None:
     functions = _functions(db)
     wanted = {name.replace(" ", "") for name in (*GRANTED_FUNCTIONS, "app_purge_tenant()")}
@@ -176,7 +194,8 @@ def test_0001_privileges_no_public_execute(db: Conn) -> None:
         ).fetchone()
         assert public == (0,), name
         definer = db.execute("SELECT prosecdef FROM pg_proc WHERE oid = %s", (oid,)).fetchone()
-        assert definer == (False,), name
+        # 0004's two tenant-scoped definers (DATABASE.md §8.1) are the only SECURITY DEFINERs
+        assert definer == ((name in DEFINERS_0004),), name
 
 
 @pytest.mark.parametrize("function", GRANTED_FUNCTIONS)

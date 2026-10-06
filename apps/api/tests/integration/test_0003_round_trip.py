@@ -12,6 +12,7 @@ import psycopg
 import pytest
 from alembic import command
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 
 from .conftest import ScratchDb
 from .test_0002_catalog import _objects
@@ -79,7 +80,7 @@ def test_downgrade_0003b_clean(alembic_env: MakeConfig, scratch_db: ScratchDb) -
     command.upgrade(cfg, REVISION_0003)
     at_0003 = _objects(scratch_db)
     assert _procrastinate_objects(scratch_db) == []
-    command.upgrade(cfg, "head")
+    command.upgrade(cfg, REVISION_0003B)
     assert len([o for o in _procrastinate_objects(scratch_db) if o[0] == "proc"]) == 18
     command.downgrade(cfg, "-1")
     assert _procrastinate_objects(scratch_db) == []
@@ -92,7 +93,7 @@ def test_downgrade_0003_restores_0002_head(alembic_env: MakeConfig, scratch_db: 
     command.upgrade(cfg, REVISION_0002B)
     at_0002b = _objects(scratch_db)
     grants_0002b = _grants(scratch_db)
-    command.upgrade(cfg, "head")
+    command.upgrade(cfg, REVISION_0003B)
     at_head = _objects(scratch_db)
     relations = {str(r[0]) for r in at_head["relations"]}
     assert relations >= TABLES_0003
@@ -110,7 +111,7 @@ def test_downgrade_0003_restores_0002_head(alembic_env: MakeConfig, scratch_db: 
     }
     assert _grants(scratch_db) == grants_0002b
     assert _version(scratch_db) == [(REVISION_0002B,)]
-    command.upgrade(cfg, "head")
+    command.upgrade(cfg, REVISION_0003B)
     assert _objects(scratch_db) == at_head
 
 
@@ -123,7 +124,7 @@ def test_round_trip_to_head_and_check(alembic_env: MakeConfig, scratch_db: Scrat
     command.upgrade(cfg, "head")
     command.check(cfg)
     assert _objects(scratch_db) == at_head
-    assert _version(scratch_db) == [(REVISION_0003B,)]
+    assert _version(scratch_db) == [(ScriptDirectory.from_config(cfg).get_current_head(),)]
 
 
 @pytest.mark.parametrize(

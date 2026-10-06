@@ -34,8 +34,10 @@ def test_every_tenant_id_column_table_is_mapped(db: Conn) -> None:
     from app.db.models._tenant import TenantScoped
 
     rows = db.execute(
-        "SELECT table_name FROM information_schema.columns "
-        "WHERE table_schema = 'public' AND column_name = 'tenant_id'"
+        "SELECT c.table_name FROM information_schema.columns c "
+        "JOIN information_schema.tables t USING (table_schema, table_name) "
+        "WHERE c.table_schema = 'public' AND c.column_name = 'tenant_id' "
+        "AND t.table_type = 'BASE TABLE'"  # 0004's display views are not tables
     ).fetchall()
     with_tenant = {str(r[0]) for r in rows}
     mapped = _mapped()

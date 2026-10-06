@@ -146,7 +146,8 @@ def product(
     elif kind == "child":
         assert parent is not None, "a child needs its style"
         defaults["parent_product_id"] = parent
-        defaults["variant_attributes"] = {"size": f"s{n}"}
+        # the axes of the factory style's `size_color` theme (0004's variant guard)
+        defaults["variant_attributes"] = {"size": f"s{n}", "color": f"colour {n}"}
     else:
         assert kind == "standalone", kind
     return insert(conn, "products", **{**defaults, **columns})  # type: ignore[no-any-return]
@@ -301,15 +302,16 @@ def review_decision(
 def listing_item(
     conn: Conn, tenant_id: UUID, listing_id: UUID, product_id: UUID, **columns: Any
 ) -> UUID:
-    """A `standalone` Amazon item of `listing_id` for `product_id`."""
-    n = _next()
+    """A `standalone` Amazon item of `listing_id` for `product_id`; its seller SKU is the
+    product's SKU (0004's li_guard: "seller_sku = products.sku")."""
+    sku = conn.execute("SELECT sku FROM products WHERE id = %s", (product_id,)).fetchone()
     defaults: dict[str, Any] = {
         "tenant_id": tenant_id,
         "listing_id": listing_id,
         "marketplace": "amazon",
         "product_id": product_id,
         "item_role": "standalone",
-        "seller_sku": f"ITEM-{n}",
+        "seller_sku": sku[0] if sku else f"ITEM-{_next()}",
     }
     return insert(conn, "listing_items", **{**defaults, **columns})  # type: ignore[no-any-return]
 

@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
 
 from .conftest import ScratchDb
-from .ops_support import seed_tenant
+from .ops_support import make_publishable, seed_tenant
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 
@@ -52,6 +52,7 @@ def test_job_run_queue_loaded_after_flush(
 ) -> None:
     raw = session.connection().connection.driver_connection
     side = seed_tenant(raw)  # type: ignore[arg-type]
+    make_publishable(raw, side)  # type: ignore[arg-type]  # 0004's publish gate
     columns: dict[str, Any] = {
         "tenant_id": side.tenant_id,
         "kind": kind,

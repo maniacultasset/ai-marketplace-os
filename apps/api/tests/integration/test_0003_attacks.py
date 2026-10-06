@@ -19,6 +19,7 @@ from psycopg.types.json import Jsonb
 
 from . import factories as f
 from .conftest import expect_sqlstate
+from .integrity_support import as_migrator, disable_0004_guard, set_gucs
 from .ops_support import (
     TenantSeed,
     field_result,
@@ -26,6 +27,7 @@ from .ops_support import (
     import_row,
     import_run,
     job_run,
+    make_publishable,
     oauth_state,
     refresh_token,
     seed_tenant,
@@ -35,6 +37,15 @@ from .test_0002_attacks import PURGE_ORDER as PURGE_ORDER_0002
 from .test_0002_attacks import TABLES_0002, _graph
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
+
+
+@pytest.fixture(autouse=True)
+def _ls_guard_off(request: pytest.FixtureRequest) -> None:
+    """These suites test 0003's CHECKs, keys and FKs on submissions written in any order;
+    0004's `ls_guard` (proven by test_0004_ls_guard.py) is off in their rolled-back transaction."""
+    if "db" in request.fixturenames:
+        disable_0004_guard(request.getfixturevalue("db"), "listing_submissions", "ls_guard")
+
 
 Conn = psycopg.Connection[tuple[Any, ...]]
 
@@ -71,6 +82,9 @@ def _ops_graph(db: Conn, side: TenantSeed, marketplace: str = "amazon") -> None:
     at a product, a rotated refresh token, an OAuth state and an idempotency key."""
     parent = job_run(db, side.tenant_id, batch_id=side.batch_id)
     job_run(db, side.tenant_id, parent_job_id=parent, batch_id=side.batch_id)
+    status = db.execute("SELECT status FROM listings WHERE id = %s", (side.listing_id,))
+    if status.fetchone() != ("approved",):
+        make_publishable(db, side)  # 0004's publish gate
     publish = job_run(
         db,
         side.tenant_id,
@@ -139,7 +153,9 @@ def test_tenant_delete_cascades_whole_0003_graph(db: Conn) -> None:
     a, b = _full_tenant(db), _full_tenant(db)
     before_b = _counts(db, b.tenant_id, ALL_TENANT_TABLES)
     assert all(n > 0 for n in _counts(db, a.tenant_id, ALL_TENANT_TABLES).values())
-    db.execute("DELETE FROM tenants WHERE id = %s", (a.tenant_id,))
+    with as_migrator(db):  # 0004: review_decisions and validation_runs are append-only
+        set_gucs(db, purge_tenant=a.tenant_id)
+        db.execute("DELETE FROM tenants WHERE id = %s", (a.tenant_id,))
     assert set(_counts(db, a.tenant_id, ALL_TENANT_TABLES).values()) == {0}
     assert _counts(db, b.tenant_id, ALL_TENANT_TABLES) == before_b
 
@@ -149,7 +165,8 @@ def test_purge_order_over_full_0003_graph(db: Conn) -> None:
     order, respects every FK (no NO ACTION violation) and leaves the other tenant whole."""
     a, b = _full_tenant(db), _full_tenant(db)
     before_b = _counts(db, b.tenant_id, ALL_TENANT_TABLES)
-    with db.transaction():
+    with as_migrator(db), db.transaction():  # 0004: append-only tables need the purge GUC
+        set_gucs(db, purge_tenant=a.tenant_id)
         db.execute("SET CONSTRAINTS ALL DEFERRED")
         for table in (*PURGE_ORDER_0003, *PURGE_ORDER_0002):
             db.execute(
@@ -179,6 +196,7 @@ def test_app_rw_writes_every_0003_tenant_table(db: Conn) -> None:
     """The runtime role writes each new tenant table and the counters through the 0000 default
     privileges (no 42501 before the 0004 column grants)."""
     side = seed_tenant(db)
+    make_publishable(db, side)  # 0004's publish gate (its set-up needs the superuser)
     db.execute("SET LOCAL ROLE app_rw")
     _ops_graph(db, side)
     row = db.execute(
@@ -316,6 +334,7 @@ def test_publish_statement_order_auto_resubmit(db: Conn) -> None:
     status sync for the same listing is a different kind, lives beside it, and shares the
     `publish` queue."""
     side = seed_tenant(db)
+    make_publishable(db, side)  # 0004's publish gate
     running = _publish_job(db, side, status="running", lease_expires_at="2099-01-01T00:00:00Z")
     sync = job_run(
         db,
@@ -354,6 +373,7 @@ def test_supersede_open_accepted_submission_in_same_transaction(db: Conn) -> Non
     side = seed_tenant(db)
     old = submission(db, side, outcome="accepted", responded_at="2026-10-05T00:00:00Z")
     v2 = f.version(db, side.tenant_id, side.listing_id, generated_by_user_id=side.user_id)
+    make_publishable(db, side, v2)  # 0004's publish gate: the newer version is the approved one
     newer = {
         "listing_version_id": v2,
         "job_id": _publish_job(db, side, status="running", lease_expires_at="2099-01-01T00:00:00Z"),

@@ -72,10 +72,12 @@ def _tenant_rows(conn: Conn, world: World) -> None:
     put("business_parties", f.party(conn, t))
     f.brand_profile(conn, t)
     put("brand_profiles", None)
-    style = f.product(conn, t, "style")
+    style = f.product(conn, t, "style", size_run=["s"])
     put("products", side.product_id)
-    put("product_colourways", f.colourway(conn, t, style))
-    put("variant_matrix_cells", f.cell(conn, t, style))
+    colourway = f.colourway(conn, t, style)
+    put("product_colourways", colourway)
+    # 0004's matrix guard: a size_color cell names both axes, and its size is in the run
+    put("variant_matrix_cells", f.cell(conn, t, style, colourway_id=colourway, size_key="s"))
     put("images", f.image(conn, t, side.product_id))
     put("brand_documents", f.brand_document(conn, t))
     put("brand_chunks", f.brand_chunk(conn, t))
@@ -100,9 +102,18 @@ def _tenant_rows(conn: Conn, world: World) -> None:
     put("idempotency_keys", None)
     put("refresh_tokens", ops.refresh_token(conn, side))
     put("oauth_states", ops.oauth_state(conn, side))
-    submission_id = ops.submission(conn, side)
+    # 0004's ls_guard admits a submission only for a publishing listing with an approved,
+    # validated version and its publish job. The isolation suite needs one row per table, not that
+    # flow (test_0004_* covers it), so these two rows skip user triggers on the admin login.
+    publish_job = ops.job_run(conn, t, created_by=side.user_id)  # with its triggers (queue)
+    conn.execute("SET session_replication_role = replica")
+    try:
+        submission_id = ops.submission(conn, side, job_id=publish_job)
+        result_id = ops.field_result(conn, side, submission_id)
+    finally:
+        conn.execute("RESET session_replication_role")
     put("listing_submissions", submission_id)
-    put("publish_field_results", ops.field_result(conn, side, submission_id))
+    put("publish_field_results", result_id)
 
 
 def build_world(conn: Conn, tenants: int = 2) -> World:

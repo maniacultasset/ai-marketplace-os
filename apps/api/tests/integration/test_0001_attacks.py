@@ -13,9 +13,24 @@ from psycopg import sql
 
 from . import factories as f
 from .conftest import expect_sqlstate
+from .integrity_support import disable_0004_guard
 from .test_0001_catalog import TABLES_0001
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
+
+
+@pytest.fixture(autouse=True)
+def _0004_guards_off(request: pytest.FixtureRequest) -> None:
+    """These suites test 0001's CHECKs, keys and FKs on rows the 0004 guards would refuse first (each guard
+    is proven by its own test_0004_* suite); the guards are off in the rolled-back `db`
+    transaction."""
+    if "db" in request.fixturenames:
+        db = request.getfixturevalue("db")
+        disable_0004_guard(db, "variant_matrix_cells", "variant_matrix_guard")
+        disable_0004_guard(db, "products", "variant_guard")
+        disable_0004_guard(db, "products", "variant_matrix_complete")
+        disable_0004_guard(db, "variant_matrix_cells", "variant_matrix_complete")
+
 
 Conn = psycopg.Connection[tuple[Any, ...]]
 

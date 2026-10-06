@@ -13,6 +13,7 @@ import psycopg
 import pytest
 
 from . import factories as f
+from .integrity_support import disable_0004_guard
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 
@@ -49,10 +50,14 @@ def _published(db: Conn, tenant_id: UUID, **columns: Any) -> UUID:
         **columns,
     }
     sets = ", ".join(f"{name} = %s" for name in assignments)
+    # 0004's status guard allows `published` only through its transition table; this CHECK
+    # fixture places the row directly (user triggers skipped for the one set-up statement).
+    db.execute("SET LOCAL session_replication_role = replica")
     db.execute(
         f"UPDATE listings SET {sets} WHERE id = %s",  # noqa: S608 - fixed column names
         (*assignments.values(), listing_id),
     )
+    db.execute("SET LOCAL session_replication_role = origin")
     return listing_id
 
 
@@ -323,6 +328,7 @@ VERSION_REJECTS: dict[str, tuple[Callable[[UUID, UUID], dict[str, Any]], str]] =
 def test_checks_reject_versions(db: Conn, case: str) -> None:
     build, constraint = VERSION_REJECTS[case]
     tenant_id, listing_id, maker, editor = _versions(db)
+    disable_0004_guard(db, "listing_versions", "lv_guard")  # it refuses any approval on INSERT
     columns = {"generated_by_user_id": maker, **build(maker, editor)}
     f.expect_violation(
         db, "23514", constraint, lambda: f.version(db, tenant_id, listing_id, **columns)
@@ -333,6 +339,7 @@ def test_checks_accept_versions(db: Conn) -> None:
     """A distinct approver with no editor, a distinct approver beside an editor, an edit with
     its paths, a full regeneration (NULL paths)."""
     tenant_id, listing_id, maker, editor = _versions(db)
+    disable_0004_guard(db, "listing_versions", "lv_guard")  # it refuses any approval on INSERT
     checker = f.member(db, tenant_id, role="reviewer")
     approved = {"approved_by_user_id": checker, "approved_at": "2026-10-05"}
     f.version(db, tenant_id, listing_id, generated_by_user_id=maker, **approved)
@@ -459,6 +466,7 @@ def _version_member(column: str) -> Build:
         columns: dict[str, Any] = {column: f.member(db, b)}
         if column == "approved_by_user_id":
             columns["approved_at"] = "2026-10-05"
+            disable_0004_guard(db, "listing_versions", "lv_guard")  # refuses approval on INSERT
         f.version(db, a, f.listing(db, a), **columns)
 
     return build

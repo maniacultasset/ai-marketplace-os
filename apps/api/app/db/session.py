@@ -19,7 +19,7 @@ from functools import lru_cache
 from uuid import UUID
 
 from sqlalchemy import Connection, event, func, select, text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session, SessionTransaction
 
 from app.core.config import get_settings
 from app.db.guard import SCOPE_OK, TENANT_INFO_KEY, check_flush, check_scope
-from app.db.integrity import to_conflict
+from app.db.integrity import map_db_error, to_conflict
 
 logger = logging.getLogger(__name__)
 
@@ -118,8 +118,12 @@ async def unit_of_work(
                 await session.commit()
             except IntegrityError as exc:
                 raise to_conflict(exc) from exc
-        except BaseException:
+        except BaseException as exc:
             await session.rollback()
+            # a 0004 guard's refusal (in the block, or deferred to the commit) as its DomainError
+            mapped = map_db_error(exc) if isinstance(exc, DBAPIError) else None
+            if mapped is not None:
+                raise mapped from exc
             raise
 
 

@@ -1,6 +1,7 @@
 """The platform-global tables of revision 0003_ops_tables: `category_templates` and
 `marketplace_error_map` (DATABASE.md §5.2), and the attribute dictionary `attribute_definitions`,
-`attribute_columns` and `category_attributes` (§5.6). None has `tenant_id`; the migrator's
+`attribute_columns` and `category_attributes` (§5.6), plus revision 0004_integrity's
+`listing_status_transitions` (§6.1). None has `tenant_id`; the migrator's
 `app.cli` loaders write them. Columns, defaults, keys and indexes mirror the revision under the
 same names; the CHECK constraints live only in the revision."""
 
@@ -33,6 +34,7 @@ from app.db.models.tenancy import created_at_column, id_column
 
 # Written as Alembic renders the reflected default (it drops `::regclass`); see `Rule.revision`.
 RULES_REVISION = text("nextval('rules_revision_seq')")
+FALSE = text("false")
 
 
 def to_definition(table: str) -> ForeignKeyConstraint:
@@ -163,3 +165,25 @@ class CategoryAttribute(Base):
     enabled: Mapped[bool] = mapped_column(Boolean)
     revision: Mapped[int] = mapped_column(Integer, server_default=RULES_REVISION)
     created_at: Mapped[datetime] = created_at_column()
+
+
+class ListingStatusTransition(Base):
+    """`listing_status_transitions` (revision 0004_integrity, DATABASE.md §6.1): the 63 seeded
+    status edges the listings status guard reads. Platform-global, SELECT-only for the app roles,
+    changed only by migration; its CHECK constraints live in the revision."""
+
+    __tablename__ = "listing_status_transitions"
+    __table_args__ = (
+        PrimaryKeyConstraint(
+            "from_status", "to_status", "event", name=conv("pk_listing_status_transitions")
+        ),
+    )
+
+    from_status: Mapped[str] = mapped_column(Text)
+    to_status: Mapped[str] = mapped_column(Text)
+    event: Mapped[str] = mapped_column(Text)
+    actor: Mapped[str] = mapped_column(Text)
+    requires_current_approval: Mapped[bool] = mapped_column(Boolean, server_default=FALSE)
+    voids_approval: Mapped[bool] = mapped_column(Boolean, server_default=FALSE)
+    allowed_reasons: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
+    requires_from_reason: Mapped[list[str] | None] = mapped_column(ARRAY(Text))

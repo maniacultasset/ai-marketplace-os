@@ -503,3 +503,38 @@ def test_prove_gates_has_s11_legs(repo_root: Path) -> None:
         assert f"{seed}() {{" in text
     assert "        _redact,\\n        _finalise," in text
     assert "default=current_request_id" in text
+
+
+S10A_LEGS = {
+    "api-tests-lv-guard-dropped": ("api-tests", "test_db_maker_checker_generator"),
+    "api-tests-audit-update-granted": ("api-tests", "test_audit_append_only"),
+}
+
+
+def test_prove_gates_has_s10a_legs(repo_root: Path) -> None:
+    """S10a: a dropped lv_guard and an UPDATE grant on audit_log each turn api-tests red, on a
+    fresh throwaway mos_prove (never mos_test), inside the docker block."""
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    code = _code(text)
+    docker = code.index('if [ "$with_docker" -eq 1 ]; then')
+    for name, (gate, regex) in S10A_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+) (.*)$", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+        assert re.search(rf"(?m)^{re.escape(leg.group(2))}\(\) \{{", code), leg.group(2)
+        assert "TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:" in leg.group(3)
+        assert "/mos_prove make api-tests" in leg.group(3), name
+        start = code.index(f"leg {name} ")
+        assert start > docker, name
+        before = code.rfind("fresh_prove_db", 0, start)
+        assert before > docker and "leg " not in code[before:start].replace(
+            f"leg {name} ", ""
+        ), name
+    seed = re.search(r"(?m)^seed_lv_guard_dropped\(\) \{(.*?)^\}", code, re.S)
+    assert seed is not None
+    assert "DROP TRIGGER lv_guard ON public.listing_versions" in seed.group(1)
+    assert 'down_revision = "\'"$head"' in seed.group(1)
+    grant = re.search(r"(?m)^seed_audit_update_granted\(\) \{(.*?)^\}", code, re.S)
+    assert grant is not None
+    assert "GRANT UPDATE ON public.audit_log TO app_rw;" in grant.group(1)
+    assert "alembic/sql/0004/03_append_only.up.sql" in grant.group(1)

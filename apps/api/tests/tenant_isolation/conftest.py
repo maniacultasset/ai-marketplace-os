@@ -77,7 +77,13 @@ async def app_engine() -> AsyncIterator[AsyncEngine]:
     await engine.dispose()
 
 
-CLEAN_SQL = "TRUNCATE tenants, users, category_templates, rules RESTART IDENTITY CASCADE"
+# 0004's append-only tables refuse TRUNCATE by trigger, for every role; this harness reset (the
+# admin login, test databases only) skips user triggers for its one statement.
+CLEAN_SQL = (
+    "SET session_replication_role = replica; "
+    "TRUNCATE tenants, users, category_templates, rules RESTART IDENTITY CASCADE; "
+    "RESET session_replication_role"
+)
 
 
 @pytest.fixture

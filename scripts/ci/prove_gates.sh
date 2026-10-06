@@ -135,6 +135,25 @@ seed_roundtrip_broken() {
   cp "$root/.env" .env
   new_file apps/api/alembic/versions/0999_seeded.py $'"""seeded"""\n\nrevision = "0999"\ndown_revision = "'"$head"$'"\nbranch_labels = None\ndepends_on = None\n\n\ndef upgrade() -> None:\n    pass\n\n\ndef downgrade() -> None:\n    raise RuntimeError("seeded downgrade failure")'
 }
+# S10a: 0004's guards are load-bearing. A seeded revision on the head drops lv_guard (the CHECK
+# still refuses the generator, but with 23514, not MKC01); a GRANT appended to 03_append_only puts
+# UPDATE on audit_log back for app_rw (the trigger answers, not the privilege).
+seed_lv_guard_dropped() {
+  local head
+  head="$(alembic_head)"
+  cp "$root/.env" .env
+  new_file apps/api/alembic/versions/0998_seeded.py $'"""seeded"""\n\nfrom alembic import op\n\nrevision = "0998"\ndown_revision = "'"$head"$'"\nbranch_labels = None\ndepends_on = None\n\n\ndef upgrade() -> None:\n    op.execute("DROP TRIGGER lv_guard ON public.listing_versions")\n\n\ndef downgrade() -> None:\n    op.execute("CREATE TRIGGER lv_guard BEFORE UPDATE ON public.listing_versions FOR EACH ROW EXECUTE FUNCTION public.lv_guard()")'
+}
+seed_audit_update_granted() {
+  cp "$root/.env" .env
+  append apps/api/alembic/sql/0004/03_append_only.up.sql 'GRANT UPDATE ON public.audit_log TO app_rw;'
+}
+# A throwaway mos_prove with 0000 (a seeded revision leg leaves its revision stamped there).
+fresh_prove_db() {
+  docker compose exec -T postgres dropdb -U postgres --if-exists --force mos_prove
+  docker compose exec -T postgres createdb -U postgres mos_prove
+  docker compose exec -T postgres psql -U postgres -v ON_ERROR_STOP=1 -q -d mos_prove -f - <scripts/db/0000_bootstrap.sql
+}
 seed_squawk_missing() {
   cp "$root/.env" .env
   replace scripts/ci/squawk_report.py 'DEFAULT_SQUAWK: Final = "squawk"' 'DEFAULT_SQUAWK: Final = "squawk-seeded-missing"'
@@ -367,6 +386,11 @@ if [ "$with_docker" -eq 1 ]; then
   leg api-tests-alembic-drift api-tests 'New upgrade operations detected' seed_alembic_drift COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests
   leg api-tests-squawk-missing api-tests 'squawk did not check the SQL' seed_squawk_missing COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests
   leg api-tests-roundtrip-broken api-tests 'seeded downgrade failure' seed_roundtrip_broken COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests
+  docker compose exec -T postgres dropdb -U postgres --force mos_prove
+  fresh_prove_db
+  leg api-tests-lv-guard-dropped api-tests 'test_db_maker_checker_generator' seed_lv_guard_dropped COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests
+  fresh_prove_db
+  leg api-tests-audit-update-granted api-tests 'test_audit_append_only' seed_audit_update_granted COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests
   docker compose exec -T postgres dropdb -U postgres --force mos_prove
   leg tenant-isolation-no-marker tenant-isolation 'deselected' seed_no_marker COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-no-filter tenant-isolation 'test_list_returns_only_own_rows' seed_iso_no_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation

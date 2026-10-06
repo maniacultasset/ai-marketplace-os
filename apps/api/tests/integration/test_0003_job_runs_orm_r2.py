@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
 
 from .conftest import ScratchDb, head_database
-from .ops_support import TenantSeed, seed_tenant
+from .ops_support import TenantSeed, make_publishable, seed_tenant
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 
@@ -42,6 +42,7 @@ def orm_db(tmp_path_factory: pytest.TempPathFactory) -> Iterator[tuple[ScratchDb
     with head_database(tmp_path_factory.mktemp("orm_r2")) as db:
         with psycopg.connect(db.libpq, connect_timeout=5) as conn:
             side = seed_tenant(conn)
+            make_publishable(conn, side)  # 0004's publish gate
             conn.commit()
         yield db, side
 

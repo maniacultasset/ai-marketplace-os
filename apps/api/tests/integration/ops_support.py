@@ -293,3 +293,25 @@ def field_result(conn: Conn, side: TenantSeed, submission_id: UUID, **columns: A
         "status": "succeeded",
     }
     return f.insert(conn, "publish_field_results", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def make_publishable(conn: Conn, side: TenantSeed, version_id: UUID | None = None) -> UUID:
+    """0004's publish gate: `side`'s listing approved, with `version_id` (default version 1)
+    current and approved by a new reviewer (never its generator). The status is placed directly
+    (user triggers skipped for that one set-up statement); returns the reviewer."""
+    version = side.version_id if version_id is None else version_id
+    reviewer = f.member(conn, side.tenant_id, role="reviewer")
+    conn.execute(
+        "UPDATE listings SET current_version_id = %s WHERE id = %s", (version, side.listing_id)
+    )
+    conn.execute(
+        "UPDATE listing_versions SET approved_by_user_id = %s WHERE id = %s", (reviewer, version)
+    )
+    conn.execute("SET LOCAL session_replication_role = replica")
+    conn.execute(
+        "UPDATE listings SET approved_version_id = %s, status = 'approved', last_event = 'approve' "
+        "WHERE id = %s",
+        (version, side.listing_id),
+    )
+    conn.execute("SET LOCAL session_replication_role = origin")
+    return reviewer

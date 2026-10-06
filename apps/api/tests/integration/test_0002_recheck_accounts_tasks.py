@@ -11,8 +11,19 @@ import psycopg
 import pytest
 
 from . import factories as f
+from .integrity_support import disable_0004_guard
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
+
+
+@pytest.fixture(autouse=True)
+def _0004_guards_off(request: pytest.FixtureRequest) -> None:
+    """These suites test 0002's CHECKs on rows the 0004 guards would refuse first (each guard is
+    proven by its own test_0004_* suite); the guards are off in the rolled-back `db`
+    transaction."""
+    if "db" in request.fixturenames:
+        disable_0004_guard(request.getfixturevalue("db"), "human_tasks", "human_tasks_guard")
+
 
 Conn = psycopg.Connection[tuple[Any, ...]]
 
