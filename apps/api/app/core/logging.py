@@ -18,12 +18,14 @@ the traceback is rendered, so no secret or personal value reaches stdout.
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 import sys
 from collections.abc import Callable, Mapping, MutableMapping
 from typing import Any, Final, TextIO
 
 import structlog
+from pydantic import BaseModel
 from structlog.typing import EventDict, Processor, WrappedLogger
 
 from app.core.config import Settings
@@ -131,11 +133,17 @@ _JSON_NATIVE: Final = (str, int, float, bool, type(None))
 
 def _plain(value: Any, depth: int = 0) -> Any:
     """JSON-native values, so `redact()` sees the text of every object (its `repr`) before the
-    renderer would turn it into text that no rule checks."""
+    renderer would turn it into text that no rule checks. A pydantic model or a dataclass becomes
+    a dict first, so the key layer redacts its secret fields."""
     if isinstance(value, _JSON_NATIVE):
         return value
     if depth > 32:
         return "<...>"
+    if isinstance(value, BaseModel):
+        return _plain(value.model_dump(), depth + 1)
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        fields = {f.name: getattr(value, f.name) for f in dataclasses.fields(value)}
+        return _plain(fields, depth + 1)
     if isinstance(value, Mapping):
         return {
             (k if isinstance(k, _JSON_NATIVE) else repr(k)): _plain(v, depth + 1)

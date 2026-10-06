@@ -11,7 +11,9 @@ Two layers:
   parameters (in URLs and in bare `a=1&b=2` strings) and the values of a Postgres
   `Key (...)=(...)` DETAIL, which a unique violation puts into the traceback, the
   `Failing row contains (...)` DETAIL of a NOT NULL or CHECK violation, and the
-  `[parameters: ...]` that SQLAlchemy appends to a database error.
+  `[parameters: ...]` that SQLAlchemy appends to a database error, and the quoted value of a
+  denied key in JSON, dict-repr or kwarg-repr text, and the `input_value=` of a pydantic
+  ValidationError.
 
 Bounded time on attacker-chosen text: a string longer than `MAX_STR_CHARS` keeps its head and its
 tail (a traceback's raise site is at the end) around a marker before any pattern runs, and every
@@ -142,6 +144,18 @@ _FAILING_ROW: Final = re.compile(r"Failing row contains \([^\n]{0,8192}")
 # SQLAlchemy appends the bound parameters to a DBAPI error's text (`[parameters: {...}]`): an
 # INSERT's password hash or email would ride the traceback into a log line or a Sentry event.
 _SQL_PARAMETERS: Final = re.compile(r"\[parameters: [^\n]{0,8192}")
+# A key, then `:` or `=`, then an opening quote: JSON (`"access_token": "..."`), a dict repr
+# (`'refresh_token': '...'`), a kwarg repr (`jwt_secret='...'`) and pydantic's `input_value=`,
+# with JSON-in-a-string escapes (`\"key\": \"...\"`). Only the key and the opening quote are
+# matched, so a harmless key's value is still scanned for a denied key inside it.
+_QUOTED_KEY: Final = re.compile(
+    r"(?<![A-Za-z0-9_.\-])(?:\\{0,2}[\"'])?([A-Za-z0-9_.\-]{1,64})(?:\\{0,2}[\"'])?"
+    r"\s{0,4}[:=]\s{0,4}(\\{0,2}[\"'])"
+)
+MAX_QUOTED_VALUE: Final = 4_096
+# pydantic's ValidationError quotes the rejected input, cut in the middle (`{'email': 'a@b...: 'x'}`),
+# so a value can lose its key: the whole input goes, up to `, input_type=` or the end of the line.
+_INPUT_VALUE: Final = re.compile(r"input_value=(?:[^\n,]|,(?! input_type=)){0,8192}")
 
 
 def _userinfo(match: re.Match[str]) -> str:
@@ -158,6 +172,32 @@ def _query(match: re.Match[str]) -> str:
     return match.group(0)
 
 
+def _quoted_values(text: str) -> str:
+    """A denied key's quoted value, up to its closing quote (or the end of the line, or
+    `MAX_QUOTED_VALUE` characters when the quote never closes), becomes `REDACTED`. Dict-key
+    rules apply, so `'code': 'NOT_FOUND'` (the error envelope) stays."""
+    out: list[str] = []
+    pos = 0
+    for match in _QUOTED_KEY.finditer(text):
+        if match.start() < pos or not is_denied_key(match.group(1)):
+            continue
+        start = match.end()
+        limit = min(len(text), start + MAX_QUOTED_VALUE)
+        newline = text.find("\n", start, limit)
+        if newline != -1:
+            limit = newline
+        end = text.find(match.group(2), start, limit)
+        if end == -1:
+            end = limit
+        out.append(text[pos:start])
+        out.append(REDACTED)
+        pos = end
+    if not out:
+        return text
+    out.append(text[pos:])
+    return "".join(out)
+
+
 def _truncate(text: str) -> str:
     if len(text) <= MAX_STR_CHARS:
         return text
@@ -171,6 +211,8 @@ def redact_text(text: str) -> str:
         text = _SQL_PARAMETERS.sub(f"[parameters: {REDACTED}]", text)
     if "Failing row contains (" in text:
         text = _FAILING_ROW.sub(f"Failing row contains ({REDACTED})", text)
+    if "input_value=" in text:
+        text = _INPUT_VALUE.sub(f"input_value={REDACTED}", text)
     if "Key (" in text:
         text = _DETAIL.sub(lambda m: f"Key ({m.group(1)})=({REDACTED})", text)
     if "eyJ" in text:
@@ -180,6 +222,8 @@ def redact_text(text: str) -> str:
         text = _AUTH_SCHEME.sub(lambda m: f"{m.group(1)}{REDACTED}", text)
     if "://" in text:
         text = _USERINFO.sub(_userinfo, text)
+    if ("'" in text or '"' in text) and (":" in text or "=" in text):
+        text = _quoted_values(text)
     if "=" in text:
         text = _QUERY.sub(_query, text)
     return text

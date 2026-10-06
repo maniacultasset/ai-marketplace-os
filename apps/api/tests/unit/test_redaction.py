@@ -218,6 +218,12 @@ ADVERSARIAL = {
     "detail_unterminated": "Key (a)=(" + "z" * 1_000_000,
     "detail_repeated": "Key (a)=(" * 110_000,
     "sql_parameters": "[parameters: " * 80_000,
+    "failing_row": "Failing row contains (" * 50_000,
+    "input_value": "input_value=x" * 80_000,
+    "quoted_key": "'access_token': '" * 60_000,
+    "quoted_key_unterminated": "'secret': '" + "z" * 1_000_000,
+    "quoted_escaped": '\\"a\\": \\"' * 100_000,
+    "auth_scheme": "Authorization: Basic " * 50_000,
 }
 
 

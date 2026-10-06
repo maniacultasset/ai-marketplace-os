@@ -5,8 +5,14 @@ kwargs)."""
 
 from __future__ import annotations
 
+import dataclasses
+import json
+from collections.abc import Callable
+
 import pytest
 from app.core.redaction import REDACTED, redact_text
+from pydantic import BaseModel, ValidationError
+from tests.conftest import LogCapture
 
 SECRET = "Zq9" + "tail" * 4
 
@@ -19,6 +25,15 @@ SECRET = "Zq9" + "tail" * 4
         f"bearer Atzr|{SECRET}",
         f"Authorization: Basic {SECRET}",
         f'"authorization": "Token {SECRET}"',
+        # A token response or request payload quoted in an exception message or log text.
+        f'LWA refresh failed: {{"access_token": "Atza|{SECRET}", "token_type": "bearer"}}',
+        f"LWA refresh failed: {{'refresh_token': 'Atzr|{SECRET}'}}",
+        f"Settings(jwt_secret='{SECRET}')",
+        f'client_secret: "{SECRET}"',
+        f"OAuthError(client_secret='{SECRET}')",
+        f"{{'email': '{SECRET}@x.example',...ess_token': '{SECRET}'}}",
+        # An unterminated quoted value (truncated text) still loses its value.
+        f"{{'access_token': '{SECRET}",
     ],
 )
 def test_redact_text_hides_secret(text: str) -> None:
@@ -60,5 +75,51 @@ def test_redact_text_keeps_harmless_text(text: str) -> None:
 
 
 def test_redact_text_is_idempotent() -> None:
-    once = redact_text(f"Authorization: Bearer Atza|{SECRET}")
+    once = redact_text(f"Authorization: Bearer Atza|{SECRET} {{'access_token': '{SECRET}'}}")
     assert redact_text(once) == once
+
+
+def test_validation_error_input_value_redacted() -> None:
+    class Payload(BaseModel):
+        email: str
+        password: str
+        access_token: str
+        required: int
+
+    with pytest.raises(ValidationError) as caught:
+        Payload.model_validate(
+            {"email": f"{SECRET}@x.example", "password": SECRET, "access_token": SECRET}
+        )
+    assert SECRET not in redact_text(str(caught.value))
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    expires_in: int
+
+
+@dataclasses.dataclass
+class TokenPair:
+    access_token: str
+    token_type: str
+
+
+def test_object_kwarg_redacted_in_log_line(log_lines: Callable[..., LogCapture]) -> None:
+    """A pydantic model or dataclass passed as a log kwarg goes through the key layer."""
+    from app.core.logging import get_logger
+
+    capture = log_lines()
+    get_logger("app.tests.redaction").info(
+        "token refreshed",
+        response=TokenResponse(access_token=SECRET, refresh_token=SECRET, expires_in=3600),
+        pair=TokenPair(access_token=SECRET, token_type="bearer"),
+    )
+    [line] = capture.lines()
+    assert SECRET not in json.dumps(line)
+    assert line["response"] == {
+        "access_token": REDACTED,
+        "refresh_token": REDACTED,
+        "expires_in": 3600,
+    }
+    assert line["pair"] == {"access_token": REDACTED, "token_type": "bearer"}
