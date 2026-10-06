@@ -117,7 +117,7 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 
 | Variable | Local value | Source | Required | Notes |
 |---|---|---|---|---|
-| `SENTRY_DSN` | `(empty — leave blank)` | both | optional | Empty locally disables Sentry. Secret Manager in staging/prod. send_default_pii=False, plus a before_send scrubber. |
+| `SENTRY_DSN` | `(empty — leave blank)` | both | required when APP_ENV ≠ local (api, worker) | Empty locally disables Sentry; outside local an empty value counts as missing and the boot aborts (CANON-ADDENDUM.md §14). Secret Manager in staging/prod. send_default_pii=False, plus a before_send scrubber. |
 | `SENTRY_TRACES_SAMPLE_RATE` | `0.1` | local .env | optional | 0.1 everywhere. The 1.0 value in the admin draft is deleted. Environment tag comes from APP_ENV, release from GIT_SHA — SENTRY_ENVIRONMENT is forbidden. |
 | `OTEL_SERVICE_NAME` | `marketplace-os-api` | local .env | required | Worker deployment sets marketplace-os-worker. Bare `api`/`worker` are forbidden. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `(empty — leave blank)` | local .env | optional | Empty by design in every environment: GCP exports direct to Cloud Trace via opentelemetry-exporter-gcp-trace. Set http://localhost:4317 only if you personally run Jaeger — compose ships no collector. |
