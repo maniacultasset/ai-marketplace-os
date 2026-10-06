@@ -145,3 +145,35 @@ def test_variant_style_delete_with_children_refused(db: Conn) -> None:
     expect_sqlstate(db, "GRD01", "UPDATE products SET deleted_at = now() WHERE id = %s", (style,))
     db.execute("UPDATE products SET deleted_at = now() WHERE id = %s", (child,))
     db.execute("UPDATE products SET deleted_at = now() WHERE id = %s", (style,))
+
+
+# ---- the style side: a style with live children stays a top-level style ----
+
+STYLE_CHANGES = {
+    "becomes a child": "parent_product_id = %(other)s, variation_theme = NULL, "
+    'variant_attributes = \'{"size": "m", "color": "red"}\'',
+    "category change": "category = 'jeans'",
+    "theme change": "variation_theme = 'size'",
+    "theme cleared": "variation_theme = NULL",
+}
+
+
+@pytest.mark.parametrize("change", sorted(STYLE_CHANGES))
+def test_variant_style_with_children_frozen(db: Conn, change: str) -> None:
+    """C → S → X (two levels), or a child left under a style of another category or theme, is
+    refused from the style's side as well as the child's."""
+    tenant, style = _style(db)
+    other = f.product(db, tenant, "style", variation_theme="size_color")
+    child = f.product(db, tenant, "child", parent=style)
+    query = f"UPDATE products SET {STYLE_CHANGES[change]} WHERE id = %(style)s"  # noqa: S608
+    err = expect_sqlstate(db, "GRD01", query, {"other": other, "style": style})
+    assert "live children" in str(err)
+    # once the child is gone the style is free again
+    db.execute("UPDATE products SET deleted_at = now() WHERE id = %s", (child,))
+    db.execute(query, {"other": other, "style": style})
+
+
+def test_variant_style_with_children_other_columns_ok(db: Conn) -> None:
+    tenant, style = _style(db)
+    f.product(db, tenant, "child", parent=style)
+    db.execute("UPDATE products SET title = 'Renamed style' WHERE id = %s", (style,))

@@ -8,7 +8,9 @@
 --   * the guard writes variant_key: keys sorted, values trimmed and lowercased
 --     (`color=jet black|size=m`), so `M/Navy` and `m/navy` collide on
 --     uq_products_tenant_id_parent_product_id_variant_key (23505).
--- A style with live children cannot be soft-deleted. Refusals → GRD01.
+-- A style with live children cannot be soft-deleted, become a child, or change its category or
+-- variation_theme (a concurrent child insert holds the style FOR SHARE, so the two serialise).
+-- Refusals → GRD01.
 CREATE FUNCTION public.variant_guard() RETURNS trigger
   LANGUAGE plpgsql
   SET search_path = pg_catalog, public, pg_temp
@@ -22,6 +24,17 @@ BEGIN
                   WHERE c.tenant_id = NEW.tenant_id AND c.parent_product_id = NEW.id
                     AND c.deleted_at IS NULL) THEN
     RAISE EXCEPTION 'a style with live children cannot be deleted' USING ERRCODE = 'GRD01';
+  END IF;
+  -- the style side of the same rules: a style with live children stays a top-level style in its
+  -- category with its theme (the children's axes and category are checked against both)
+  IF TG_OP = 'UPDATE'
+     AND (NEW.parent_product_id IS NOT NULL OR NEW.category IS DISTINCT FROM OLD.category
+          OR NEW.variation_theme IS DISTINCT FROM OLD.variation_theme)
+     AND EXISTS (SELECT 1 FROM public.products c
+                  WHERE c.tenant_id = OLD.tenant_id AND c.parent_product_id = OLD.id
+                    AND c.deleted_at IS NULL) THEN
+    RAISE EXCEPTION 'a style with live children keeps its category and theme and has no parent'
+      USING ERRCODE = 'GRD01';
   END IF;
   IF NEW.parent_product_id IS NULL THEN
     NEW.variant_key := NULL;
