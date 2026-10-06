@@ -147,10 +147,13 @@ def test_publish_after_three_submissions_refused(db: Conn) -> None:
 
 
 def test_status_requires_current_approval(db: Conn) -> None:
+    """The publish job passed the gate, then a new current version made the approval stale."""
     fl = flow(db)
     set_gucs(db, user_id=fl.operator)
+    approved_flow(db, fl)
     force_state(db, fl.listing_id, "failed", "publish_failed")
     queued_job(db, fl, "listing_publish")
+    next_version(db, fl.tenant_id, fl.listing_id, fl.v1, "regeneration", fl.operator)
     query, params = transition_sql(fl.listing_id, "publishing", "retry_publish")
     expect_sqlstate(db, "LST01", query, params)
 

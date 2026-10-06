@@ -27,6 +27,7 @@ from .ops_support import (
     import_row,
     import_run,
     job_run,
+    make_publishable,
     oauth_state,
     refresh_token,
     seed_tenant,
@@ -72,6 +73,9 @@ def _ops_graph(db: Conn, side: TenantSeed, marketplace: str = "amazon") -> None:
     at a product, a rotated refresh token, an OAuth state and an idempotency key."""
     parent = job_run(db, side.tenant_id, batch_id=side.batch_id)
     job_run(db, side.tenant_id, parent_job_id=parent, batch_id=side.batch_id)
+    status = db.execute("SELECT status FROM listings WHERE id = %s", (side.listing_id,))
+    if status.fetchone() != ("approved",):
+        make_publishable(db, side)  # 0004's publish gate
     publish = job_run(
         db,
         side.tenant_id,
@@ -183,6 +187,7 @@ def test_app_rw_writes_every_0003_tenant_table(db: Conn) -> None:
     """The runtime role writes each new tenant table and the counters through the 0000 default
     privileges (no 42501 before the 0004 column grants)."""
     side = seed_tenant(db)
+    make_publishable(db, side)  # 0004's publish gate (its set-up needs the superuser)
     db.execute("SET LOCAL ROLE app_rw")
     _ops_graph(db, side)
     row = db.execute(
@@ -320,6 +325,7 @@ def test_publish_statement_order_auto_resubmit(db: Conn) -> None:
     status sync for the same listing is a different kind, lives beside it, and shares the
     `publish` queue."""
     side = seed_tenant(db)
+    make_publishable(db, side)  # 0004's publish gate
     running = _publish_job(db, side, status="running", lease_expires_at="2099-01-01T00:00:00Z")
     sync = job_run(
         db,
@@ -358,6 +364,7 @@ def test_supersede_open_accepted_submission_in_same_transaction(db: Conn) -> Non
     side = seed_tenant(db)
     old = submission(db, side, outcome="accepted", responded_at="2026-10-05T00:00:00Z")
     v2 = f.version(db, side.tenant_id, side.listing_id, generated_by_user_id=side.user_id)
+    make_publishable(db, side, v2)  # 0004's publish gate: the newer version is the approved one
     newer = {
         "listing_version_id": v2,
         "job_id": _publish_job(db, side, status="running", lease_expires_at="2099-01-01T00:00:00Z"),

@@ -14,7 +14,7 @@ import pytest
 from mkos_schemas.enums import JobKind, JobState, PipelineStage
 
 from .conftest import expect_sqlstate
-from .ops_support import Seed, job_run, seed_graph, seed_tenant
+from .ops_support import Seed, job_run, make_publishable, seed_graph, seed_tenant
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 
@@ -200,6 +200,7 @@ def test_job_runs_checks_no_auto_publish(db: Conn, seed: Seed) -> None:
         **listing,
     )
     job_run(db, seed.a.tenant_id, kind="listing_status_sync", created_by=None, **listing)
+    make_publishable(db, seed.a)  # 0004's publish gate
     job_run(db, seed.a.tenant_id, kind="listing_publish", created_by=seed.a.user_id, **listing)
 
 
@@ -254,6 +255,8 @@ def test_job_runs_queue_trigger(db: Conn, seed: Seed) -> None:
     for kind, queue in expected.items():
         # each kind on a tenant of its own, so the live-job unique never interferes
         side = seed_tenant(db)
+        if kind == "listing_publish":
+            make_publishable(db, side)  # 0004's publish gate
         columns: dict[str, Any] = {"kind": kind, "created_by": side.user_id}
         if kind in LISTING_KINDS:
             columns.update(listing_id=side.listing_id, entity_type="listing")
@@ -279,7 +282,7 @@ def test_job_runs_queue_trigger_catalog(db: Conn) -> None:
     rows = db.execute(
         "SELECT t.tgname, t.tgfoid::regprocedure::text, t.tgtype & 2 = 2, t.tgtype & 4 = 4, "
         "t.tgtype & 1 = 1 FROM pg_trigger t WHERE t.tgrelid = 'job_runs'::regclass "
-        "AND NOT t.tgisinternal AND t.tgname <> 'job_runs_guard'"  # 0004 adds the edge guard
+        "AND NOT t.tgisinternal AND t.tgname = 'job_runs_set_queue'"  # 0004 adds its guards
     ).fetchall()
     # BEFORE, INSERT, FOR EACH ROW
     assert rows == [("job_runs_set_queue", "job_runs_set_queue()", True, True, True)]
