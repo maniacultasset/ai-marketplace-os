@@ -3711,7 +3711,7 @@
     },
     "/api/v1/auth/login": {
       "post": {
-        "description": "Email and password in; access and refresh tokens and the user's memberships out.",
+        "description": "Email and password in; access and refresh tokens and the user's memberships out. The\nactive tenant is the most recently used one. Every refusal is the same 401.",
         "operationId": "auth_login",
         "requestBody": {
           "content": {

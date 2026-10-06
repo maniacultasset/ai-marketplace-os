@@ -214,3 +214,70 @@ async def test_rate_limit_public_unlimited_skips_counter(auth_db: Conn) -> None:
         for _ in range(70):
             assert (await c.get("/probe")).status_code == 200
     assert _count(auth_db, "") == 0
+
+
+# ---- the login bucket (DW7), on the real app ----
+
+LOGIN = "/api/v1/auth/login"
+
+
+async def _bad_login(api: httpx.AsyncClient, email: str, xff: str | None = None) -> httpx.Response:
+    headers = {"X-Forwarded-For": xff} if xff is not None else {}
+    return await api.post(LOGIN, json={"email": email, "password": "wrong-pw"}, headers=headers)
+
+
+async def test_rate_limit_sixth_login_429(api: httpx.AsyncClient, world: World) -> None:
+    for _ in range(5):
+        assert (await _bad_login(api, "owner@acme.test")).status_code == 401
+    _assert_429(await _bad_login(api, "owner@acme.test"))
+    # the right password does not get past the limit either
+    blocked = await api.post(
+        LOGIN, json={"email": "owner@acme.test", "password": "test-password-0123"}
+    )
+    _assert_429(blocked)
+
+
+async def test_rate_limit_login_bucket_folds_case(api: httpx.AsyncClient, world: World) -> None:
+    for email in (
+        "owner@acme.test",
+        "OWNER@acme.test",
+        "Owner@Acme.Test",
+        "owner@ACME.test",
+        "oWner@acme.test",
+    ):
+        assert (await _bad_login(api, email)).status_code == 401
+    _assert_429(await _bad_login(api, "OWNER@ACME.TEST"))
+
+
+@pytest.mark.parametrize("env", ["local", "production"])
+async def test_rate_limit_forged_leftmost_xff_same_bucket(
+    api: httpx.AsyncClient, world: World, monkeypatch: pytest.MonkeyPatch, env: str
+) -> None:
+    from types import MappingProxyType
+
+    from app.api import rate_limit
+
+    # the app runs under APP_ENV=local; give `local` the hop count of the row under test
+    monkeypatch.setattr(
+        rate_limit,
+        "HOPS",
+        MappingProxyType({**rate_limit.HOPS, "local": rate_limit.HOPS[env]}),  # type: ignore[index]
+    )
+    # what the load balancer appends in production: <client>,<lb>
+    proxy_tail = "198.51.100.77, 130.211.0.9"
+    for n in range(5):
+        assert (
+            await _bad_login(api, "owner@acme.test", f"10.0.0.{n}, {proxy_tail}")
+        ).status_code == 401
+    _assert_429(await _bad_login(api, "owner@acme.test", f"6.6.6.6, {proxy_tail}"))
+    _assert_429(await _bad_login(api, "owner@acme.test", proxy_tail))
+
+
+async def test_rate_limit_other_email_own_bucket(api: httpx.AsyncClient, world: World) -> None:
+    for _ in range(6):
+        await _bad_login(api, "owner@acme.test")
+    assert (await _bad_login(api, "reviewer@acme.test")).status_code == 401
+    ok = await api.post(
+        LOGIN, json={"email": "operator@acme.test", "password": "test-password-0123"}
+    )
+    assert ok.status_code == 200

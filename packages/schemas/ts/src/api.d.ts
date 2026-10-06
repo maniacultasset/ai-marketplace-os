@@ -55,7 +55,8 @@ export interface paths {
         put?: never;
         /**
          * Log in with email and password
-         * @description Email and password in; access and refresh tokens and the user's memberships out.
+         * @description Email and password in; access and refresh tokens and the user's memberships out. The
+         *     active tenant is the most recently used one. Every refusal is the same 401.
          */
         post: operations["auth_login"];
         delete?: never;

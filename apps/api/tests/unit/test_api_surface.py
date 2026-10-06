@@ -13,6 +13,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from mkos_schemas.codes import ErrorCode
 from tests.api_requests import BEARER, PREFIX, invalid_request, valid_request
+from tests.unit.test_case_matrix_guard import IMPLEMENTED
 
 OP_LIST = list(OPS.values())
 IDS = [o.op_id for o in OP_LIST]
@@ -25,6 +26,8 @@ UNVERSIONED_ALLOWED = frozenset(
     {"/healthz", "/readyz", "/openapi.json", "/docs", "/internal/admin"}
 )
 CANARY = "CANARYpw0123456789zz"
+# The S3 stubs still in place; S10's implemented handlers need PostgreSQL (integration suite).
+STUB_OPS = [o for o in OP_LIST if o.op_id not in IMPLEMENTED]
 
 
 @pytest.fixture(scope="module")
@@ -78,7 +81,7 @@ def test_openapi_paths_frozen(spec: dict[str, Any]) -> None:
     assert unversioned == {"/healthz", "/readyz"}
 
 
-@pytest.mark.parametrize("op", OP_LIST, ids=IDS)
+@pytest.mark.parametrize("op", STUB_OPS, ids=[o.op_id for o in STUB_OPS])
 def test_stub_returns_501_envelope(client: TestClient, op: Operation) -> None:
     response = valid_request(op).send(client)
     body = _envelope(response, 501, ErrorCode.NOT_IMPLEMENTED)
@@ -308,9 +311,8 @@ def test_validation_never_echoes_input(client: TestClient) -> None:
     )
     _envelope(too_long, 422, ErrorCode.VALIDATION_FAILED)
     assert CANARY not in too_long.text
-    ok = client.post(f"{PREFIX}/auth/login", json={"email": "a@b.co", "password": CANARY})
-    _envelope(ok, 501, ErrorCode.NOT_IMPLEMENTED)
-    assert CANARY not in ok.text
+    # A valid body now reaches the real login (S10): its 401 is checked against PostgreSQL in
+    # tests/integration/test_auth_login.py (test_login_wrong_password_401).
 
 
 def test_callback_public_and_marketplace_enum(client: TestClient) -> None:

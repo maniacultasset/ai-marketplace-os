@@ -7,17 +7,30 @@ from uuid import UUID
 
 from mkos_schemas.auth import Role
 from mkos_schemas.base import NonBlankStr, StrictModel, WireModel
-from pydantic import Field, SecretStr, StrictBool, model_validator
+from pydantic import AfterValidator, Field, SecretStr, StrictBool, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.api.pagination import Page
 
 Email = Annotated[str, Field(min_length=3, max_length=320, pattern=r"^[^@\s]+@[^@\s]+$")]
+_VISIBLE_ASCII = frozenset(chr(c) for c in range(0x21, 0x7F))
+
+
+def _ascii_email(value: str) -> str:
+    if not set(value) <= _VISIBLE_ASCII:
+        raise PydanticCustomError("mkos_invalid", "Email must be plain ASCII.")
+    return value
+
+
+# A login email is visible ASCII only, so a Unicode look-alike of a real address is a 422, never
+# a lookup miss that looks like a wrong password (CODE-PLAN S10 C8). A validator, not a new
+# pattern: the declared contract stays as S3 froze it.
+LoginEmail = Annotated[Email, AfterValidator(_ascii_email)]
 RefreshToken = Annotated[SecretStr, Field(min_length=1, max_length=4096)]
 
 
 class LoginRequest(StrictModel):
-    email: Email
+    email: LoginEmail
     password: Annotated[SecretStr, Field(min_length=1, max_length=1024)]
 
 

@@ -33,6 +33,10 @@ def test_implemented_routes_not_presence_only(v1_app: FastAPI) -> None:
     assert failures == []
 
 
+# The ops S10 implements; every other /api/v1 route is still S3's 501 stub.
+IMPLEMENTED: frozenset[str] = frozenset({"auth_login"})
+
+
 def test_every_route_is_a_stub_in_s3(v1_app: FastAPI) -> None:
     # Every /api/v1 route, not only those with an operation_id (R1-2): a hidden route added with
     # include_in_schema=False has none and must still fail here.
@@ -42,7 +46,7 @@ def test_every_route_is_a_stub_in_s3(v1_app: FastAPI) -> None:
     assert sorted((m, r.path) for r in routes for m in r.methods) == sorted(
         (op.method, f"/api/v1{op.path}") for op in OPS.values()
     )
-    assert all(is_stub(r.endpoint) for r in routes)
+    assert {r.operation_id for r in routes if not is_stub(r.endpoint)} == IMPLEMENTED
 
 
 def _app_with(fn_is_stub: bool) -> FastAPI:
