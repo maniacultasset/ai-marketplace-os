@@ -6,7 +6,8 @@ Two layers:
   exact names (`DENY_KEYS`) and name suffixes (`DENY_SUFFIXES`). They cover every secret Setting
   and every DATABASE.md column holding a secret or a contact detail. Exact names only for the
   short ones, so `tokens_in`, `tokens_out`, `idempotency_key` and `request_id` survive.
-- **Values.** Inside any string: `Bearer <token>`, JWT-shaped values, URL userinfo, denied query
+- **Values.** Inside any string: `Bearer <token>` (and `Basic` / `Token` after an
+  `Authorization` key), JWT-shaped values, URL userinfo, denied query
   parameters (in URLs and in bare `a=1&b=2` strings) and the values of a Postgres
   `Key (...)=(...)` DETAIL, which a unique violation puts into the traceback, and the
   `[parameters: ...]` that SQLAlchemy appends to a database error.
@@ -112,7 +113,14 @@ def _is_denied_query_key(name: str) -> bool:
     return is_denied_key(name) or _normalise(name) in QUERY_ONLY_DENY_KEYS
 
 
-_BEARER: Final = re.compile(r"\b(?i:bearer)(\s{1,8})[A-Za-z0-9\-._~+/]{1,4096}=*")
+# A credential runs to the next space, quote, comma or semicolon: an LWA token is `Atza|...`, so a
+# base64url-only class would keep everything after the bar.
+_CREDENTIAL: Final = r"[^\s\"',;]{1,4096}"
+_BEARER: Final = re.compile(r"\b(?i:bearer)(\s{1,8})" + _CREDENTIAL)
+# `Basic` and `Token` are ordinary words, so only after an `Authorization` key (header or quoted).
+_AUTH_SCHEME: Final = re.compile(
+    r"\b((?i:authorization)[\"']?\s{0,4}[:=]\s{0,4}[\"']?(?i:basic|token)\s{1,8})" + _CREDENTIAL
+)
 _JWT: Final = re.compile(
     r"eyJ[A-Za-z0-9_-]{1,4096}\.[A-Za-z0-9_-]{1,4096}(?:\.[A-Za-z0-9_-]{0,4096})?"
 )
@@ -162,6 +170,8 @@ def redact_text(text: str) -> str:
     if "eyJ" in text:
         text = _JWT.sub(REDACTED, text)
     text = _BEARER.sub(lambda m: f"Bearer{m.group(1)}{REDACTED}", text)
+    if "authorization" in text.casefold():
+        text = _AUTH_SCHEME.sub(lambda m: f"{m.group(1)}{REDACTED}", text)
     if "://" in text:
         text = _USERINFO.sub(_userinfo, text)
     if "=" in text:
