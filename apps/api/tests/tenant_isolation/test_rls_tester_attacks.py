@@ -366,3 +366,94 @@ def test_attack_issue_cannot_link_other_tenants_rule(app_conn: Conn, world: Worl
     for rule in (world.rows["rules"][a], world.platform_rows["rules"]):
         with session(app_conn, a):
             _issue_with_rule(app_conn, a, listing, rule)
+
+
+def _guard_refusal(conn: Conn, tenant: UUID, row_tenant: UUID, listing: UUID, rule: UUID) -> str:
+    with pytest.raises(psycopg.Error) as info, session(conn, tenant):
+        _issue_with_rule(conn, row_tenant, listing, rule)
+    assert info.value.sqlstate in ("GRD01", "42501"), info.value
+    return str(info.value.diag.message_primary)
+
+
+def test_attack_issue_rule_refusal_is_no_existence_oracle(app_conn: Conn, world: World) -> None:
+    """B's rule id and a random id fail with the same SQLSTATE and the same message, so the
+    refusal never tells A whether B's rule exists."""
+    a, b = world.tenants
+    listing = world.rows["listings"][a]
+    foreign = _guard_refusal(app_conn, a, a, listing, world.rows["rules"][b])
+    missing = _guard_refusal(app_conn, a, a, listing, uuid4())
+    assert foreign == missing
+
+
+def test_attack_issue_rule_with_forged_row_tenant(app_conn: Conn, world: World) -> None:
+    """Under A's GUC, a row stamped with B's tenant, B's listing and B's rule never lands."""
+    a, b = world.tenants
+    _guard_refusal(app_conn, a, b, world.rows["listings"][b], world.rows["rules"][b])
+
+
+def test_attack_issue_rule_relink_by_update(app_conn: Conn, world: World) -> None:
+    """A's own open issue cannot be moved onto B's rule (or a missing one) by UPDATE."""
+    a, b = world.tenants
+    listing = world.rows["listings"][a]
+    for rule in (world.rows["rules"][b], uuid4()):
+        with pytest.raises(psycopg.Error) as info, session(app_conn, a):
+            _issue_with_rule(app_conn, a, listing, world.rows["rules"][a])
+            app_conn.execute(
+                "UPDATE listing_issues SET rule_id = %s WHERE rule_id = %s AND tenant_id = %s",
+                [rule, world.rows["rules"][a], a],
+            )
+        assert info.value.sqlstate == "GRD01", info.value
+
+
+def test_attack_issue_rule_other_tenant_as_migrator_role(admin_conn: Conn, world: World) -> None:
+    """The guard holds for the logins that see every rule too: the admin login (RLS bypass)
+    and the migrator role (t_migrator USING true) both get GRD01 for A's issue on B's rule."""
+    a, b = world.tenants
+    listing = world.rows["listings"][a]
+    for role in (None, "migrator"):
+        with pytest.raises(psycopg.Error) as info, admin_conn.transaction(force_rollback=True):
+            if role is not None:
+                admin_conn.execute(sql.SQL("SET LOCAL ROLE {}").format(sql.Identifier(role)))
+            _issue_with_rule(admin_conn, a, listing, world.rows["rules"][b])
+        assert info.value.sqlstate == "GRD01", (role, info.value)
+
+
+def test_attack_dismissal_under_rls(app_conn: Conn, world: World) -> None:
+    """The dismissal check reads the resolver's membership FOR SHARE as app_rw: an active
+    reviewer of A dismisses a warning, the cross-tenant member (operator) is refused."""
+    a, _ = world.tenants
+    listing = world.rows["listings"][a]
+    insert = (
+        "INSERT INTO listing_issues (tenant_id, listing_id, marketplace, source, field_path, "
+        "error_code, error_class, retry_class, severity, message, dedupe_key) "
+        "VALUES (%s, %s, 'amazon', 'rules_engine', 'content.title', 'W1', 'content_error', "
+        "'ai_correct', 'warning', 'm', %s) RETURNING id"
+    )
+    dismiss = (
+        "UPDATE listing_issues SET status = 'dismissed', resolution = 'accepted_warning', "
+        "resolved_at = now(), resolved_by_user_id = %s WHERE id = %s"
+    )
+    reviewer, email = uuid4(), f"rev-{uuid4()}@x.test"
+    with session(app_conn, a, login_email=email):
+        app_conn.execute(
+            "INSERT INTO users (id, email, display_name, hashed_password) "
+            "VALUES (%s, %s, 'R', 'x')",
+            [reviewer, email],
+        )
+        app_conn.execute(
+            "INSERT INTO tenant_memberships (tenant_id, user_id, role) VALUES (%s, %s, 'reviewer')",
+            [a, reviewer],
+        )
+        row = app_conn.execute(
+            insert, [a, listing, f"rules_engine|content.title|W1|{uuid4()}"]
+        ).fetchone()
+        assert row is not None
+        cur = app_conn.execute(dismiss, [reviewer, row[0]])
+        assert cur.rowcount == 1
+    with pytest.raises(psycopg.Error) as info, session(app_conn, a):
+        row = app_conn.execute(
+            insert, [a, listing, f"rules_engine|content.title|W1|{uuid4()}"]
+        ).fetchone()
+        assert row is not None
+        app_conn.execute(dismiss, [world.platform_rows["both_user"], row[0]])
+    assert info.value.sqlstate == "GRD01", info.value
