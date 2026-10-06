@@ -15,6 +15,7 @@ from app.api.v1.router import router as v1_router
 from app.core.asgi import MkosApp
 from app.core.config import get_settings
 from app.core.logging import configure_logging
+from app.core.observability import init_tracing, tracer_from
 from app.db.session import dispose_engine
 from app.services.health import ReadinessCheck
 
@@ -45,6 +46,7 @@ def create_app() -> FastAPI:
         # One component per model (no `-Input`/`-Output` pairs), so FE type names stay plain.
         separate_input_output_schemas=False,
     )
+    app.tracer = tracer_from(init_tracing(settings))
     app.state.readiness = ReadinessCheck()
     install_error_handlers(app)
     app.include_router(health.router)
