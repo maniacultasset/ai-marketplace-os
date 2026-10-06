@@ -18,6 +18,7 @@ from app.services.rules_engine.text import (
     compiled_rule_regex,
 )
 from tests.rules_engine_builders import listing, rule, ruleset
+from tests.timing import budget
 
 
 def _nested_optional(depth: int, group: str = "(") -> str:
@@ -60,7 +61,7 @@ def test_pattern_rule_with_nested_optional_does_not_stall_evaluate() -> None:
     )
     start = time.perf_counter()
     evaluate(listing(content={"description": "hello"}), ruleset(r))
-    assert time.perf_counter() - start < 1.0  # 2.4 s at depth 18 before the fix
+    assert time.perf_counter() - start < budget(1.0)  # 2.4 s at depth 18 before the fix
 
 
 def test_regex_banned_terms_guard_cost_bounded() -> None:
@@ -71,7 +72,7 @@ def test_regex_banned_terms_guard_cost_bounded() -> None:
     )
     start = time.perf_counter()
     evaluate(listing(content={"description": "hello"}), ruleset(r))
-    assert time.perf_counter() - start < 5.0  # about 60 s for 128-atom terms before the fix
+    assert time.perf_counter() - start < budget(5.0)  # about 60 s for 128-atom terms before the fix
 
 
 def test_wide_open_set_refused_fast_and_refusal_memoised() -> None:
@@ -83,7 +84,7 @@ def test_wide_open_set_refused_fast_and_refusal_memoised() -> None:
     for _ in range(200):
         with pytest.raises(UnsafeRuleRegexError, match="too complex"):
             compiled_rule_regex(term, ignore_case=False)
-    assert time.perf_counter() - start < 0.05  # refusals come from the cache
+    assert time.perf_counter() - start < budget(0.05)  # refusals come from the cache
 
 
 def test_guard_step_budget_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:

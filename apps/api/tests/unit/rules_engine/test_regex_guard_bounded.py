@@ -9,6 +9,7 @@ import pytest
 from app.services.rules_engine import evaluate
 from app.services.rules_engine.text import UnsafeRuleRegexError, compile_rule_regex
 from tests.rules_engine_builders import listing, rule, ruleset
+from tests.timing import budget
 
 BOUNDED_REFUSED = [
     r"\d{1,50}\d{1,50}\d{1,50}\d{1,50}x",  # tester repro: 32.8 s over 2000 digits
@@ -53,8 +54,8 @@ def test_regex_disjoint_bounded_repeats_allowed_and_fast(regex: str) -> None:
     for text in ADVERSARIAL:
         start = time.perf_counter()
         pattern.search(text)
-        assert (
-            time.perf_counter() - start < 0.5
+        assert time.perf_counter() - start < budget(
+            0.5
         )  # backtracking blow-ups take seconds; headroom for load
 
 
@@ -68,4 +69,4 @@ def test_regex_bounded_pattern_rule_fails_closed_fast() -> None:
     start = time.perf_counter()
     with pytest.raises(UnsafeRuleRegexError):
         evaluate(item, ruleset(r))
-    assert time.perf_counter() - start < 1.0
+    assert time.perf_counter() - start < budget(1.0)

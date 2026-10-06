@@ -9,6 +9,7 @@ from app.services.rules_engine import RuleRow, evaluate, resolve_ruleset
 from mkos_schemas.enums import Marketplace
 from tests.rules_engine_builders import CATEGORY, LOADED_AT, TENANT_ID, listing, rule, ruleset
 from tests.rules_engine_strategies import POOL
+from tests.timing import budget
 
 STAR_TERMS = [
     "best seller",
@@ -98,7 +99,7 @@ def test_engine_worst_case_budget() -> None:
         loaded_at=LOADED_AT,
     )
     rep = evaluate(item, rs)
-    assert time.perf_counter() - start < 1.0
+    assert time.perf_counter() - start < budget(1.0)
     assert rep.status == "failed"
 
 
@@ -114,5 +115,5 @@ def test_engine_500_rules_budget() -> None:
     rs = ruleset(*rules)
     start = time.perf_counter()
     rep = evaluate(item, rs)
-    assert time.perf_counter() - start < 5.0
+    assert time.perf_counter() - start < budget(5.0)
     assert len(rep.errors) == 500

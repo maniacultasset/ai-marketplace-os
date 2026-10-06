@@ -10,6 +10,7 @@ from app.services.rules_engine import evaluate
 from app.services.rules_engine.report import render_text
 from app.services.rules_engine.text import UnsafeRuleRegexError, compile_rule_regex
 from tests.rules_engine_builders import listing, rule, ruleset
+from tests.timing import budget
 
 
 def _banned(terms: list[str], field: str = "*", **kw: Any) -> Any:
@@ -75,7 +76,7 @@ def test_attack_max_size_description_banned_and_pattern_fast() -> None:
     )
     start = time.perf_counter()
     report = evaluate(item, ruleset(_banned(["best"], field="content.description"), pattern))
-    assert time.perf_counter() - start < 1.0
+    assert time.perf_counter() - start < budget(1.0)
     assert [e.error_code.value for e in report.errors] == ["BANNED_TERM"]
 
 

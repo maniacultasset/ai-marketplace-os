@@ -17,6 +17,7 @@ from app.services.rules_engine.text import UnsafeRuleRegexError, compile_rule_re
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from tests.rules_engine_builders import listing, rule, ruleset
+from tests.timing import budget
 
 # Matches U+4E00.. (CJK) but none of the old guard's fixed probes.
 _HOLE = r"[^\x00-\u4dff\uff21\U0001f600]"
@@ -53,7 +54,7 @@ def test_hole_regex_refused_by_evaluate_without_stalling() -> None:
         start = time.perf_counter()
         with pytest.raises(UnsafeRuleRegexError):  # was accepted: ~0.5 s for 100 chars
             evaluate(listing(content={"description": "一" * 100}), ruleset(r))
-        assert time.perf_counter() - start < 0.1
+        assert time.perf_counter() - start < budget(0.1)
 
 
 @pytest.mark.parametrize(

@@ -15,6 +15,7 @@ import pytest
 from app.services.rules_engine.text import UnsafeRuleRegexError, compile_rule_regex
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
+from tests.timing import budget
 
 
 def _refused(regex: str, *, ignore_case: bool = False) -> bool:
@@ -157,4 +158,4 @@ def test_guard_cost_with_both_tiers_stays_flat() -> None:
     start = time.perf_counter()
     for _ in range(5):
         compile_rule_regex(regex + f"{_}", ignore_case=True)
-    assert time.perf_counter() - start < 2.0
+    assert time.perf_counter() - start < budget(2.0)

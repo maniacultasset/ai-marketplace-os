@@ -15,6 +15,7 @@ from app.services.rules_engine import text as text_mod
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from tests.rules_engine_builders import listing, rule, ruleset
+from tests.timing import budget
 
 
 def _class_atom_term(i: int) -> str:
@@ -46,7 +47,7 @@ def test_many_distinct_class_atoms_guard_cost_bounded(case_sensitive: bool) -> N
     start = time.perf_counter()
     evaluate(listing(content={"description": "hello"}), ruleset(r))
     # ~0.6 s idle; the pre-fix guard took ~11 s, so 3 s still catches the regression under CI load
-    assert time.perf_counter() - start < 3.0
+    assert time.perf_counter() - start < budget(3.0)
 
 
 # Exactness: the item-built masks equal scanning the atom's own pattern over each probe tier.

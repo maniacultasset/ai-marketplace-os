@@ -8,6 +8,7 @@ import pytest
 from app.services.rules_engine import text as text_mod
 from app.services.rules_engine.text import UnsafeRuleRegexError, compile_rule_regex
 from mkos_schemas.rules import check_rule_regex
+from tests.timing import budget
 
 AC15_REFUSED = [r"\s*\s*x", r"\d*\d*\d*\d*x", r".*.*.*.*x", r"\s*\s*\s*\s*\s*\s*!", r".*foo.*"]
 SAFE = [r"^\d+(\.\d+)?$", r"\d+\.\d+", r"https?://.*"]
@@ -26,7 +27,7 @@ def test_regex_polynomial_pattern_budget(regex: str) -> None:
     for text in ADVERSARIAL:
         start = time.perf_counter()
         pattern.search(text)
-        assert time.perf_counter() - start < 0.1
+        assert time.perf_counter() - start < budget(0.1)
 
 
 def test_regex_polynomial_gap_documented() -> None:
