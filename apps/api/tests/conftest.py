@@ -4,6 +4,7 @@ abort collection), so `app.*` is always imported lazily inside a fixture."""
 from __future__ import annotations
 
 import asyncio
+import copy
 import importlib.util
 import io
 import json
@@ -234,3 +235,72 @@ def log_lines() -> Iterator[Callable[..., LogCapture]]:
 
     yield start
     reset_logging()
+
+
+class SentryCapture:
+    """Every envelope the Sentry client would have sent, kept in memory (no network)."""
+
+    def __init__(self) -> None:
+        self.envelopes: list[Any] = []
+
+    def items(self, kind: str) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for envelope in self.envelopes:
+            for item in envelope.items:
+                if item.type == kind and item.payload.json is not None:
+                    out.append(item.payload.json)
+        return out
+
+    def events(self) -> list[dict[str, Any]]:
+        return self.items("event")
+
+    def transactions(self) -> list[dict[str, Any]]:
+        return self.items("transaction")
+
+    def serialized(self) -> str:
+        """Every envelope as sent, minus the frames' source lines: those quote this repo's test
+        code (which holds the planted values), not data from the request."""
+        parts: list[str] = []
+        for envelope in self.envelopes:
+            parts.append(json.dumps(envelope.headers, default=str))
+            for item in envelope.items:
+                payload = item.payload.json
+                if payload is None:
+                    parts.append(item.payload.get_bytes().decode("utf-8", "replace"))
+                    continue
+                cleaned = copy.deepcopy(payload)
+                _drop_source_context(cleaned)
+                parts.append(json.dumps(cleaned, default=str))
+        return "\n".join(parts)
+
+
+def _drop_source_context(node: Any) -> None:
+    if isinstance(node, dict):
+        for key in ("pre_context", "context_line", "post_context"):
+            node.pop(key, None)
+        for value in node.values():
+            _drop_source_context(value)
+    elif isinstance(node, list):
+        for value in node:
+            _drop_source_context(value)
+
+
+@pytest.fixture
+def sentry_events(monkeypatch: pytest.MonkeyPatch) -> Iterator[SentryCapture]:
+    """Route `init_sentry()` (and so `create_app()` with a DSN) to an in-memory transport; close
+    and unbind the client afterwards."""
+    import sentry_sdk
+    from sentry_sdk.transport import Transport
+
+    capture = SentryCapture()
+
+    class CapturingTransport(Transport):
+        def capture_envelope(self, envelope: Any) -> None:
+            capture.envelopes.append(envelope)
+
+    monkeypatch.setattr("app.core.observability.DEFAULT_TRANSPORT", CapturingTransport())
+    yield capture
+    client = sentry_sdk.get_client()
+    client.flush(timeout=2)
+    client.close()
+    sentry_sdk.get_global_scope().set_client(None)

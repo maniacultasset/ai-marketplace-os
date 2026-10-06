@@ -236,3 +236,36 @@ def test_sqlalchemy_engine_logger_has_no_writing_handler(log_lines: Start) -> No
 def test_structlog_configured_once_per_call(log_lines: Start) -> None:
     log_lines()
     assert structlog.is_configured()
+
+
+def test_structlog_reserved_key_kept_under_field_suffix(log_lines: Start) -> None:
+    capture = log_lines()
+    _log().info("reserved", module="m", name="n", lineno=3)
+    [line] = capture.lines()
+    assert line["module"] == "app.tests.logging"
+    assert (line["module_field"], line["name_field"], line["lineno_field"]) == ("m", "n", 3)
+
+
+def test_structlog_record_is_a_plain_stdlib_record(log_lines: Start) -> None:
+    """Other handlers (Sentry's logging integration) see the message text, the extras and a real
+    `exc_info`, never structlog's event dict."""
+    records: list[logging.LogRecord] = []
+
+    class Keep(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            records.append(record)
+
+    log_lines()
+    keeper = Keep()
+    logging.getLogger().addHandler(keeper)
+    try:
+        try:
+            raise ValueError("x")
+        except ValueError:
+            _log().exception("failed", route="/r")
+    finally:
+        logging.getLogger().removeHandler(keeper)
+    [record] = records
+    assert record.getMessage() == "failed"
+    assert record.__dict__["route"] == "/r"
+    assert record.exc_info is not None and record.exc_info[0] is ValueError

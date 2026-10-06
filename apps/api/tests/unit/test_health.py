@@ -98,7 +98,7 @@ def test_probes_are_get_only(make_app: Callable[[], FastAPI], path: str) -> None
 
 @pytest.mark.parametrize("app_env", ["local", "staging"])
 def test_docs_and_openapi_served(
-    ci_env: dict[str, str], monkeypatch: pytest.MonkeyPatch, app_env: str
+    ci_env: dict[str, str], monkeypatch: pytest.MonkeyPatch, app_env: str, sentry_events: Any
 ) -> None:
     from app.core.config import get_settings
     from app.main import create_app
@@ -246,7 +246,7 @@ async def test_bound_expiring_as_the_check_finishes_keeps_its_result(
 
 
 def test_docs_and_openapi_off_in_production(
-    clean_env: object, monkeypatch: pytest.MonkeyPatch
+    clean_env: object, monkeypatch: pytest.MonkeyPatch, sentry_events: Any
 ) -> None:
     from app.core.config import get_settings
     from app.main import create_app

@@ -86,6 +86,18 @@ _RECORD_KEYS: Final = frozenset(logging.LogRecord("", 0, "", 0, "", (), None).__
 formatter sets on the shared record (`message`, `asctime`) and uvicorn's `color_message`."""
 
 
+_LOG_KWARGS: Final = frozenset({"exc_info", "stack_info", "stacklevel", "event"})
+
+
+def _rename_reserved_keys(_: WrappedLogger, __: str, event_dict: EventDict) -> EventDict:
+    """A structlog key that names a LogRecord attribute (`module`, `name`, ...) would make
+    `logging` refuse the record; it is kept under `<key>_field` instead."""
+    clashing = [k for k in event_dict if k in _RECORD_KEYS and k not in _LOG_KWARGS]
+    for key in clashing:
+        event_dict[f"{key}_field"] = event_dict.pop(key)
+    return event_dict
+
+
 def _add_extra(_: WrappedLogger, __: str, event_dict: EventDict) -> EventDict:
     record = event_dict.get("_record")
     if record is not None:
@@ -223,13 +235,15 @@ def configure_logging(settings: Settings, *, stream: TextIO | None = None) -> No
     root.setLevel(settings.log_level.upper())
     _quiet_libraries(settings)
 
+    # structlog events become ordinary stdlib records (message text, `extra`, a real `exc_info`),
+    # so every handler on root sees one shape: this chain, and Sentry's logging integration
+    # (whose event then carries the exception and the extras, both redacted in `before_send`).
     structlog.configure(
         processors=[
             structlog.stdlib.filter_by_level,
-            structlog.stdlib.add_log_level,
-            structlog.stdlib.add_logger_name,
             structlog.stdlib.PositionalArgumentsFormatter(),
-            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+            _rename_reserved_keys,
+            structlog.stdlib.render_to_log_kwargs,
         ],
         logger_factory=structlog.stdlib.LoggerFactory(),
         wrapper_class=structlog.stdlib.BoundLogger,

@@ -15,7 +15,7 @@ from app.api.v1.router import router as v1_router
 from app.core.asgi import MkosApp
 from app.core.config import get_settings
 from app.core.logging import configure_logging
-from app.core.observability import init_tracing, tracer_from
+from app.core.observability import init_sentry, init_tracing, tag_request, tracer_from
 from app.db.session import dispose_engine
 from app.services.health import ReadinessCheck
 
@@ -29,6 +29,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings)
+    sentry_on = init_sentry(settings)
     # Production serves no docs: Swagger UI loads third-party CDN assets on the API origin.
     # app.openapi() still works, so the committed openapi.json export is unaffected.
     serve_docs = settings.app_env != "production"
@@ -47,6 +48,8 @@ def create_app() -> FastAPI:
         separate_input_output_schemas=False,
     )
     app.tracer = tracer_from(init_tracing(settings))
+    if sentry_on:
+        app.on_request = tag_request
     app.state.readiness = ReadinessCheck()
     install_error_handlers(app)
     app.include_router(health.router)
