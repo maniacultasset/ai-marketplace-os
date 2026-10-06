@@ -1,8 +1,8 @@
 # STATE — read first, update last
 
 _Last updated: 2026-10-04 (Sun). Any contributor, with any editor, can pick up from here: read "Start here" below. Front door: `docs/PRD.md`, `docs/ARCH.md`, `docs/RULES.md` (the engineering rulebook: it wins over the local agent rules file, and the sources it cites win over it, per its top paragraph), `docs/DESIGN.md`, `docs/PHASES.md`. Docs map: `docs/README.md`. Plan: `docs/EXECUTION-PLAN.md`._
-**Active:** none
-**Branch:** `main`. Latest merges: PR #7 (milestone 0 docs, `3165617`) and PR #6 (S1 follow-ups, `370c603`), both 2026-10-04. No step branch is open.
+**Active:** claude-code · main + parallel step lanes (hidden worktrees) · since 2026-10-05 11:45 · drive S2..S26
+**Branch:** `main`. Latest merges: PR #18 S9 tenant guard (`f783af9`), PR #17 S3 API surface (`f68c890`), PR #16 S17a image checks (`24942e2`), all 2026-10-05/06. Open step branches: S14a, S11, S10a.
 **Git repo:** yes. Private `maniacultasset/ai-marketplace-os` (https://github.com/maniacultasset/ai-marketplace-os); first commit `be02277` on 2026-09-29. From here on, every change goes branch → PR → squash merge, and the user approves each merge.
 **Hosting ADR:** accepted ADR-0001 (GCP asia-south1, bootstrapped profile; 2026-09-27)
 **Tech Lead:** the user (to be confirmed)
