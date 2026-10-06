@@ -19,7 +19,7 @@ from psycopg.types.json import Jsonb
 
 from . import factories as f
 from .conftest import expect_sqlstate
-from .integrity_support import as_migrator, set_gucs
+from .integrity_support import as_migrator, disable_0004_guard, set_gucs
 from .ops_support import (
     TenantSeed,
     field_result,
@@ -37,6 +37,15 @@ from .test_0002_attacks import PURGE_ORDER as PURGE_ORDER_0002
 from .test_0002_attacks import TABLES_0002, _graph
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
+
+
+@pytest.fixture(autouse=True)
+def _ls_guard_off(request: pytest.FixtureRequest) -> None:
+    """These suites test 0003's CHECKs, keys and FKs on submissions written in any order;
+    0004's `ls_guard` (proven by test_0004_ls_guard.py) is off in their rolled-back transaction."""
+    if "db" in request.fixturenames:
+        disable_0004_guard(request.getfixturevalue("db"), "listing_submissions", "ls_guard")
+
 
 Conn = psycopg.Connection[tuple[Any, ...]]
 

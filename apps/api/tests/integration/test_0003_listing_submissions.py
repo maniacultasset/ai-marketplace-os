@@ -16,6 +16,7 @@ from hypothesis import strategies as st
 from mkos_schemas.paths import FIELD_PATH_PATTERNS, MAX_PATH_LENGTH, is_valid_field_path
 
 from . import factories as f
+from .integrity_support import disable_0004_guard
 from .ops_support import (
     Seed,
     TenantSeed,
@@ -26,6 +27,15 @@ from .ops_support import (
 )
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
+
+
+@pytest.fixture(autouse=True)
+def _ls_guard_off(request: pytest.FixtureRequest) -> None:
+    """These suites test 0003's CHECKs, keys and FKs on submissions written in any order;
+    0004's `ls_guard` (proven by test_0004_ls_guard.py) is off in their rolled-back transaction."""
+    if "db" in request.fixturenames:
+        disable_0004_guard(request.getfixturevalue("db"), "listing_submissions", "ls_guard")
+
 
 Conn = psycopg.Connection[tuple[Any, ...]]
 

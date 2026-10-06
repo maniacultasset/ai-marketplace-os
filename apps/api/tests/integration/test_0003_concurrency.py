@@ -170,7 +170,15 @@ def test_two_jobs_race_for_one_open_submission(
     def second(conn: Conn) -> UUID:
         return submission(conn, a, listing_version_id=v2)
 
-    _, error = _race(ops_db, first, second)
+    # 0004's ls_guard locks the listing and refuses an unapproved version first
+    # (test_0004_ls_guard.py races it); this 0003 race isolates the index on this private db.
+    with _connect(ops_db, autocommit=True) as admin:
+        admin.execute("ALTER TABLE listing_submissions DISABLE TRIGGER ls_guard")
+    try:
+        _, error = _race(ops_db, first, second)
+    finally:
+        with _connect(ops_db, autocommit=True) as admin:
+            admin.execute("ALTER TABLE listing_submissions ENABLE TRIGGER ls_guard")
     assert isinstance(error, psycopg.errors.UniqueViolation)
     assert error.diag.constraint_name == "ux_ls_open"
 

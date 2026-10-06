@@ -337,3 +337,14 @@ def prepare_edge(
         fl.listing_id, to, event, allowed[0] if allowed else None, **update
     )
     return fl, query, params
+
+
+def disable_0004_guard(conn: Conn, table: str, trigger: str) -> None:
+    """For the earlier steps' CHECK/FK/key suites only: switch one 0004 guard trigger off inside
+    the caller's transaction (which the `db` fixture rolls back, so the catalog is unchanged
+    afterwards). The guard itself is proven by its own test_0004_* suite."""
+    conn.execute(
+        sql.SQL("ALTER TABLE {} DISABLE TRIGGER {}").format(
+            sql.Identifier(table), sql.Identifier(trigger)
+        )
+    )
