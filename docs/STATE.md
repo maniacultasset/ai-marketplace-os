@@ -1,8 +1,8 @@
 # STATE — read first, update last
 
 _Last updated: 2026-10-04 (Sun). Any contributor, with any editor, can pick up from here: read "Start here" below. Front door: `docs/PRD.md`, `docs/ARCH.md`, `docs/RULES.md` (the engineering rulebook: it wins over the local agent rules file, and the sources it cites win over it, per its top paragraph), `docs/DESIGN.md`, `docs/PHASES.md`. Docs map: `docs/README.md`. Plan: `docs/EXECUTION-PLAN.md`._
-**Active:** claude-code · main + parallel step lanes (hidden worktrees) · since 2026-10-05 11:45 · drive S2..S26
-**Branch:** `main`. Latest merges: PR #18 S9 tenant guard (`f783af9`), PR #17 S3 API surface (`f68c890`), PR #16 S17a image checks (`24942e2`), all 2026-10-05/06. Open step branches: S14a, S11, S10a.
+**Active:** none (paused 2026-10-06 evening; resumes 2026-10-07 with S12 PR #25)
+**Branch:** `main`. Merged 2026-10-06: PR #24 S10c auth API (`d454b87`), #23 S10b 0005_rls (`073808a`), #22 S10a 0004_integrity (`afb0c38`), #21 S11 observability (`5d16939`), #20 S14a rules engine (`e75c833`), #18 S9 tenant guard (`f783af9`). Open: draft PR #25 S12 walking skeleton (`ProductCreate.category` to become required, user decision 2026-10-06, T115).
 **Git repo:** yes. Private `maniacultasset/ai-marketplace-os` (https://github.com/maniacultasset/ai-marketplace-os); first commit `be02277` on 2026-09-29. From here on, every change goes branch → PR → squash merge, and the user approves each merge.
 **Hosting ADR:** accepted ADR-0001 (GCP asia-south1, bootstrapped profile; 2026-09-27)
 **Tech Lead:** the user (to be confirmed)
