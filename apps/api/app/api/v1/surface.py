@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any, Final, Literal, get_args
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi.responses import Response
 from mkos_schemas.auth import Role
 from mkos_schemas.codes import ErrorCode
@@ -29,7 +29,7 @@ from mkos_schemas.validation import ValidationResult, ValidationSummary
 from pydantic import BaseModel
 
 from app.api.errors import STATUS_MESSAGES, ErrorEnvelope, envelope_body
-from app.api.v1.deps import bearer_required
+from app.api.v1.deps import public, require
 from app.api.v1.examples import CALLBACK_LOCATION, SUCCESS_EXAMPLES
 from app.api.v1.schemas.analytics import AnalyticsSummary
 from app.api.v1.schemas.auth import MemberOut, MemberPage, MeOut, TokenResponse
@@ -254,11 +254,19 @@ def is_stub(fn: object) -> bool:
     return getattr(fn, "__mkos_stub__", False) is True
 
 
+def _policy(op: Operation) -> Any:
+    if op.action is None:
+        return public()
+    return require(op.action)
+
+
 def route(
     router: APIRouter, op: Operation, **extra: Any
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Register `fn` for `op`: method, path, status, response model, declared responses,
-    `operation_id`, tag, and `bearer_required` unless the op is public."""
+    `operation_id`, tag, `x-mkos-action`, and the op's policy: `require(op.action)` (the verified
+    principal, the tenant limiter and the role check) or, for a public op, `public()` (the per-IP
+    limiter). A route therefore cannot leave out its role check or its limiter."""
 
     def decorate(fn: Callable[..., Any]) -> Callable[..., Any]:
         kwargs: dict[str, Any] = dict(extra)
@@ -274,7 +282,7 @@ def route(
             operation_id=op.op_id,
             summary=op.summary,
             tags=[op.group],
-            dependencies=[] if op.public else [Depends(bearer_required)],
+            dependencies=[_policy(op)],
             openapi_extra={"x-mkos-action": op.policy},
             **kwargs,
         )

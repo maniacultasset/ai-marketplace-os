@@ -36,14 +36,28 @@ def test_every_repository_subclasses_tenant_base() -> None:
     import app.repositories
     from app.repositories.base import TenantScopedRepository
 
+    # The one named exception (BACKEND-ARCHITECTURE.md §9; CODE-PLAN S10 Q4): the identity
+    # repositories read the caller's own rows before or across a tenant, through identity_scope.
+    identity = {
+        "app.repositories.identity": {
+            "AuditRepository",
+            "MembershipRepository",
+            "RefreshTokenRepository",
+            "UserRepository",
+        }
+    }
     found = []
     for module_info in pkgutil.iter_modules(app.repositories.__path__):
         module = importlib.import_module(f"app.repositories.{module_info.name}")
         for name, obj in pyinspect.getmembers(module, pyinspect.isclass):
             if name.endswith("Repository") and obj.__module__ == module.__name__:
                 found.append(name)
+                if name in identity.get(module.__name__, set()):
+                    assert not issubclass(obj, TenantScopedRepository), name
+                    continue
                 assert issubclass(obj, TenantScopedRepository), name
     assert "RuleRepository" in found
+    assert identity["app.repositories.identity"] <= set(found)
 
 
 class _Session:

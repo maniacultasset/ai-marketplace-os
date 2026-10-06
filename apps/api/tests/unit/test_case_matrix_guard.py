@@ -7,8 +7,9 @@ from typing import NoReturn
 
 import pytest
 from app.api.errors import NotImplementedYet
+from app.api.v1.deps import bearer_required
 from app.api.v1.surface import OPS, cases, is_stub, route, stub
-from fastapi import APIRouter, FastAPI, WebSocket
+from fastapi import APIRouter, Depends, FastAPI, WebSocket
 from fastapi.testclient import TestClient
 from tests.endpoint_cases import (
     REQUIRED_VARIANTS,
@@ -74,8 +75,25 @@ def test_guard_flags_a_route_without_its_cases() -> None:
 
 
 def test_guard_flags_presence_only_bearer() -> None:
-    failures = guard_failures(_app_with(fn_is_stub=False), _all_cases("auth_me"))
-    assert failures == ["auth_me: presence-only bearer_required"]
+    # S10's route() wires require()/public(); a route that still adds S3's presence-only check
+    # by hand is flagged.
+    router = APIRouter()
+
+    async def auth_me() -> NoReturn:
+        raise NotImplementedYet("auth_me")
+
+    router.add_api_route(
+        "/auth/me",
+        auth_me,
+        methods=["GET"],
+        operation_id="auth_me",
+        response_model=None,
+        dependencies=[Depends(bearer_required)],
+    )
+    app = FastAPI()
+    app.include_router(router, prefix="/api/v1")
+    assert guard_failures(app, _all_cases("auth_me")) == ["auth_me: presence-only bearer_required"]
+    assert guard_failures(_app_with(fn_is_stub=False), _all_cases("auth_me")) == []
 
 
 def test_guard_skips_stubs() -> None:
