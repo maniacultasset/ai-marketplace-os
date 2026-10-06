@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0.0",
+  "status": "passed",
+  "error_code": null,
+  "retryable": false,
+  "attempts_used": 0,
+  "max_attempts": 3,
+  "errors": [],
+  "request_id": null,
+  "listing_id": "5140f12a-0000-4000-8000-000400000001"
+}

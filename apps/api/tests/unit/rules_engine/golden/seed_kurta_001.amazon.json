@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.0.0",
+  "status": "failed",
+  "error_code": "VALIDATION_FAILED",
+  "retryable": true,
+  "attempts_used": 0,
+  "max_attempts": 3,
+  "errors": [
+    {
+      "field": "content.title",
+      "error_code": "BANNED_TERM",
+      "severity": "error",
+      "message": "title contains the banned term best, free shipping",
+      "value_submitted": "Best Cotton Kurta Set for Women, Free Shipping",
+      "suggestion": null,
+      "source": "rules_engine",
+      "retryable": true,
+      "marketplace": "amazon",
+      "rule_id": "5eed0000-0000-4000-8000-000100010003",
+      "raw_code": null,
+      "error_class": "content_error",
+      "retry_class": "ai_correct",
+      "auto_fixable": false,
+      "fix_action": null
+    },
+    {
+      "field": "content.title",
+      "error_code": "BANNED_TERM",
+      "severity": "error",
+      "message": "'free shipping' is a prohibited claim or promotional phrase on Amazon.",
+      "value_submitted": "Best Cotton Kurta Set for Women, Free Shipping",
+      "suggestion": "Remove 'free shipping' and describe a verifiable product attribute instead. Do not substitute a synonym for the same claim.",
+      "source": "rules_engine",
+      "retryable": true,
+      "marketplace": "amazon",
+      "rule_id": "5eed0000-0000-4000-8000-000100010004",
+      "raw_code": null,
+      "error_class": "content_error",
+      "retry_class": "ai_correct",
+      "auto_fixable": false,
+      "fix_action": null
+    },
+    {
+      "field": "content.bullets[1]",
+      "error_code": "BANNED_TERM",
+      "severity": "error",
+      "message": "'free shipping' is a prohibited claim or promotional phrase on Amazon.",
+      "value_submitted": "Free shipping on every order",
+      "suggestion": "Remove 'free shipping' and describe a verifiable product attribute instead. Do not substitute a synonym for the same claim.",
+      "source": "rules_engine",
+      "retryable": true,
+      "marketplace": "amazon",
+      "rule_id": "5eed0000-0000-4000-8000-000100010004",
+      "raw_code": null,
+      "error_class": "content_error",
+      "retry_class": "ai_correct",
+      "auto_fixable": false,
+      "fix_action": null
+    }
+  ],
+  "request_id": null,
+  "listing_id": "5140f12a-0000-4000-8000-000100000001"
+}

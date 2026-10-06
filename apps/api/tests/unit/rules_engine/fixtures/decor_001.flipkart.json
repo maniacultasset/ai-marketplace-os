@@ -1,0 +1,18 @@
+{
+  "listing_id": "5140f12a-0000-4000-8000-000300000002",
+  "product_id": "5140f12a-0000-4000-8000-000300000000",
+  "marketplace": "flipkart",
+  "category": "home_decor_lamps",
+  "content": {
+    "title": "Brass Table Lamp for Living Room",
+    "bullets": [
+      "Hand-finished brass body",
+      "Fits an E27 bulb"
+    ],
+    "description": "A brass table lamp with a fabric shade."
+  },
+  "attributes": {
+    "color": "gold",
+    "product_dimensions": "30 x 15 x 15 cm"
+  }
+}

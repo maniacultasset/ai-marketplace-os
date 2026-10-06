@@ -93,6 +93,105 @@
           "match": "word",
           "case_sensitive": false
         }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100010004",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "*",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "'{term}' is a prohibited claim or promotional phrase on Amazon.",
+          "suggestion": "Remove '{term}' and describe a verifiable product attribute instead. Do not substitute a synonym for the same claim.",
+          "error_code": "BANNED_TERM",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "prohibited claims and promotional phrases",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "banned_terms",
+          "terms": [
+            "best seller",
+            "bestseller",
+            "#1",
+            "number 1",
+            "100% guaranteed",
+            "free shipping",
+            "cure",
+            "cures",
+            "doctor recommended",
+            "fda approved",
+            "sale",
+            "discount",
+            "cheapest"
+          ],
+          "match": "word",
+          "case_sensitive": false
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100010005",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "attributes.color",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "required_attribute",
+          "attribute": "color",
+          "allowed_values": null
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100010006",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "attributes.fabric_type",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "required_attribute",
+          "attribute": "fabric_type",
+          "allowed_values": null
+        }
       }
     ],
     "rules_version": 0,
@@ -191,6 +290,105 @@
           ],
           "match": "word",
           "case_sensitive": false
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100020004",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "home_decor_lamps",
+        "field": "*",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "'{term}' is a prohibited claim or promotional phrase on Amazon.",
+          "suggestion": "Remove '{term}' and describe a verifiable product attribute instead. Do not substitute a synonym for the same claim.",
+          "error_code": "BANNED_TERM",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "prohibited claims and promotional phrases",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "banned_terms",
+          "terms": [
+            "best seller",
+            "bestseller",
+            "#1",
+            "number 1",
+            "100% guaranteed",
+            "free shipping",
+            "cure",
+            "cures",
+            "doctor recommended",
+            "fda approved",
+            "sale",
+            "discount",
+            "cheapest"
+          ],
+          "match": "word",
+          "case_sensitive": false
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100020005",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "home_decor_lamps",
+        "field": "attributes.color",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "required_attribute",
+          "attribute": "color",
+          "allowed_values": null
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100020006",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "home_decor_lamps",
+        "field": "attributes.product_dimensions",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "required_attribute",
+          "attribute": "product_dimensions",
+          "allowed_values": null
         }
       }
     ],
@@ -291,6 +489,133 @@
           "match": "word",
           "case_sensitive": false
         }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200010004",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "*",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "'{term}' is a prohibited claim or promotional phrase on Flipkart.",
+          "suggestion": "Remove '{term}' and describe a verifiable product attribute instead. Do not substitute a synonym for the same claim.",
+          "error_code": "BANNED_TERM",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "prohibited claims and promotional phrases",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "banned_terms",
+          "terms": [
+            "best seller",
+            "bestseller",
+            "#1",
+            "number 1",
+            "100% guaranteed",
+            "free shipping",
+            "cure",
+            "cures",
+            "doctor recommended",
+            "fda approved",
+            "sale",
+            "discount",
+            "cheapest"
+          ],
+          "match": "word",
+          "case_sensitive": false
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200010005",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "attributes.color",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "required_attribute",
+          "attribute": "color",
+          "allowed_values": null
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200010006",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "attributes.fabric_type",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "required_attribute",
+          "attribute": "fabric_type",
+          "allowed_values": null
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200010007",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "content.title",
+        "severity": "error",
+        "version": 2,
+        "enabled": true,
+        "rule_def": {
+          "message": "title longer than {limit} characters",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_LONG",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "max_length",
+          "limit": 150,
+          "unit": "chars"
+        }
       }
     ],
     "rules_version": 0,
@@ -389,6 +714,529 @@
           ],
           "match": "word",
           "case_sensitive": false
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200020004",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "home_decor_lamps",
+        "field": "*",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "'{term}' is a prohibited claim or promotional phrase on Flipkart.",
+          "suggestion": "Remove '{term}' and describe a verifiable product attribute instead. Do not substitute a synonym for the same claim.",
+          "error_code": "BANNED_TERM",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "prohibited claims and promotional phrases",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "banned_terms",
+          "terms": [
+            "best seller",
+            "bestseller",
+            "#1",
+            "number 1",
+            "100% guaranteed",
+            "free shipping",
+            "cure",
+            "cures",
+            "doctor recommended",
+            "fda approved",
+            "sale",
+            "discount",
+            "cheapest"
+          ],
+          "match": "word",
+          "case_sensitive": false
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200020005",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "home_decor_lamps",
+        "field": "attributes.color",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "required_attribute",
+          "attribute": "color",
+          "allowed_values": null
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200020006",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "home_decor_lamps",
+        "field": "attributes.product_dimensions",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "required_attribute",
+          "attribute": "product_dimensions",
+          "allowed_values": null
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200020007",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "home_decor_lamps",
+        "field": "content.title",
+        "severity": "error",
+        "version": 2,
+        "enabled": true,
+        "rule_def": {
+          "message": "title longer than {limit} characters",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_LONG",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "max_length",
+          "limit": 150,
+          "unit": "chars"
+        }
+      }
+    ],
+    "rules_version": 0,
+    "loaded_at": "2026-10-05T00:00:00Z"
+  },
+  {
+    "marketplace": "amazon",
+    "category": "tshirts",
+    "rules": [
+      {
+        "id": "5eed0000-0000-4000-8000-000100030001",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "tshirts",
+        "field": "content.title",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "title longer than {limit} characters",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_LONG",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "max_length",
+          "limit": 200,
+          "unit": "chars"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100030002",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "tshirts",
+        "field": "content.title",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "title shorter than {limit} characters",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_SHORT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "min_length",
+          "limit": 5,
+          "unit": "chars"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100030003",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "tshirts",
+        "field": "content.title",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "title contains the banned term {term}",
+          "suggestion": null,
+          "error_code": "BANNED_TERM",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "banned_terms",
+          "terms": [
+            "best",
+            "guaranteed",
+            "free shipping",
+            "best seller",
+            "guaranteed cure"
+          ],
+          "match": "word",
+          "case_sensitive": false
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100030004",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "tshirts",
+        "field": "*",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "'{term}' is a prohibited claim or promotional phrase on Amazon.",
+          "suggestion": "Remove '{term}' and describe a verifiable product attribute instead. Do not substitute a synonym for the same claim.",
+          "error_code": "BANNED_TERM",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "prohibited claims and promotional phrases",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "banned_terms",
+          "terms": [
+            "best seller",
+            "bestseller",
+            "#1",
+            "number 1",
+            "100% guaranteed",
+            "free shipping",
+            "cure",
+            "cures",
+            "doctor recommended",
+            "fda approved",
+            "sale",
+            "discount",
+            "cheapest"
+          ],
+          "match": "word",
+          "case_sensitive": false
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100030005",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "tshirts",
+        "field": "attributes.color",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "required_attribute",
+          "attribute": "color",
+          "allowed_values": null
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100030006",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "tshirts",
+        "field": "attributes.fabric_type",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "required_attribute",
+          "attribute": "fabric_type",
+          "allowed_values": null
+        }
+      }
+    ],
+    "rules_version": 0,
+    "loaded_at": "2026-10-05T00:00:00Z"
+  },
+  {
+    "marketplace": "flipkart",
+    "category": "tshirts",
+    "rules": [
+      {
+        "id": "5eed0000-0000-4000-8000-000200030001",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "tshirts",
+        "field": "content.title",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "title longer than {limit} characters",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_LONG",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "max_length",
+          "limit": 150,
+          "unit": "chars"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200030002",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "tshirts",
+        "field": "content.title",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "title shorter than {limit} characters",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_SHORT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "min_length",
+          "limit": 5,
+          "unit": "chars"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200030003",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "tshirts",
+        "field": "content.title",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "title contains the banned term {term}",
+          "suggestion": null,
+          "error_code": "BANNED_TERM",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "product title",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "banned_terms",
+          "terms": [
+            "best",
+            "guaranteed",
+            "free shipping",
+            "best seller",
+            "guaranteed cure"
+          ],
+          "match": "word",
+          "case_sensitive": false
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200030004",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "tshirts",
+        "field": "*",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "'{term}' is a prohibited claim or promotional phrase on Flipkart.",
+          "suggestion": "Remove '{term}' and describe a verifiable product attribute instead. Do not substitute a synonym for the same claim.",
+          "error_code": "BANNED_TERM",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "prohibited claims and promotional phrases",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "banned_terms",
+          "terms": [
+            "best seller",
+            "bestseller",
+            "#1",
+            "number 1",
+            "100% guaranteed",
+            "free shipping",
+            "cure",
+            "cures",
+            "doctor recommended",
+            "fda approved",
+            "sale",
+            "discount",
+            "cheapest"
+          ],
+          "match": "word",
+          "case_sensitive": false
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200030005",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "tshirts",
+        "field": "attributes.color",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "required_attribute",
+          "attribute": "color",
+          "allowed_values": null
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200030006",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "tshirts",
+        "field": "attributes.fabric_type",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "required_attribute",
+          "attribute": "fabric_type",
+          "allowed_values": null
         }
       }
     ],
