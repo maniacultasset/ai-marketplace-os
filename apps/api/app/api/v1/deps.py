@@ -13,10 +13,14 @@ from typing import Annotated, Any, Final
 
 from fastapi import Depends, Header, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from mkos_schemas.auth import JWTClaims
 from mkos_schemas.codes import ErrorCode
 
 from app.api.errors import ApiError
 from app.core.rbac import PUBLIC, Action, Principal, allows, mark_policy
+from app.core.request_context import bind_tenant
+from app.core.security import InvalidToken, decode
+from app.services.auth import probe_principal
 
 IDEMPOTENCY_KEY_PATTERN: Final = r"^[\x21-\x7E]{1,255}$"
 IF_MATCH_PATTERN: Final = r'^"[0-9a-f-]{36}"$'
@@ -57,11 +61,34 @@ IfMatch = Annotated[
 ]
 
 
-async def get_current_principal(
+def _unauthenticated() -> ApiError:
+    return ApiError(401, ErrorCode.UNAUTHENTICATED)
+
+
+async def access_claims(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Security(_bearer)],
+) -> JWTClaims:
+    """The verified access-token claims (no database). Any failure is the one 401."""
+    if credentials is None or not credentials.credentials.strip():
+        raise _unauthenticated()
+    try:
+        return decode(credentials.credentials, typ="access")
+    except InvalidToken:
+        pass
+    raise _unauthenticated()
+
+
+async def get_current_principal(
+    claims: Annotated[JWTClaims, Depends(access_claims)],
 ) -> Principal:
-    """The verified caller. Every failure is the same 401 UNAUTHENTICATED."""
-    raise ApiError(401, ErrorCode.UNAUTHENTICATED)
+    """The verified caller (CODE-PLAN S10 C5): the access token, then one membership probe in
+    its tenant; the role is the row's. Every failure is the same 401 UNAUTHENTICATED, and the
+    tenant is bound to the request only after the probe passes."""
+    principal = await probe_principal(claims)
+    if principal is None:
+        raise _unauthenticated()
+    bind_tenant(principal.tenant_id)
+    return principal
 
 
 @cache
