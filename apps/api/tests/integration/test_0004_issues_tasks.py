@@ -77,6 +77,42 @@ def test_issue_error_never_dismissed(db: Conn) -> None:
     expect_sqlstate(db, "GRD01", DISMISS, (reviewer, issue))
 
 
+@pytest.mark.parametrize(
+    "assignment",
+    [
+        "severity = 'warning'",
+        "error_class = 'unknown'",
+        "retry_class = 'ai_correct'",
+        "auto_fixable = NOT auto_fixable",
+        "fix_action = 'forged'",
+    ],
+)
+def test_issue_classification_immutable(db: Conn, assignment: str) -> None:
+    """An open issue's classification is frozen like its identity: a retry_class change would move
+    it off the publish gate's anti-loop check, a severity change would let an error be dismissed."""
+    _, issue = _issue(db, retry_class="user_action")
+    with as_app_rw(db):
+        expect_sqlstate(
+            db,
+            "GRD01",
+            f"UPDATE listing_issues SET {assignment} WHERE id = %s",  # noqa: S608
+            (issue,),
+        )
+
+
+def test_error_issue_downgraded_then_dismissed_refused(db: Conn) -> None:
+    tenant, issue = _issue(db)  # an open `error`
+    reviewer = f.member(db, tenant, role="reviewer")
+    with as_app_rw(db):
+        expect_sqlstate(
+            db, "GRD01", "UPDATE listing_issues SET severity = 'warning' WHERE id = %s", (issue,)
+        )
+        expect_sqlstate(db, "GRD01", DISMISS, (reviewer, issue))
+    assert db.execute(
+        "SELECT status, severity FROM listing_issues WHERE id = %s", (issue,)
+    ).fetchone() == ("open", "error")
+
+
 def test_issue_dismiss_needs_reviewer_or_owner(db: Conn) -> None:
     tenant, issue = _issue(db, severity="warning")
     for role in ("operator", "admin"):

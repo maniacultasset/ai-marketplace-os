@@ -5,7 +5,9 @@
 -- listing_issues:
 --   * rule_id names a platform rule or a rule of the row's tenant (the plain-FK exception, §5.2);
 --   * status moves only open → auto_fixed | resolved | dismissed; a closed row is immutable;
---     the identity columns never change;
+--     the identity columns never change, nor the classification (severity, error_class,
+--     retry_class, auto_fixable, fix_action: the sync never rewrites them, so an `error` cannot be
+--     downgraded and then dismissed, nor its retry_class moved off the publish gate's check);
 --   * a dismissal reads the resolver's membership FOR SHARE and needs an active reviewer or
 --     owner; an `error` is never dismissed (the Rules Engine stays the arbiter).
 -- human_tasks:
@@ -49,13 +51,15 @@ BEGIN
   IF (NEW.tenant_id, NEW.listing_id, NEW.marketplace, NEW.listing_item_id, NEW.listing_version_id,
       NEW.validation_run_id, NEW.job_id, NEW.source, NEW.field_path, NEW.error_code,
       NEW.rule_id, NEW.error_map_id, NEW.dedupe_key, NEW.first_seen_at, NEW.recurrence_of_id,
-      NEW.created_at)
+      NEW.created_at, NEW.severity, NEW.error_class, NEW.retry_class, NEW.auto_fixable,
+      NEW.fix_action)
      IS DISTINCT FROM
      (OLD.tenant_id, OLD.listing_id, OLD.marketplace, OLD.listing_item_id, OLD.listing_version_id,
       OLD.validation_run_id, OLD.job_id, OLD.source, OLD.field_path, OLD.error_code,
       OLD.rule_id, OLD.error_map_id, OLD.dedupe_key, OLD.first_seen_at, OLD.recurrence_of_id,
-      OLD.created_at) THEN
-    RAISE EXCEPTION 'an issue''s identity columns never change' USING ERRCODE = 'GRD01';
+      OLD.created_at, OLD.severity, OLD.error_class, OLD.retry_class, OLD.auto_fixable,
+      OLD.fix_action) THEN
+    RAISE EXCEPTION 'an issue''s identity and classification never change' USING ERRCODE = 'GRD01';
   END IF;
   IF NEW.status NOT IN ('open', 'auto_fixed', 'resolved', 'dismissed') THEN
     RETURN NEW;  -- the status CHECK refuses
