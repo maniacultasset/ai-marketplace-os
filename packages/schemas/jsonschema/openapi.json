@@ -3365,7 +3365,8 @@
         "summary": "Operational metrics (alias of /analytics/summary)",
         "tags": [
           "analytics"
-        ]
+        ],
+        "x-mkos-action": "analytics:read"
       }
     },
     "/api/v1/analytics/summary": {
@@ -3583,7 +3584,8 @@
         "summary": "Operational metrics for a date range",
         "tags": [
           "analytics"
-        ]
+        ],
+        "x-mkos-action": "analytics:read"
       }
     },
     "/api/v1/auth/login": {
@@ -3827,7 +3829,8 @@
         "summary": "Log in with email and password",
         "tags": [
           "auth"
-        ]
+        ],
+        "x-mkos-action": "public"
       }
     },
     "/api/v1/auth/logout": {
@@ -4013,7 +4016,8 @@
         "summary": "Revoke the refresh token",
         "tags": [
           "auth"
-        ]
+        ],
+        "x-mkos-action": "public"
       }
     },
     "/api/v1/auth/me": {
@@ -4168,7 +4172,8 @@
         "summary": "The current principal and memberships",
         "tags": [
           "auth"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/auth/refresh": {
@@ -4412,7 +4417,8 @@
         "summary": "Rotate the refresh token",
         "tags": [
           "auth"
-        ]
+        ],
+        "x-mkos-action": "public"
       }
     },
     "/api/v1/brand/documents": {
@@ -4497,6 +4503,44 @@
               }
             },
             "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PERMISSION_DENIED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PERMISSION_DENIED",
+                          "field": "request",
+                          "message": "Permission denied.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Permission denied.",
+                    "status": 403,
+                    "type": "PERMISSION_DENIED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
           },
           "409": {
             "content": {
@@ -4706,7 +4750,8 @@
         "summary": "Upload a brand document for chunking",
         "tags": [
           "brand"
-        ]
+        ],
+        "x-mkos-action": "settings:manage"
       }
     },
     "/api/v1/images/upload": {
@@ -4791,6 +4836,44 @@
               }
             },
             "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PERMISSION_DENIED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PERMISSION_DENIED",
+                          "field": "request",
+                          "message": "Permission denied.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Permission denied.",
+                    "status": 403,
+                    "type": "PERMISSION_DENIED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
           },
           "404": {
             "content": {
@@ -5038,7 +5121,8 @@
         "summary": "Upload an image (or name an uploaded key) and start the checks",
         "tags": [
           "images"
-        ]
+        ],
+        "x-mkos-action": "product:import"
       }
     },
     "/api/v1/images/upload-url": {
@@ -5111,6 +5195,44 @@
               }
             },
             "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PERMISSION_DENIED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PERMISSION_DENIED",
+                          "field": "request",
+                          "message": "Permission denied.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Permission denied.",
+                    "status": 403,
+                    "type": "PERMISSION_DENIED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
           },
           "404": {
             "content": {
@@ -5320,7 +5442,8 @@
         "summary": "A signed upload URL for one image",
         "tags": [
           "images"
-        ]
+        ],
+        "x-mkos-action": "product:import"
       }
     },
     "/api/v1/images/{image_id}/report": {
@@ -5580,7 +5703,8 @@
         "summary": "The image compliance reports",
         "tags": [
           "images"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/imports/{import_id}": {
@@ -5826,7 +5950,8 @@
         "summary": "The import report (counts; rows via /rows)",
         "tags": [
           "imports"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/imports/{import_id}/rows": {
@@ -6141,7 +6266,8 @@
         "summary": "Import rows, optionally only failed ones",
         "tags": [
           "imports"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/imports/{import_id}/rows/retry": {
@@ -6473,7 +6599,8 @@
         "summary": "Re-run the failed rows only",
         "tags": [
           "imports"
-        ]
+        ],
+        "x-mkos-action": "product:import"
       }
     },
     "/api/v1/jobs/{job_id}": {
@@ -6725,7 +6852,8 @@
         "summary": "The job envelope, read from job_runs",
         "tags": [
           "jobs"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/jobs/{job_id}/cancel": {
@@ -6818,6 +6946,44 @@
               }
             },
             "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PERMISSION_DENIED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PERMISSION_DENIED",
+                          "field": "request",
+                          "message": "Permission denied.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Permission denied.",
+                    "status": 403,
+                    "type": "PERMISSION_DENIED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
           },
           "404": {
             "content": {
@@ -7027,7 +7193,8 @@
         "summary": "Cancel a queued job",
         "tags": [
           "jobs"
-        ]
+        ],
+        "x-mkos-action": "listing:generate"
       }
     },
     "/api/v1/listings": {
@@ -7320,7 +7487,8 @@
         "summary": "List listings (the review queue)",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/listings/approve": {
@@ -7694,7 +7862,8 @@
         "summary": "Approve or reject a batch (maker-checker enforced)",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "listing:approve"
       }
     },
     "/api/v1/listings/generate": {
@@ -8065,7 +8234,8 @@
         "summary": "Start AI generation",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "listing:generate"
       }
     },
     "/api/v1/listings/publish": {
@@ -8441,7 +8611,8 @@
         "summary": "Publish approved listings",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "listing:publish"
       }
     },
     "/api/v1/listings/validate": {
@@ -8554,6 +8725,44 @@
               }
             },
             "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PERMISSION_DENIED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PERMISSION_DENIED",
+                          "field": "request",
+                          "message": "Permission denied.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Permission denied.",
+                    "status": 403,
+                    "type": "PERMISSION_DENIED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
           },
           "404": {
             "content": {
@@ -8763,7 +8972,8 @@
         "summary": "Run schema, rules and vision checks (200 with passed=false on a rules failure)",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "listing:edit"
       }
     },
     "/api/v1/listings/{listing_id}": {
@@ -9101,7 +9311,8 @@
         "summary": "Read one listing with its content and validation",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/listings/{listing_id}/content": {
@@ -9527,7 +9738,8 @@
         "summary": "Edit content (creates a new version)",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "listing:edit"
       }
     },
     "/api/v1/listings/{listing_id}/publish/retry-fields": {
@@ -9860,7 +10072,8 @@
         "summary": "Retry only the fields that failed to publish",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "listing:publish"
       }
     },
     "/api/v1/listings/{listing_id}/regenerate": {
@@ -10248,7 +10461,8 @@
         "summary": "Regenerate an existing listing",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "listing:regenerate"
       }
     },
     "/api/v1/listings/{listing_id}/status": {
@@ -10492,7 +10706,8 @@
         "summary": "Listing status (a convenience alias; poll jobs instead)",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/marketplaces/accounts": {
@@ -10732,7 +10947,8 @@
         "summary": "Connected accounts and their health",
         "tags": [
           "marketplaces"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/marketplaces/connect": {
@@ -11009,7 +11225,8 @@
         "summary": "Start OAuth; returns the consent URL",
         "tags": [
           "marketplaces"
-        ]
+        ],
+        "x-mkos-action": "marketplace:connect"
       }
     },
     "/api/v1/marketplaces/{marketplace}/callback": {
@@ -11226,7 +11443,8 @@
         "summary": "OAuth return: 303 to the app with an opaque pending handle",
         "tags": [
           "marketplaces"
-        ]
+        ],
+        "x-mkos-action": "public"
       }
     },
     "/api/v1/products": {
@@ -11492,7 +11710,8 @@
         "summary": "List products",
         "tags": [
           "products"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       },
       "post": {
         "description": "Create one product. The SKU is unique per brand (409 SKU_CONFLICT); an unknown attribute\nkey is 422 UNKNOWN_FACT_KEY.",
@@ -11857,7 +12076,8 @@
         "summary": "Create one product",
         "tags": [
           "products"
-        ]
+        ],
+        "x-mkos-action": "product:import"
       }
     },
     "/api/v1/products/bulk": {
@@ -12189,7 +12409,8 @@
         "summary": "Import products from a CSV file",
         "tags": [
           "products"
-        ]
+        ],
+        "x-mkos-action": "product:import"
       }
     },
     "/api/v1/products/{product_id}": {
@@ -12444,7 +12665,8 @@
         "summary": "Read one product",
         "tags": [
           "products"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/rules": {
@@ -12719,7 +12941,8 @@
         "summary": "List rules",
         "tags": [
           "rules"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/rules/dry-run": {
@@ -12821,6 +13044,44 @@
               }
             },
             "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PERMISSION_DENIED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PERMISSION_DENIED",
+                          "field": "request",
+                          "message": "Permission denied.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Permission denied.",
+                    "status": 403,
+                    "type": "PERMISSION_DENIED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
           },
           "413": {
             "content": {
@@ -12992,7 +13253,8 @@
         "summary": "Run the Rules Engine on a draft listing; saves nothing",
         "tags": [
           "rules"
-        ]
+        ],
+        "x-mkos-action": "listing:edit"
       }
     },
     "/api/v1/tenants/me": {
@@ -13146,7 +13408,8 @@
         "summary": "The brand profile",
         "tags": [
           "tenants"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/healthz": {

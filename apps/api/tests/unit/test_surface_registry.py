@@ -14,6 +14,7 @@ from app.api.v1.surface import (
     cases,
     declared_responses,
 )
+from app.core.rbac import Action
 from mkos_schemas.codes import ErrorCode
 
 # The frozen list (PLAN D1): 35 operations, no dead-letter path. Later steps add ops as
@@ -86,6 +87,7 @@ def _op(**changes: Any) -> Operation:
         group="x",
         summary="x",
         owner_step="S99",
+        action=Action.TENANT_READ,
     )
     return dataclasses.replace(base, **changes)
 
@@ -99,7 +101,7 @@ def _op(**changes: Any) -> Operation:
             {"validation", "wrong_role", "not_found", "conflict"},
         ),
         (
-            {"public": True, "roles": frozenset()},
+            {"public": True, "action": None, "roles": frozenset()},
             {"success"},
             {"missing_auth", "invalid_token", "wrong_tenant", "wrong_role"},
         ),
@@ -111,7 +113,11 @@ def _op(**changes: Any) -> Operation:
         ({"idempotency": True}, {"conflict", "validation"}, set()),
         ({"if_match": True, "conflict_code": E.STALE_VERSION}, {"conflict", "validation"}, set()),
         ({"maker_checker": True}, {"maker_checker"}, set()),
-        ({"oauth_state": True, "public": True, "roles": frozenset()}, {"bad_state"}, {"conflict"}),
+        (
+            {"oauth_state": True, "public": True, "action": None, "roles": frozenset()},
+            {"bad_state"},
+            {"conflict"},
+        ),
     ],
 )
 def test_case_rules(changes: dict[str, Any], present: set[str], absent: set[str]) -> None:
@@ -154,26 +160,15 @@ def test_idempotency_set_is_d9() -> None:
     assert {o.op_id for o in OPS.values() if o.if_match} == {"listings_content_patch"}
 
 
-def test_roles_are_d10() -> None:
-    owner_operator = frozenset({"owner", "operator"})
-    expected = {
-        "listings_generate": owner_operator,
-        "products_create": owner_operator,
-        "products_bulk": owner_operator,
-        "imports_rows_retry": owner_operator,
-        "listings_content_patch": owner_operator,
-        "listings_publish": owner_operator,
-        "listings_retry_fields": owner_operator,
-        "listings_regenerate": frozenset({"owner", "operator", "reviewer"}),
-        "listings_approve": frozenset({"reviewer", "owner"}),
-        "marketplaces_connect": frozenset({"owner", "admin"}),
-    }
-    for op in OPS.values():
-        if op.public:
-            assert op.roles == frozenset(), op.op_id
-        else:
-            assert op.roles == expected.get(op.op_id, ALL_ROLES), op.op_id
-    assert frozenset({"owner", "operator", "reviewer", "admin"}) == ALL_ROLES
+# S3's `test_roles_are_d10` is replaced by S10's `tests/unit/test_ops_roles.py`: the roles are
+# derived from each op's action through the matrix (CODE-PLAN S10 C2a).
+
+
+def test_public_and_action_go_together() -> None:
+    with pytest.raises(ValueError, match="public op has no action"):
+        _op(public=True)
+    with pytest.raises(ValueError, match="public op has no action"):
+        _op(action=None)
 
 
 def test_public_ops() -> None:
@@ -237,7 +232,7 @@ def test_owner_steps_known() -> None:
 
 
 def test_wrong_role_and_403_follow_roles() -> None:
-    base = OPS["rules_dry_run"]
+    base = OPS["rules_list"]  # every role holds tenant:read
     assert base.roles == ALL_ROLES
     assert "wrong_role" not in cases(base)
     assert 403 not in declared_responses(base)
