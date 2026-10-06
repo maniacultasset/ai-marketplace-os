@@ -286,8 +286,11 @@ def test_0001_round_trip(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None
     relations = {str(r[0]) for r in at_head["relations"]}
     assert set(TABLES_0001) <= relations
     assert {str(r[0]) for r in at_head["functions"]} >= set(FUNCTIONS_0001)
-    # one set_updated_at trigger per 0001 table (later revisions add their own tables' triggers)
-    triggers_0001 = [r for r in at_head["triggers"] if r[0] in TABLES_0001]
+    # one set_updated_at trigger per 0001 table (later revisions add their own tables' triggers,
+    # and 0004 its guards on 0001 tables)
+    triggers_0001 = [
+        r for r in at_head["triggers"] if r[0] in TABLES_0001 and r[1] == "set_updated_at"
+    ]
     assert sorted(triggers_0001) == sorted((t, "set_updated_at") for t in TABLES_0001)
     command.downgrade(cfg, "base")
     after = _public_0001_objects(scratch_db)
