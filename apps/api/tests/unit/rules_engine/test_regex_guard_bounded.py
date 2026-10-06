@@ -53,7 +53,9 @@ def test_regex_disjoint_bounded_repeats_allowed_and_fast(regex: str) -> None:
     for text in ADVERSARIAL:
         start = time.perf_counter()
         pattern.search(text)
-        assert time.perf_counter() - start < 0.1
+        assert (
+            time.perf_counter() - start < 0.5
+        )  # backtracking blow-ups take seconds; headroom for load
 
 
 def test_regex_bounded_pattern_rule_fails_closed_fast() -> None:

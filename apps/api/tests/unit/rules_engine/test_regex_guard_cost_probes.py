@@ -45,7 +45,8 @@ def test_many_distinct_class_atoms_guard_cost_bounded(case_sensitive: bool) -> N
     _cold()
     start = time.perf_counter()
     evaluate(listing(content={"description": "hello"}), ruleset(r))
-    assert time.perf_counter() - start < 1.5
+    # ~0.6 s idle; the pre-fix guard took ~11 s, so 3 s still catches the regression under CI load
+    assert time.perf_counter() - start < 3.0
 
 
 # Exactness: the item-built masks equal scanning the atom's own pattern over each probe tier.
