@@ -748,3 +748,136 @@ def test_prove_gates_has_products_router_legs(repo_root: Path) -> None:
         assert seed is not None, seed_name
         assert "append apps/api/app/api/v1/routers/products.py" in seed.group(1)
         assert f"'{line}'" in seed.group(1)
+
+
+# ---- S12 T14 (AC8; PLAN D8): the walking-skeleton e2e and the shared limiter reset ----
+
+E2E_STEPS = (
+    "health",
+    "login_acme_operator",
+    "create_201",
+    "get_200",
+    "list_contains",
+    "create_again_409",
+    "login_acme_reviewer",
+    "reviewer_create_403",
+    "no_token_401",
+    "login_bharat_operator",
+    "bharat_get_404",
+    "bharat_list_lacks",
+    "db_row_under_acme",
+)
+NON_LOCAL_URLS = (
+    "https://example.invalid",
+    "http://example.invalid",
+    "http://localhost.example.invalid",
+    "http://127.0.0.1@example.invalid",
+    "http://user:pw@127.0.0.1:8000",
+    "https://127.0.0.1:8000",
+    "http://127.0.0.1:8000/api",
+)
+
+
+def _stub_path(tmp_path: Path) -> tuple[dict[str, str], Path]:
+    """PATH with `docker` and `curl` stubs that only record their argv (one line per call)."""
+    import os
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    log = tmp_path / "calls.log"
+    for name in ("docker", "curl"):
+        stub = bin_dir / name
+        stub.write_text(
+            f'#!/usr/bin/env bash\nprintf "%s\\n" "{name} $*" >> "{log}"\n', encoding="utf-8"
+        )
+        stub.chmod(0o755)
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
+    return env, log
+
+
+def _e2e_script(repo_root: Path) -> str:
+    return (repo_root / "scripts" / "e2e" / "walking_skeleton.sh").read_text(encoding="utf-8")
+
+
+def test_e2e_script_steps(repo_root: Path) -> None:
+    text = _e2e_script(repo_root)
+    code = _code(text)
+    assert "set -euo pipefail" in code
+    steps = re.findall(r"(?m)^step (\w+)$", code)
+    assert tuple(steps) == E2E_STEPS
+    assert 'sku="E2E-$(date +%s)-$RANDOM"' in code
+    # the port comes from .worktree.env / API_HOST_PORT, never a literal
+    assert not re.search(r":\d{2,5}\b", code)
+    assert "scripts/ci/worktree_env.sh exports .worktree.env" in code
+    # a failure names the step and the status, never a body
+    assert "FAILED at step $current (HTTP status ${status:-none})" in code
+    assert 'cat "$body"' not in code
+
+
+@pytest.mark.parametrize("url", NON_LOCAL_URLS)
+def test_e2e_refuses_non_local_url(repo_root: Path, tmp_path: Path, url: str) -> None:
+    env, log = _stub_path(tmp_path)
+    result = subprocess.run(
+        [str(repo_root / "scripts" / "e2e" / "walking_skeleton.sh"), url],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 2, result.stderr
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""
+
+
+@pytest.mark.parametrize("url", NON_LOCAL_URLS)
+def test_reset_rate_limits_refuses_non_local_url(repo_root: Path, tmp_path: Path, url: str) -> None:
+    env, log = _stub_path(tmp_path)
+    result = subprocess.run(
+        [str(repo_root / "scripts" / "ci" / "reset_rate_limits.sh"), url],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 2, result.stderr
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""
+
+
+@pytest.mark.parametrize("url", ["http://127.0.0.1:8123", "http://localhost:8123/"])
+def test_reset_rate_limits_truncates_only_counters(
+    repo_root: Path, tmp_path: Path, url: str
+) -> None:
+    env, log = _stub_path(tmp_path)
+    result = subprocess.run(
+        [str(repo_root / "scripts" / "ci" / "reset_rate_limits.sh"), url],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert log.read_text(encoding="utf-8").splitlines() == [
+        "docker compose exec -T postgres psql -U postgres -d marketplace_os -c "
+        "TRUNCATE rate_limit_counters"
+    ]
+
+
+def test_e2e_scripts_never_truncate(repo_root: Path) -> None:
+    scripts = sorted((repo_root / "scripts" / "e2e").glob("*.sh"))
+    assert scripts
+    for script in scripts:
+        text = script.read_text(encoding="utf-8")
+        assert "TRUNCATE" not in text.upper(), script
+        assert "rate_limit_counters" not in text, script
+        assert "RATE_LIMIT_" not in text, script
+
+
+def test_local_url_check(script: Callable[[str], Any]) -> None:
+    local_url = script("scripts/ci/local_url.py")
+    for url in (*NON_LOCAL_URLS, "", "http://", "http://127.0.0.1:0", "http://[::1]:8000"):
+        assert not local_url.is_local(url), url
+    for url in ("http://127.0.0.1", "http://127.0.0.1:8080", "http://localhost:8000/"):
+        assert local_url.is_local(url), url

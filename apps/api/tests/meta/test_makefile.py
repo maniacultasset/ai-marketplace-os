@@ -214,3 +214,63 @@ def test_api_tests_gates_rules_engine_branch_coverage(repo_root: Path) -> None:
     assert "--min 90 --label rules_engine" in lines[at]
     makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
     assert "COV_FAIL_UNDER ?= 70" in makefile
+
+
+# ---- S12 T14: `make e2e` runs every scripts/e2e/*.sh, each after a limiter reset ----
+
+
+def _e2e_recipe(repo_root: Path) -> str:
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    found = re.search(r"(?ms)^e2e:\n((?:\t.*\n)+)", makefile)
+    assert found is not None
+    return found.group(1)
+
+
+def test_e2e_target_runs_scripts_dir(repo_root: Path) -> None:
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert "E2E_DIR ?= scripts/e2e" in makefile
+    assert "RESET_LIMITS ?= scripts/ci/reset_rate_limits.sh" in makefile
+    assert ".PHONY: e2e" in makefile
+    recipe = _e2e_recipe(repo_root)
+    assert "$(E2E_DIR)/*.sh" in recipe
+    assert "RATE_LIMIT" not in recipe
+
+
+def _run_make_e2e(repo_root: Path, tmp_path: Path, fail_first: bool) -> list[str]:
+    import os
+    import subprocess
+
+    log = tmp_path / "calls.log"
+    scripts = tmp_path / "e2e"
+    scripts.mkdir()
+    for name in ("a", "b"):
+        body = f'printf "%s\\n" "{name} $1" >> "{log}"\n'
+        if name == "a" and fail_first:
+            body += "exit 3\n"
+        path = scripts / f"{name}.sh"
+        path.write_text(f"#!/usr/bin/env bash\n{body}", encoding="utf-8")
+        path.chmod(0o755)
+    reset = tmp_path / "reset.sh"
+    reset.write_text(
+        f'#!/usr/bin/env bash\nprintf "%s\\n" "reset $1" >> "{log}"\n', encoding="utf-8"
+    )
+    reset.chmod(0o755)
+    result = subprocess.run(
+        ["make", "-s", "e2e", f"E2E_DIR={scripts}", f"RESET_LIMITS={reset}"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "API_HOST_PORT": "8123"},
+        timeout=120,
+        check=False,
+    )
+    assert (result.returncode != 0) is fail_first, result.stderr
+    return [line.split(" ", 1)[0] for line in log.read_text(encoding="utf-8").splitlines()]
+
+
+def test_make_e2e_resets_limits_before_each_script(repo_root: Path, tmp_path: Path) -> None:
+    assert _run_make_e2e(repo_root, tmp_path, fail_first=False) == ["reset", "a", "reset", "b"]
+
+
+def test_make_e2e_stops_on_first_failure(repo_root: Path, tmp_path: Path) -> None:
+    assert _run_make_e2e(repo_root, tmp_path, fail_first=True) == ["reset", "a"]

@@ -52,7 +52,7 @@ endif
 
 .PHONY: help
 help:
-	@echo "make dev | hooks | test-unit | bootstrap-db | test-db | mock | mock-smoke | <check-id>"
+	@echo "make dev | hooks | test-unit | bootstrap-db | test-db | mock | mock-smoke | seed | e2e | <check-id>"
 
 .PHONY: test-unit
 test-unit:
@@ -215,6 +215,22 @@ hooks:
 .PHONY: seed
 seed:
 	uv run --frozen python -m app.cli seed --profile demo
+
+# The local HTTP e2e scripts (CODE-PLAN S12 T14) against `make dev` with `make seed` done: every
+# scripts/e2e/*.sh in order, each after the shared limiter reset, stopping at the first failure.
+# The real limiter stays on (no RATE_LIMIT_* override); the variables exist for the meta test.
+# `|| exit` because make 3.81 (macOS) ignores .SHELLFLAGS, so `-e` cannot be relied on here.
+E2E_DIR ?= scripts/e2e
+RESET_LIMITS ?= scripts/ci/reset_rate_limits.sh
+
+.PHONY: e2e
+e2e:
+	base="http://127.0.0.1:$(API_HOST_PORT)"; \
+	for script in $(E2E_DIR)/*.sh; do \
+	  [ -e "$$script" ] || { echo "make e2e: no scripts in $(E2E_DIR)" >&2; exit 1; }; \
+	  $(RESET_LIMITS) "$$base" || exit $$?; \
+	  "$$script" "$$base" || exit $$?; \
+	done
 
 .PHONY: bootstrap
 bootstrap:
