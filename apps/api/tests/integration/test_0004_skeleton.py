@@ -43,6 +43,7 @@ EXPECTED_STEMS: tuple[str, ...] = (
     "13b_matrix_guard",
     "14_platform_guards",
     "15_privileges",
+    "16_tenant_lifecycle",
 )
 
 
