@@ -149,9 +149,11 @@ _SQL_PARAMETERS: Final = re.compile(r"\[parameters: [^\n]{0,8192}")
 # with JSON-in-a-string escapes (`\"key\": \"...\"`). Only the key and the opening quote are
 # matched, so a harmless key's value is still scanned for a denied key inside it. A string
 # prefix (`b'...'` for a bytes repr: `token_hash`, `token_enc`, `state_hash`) sits outside group 2.
+# A container value (`[...]`, `(...)`, `{...}`, `bytearray(...)`: a list Setting such as
+# `admin_staff_emails`, bytes in a list) opens with group 3 and goes whole, brackets included.
 _QUOTED_KEY: Final = re.compile(
     r"(?<![A-Za-z0-9_.\-])(?:\\{0,2}[\"'])?([A-Za-z0-9_.\-]{1,64})(?:\\{0,2}[\"'])?"
-    r"\s{0,4}[:=]\s{0,4}(?:[bBrRuUfF]{1,2})?(\\{0,2}[\"'])"
+    r"\s{0,4}[:=]\s{0,4}(?:(?:[bBrRuUfF]{1,2})?(\\{0,2}[\"'])|(bytearray\(|[\[({]))"
 )
 MAX_QUOTED_VALUE: Final = 4_096
 # pydantic's ValidationError quotes the rejected input, cut in the middle (`{'email': 'a@b...: 'x'}`),
@@ -168,7 +170,7 @@ def _userinfo(match: re.Match[str]) -> str:
 
 def _query(match: re.Match[str]) -> str:
     lead, name, value = match.group(1), match.group(2), match.group(3)
-    if value and value != REDACTED and _is_denied_query_key(name):
+    if value and not value.startswith(REDACTED) and _is_denied_query_key(name):
         return f"{lead}{name}={REDACTED}"
     return match.group(0)
 
@@ -190,9 +192,37 @@ def _closing_quote(text: str, opening: str, start: int, limit: int) -> int:
     return limit
 
 
+def _closing_bracket(text: str, start: int, limit: int) -> int:
+    """The index just past the bracket that closes a container opened right before `start`, or
+    `limit`. Brackets nest; quoted spans are skipped, so `']'` inside a string does not close it.
+    An unbalanced or unclosed value runs to `limit`: over-redaction, never a leak."""
+    depth, i = 1, start
+    while i < limit:
+        char = text[i]
+        if char in "\"'":
+            run = 0
+            while i - run - 1 >= start and text[i - run - 1] == "\\":
+                run += 1
+            escapes = min(run, 2)
+            close = _closing_quote(text, "\\" * escapes + char, i + 1, limit)
+            if close >= limit:
+                return limit
+            i = close + escapes + 1
+            continue
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+    return limit
+
+
 def _quoted_values(text: str) -> str:
-    """A denied key's quoted value, up to its closing quote (or the end of the line, or
-    `MAX_QUOTED_VALUE` characters when the quote never closes), becomes `REDACTED`. Dict-key
+    """A denied key's quoted value, up to its closing quote, or its container value, brackets
+    included, up to the matching bracket (or the end of the line, or `MAX_QUOTED_VALUE`
+    characters when it never closes), becomes `REDACTED`. Dict-key
     rules apply, so `'code': 'NOT_FOUND'` (the error envelope) stays."""
     out: list[str] = []
     pos = 0
@@ -204,7 +234,11 @@ def _quoted_values(text: str) -> str:
         newline = text.find("\n", start, limit)
         if newline != -1:
             limit = newline
-        end = _closing_quote(text, match.group(2), start, limit)
+        if match.group(3) is not None:
+            start = match.start(3)
+            end = _closing_bracket(text, match.end(3), limit)
+        else:
+            end = _closing_quote(text, match.group(2), start, limit)
         out.append(text[pos:start])
         out.append(REDACTED)
         pos = end
@@ -238,7 +272,7 @@ def redact_text(text: str) -> str:
         text = _AUTH_SCHEME.sub(lambda m: f"{m.group(1)}{REDACTED}", text)
     if "://" in text:
         text = _USERINFO.sub(_userinfo, text)
-    if ("'" in text or '"' in text) and (":" in text or "=" in text):
+    if ":" in text or "=" in text:
         text = _quoted_values(text)
     if "=" in text:
         text = _QUERY.sub(_query, text)

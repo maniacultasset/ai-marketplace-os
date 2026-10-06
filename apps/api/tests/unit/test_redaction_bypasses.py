@@ -91,6 +91,41 @@ def test_quoted_value_after_escaped_quote_keeps_following_keys() -> None:
     assert '"grant_type": "refresh_token"' in out
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"Settings(app_env='local', admin_staff_emails=['{SECRET}@x.example', 'b@x.example'])",
+        repr({"cc_emails": [f"{SECRET}@x.example"]}),
+        repr({"actor_email": (f"{SECRET}@x.example",)}),
+        repr({"token_hash": [SECRET.encode()]}),
+        repr({"token_hash": bytearray(SECRET.encode())}),
+        repr({"cookies": {"session": SECRET}}),
+        repr({"token_enc": [[1, f"]{SECRET}"], (SECRET.encode(),)]}),
+        f"token_hash=[b'{SECRET}'",
+        f'{{"login_email": ["{SECRET}@x.example"]}}',
+    ],
+)
+def test_container_value_under_denied_key_is_redacted(text: str) -> None:
+    assert SECRET not in redact_text(text)
+
+
+def test_container_value_keeps_following_keys() -> None:
+    out = redact_text(f"Settings(admin_staff_emails=['{SECRET}@x.example'], app_env='local')")
+    assert out == f"Settings(admin_staff_emails={REDACTED}, app_env='local')"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "{'scopes': ['read', 'write'], 'status': 200}",
+        "Settings(cors_origins=['http://localhost:3000'])",
+        "{'details': {'field': 'name'}, 'code': 'NOT_FOUND'}",
+    ],
+)
+def test_container_value_under_harmless_key_is_kept(text: str) -> None:
+    assert redact_text(text) == text
+
+
 def test_redact_text_is_idempotent() -> None:
     once = redact_text(f"Authorization: Bearer Atza|{SECRET} {{'access_token': '{SECRET}'}}")
     assert redact_text(once) == once
