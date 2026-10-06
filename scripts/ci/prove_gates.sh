@@ -153,6 +153,11 @@ seed_presence_only_auth() {
   seed_case_matrix
   new_file apps/api/tests/unit/test_seeded_auth_me_cases.py $'import pytest\n\n\n@pytest.mark.endpoint("auth_me", case="success")\n@pytest.mark.endpoint("auth_me", case="missing_auth")\n@pytest.mark.endpoint("auth_me", case="wrong_tenant")\n@pytest.mark.endpoint("auth_me", case="invalid_token", variant="expired")\n@pytest.mark.endpoint("auth_me", case="invalid_token", variant="bad_signature")\n@pytest.mark.endpoint("auth_me", case="invalid_token", variant="wrong_typ")\ndef test_seeded() -> None:\n    pass'
 }
+# S11: the redaction processor and the request-id column default are guards.
+seed_no_log_redaction() { replace apps/api/app/core/logging.py $'        _redact,\n        _finalise,' '        _finalise,'; }
+seed_no_request_id_default() {
+  replace apps/api/app/db/base.py 'return mapped_column(Text, default=current_request_id)' 'return mapped_column(Text)'
+}
 seed_bootstrap_no_set_role() {
   cp .env.example .env
   replace scripts/db/0000_bootstrap.sql $'SET ROLE migrator;\n' ''
@@ -346,6 +351,8 @@ if [ "$with_docker" -eq 1 ]; then
   leg api-tests-failing-test api-tests 'test_seeded' seed_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-schema-test api-tests 'test_seeded' seed_schema_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-case-matrix api-tests 'auth_me: missing endpoint cases' seed_case_matrix COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-no-log-redaction api-tests 'test_redaction_logs' seed_no_log_redaction COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-no-request-id-default api-tests 'test_request_id_stamped_on_rows|test_every_request_id_column_stamped' seed_no_request_id_default COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-presence-only-auth api-tests 'auth_me: presence-only bearer_required' seed_presence_only_auth COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg contracts-response-field-removed contracts 'response-required-property-removed' seed_response_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
   leg contracts-response-optional-property-removed contracts 'response-optional-property-removed' seed_optional_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'

@@ -486,3 +486,20 @@ def test_bootstrap_has_s11_e2e_leg(repo_root: Path) -> None:
     assert run.index("-e LOG_FORMAT=json") > env_file
     assert run.index("-e APP_ENV=local") > env_file
     assert code.index('scripts/ci/check_image.sh "$image"') < code.index("X-Request-ID: s11-e2e")
+
+
+def test_prove_gates_has_s11_legs(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    docker = text[text.index('if [ "$with_docker" -eq 1 ]; then') :]
+    for name, seed, expected in (
+        ("api-tests-no-log-redaction", "seed_no_log_redaction", "test_redaction_logs"),
+        (
+            "api-tests-no-request-id-default",
+            "seed_no_request_id_default",
+            "test_request_id_stamped_on_rows|test_every_request_id_column_stamped",
+        ),
+    ):
+        assert f"leg {name} api-tests '{expected}' {seed} " in docker
+        assert f"{seed}() {{" in text
+    assert "        _redact,\\n        _finalise," in text
+    assert "default=current_request_id" in text
