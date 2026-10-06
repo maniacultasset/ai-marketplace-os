@@ -32,7 +32,25 @@ class RowCountError(DomainError):
 
 
 class NotFoundError(DomainError):
-    """The row is missing, or belongs to another tenant (which reads as missing, PLAN D6)."""
+    """The row is missing, or belongs to another tenant (which reads as missing, PLAN D6).
+    `field` is a server constant naming what was looked up (`product_id`, `images[0]`), never
+    the looked-up value, so a foreign id and a missing one answer the same bytes."""
+
+    def __init__(self, field: str = "resource") -> None:
+        super().__init__(field)
+        self.field = field
+
+
+class InputError(DomainError):
+    """A request value the service refuses after the schema passed it (422). `field` is the
+    body path (`sku`, `attributes.color`, `images[0]`); the value itself is never kept."""
+
+    def __init__(self, code: ErrorCode, field: str) -> None:
+        if code is ErrorCode.INTERNAL_ERROR:
+            raise ValueError("InputError never carries INTERNAL_ERROR")
+        super().__init__(f"{code.value} at {field}")
+        self.code = code
+        self.field = field
 
 
 class ForbiddenError(DomainError):
