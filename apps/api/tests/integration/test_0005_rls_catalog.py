@@ -26,6 +26,10 @@ POLICIES: dict[str, frozenset[str]] = {
     "users": frozenset({"users_self", "users_login", "users_signup", "users_teammates"})
     | {"t_platform", "t_migrator"},
     "tenant_memberships": TEMPLATE | {"memberships_own"},
+    "refresh_tokens": TEMPLATE | {"refresh_tokens_hash", "refresh_tokens_own"},
+    "invitations": TEMPLATE | {"invitations_hash"},
+    "oauth_states": TEMPLATE | {"oauth_states_hash"},
+    "job_runs": TEMPLATE | {"jr_by_id"},
     "rules": frozenset({"rules_read", "rules_write", "rules_toggle", "t_platform", "t_migrator"}),
     "audit_log": frozenset({"audit_read", "audit_insert", "t_platform", "t_migrator"}),
 }

@@ -143,6 +143,7 @@ OWN_POLICIES: Final[dict[str, list[tuple[str, str]]]] = {
 
 USER: Final = "(SELECT public.app_user_id())"
 LOGIN_EMAIL: Final = "(SELECT public.app_login_email())"
+HASH_GUC: Final = "(SELECT public.app_token_hash())"
 
 # The named invariant-5 exceptions (DATABASE.md:311, §11.2 row 19), added beside the template.
 # Every branch but signup is SELECT-only, so a write still needs the tenant (or self) policy.
@@ -183,6 +184,44 @@ BRANCHES: Final[dict[str, list[tuple[str, str]]]] = {
             "USING (EXISTS (SELECT 1 FROM public.tenant_memberships m "
             "WHERE m.tenant_id = tenants.id AND m.user_id = (SELECT public.app_user_id()) "
             "AND m.is_active))",
+        ),
+    ],
+    # DATABASE.md:283: plus a token-hash branch (the refresh before any GUC), plus own rows
+    # ("log out everywhere" lists them).
+    "refresh_tokens": [
+        (
+            "refresh_tokens_hash",
+            "CREATE POLICY refresh_tokens_hash ON public.refresh_tokens FOR SELECT TO app_rw "
+            f"USING (token_hash = {HASH_GUC})",
+        ),
+        (
+            "refresh_tokens_own",
+            "CREATE POLICY refresh_tokens_own ON public.refresh_tokens FOR SELECT TO app_rw "
+            f"USING (user_id = {USER})",
+        ),
+    ],
+    # DATABASE.md:271: plus a SELECT on the token hash for the pre-login accept step.
+    "invitations": [
+        (
+            "invitations_hash",
+            "CREATE POLICY invitations_hash ON public.invitations FOR SELECT TO app_rw "
+            f"USING (token_hash = {HASH_GUC})",
+        ),
+    ],
+    # The OAuth callback finds its state by hash before it knows the tenant (CODE-PLAN B3).
+    "oauth_states": [
+        (
+            "oauth_states_hash",
+            "CREATE POLICY oauth_states_hash ON public.oauth_states FOR SELECT TO app_rw "
+            f"USING (state_hash = {HASH_GUC})",
+        ),
+    ],
+    # DATABASE.md:950: the worker reads tenant_id by job id before any tenant GUC exists.
+    "job_runs": [
+        (
+            "jr_by_id",
+            "CREATE POLICY jr_by_id ON public.job_runs FOR SELECT TO app_rw "
+            "USING (id = (SELECT public.app_job_id()))",
         ),
     ],
 }
