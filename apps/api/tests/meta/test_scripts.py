@@ -881,3 +881,52 @@ def test_local_url_check(script: Callable[[str], Any]) -> None:
         assert not local_url.is_local(url), url
     for url in ("http://127.0.0.1", "http://127.0.0.1:8080", "http://localhost:8000/"):
         assert local_url.is_local(url), url
+
+
+# ---- S12 T15 (AC7, AC8; Done-when 3): bootstrap runs the e2e twice on the built image ----
+
+E2E_CALL = 'scripts/e2e/walking_skeleton.sh "http://127.0.0.1:${api_port}"'
+RESET_CALL = 'scripts/ci/reset_rate_limits.sh "http://127.0.0.1:${api_port}"'
+
+
+def test_bootstrap_runs_e2e(repo_root: Path) -> None:
+    code = _bootstrap_code(repo_root)
+    assert code.count(E2E_CALL) == 2
+    first = code.index(E2E_CALL)
+    serve = code.index('docker run -d --name "$e2e_container"')
+    auth = code.index('python3 scripts/ci/auth_e2e.py "http://127.0.0.1:${api_port}"')
+    ready = code.index('/readyz")"', auth)
+    rm = code.index('docker rm -f "$e2e_container" >/dev/null', auth)
+    assert serve < auth < ready < first < code.rindex(E2E_CALL) < rm
+    assert '[ "$ready" = "200" ]' in code[ready:first]
+    # the trap that removes the container is set before the image serves
+    assert code.index("trap cleanup EXIT") < serve
+
+
+def test_bootstrap_resets_before_each_e2e_run(repo_root: Path) -> None:
+    code = _bootstrap_code(repo_root)
+    lines = [line.strip() for line in code.splitlines() if line.strip()]
+    e2e = [i for i, line in enumerate(lines) if line == E2E_CALL]
+    assert len(e2e) == 2
+    for i in e2e:
+        assert lines[i - 1] == RESET_CALL
+    assert "TRUNCATE" not in code.upper()
+    assert "rate_limit_counters" not in code
+
+
+def test_auth_leg_stub_probe_is_still_a_stub(repo_root: Path) -> None:
+    # S12 implemented GET /products: the auth leg's "verified token reaches a stub" probe moved
+    # to a GET route that is still S3's 501 stub.
+    import importlib
+
+    from app.api.v1.surface import OPS, is_stub
+
+    script = (repo_root / "scripts" / "ci" / "auth_e2e.py").read_text(encoding="utf-8")
+    probe = re.search(
+        r'"a verified token reaches a stub",\s*501,\s*leg\.call\("GET", "([^"]+)"', script
+    )
+    assert probe is not None
+    ops = [o for o in OPS.values() if o.method == "GET" and o.path == probe.group(1)]
+    assert len(ops) == 1
+    module = importlib.import_module(f"app.api.v1.routers.{ops[0].group}")
+    assert is_stub(getattr(module, ops[0].op_id))
