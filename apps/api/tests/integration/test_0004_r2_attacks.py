@@ -25,7 +25,7 @@ def test_lv_upsert_cannot_self_approve(db: Conn) -> None:
     """INSERT .. ON CONFLICT DO UPDATE of the approval runs the UPDATE branch: the maker of v1
     cannot approve it through an upsert (MKC01)."""
     fl = flow(db)
-    with as_app_rw(db):
+    with as_app_rw(db, fl.tenant_id):
         expect_sqlstate(
             db,
             "MKC01",

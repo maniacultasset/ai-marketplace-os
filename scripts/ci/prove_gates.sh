@@ -148,6 +148,14 @@ seed_audit_update_granted() {
   cp "$root/.env" .env
   append apps/api/alembic/sql/0004/03_append_only.up.sql 'GRANT UPDATE ON public.audit_log TO app_rw;'
 }
+# S10b: 0005's policies are load-bearing. A seeded revision on the head drops t_tenant on
+# listings (RLS stays forced, so app_rw would read nothing): the catalog assertion goes red.
+seed_rls_policy_dropped() {
+  local head
+  head="$(alembic_head)"
+  cp "$root/.env" .env
+  new_file apps/api/alembic/versions/0997_seeded.py $'"""seeded"""\n\nfrom alembic import op\n\nrevision = "0997"\ndown_revision = "'"$head"$'"\nbranch_labels = None\ndepends_on = None\n\n\ndef upgrade() -> None:\n    op.execute("DROP POLICY t_tenant ON public.listings")\n\n\ndef downgrade() -> None:\n    op.execute("CREATE POLICY t_tenant ON public.listings TO app_rw USING (tenant_id = (SELECT public.app_tenant_id())) WITH CHECK (tenant_id = (SELECT public.app_tenant_id()))")'
+}
 # A throwaway mos_prove with 0000 (a seeded revision leg leaves its revision stamped there).
 fresh_prove_db() {
   docker compose exec -T postgres dropdb -U postgres --if-exists --force mos_prove
@@ -391,6 +399,8 @@ if [ "$with_docker" -eq 1 ]; then
   leg api-tests-lv-guard-dropped api-tests 'test_db_maker_checker_generator' seed_lv_guard_dropped COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests
   fresh_prove_db
   leg api-tests-audit-update-granted api-tests 'test_audit_append_only' seed_audit_update_granted COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests
+  fresh_prove_db
+  leg tenant-isolation-policy-dropped api-tests 'test_rls_forced_everywhere' seed_rls_policy_dropped COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests
   docker compose exec -T postgres dropdb -U postgres --force mos_prove
   leg tenant-isolation-no-marker tenant-isolation 'deselected' seed_no_marker COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-no-filter tenant-isolation 'test_list_returns_only_own_rows' seed_iso_no_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation

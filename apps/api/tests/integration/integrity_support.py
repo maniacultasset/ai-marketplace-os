@@ -31,8 +31,11 @@ def as_migrator(conn: Conn) -> Iterator[Conn]:
 
 
 @contextmanager
-def as_app_rw(conn: Conn) -> Iterator[Conn]:
-    """`SET ROLE app_rw` for the block: privileges are checked as `app_rw`."""
+def as_app_rw(conn: Conn, tenant: UUID | None = None) -> Iterator[Conn]:
+    """`SET ROLE app_rw` for the block: privileges are checked as `app_rw`, and so is RLS (0005).
+    `tenant` first sets `app.tenant_id` (transaction-local), as the app's unit of work does."""
+    if tenant is not None:
+        set_gucs(conn, tenant_id=tenant)
     conn.execute("SET ROLE app_rw")
     try:
         yield conn
@@ -48,6 +51,37 @@ def set_gucs(conn: Conn, **values: object) -> None:
             "SELECT set_config(%s, %s, true)",
             (f"app.{name}", "" if value is None else str(value)),
         )
+
+
+def tenant_of(conn: Conn, table: str, row_id: UUID) -> UUID:
+    """The `tenant_id` of one row, read on the caller's (admin) role before any role switch."""
+    found = conn.execute(
+        sql.SQL("SELECT tenant_id FROM {} WHERE id = %s").format(sql.Identifier(table)), [row_id]
+    ).fetchone()
+    assert found is not None, (table, row_id)
+    return uuid_of(found[0])
+
+
+def rls_tenant(conn: Conn) -> UUID:
+    """A tenant inserted the way 0005's RLS lets `app_rw` insert one: its id chosen first and set
+    as `app.tenant_id` (the GUC stays set for the rest of the transaction)."""
+    from . import factories as f
+
+    tenant_id = uuid4()
+    set_gucs(conn, tenant_id=tenant_id)
+    return uuid_of(f.tenant(conn, id=tenant_id))
+
+
+def rls_member(conn: Conn, tenant_id: UUID, role: str = "owner") -> UUID:
+    """A user and its membership in `tenant_id`, inserted under RLS as `app_rw` would: the user
+    through the self branch (`app.user_id` first), the membership under the tenant GUC."""
+    from . import factories as f
+
+    user_id = uuid4()
+    set_gucs(conn, user_id=user_id, tenant_id=tenant_id)
+    f.user(conn, id=user_id)
+    f.insert(conn, "tenant_memberships", tenant_id=tenant_id, user_id=user_id, role=role)
+    return user_id
 
 
 def scalar(conn: Conn, query: str, params: Any = None) -> Any:

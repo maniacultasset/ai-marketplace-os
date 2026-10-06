@@ -197,6 +197,7 @@ def test_app_rw_writes_every_0003_tenant_table(db: Conn) -> None:
     privileges (no 42501 before the 0004 column grants)."""
     side = seed_tenant(db)
     make_publishable(db, side)  # 0004's publish gate (its set-up needs the superuser)
+    set_gucs(db, tenant_id=side.tenant_id)  # 0005: the unit of work's GUC
     db.execute("SET LOCAL ROLE app_rw")
     _ops_graph(db, side)
     row = db.execute(

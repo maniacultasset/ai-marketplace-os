@@ -33,8 +33,8 @@ def test_rules_only_enabled_changes(db: Conn) -> None:
         expect_sqlstate(
             db, "GRD01", f"UPDATE rules SET {assignment} WHERE id = %s", (rule,)  # noqa: S608
         )
-    with as_app_rw(db):
-        db.execute("UPDATE rules SET enabled = false WHERE id = %s", (rule,))
+    with as_app_rw(db, tenant):
+        assert db.execute("UPDATE rules SET enabled = false WHERE id = %s", (rule,)).rowcount == 1
         expect_sqlstate(db, "42501", "UPDATE rules SET severity = 'warning' WHERE id = %s", (rule,))
 
 
@@ -73,7 +73,7 @@ def test_migrator_cannot_delete_brand_rule_without_purge_guc(db: Conn, guc: str)
 
 def test_rules_app_rw_inserts_brand_rule(db: Conn) -> None:
     tenant = f.tenant(db)
-    with as_app_rw(db):
+    with as_app_rw(db, tenant):
         f.rule(db, tenant)
         expect_sqlstate(
             db,

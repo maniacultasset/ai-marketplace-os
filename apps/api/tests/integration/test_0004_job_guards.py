@@ -13,6 +13,7 @@ from psycopg.types.json import Jsonb
 
 from . import factories as f
 from .conftest import expect_sqlstate
+from .integrity_support import set_gucs, tenant_of
 from .ops_support import job_run
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
@@ -100,6 +101,7 @@ def test_job_non_terminal_other_columns_change(db: Conn) -> None:
 @pytest.mark.parametrize("status", TERMINAL)
 def test_job_terminal_delete_allowed(db: Conn, status: str) -> None:
     job = _job(db, status)
+    set_gucs(db, tenant_id=tenant_of(db, "job_runs", job))
     db.execute("SET LOCAL ROLE app_rw")
     db.execute("DELETE FROM job_runs WHERE id = %s", (job,))
     db.execute("RESET ROLE")

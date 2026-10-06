@@ -68,10 +68,13 @@ PURGE_ORDER = (
 )
 
 
-def _graph(db: Conn, tenant_id: UUID) -> None:
-    """One row (at least) in every 0002 tenant table, wired through every pointer kind."""
-    owner = f.member(db, tenant_id)
-    reviewer = f.member(db, tenant_id, role="reviewer")
+def _graph(
+    db: Conn, tenant_id: UUID, owner: UUID | None = None, reviewer: UUID | None = None
+) -> None:
+    """One row (at least) in every 0002 tenant table, wired through every pointer kind; the
+    owner and reviewer are made here unless given (users are written before RLS's role switch)."""
+    owner = owner or f.member(db, tenant_id)
+    reviewer = reviewer or f.member(db, tenant_id, role="reviewer")
     style = f.product(db, tenant_id, "style")
     colourway = f.colourway(db, tenant_id, style)
     image_id = f.image(db, tenant_id, style, colourway_id=colourway, slot="main")
@@ -176,8 +179,10 @@ def test_app_rw_writes_every_0002_table(db: Conn) -> None:
     """The app role can write each new table through the 0000 default privileges, including
     `rules.revision` from `rules_revision_seq` (USAGE on the sequence)."""
     tenant_id = f.tenant(db)
+    owner, reviewer = f.member(db, tenant_id), f.member(db, tenant_id, role="reviewer")
+    set_gucs(db, tenant_id=tenant_id)  # 0005: the unit of work's GUC
     db.execute("SET LOCAL ROLE app_rw")
-    _graph(db, tenant_id)
+    _graph(db, tenant_id, owner, reviewer)
     f.audit(db, tenant_id)
     revisions = db.execute(
         "SELECT revision FROM rules WHERE tenant_id = %s", (tenant_id,)

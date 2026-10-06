@@ -327,10 +327,12 @@ def test_publish_token_only_in_env(workflows: dict[str, dict[str, Any]], repo_ro
     assert checkout["with"] == {"persist-credentials": False, "fetch-depth": 0}
 
 
-def test_isolation_job_sets_app_rw_password(workflows: dict[str, dict[str, Any]]) -> None:
-    """S9 D14: the job sets app_rw's CI-only password from the Makefile constant, as a verifier."""
+@pytest.mark.parametrize("job_id", ["tenant-isolation", "api-tests"])
+def test_db_jobs_set_app_rw_password(workflows: dict[str, dict[str, Any]], job_id: str) -> None:
+    """S9 D14: the job sets app_rw's CI-only password from the Makefile constant, as a verifier.
+    api-tests needs it too since S10b: its RLS legs log in as app_rw (tests/support/dsn.py)."""
     jobs = {jid: job for _, jid, job in _jobs(workflows)}
-    runs = [str(step.get("run", "")) for step in jobs["tenant-isolation"]["steps"]]
+    runs = [str(step.get("run", "")) for step in jobs[job_id]["steps"]]
     bootstrap = next(run for run in runs if run.lstrip().startswith("psql "))
     assert 'APP_RW_SCRAM="$(make -s app-rw-scram)" psql' in bootstrap
     assert "-f scripts/db/0000_role_passwords.sql" in bootstrap

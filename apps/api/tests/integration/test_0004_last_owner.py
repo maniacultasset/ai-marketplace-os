@@ -26,6 +26,12 @@ DEACTIVATE = (
 )
 
 
+def _as_app_rw(conn: Conn, tenant: UUID) -> None:
+    """The app's unit of work: the tenant GUC (0005's RLS), then the app role."""
+    conn.execute("SELECT set_config('app.tenant_id', %s, true)", [str(tenant)])
+    conn.execute("SET ROLE app_rw")
+
+
 @pytest.fixture(scope="module")
 def owners_db(tmp_path_factory: pytest.TempPathFactory) -> Iterator[ScratchDb]:
     with head_database(tmp_path_factory.mktemp("last_owner")) as scratch:
@@ -39,9 +45,10 @@ def _tenant(db: ScratchDb, owners: int = 1, **columns: Any) -> tuple[UUID, list[
 
 
 def _commit(db: ScratchDb, *statements: tuple[str, tuple[Any, ...]]) -> str | None:
-    """Run the statements as `app_rw` in one transaction and commit; the SQLSTATE if it fails."""
+    """Run the statements as `app_rw` in one transaction of their tenant (each statement's first
+    parameter) and commit; the SQLSTATE if it fails."""
     with psycopg.connect(db.libpq) as conn:
-        conn.execute("SET ROLE app_rw")
+        _as_app_rw(conn, statements[0][1][0])
         try:
             for query, params in statements:
                 conn.execute(query, params)
@@ -106,7 +113,7 @@ def test_last_owner_guard_race_two_owners(owners_db: ScratchDb) -> None:
 
     def demote(user: UUID) -> None:
         with psycopg.connect(owners_db.libpq) as conn:
-            conn.execute("SET ROLE app_rw")
+            _as_app_rw(conn, tenant)
             try:
                 conn.execute(DEMOTE, (tenant, user))
                 barrier.wait(timeout=5)
@@ -128,7 +135,7 @@ def test_last_owner_guard_race_two_owners(owners_db: ScratchDb) -> None:
 def test_last_owner_guard_immediate_mode_raises_at_update(owners_db: ScratchDb) -> None:
     tenant, (owner,) = _tenant(owners_db)
     with psycopg.connect(owners_db.libpq) as conn:
-        conn.execute("SET ROLE app_rw")
+        _as_app_rw(conn, tenant)
         conn.execute("SET CONSTRAINTS last_owner_guard IMMEDIATE")
         with pytest.raises(psycopg.Error) as raised:
             conn.execute(DEMOTE, (tenant, owner))

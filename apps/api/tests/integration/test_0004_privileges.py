@@ -149,12 +149,13 @@ def test_app_rw_cannot_delete_tenants(db: Conn) -> None:
 
 def test_tenants_update_only_profile_columns(db: Conn) -> None:
     tenant = f.tenant(db)
-    with as_app_rw(db):
-        db.execute(
+    with as_app_rw(db, tenant):
+        updated = db.execute(
             "UPDATE tenants SET name = 'Renamed', tone = 'warm', guidelines = '[]', glossary = '{}' "
             "WHERE id = %s",
             (tenant,),
         )
+        assert updated.rowcount == 1
         for assignment in (
             "status = 'suspended'",
             "slug = 'x-y'",
@@ -173,12 +174,13 @@ def test_memberships_update_columns_only(db: Conn) -> None:
     tenant = f.tenant(db)
     f.member(db, tenant)
     user = f.member(db, tenant, role="operator")
-    with as_app_rw(db):
-        db.execute(
+    with as_app_rw(db, tenant):
+        updated = db.execute(
             "UPDATE tenant_memberships SET role = 'reviewer', last_used_at = now() "
             "WHERE tenant_id = %s AND user_id = %s",
             (tenant, user),
         )
+        assert updated.rowcount == 1
         expect_sqlstate(
             db,
             "42501",

@@ -197,7 +197,7 @@ def test_variant_child_undelete_rechecks_parent(db: Conn, change: str) -> None:
     db.execute("UPDATE products SET deleted_at = now() WHERE id = %s", (child,))
     query = f"UPDATE products SET {STYLE_CHANGES_WHILE_CHILD_DELETED[change]} WHERE id = %(style)s"  # noqa: S608
     db.execute(query, {"other": other, "style": style})
-    with as_app_rw(db):
+    with as_app_rw(db, tenant):
         expect_sqlstate(db, "GRD01", UNDELETE, (child,))
 
 
@@ -205,7 +205,7 @@ def test_variant_child_undelete_under_unchanged_style_ok(db: Conn) -> None:
     tenant, style = _style(db)
     child = f.product(db, tenant, "child", parent=style)
     db.execute("UPDATE products SET deleted_at = now() WHERE id = %s", (child,))
-    with as_app_rw(db):
+    with as_app_rw(db, tenant):
         db.execute(UNDELETE, (child,))
     row = db.execute("SELECT deleted_at FROM products WHERE id = %s", (child,)).fetchone()
     assert row == (None,)

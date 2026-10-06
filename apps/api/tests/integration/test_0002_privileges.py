@@ -12,6 +12,7 @@ from psycopg import sql
 
 from . import factories as f
 from .conftest import expect_sqlstate
+from .integrity_support import rls_member, rls_tenant
 from .test_0002_catalog import TABLES_0002
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
@@ -106,23 +107,32 @@ def test_0002_privileges_app_rw_writes_full_graph(db: Conn) -> None:
     """The 0000 default privileges cover the new tables and `rules_revision_seq` (the INSERT
     default calls nextval)."""
     _set_role(db, "app_rw")
-    tenant_id = f.tenant(db)
+    tenant_id = rls_tenant(db)  # 0005: the tenant GUC comes first under RLS
+    owner = rls_member(db, tenant_id)
     f.rule(db, tenant_id)
     product_id = f.product(db, tenant_id)
     listing_id = f.listing(db, tenant_id, product_id)
-    version_id = f.version(db, tenant_id, listing_id)
-    f.review_decision(db, tenant_id, listing_id, version_id)
+    version_id = f.version(
+        db, tenant_id, listing_id, generated_by_user_id=rls_member(db, tenant_id, "operator")
+    )
+    f.review_decision(
+        db,
+        tenant_id,
+        listing_id,
+        version_id,
+        decided_by_user_id=rls_member(db, tenant_id, "reviewer"),
+    )
     f.listing_item(db, tenant_id, listing_id, product_id)
     f.validation_run(db, tenant_id, listing_id)
     f.agent_run(db, tenant_id, listing_id=listing_id)
     f.performance(db, tenant_id, listing_id)
     f.audit(db, tenant_id)
-    f.brand_document(db, tenant_id)
+    f.brand_document(db, tenant_id, created_by=owner)
     f.brand_chunk(db, tenant_id)
     f.image(db, tenant_id, product_id)
     f.human_task(db, tenant_id, product_id=product_id)
     f.listing_issue(db, tenant_id, listing_id)
-    f.batch(db, tenant_id)
-    f.marketplace_account(db, tenant_id)
+    f.batch(db, tenant_id, created_by_user_id=owner)
+    f.marketplace_account(db, tenant_id, connected_by_user_id=owner)
     row = db.execute("SELECT current_user, count(*) FROM listings").fetchone()
     assert row == ("app_rw", 1)

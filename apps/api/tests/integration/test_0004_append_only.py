@@ -151,14 +151,15 @@ def test_append_only_refuses_superuser_with_guc(db: Conn, table: str) -> None:
 
 def test_append_only_insert_allowed(db: Conn) -> None:
     tenant = f.tenant(db)
-    with as_app_rw(db):
+    with as_app_rw(db, tenant):
         f.audit(db, tenant)
         f.agent_run(db, tenant)
     listing = f.listing(db, tenant)
     version = f.version(db, tenant, listing)
-    with as_app_rw(db):
+    decider = f.member(db, tenant)
+    with as_app_rw(db, tenant):
         f.validation_run(db, tenant, listing)
-        f.review_decision(db, tenant, listing, version, decided_by_user_id=f.member(db, tenant))
+        f.review_decision(db, tenant, listing, version, decided_by_user_id=decider)
 
 
 NULL_OUT = "UPDATE audit_log SET actor_email = NULL, ip = NULL WHERE id = %s"

@@ -11,7 +11,7 @@ from psycopg import sql
 
 from . import factories as f
 from .conftest import expect_sqlstate
-from .integrity_support import disable_0004_guard
+from .integrity_support import disable_0004_guard, rls_member, rls_tenant
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 
@@ -72,8 +72,8 @@ def _set_role(conn: Conn, role: str) -> None:
 
 def test_0001_privileges_app_rw_writes_full_graph(db: Conn) -> None:
     _set_role(db, "app_rw")
-    tenant_id = f.tenant(db)
-    owner = f.member(db, tenant_id)
+    tenant_id = rls_tenant(db)  # 0005: the GUCs come first under RLS
+    owner = rls_member(db, tenant_id)
     party = f.party(db, tenant_id)
     f.brand_profile(db, tenant_id, legal_entity_party_id=party, provenance={"x_y": f.fact()})
     style = f.product(db, tenant_id, "style", created_by=owner)
