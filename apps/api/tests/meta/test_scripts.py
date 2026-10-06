@@ -538,3 +538,28 @@ def test_prove_gates_has_s10a_legs(repo_root: Path) -> None:
     assert grant is not None
     assert "GRANT UPDATE ON public.audit_log TO app_rw;" in grant.group(1)
     assert "alembic/sql/0004/03_append_only.up.sql" in grant.group(1)
+
+
+S10B_LEGS = {"tenant-isolation-policy-dropped": ("api-tests", "test_rls_forced_everywhere")}
+
+
+def test_prove_gates_has_s10b_legs(repo_root: Path) -> None:
+    """S10b: a seeded revision that drops listings' t_tenant policy turns api-tests red on the
+    RLS catalog assertion, on a fresh throwaway mos_prove, inside the docker block."""
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    code = _code(text)
+    docker = code.index('if [ "$with_docker" -eq 1 ]; then')
+    for name, (gate, regex) in S10B_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+) (.*)$", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+        assert re.search(rf"(?m)^{re.escape(leg.group(2))}\(\) \{{", code), leg.group(2)
+        assert "/mos_prove make api-tests" in leg.group(3), name
+        start = code.index(f"leg {name} ")
+        before = code.rfind("fresh_prove_db", 0, start)
+        assert start > docker and before > docker, name
+        assert "leg " not in code[before:start].replace(f"leg {name} ", ""), name
+    seed = re.search(r"(?m)^seed_rls_policy_dropped\(\) \{(.*?)^\}", code, re.S)
+    assert seed is not None
+    assert "DROP POLICY t_tenant ON public.listings" in seed.group(1)
+    assert 'down_revision = "\'"$head"' in seed.group(1)
