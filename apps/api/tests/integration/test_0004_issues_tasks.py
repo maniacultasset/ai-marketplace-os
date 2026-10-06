@@ -8,6 +8,7 @@ from uuid import UUID
 
 import psycopg
 import pytest
+from psycopg import sql
 
 from . import factories as f
 from .conftest import expect_sqlstate
@@ -207,3 +208,42 @@ def test_task_no_delete(db: Conn) -> None:
     with as_migrator(db):
         set_gucs(db, purge_tenant=tenant)
         db.execute("DELETE FROM human_tasks WHERE id = %s", (task,))
+
+
+# ---- the DELETE allow-test never fails open on an unset GUC ----
+
+
+def _closed(db: Conn, table: str, tenant: UUID) -> UUID:
+    if table == "listing_issues":
+        row = f.listing_issue(db, tenant, f.listing(db, tenant))
+        db.execute(RESOLVE, (row,))
+    else:
+        row = f.human_task(db, tenant)
+        db.execute(
+            "UPDATE human_tasks SET status = 'cancelled', cancelled_reason = 'superseded' "
+            "WHERE id = %s",
+            (row,),
+        )
+    return row
+
+
+@pytest.mark.parametrize("table", ["listing_issues", "human_tasks"])
+@pytest.mark.parametrize("guc", ["none", "other_tenant_purge", "other_table_prune"])
+def test_migrator_cannot_delete_closed_rows_without_matching_guc(
+    db: Conn, table: str, guc: str
+) -> None:
+    """With no GUC the prune/purge comparisons are NULL; the guard must still refuse (GRD01)."""
+    victim = f.tenant(db)
+    row = _closed(db, table, victim)
+    with as_migrator(db):
+        if guc == "other_tenant_purge":
+            set_gucs(db, purge_tenant=f.tenant(db))
+        elif guc == "other_table_prune":
+            other = "human_tasks" if table == "listing_issues" else "listing_issues"
+            set_gucs(db, prune_table=other)
+        expect_sqlstate(
+            db,
+            "GRD01",
+            sql.SQL("DELETE FROM {} WHERE id = %s").format(sql.Identifier(table)),
+            (row,),
+        )

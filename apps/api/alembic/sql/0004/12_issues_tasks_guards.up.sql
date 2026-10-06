@@ -22,10 +22,11 @@ DECLARE
   m record;
 BEGIN
   IF TG_OP = 'DELETE' THEN
-    IF OLD.status <> 'open' AND NOT (
+    IF OLD.status <> 'open' AND NOT coalesce(
          session_user = 'migrator'
          AND (nullif(current_setting('app.prune_table', true), '')::regclass = TG_RELID
-              OR nullif(current_setting('app.purge_tenant', true), '')::uuid = OLD.tenant_id)) THEN
+              OR nullif(current_setting('app.purge_tenant', true), '')::uuid = OLD.tenant_id),
+         false) THEN  -- an unset GUC compares NULL: refuse, never allow
       RAISE EXCEPTION 'a closed issue is deleted only by the prune or the purge'
         USING ERRCODE = 'GRD01';
     END IF;
@@ -82,10 +83,11 @@ CREATE FUNCTION public.human_tasks_guard() RETURNS trigger
 AS $$
 BEGIN
   IF TG_OP = 'DELETE' THEN
-    IF OLD.status IN ('applied', 'cancelled') AND NOT (
+    IF OLD.status IN ('applied', 'cancelled') AND NOT coalesce(
          session_user = 'migrator'
          AND (nullif(current_setting('app.prune_table', true), '')::regclass = TG_RELID
-              OR nullif(current_setting('app.purge_tenant', true), '')::uuid = OLD.tenant_id)) THEN
+              OR nullif(current_setting('app.purge_tenant', true), '')::uuid = OLD.tenant_id),
+         false) THEN  -- an unset GUC compares NULL: refuse, never allow
       RAISE EXCEPTION 'a terminal task is deleted only by the prune or the purge'
         USING ERRCODE = 'GRD01';
     END IF;

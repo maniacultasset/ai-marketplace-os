@@ -61,6 +61,16 @@ def test_rules_delete_needs_purge_guc(db: Conn) -> None:
         db.execute("DELETE FROM rules WHERE id = %s", (rule,))
 
 
+@pytest.mark.parametrize("guc", ["none", "other_tenant_purge"])
+def test_migrator_cannot_delete_brand_rule_without_purge_guc(db: Conn, guc: str) -> None:
+    """With no app.purge_tenant the comparison is NULL; the guard must still refuse (GRD01)."""
+    rule = f.rule(db, f.tenant(db))
+    with as_migrator(db):
+        if guc == "other_tenant_purge":
+            set_gucs(db, purge_tenant=f.tenant(db))
+        expect_sqlstate(db, "GRD01", "DELETE FROM rules WHERE id = %s", (rule,))
+
+
 def test_rules_app_rw_inserts_brand_rule(db: Conn) -> None:
     tenant = f.tenant(db)
     with as_app_rw(db):

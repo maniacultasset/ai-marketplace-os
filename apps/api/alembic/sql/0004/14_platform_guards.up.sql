@@ -18,8 +18,9 @@ CREATE FUNCTION public.rules_guard() RETURNS trigger
 AS $$
 BEGIN
   IF TG_OP = 'DELETE' THEN
-    IF NOT (session_user = 'migrator' AND OLD.tenant_id IS NOT NULL
-            AND nullif(current_setting('app.purge_tenant', true), '')::uuid = OLD.tenant_id) THEN
+    IF NOT coalesce(session_user = 'migrator' AND OLD.tenant_id IS NOT NULL
+                    AND nullif(current_setting('app.purge_tenant', true), '')::uuid = OLD.tenant_id,
+                    false) THEN  -- an unset GUC compares NULL: refuse, never allow
       RAISE EXCEPTION 'rules are deleted only by the purge' USING ERRCODE = 'GRD01';
     END IF;
     RETURN OLD;
