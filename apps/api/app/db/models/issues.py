@@ -24,7 +24,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql.elements import conv
 
-from app.db.base import Base
+from app.db.base import Base, request_id_column
 from app.db.models._tenant import TenantScoped
 from app.db.models.listings import to_listing_marketplace, to_version
 from app.db.models.tenancy import (
@@ -113,7 +113,7 @@ class HumanTask(TenantScoped, Base):
     applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     resume_batch_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     cancelled_reason: Mapped[str | None] = mapped_column(Text)
-    request_id: Mapped[str | None] = mapped_column(Text)
+    request_id: Mapped[str | None] = request_id_column()
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
 

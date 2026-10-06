@@ -15,7 +15,7 @@ from sqlalchemy import event
 if TYPE_CHECKING:
     from app.core.config import Settings
 
-UNAVAILABLE = {"status": "unavailable"}
+UNAVAILABLE = {"status": "unavailable", "checks": {"postgres": "unavailable"}}
 
 # pytest-socket blocks socket.getaddrinfo, which psycopg calls to resolve the host before libpq
 # connects. Database tests may resolve and reach the loopback test database only.
@@ -49,7 +49,7 @@ async def test_readyz_200_real_postgres(db_settings: Settings) -> None:
     async with _client() as client:
         response = await client.get("/readyz")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json() == {"status": "ok", "checks": {"postgres": "ok"}}
 
 
 async def test_readyz_503_bad_password_no_leak(
@@ -95,3 +95,18 @@ async def test_readyz_20_concurrent_calls_all_200(db_settings: Settings) -> None
         responses = await asyncio.gather(*(client.get("/readyz") for _ in range(20)))
     assert [r.status_code for r in responses] == [200] * 20
     assert len(selects) == 1
+
+
+async def test_health_healthz_200_db_unreachable(
+    db_settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Liveness never depends on the database: port 1 refuses every connection."""
+    assert db_settings.database_url is not None
+    await _reset_settings(monkeypatch, _replace_url(db_settings.database_url, port=1))
+    async with _client() as client:
+        healthz = await client.get("/healthz")
+        readyz = await client.get("/readyz")
+    assert healthz.status_code == 200
+    assert healthz.json() == {"status": "ok"}
+    assert readyz.status_code == 503
+    assert readyz.json() == UNAVAILABLE

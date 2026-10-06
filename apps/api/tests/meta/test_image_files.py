@@ -184,6 +184,7 @@ def test_entrypoint_api_role_trusts_proxy_headers(entrypoint: Path) -> None:
         '"${PORT:-8080}"',
         "--proxy-headers",
         "--forwarded-allow-ips='*'",
+        "--no-access-log",
     ]
 
 
@@ -204,3 +205,14 @@ def test_entrypoint_unknown_role_lists_seed(entrypoint: Path) -> None:
     bogus = _run_entrypoint(entrypoint, "bogus")
     assert bogus.returncode == 64
     assert "unknown APP_ROLE='bogus' (api|migrate|seed|shell)" in bogus.stderr
+
+
+def test_entrypoint_no_access_log(entrypoint: Path) -> None:
+    # S11: the app writes the one access line per request (request id, route template, no query
+    # string); uvicorn's own access line would add a second, id-less one.
+    [line] = [
+        line
+        for line in entrypoint.read_text(encoding="utf-8").splitlines()
+        if "exec uvicorn" in line
+    ]
+    assert line.rstrip().endswith("--no-access-log")

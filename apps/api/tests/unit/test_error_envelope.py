@@ -36,7 +36,10 @@ class Body(StrictModel):
 
 
 def _app() -> FastAPI:
-    app = FastAPI(redirect_slashes=False)
+    # MkosApp: the request middleware owns the request id and the `X-Request-ID` header (S11).
+    from app.core.asgi import MkosApp
+
+    app = MkosApp(redirect_slashes=False)
     install_error_handlers(app)
 
     @app.get("/api-error")
@@ -242,17 +245,20 @@ def _request(headers: list[tuple[bytes, bytes]]) -> Request:
     return Request({"type": "http", "method": "GET", "path": "/", "headers": headers})
 
 
-def test_correlation_id_echo_and_replace() -> None:
-    kept = "req-01.ab:CD_9"
-    assert correlation_id(_request([(b"x-request-id", kept.encode())])) == kept
-    assert correlation_id(_request([(b"x-request-id", b"a" * 128)])) == "a" * 128
-    for bad in (b"", b"a" * 129, b"a\r\nb", b"a b", "é".encode(), b"\x00"):
-        got = correlation_id(_request([(b"x-request-id", bad)]))
-        assert got != bad.decode("latin-1")
-        uuid.UUID(got)
-    two = _request([(b"x-request-id", b"one"), (b"x-request-id", b"two")])
-    uuid.UUID(correlation_id(two))
-    uuid.UUID(correlation_id(_request([])))
+def test_correlation_id_is_the_bound_request_id() -> None:
+    from app.core.request_context import request_context
+
+    with request_context("req-01.ab:CD_9"):
+        assert correlation_id(_request([])) == "req-01.ab:CD_9"
+        # The header is never read here: the middleware already chose the id.
+        assert correlation_id(_request([(b"x-request-id", b"other")])) == "req-01.ab:CD_9"
+
+
+def test_correlation_id_outside_a_request_is_fresh_and_ignores_headers() -> None:
+    for raw in (b"kept-looking", b"a" * 128, b"", b"a\r\nb"):
+        got = correlation_id(_request([(b"x-request-id", raw)]))
+        assert got != raw.decode("latin-1")
+        assert uuid.UUID(got).version == 4
 
 
 def test_correlation_id_cached_per_request() -> None:

@@ -173,7 +173,7 @@ async def test_seed_refused_outside_local(
     app_env: str,
 ) -> None:
     before = _all_counts(superuser_conn)
-    _env(monkeypatch, APP_ENV=app_env, JWT_SECRET=NON_COMMITTED_SECRET)
+    _env(monkeypatch, APP_ENV=app_env, APP_ROLE="seed", JWT_SECRET=NON_COMMITTED_SECRET)
     assert await _seed("demo") == 3
     out = capsys.readouterr()
     assert out.err == f"seed: refused: APP_ENV={app_env} (seed runs only under APP_ENV=local)\n"
@@ -270,7 +270,7 @@ async def test_seed_reset_refused_outside_local(
 ) -> None:
     assert await _seed("demo") == 0
     before = _all_counts(superuser_conn)
-    _env(monkeypatch, APP_ENV=app_env, JWT_SECRET=NON_COMMITTED_SECRET)
+    _env(monkeypatch, APP_ENV=app_env, APP_ROLE="seed", JWT_SECRET=NON_COMMITTED_SECRET)
     assert await _seed("isolation", reset=True) == 3
     assert _all_counts(superuser_conn) == before
 

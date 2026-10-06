@@ -109,6 +109,8 @@ Source: `BACKEND-ARCHITECTURE.md` §5.3-§5.6; `CANON.md:83`, `:124`; ADR-0005 �
 - Additive only (expand/contract): no rename, type change or narrowed CHECK in one release;
   `CONCURRENTLY`; `NOT VALID` then `VALIDATE`; `SET lock_timeout = '5s'`; squawk. No prod downgrade.
 - A job is enqueued in the transaction that writes its rows; the payload holds only `job_run_id`.
+- Inserts into the 7 `request_id` tables go through the ORM or a Core `Table`, never `text()` SQL;
+  `audit()` is the only SQL-side writer (`tests/meta/test_raw_sql_inserts.py`).
 - Dev and every test use the compose PostgreSQL (`127.0.0.1:5432`); Cloud SQL is for staging and
   prod only, so never point tests or `alembic downgrade` at it.
 - Open: the schema source for S5 onward (STATE open decision 10).

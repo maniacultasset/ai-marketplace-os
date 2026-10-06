@@ -26,7 +26,7 @@ from sqlalchemy.dialects.postgresql import INET, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql.elements import conv
 
-from app.db.base import Base
+from app.db.base import Base, request_id_column
 from app.db.models._tenant import TenantScoped
 from app.db.models.tenancy import (
     anchor,
@@ -92,7 +92,7 @@ class AuditLog(TenantScoped, Base):
     entity_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     before: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     after: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
-    request_id: Mapped[str | None] = mapped_column(Text)
+    request_id: Mapped[str | None] = request_id_column()
     # untrusted text, never a prompt input
     reason: Mapped[str | None] = mapped_column(Text)
     # soft reference (no FK): job_runs are pruned sooner

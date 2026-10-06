@@ -16,7 +16,10 @@ CAP = 1024
 
 
 def _app(cap: int = CAP) -> FastAPI:
-    app = FastAPI()
+    # MkosApp: the request middleware owns the request id and the `X-Request-ID` header (S11).
+    from app.core.asgi import MkosApp
+
+    app = MkosApp()
     install_error_handlers(app)
 
     @app.post("/echo-size")

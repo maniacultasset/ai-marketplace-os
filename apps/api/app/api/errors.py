@@ -10,7 +10,6 @@ per status or code, 422 `details` carry only `{loc, msg}` with risky pydantic me
 from __future__ import annotations
 
 import re
-import uuid
 from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 from typing import Annotated, Any, Final
@@ -28,10 +27,10 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
 from starlette.types import Scope
 
-CORRELATION_ID_PATTERN: Final = r"[A-Za-z0-9._:-]{1,128}"
-"""Inbound `X-Request-ID` kept as-is only when it matches (the S11 D3 pattern)."""
-_CORRELATION_RE: Final = re.compile(CORRELATION_ID_PATTERN)
-REQUEST_ID_HEADER: Final = "X-Request-ID"
+from app.core.request_context import REQUEST_ID_PATTERN, current_request_id, new_request_id
+
+CORRELATION_ID_PATTERN: Final = REQUEST_ID_PATTERN
+"""Every `correlation_id` matches it: it is the request id (`app.core.request_context`)."""
 _STATE_KEY: Final = "correlation_id"
 
 STATUS_CODES: Final[Mapping[int, ErrorCode]] = MappingProxyType(
@@ -146,16 +145,16 @@ def _correlation_from_scope(scope: Scope) -> str:
     cached = state.get(_STATE_KEY)
     if isinstance(cached, str):
         return cached
-    values = [v for k, v in scope.get("headers", ()) if k.lower() == b"x-request-id"]
-    value = values[0].decode("latin-1") if len(values) == 1 else ""
-    chosen = value if _CORRELATION_RE.fullmatch(value) else str(uuid.uuid4())
+    # The request middleware binds the request id (and owns the `X-Request-ID` header); a header
+    # is never read here. Outside a request context (a bare app in a test) a fresh id stands in.
+    chosen = current_request_id() or new_request_id()
     state[_STATE_KEY] = chosen
     return chosen
 
 
 def correlation_id(request: Request) -> str:
-    """The request's correlation id: a valid inbound `X-Request-ID`, else a new UUID. Cached on the
-    request so every envelope for one request carries the same id (S11 replaces this helper)."""
+    """The request's correlation id: the bound request id. Cached on the request so every
+    envelope for one request carries the same id."""
     return _correlation_from_scope(request.scope)
 
 
@@ -196,11 +195,8 @@ def envelope_body(
     return body.model_dump(mode="json", by_alias=True)
 
 
-def envelope_headers(
-    status: int, correlation: str, extra: Mapping[str, str] | None = None
-) -> dict[str, str]:
+def envelope_headers(status: int, extra: Mapping[str, str] | None = None) -> dict[str, str]:
     headers = dict(extra or {})
-    headers[REQUEST_ID_HEADER] = correlation
     if status == 401:
         headers["WWW-Authenticate"] = "Bearer"
     return headers
@@ -221,7 +217,7 @@ def error_response_for_scope(
     return JSONResponse(
         envelope_body(status, resolved, text, correlation, details),
         status_code=status,
-        headers=envelope_headers(status, correlation, headers),
+        headers=envelope_headers(status, headers),
     )
 
 

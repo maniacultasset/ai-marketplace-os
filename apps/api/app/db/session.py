@@ -42,7 +42,9 @@ def get_engine() -> AsyncEngine:
         raise RuntimeError("DATABASE_URL is required to build the engine (APP_ROLE api or worker)")
     return create_async_engine(
         settings.database_url,
-        echo=settings.database_echo,
+        # Bound values (a hashed_password INSERT) never reach a log line. No `echo=`: SQLAlchemy would
+        # attach its own plain-text stdout handler; configure_logging owns the level (S11 C5).
+        hide_parameters=True,
         pool_pre_ping=True,
         pool_size=settings.database_pool_size,
         max_overflow=settings.database_max_overflow,

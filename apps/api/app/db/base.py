@@ -8,10 +8,12 @@ through `sqlalchemy.sql.elements.conv()`, which keeps them verbatim instead of p
 
 from __future__ import annotations
 
-from typing import Final
+from typing import Any, Final
 
-from sqlalchemy import MetaData
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import MetaData, Text
+from sqlalchemy.orm import DeclarativeBase, MappedColumn, mapped_column
+
+from app.core.request_context import current_request_id
 
 NAMING_CONVENTION: Final[dict[str, str]] = {
     "ix": "ix_%(column_0_label)s",
@@ -27,3 +29,11 @@ class Base(DeclarativeBase):
 
 
 metadata: Final[MetaData] = Base.metadata
+
+
+def request_id_column() -> MappedColumn[Any]:
+    """A `request_id text` column stamped with the current request id on INSERT when the caller
+    gives none (S11). Python-side only: the DDL (and so `alembic check`) is unchanged, and its
+    nullability follows the `Mapped[...]` annotation. A raw SQL INSERT never sees this default,
+    so these tables are written through the ORM or a Core `Table` only."""
+    return mapped_column(Text, default=current_request_id)

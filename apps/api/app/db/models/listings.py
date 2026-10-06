@@ -29,7 +29,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql.elements import conv
 
-from app.db.base import Base
+from app.db.base import Base, request_id_column
 from app.db.models._tenant import TenantScoped
 from app.db.models.tenancy import (
     anchor,
@@ -293,7 +293,7 @@ class ReviewDecision(TenantScoped, Base):
     batch_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     # soft reference (no FK): job_runs are pruned sooner
     regeneration_job_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
-    request_id: Mapped[str | None] = mapped_column(Text)
+    request_id: Mapped[str | None] = request_id_column()
     created_at: Mapped[datetime] = created_at_column()
 
 

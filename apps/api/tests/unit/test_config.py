@@ -43,6 +43,16 @@ SECRET_FIELDS = {
     "SENTRY_DSN": "https://Zq9sentry@o0.ingest.sentry.io/0",
     "ALERT_SLACK_WEBHOOK": "https://hooks.slack.com/services/Zq9slack",
 }
+TEST_SENTRY_DSN = "https://public@o0.ingest.example.invalid/0"  # never resolvable (.invalid)
+PRIVATE_JWT = "Zq9-not-committed-private-secret-32+"  # neither a Canon literal nor dev-prefixed
+OTEL_SAMPLERS = (
+    "always_on",
+    "always_off",
+    "traceidratio",
+    "parentbased_always_on",
+    "parentbased_always_off",
+    "parentbased_traceidratio",
+)
 _ENV_TEXT = st.text(alphabet=st.characters(codec="utf-8", exclude_characters="\x00"))
 # Property tests below set real env vars and build Settings; example timing varies with a cold
 # import or coverage, so they run without Hypothesis's per-example deadline (no flaky timings).
@@ -202,7 +212,12 @@ COMMITTED_VALUES = [
 def test_committed_jwt_secrets_refused_outside_local(
     clean_env: Path, monkeypatch: pytest.MonkeyPatch, app_env: str, secret: str
 ) -> None:
-    env = {"APP_ENV": app_env, "DATABASE_URL": LOCAL_URL, "JWT_SECRET": secret}
+    env = {
+        "APP_ENV": app_env,
+        "DATABASE_URL": LOCAL_URL,
+        "JWT_SECRET": secret,
+        "SENTRY_DSN": TEST_SENTRY_DSN,
+    }
     # A§14:338's "x" * 32 is the control: S14's production fixture must keep booting.
     if app_env == "local" or secret == "x" * 32:
         assert boot(monkeypatch, **env).jwt_secret == secret
@@ -432,3 +447,101 @@ def test_a9_defaults(ci_env: dict[str, str]) -> None:
     key = base64.b64decode(loaded.kms_local_dev_key, validate=True)
     assert key == b"local_dev_only_32_byte_key_00000"
     assert len(key) == 32
+
+
+# ---- S11: the Sentry boot rule (CANON-ADDENDUM §14), sampler names, log level ----
+
+
+def _deployed_env(role: str, app_env: str) -> dict[str, str]:
+    env = {"APP_ENV": app_env, "APP_ROLE": role, "DATABASE_URL": LOCAL_URL}
+    if role == "api":
+        env["JWT_SECRET"] = PRIVATE_JWT
+    return env
+
+
+@pytest.mark.parametrize("app_env", ["staging", "production"])
+@pytest.mark.parametrize("role", ["api", "worker"])
+@pytest.mark.parametrize("dsn", [None, "", "  "])
+def test_config_sentry_required(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, app_env: str, role: str, dsn: str | None
+) -> None:
+    env = _deployed_env(role, app_env)
+    if dsn is not None:
+        env["SENTRY_DSN"] = dsn
+    message = abort(monkeypatch, **env)
+    assert f"APP_ENV={app_env} requires SENTRY_DSN for APP_ROLE={role}" in message
+    env["SENTRY_DSN"] = TEST_SENTRY_DSN
+    assert boot(monkeypatch, **env).sentry_dsn == TEST_SENTRY_DSN
+
+
+@pytest.mark.parametrize("role", ["migrate", "shell"])
+def test_config_sentry_optional_roles(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, role: str
+) -> None:
+    loaded = boot(monkeypatch, APP_ENV="staging", APP_ROLE=role, ALEMBIC_DATABASE_URL=LOCAL_URL)
+    assert loaded.sentry_dsn is None
+
+
+@pytest.mark.parametrize("dsn", ["", "   "])
+def test_config_sentry_optional_local(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, dsn: str
+) -> None:
+    loaded = boot(
+        monkeypatch, APP_ENV="local", DATABASE_URL=LOCAL_URL, JWT_SECRET=CI_LITERAL, SENTRY_DSN=dsn
+    )
+    assert loaded.sentry_dsn is None
+
+
+def test_config_sentry_error_never_echoes_dsn(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A malformed DSN (no project id) next to a second boot error: names only, never the value.
+    message = abort(
+        monkeypatch,
+        APP_ENV="staging",
+        DATABASE_URL=LOCAL_URL,
+        JWT_SECRET=CI_LITERAL,
+        SENTRY_DSN="https://Zq9secret@x/",
+    )
+    assert "JWT_SECRET" in message
+    assert "Zq9" not in message
+
+
+@pytest.mark.parametrize("name", OTEL_SAMPLERS)
+def test_otel_sampler_names(clean_env: Path, monkeypatch: pytest.MonkeyPatch, name: str) -> None:
+    loaded = boot(monkeypatch, APP_ROLE="shell", APP_ENV="local", OTEL_TRACES_SAMPLER=name)
+    assert loaded.otel_traces_sampler == name
+
+
+@pytest.mark.parametrize("name", ["ratio", "", "PARENTBASED_TRACEIDRATIO ", "jaeger_remote"])
+def test_otel_sampler_unknown_aborts(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    message = abort(monkeypatch, APP_ROLE="shell", APP_ENV="local", OTEL_TRACES_SAMPLER=name)
+    assert "OTEL_TRACES_SAMPLER" in message
+
+
+@pytest.mark.parametrize("level", ["LOUD", "", " ", "TRACE"])
+def test_log_level_unknown_aborts(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, level: str
+) -> None:
+    message = abort(monkeypatch, APP_ROLE="shell", APP_ENV="local", LOG_LEVEL=level)
+    assert "LOG_LEVEL is not a logging level" in message
+    if level.strip():
+        assert level not in message
+
+
+@pytest.mark.parametrize("level", ["debug", "INFO", "Warning", "ERROR", "CRITICAL"])
+def test_log_level_known_loads(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, level: str
+) -> None:
+    assert boot(monkeypatch, APP_ROLE="shell", APP_ENV="local", LOG_LEVEL=level).log_level == level
+
+
+@pytest.mark.parametrize("value", ["", "  "])
+def test_blank_gcp_project_id_is_none(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    # `.env.example` ships `GCP_PROJECT_ID=`: blank must not become `projects//traces/...`.
+    loaded = boot(monkeypatch, APP_ROLE="shell", APP_ENV="local", GCP_PROJECT_ID=value)
+    assert loaded.gcp_project_id is None

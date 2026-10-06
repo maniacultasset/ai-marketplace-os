@@ -25,7 +25,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, deferred, mapped_column
 from sqlalchemy.sql.elements import conv
 
-from app.db.base import Base
+from app.db.base import Base, request_id_column
 from app.db.models._tenant import TenantScoped
 from app.db.models.tenancy import (
     anchor,
@@ -177,5 +177,5 @@ class Batch(TenantScoped, Base):
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     # soft reference: imports is 0003; set only on a `generate` batch
     import_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
-    request_id: Mapped[str | None] = mapped_column(Text)
+    request_id: Mapped[str | None] = request_id_column()
     created_at: Mapped[datetime] = created_at_column()
