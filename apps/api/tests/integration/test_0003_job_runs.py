@@ -234,8 +234,9 @@ def test_job_runs_checks_one_live_per_listing_kind(db: Conn, seed: Seed) -> None
             raise AssertionError(f"a second live ({status}) job inserted")
     # another kind on the same listing, or the same kind on another listing, is not blocked
     job_run(db, seed.a.tenant_id, **{**listing, "kind": "listing_status_sync"})
+    # queued -> cancelled: 0004's job guard allows only JobState edges
     db.execute(
-        "UPDATE job_runs SET status = 'succeeded', finished_at = now() WHERE id = %s", (first,)
+        "UPDATE job_runs SET status = 'cancelled', finished_at = now() WHERE id = %s", (first,)
     )
     job_run(db, seed.a.tenant_id, **listing)
 
@@ -278,7 +279,7 @@ def test_job_runs_queue_trigger_catalog(db: Conn) -> None:
     rows = db.execute(
         "SELECT t.tgname, t.tgfoid::regprocedure::text, t.tgtype & 2 = 2, t.tgtype & 4 = 4, "
         "t.tgtype & 1 = 1 FROM pg_trigger t WHERE t.tgrelid = 'job_runs'::regclass "
-        "AND NOT t.tgisinternal"
+        "AND NOT t.tgisinternal AND t.tgname <> 'job_runs_guard'"  # 0004 adds the edge guard
     ).fetchall()
     # BEFORE, INSERT, FOR EACH ROW
     assert rows == [("job_runs_set_queue", "job_runs_set_queue()", True, True, True)]
