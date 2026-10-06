@@ -250,6 +250,12 @@ LOCAL_HOSTS = ["localhost", "127.0.0.1", "::1"]
 def clean_tenant_db(superuser_conn: Conn) -> None:
     """Empty every tenant table (through the `tenants`/`users` cascade) and the platform seed
     tables before the test. Schema objects are untouched, so `alembic check` stays clean."""
-    superuser_conn.execute(
-        "TRUNCATE tenants, users, category_templates, rules RESTART IDENTITY CASCADE"
-    )
+    # 0004's append-only tables refuse TRUNCATE by trigger, for every role; this harness reset
+    # (a superuser, test databases only) skips user triggers for its one statement.
+    superuser_conn.execute("SET session_replication_role = replica")
+    try:
+        superuser_conn.execute(
+            "TRUNCATE tenants, users, category_templates, rules RESTART IDENTITY CASCADE"
+        )
+    finally:
+        superuser_conn.execute("RESET session_replication_role")

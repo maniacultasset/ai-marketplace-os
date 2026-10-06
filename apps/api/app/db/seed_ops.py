@@ -188,15 +188,29 @@ async def seed_platform_rows(connection: AsyncConnection, rules_path: Path) -> N
         await connection.execute(insert(Rule).values(rule_rows).on_conflict_do_nothing())
 
 
+async def _migrator_session(connection: AsyncConnection) -> None:
+    """Make `migrator` the *session* user for this transaction: 0004's append-only triggers
+    check `session_user`, and the local admin login (`--reset` is local only) is a superuser
+    that `SET ROLE` would leave as the session user. A migrator login is left as it is."""
+    current = (await connection.execute(text("SELECT session_user"))).scalar_one()
+    if current != "migrator":
+        await connection.execute(text("SET LOCAL SESSION AUTHORIZATION migrator"))
+
+
 async def reset_seed_tenants(connection: AsyncConnection) -> None:
     """Delete every row of the two seed tenants, then the tenants and their users, in one
     transaction on the migrator connection. The only reset entry point (S10 A21 swaps it)."""
-    await connection.run_sync(_assume_migrator)
+    await _migrator_session(connection)
     await connection.execute(text("SET CONSTRAINTS ALL DEFERRED"))
     ids = [seed_tenant_id(t.slug) for t in TENANTS]
-    for table in reversed(metadata.sorted_tables):
-        if table.name != "tenants" and "tenant_id" in table.c:
-            await connection.execute(delete(table).where(table.c.tenant_id.in_(ids)))
+    for tenant_id in ids:
+        # 0004's append-only triggers let the migrator delete only under the purge GUC.
+        await connection.execute(
+            text("SELECT set_config('app.purge_tenant', :t, true)"), {"t": str(tenant_id)}
+        )
+        for table in reversed(metadata.sorted_tables):
+            if table.name != "tenants" and "tenant_id" in table.c:
+                await connection.execute(delete(table).where(table.c.tenant_id == tenant_id))
     tenants, users = metadata.tables["tenants"], metadata.tables["users"]
     await connection.execute(delete(tenants).where(tenants.c.id.in_(ids)))
     domains = [f"%@{t.slug}.test" for t in TENANTS]

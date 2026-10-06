@@ -25,7 +25,7 @@ PREVIOUS = "0003b_procrastinate"
 REVISION = "0004_integrity"
 FILE_NAME = re.compile(r"^(?P<stem>[0-9]{2}b?_[a-z0-9_]+)\.(?P<direction>up|down)\.sql$")
 # The planned files, in run order (CODE-PLAN §3 S10a). Each task adds its pair here.
-EXPECTED_STEMS: tuple[str, ...] = ("01_transitions", "02_audit")
+EXPECTED_STEMS: tuple[str, ...] = ("01_transitions", "02_audit", "03_append_only")
 
 
 def _stems(direction: str) -> list[str]:

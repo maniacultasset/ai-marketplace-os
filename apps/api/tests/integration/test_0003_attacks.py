@@ -19,6 +19,7 @@ from psycopg.types.json import Jsonb
 
 from . import factories as f
 from .conftest import expect_sqlstate
+from .integrity_support import as_migrator, set_gucs
 from .ops_support import (
     TenantSeed,
     field_result,
@@ -139,7 +140,9 @@ def test_tenant_delete_cascades_whole_0003_graph(db: Conn) -> None:
     a, b = _full_tenant(db), _full_tenant(db)
     before_b = _counts(db, b.tenant_id, ALL_TENANT_TABLES)
     assert all(n > 0 for n in _counts(db, a.tenant_id, ALL_TENANT_TABLES).values())
-    db.execute("DELETE FROM tenants WHERE id = %s", (a.tenant_id,))
+    with as_migrator(db):  # 0004: review_decisions and validation_runs are append-only
+        set_gucs(db, purge_tenant=a.tenant_id)
+        db.execute("DELETE FROM tenants WHERE id = %s", (a.tenant_id,))
     assert set(_counts(db, a.tenant_id, ALL_TENANT_TABLES).values()) == {0}
     assert _counts(db, b.tenant_id, ALL_TENANT_TABLES) == before_b
 
@@ -149,7 +152,8 @@ def test_purge_order_over_full_0003_graph(db: Conn) -> None:
     order, respects every FK (no NO ACTION violation) and leaves the other tenant whole."""
     a, b = _full_tenant(db), _full_tenant(db)
     before_b = _counts(db, b.tenant_id, ALL_TENANT_TABLES)
-    with db.transaction():
+    with as_migrator(db), db.transaction():  # 0004: append-only tables need the purge GUC
+        set_gucs(db, purge_tenant=a.tenant_id)
         db.execute("SET CONSTRAINTS ALL DEFERRED")
         for table in (*PURGE_ORDER_0003, *PURGE_ORDER_0002):
             db.execute(
