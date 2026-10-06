@@ -75,7 +75,8 @@ async def products_bulk(
 
 
 @route(router, OPS["products_get"])
-@stub
-async def products_get(product_id: Annotated[UUID, PathParam()]) -> NoReturn:
+async def products_get(
+    product_id: Annotated[UUID, PathParam()], principal: CurrentPrincipal
+) -> ProductOut:
     """Read one product. Another brand's id is 404, never 403."""
-    raise NotImplementedYet("products_get")
+    return _out(await products.get_product(principal, product_id))

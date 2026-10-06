@@ -85,6 +85,20 @@ def soft_delete(conn: Conn, product_id: Any) -> None:
 # ---- S12 T8: bearers for the route suites (minted, never logged in: the login limit stays out) ----
 
 PRODUCTS = "/api/v1/products"
+PRODUCT_FIELDS = frozenset(
+    {
+        "id",
+        "sku",
+        "title",
+        "status",
+        "category",
+        "attributes",
+        "images",
+        "parent_product_id",
+        "created_at",
+        "updated_at",
+    }
+)
 OTHER_SECRET = "s12_not_the_ci_secret_at_least_32_characters"
 
 

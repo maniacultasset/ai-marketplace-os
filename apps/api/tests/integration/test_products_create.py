@@ -12,6 +12,7 @@ import pytest
 from .auth_support import World
 from .conftest import LOCAL_HOSTS
 from .products_support import (
+    PRODUCT_FIELDS,
     PRODUCTS,
     Conn,
     bad_bearer,
@@ -22,19 +23,6 @@ from .products_support import (
 )
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
-
-PRODUCT_FIELDS = {
-    "id",
-    "sku",
-    "title",
-    "status",
-    "category",
-    "attributes",
-    "images",
-    "parent_product_id",
-    "created_at",
-    "updated_at",
-}
 
 
 def _row(conn: Conn, sku: str) -> tuple[Any, ...] | None:
