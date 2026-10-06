@@ -15,11 +15,12 @@ Tenant and actor come only from the principal.
 from __future__ import annotations
 
 import json
+import math
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 from mkos_schemas.codes import ErrorCode
 
@@ -31,6 +32,8 @@ from app.services.product_facts import AttributeValue, build_attributes, seller_
 __all__ = ["NewProduct", "ProductView", "create_product", "get_product", "list_products"]
 
 _NUL = "\x00"
+FlatValue = str | bool | int | float
+"""A wire scalar of the flat CP1 view (`ProductOut.attributes`)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,17 +50,31 @@ class ProductView:
     id: uuid.UUID
     sku: str
     title: str
-    status: str
+    status: Literal["draft", "active"]
     category: str | None
-    attributes: dict[str, object]
+    attributes: dict[str, FlatValue]
     images: list[str]
     parent_product_id: uuid.UUID | None
     created_at: datetime
     updated_at: datetime
 
 
+def _flat(fact: Any) -> FlatValue | None:
+    """The flat CP1 value of one stored Fact: `value`, else `normalized` (fact_map_valid allows a
+    Fact with only `normalized`). None when neither is a wire scalar (a list or object a later
+    writer stored): the flat view has no place for it, and one such Fact must not break the read."""
+    if not isinstance(fact, Mapping):
+        return None
+    flat = fact["value"] if fact.get("value") is not None else fact.get("normalized")
+    if isinstance(flat, float) and not math.isfinite(flat):
+        return None
+    return flat if isinstance(flat, str | bool | int | float) else None
+
+
 def _view(row: Any) -> ProductView:
+    """Total over every row the DB CHECKs accept (R1-F1): nothing here re-applies input rules."""
     facts: Mapping[str, Any] = row.attributes or {}
+    flat = {key: _flat(fact) for key, fact in facts.items()}
     return ProductView(
         id=row.id,
         sku=row.sku,
@@ -65,7 +82,7 @@ def _view(row: Any) -> ProductView:
         status=row.status,
         category=row.category,
         # CP1: flat values under canonical keys; the envelopes come later as `facts`
-        attributes={key: fact.get("value") for key, fact in facts.items()},
+        attributes={key: value for key, value in flat.items() if value is not None},
         images=[],
         parent_product_id=row.parent_product_id,
         created_at=row.created_at,

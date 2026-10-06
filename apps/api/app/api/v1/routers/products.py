@@ -23,19 +23,20 @@ CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 
 
 def _out(view: products.ProductView) -> ProductOut:
-    return ProductOut.model_validate(
-        {
-            "id": view.id,
-            "sku": view.sku,
-            "title": view.title,
-            "status": view.status,
-            "category": view.category,
-            "attributes": view.attributes,
-            "images": view.images,
-            "parent_product_id": view.parent_product_id,
-            "created_at": view.created_at,
-            "updated_at": view.updated_at,
-        }
+    """A DB-sourced row is built, not validated (R1-F1): the DB CHECKs are the read-side truth, and
+    `ProductOut`'s input patterns (`Sku`, the non-blank title, the slug) must not turn one stored row
+    into a 500 for the whole tenant list. The service already keeps `attributes` to wire scalars."""
+    return ProductOut.model_construct(
+        id=view.id,
+        sku=view.sku,
+        title=view.title,
+        status=view.status,
+        category=view.category,
+        attributes=view.attributes,
+        images=view.images,
+        parent_product_id=view.parent_product_id,
+        created_at=view.created_at,
+        updated_at=view.updated_at,
     )
 
 
