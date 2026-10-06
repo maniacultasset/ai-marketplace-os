@@ -22,8 +22,10 @@ Conn = psycopg.Connection[tuple[Any, ...]]
 TEMPLATE = frozenset({"t_tenant", "t_platform", "t_migrator"})
 # The named branches beside (or instead of) the template, per table (DATABASE.md §5.1-§5.4).
 POLICIES: dict[str, frozenset[str]] = {
-    "tenants": TEMPLATE,
-    "users": frozenset({"users_self", "t_platform", "t_migrator"}),
+    "tenants": TEMPLATE | {"tenants_switcher"},
+    "users": frozenset({"users_self", "users_login", "users_signup", "users_teammates"})
+    | {"t_platform", "t_migrator"},
+    "tenant_memberships": TEMPLATE | {"memberships_own"},
     "rules": frozenset({"rules_read", "rules_write", "rules_toggle", "t_platform", "t_migrator"}),
     "audit_log": frozenset({"audit_read", "audit_insert", "t_platform", "t_migrator"}),
 }

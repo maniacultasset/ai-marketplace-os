@@ -141,8 +141,51 @@ OWN_POLICIES: Final[dict[str, list[tuple[str, str]]]] = {
     ],
 }
 
+USER: Final = "(SELECT public.app_user_id())"
+LOGIN_EMAIL: Final = "(SELECT public.app_login_email())"
+
 # The named invariant-5 exceptions (DATABASE.md:311, §11.2 row 19), added beside the template.
-BRANCHES: Final[dict[str, list[tuple[str, str]]]] = {}
+# Every branch but signup is SELECT-only, so a write still needs the tenant (or self) policy.
+BRANCHES: Final[dict[str, list[tuple[str, str]]]] = {
+    # DATABASE.md:244: login and signup on the login email; teammates via membership. The
+    # membership policies read GUCs only, so these subqueries never recurse (DATABASE.md:258).
+    "users": [
+        (
+            "users_login",
+            "CREATE POLICY users_login ON public.users FOR SELECT TO app_rw "
+            f"USING (lower(email) = {LOGIN_EMAIL})",
+        ),
+        (
+            "users_signup",
+            "CREATE POLICY users_signup ON public.users FOR INSERT TO app_rw "
+            f"WITH CHECK (lower(email) = {LOGIN_EMAIL})",
+        ),
+        (
+            "users_teammates",
+            "CREATE POLICY users_teammates ON public.users FOR SELECT TO app_rw "
+            "USING (EXISTS (SELECT 1 FROM public.tenant_memberships m "
+            "WHERE m.user_id = users.id AND m.tenant_id = (SELECT public.app_tenant_id())))",
+        ),
+    ],
+    # DATABASE.md:258: standard, plus own rows (the login lists every tenant of the caller).
+    "tenant_memberships": [
+        (
+            "memberships_own",
+            "CREATE POLICY memberships_own ON public.tenant_memberships FOR SELECT TO app_rw "
+            f"USING (user_id = {USER})",
+        ),
+    ],
+    # DATABASE.md:230: plus a switcher SELECT via the caller's active membership.
+    "tenants": [
+        (
+            "tenants_switcher",
+            "CREATE POLICY tenants_switcher ON public.tenants FOR SELECT TO app_rw "
+            "USING (EXISTS (SELECT 1 FROM public.tenant_memberships m "
+            "WHERE m.tenant_id = tenants.id AND m.user_id = (SELECT public.app_user_id()) "
+            "AND m.is_active))",
+        ),
+    ],
+}
 
 
 def _plan() -> list[tuple[str, list[tuple[str, str]]]]:
