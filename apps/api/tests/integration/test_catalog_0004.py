@@ -54,7 +54,7 @@ HELPERS = (
     "expire_trials()",
 )
 MIGRATOR_ONLY = (
-    "purge_tenant(uuid,text)",
+    "purge_tenant(uuid,text,boolean)",
     "purge_tenant_order()",
     "redact_user(uuid)",
     "prune_audit_log(timestamp with time zone)",

@@ -22,7 +22,11 @@ move; a suspension revokes the tenant's refresh tokens) and `expire_trials()`. O
 every tenant table except `tenants`, `tenant_memberships` and `audit_log`, children first (the order is
 `purge_tenant_order()`), nulls `actor_email` and `ip` in the tenant's audit rows and pseudonymises users
 with no other membership; `purge_tenant(t, 'final')`, after audit retention, deletes the audit rows,
-the tenant and the users left without a membership. Each phase writes a `tenant.purged` tombstone with
+the tenant and the users left without a membership. The function enforces both preconditions:
+`'data'` needs an offboarded tenant past `purge_after`, and `'final'` needs `data_purged_at` at least
+24 months back (the `prune_audit_log` floor); otherwise it raises `GRD01`. Its third argument,
+`force` (default false), skips them, never the data-before-final order. The one caller that passes it
+is the local-only `seed --reset` (`APP_ENV=local`), which purges live seed tenants. Each phase writes a `tenant.purged` tombstone with
 a NULL tenant. `audit_log.tenant_id` is nullable with NO ACTION, and the append-only triggers allow
 these deletes only when `session_user = 'migrator'` and `app.purge_tenant` names the row's tenant. User
 erasure is the migrator-only `redact_user(user)`. Pruning is migrator-only: `prune_audit_log` (24-month
@@ -38,4 +42,7 @@ terminal tasks, 13 months), each under `app.prune_table`. Retention: audit 24 mo
   job, not by the database.
 - Redacting the last active owner of a tenant fails at commit (the last-owner guard) until staff appoint
   another owner.
+- A wrong tenant id given to the purge job is refused unless that tenant is offboarded and past
+  its grace period, so one call cannot erase a live tenant; `force` is visible at its single call
+  site.
 - The retention values stay proposed until counsel confirms them (open decision 4).

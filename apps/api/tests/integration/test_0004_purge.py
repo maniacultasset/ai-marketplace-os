@@ -28,6 +28,11 @@ from .test_0003_attacks import _full_tenant
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 
+# The mechanics suites purge live tenants, as `seed --reset` does; the lifecycle preconditions
+# have their own tests below.
+FORCE_DATA = "SELECT purge_tenant(%s, 'data', force => true)"
+FORCE_FINAL = "SELECT purge_tenant(%s, 'final', force => true)"
+
 Conn = psycopg.Connection[tuple[Any, ...]]
 
 KEPT_BY_DATA = {"tenant_memberships", "audit_log"}
@@ -143,8 +148,8 @@ def test_purge_tenant(db: Conn) -> None:
     empty = sorted(t for t, n in _counts(db, a).items() if n == 0)
     assert empty == [], empty
     with as_migrator(db):
-        db.execute("SELECT purge_tenant(%s, 'data')", (a,))
-        db.execute("SELECT purge_tenant(%s, 'data')", (published.tenant_id,))
+        db.execute(FORCE_DATA, (a,))
+        db.execute(FORCE_DATA, (published.tenant_id,))
     after = _counts(db, a)
     assert {t: n for t, n in after.items() if n} == {
         "tenants": 1,
@@ -153,7 +158,7 @@ def test_purge_tenant(db: Conn) -> None:
     }
     assert _counts(db, published.tenant_id)["listings"] == 0
     with as_migrator(db):
-        db.execute("SELECT purge_tenant(%s, 'final')", (a,))
+        db.execute(FORCE_FINAL, (a,))
     assert set(_counts(db, a).values()) == {0}
     left = db.execute("SELECT count(*) FROM users WHERE id = ANY(%s)", (users_a,)).fetchone()
     assert left == (0,)
@@ -163,7 +168,7 @@ def test_purge_tenant(db: Conn) -> None:
 def test_purge_final_needs_data_phase(db: Conn) -> None:
     tenant = f.tenant(db)
     with as_migrator(db):
-        expect_sqlstate(db, "GRD01", "SELECT purge_tenant(%s, 'final')", (tenant,))
+        expect_sqlstate(db, "GRD01", FORCE_FINAL, (tenant,))  # force never skips the order
         expect_sqlstate(db, "GRD01", "SELECT purge_tenant(%s, 'everything')", (tenant,))
 
 
@@ -173,7 +178,7 @@ def test_purge_keeps_users_of_other_tenants(db: Conn) -> None:
     f.insert(db, "tenant_memberships", tenant_id=b, user_id=shared, role="owner")
     only_a = f.member(db, a, role="operator")
     with as_migrator(db):
-        db.execute("SELECT purge_tenant(%s, 'data')", (a,))
+        db.execute(FORCE_DATA, (a,))
     rows: dict[Any, Any] = dict(
         db.execute(
             "SELECT id, erased_at IS NOT NULL FROM users WHERE id IN (%s, %s)", (shared, only_a)
@@ -181,7 +186,7 @@ def test_purge_keeps_users_of_other_tenants(db: Conn) -> None:
     )
     assert rows == {shared: False, only_a: True}
     with as_migrator(db):
-        db.execute("SELECT purge_tenant(%s, 'final')", (a,))
+        db.execute(FORCE_FINAL, (a,))
     remaining = {
         r[0]
         for r in db.execute(
@@ -195,8 +200,8 @@ def test_purge_writes_tombstones(db: Conn) -> None:
     tenant = f.tenant(db)
     f.listing(db, tenant)
     with as_migrator(db):
-        db.execute("SELECT purge_tenant(%s, 'data')", (tenant,))
-        db.execute("SELECT purge_tenant(%s, 'final')", (tenant,))
+        db.execute(FORCE_DATA, (tenant,))
+        db.execute(FORCE_FINAL, (tenant,))
     rows = db.execute(
         "SELECT tenant_id, actor_type, after->>'mode', after->'row_counts', "
         "after ? 'backups_expire_by' FROM audit_log "
@@ -215,7 +220,7 @@ def test_purge_nulls_audit_email_ip(db: Conn) -> None:
         db, tenant, actor_type="user", actor_user_id=user, actor_email="a@x.test", ip="10.0.0.2"
     )
     with as_migrator(db):
-        db.execute("SELECT purge_tenant(%s, 'data')", (tenant,))
+        db.execute(FORCE_DATA, (tenant,))
     assert db.execute(
         "SELECT actor_email, ip, actor_user_id FROM audit_log WHERE id = %s", (row,)
     ).fetchone() == (None, None, user)
@@ -233,3 +238,56 @@ def test_purge_map_covers_tenant_tables(db: Conn) -> None:
     assert order is not None
     assert len(order[0]) == len(set(order[0]))
     assert set(order[0]) == set(_tenant_tables(db)) - KEPT_BY_DATA
+
+
+# ---- lifecycle preconditions (DATABASE.md :1863-1873) ----
+
+
+def _offboard(db: Conn, tenant: UUID, purge_after: str) -> None:
+    """Offboard through the lifecycle function, then move purge_after (as the owner: no role can
+    UPDATE it directly)."""
+    with as_migrator(db):
+        db.execute("SELECT set_tenant_lifecycle(%s, 'offboarded', 'test')", (tenant,))
+    db.execute(
+        f"UPDATE tenants SET purge_after = now() + interval '{purge_after}' WHERE id = %s",  # noqa: S608
+        (tenant,),
+    )
+
+
+@pytest.mark.parametrize("status", ["trial", "active", "suspended"])
+def test_purge_refused_for_active_tenant(db: Conn, status: str) -> None:
+    trial = {"trial_ends_at": "2030-01-01"} if status == "trial" else {}
+    tenant = f.tenant(db, status=status, **trial)
+    f.listing(db, tenant)
+    with as_migrator(db):
+        err = expect_sqlstate(db, "GRD01", "SELECT purge_tenant(%s, 'data')", (tenant,))
+    assert "offboarded" in str(err)
+    assert _counts(db, tenant)["listings"] == 1
+
+
+def test_purge_refused_before_purge_after(db: Conn) -> None:
+    tenant = f.tenant(db)
+    f.listing(db, tenant)
+    _offboard(db, tenant, "1 day")
+    with as_migrator(db):
+        expect_sqlstate(db, "GRD01", "SELECT purge_tenant(%s, 'data')", (tenant,))
+    db.execute("UPDATE tenants SET purge_after = now() WHERE id = %s", (tenant,))
+    with as_migrator(db):
+        db.execute("SELECT purge_tenant(%s, 'data')", (tenant,))
+    assert _counts(db, tenant)["listings"] == 0
+
+
+def test_purge_final_refused_before_retention(db: Conn) -> None:
+    tenant = f.tenant(db)
+    _offboard(db, tenant, "-1 day")
+    with as_migrator(db):
+        db.execute("SELECT purge_tenant(%s, 'data')", (tenant,))
+        err = expect_sqlstate(db, "GRD01", "SELECT purge_tenant(%s, 'final')", (tenant,))
+    assert "retention" in str(err)
+    db.execute(
+        "UPDATE tenants SET data_purged_at = now() - interval '24 months' WHERE id = %s",
+        (tenant,),
+    )
+    with as_migrator(db):
+        db.execute("SELECT purge_tenant(%s, 'final')", (tenant,))
+    assert db.execute("SELECT count(*) FROM tenants WHERE id = %s", (tenant,)).fetchone() == (0,)

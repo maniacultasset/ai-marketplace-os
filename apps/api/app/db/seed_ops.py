@@ -198,8 +198,8 @@ async def _migrator_session(connection: AsyncConnection) -> None:
 
 
 async def reset_seed_tenants(connection: AsyncConnection) -> None:
-    """Purge the two seed tenants with the database's own `purge_tenant` ('data', then 'final';
-    revision 0004_integrity), then delete any seed tenant row and seed user left, in one
+    """Purge the two seed tenants with the database's own `purge_tenant` ('data', then 'final',
+    with `force` past its offboarding and retention preconditions; revision 0004_integrity), then delete any seed tenant row and seed user left, in one
     transaction on the migrator connection. The purge knows every tenant table and passes the
     append-only guards, so this never has to track new tables."""
     await _migrator_session(connection)
@@ -211,7 +211,9 @@ async def reset_seed_tenants(connection: AsyncConnection) -> None:
             continue
         for mode in ("data", "final"):
             await connection.execute(
-                text("SELECT purge_tenant(:t, :mode)"), {"t": tenant_id, "mode": mode}
+                # force: the seed tenants are live, and --reset runs only under APP_ENV=local
+                text("SELECT purge_tenant(:t, :mode, force => true)"),
+                {"t": tenant_id, "mode": mode},
             )
     await connection.execute(delete(tenants).where(tenants.c.id.in_(ids)))
     domains = [f"%@{t.slug}.test" for t in TENANTS]

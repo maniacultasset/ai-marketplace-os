@@ -12,6 +12,10 @@
 --   rows, users with no other membership pseudonymised, data_purged_at stamped.
 -- purge_tenant(t, 'final') (after 'data'): the tenant's audit rows, then the tenant (its
 --   memberships cascade), then the users left with no membership.
+-- Lifecycle preconditions (DATABASE.md :1863-1873), GRD01 otherwise: 'data' needs an offboarded
+--   tenant past purge_after; 'final' needs data_purged_at at least 24 months back (the audit
+--   retention floor prune_audit_log also holds). `force => true` skips both, never the
+--   data-before-final order; its one caller is the local-only `seed --reset` (APP_ENV=local).
 -- Each phase writes a `tenant.purged` platform tombstone (NULL tenant) with {mode, row_counts,
 -- backups_expire_by}. The storage prefix is deleted by the calling job, not here.
 CREATE FUNCTION public.purge_tenant_order() RETURNS text[]
@@ -26,7 +30,8 @@ BEGIN ATOMIC
     'brand_profiles', 'business_parties', 'invitations', 'rules'];
 END;
 
-CREATE FUNCTION public.purge_tenant(t uuid, mode text) RETURNS jsonb
+CREATE FUNCTION public.purge_tenant(t uuid, mode text, force boolean DEFAULT false)
+  RETURNS jsonb
   LANGUAGE plpgsql SECURITY INVOKER
   SET search_path = pg_catalog, public, pg_temp
 AS $$
@@ -35,12 +40,28 @@ DECLARE
   n bigint;
   counts jsonb := '{}'::jsonb;
   members uuid[];
+  lifecycle record;
 BEGIN
   IF mode NOT IN ('data', 'final') THEN
     RAISE EXCEPTION 'purge_tenant mode is data or final, not %', mode USING ERRCODE = 'GRD01';
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM public.tenants x WHERE x.id = t) THEN
+  SELECT x.status, x.purge_after, x.data_purged_at INTO lifecycle FROM public.tenants x
+   WHERE x.id = t FOR UPDATE;
+  IF NOT FOUND THEN
     RAISE EXCEPTION 'no tenant %', t USING ERRCODE = 'GRD01';
+  END IF;
+  IF mode = 'data' AND NOT coalesce(force, false)
+     AND NOT coalesce(lifecycle.status = 'offboarded' AND lifecycle.purge_after <= now(), false) THEN
+    RAISE EXCEPTION 'purge_tenant data needs an offboarded tenant past purge_after (status %)',
+      lifecycle.status USING ERRCODE = 'GRD01';
+  END IF;
+  IF mode = 'final' AND lifecycle.data_purged_at IS NULL THEN
+    RAISE EXCEPTION 'purge_tenant final runs after the data phase' USING ERRCODE = 'GRD01';
+  END IF;
+  IF mode = 'final' AND NOT coalesce(force, false)
+     AND lifecycle.data_purged_at > now() - interval '24 months' THEN
+    RAISE EXCEPTION 'purge_tenant final runs after the 24-month audit retention'
+      USING ERRCODE = 'GRD01';
   END IF;
   PERFORM set_config('app.purge_tenant', t::text, true);
   SET CONSTRAINTS ALL DEFERRED;
@@ -62,9 +83,6 @@ BEGIN
     counts := counts || jsonb_build_object('users_pseudonymised', n);
     UPDATE public.tenants SET data_purged_at = now() WHERE id = t;
   ELSE
-    IF (SELECT x.data_purged_at FROM public.tenants x WHERE x.id = t) IS NULL THEN
-      RAISE EXCEPTION 'purge_tenant final runs after the data phase' USING ERRCODE = 'GRD01';
-    END IF;
     SELECT array_agg(m.user_id) INTO members FROM public.tenant_memberships m WHERE m.tenant_id = t;
     DELETE FROM public.audit_log WHERE tenant_id = t;
     GET DIAGNOSTICS n = ROW_COUNT;
