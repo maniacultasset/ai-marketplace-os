@@ -57,3 +57,53 @@ def scalar(conn: Conn, query: str, params: Any = None) -> Any:
 def uuid_of(value: Any) -> UUID:
     assert isinstance(value, UUID), value
     return value
+
+
+# ---- versions (lv_guard) ----
+
+
+def make_current(conn: Conn, listing_id: UUID, version_id: UUID) -> None:
+    conn.execute(
+        "UPDATE listings SET current_version_id = %s WHERE id = %s", (version_id, listing_id)
+    )
+
+
+def next_version(
+    conn: Conn,
+    tenant_id: UUID,
+    listing_id: UUID,
+    parent: UUID | None,
+    origin: str,
+    generated_by: UUID,
+    *,
+    edited_by: UUID | None = None,
+    changed_paths: list[str] | None = None,
+    current: bool = True,
+) -> UUID:
+    """A version of `listing_id` under `parent`, made current unless `current=False`."""
+    from . import factories as f
+
+    if origin == "edit" and changed_paths is None:
+        changed_paths = ["content.title"]
+    version_id = f.version(
+        conn,
+        tenant_id,
+        listing_id,
+        origin=origin,
+        parent_version_id=parent,
+        generated_by_user_id=generated_by,
+        edited_by_user_id=edited_by,
+        changed_paths=changed_paths,
+    )
+    if current:
+        make_current(conn, listing_id, version_id)
+    return uuid_of(version_id)
+
+
+def approve(conn: Conn, version_id: UUID, approver: UUID) -> None:
+    conn.execute(
+        "UPDATE listing_versions SET approved_by_user_id = %s WHERE id = %s", (approver, version_id)
+    )
+
+
+APPROVE_SQL = "UPDATE listing_versions SET approved_by_user_id = %s WHERE id = %s"
