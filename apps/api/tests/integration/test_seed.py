@@ -397,6 +397,50 @@ async def test_seed_rules_idempotent(superuser_conn: Conn) -> None:
     )
 
 
+# ---- S12 T2: the two dictionary rows (PLAN D4, CODE-PLAN CP3) ----
+
+_DICTIONARY_SQL = (
+    "SELECT key, storage, owner_levels, input_aliases, is_critical, allowed_sources, "
+    "confirm_agent_captures, enabled, revision FROM attribute_definitions "
+    "WHERE key IN ('color', 'fabric_type') ORDER BY key"
+)
+
+
+@pytest.mark.parametrize("profile", ["demo", "isolation"])
+async def test_seed_attribute_definitions_present(superuser_conn: Conn, profile: str) -> None:
+    assert await _seed(profile) == 0
+    rows = {r[0]: r for r in superuser_conn.execute(_DICTIONARY_SQL).fetchall()}
+    assert set(rows) == {"color", "fabric_type"}
+    assert rows["fabric_type"][3] == ["material"]
+    assert rows["color"][3] == []
+    for key in ("color", "fabric_type"):
+        assert rows[key][1] == "attributes"
+        assert "standalone" in rows[key][2]
+        assert rows[key][7] is True
+    assert rows["fabric_type"][4] is True
+    assert "ai" not in rows["fabric_type"][5]
+    assert rows["fabric_type"][6] is True
+
+
+async def test_seed_attribute_definitions_idempotent(superuser_conn: Conn) -> None:
+    assert await _seed("demo") == 0
+    first = superuser_conn.execute(_DICTIONARY_SQL).fetchall()
+    assert await _seed("demo") == 0
+    assert superuser_conn.execute(_DICTIONARY_SQL).fetchall() == first
+    # a stored row is never rewritten: an operator's change survives a rerun
+    superuser_conn.execute("UPDATE attribute_definitions SET enabled = false WHERE key = 'color'")
+    try:
+        assert await _seed("demo") == 0
+        enabled = _scalar(
+            superuser_conn, "SELECT enabled FROM attribute_definitions WHERE key = 'color'"
+        )
+        assert enabled is False
+    finally:
+        superuser_conn.execute(
+            "UPDATE attribute_definitions SET enabled = true WHERE key = 'color'"
+        )
+
+
 # ---- T21: the image role ----
 
 
