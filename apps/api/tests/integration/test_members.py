@@ -250,6 +250,31 @@ async def test_patch_member_admin_self_promote_owner_403(
     assert _member(auth_db, admin)[0] == "admin"  # type: ignore[index]
 
 
+@pytest.mark.parametrize("role", ["reviewer", "operator"])
+async def test_patch_member_admin_self_role_change_403(
+    api: httpx.AsyncClient, world: World, auth_db: Conn, role: str
+) -> None:
+    """S10c round-1 H2 (T88, PLAN Decision 9): an admin may not move itself to an approver or
+    publisher role; only an owner changes its own role."""
+    admin = world.user("admin@acme.test")
+    response = await _patch(api, world, "admin@acme.test", admin, {"role": role})
+    assert response.status_code == 403
+    assert response.json()["error"]["type"] == "PERMISSION_DENIED"
+    assert _member(auth_db, admin) == ("admin", True, False)
+    assert audit_rows(auth_db, "membership.role_changed") == []
+
+
+async def test_patch_member_admin_self_role_replay_ok(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    admin = world.user("admin@acme.test")
+    response = await _patch(api, world, "admin@acme.test", admin, {"role": "admin"})
+    assert response.status_code == 200
+    assert response.json()["role"] == "admin"
+    assert _member(auth_db, admin) == ("admin", True, False)
+    assert audit_rows(auth_db, "membership.role_changed") == []
+
+
 async def test_patch_member_admin_reactivates_owner_403(
     api: httpx.AsyncClient, world: World, auth_db: Conn
 ) -> None:

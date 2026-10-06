@@ -5,6 +5,8 @@
   - **Owner rule:** a caller whose (row) role is not `owner` may neither touch a member whose
     current role is `owner` nor grant `owner`, whatever the target (itself included) and whether
     it is active: an admin can never create, remove, demote, deactivate or reactivate an owner.
+  - **Self rule:** a non-owner never changes its own role (T88, PLAN Decision 9: an admin is not
+    an approver); replaying its current role is a no-op, and self-deactivation stays allowed.
   - The last-owner trigger runs at the statement (`SET CONSTRAINTS ... IMMEDIATE`), so leaving a
     tenant with no active owner is `OWN01` -> 409 `LAST_OWNER_REQUIRED` from this call.
   - Deactivation revokes that membership's refresh tokens (`membership_deactivated`).
@@ -49,6 +51,19 @@ def _owner_rule(principal: Principal, target: MemberRow, role: str | None) -> No
         raise ForbiddenError("only an owner grants or removes owner")
 
 
+def _self_rule(principal: Principal, target: MemberRow, role: str | None) -> None:
+    # T88 / PLAN Decision 9: an admin is not an approver, so a non-owner never changes its own
+    # role (an admin -> reviewer/operator would gain listing:approve or listing:publish).
+    # Replaying the current role stays a no-op 200; self-deactivation stays allowed.
+    if (
+        principal.role != "owner"
+        and target.user_id == principal.user_id
+        and role is not None
+        and role != target.role
+    ):
+        raise ForbiddenError("only an owner changes its own role")
+
+
 async def patch_member(
     principal: Principal,
     user_id: uuid.UUID,
@@ -63,6 +78,7 @@ async def patch_member(
         if target is None:
             raise NotFoundError("member")
         _owner_rule(principal, target, role)
+        _self_rule(principal, target, role)
         new_role = role if role is not None and role != target.role else None
         new_active = is_active if is_active is not None and is_active != target.is_active else None
         if new_role is None and new_active is None:
