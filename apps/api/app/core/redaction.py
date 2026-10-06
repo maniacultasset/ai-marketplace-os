@@ -9,7 +9,8 @@ Two layers:
 - **Values.** Inside any string: `Bearer <token>` (and `Basic` / `Token` after an
   `Authorization` key), JWT-shaped values, URL userinfo, denied query
   parameters (in URLs and in bare `a=1&b=2` strings) and the values of a Postgres
-  `Key (...)=(...)` DETAIL, which a unique violation puts into the traceback, and the
+  `Key (...)=(...)` DETAIL, which a unique violation puts into the traceback, the
+  `Failing row contains (...)` DETAIL of a NOT NULL or CHECK violation, and the
   `[parameters: ...]` that SQLAlchemy appends to a database error.
 
 Bounded time on attacker-chosen text: a string longer than `MAX_STR_CHARS` keeps its head and its
@@ -135,6 +136,9 @@ _DETAIL: Final = re.compile(
 )
 
 
+# A NOT NULL or CHECK violation's DETAIL lists the whole row (emails, password hashes, token
+# bytes); psycopg puts it into str(exc) and SQLAlchemy's error text repeats it.
+_FAILING_ROW: Final = re.compile(r"Failing row contains \([^\n]{0,8192}")
 # SQLAlchemy appends the bound parameters to a DBAPI error's text (`[parameters: {...}]`): an
 # INSERT's password hash or email would ride the traceback into a log line or a Sentry event.
 _SQL_PARAMETERS: Final = re.compile(r"\[parameters: [^\n]{0,8192}")
@@ -165,6 +169,8 @@ def redact_text(text: str) -> str:
     text = _truncate(text)
     if "[parameters: " in text:
         text = _SQL_PARAMETERS.sub(f"[parameters: {REDACTED}]", text)
+    if "Failing row contains (" in text:
+        text = _FAILING_ROW.sub(f"Failing row contains ({REDACTED})", text)
     if "Key (" in text:
         text = _DETAIL.sub(lambda m: f"Key ({m.group(1)})=({REDACTED})", text)
     if "eyJ" in text:

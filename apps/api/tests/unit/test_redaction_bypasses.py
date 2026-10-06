@@ -30,6 +30,24 @@ def test_redact_text_hides_secret(text: str) -> None:
 @pytest.mark.parametrize(
     "text",
     [
+        # psycopg CheckViolation / NotNullViolation text, as str(exc) and SQLAlchemy carry it.
+        'new row for relation "t" violates check constraint "t_b_check"\n'
+        f"DETAIL:  Failing row contains ({SECRET}@b.example, -1).",
+        'null value in column "n" of relation "users" violates not-null constraint\n'
+        f"DETAIL:  Failing row contains (1, {SECRET}@x.example, $argon2id${SECRET}, null).\n"
+        "[SQL: INSERT INTO users ...]",
+    ],
+)
+def test_redact_text_hides_failing_row(text: str) -> None:
+    out = redact_text(text)
+    assert SECRET not in out
+    assert f"Failing row contains ({REDACTED})" in out
+    assert "violates" in out
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
         "token refreshed for tenant 7",
         "basic plan selected",
         '{"token_type": "bearer", "expires_in": 3600}',
