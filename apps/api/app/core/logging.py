@@ -179,7 +179,7 @@ def _shared_processors() -> list[Processor]:
 
 def _renderer(settings: Settings) -> Processor:
     if settings.log_format == "console":
-        return structlog.dev.ConsoleRenderer(colors=False)
+        return structlog.dev.ConsoleRenderer(colors=False, event_key="message")
     return structlog.processors.JSONRenderer(sort_keys=False, ensure_ascii=False)
 
 
