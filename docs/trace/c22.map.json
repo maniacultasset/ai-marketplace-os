@@ -2099,7 +2099,7 @@
    "status": "conflict",
    "owner": "backend-db",
    "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1196; docs/architecture/BACKEND-ARCHITECTURE.md:3001; T95",
-   "note": "Auth as per-route dependency (Proposed, S10); candidate T-row, none yet"
+   "note": "Auth as per-route dependency (Proposed, S10); candidate T-row, none yet; built on default in S10, T95 open."
   },
   {
    "id": "R13529",

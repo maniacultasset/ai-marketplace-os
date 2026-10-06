@@ -122,7 +122,7 @@ jobs:
     timeout-minutes: 15
     env:
       APP_ENV: local
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/marketplace_os
+      DATABASE_URL: postgresql+psycopg://app_rw:ci_only_app_rw_not_a_real_password@localhost:5432/marketplace_os
       JWT_SECRET: ci_only_not_a_real_secret_at_least_32_chars
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

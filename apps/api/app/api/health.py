@@ -8,9 +8,11 @@ from typing import cast
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
+from app.api.v1.deps import public
 from app.services.health import ReadinessCheck
 
-router = APIRouter()
+# Public and never rate limited: a liveness probe must not depend on the database (CODE-PLAN S10 C6).
+router = APIRouter(dependencies=[public(rate_limited=False)])
 
 
 def readiness_from(request: Request) -> ReadinessCheck:

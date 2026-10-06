@@ -27,8 +27,11 @@
 - R6: `SCOPE_OK` is named only in `apps/api/app/db/**` and `apps/api/app/repositories/base.py`. Its
   two writers are `platform_scope` (`session.info`) and `TenantScopedRepository._select()` /
   `_scoped_outer()` (the statement option); the guard in `app/db/guard.py` is its only reader.
+- R7: `identity_scope` (the per-statement identity exception, BACKEND-ARCHITECTURE.md §9) is
+  named only in `apps/api/app/repositories/identity.py` and `apps/api/app/db/session.py`, which
+  defines it, in any import or lookup form R5 checks (a star import of `app.db.session` is R5's).
 
-`--rules R5,R6` limits the run to those rules (`lint-imports` runs R5 and R6; `api-lint` all).
+`--rules R5,R6,R7` limits the run to those rules (`lint-imports` runs R5-R7; `api-lint` all).
 
 Scope: `apps/api/app/**`, `apps/api/alembic/**`, `packages/schemas/src/**` and `scripts/**`,
 less the Python 3.9 doc tooling in `scripts/docgen/**` and `scripts/trace/**`. Stdlib only.
@@ -55,6 +58,7 @@ PLATFORM_SCOPE_ALLOWED = ("apps/api/app/admin", "scripts")
 PLATFORM_SCOPE_FILES = ("apps/api/app/cli.py", "apps/api/app/db/session.py")
 SCOPE_OK_ALLOWED = ("apps/api/app/db",)
 SCOPE_OK_FILES = ("apps/api/app/repositories/base.py",)
+IDENTITY_SCOPE_FILES = ("apps/api/app/db/session.py", "apps/api/app/repositories/identity.py")
 SQLALCHEMY_TEXT_MODULES = frozenset({"sqlalchemy", "sqlalchemy.sql", "sqlalchemy.sql.expression"})
 RAW_SQL_NAMES = frozenset({"text", "TextClause", "literal_column", "table", "TableClause", "DDL"})
 RAW_SQL_CALLS = frozenset(
@@ -84,14 +88,15 @@ APP_DB = "app.db"
 APP_DB_MODELS = "models"
 APP_DB_ALLOWED: dict[str, frozenset[str]] = {
     "session": frozenset({"unit_of_work", "platform_scope", "dispose_engine", "ping"}),
+    # identity_scope is R7's; app code outside app/db and app/repositories never reaches it.
     "guard": frozenset({"CrossTenantQueryError"}),
 }
 # Reported by R5/R6 instead, so each violation names one rule: `SCOPE_OK`, and a star import of
 # the module R5 or R6 watches.
-APP_DB_DEFERRED_NAMES = frozenset({"SCOPE_OK"})
+APP_DB_DEFERRED_NAMES = frozenset({"SCOPE_OK", "identity_scope"})
 APP_DB_DEFERRED_STARS = frozenset({"app.db.session", "app.db.guard"})
 ATTR_LOOKUPS = frozenset({"getattr", "setattr", "hasattr", "delattr"})
-ALL_RULES = frozenset({"R1", "R2", "R3", "R4", "R5", "R6"})
+ALL_RULES = frozenset({"R1", "R2", "R3", "R4", "R5", "R6", "R7"})
 
 
 @dataclass(frozen=True, order=True)
@@ -370,6 +375,12 @@ def check_file(relative: str, path: Path) -> list[Violation]:
             Violation(relative, n, "R6", f"{m} outside app/db and app/repositories/base.py")
             for n, m in _names(tree, "SCOPE_OK", "app.db.guard")
         ]
+    if relative not in IDENTITY_SCOPE_FILES:
+        found += [
+            Violation(relative, n, "R7", f"{m} outside app/repositories/identity.py")
+            # a star import of app.db.session is already R5's (and R4's) everywhere R7 applies
+            for n, m in _names(tree, "identity_scope", "")
+        ]
     return found
 
 
@@ -392,7 +403,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0] if __doc__ else None)
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="the repository root")
     parser.add_argument(
-        "--rules", type=_rules_arg, default=ALL_RULES, help="comma-separated, e.g. R5,R6"
+        "--rules", type=_rules_arg, default=ALL_RULES, help="comma-separated, e.g. R5,R6,R7"
     )
     args = parser.parse_args(argv)
     root: Path = args.root.resolve()

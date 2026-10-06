@@ -1756,7 +1756,7 @@
    "status": "conflict",
    "owner": "backend-db",
    "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1196; T95",
-   "note": "Plan validates tokens in a per-route dependency, not middleware (candidate row BA:3001)"
+   "note": "Plan validates tokens in a per-route dependency, not middleware (candidate row BA:3001); built on default in S10, T95 open."
   },
   {
    "id": "R12491",
@@ -1791,7 +1791,7 @@
    "status": "needs-client",
    "owner": "backend-db",
    "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1196; docs/architecture/BACKEND-ARCHITECTURE.md:2021; docs/architecture/BACKEND-ARCHITECTURE.md:3001; T95",
-   "note": "Site contradicts itself (L4949 vs L11531/L12498); plan uses require_role dependency, role from membership row"
+   "note": "Site contradicts itself (L4949 vs L11531/L12498); plan uses require_role dependency, role from membership row; built on default in S10, T95 open."
   },
   {
    "id": "R12498c",

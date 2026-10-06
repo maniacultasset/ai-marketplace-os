@@ -150,6 +150,24 @@ def test_test_db_sets_app_rw_scram_from_constant(repo_root: Path) -> None:
             assert "CI_APP_RW_PASSWORD" not in line and "ci_only_app_rw" not in line
 
 
+def test_bootstrap_db_sets_local_role_passwords(repo_root: Path) -> None:
+    """S10 C14: the local app logs in as app_rw and Alembic as migrator, so bootstrap-db sets
+    their local dev-only passwords (as SCRAM verifiers) unless the caller passes its own."""
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert "\nCI_MIGRATOR_PASSWORD := ci_only_migrator_not_a_real_password\n" in makefile
+    assert (
+        "\nMIGRATOR_SCRAM_CMD = printf '%s' '$(CI_MIGRATOR_PASSWORD)' | "
+        "uv run --frozen python scripts/db/scram_verifier.py\n" in makefile
+    )
+    recipe = _target(makefile, "bootstrap-db")
+    assert 'APP_RW_SCRAM="$${APP_RW_SCRAM:-$$($(APP_RW_SCRAM_CMD))}"' in recipe
+    assert 'MIGRATOR_SCRAM="$${MIGRATOR_SCRAM:-$$($(MIGRATOR_SCRAM_CMD))}"' in recipe
+    assert "-e APP_RW_SCRAM -e APP_RO_SCRAM -e MIGRATOR_SCRAM postgres" in recipe
+    for line in recipe.splitlines():
+        if "psql" in line:
+            assert "_PASSWORD" not in line and "ci_only_" not in line
+
+
 def test_tenant_isolation_migrates_then_runs_as_app_rw(repo_root: Path) -> None:
     makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
     assert (

@@ -16,6 +16,7 @@ from app.api.v1.routers import (
     jobs,
     listings,
     marketplaces,
+    members,
     products,
     rules,
     tenants,
@@ -24,6 +25,7 @@ from app.api.v1.routers import (
 router = APIRouter()
 for module in (
     auth,
+    members,
     tenants,
     brand,
     products,

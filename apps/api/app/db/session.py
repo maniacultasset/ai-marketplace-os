@@ -7,6 +7,14 @@ with the tenant guard, the tenant transaction boundary and `platform_scope()` (S
   `ConflictError` inside the service, never at teardown (KNOWN-ISSUES.md:50).
 - `platform_scope()` is the one cross-tenant bypass: read-only, as `app_platform_ro`, and always
   rolled back (DATABASE.md:154-158). It is the only writer of `session.info[SCOPE_OK]`.
+- `identity_session()` is the transaction of the public auth flows (login, refresh, logout), which
+  start with no tenant: `set_gucs()` sets `app.login_email`, `app.token_hash`, `app.user_id` and
+  `app.tenant_id` as the flow learns them (DATABASE.md:306-312), each in `session.info` too, so the
+  `after_begin` listener re-applies them on the next transaction.
+- `identity_scope(stmt)` stamps `SCOPE_OK` on one identity statement only (the BACKEND-ARCHITECTURE
+  §9 named exception: login, refresh and switch read the caller's own memberships and tokens across
+  tenants, which RLS narrows to the caller's rows). It never touches `session.info`, so the session
+  stays read-write as `app_rw`. Only `app.repositories.identity` may import it (repo rule R7).
 """
 
 from __future__ import annotations
@@ -16,9 +24,10 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from functools import lru_cache
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Connection, event, func, select, text
+from sqlalchemy import Connection, Executable, event, func, select, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -64,6 +73,15 @@ async def dispose_engine() -> None:
 
 
 USER_INFO_KEY = "user_id"
+LOGIN_EMAIL_INFO_KEY = "login_email"
+TOKEN_HASH_INFO_KEY = "token_hash"  # noqa: S105 - a session.info key
+# session.info key -> the transaction-local GUC the listener re-applies (DATABASE.md:131-132).
+_GUC_KEYS: tuple[tuple[str, str], ...] = (
+    (TENANT_INFO_KEY, "app.tenant_id"),
+    (USER_INFO_KEY, "app.user_id"),
+    (LOGIN_EMAIL_INFO_KEY, "app.login_email"),
+    (TOKEN_HASH_INFO_KEY, "app.token_hash"),
+)
 
 
 class AppSession(Session):
@@ -83,7 +101,7 @@ def _apply_transaction_context(
         connection.exec_driver_sql("SET TRANSACTION READ ONLY")
         connection.exec_driver_sql("SET LOCAL ROLE app_platform_ro")
         return
-    for key, guc in ((TENANT_INFO_KEY, "app.tenant_id"), (USER_INFO_KEY, "app.user_id")):
+    for key, guc in _GUC_KEYS:
         value = session.info.get(key)
         if value is not None:
             connection.execute(select(func.set_config(guc, str(value), True)))
@@ -125,6 +143,74 @@ async def unit_of_work(
             if mapped is not None:
                 raise mapped from exc
             raise
+
+
+async def _end(session: AsyncSession) -> None:
+    try:
+        await session.flush()
+        await session.commit()
+    except IntegrityError as exc:
+        raise to_conflict(exc) from exc
+
+
+async def _rollback_and_map(session: AsyncSession, exc: BaseException) -> None:
+    await session.rollback()
+    mapped = map_db_error(exc) if isinstance(exc, DBAPIError) else None
+    if mapped is not None:
+        raise mapped from exc
+
+
+@asynccontextmanager
+async def identity_session() -> AsyncIterator[AsyncSession]:
+    """The public auth flows' transaction: no tenant yet (`unit_of_work` needs one). Commits when
+    the block exits cleanly, rolls back otherwise; a guard refusal surfaces as its DomainError."""
+    async with get_sessionmaker()() as session:
+        try:
+            yield session
+            await _end(session)
+        except BaseException as exc:
+            await _rollback_and_map(session, exc)
+            raise
+
+
+async def set_gucs(
+    session: AsyncSession,
+    *,
+    tenant_id: UUID | None = None,
+    user_id: UUID | None = None,
+    login_email: str | None = None,
+    token_hash: bytes | None = None,
+) -> None:
+    """Set the given GUCs now (transaction-local) and for every later transaction of `session`.
+    `login_email` is lower-cased (the users_login policy compares `lower(email)`); `token_hash`
+    is the raw sha256, sent as hex (`app_token_hash()` decodes it). There is deliberately no
+    `job_id`: only the worker names a job (CODE-PLAN S10 L10)."""
+    values: list[tuple[str, str]] = []
+    if tenant_id is not None:
+        session.info[TENANT_INFO_KEY] = _require_uuid("tenant_id", tenant_id)
+        values.append(("app.tenant_id", str(tenant_id)))
+    if user_id is not None:
+        session.info[USER_INFO_KEY] = _require_uuid("user_id", user_id)
+        values.append(("app.user_id", str(user_id)))
+    if login_email is not None:
+        email = login_email.strip().lower()
+        if not email:
+            raise ValueError("login_email must not be blank")
+        session.info[LOGIN_EMAIL_INFO_KEY] = email
+        values.append(("app.login_email", email))
+    if token_hash is not None:
+        if not isinstance(token_hash, bytes) or len(token_hash) != 32:
+            raise ValueError("token_hash must be 32 bytes (sha256)")
+        session.info[TOKEN_HASH_INFO_KEY] = token_hash.hex()
+        values.append(("app.token_hash", token_hash.hex()))
+    for guc, value in values:
+        await session.execute(select(func.set_config(guc, value, True)))
+
+
+def identity_scope[StmtT: Executable](stmt: StmtT) -> StmtT:
+    """One identity statement past the tenant guard (per statement, never `session.info`)."""
+    stamped: Any = stmt.execution_options(**{SCOPE_OK: True})
+    return stamped  # type: ignore[no-any-return]
 
 
 @asynccontextmanager

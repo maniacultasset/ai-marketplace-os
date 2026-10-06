@@ -1,12 +1,15 @@
 """The frozen `/api/v1` surface: one row per operation (S3; BACKEND-ARCHITECTURE.md §5.2).
 
-`OPS` is the frozen list (35 operations; no dead-letter path, which is staff tooling per T82). It
+`OPS` is the frozen list (35 operations at S3, 38 with S10's switch and members; no dead-letter path,
+which is staff tooling per T82). It
 drives the routers (`route()`), the declared OpenAPI responses (`declared_responses()`), the
 parametrized surface tests and the case-matrix guard (`cases()`), so a route, its contract and its
 required tests cannot drift apart.
 
-Roles are provisional until S10 (D10): S10 derives `Operation.roles` from its permission matrix.
-`cases()` and `declared_responses()` read only `op.roles`, so the 403s follow that one field.
+Each operation names the one action it requires (`action`, CODE-PLAN S10 Q7; None for a public
+op), and `roles` is derived from it through the role x action matrix (`app/core/rbac.py`), so the
+registry, the runtime `require()` check and the declared 403s cannot drift apart. `cases()` and
+`declared_responses()` read only `op.roles`. Every operation carries `x-mkos-action` in OpenAPI.
 """
 
 from __future__ import annotations
@@ -16,7 +19,7 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any, Final, Literal, get_args
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi.responses import Response
 from mkos_schemas.auth import Role
 from mkos_schemas.codes import ErrorCode
@@ -26,10 +29,10 @@ from mkos_schemas.validation import ValidationResult, ValidationSummary
 from pydantic import BaseModel
 
 from app.api.errors import STATUS_MESSAGES, ErrorEnvelope, envelope_body
-from app.api.v1.deps import bearer_required
+from app.api.v1.deps import public, require
 from app.api.v1.examples import CALLBACK_LOCATION, SUCCESS_EXAMPLES
 from app.api.v1.schemas.analytics import AnalyticsSummary
-from app.api.v1.schemas.auth import MeOut, TokenResponse
+from app.api.v1.schemas.auth import MemberOut, MemberPage, MeOut, TokenResponse
 from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.images import ImageAccepted, ImageReportOut, UploadUrlOut
 from app.api.v1.schemas.imports import ImportAccepted, ImportRowPage
@@ -38,6 +41,7 @@ from app.api.v1.schemas.marketplaces import ConnectOut, MarketplaceAccountPage
 from app.api.v1.schemas.products import ProductOut, ProductPage
 from app.api.v1.schemas.rules import RulePage
 from app.api.v1.schemas.tenants import TenantOut
+from app.core.rbac import PUBLIC, Action, roles_for
 
 Case = Literal[
     "success",
@@ -84,11 +88,26 @@ class Operation:
     """The op's own 409 code (SKU_CONFLICT, STALE_VERSION, INVALID_STATUS_TRANSITION)."""
     maker_checker: bool = False
     oauth_state: bool = False
-    roles: frozenset[Role] = ALL_ROLES
+    action: Action | None = None
+    """The action `require()` checks (CODE-PLAN S10 Q7); None exactly when the op is public."""
+    roles: frozenset[Role] | None = None
+    """Derived from `action` through the matrix when not given; a public op holds ALL_ROLES."""
     extra_codes: Mapping[int, tuple[ErrorCode, ...]] = field(
         default_factory=lambda: MappingProxyType({})
     )
     """Codes beyond the D2 default for a status (login's 401, products_create's UNKNOWN_FACT_KEY)."""
+
+    def __post_init__(self) -> None:
+        if (self.action is None) is not self.public:
+            raise ValueError(f"{self.op_id}: a public op has no action; any other op needs one")
+        if self.roles is None:
+            derived = ALL_ROLES if self.action is None else roles_for(self.action)
+            object.__setattr__(self, "roles", derived)
+
+    @property
+    def policy(self) -> str:
+        """The `x-mkos-action` value: the action, or `public`."""
+        return PUBLIC if self.action is None else self.action.value
 
     @property
     def has_input(self) -> bool:
@@ -235,11 +254,19 @@ def is_stub(fn: object) -> bool:
     return getattr(fn, "__mkos_stub__", False) is True
 
 
+def _policy(op: Operation) -> Any:
+    if op.action is None:
+        return public()
+    return require(op.action)
+
+
 def route(
     router: APIRouter, op: Operation, **extra: Any
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Register `fn` for `op`: method, path, status, response model, declared responses,
-    `operation_id`, tag, and `bearer_required` unless the op is public."""
+    `operation_id`, tag, `x-mkos-action`, and the op's policy: `require(op.action)` (the verified
+    principal, the tenant limiter and the role check) or, for a public op, `public()` (the per-IP
+    limiter). A route therefore cannot leave out its role check or its limiter."""
 
     def decorate(fn: Callable[..., Any]) -> Callable[..., Any]:
         kwargs: dict[str, Any] = dict(extra)
@@ -255,7 +282,8 @@ def route(
             operation_id=op.op_id,
             summary=op.summary,
             tags=[op.group],
-            dependencies=[] if op.public else [Depends(bearer_required)],
+            dependencies=[_policy(op)],
+            openapi_extra={"x-mkos-action": op.policy},
             **kwargs,
         )
         return fn
@@ -263,115 +291,121 @@ def route(
     return decorate
 
 
-OWNER_OPERATOR: Final[frozenset[Role]] = frozenset({"owner", "operator"})
+A = Action
 _401: Final = MappingProxyType({401: (E.UNAUTHENTICATED,)})
 
 _ROWS: Final[tuple[Operation, ...]] = (
     # ---- auth (S10) ----
     Operation("auth_login", "POST", "/auth/login", 200, TokenResponse, "auth",
-              "Log in with email and password", "S10", public=True, has_body=True,
-              roles=NO_ROLES, extra_codes=_401),
+              "Log in with email and password", "S10", public=True, has_body=True, extra_codes=_401),
     Operation("auth_refresh", "POST", "/auth/refresh", 200, TokenResponse, "auth",
-              "Rotate the refresh token", "S10", public=True, has_body=True, roles=NO_ROLES,
+              "Rotate the refresh token", "S10", public=True, has_body=True,
               extra_codes=_401),
     Operation("auth_logout", "POST", "/auth/logout", 204, None, "auth",
-              "Revoke the refresh token", "S10", public=True, has_body=True, roles=NO_ROLES),
+              "Revoke the refresh token", "S10", public=True, has_body=True),
     Operation("auth_me", "GET", "/auth/me", 200, MeOut, "auth",
-              "The current principal and memberships", "S10"),
+              "The current principal and memberships", "S10", action=A.TENANT_READ),
+    Operation("auth_switch_tenant", "POST", "/auth/switch-tenant", 200, TokenResponse, "auth",
+              "Switch the active tenant: a new token pair for another of the caller's tenants",
+              "S10", has_body=True, body_ids=("target_tenant_id",), action=A.TENANT_READ),
+    # ---- members (S10) ----
+    Operation("members_list", "GET", "/members", 200, MemberPage, "members",
+              "List the tenant's members", "S10", query=("limit", "cursor"),
+              action=A.TEAM_MANAGE),
+    Operation("members_patch", "PATCH", "/members/{user_id}", 200, MemberOut, "members",
+              "Change a member's role or active flag (only an owner grants or removes owner)",
+              "S10", path_id="user_id", has_body=True, conflict_code=E.LAST_OWNER_REQUIRED,
+              action=A.TEAM_MANAGE),
     # ---- tenants and brand (S16) ----
     Operation("tenants_me", "GET", "/tenants/me", 200, TenantOut, "tenants",
-              "The brand profile", "S16"),
+              "The brand profile", "S16", action=A.TENANT_READ),
     Operation("brand_documents_upload", "POST", "/brand/documents", 202, JobAccepted, "brand",
-              "Upload a brand document for chunking", "S16", has_body=True, idempotency=True),
+              "Upload a brand document for chunking", "S16", has_body=True, idempotency=True, action=A.SETTINGS_MANAGE),
     # ---- products (S12, S13) ----
     Operation("products_create", "POST", "/products", 201, ProductOut, "products",
               "Create one product", "S12", has_body=True, body_ids=("images",),
-              conflict_code=E.SKU_CONFLICT, roles=OWNER_OPERATOR,
-              extra_codes=MappingProxyType({422: (E.UNKNOWN_FACT_KEY,)})),
+              conflict_code=E.SKU_CONFLICT,
+              extra_codes=MappingProxyType({422: (E.UNKNOWN_FACT_KEY,)}), action=A.PRODUCT_IMPORT),
     Operation("products_list", "GET", "/products", 200, ProductPage, "products",
-              "List products", "S12", query=("limit", "cursor")),
+              "List products", "S12", query=("limit", "cursor"), action=A.TENANT_READ),
     Operation("products_get", "GET", "/products/{product_id}", 200, ProductOut, "products",
-              "Read one product", "S12", path_id="product_id"),
+              "Read one product", "S12", path_id="product_id", action=A.TENANT_READ),
     Operation("products_bulk", "POST", "/products/bulk", 202, ImportAccepted, "products",
-              "Import products from a CSV file", "S13", has_body=True, idempotency=True,
-              roles=OWNER_OPERATOR),
+              "Import products from a CSV file", "S13", has_body=True, idempotency=True, action=A.PRODUCT_IMPORT),
     # ---- imports (S13) ----
     Operation("imports_get", "GET", "/imports/{import_id}", 200, ImportReport, "imports",
-              "The import report (counts; rows via /rows)", "S13", path_id="import_id"),
+              "The import report (counts; rows via /rows)", "S13", path_id="import_id", action=A.TENANT_READ),
     Operation("imports_rows", "GET", "/imports/{import_id}/rows", 200, ImportRowPage, "imports",
               "Import rows, optionally only failed ones", "S13", path_id="import_id",
-              query=("status", "limit", "cursor")),
+              query=("status", "limit", "cursor"), action=A.TENANT_READ),
     Operation("imports_rows_retry", "POST", "/imports/{import_id}/rows/retry", 202, JobAccepted,
               "imports", "Re-run the failed rows only", "S13", path_id="import_id",
-              idempotency=True, roles=OWNER_OPERATOR),
+              idempotency=True, action=A.PRODUCT_IMPORT),
     # ---- listings (S18, S19, S21) ----
     Operation("listings_generate", "POST", "/listings/generate", 202, JobAccepted, "listings",
               "Start AI generation", "S18", has_body=True, body_ids=("product_id",),
-              idempotency=True, roles=OWNER_OPERATOR),
+              idempotency=True, action=A.LISTING_GENERATE),
     Operation("listings_validate", "POST", "/listings/validate", 200, ValidationSummary,
               "listings", "Run schema, rules and vision checks (200 with passed=false on a rules "
-              "failure)", "S18", has_body=True, body_ids=("listing_id",)),
+              "failure)", "S18", has_body=True, body_ids=("listing_id",), action=A.LISTING_EDIT),
     Operation("listings_approve", "POST", "/listings/approve", 200, BatchResult, "listings",
               "Approve or reject a batch (maker-checker enforced)", "S19", has_body=True,
-              body_ids=("items[].listing_id",), idempotency=True, maker_checker=True,
-              roles=frozenset({"reviewer", "owner"})),
+              body_ids=("items[].listing_id",), idempotency=True, maker_checker=True, action=A.LISTING_APPROVE),
     Operation("listings_publish", "POST", "/listings/publish", 202, BatchAccepted, "listings",
               "Publish approved listings", "S21", has_body=True,
-              body_ids=("items[].listing_id",), idempotency=True, roles=OWNER_OPERATOR),
+              body_ids=("items[].listing_id",), idempotency=True, action=A.LISTING_PUBLISH),
     Operation("listings_list", "GET", "/listings", 200, ListingPage, "listings",
               "List listings (the review queue)", "S19",
-              query=("status", "marketplace", "product_id", "limit", "cursor")),
+              query=("status", "marketplace", "product_id", "limit", "cursor"), action=A.TENANT_READ),
     Operation("listings_get", "GET", "/listings/{listing_id}", 200, ListingDetail, "listings",
-              "Read one listing with its content and validation", "S19", path_id="listing_id"),
+              "Read one listing with its content and validation", "S19", path_id="listing_id", action=A.TENANT_READ),
     Operation("listings_status", "GET", "/listings/{listing_id}/status", 200, ListingStatusOut,
               "listings", "Listing status (a convenience alias; poll jobs instead)", "S18",
-              path_id="listing_id"),
+              path_id="listing_id", action=A.TENANT_READ),
     Operation("listings_content_patch", "PATCH", "/listings/{listing_id}/content", 200,
               ListingDetail, "listings", "Edit content (creates a new version)", "S18",
               path_id="listing_id", has_body=True, if_match=True,
-              conflict_code=E.STALE_VERSION, roles=OWNER_OPERATOR),
+              conflict_code=E.STALE_VERSION, action=A.LISTING_EDIT),
     Operation("listings_regenerate", "POST", "/listings/{listing_id}/regenerate", 202,
               JobAccepted, "listings", "Regenerate an existing listing", "S18",
-              path_id="listing_id", has_body=True, idempotency=True,
-              roles=frozenset({"owner", "operator", "reviewer"})),
+              path_id="listing_id", has_body=True, idempotency=True, action=A.LISTING_REGENERATE),
     Operation("listings_retry_fields", "POST", "/listings/{listing_id}/publish/retry-fields",
               202, JobAccepted, "listings", "Retry only the fields that failed to publish",
-              "S21", path_id="listing_id", idempotency=True, roles=OWNER_OPERATOR),
+              "S21", path_id="listing_id", idempotency=True, action=A.LISTING_PUBLISH),
     # ---- marketplaces (S15) ----
     Operation("marketplaces_connect", "POST", "/marketplaces/connect", 200, ConnectOut,
-              "marketplaces", "Start OAuth; returns the consent URL", "S15", has_body=True,
-              roles=frozenset({"owner", "admin"})),
+              "marketplaces", "Start OAuth; returns the consent URL", "S15", has_body=True, action=A.MARKETPLACE_CONNECT),
     Operation("marketplaces_callback", "GET", "/marketplaces/{marketplace}/callback", 303, None,
               "marketplaces", "OAuth return: 303 to the app with an opaque pending handle",
-              "S15", public=True, query=("code", "state"), oauth_state=True, roles=NO_ROLES),
+              "S15", public=True, query=("code", "state"), oauth_state=True),
     Operation("marketplaces_accounts", "GET", "/marketplaces/accounts", 200,
               MarketplaceAccountPage, "marketplaces", "Connected accounts and their health",
-              "S15", query=("limit", "cursor")),
+              "S15", query=("limit", "cursor"), action=A.TENANT_READ),
     # ---- images (S17b) ----
     Operation("images_upload_url", "POST", "/images/upload-url", 200, UploadUrlOut, "images",
               "A signed upload URL for one image", "S17b", has_body=True,
-              body_ids=("product_id",)),
+              body_ids=("product_id",), action=A.PRODUCT_IMPORT),
     Operation("images_upload", "POST", "/images/upload", 202, ImageAccepted, "images",
               "Upload an image (or name an uploaded key) and start the checks", "S17b",
-              has_body=True, body_ids=("product_id", "storage_key"), idempotency=True),
+              has_body=True, body_ids=("product_id", "storage_key"), idempotency=True, action=A.PRODUCT_IMPORT),
     Operation("images_report", "GET", "/images/{image_id}/report", 200, ImageReportOut, "images",
-              "The image compliance reports", "S17b", path_id="image_id"),
+              "The image compliance reports", "S17b", path_id="image_id", action=A.TENANT_READ),
     # ---- rules (S14b) ----
     Operation("rules_list", "GET", "/rules", 200, RulePage, "rules", "List rules", "S14b",
-              query=("marketplace", "category", "limit", "cursor")),
+              query=("marketplace", "category", "limit", "cursor"), action=A.TENANT_READ),
     Operation("rules_dry_run", "POST", "/rules/dry-run", 200, ValidationResult, "rules",
-              "Run the Rules Engine on a draft listing; saves nothing", "S14b", has_body=True),
+              "Run the Rules Engine on a draft listing; saves nothing", "S14b", has_body=True, action=A.LISTING_EDIT),
     # ---- jobs (S13) ----
     Operation("jobs_get", "GET", "/jobs/{job_id}", 200, JobEnvelope, "jobs",
-              "The job envelope, read from job_runs", "S13", path_id="job_id"),
+              "The job envelope, read from job_runs", "S13", path_id="job_id", action=A.TENANT_READ),
     Operation("jobs_cancel", "POST", "/jobs/{job_id}/cancel", 200, JobEnvelope, "jobs",
               "Cancel a queued job", "S13", path_id="job_id", idempotency=True,
-              conflict_code=E.INVALID_STATUS_TRANSITION),
+              conflict_code=E.INVALID_STATUS_TRANSITION, action=A.LISTING_GENERATE),
     # ---- analytics (S23) ----
     Operation("analytics_get", "GET", "/analytics", 200, AnalyticsSummary, "analytics",
-              "Operational metrics (alias of /analytics/summary)", "S23", query=("from", "to")),
+              "Operational metrics (alias of /analytics/summary)", "S23", query=("from", "to"), action=A.ANALYTICS_READ),
     Operation("analytics_summary", "GET", "/analytics/summary", 200, AnalyticsSummary,
-              "analytics", "Operational metrics for a date range", "S23", query=("from", "to")),
+              "analytics", "Operational metrics for a date range", "S23", query=("from", "to"), action=A.ANALYTICS_READ),
 )  # fmt: skip
 
 OPS: Final[Mapping[str, Operation]] = MappingProxyType({op.op_id: op for op in _ROWS})

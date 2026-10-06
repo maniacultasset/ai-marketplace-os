@@ -28,6 +28,8 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
     "auth_login": {"email": "owner@fabrica.example", "password": "pw"},
     "auth_refresh": {"refresh_token": "rt"},
     "auth_logout": {"refresh_token": "rt"},
+    "auth_switch_tenant": {"target_tenant_id": ID},
+    "members_patch": {"role": "operator"},
     "products_create": {"sku": "FAB-1", "title": "Kurta"},
     "listings_generate": {"product_id": ID, "marketplace": "amazon"},
     "listings_validate": {"listing_id": ID},

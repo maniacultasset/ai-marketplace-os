@@ -68,12 +68,12 @@ api-lint:
 	uv run --frozen python scripts/ci/check_repo_rules.py
 	uv run --frozen python scripts/ci/run_pip_audit.py
 
-# import-linter, repo rules R5/R6 (platform_scope, SCOPE_OK), then the tenant_scope_checked grep (CANON-ADDENDUM.md §6): the literal may appear
+# import-linter, repo rules R5-R7 (platform_scope, SCOPE_OK, identity_scope), then the tenant_scope_checked grep (CANON-ADDENDUM.md §6): the literal may appear
 # only in apps/api/app/db/{guard,session}.py. Zero hits pass until S9 adds them.
 .PHONY: lint-imports
 lint-imports:
 	PYTHONPATH=apps/api uv run --frozen lint-imports --config .importlinter
-	uv run --frozen python scripts/ci/check_repo_rules.py --rules R5,R6
+	uv run --frozen python scripts/ci/check_repo_rules.py --rules R5,R6,R7
 	@hits="$$(grep -rl --include='*.py' tenant_scope_checked apps packages scripts)" || [ $$? -eq 1 ]; \
 	bad=0; \
 	for hit in $$hits; do \
@@ -92,10 +92,16 @@ PSQL := docker compose exec -T postgres psql -U postgres -v ON_ERROR_STOP=1
 
 # Role passwords: SCRAM verifiers only (scripts/db/scram_verifier.py), passed by name from the
 # caller's environment; unset or empty skips that role. Never `NAME=value` on this line.
+# The local app logs in as app_rw and Alembic as migrator (ENV.md DATABASE_URL and
+# ALEMBIC_DATABASE_URL, CODE-PLAN S10 Q5): unless the caller passes its own verifiers, the
+# local dev-only passwords below are set (the same constants .env.example names; local and CI
+# clusters only, never a real secret).
 .PHONY: bootstrap-db
 bootstrap-db:
 	$(PSQL) -d marketplace_os -f - < scripts/db/0000_bootstrap.sql
-	docker compose exec -T -e APP_RW_SCRAM -e APP_RO_SCRAM -e MIGRATOR_SCRAM postgres \
+	APP_RW_SCRAM="$${APP_RW_SCRAM:-$$($(APP_RW_SCRAM_CMD))}" \
+	  MIGRATOR_SCRAM="$${MIGRATOR_SCRAM:-$$($(MIGRATOR_SCRAM_CMD))}" \
+	  docker compose exec -T -e APP_RW_SCRAM -e APP_RO_SCRAM -e MIGRATOR_SCRAM postgres \
 	  psql -U postgres -v ON_ERROR_STOP=1 -X -q -d marketplace_os -f - < scripts/db/0000_role_passwords.sql
 
 # The test databases: mos_test for api-tests, mos_iso for tenant-isolation (never marketplace_os).
@@ -123,10 +129,12 @@ app-rw-scram:
 TEST_DATABASE_URL ?= postgresql+psycopg://postgres:postgres@localhost:$(PG_HOST_PORT)/mos_test
 CI_JWT_SECRET := ci_only_not_a_real_secret_at_least_32_chars
 CI_APP_RW_PASSWORD := ci_only_app_rw_not_a_real_password
+CI_MIGRATOR_PASSWORD := ci_only_migrator_not_a_real_password
 # tenant-isolation: the admin login migrates mos_iso and builds fixtures; the suite logs in as app_rw.
 ISO_ADMIN_URL ?= postgresql+psycopg://postgres:postgres@localhost:$(PG_HOST_PORT)/mos_iso
 ISO_DATABASE_URL ?= postgresql+psycopg://app_rw:$(CI_APP_RW_PASSWORD)@localhost:$(PG_HOST_PORT)/mos_iso
 APP_RW_SCRAM_CMD = printf '%s' '$(CI_APP_RW_PASSWORD)' | uv run --frozen python scripts/db/scram_verifier.py
+MIGRATOR_SCRAM_CMD = printf '%s' '$(CI_MIGRATOR_PASSWORD)' | uv run --frozen python scripts/db/scram_verifier.py
 COV_FAIL_UNDER ?= 70
 
 # Alembic on mos_test before pytest (CANON.md:136): upgrade, check, downgrade, upgrade, then squawk

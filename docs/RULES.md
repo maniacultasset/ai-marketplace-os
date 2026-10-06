@@ -47,11 +47,14 @@ Source: `README.md` "Start here"; `docs/STATE.md` "Start here" 0 and 2, "GCP by 
 
 Register: `CANON.md` "Naming register"; its "Amendments by ADR" section wins. Most often wrong:
 `/api/v1` (never `/v1`; unversioned only `/healthz /readyz /openapi.json /docs /internal/admin`),
-plural `marketplaces`, `tenant_id` (never `brand_id`; in HTTP only from the JWT `tid` claim),
+plural `marketplaces`, `tenant_id` (never `brand_id`; in HTTP only from the JWT `tid` claim; the
+one carve-out is `POST /api/v1/auth/switch-tenant`'s `target_tenant_id`, checked against the
+caller's own active memberships, ADR-0016),
 `APP_ENV` (never `ENV`), `ErrorSource` never `api`. Only the backend worker writes `agent_runs`; a
 job timeout is `JOB_TIMEOUT` on a `failed` row.
 
-Source: `CANON.md:5-13`, `:33-57`, `:64`, `:68`, `:113`; `CANON-ADDENDUM.md` §19-§21; ADR-0004 §4, §5.
+Source: `CANON.md:5-13`, `:33-57`, `:64`, `:68`, `:113`; `CANON-ADDENDUM.md` §19-§21; ADR-0004 §4, §5;
+ADR-0016.
 
 ## 4. Libraries
 

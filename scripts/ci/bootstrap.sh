@@ -5,6 +5,9 @@
 # SQL mimic. The seed refuses any APP_ENV but local, so both runs pass APP_ENV=local.
 # It never copies .env and never runs `docker compose down -v`.
 # The API port, the compose project and the image tag follow .worktree.env (ADR-0011 amendment).
+# The app logs in as app_rw and Alembic as migrator (ENV.md; CODE-PLAN S10 Q5): the DSNs come from
+# the environment or .env (CI's copy of .env.example) with the host rewritten for the compose
+# network, and the auth leg first proves the app's own login is neither superuser nor BYPASSRLS.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -75,6 +78,18 @@ for bucket in "${buckets[@]}"; do
     || { echo "bootstrap: bucket $bucket missing" >&2; exit 1; }
 done
 
+# The process environment wins over .env, as it does for Settings (pydantic-settings).
+env_url() {
+  local value="${!1:-}"
+  if [ -z "$value" ] && [ -f .env ]; then value="$(grep "^$1=" .env | head -n 1 | cut -d= -f2-)"; fi
+  printf '%s' "$value"
+}
+on_network() { sed -E 's#@(localhost|127\.0\.0\.1):[0-9]+/#@postgres:5432/#'; }
+app_dsn="$(env_url DATABASE_URL | on_network)"
+migrator_dsn="$(env_url ALEMBIC_DATABASE_URL | on_network)"
+case "$app_dsn" in postgresql+psycopg://app_rw:*@postgres:5432/marketplace_os) ;; *) echo "bootstrap: .env DATABASE_URL must log in as app_rw" >&2; exit 1 ;; esac
+case "$migrator_dsn" in postgresql+psycopg://migrator:*@postgres:5432/marketplace_os) ;; *) echo "bootstrap: .env ALEMBIC_DATABASE_URL must log in as migrator" >&2; exit 1 ;; esac
+
 make bootstrap-db
 uv run --frozen alembic -c apps/api/alembic.ini upgrade head
 uv run --frozen python -m app.cli seed --profile demo
@@ -109,7 +124,7 @@ stop_server
 docker rm -f "$e2e_container" >/dev/null 2>&1 || true
 docker run -d --name "$e2e_container" --network "$network" --env-file .env \
   -e LOG_FORMAT=json -e APP_ENV=local -e APP_ROLE=api -e PORT=8080 \
-  -e DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/marketplace_os \
+  -e DATABASE_URL="$app_dsn" \
   -p "127.0.0.1:${api_port}:8080" "$image" >/dev/null
 up=0
 for _ in $(seq 1 30); do
@@ -151,9 +166,31 @@ if probes:
     sys.exit("bootstrap: the probes were logged: %r" % probes[:3])
 print("bootstrap: s11 e2e leg OK (%d JSON lines)" % len(parsed))
 '
+# S10 auth leg (CODE-PLAN S10 C14). First, over the app's own DSN: it is app_rw, not a superuser
+# and not BYPASSRLS (a superuser ignores RLS even under FORCE, DATABASE.md:129).
+docker run --rm --network "$network" -e APP_ENV=local -e APP_ROLE=shell -e DATABASE_URL="$app_dsn" "$image" -c '
+import os, psycopg
+url = os.environ["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://", 1)
+with psycopg.connect(url, connect_timeout=5) as conn:
+    row = conn.execute(
+        "SELECT current_user, r.rolsuper, r.rolbypassrls FROM pg_roles r WHERE r.rolname = current_user"
+    ).fetchone()
+if tuple(row) != ("app_rw", False, False):
+    raise SystemExit("bootstrap: the app connects as %r, want app_rw without superuser or BYPASSRLS" % (row,))
+print("bootstrap: the app connects as app_rw (no superuser, no BYPASSRLS)")
+'
+# The one setup step that is not HTTP: no seed user has two memberships (s9 PLAN AC5), so the
+# migrator gives operator@acme.test the reviewer role in bharat (idempotent).
+docker compose exec -T postgres psql -U postgres -d marketplace_os -v ON_ERROR_STOP=1 -X -q -c "
+SET SESSION AUTHORIZATION migrator;
+INSERT INTO public.tenant_memberships (tenant_id, user_id, role)
+SELECT t.id, u.id, 'reviewer' FROM public.tenants t, public.users u
+ WHERE t.slug = 'bharat' AND lower(u.email) = 'operator@acme.test'
+ON CONFLICT (tenant_id, user_id) DO NOTHING;"
+python3 scripts/ci/auth_e2e.py "http://127.0.0.1:${api_port}"
 docker rm -f "$e2e_container" >/dev/null
-# The Cloud Run migrate job's path through the image (local compose password only).
-docker run --rm --network "$network" -e APP_ENV=local -e APP_ROLE=migrate -e ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/marketplace_os "$image"
+# The Cloud Run migrate job's path through the image, as migrator (local dev-only password).
+docker run --rm --network "$network" -e APP_ENV=local -e APP_ROLE=migrate -e ALEMBIC_DATABASE_URL="$migrator_dsn" "$image"
 # The image's seed role (SEED_PROFILE unset: the entrypoint's demo default); idempotent after the host seed.
-docker run --rm --network "$network" -e APP_ENV=local -e APP_ROLE=seed -e DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/marketplace_os -e ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/marketplace_os "$image"
+docker run --rm --network "$network" -e APP_ENV=local -e APP_ROLE=seed -e DATABASE_URL="$app_dsn" -e ALEMBIC_DATABASE_URL="$migrator_dsn" "$image"
 make bootstrap-mimic

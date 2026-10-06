@@ -67,9 +67,11 @@ def ci_env(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
 @pytest.fixture(scope="module")
 def v1_app(tmp_path_factory: pytest.TempPathFactory) -> Iterator[FastAPI]:
     """One `create_app()` under the CI env block, shared by a module's parametrized surface tests
-    (the per-test `make_app` would rebuild the app and its OpenAPI for every case)."""
+    (the per-test `make_app` would rebuild the app and its OpenAPI for every case). Its auth is
+    the presence-only fake (`tests/support/fake_auth.py`): these suites have no database."""
     from app.core.config import get_settings
     from app.main import create_app
+    from tests.support.fake_auth import install_fake_auth
 
     with pytest.MonkeyPatch.context() as mp:
         mp.chdir(tmp_path_factory.mktemp("v1_app"))
@@ -80,17 +82,20 @@ def v1_app(tmp_path_factory: pytest.TempPathFactory) -> Iterator[FastAPI]:
         mp.setenv("JWT_SECRET", CI_JWT_SECRET)
         get_settings.cache_clear()
         try:
-            yield create_app()
+            yield install_fake_auth(create_app())
         finally:
             get_settings.cache_clear()
 
 
 @pytest.fixture
 def make_app(ci_env: dict[str, str]) -> Callable[[], FastAPI]:
+    """A fresh `create_app()` with the presence-only fake auth (no database)."""
+
     def factory() -> FastAPI:
         from app.main import create_app
+        from tests.support.fake_auth import install_fake_auth
 
-        return create_app()
+        return install_fake_auth(create_app())  # type: ignore[no-any-return]
 
     return factory
 

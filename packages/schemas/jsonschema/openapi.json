@@ -2303,6 +2303,111 @@
         "title": "MeOut",
         "type": "object"
       },
+      "MemberOut": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "email": {
+            "maxLength": 320,
+            "minLength": 3,
+            "pattern": "^[^@\\s]+@[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "role": {
+            "enum": [
+              "owner",
+              "operator",
+              "reviewer",
+              "admin"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "email",
+          "role",
+          "is_active"
+        ],
+        "title": "MemberOut",
+        "type": "object"
+      },
+      "MemberPage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/MemberOut"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageInfo"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ],
+        "title": "MemberPage",
+        "type": "object"
+      },
+      "MemberPatch": {
+        "additionalProperties": false,
+        "description": "At least one of `role` and `is_active`.",
+        "properties": {
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "owner",
+                  "operator",
+                  "reviewer",
+                  "admin"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          }
+        },
+        "title": "MemberPatch",
+        "type": "object"
+      },
       "MembershipOut": {
         "properties": {
           "role": {
@@ -2770,6 +2875,22 @@
         ],
         "title": "Severity",
         "type": "string"
+      },
+      "SwitchTenantRequest": {
+        "additionalProperties": false,
+        "description": "`target_tenant_id`, not `tenant_id`: the one body field naming a tenant is the switch\ntarget, checked against the caller's own active memberships (ADR-0006; CODE-PLAN S10 Q9).",
+        "properties": {
+          "target_tenant_id": {
+            "format": "uuid",
+            "title": "Target Tenant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_tenant_id"
+        ],
+        "title": "SwitchTenantRequest",
+        "type": "object"
       },
       "TenantOut": {
         "properties": {
@@ -3365,7 +3486,8 @@
         "summary": "Operational metrics (alias of /analytics/summary)",
         "tags": [
           "analytics"
-        ]
+        ],
+        "x-mkos-action": "analytics:read"
       }
     },
     "/api/v1/analytics/summary": {
@@ -3583,12 +3705,13 @@
         "summary": "Operational metrics for a date range",
         "tags": [
           "analytics"
-        ]
+        ],
+        "x-mkos-action": "analytics:read"
       }
     },
     "/api/v1/auth/login": {
       "post": {
-        "description": "Email and password in; access and refresh tokens and the user's memberships out.",
+        "description": "Email and password in; access and refresh tokens and the user's memberships out. The\nactive tenant is the most recently used one. Every refusal is the same 401.",
         "operationId": "auth_login",
         "requestBody": {
           "content": {
@@ -3827,12 +3950,13 @@
         "summary": "Log in with email and password",
         "tags": [
           "auth"
-        ]
+        ],
+        "x-mkos-action": "public"
       }
     },
     "/api/v1/auth/logout": {
       "post": {
-        "description": "Revoke the refresh token.",
+        "description": "Revoke the refresh token's whole family. Always 204: an invalid, expired, unknown or\nalready revoked token is a no-op. An access token already issued stays valid until it\nexpires (CANON.md:82).",
         "operationId": "auth_logout",
         "requestBody": {
           "content": {
@@ -4013,12 +4137,13 @@
         "summary": "Revoke the refresh token",
         "tags": [
           "auth"
-        ]
+        ],
+        "x-mkos-action": "public"
       }
     },
     "/api/v1/auth/me": {
       "get": {
-        "description": "The current principal: user, active tenant, role and memberships.",
+        "description": "The current principal: user, active tenant, role (from the membership row) and the live\nmemberships.",
         "operationId": "auth_me",
         "responses": {
           "200": {
@@ -4168,12 +4293,13 @@
         "summary": "The current principal and memberships",
         "tags": [
           "auth"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/auth/refresh": {
       "post": {
-        "description": "Rotate the refresh token; reusing a rotated one revokes the whole chain.",
+        "description": "Rotate the refresh token; reusing a rotated one revokes the whole chain. Refreshes must\nbe serialised by the client: a concurrent second refresh of one token counts as reuse.",
         "operationId": "auth_refresh",
         "requestBody": {
           "content": {
@@ -4412,7 +4538,296 @@
         "summary": "Rotate the refresh token",
         "tags": [
           "auth"
-        ]
+        ],
+        "x-mkos-action": "public"
+      }
+    },
+    "/api/v1/auth/switch-tenant": {
+      "post": {
+        "description": "A new token pair, in a new family, for another of the caller's active tenants (the one\nbody field naming a tenant: ADR-0006, CODE-PLAN S10 Q9). A tenant the caller is not an\nactive member of, or that is not live, is 404. Tokens already issued keep their `tid`.",
+        "operationId": "auth_switch_tenant",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SwitchTenantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "access_token": "eyJhbGciOiJIUzI1NiJ9.example.signature",
+                  "expires_in": 1800,
+                  "memberships": [
+                    {
+                      "role": "owner",
+                      "tenant_id": "0b1c2d3e-0000-4000-8000-000000000001",
+                      "tenant_name": "Fabrica"
+                    }
+                  ],
+                  "refresh_token": "rt_example_opaque_value",
+                  "token_type": "bearer"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "UNAUTHENTICATED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "UNAUTHENTICATED",
+                          "field": "request",
+                          "message": "Authentication required.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Authentication required.",
+                    "status": 401,
+                    "type": "UNAUTHENTICATED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "NOT_FOUND",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "NOT_FOUND",
+                          "field": "request",
+                          "message": "Not found.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Not found.",
+                    "status": 404,
+                    "type": "NOT_FOUND"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found. Codes: `NOT_FOUND`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "details": [
+                      {
+                        "loc": [
+                          "body",
+                          "field"
+                        ],
+                        "msg": "Field required"
+                      }
+                    ],
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "Request validation failed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Request validation failed.",
+                    "status": 422,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed. Codes: `VALIDATION_FAILED`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 501 `NOT_IMPLEMENTED` until the owner step lands, 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Switch the active tenant: a new token pair for another of the caller's tenants",
+        "tags": [
+          "auth"
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/brand/documents": {
@@ -4497,6 +4912,44 @@
               }
             },
             "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PERMISSION_DENIED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PERMISSION_DENIED",
+                          "field": "request",
+                          "message": "Permission denied.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Permission denied.",
+                    "status": 403,
+                    "type": "PERMISSION_DENIED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
           },
           "409": {
             "content": {
@@ -4706,7 +5159,8 @@
         "summary": "Upload a brand document for chunking",
         "tags": [
           "brand"
-        ]
+        ],
+        "x-mkos-action": "settings:manage"
       }
     },
     "/api/v1/images/upload": {
@@ -4791,6 +5245,44 @@
               }
             },
             "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PERMISSION_DENIED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PERMISSION_DENIED",
+                          "field": "request",
+                          "message": "Permission denied.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Permission denied.",
+                    "status": 403,
+                    "type": "PERMISSION_DENIED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
           },
           "404": {
             "content": {
@@ -5038,7 +5530,8 @@
         "summary": "Upload an image (or name an uploaded key) and start the checks",
         "tags": [
           "images"
-        ]
+        ],
+        "x-mkos-action": "product:import"
       }
     },
     "/api/v1/images/upload-url": {
@@ -5111,6 +5604,44 @@
               }
             },
             "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PERMISSION_DENIED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PERMISSION_DENIED",
+                          "field": "request",
+                          "message": "Permission denied.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Permission denied.",
+                    "status": 403,
+                    "type": "PERMISSION_DENIED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
           },
           "404": {
             "content": {
@@ -5320,7 +5851,8 @@
         "summary": "A signed upload URL for one image",
         "tags": [
           "images"
-        ]
+        ],
+        "x-mkos-action": "product:import"
       }
     },
     "/api/v1/images/{image_id}/report": {
@@ -5580,7 +6112,8 @@
         "summary": "The image compliance reports",
         "tags": [
           "images"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/imports/{import_id}": {
@@ -5826,7 +6359,8 @@
         "summary": "The import report (counts; rows via /rows)",
         "tags": [
           "imports"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/imports/{import_id}/rows": {
@@ -6141,7 +6675,8 @@
         "summary": "Import rows, optionally only failed ones",
         "tags": [
           "imports"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/imports/{import_id}/rows/retry": {
@@ -6473,7 +7008,8 @@
         "summary": "Re-run the failed rows only",
         "tags": [
           "imports"
-        ]
+        ],
+        "x-mkos-action": "product:import"
       }
     },
     "/api/v1/jobs/{job_id}": {
@@ -6725,7 +7261,8 @@
         "summary": "The job envelope, read from job_runs",
         "tags": [
           "jobs"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/jobs/{job_id}/cancel": {
@@ -6818,6 +7355,44 @@
               }
             },
             "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PERMISSION_DENIED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PERMISSION_DENIED",
+                          "field": "request",
+                          "message": "Permission denied.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Permission denied.",
+                    "status": 403,
+                    "type": "PERMISSION_DENIED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
           },
           "404": {
             "content": {
@@ -7027,7 +7602,8 @@
         "summary": "Cancel a queued job",
         "tags": [
           "jobs"
-        ]
+        ],
+        "x-mkos-action": "listing:generate"
       }
     },
     "/api/v1/listings": {
@@ -7320,7 +7896,8 @@
         "summary": "List listings (the review queue)",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/listings/approve": {
@@ -7694,7 +8271,8 @@
         "summary": "Approve or reject a batch (maker-checker enforced)",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "listing:approve"
       }
     },
     "/api/v1/listings/generate": {
@@ -8065,7 +8643,8 @@
         "summary": "Start AI generation",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "listing:generate"
       }
     },
     "/api/v1/listings/publish": {
@@ -8441,7 +9020,8 @@
         "summary": "Publish approved listings",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "listing:publish"
       }
     },
     "/api/v1/listings/validate": {
@@ -8554,6 +9134,44 @@
               }
             },
             "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PERMISSION_DENIED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PERMISSION_DENIED",
+                          "field": "request",
+                          "message": "Permission denied.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Permission denied.",
+                    "status": 403,
+                    "type": "PERMISSION_DENIED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
           },
           "404": {
             "content": {
@@ -8763,7 +9381,8 @@
         "summary": "Run schema, rules and vision checks (200 with passed=false on a rules failure)",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "listing:edit"
       }
     },
     "/api/v1/listings/{listing_id}": {
@@ -9101,7 +9720,8 @@
         "summary": "Read one listing with its content and validation",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/listings/{listing_id}/content": {
@@ -9527,7 +10147,8 @@
         "summary": "Edit content (creates a new version)",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "listing:edit"
       }
     },
     "/api/v1/listings/{listing_id}/publish/retry-fields": {
@@ -9860,7 +10481,8 @@
         "summary": "Retry only the fields that failed to publish",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "listing:publish"
       }
     },
     "/api/v1/listings/{listing_id}/regenerate": {
@@ -10248,7 +10870,8 @@
         "summary": "Regenerate an existing listing",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "listing:regenerate"
       }
     },
     "/api/v1/listings/{listing_id}/status": {
@@ -10492,7 +11115,8 @@
         "summary": "Listing status (a convenience alias; poll jobs instead)",
         "tags": [
           "listings"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/marketplaces/accounts": {
@@ -10732,7 +11356,8 @@
         "summary": "Connected accounts and their health",
         "tags": [
           "marketplaces"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/marketplaces/connect": {
@@ -11009,7 +11634,8 @@
         "summary": "Start OAuth; returns the consent URL",
         "tags": [
           "marketplaces"
-        ]
+        ],
+        "x-mkos-action": "marketplace:connect"
       }
     },
     "/api/v1/marketplaces/{marketplace}/callback": {
@@ -11226,7 +11852,663 @@
         "summary": "OAuth return: 303 to the app with an opaque pending handle",
         "tags": [
           "marketplaces"
-        ]
+        ],
+        "x-mkos-action": "public"
+      }
+    },
+    "/api/v1/members": {
+      "get": {
+        "description": "The tenant's members, active or not, oldest membership first.",
+        "operationId": "members_list",
+        "parameters": [
+          {
+            "description": "Page size, 1..200 (default 50).",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1..200 (default 50).",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque `page.next_cursor` from the previous page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 512,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque `page.next_cursor` from the previous page.",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "display_name": "Asha",
+                      "email": "owner@fabrica.example",
+                      "is_active": true,
+                      "role": "owner",
+                      "user_id": "0b1c2d3e-0000-4000-8000-000000000002"
+                    },
+                    {
+                      "display_name": "Ravi",
+                      "email": "ravi@fabrica.example",
+                      "is_active": true,
+                      "role": "reviewer",
+                      "user_id": "0b1c2d3e-0000-4000-8000-000000000003"
+                    }
+                  ],
+                  "page": {
+                    "has_more": false,
+                    "limit": 50
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "UNAUTHENTICATED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "UNAUTHENTICATED",
+                          "field": "request",
+                          "message": "Authentication required.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Authentication required.",
+                    "status": 401,
+                    "type": "UNAUTHENTICATED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PERMISSION_DENIED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PERMISSION_DENIED",
+                          "field": "request",
+                          "message": "Permission denied.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Permission denied.",
+                    "status": 403,
+                    "type": "PERMISSION_DENIED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "details": [
+                      {
+                        "loc": [
+                          "body",
+                          "field"
+                        ],
+                        "msg": "Field required"
+                      }
+                    ],
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "Request validation failed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Request validation failed.",
+                    "status": 422,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed. Codes: `VALIDATION_FAILED`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 501 `NOT_IMPLEMENTED` until the owner step lands, 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List the tenant's members",
+        "tags": [
+          "members"
+        ],
+        "x-mkos-action": "team:manage"
+      }
+    },
+    "/api/v1/members/{user_id}": {
+      "patch": {
+        "description": "Change one member's role or active flag. A member of another tenant is 404; an admin\ntouching an owner, or granting owner, is 403; leaving no active owner is 409\nLAST_OWNER_REQUIRED. Deactivating revokes that member's refresh tokens.",
+        "operationId": "members_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "display_name": "Ravi",
+                  "email": "ravi@fabrica.example",
+                  "is_active": true,
+                  "role": "operator",
+                  "user_id": "0b1c2d3e-0000-4000-8000-000000000003"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MemberOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "UNAUTHENTICATED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "UNAUTHENTICATED",
+                          "field": "request",
+                          "message": "Authentication required.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Authentication required.",
+                    "status": 401,
+                    "type": "UNAUTHENTICATED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PERMISSION_DENIED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PERMISSION_DENIED",
+                          "field": "request",
+                          "message": "Permission denied.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Permission denied.",
+                    "status": 403,
+                    "type": "PERMISSION_DENIED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "NOT_FOUND",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "NOT_FOUND",
+                          "field": "request",
+                          "message": "Not found.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Not found.",
+                    "status": 404,
+                    "type": "NOT_FOUND"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found. Codes: `NOT_FOUND`."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "LAST_OWNER_REQUIRED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "LAST_OWNER_REQUIRED",
+                          "field": "request",
+                          "message": "The request conflicts with the current state.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "The request conflicts with the current state.",
+                    "status": 409,
+                    "type": "LAST_OWNER_REQUIRED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request conflicts with the current state. Codes: `LAST_OWNER_REQUIRED`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "details": [
+                      {
+                        "loc": [
+                          "body",
+                          "field"
+                        ],
+                        "msg": "Field required"
+                      }
+                    ],
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "Request validation failed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Request validation failed.",
+                    "status": 422,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed. Codes: `VALIDATION_FAILED`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 501 `NOT_IMPLEMENTED` until the owner step lands, 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Change a member's role or active flag (only an owner grants or removes owner)",
+        "tags": [
+          "members"
+        ],
+        "x-mkos-action": "team:manage"
       }
     },
     "/api/v1/products": {
@@ -11492,7 +12774,8 @@
         "summary": "List products",
         "tags": [
           "products"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       },
       "post": {
         "description": "Create one product. The SKU is unique per brand (409 SKU_CONFLICT); an unknown attribute\nkey is 422 UNKNOWN_FACT_KEY.",
@@ -11857,7 +13140,8 @@
         "summary": "Create one product",
         "tags": [
           "products"
-        ]
+        ],
+        "x-mkos-action": "product:import"
       }
     },
     "/api/v1/products/bulk": {
@@ -12189,7 +13473,8 @@
         "summary": "Import products from a CSV file",
         "tags": [
           "products"
-        ]
+        ],
+        "x-mkos-action": "product:import"
       }
     },
     "/api/v1/products/{product_id}": {
@@ -12444,7 +13729,8 @@
         "summary": "Read one product",
         "tags": [
           "products"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/rules": {
@@ -12719,7 +14005,8 @@
         "summary": "List rules",
         "tags": [
           "rules"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/rules/dry-run": {
@@ -12821,6 +14108,44 @@
               }
             },
             "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PERMISSION_DENIED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PERMISSION_DENIED",
+                          "field": "request",
+                          "message": "Permission denied.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.0.0",
+                      "status": "failed"
+                    },
+                    "message": "Permission denied.",
+                    "status": 403,
+                    "type": "PERMISSION_DENIED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
           },
           "413": {
             "content": {
@@ -12992,7 +14317,8 @@
         "summary": "Run the Rules Engine on a draft listing; saves nothing",
         "tags": [
           "rules"
-        ]
+        ],
+        "x-mkos-action": "listing:edit"
       }
     },
     "/api/v1/tenants/me": {
@@ -13146,7 +14472,8 @@
         "summary": "The brand profile",
         "tags": [
           "tenants"
-        ]
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/healthz": {

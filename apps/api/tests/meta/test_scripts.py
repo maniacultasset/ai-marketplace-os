@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import re
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 from tests.meta.test_compose import canon_local_bucket_names
@@ -228,11 +230,15 @@ def test_prove_gates_per_project(repo_root: Path) -> None:
     for match in legs:
         line = match.group(0)
         assert 'COMPOSE_PROJECT_NAME="prove-gates-bootstrap-${self_project}"' in line
+        # S10 C14: bootstrap refuses a superuser app login; the legs pass the role logins
         assert (
-            "DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/"
-            in line
+            "DATABASE_URL=postgresql+psycopg://app_rw:ci_only_app_rw_not_a_real_password@"
+            "localhost:${PG_HOST_PORT:-5432}/" in line
         )
-        assert "ALEMBIC_DATABASE_URL=" in line
+        assert (
+            "ALEMBIC_DATABASE_URL=postgresql+psycopg://migrator:ci_only_migrator_not_a_real_password@"
+            "localhost:${PG_HOST_PORT:-5432}/" in line
+        )
         assert "${PG_HOST_PORT:-5432}" in line
         assert "S3_ENDPOINT_URL=http://localhost:${MINIO_API_HOST_PORT:-9000}" in line
         assert "PORT=${API_HOST_PORT:-8000}" in line
@@ -285,7 +291,8 @@ def test_bootstrap_runs_alembic_image_migrate_and_mimic(repo_root: Path) -> None
     assert text.index("scripts/ci/check_image.sh") < migrate_at < text.index("make bootstrap-mimic")
     run = text[text.rindex("docker run", 0, migrate_at) : text.index("\n", migrate_at)]
     assert '--network "$network"' in run
-    assert "ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/" in run
+    # S10 C14: as the migrator login from .env, rewritten onto the compose network
+    assert '-e ALEMBIC_DATABASE_URL="$migrator_dsn"' in run
     assert '"$image"' in run
     assert "networks" in text and '"default"' in text
 
@@ -360,7 +367,9 @@ def test_check_image_probes_the_api_surface(repo_root: Path) -> None:
     text = (repo_root / "scripts" / "ci" / "check_image.sh").read_text(encoding="utf-8")
     assert "-o -path /src/apps/api/app_mock" in text
     assert '[ "$code" = "401" ]' in text
-    assert '[ "$code" = "501" ]' in text
+    # S10: an unverified token is refused (401) before any database; the auth leg proves the 501
+    assert text.count('[ "$code" = "401" ]') == 2
+    assert '[ "$code" = "501" ]' not in text
     assert "-H 'Authorization: Bearer x'" in text
     assert "x-request-id: " in text
     assert "from app.api.v1.surface import OPS; print(len(OPS))" in text
@@ -430,8 +439,9 @@ def test_bootstrap_seeds_after_migrate(repo_root: Path) -> None:
     run = text[text.rindex("docker run", 0, image_seed) : text.index("\n", image_seed)]
     assert '--network "$network"' in run and "APP_ENV=local" in run
     assert "SEED_PROFILE" not in run  # unset: the entrypoint's demo default
-    for name in ("DATABASE_URL", "ALEMBIC_DATABASE_URL"):
-        assert f"-e {name}=postgresql+psycopg://postgres:postgres@postgres:5432/" in run
+    # S10 C14: the seed writes tenant rows as app_rw and platform rows as migrator
+    assert '-e DATABASE_URL="$app_dsn"' in run
+    assert '-e ALEMBIC_DATABASE_URL="$migrator_dsn"' in run
 
 
 def test_prove_gates_has_s14a_legs(repo_root: Path) -> None:
@@ -563,3 +573,153 @@ def test_prove_gates_has_s10b_legs(repo_root: Path) -> None:
     assert seed is not None
     assert "DROP POLICY t_tenant ON public.listings" in seed.group(1)
     assert 'down_revision = "\'"$head"' in seed.group(1)
+
+
+# ---- S10 C14: the auth leg on the image, the app as app_rw (CODE-PLAN S10 Q5) ----
+
+
+def _bootstrap_code(repo_root: Path) -> str:
+    return _code((repo_root / "scripts" / "ci" / "bootstrap.sh").read_text(encoding="utf-8"))
+
+
+def test_bootstrap_asserts_app_rw(repo_root: Path) -> None:
+    code = _bootstrap_code(repo_root)
+    assert "postgres:postgres@" not in code
+    assert 'app_dsn="$(env_url DATABASE_URL | on_network)"' in code
+    assert 'migrator_dsn="$(env_url ALEMBIC_DATABASE_URL | on_network)"' in code
+    assert "postgresql+psycopg://app_rw:*@postgres:5432/marketplace_os) ;;" in code
+    assert "postgresql+psycopg://migrator:*@postgres:5432/marketplace_os) ;;" in code
+    serve = code[code.index('docker run -d --name "$e2e_container"') :]
+    assert '-e DATABASE_URL="$app_dsn"' in serve[: serve.index('"$image"')]
+    check = code.index("SELECT current_user, r.rolsuper, r.rolbypassrls")
+    assert '("app_rw", False, False)' in code[check : check + 400]
+    # the role check runs over the app's own DSN, before any auth HTTP step
+    assert code.rindex('-e DATABASE_URL="$app_dsn"', 0, check) > code.index("s11 e2e leg OK")
+    assert check < code.index("scripts/ci/auth_e2e.py")
+
+
+def _auth_steps(repo_root: Path) -> list[tuple[str, int]]:
+    """`(label, wanted status)` of every `leg.expect(...)` and `leg.login(..., want=...)` call in
+    the auth leg, in source order."""
+    import ast
+
+    tree = ast.parse((repo_root / "scripts" / "ci" / "auth_e2e.py").read_text(encoding="utf-8"))
+    steps: list[tuple[int, int, str, int]] = []
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
+            continue
+        name = node.func.attr
+        if name == "expect" and len(node.args) >= 2:
+            label, want = node.args[0], node.args[1]
+            constants = isinstance(label, ast.Constant) and isinstance(want, ast.Constant)
+            if constants and isinstance(label.value, str) and isinstance(want.value, int):  # type: ignore[attr-defined]
+                steps.append((node.lineno, node.col_offset, label.value, want.value))  # type: ignore[attr-defined]
+        if name == "login":
+            wants = [k.value for k in node.keywords if k.arg == "want"]
+            email = node.args[0] if node.args else None
+            if wants and isinstance(wants[0], ast.Constant) and isinstance(email, ast.Constant):
+                status, address = wants[0].value, email.value
+                if isinstance(status, int) and isinstance(address, str):
+                    steps.append((node.lineno, node.col_offset, f"login {address}", status))
+    return [(label, want) for _, _, label, want in sorted(steps)]
+
+
+def test_bootstrap_has_auth_leg(repo_root: Path) -> None:
+    code = _bootstrap_code(repo_root)
+    leg = code.index('python3 scripts/ci/auth_e2e.py "http://127.0.0.1:${api_port}"')
+    rm = code.index('docker rm -f "$e2e_container" >/dev/null', leg)
+    assert code.index("s11 e2e leg OK") < leg < rm < code.index("APP_ROLE=migrate")
+    steps = _auth_steps(repo_root)
+    for step in (
+        ("me", 200),
+        ("a verified token reaches a stub", 501),
+        ("reviewer generate", 403),
+        ("refresh reuse", 401),
+        ("refresh after reuse", 401),
+        ("refresh after logout", 401),
+        ("switch to a tenant not mine", 404),
+        ("patch another tenant's member", 404),
+        ("demote the last owner", 409),
+        ("login admin@bharat.test", 429),
+    ):
+        assert step in steps, step
+
+
+def test_bootstrap_has_switch_and_members_happy_path(repo_root: Path) -> None:
+    code = _bootstrap_code(repo_root)
+    setup = code.index("SET SESSION AUTHORIZATION migrator;")
+    assert "WHERE t.slug = 'bharat' AND lower(u.email) = 'operator@acme.test'" in code[setup:]
+    assert "ON CONFLICT (tenant_id, user_id) DO NOTHING" in code[setup:]
+    assert setup < code.index("scripts/ci/auth_e2e.py")
+    steps = _auth_steps(repo_root)
+    order = [
+        ("switch to bharat", 200),
+        ("me after switch", 200),
+        ("me on the old token", 200),
+        ("list members", 200),
+        ("promote reviewer", 200),
+        ("an operator patches a member", 403),
+        ("demote back", 200),
+        ("deactivate", 200),
+        ("refresh after deactivation", 401),
+        ("login reviewer@acme.test", 401),
+        ("reactivate", 200),
+    ]
+    positions = [steps.index(step) for step in order]
+    assert positions == sorted(positions)
+    script = (repo_root / "scripts" / "ci" / "auth_e2e.py").read_text(encoding="utf-8")
+    # HTTP only: the script opens no database connection and runs no subprocess
+    body = script.split('"""', 2)[2]
+    for banned in ("psycopg", "subprocess", "docker", "psql"):
+        assert banned not in body, banned
+
+
+S10C_LEGS = {
+    "api-tests-route-without-role": ("seed_route_without_role", "test_every_route_declares_role"),
+    "api-tests-limiter-off": ("seed_limiter_off", "test_rate_limit_sixth_login_429"),
+}
+
+
+def test_prove_gates_has_s10c_legs(repo_root: Path) -> None:
+    """S10c (CODE-PLAN C15): a route with no policy and a login without its limiter each turn
+    api-tests red on the test that guards them; the S3 case-matrix legs seed a route that is
+    still a stub (S10 implemented auth_me)."""
+    code = _code((repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8"))
+    docker = code.index('if [ "$with_docker" -eq 1 ]; then')
+    for name, (seed, regex) in S10C_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} api-tests '([^']*)' (\S+) (.*)$", code)
+        assert leg is not None, name
+        assert (leg.group(1), leg.group(2)) == (regex, seed), name
+        assert 'COMPOSE_PROJECT_NAME="$self_project" make api-tests' in leg.group(3)
+        assert code.index(f"leg {name} ") > docker
+        assert re.search(rf"(?m)^{seed}\(\) \{{", code), seed
+    route = re.search(r"(?m)^seed_route_without_role\(\) \{(.*?)^\}", code, re.S)
+    assert route is not None and "dependencies=[_policy(op)]" in route.group(1)
+    limiter = re.search(r"(?m)^seed_limiter_off\(\) \{(.*?)^\}", code, re.S)
+    assert limiter is not None and "enforce_login_limit(request, body.email)" in limiter.group(1)
+    assert "tenants_me: missing endpoint cases" in code
+    assert "tenants_me: presence-only bearer_required" in code
+    assert "auth_me: " not in code
+
+
+def _env_example_value(repo_root: Path, key: str) -> str:
+    text = (repo_root / ".env.example").read_text(encoding="utf-8")
+    found = re.search(rf"(?m)^{key}=(.*)$", text)
+    assert found is not None, key
+    return found.group(1)
+
+
+def test_ci_bootstrap_job_env_uses_app_roles(
+    repo_root: Path, load_yaml: Callable[[Path], Any]
+) -> None:
+    """S10c round-1 H1: the process env wins over `.env` in bootstrap.sh's env_url(), so the
+    bootstrap job's own env must log in as app_rw (DATABASE_URL) and migrator
+    (ALEMBIC_DATABASE_URL), the same DSNs `.env.example` gives the local app."""
+    workflow = load_yaml(repo_root / ".github" / "workflows" / "ci-api.yml")
+    env = workflow["jobs"]["bootstrap"].get("env") or {}
+    if "DATABASE_URL" in env:
+        assert env["DATABASE_URL"].startswith("postgresql+psycopg://app_rw:")
+        assert env["DATABASE_URL"] == _env_example_value(repo_root, "DATABASE_URL")
+    if "ALEMBIC_DATABASE_URL" in env:
+        assert env["ALEMBIC_DATABASE_URL"].startswith("postgresql+psycopg://migrator:")
+        assert env["ALEMBIC_DATABASE_URL"] == _env_example_value(repo_root, "ALEMBIC_DATABASE_URL")
