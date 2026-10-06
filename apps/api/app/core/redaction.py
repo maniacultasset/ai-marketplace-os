@@ -8,7 +8,8 @@ Two layers:
   short ones, so `tokens_in`, `tokens_out`, `idempotency_key` and `request_id` survive.
 - **Values.** Inside any string: `Bearer <token>`, JWT-shaped values, URL userinfo, denied query
   parameters (in URLs and in bare `a=1&b=2` strings) and the values of a Postgres
-  `Key (...)=(...)` DETAIL, which a unique violation puts into the traceback.
+  `Key (...)=(...)` DETAIL, which a unique violation puts into the traceback, and the
+  `[parameters: ...]` that SQLAlchemy appends to a database error.
 
 Bounded time on attacker-chosen text: a string longer than `MAX_STR_CHARS` keeps its head and its
 tail (a traceback's raise site is at the end) around a marker before any pattern runs, and every
@@ -126,6 +127,11 @@ _DETAIL: Final = re.compile(
 )
 
 
+# SQLAlchemy appends the bound parameters to a DBAPI error's text (`[parameters: {...}]`): an
+# INSERT's password hash or email would ride the traceback into a log line or a Sentry event.
+_SQL_PARAMETERS: Final = re.compile(r"\[parameters: [^\n]{0,8192}")
+
+
 def _userinfo(match: re.Match[str]) -> str:
     whole = match.group(0)
     if ":" in whole[3:]:
@@ -149,6 +155,8 @@ def _truncate(text: str) -> str:
 def redact_text(text: str) -> str:
     """The value patterns, on a string cut to `MAX_STR_CHARS` first."""
     text = _truncate(text)
+    if "[parameters: " in text:
+        text = _SQL_PARAMETERS.sub(f"[parameters: {REDACTED}]", text)
     if "Key (" in text:
         text = _DETAIL.sub(lambda m: f"Key ({m.group(1)})=({REDACTED})", text)
     if "eyJ" in text:

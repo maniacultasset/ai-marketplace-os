@@ -139,6 +139,21 @@ def test_redacts_unique_violation_detail(text: str, columns: str) -> None:
     assert "Zq9" not in out
 
 
+def test_redacts_sqlalchemy_error_parameters() -> None:
+    text = (
+        "(psycopg.errors.UniqueViolation) duplicate key value violates unique constraint\n"
+        "[SQL: INSERT INTO users (email, hashed_password) VALUES (%(email)s, %(hp)s)]\n"
+        "[parameters: {'email': 'a@b.example', 'hp': '$argon2id$Zq9'}]\n"
+        "(Background on this error at: https://sqlalche.me/e/20/gkpj)"
+    )
+    out = redact(text)
+    assert f"[parameters: {REDACTED}]\n" in out
+    assert "a@b" not in out
+    assert "Zq9" not in out
+    assert "[SQL: INSERT INTO users (email, hashed_password)" in out
+    assert redact(out) == out
+
+
 @pytest.mark.parametrize(
     "value",
     [
@@ -202,6 +217,7 @@ ADVERSARIAL = {
     "detail": "Key (" * 200_000,
     "detail_unterminated": "Key (a)=(" + "z" * 1_000_000,
     "detail_repeated": "Key (a)=(" * 110_000,
+    "sql_parameters": "[parameters: " * 80_000,
 }
 
 

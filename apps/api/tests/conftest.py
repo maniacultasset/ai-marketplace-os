@@ -5,6 +5,9 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
+import io
+import json
+import logging
 import re
 import sys
 from collections.abc import Callable, Iterator
@@ -183,3 +186,51 @@ def load_script(relative: str) -> ModuleType:
 @pytest.fixture(scope="session")
 def script() -> Callable[[str], ModuleType]:
     return load_script
+
+
+class LogCapture:
+    """The JSON lines written by `configure_logging(settings, stream=...)`."""
+
+    def __init__(self) -> None:
+        self.stream = io.StringIO()
+
+    def text(self) -> str:
+        return self.stream.getvalue()
+
+    def lines(self) -> list[dict[str, Any]]:
+        return [json.loads(line) for line in self.text().splitlines() if line.strip()]
+
+    def clear(self) -> None:
+        self.stream.seek(0)
+        self.stream.truncate()
+
+
+def reset_logging() -> None:
+    """Undo `configure_logging()`: drop its root handler and structlog's configuration."""
+    import structlog
+
+    root = logging.getLogger()
+    for handler in list(root.handlers):
+        if getattr(handler, "_mkos_root_handler", False):
+            root.removeHandler(handler)
+            handler.close()
+    structlog.reset_defaults()
+
+
+@pytest.fixture
+def log_lines() -> Iterator[Callable[..., LogCapture]]:
+    """`start(**settings)` (re)configures logging into a StringIO and returns the capture. Call it
+    after `create_app()`, which configures logging to stdout."""
+
+    def start(**overrides: Any) -> LogCapture:
+        from app.core.config import Settings
+        from app.core.logging import configure_logging
+
+        values: dict[str, Any] = {"app_env": "local", "app_role": "shell", "log_format": "json"}
+        values.update(overrides)
+        capture = LogCapture()
+        configure_logging(Settings(_env_file=None, **values), stream=capture.stream)
+        return capture
+
+    yield start
+    reset_logging()
