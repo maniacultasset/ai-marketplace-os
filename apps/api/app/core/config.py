@@ -6,11 +6,14 @@
   `SystemExit` whose message holds env-var names and error types only, never a value.
 - Boot requirements depend on `APP_ROLE` (ADR-0013 §1): `api` needs DATABASE_URL and JWT_SECRET,
   `worker` needs DATABASE_URL, `migrate` needs ALEMBIC_DATABASE_URL, `shell` nothing more.
+  Outside `APP_ENV=local`, `api` and `worker` also need SENTRY_DSN (CANON-ADDENDUM.md §14); a
+  blank value counts as missing.
 - There is no module-level `settings`: call `get_settings()` where the value is needed.
 """
 
 from __future__ import annotations
 
+import logging
 from functools import lru_cache
 from typing import Final, Literal
 
@@ -32,6 +35,16 @@ COMMITTED_JWT_SECRETS: Final[frozenset[str]] = frozenset(
 COMMITTED_JWT_SECRET_PREFIXES: Final[tuple[str, ...]] = ("dev_only", "ci_only", "local_only")
 
 _PSYCOPG_URL: Final[str] = r"^postgresql\+psycopg://"
+
+OtelSampler = Literal[
+    "always_on",
+    "always_off",
+    "traceidratio",
+    "parentbased_always_on",
+    "parentbased_always_off",
+    "parentbased_traceidratio",
+]
+"""The OpenTelemetry SDK's built-in sampler names (OTEL_TRACES_SAMPLER)."""
 
 
 class Settings(BaseSettings):
@@ -134,9 +147,17 @@ class Settings(BaseSettings):
     sentry_traces_sample_rate: float = Field(default=0.1, ge=0, le=1, allow_inf_nan=False)
     otel_service_name: str = "marketplace-os-api"
     otel_exporter_otlp_endpoint: str | None = None
-    otel_traces_sampler: str = "parentbased_traceidratio"
+    otel_traces_sampler: OtelSampler = "parentbased_traceidratio"
     otel_traces_sampler_arg: float = Field(default=0.1, ge=0, le=1, allow_inf_nan=False)
     alert_slack_webhook: str | None = Field(default=None, repr=False)
+
+    @field_validator("sentry_dsn", "gcp_project_id", mode="before")
+    @classmethod
+    def _blank_is_none(cls, value: object) -> object:
+        # `.env.example` ships `SENTRY_DSN=` and `GCP_PROJECT_ID=`: blank means unset.
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     @field_validator("embedding_dimensions", mode="before")
     @classmethod
@@ -177,6 +198,10 @@ def _boot_errors(s: Settings) -> list[str]:
         errors.append(f"APP_ROLE={s.app_role} requires {', '.join(missing)}")
     if s.app_env != "local" and s.jwt_secret is not None and _is_committed_jwt_secret(s.jwt_secret):
         errors.append(f"APP_ENV={s.app_env} refuses a committed or dev-prefixed JWT_SECRET")
+    if s.app_env != "local" and s.app_role in ("api", "worker") and s.sentry_dsn is None:
+        errors.append(f"APP_ENV={s.app_env} requires SENTRY_DSN for APP_ROLE={s.app_role}")
+    if s.log_level.upper() not in logging.getLevelNamesMapping():
+        errors.append("LOG_LEVEL is not a logging level")
     return errors
 
 

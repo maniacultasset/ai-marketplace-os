@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 UNAVAILABLE = {"status": "unavailable"}
 OK = {"status": "ok"}
 PRIVATE_JWT = "Zq9-not-committed-private-secret-32+"  # neither a Canon literal nor dev-prefixed
+TEST_SENTRY_DSN = "https://public@o0.ingest.example.invalid/0"  # never resolvable (.invalid)
 
 
 def _client(app: FastAPI) -> TestClient:
@@ -104,6 +105,7 @@ def test_docs_and_openapi_served(
 
     monkeypatch.setenv("APP_ENV", app_env)
     monkeypatch.setenv("JWT_SECRET", PRIVATE_JWT)
+    monkeypatch.setenv("SENTRY_DSN", TEST_SENTRY_DSN)
     get_settings.cache_clear()
     client = _client(create_app())
     assert client.get("/docs").status_code == 200
@@ -251,6 +253,7 @@ def test_docs_and_openapi_off_in_production(
 
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("JWT_SECRET", PRIVATE_JWT)
+    monkeypatch.setenv("SENTRY_DSN", TEST_SENTRY_DSN)
     monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://app_rw:pw@127.0.0.1:5432/x")
     get_settings.cache_clear()
     app = create_app()

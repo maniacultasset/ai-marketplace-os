@@ -57,6 +57,7 @@ def test_export_ignores_app_env_production(tmp_path: Path) -> None:
         "prod.json",
         APP_ENV="production",
         JWT_SECRET="a-production-shaped-secret-that-is-not-committed-0123",
+        SENTRY_DSN="https://public@o0.ingest.example.invalid/0",
     )
     assert local == production
 
