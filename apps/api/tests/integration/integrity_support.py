@@ -234,3 +234,106 @@ def decision(
             **columns,
         )
     )
+
+
+PUBLISH_EVENTS = frozenset({"publish", "retry_publish", "auto_resubmit", "resume_publish"})
+DIGEST = bytes(range(32))  # the facts digest the approval relied on
+
+
+def submission(conn: Conn, fl: Flow, job_id: UUID, **columns: Any) -> UUID:
+    """A `pending` attempt-1 `create` of v1 by the operator, with the approval's facts digest."""
+    from . import factories as f
+
+    n = uuid4().hex
+    defaults: dict[str, Any] = {
+        "tenant_id": fl.tenant_id,
+        "listing_id": fl.listing_id,
+        "listing_version_id": fl.v1,
+        "marketplace": "amazon",
+        "marketplace_account_id": fl.account_id,
+        "job_id": job_id,
+        "attempt": 1,
+        "operation": "create",
+        "payload_sha256": bytes.fromhex(n + n),
+        "payload_storage_key": f"{fl.tenant_id}/submissions/{n}.json",
+        "facts_digest": DIGEST,
+        "idempotency_key": n,
+        "requested_by_user_id": fl.operator,
+        "actor_type": "user",
+    }
+    return uuid_of(f.insert(conn, "listing_submissions", **{**defaults, **columns}))
+
+
+def approved_flow(conn: Conn, fl: Flow) -> UUID:
+    """v1 approved by the reviewer and current, with its `approve` decision (facts digest)."""
+    decision(conn, fl, "approve", fl.v1, fl.reviewer, facts_digest=DIGEST)
+    return approve_current(conn, fl)
+
+
+def prepare_edge(
+    conn: Conn,
+    edge: tuple[str, str, str, str, bool, bool, list[str] | None, list[str] | None],
+) -> tuple[Flow, sql.Composed, list[Any]]:
+    """A listing in the edge's `from` state with everything its event needs, and the guarded
+    UPDATE that takes the edge (DATABASE.md §6.1 event rules, §5.3 statement order)."""
+    src, to, event, _, needs_approval, voids, allowed, from_reason = edge
+    fl = flow(conn)
+    set_gucs(conn, user_id=fl.reviewer, job_id=uuid4())
+    cols: dict[str, Any] = {}
+    if src in ("approved", "publishing", "published") or needs_approval:
+        approved_flow(conn, fl)
+    if src == "publishing":
+        force_state(conn, fl.listing_id, "approved")
+        publish_job = queued_job(conn, fl, "listing_publish")
+        conn.execute(
+            "UPDATE job_runs SET status = 'running', started_at = now(), "
+            "lease_expires_at = now() + interval '1 hour' WHERE id = %s",
+            (publish_job,),
+        )
+    if src == "published":
+        cols.update(
+            published_version_id=fl.v1,
+            first_published_at="2026-10-01T00:00:00Z",
+            marketplace_state="processing",
+        )
+    force_state(conn, fl.listing_id, src, from_reason[0] if from_reason else None, **cols)
+
+    update: dict[str, Any] = {}
+    if voids:
+        update["approved_version_id"] = None
+    if event == "edit":
+        update["current_version_id"] = next_version(
+            conn,
+            fl.tenant_id,
+            fl.listing_id,
+            fl.v1,
+            "edit",
+            fl.operator,
+            edited_by=fl.operator,
+            current=False,
+        )
+    if event == "approve":
+        approved_flow(conn, fl)
+    if event in ("reject", "reject_regenerate"):
+        decision(conn, fl, "reject", fl.v1, fl.reviewer)
+    if event in ("generate", "regenerate", "reject_regenerate"):
+        job = queued_job(conn, fl, "listing_generate")
+        if event == "regenerate":
+            decision(conn, fl, "regenerate_requested", fl.v1, fl.reviewer, regeneration_job_id=job)
+    if event in PUBLISH_EVENTS:
+        queued_job(conn, fl, "listing_publish")
+    if event == "submission_accepted":
+        sub = submission(conn, fl, publish_job)
+        conn.execute(
+            "UPDATE listing_submissions SET outcome = 'accepted', responded_at = now() WHERE id = %s",
+            (sub,),
+        )
+        update.update(
+            published_version_id=fl.v1,
+            first_published_at="2026-10-06T00:00:00Z",
+            marketplace_state="processing",
+        )
+    query, params = transition_sql(
+        fl.listing_id, to, event, allowed[0] if allowed else None, **update
+    )
+    return fl, query, params
