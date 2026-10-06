@@ -63,9 +63,7 @@ Every step runs locally on Docker PostgreSQL 17 + pgvector; Cloud SQL is for sta
 | S4 | OpenTofu: import, KMS, GCS, secrets, WIF, audit, Scheduler, `deploy-staging.yml` | S1, P0-U8, EP dec. 15 | written and checked locally (`tofu fmt -check`, `tofu validate`); `tofu plan`/`apply` by the user after billing (P10) | GCP billing | not started |
 | S11 | Observability spine | S8 | — | Sentry DSN (D18) | not started |
 | S9 | Repository guard, isolation gate, seed | S7, S8 | — | — | built (local) on `feat/s9-repository-guard`: `TenantScoped`, the guard and `AppSession`, `unit_of_work` + GUCs, read-only `platform_scope`, `TenantScopedRepository`, `BrandChunkRepository.search`, repo rules R4-R6, `seed`, the `app_rw` isolation suite; review and merge pending |
-| S14a | Rules Engine (pure function) + fixtures | S2, S7, categories | — | 2 launch categories (D18) | not started |
-| S9 | Repository guard, isolation gate, seed | S7, S8 | — | — | not started |
-| S14a | Rules Engine (pure function) + fixtures | S2, S7, categories | — | 2 launch categories (D18) | done (local) on `feat/s14a-rules-engine`; the seed rows (T12) wait on S9 merging |
+| S14a | Rules Engine (pure function) + fixtures | S2, S7, categories | — | 2 launch categories (D18) | done (local) on `feat/s14a-rules-engine`; seed rows (T12) next, S9 merged |
 | S10 | Auth, RBAC, maker-checker, `0004_integrity`, `0005_rls` | S9, T7 | — | — | not started |
 | S25 | Prod via OpenTofu, `deploy-prod.yml`, `v0.1.0`, rollback + PITR drills | S4, domain | — | billing, domain | not started |
 | S12 | Walking skeleton over TLS | S10, S11, S4, DNS | — | billing, domain | not started |
