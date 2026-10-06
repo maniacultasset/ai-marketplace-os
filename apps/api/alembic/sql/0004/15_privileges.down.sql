@@ -1,5 +1,6 @@
 -- 0004/15_privileges.down.sql
 -- Back to the 0000 default privileges.
+GRANT UPDATE, DELETE ON public.publish_field_results TO app_rw;
 REVOKE UPDATE (outcome, error_code, error_report_json, submission_ref, raw_response_sha256,
                raw_response_storage_key, sent_at, responded_at, resolved_at)
   ON public.listing_submissions FROM app_rw;

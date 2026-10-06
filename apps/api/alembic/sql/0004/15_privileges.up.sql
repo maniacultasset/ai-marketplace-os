@@ -10,6 +10,7 @@
 --   product_colourways (:438)    SELECT, INSERT, UPDATE;
 --   variant_matrix_cells (:453)  no DELETE;
 --   listing_submissions (:881)   INSERT and SELECT, plus UPDATE of the outcome columns;
+--   publish_field_results (:884) INSERT, SELECT (the per-field ledger ls_guard reads);
 --   brand_profiles (:1134),
 --   business_parties (:1150)     no DELETE.
 -- Earlier files hold the others: listing_versions (04), listing_items (11), listing_issues and
@@ -23,3 +24,4 @@ GRANT UPDATE (role, is_active, deactivated_at, last_used_at) ON public.tenant_me
 GRANT UPDATE (outcome, error_code, error_report_json, submission_ref, raw_response_sha256,
               raw_response_storage_key, sent_at, responded_at, resolved_at)
   ON public.listing_submissions TO app_rw;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.publish_field_results FROM app_rw;

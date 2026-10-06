@@ -1,6 +1,6 @@
 """0004/15_privileges and the per-table grants of the earlier 0004 files (DATABASE.md Privileges
-bullets :229, :244, :438, :453, :789, :848, :881, :1134, :1150, :1328, :1355; §8.1): what `app_rw`
-holds on each table, written here as a literal."""
+bullets :229, :244, :438, :453, :789, :848, :881, :884, :1134, :1150, :1328, :1355; §8.1): what
+`app_rw` holds on each table, written here as a literal."""
 
 from __future__ import annotations
 
@@ -85,6 +85,7 @@ MATRIX: dict[str, tuple[frozenset[str], frozenset[str], frozenset[str]]] = {
     "listing_versions": (READ, frozenset({"approved_by_user_id", "approved_at"}), VERSION_INSERT),
     "listing_items": (RW, frozenset(), frozenset()),
     "listing_submissions": (APPEND, OUTCOME, frozenset()),
+    "publish_field_results": (APPEND, frozenset(), frozenset()),
     "listing_issues": (RW, frozenset(), frozenset()),
     "human_tasks": (RW, frozenset(), frozenset()),
     "audit_log": (APPEND, frozenset(), frozenset()),
