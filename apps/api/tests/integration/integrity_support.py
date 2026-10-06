@@ -10,10 +10,12 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import psycopg
+from psycopg import sql
 
 Conn = psycopg.Connection[tuple[Any, ...]]
 
@@ -107,3 +109,128 @@ def approve(conn: Conn, version_id: UUID, approver: UUID) -> None:
 
 
 APPROVE_SQL = "UPDATE listing_versions SET approved_by_user_id = %s WHERE id = %s"
+
+
+# ---- listings (status guard): a listing in any state, then a guarded transition ----
+
+DEFAULT_REASON: dict[str, str] = {"blocked": "validation_errors", "failed": "publish_failed"}
+
+
+@dataclass(frozen=True)
+class Flow:
+    """One tenant's listing with an active Amazon account and version 1 current (by `operator`)."""
+
+    tenant_id: UUID
+    product_id: UUID
+    account_id: UUID
+    listing_id: UUID
+    v1: UUID
+    owner: UUID
+    operator: UUID
+    reviewer: UUID
+
+
+def flow(conn: Conn, **tenant_columns: Any) -> Flow:
+    from . import factories as f
+
+    tenant = f.tenant(conn, **tenant_columns)
+    owner = f.member(conn, tenant, role="owner")
+    operator = f.member(conn, tenant, role="operator")
+    reviewer = f.member(conn, tenant, role="reviewer")
+    product = f.product(conn, tenant)
+    account = f.marketplace_account(conn, tenant, connected_by_user_id=owner)
+    listing = f.listing(conn, tenant, product, marketplace_account_id=account)
+    v1 = next_version(conn, tenant, listing, None, "generation", operator)
+    return Flow(tenant, product, account, listing, v1, owner, operator, reviewer)
+
+
+def force_state(
+    conn: Conn, listing_id: UUID, status: str, reason: str | None = None, **cols: Any
+) -> None:
+    """Put a listing in `status` without the guards (test set-up only: a superuser skips user
+    triggers for this one statement; CHECKs and the row itself are unchanged otherwise)."""
+    values: dict[str, Any] = {
+        "status": status,
+        "status_reason": reason if reason is not None else DEFAULT_REASON.get(status),
+        **cols,
+    }
+    names = list(values)
+    query = sql.SQL("UPDATE listings SET {} WHERE id = %s").format(
+        sql.SQL(", ").join(sql.SQL("{} = %s").format(sql.Identifier(n)) for n in names)
+    )
+    conn.execute("SET LOCAL session_replication_role = replica")
+    try:
+        conn.execute(query, [*values.values(), listing_id])
+    finally:
+        conn.execute("SET LOCAL session_replication_role = origin")
+
+
+def approve_current(conn: Conn, fl: Flow, version_id: UUID | None = None) -> UUID:
+    """Approve `version_id` (default v1) by the reviewer and point approved_version_id at it, through
+    the guards (the version must be current). Returns the version id."""
+    version = version_id or fl.v1
+    approve(conn, version, fl.reviewer)
+    conn.execute(
+        "UPDATE listings SET approved_version_id = %s WHERE id = %s", (version, fl.listing_id)
+    )
+    return version
+
+
+def transition(
+    conn: Conn, listing_id: UUID, to: str, event: str, reason: str | None = None, **cols: Any
+) -> None:
+    values: dict[str, Any] = {"status": to, "status_reason": reason, "last_event": event, **cols}
+    names = list(values)
+    query = sql.SQL("UPDATE listings SET {} WHERE id = %s").format(
+        sql.SQL(", ").join(sql.SQL("{} = %s").format(sql.Identifier(n)) for n in names)
+    )
+    conn.execute(query, [*values.values(), listing_id])
+
+
+def transition_sql(
+    listing_id: UUID, to: str, event: str, reason: str | None = None, **cols: Any
+) -> tuple[sql.Composed, list[Any]]:
+    values: dict[str, Any] = {"status": to, "status_reason": reason, "last_event": event, **cols}
+    query = sql.SQL("UPDATE listings SET {} WHERE id = %s").format(
+        sql.SQL(", ").join(sql.SQL("{} = %s").format(sql.Identifier(n)) for n in values)
+    )
+    return query, [*values.values(), listing_id]
+
+
+def queued_job(conn: Conn, fl: Flow, kind: str, **columns: Any) -> UUID:
+    """A queued listing job of `kind` on the flow's listing, created by its operator."""
+    from . import factories as f
+
+    defaults: dict[str, Any] = {
+        "tenant_id": fl.tenant_id,
+        "kind": kind,
+        "listing_id": fl.listing_id,
+        "entity_type": "listing",
+        "entity_id": fl.listing_id,
+        "payload_json": {"listing_id": str(fl.listing_id)},
+        "correlation_id": uuid4(),
+        "created_by": fl.operator,
+    }
+    return uuid_of(f.insert(conn, "job_runs", **{**defaults, **columns}))
+
+
+def decision(
+    conn: Conn, fl: Flow, kind: str, version_id: UUID | None, by: UUID, **columns: Any
+) -> UUID:
+    """A review decision decided now by `by` (the guard's "in this transaction" test)."""
+    from . import factories as f
+
+    if kind == "reject":
+        columns.setdefault("reason_code", "poor_quality")
+        columns.setdefault("feedback", "Needs work.")
+    return uuid_of(
+        f.review_decision(
+            conn,
+            fl.tenant_id,
+            fl.listing_id,
+            version_id,
+            decision=kind,
+            decided_by_user_id=by,
+            **columns,
+        )
+    )

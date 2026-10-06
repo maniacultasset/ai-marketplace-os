@@ -49,10 +49,14 @@ def _published(db: Conn, tenant_id: UUID, **columns: Any) -> UUID:
         **columns,
     }
     sets = ", ".join(f"{name} = %s" for name in assignments)
+    # 0004's status guard allows `published` only through its transition table; this CHECK
+    # fixture places the row directly (user triggers skipped for the one set-up statement).
+    db.execute("SET LOCAL session_replication_role = replica")
     db.execute(
         f"UPDATE listings SET {sets} WHERE id = %s",  # noqa: S608 - fixed column names
         (*assignments.values(), listing_id),
     )
+    db.execute("SET LOCAL session_replication_role = origin")
     return listing_id
 
 
