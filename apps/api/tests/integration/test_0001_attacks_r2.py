@@ -23,7 +23,11 @@ def _0004_guards_off(request: pytest.FixtureRequest) -> None:
     refuse or rewrite first (test_0004_variant_guard.py proves it); the guard is off in the
     rolled-back `db` transaction."""
     if "db" in request.fixturenames:
-        disable_0004_guard(request.getfixturevalue("db"), "products", "variant_guard")
+        db = request.getfixturevalue("db")
+        disable_0004_guard(db, "variant_matrix_cells", "variant_matrix_guard")
+        disable_0004_guard(db, "products", "variant_guard")
+        disable_0004_guard(db, "products", "variant_matrix_complete")
+        disable_0004_guard(db, "variant_matrix_cells", "variant_matrix_complete")
 
 
 Conn = psycopg.Connection[tuple[Any, ...]]
