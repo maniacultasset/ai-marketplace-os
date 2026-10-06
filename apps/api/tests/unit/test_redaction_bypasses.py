@@ -34,6 +34,15 @@ SECRET = "Zq9" + "tail" * 4
         f"{{'email': '{SECRET}@x.example',...ess_token': '{SECRET}'}}",
         # An unterminated quoted value (truncated text) still loses its value.
         f"{{'access_token': '{SECRET}",
+        # Round 2: a Python bytes repr after a denied key (`b'` / `b"` opens the value).
+        f"{{'token_hash': b'\\x01{SECRET}', 'tenant_id': 3}}",
+        f"MarketplaceToken(token_enc=b'{SECRET}')",
+        f"MarketplaceToken(id=1, token_enc=b'{SECRET}')",
+        f"{{'state_hash': b\"{SECRET}\"}}",
+        # Round 2: a backslash-escaped quote inside the value does not close it.
+        f'{{"password": "ab\\"{SECRET}"}}',
+        f'{{"client_secret": "x\\"{SECRET}", "grant_type": "refresh_token"}}',
+        f'payload="{{\\"password\\": \\"ab\\\\\\"{SECRET}\\"}}"',
     ],
 )
 def test_redact_text_hides_secret(text: str) -> None:
@@ -68,10 +77,18 @@ def test_redact_text_hides_failing_row(text: str) -> None:
         '{"token_type": "bearer", "expires_in": 3600}',
         "{'code': 'NOT_FOUND', 'status': 404}",
         "tokens_in='120'",
+        "{'code': b'NOT_FOUND', 'status': 404}",
+        '{"note": "say \\"hi\\"", "status": 200}',
     ],
 )
 def test_redact_text_keeps_harmless_text(text: str) -> None:
     assert redact_text(text) == text
+
+
+def test_quoted_value_after_escaped_quote_keeps_following_keys() -> None:
+    out = redact_text(f'{{"password": "ab\\"{SECRET}", "grant_type": "refresh_token"}}')
+    assert SECRET not in out
+    assert '"grant_type": "refresh_token"' in out
 
 
 def test_redact_text_is_idempotent() -> None:

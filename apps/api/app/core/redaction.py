@@ -147,10 +147,11 @@ _SQL_PARAMETERS: Final = re.compile(r"\[parameters: [^\n]{0,8192}")
 # A key, then `:` or `=`, then an opening quote: JSON (`"access_token": "..."`), a dict repr
 # (`'refresh_token': '...'`), a kwarg repr (`jwt_secret='...'`) and pydantic's `input_value=`,
 # with JSON-in-a-string escapes (`\"key\": \"...\"`). Only the key and the opening quote are
-# matched, so a harmless key's value is still scanned for a denied key inside it.
+# matched, so a harmless key's value is still scanned for a denied key inside it. A string
+# prefix (`b'...'` for a bytes repr: `token_hash`, `token_enc`, `state_hash`) sits outside group 2.
 _QUOTED_KEY: Final = re.compile(
     r"(?<![A-Za-z0-9_.\-])(?:\\{0,2}[\"'])?([A-Za-z0-9_.\-]{1,64})(?:\\{0,2}[\"'])?"
-    r"\s{0,4}[:=]\s{0,4}(\\{0,2}[\"'])"
+    r"\s{0,4}[:=]\s{0,4}(?:[bBrRuUfF]{1,2})?(\\{0,2}[\"'])"
 )
 MAX_QUOTED_VALUE: Final = 4_096
 # pydantic's ValidationError quotes the rejected input, cut in the middle (`{'email': 'a@b...: 'x'}`),
@@ -172,6 +173,23 @@ def _query(match: re.Match[str]) -> str:
     return match.group(0)
 
 
+def _closing_quote(text: str, opening: str, start: int, limit: int) -> int:
+    """The index of the quote that closes a value opened by `opening` (a quote after 0-2
+    backslashes), or `limit`. A bare quote closes only after an even backslash run, so `\\"` inside
+    a JSON value does not end it; an escaped quote (`\\"` in JSON-in-a-string) closes only after
+    exactly its own backslashes. Anything else runs to `limit`: over-redaction, never a leak."""
+    quote, escapes = opening[-1], len(opening) - 1
+    end = text.find(quote, start, limit)
+    while end != -1:
+        run = 0
+        while end - run - 1 >= start and text[end - run - 1] == "\\":
+            run += 1
+        if (run % 2 == 0) if escapes == 0 else (run == escapes):
+            return end - escapes
+        end = text.find(quote, end + 1, limit)
+    return limit
+
+
 def _quoted_values(text: str) -> str:
     """A denied key's quoted value, up to its closing quote (or the end of the line, or
     `MAX_QUOTED_VALUE` characters when the quote never closes), becomes `REDACTED`. Dict-key
@@ -186,9 +204,7 @@ def _quoted_values(text: str) -> str:
         newline = text.find("\n", start, limit)
         if newline != -1:
             limit = newline
-        end = text.find(match.group(2), start, limit)
-        if end == -1:
-            end = limit
+        end = _closing_quote(text, match.group(2), start, limit)
         out.append(text[pos:start])
         out.append(REDACTED)
         pos = end
