@@ -10,6 +10,7 @@ from fastapi import FastAPI
 
 from app.api import health
 from app.api.body_limit import BodyLimitMiddleware
+from app.api.cors import ApiCORSMiddleware
 from app.api.errors import install_error_handlers
 from app.api.v1.router import router as v1_router
 from app.core.asgi import MkosApp
@@ -54,9 +55,11 @@ def create_app() -> FastAPI:
     install_error_handlers(app)
     app.include_router(health.router)
     app.include_router(v1_router, prefix=settings.api_v1_prefix)
-    # Added last, so it is the outermost user middleware: the cap holds before any body parsing
-    # or auth dependency runs (CANON.md:83; S3 AC16).
+    # The cap holds before any body parsing or auth dependency runs (CANON.md:83; S3 AC16).
     app.add_middleware(BodyLimitMiddleware, max_bytes=settings.request_max_body_bytes)
+    # Added last, so CORS is the outermost user middleware: it reads headers only, and every
+    # answer below it (a 413 from the cap, a 401, a 429) still carries the CORS grant.
+    app.add_middleware(ApiCORSMiddleware, allowed_origins=settings.allowed_origins)
     return app
 
 
