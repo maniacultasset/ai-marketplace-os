@@ -13,6 +13,7 @@ from psycopg.types.json import Jsonb
 
 from . import factories as f
 from .conftest import expect_sqlstate
+from .integrity_support import as_app_rw
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 
@@ -177,3 +178,34 @@ def test_variant_style_with_children_other_columns_ok(db: Conn) -> None:
     tenant, style = _style(db)
     f.product(db, tenant, "child", parent=style)
     db.execute("UPDATE products SET title = 'Renamed style' WHERE id = %s", (style,))
+
+
+# ---- restoring a soft-deleted child re-checks its parent ----
+
+UNDELETE = "UPDATE products SET deleted_at = NULL WHERE id = %s"
+STYLE_CHANGES_WHILE_CHILD_DELETED = {**STYLE_CHANGES, "style deleted": "deleted_at = now()"}
+
+
+@pytest.mark.parametrize("change", sorted(STYLE_CHANGES_WHILE_CHILD_DELETED))
+def test_variant_child_undelete_rechecks_parent(db: Conn, change: str) -> None:
+    """Moved from the round-2 repro: soft-delete the child, change the style (allowed, it has no
+    live children), then restore the child. The restore runs the full parent checks, so the child
+    never comes back under a deleted style, another category or theme, or two levels deep."""
+    tenant, style = _style(db)
+    other = f.product(db, tenant, "style", variation_theme="size_color")
+    child = f.product(db, tenant, "child", parent=style)
+    db.execute("UPDATE products SET deleted_at = now() WHERE id = %s", (child,))
+    query = f"UPDATE products SET {STYLE_CHANGES_WHILE_CHILD_DELETED[change]} WHERE id = %(style)s"  # noqa: S608
+    db.execute(query, {"other": other, "style": style})
+    with as_app_rw(db):
+        expect_sqlstate(db, "GRD01", UNDELETE, (child,))
+
+
+def test_variant_child_undelete_under_unchanged_style_ok(db: Conn) -> None:
+    tenant, style = _style(db)
+    child = f.product(db, tenant, "child", parent=style)
+    db.execute("UPDATE products SET deleted_at = now() WHERE id = %s", (child,))
+    with as_app_rw(db):
+        db.execute(UNDELETE, (child,))
+    row = db.execute("SELECT deleted_at FROM products WHERE id = %s", (child,)).fetchone()
+    assert row == (None,)

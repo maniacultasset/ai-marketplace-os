@@ -1,6 +1,7 @@
 -- 0004/13_variant_guard.up.sql
 -- DATABASE.md §5.2 products "Variant guard" (:418) and the variant_key index (:423). For a child
--- (parent_product_id set), on INSERT and whenever its parent, category or attributes change:
+-- (parent_product_id set), on INSERT, on restore (deleted_at back to NULL) and whenever its
+-- parent, category or attributes change:
 --   * the parent is a live style (a theme, not soft-deleted) in the same category, read FOR
 --     SHARE (a concurrent soft-delete or category change waits), and is not itself a child (one
 --     level deep);
@@ -45,7 +46,10 @@ BEGIN
                         FROM jsonb_each_text(NEW.variant_attributes) e);
   IF TG_OP = 'UPDATE' AND NEW.parent_product_id IS NOT DISTINCT FROM OLD.parent_product_id
      AND NEW.category IS NOT DISTINCT FROM OLD.category
-     AND NEW.variant_attributes IS NOT DISTINCT FROM OLD.variant_attributes THEN
+     AND NEW.variant_attributes IS NOT DISTINCT FROM OLD.variant_attributes
+     -- restoring a soft-deleted child re-checks its parent: the style-side freeze above counts
+     -- only live children, so the style may have changed while the child was deleted
+     AND NOT (OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS NULL) THEN
     RETURN NEW;
   END IF;
 
