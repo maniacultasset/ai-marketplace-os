@@ -12,7 +12,9 @@ from app.api import health
 from app.api.body_limit import BodyLimitMiddleware
 from app.api.errors import install_error_handlers
 from app.api.v1.router import router as v1_router
+from app.core.asgi import MkosApp
 from app.core.config import get_settings
+from app.core.logging import configure_logging
 from app.db.session import dispose_engine
 from app.services.health import ReadinessCheck
 
@@ -25,10 +27,11 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    configure_logging(settings)
     # Production serves no docs: Swagger UI loads third-party CDN assets on the API origin.
     # app.openapi() still works, so the committed openapi.json export is unaffected.
     serve_docs = settings.app_env != "production"
-    app = FastAPI(
+    app = MkosApp(
         title="AI Marketplace OS API",
         # The contract version: openapi.json and @mkos/schemas share mkos-schemas' version.
         version=metadata.version("mkos-schemas"),

@@ -11,8 +11,9 @@ case "$ROLE" in
   api)
     # One uvicorn process (ADR-0005). Cloud Run terminates TLS in front of the container, so the
     # forwarded headers are trusted and request.url reads https. The client IP is then the
-    # left-most, client-supplied X-Forwarded-For entry: never key a rate limit on it.
-    exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8080}" --proxy-headers --forwarded-allow-ips='*'
+    # left-most, client-supplied X-Forwarded-For entry: never key a rate limit on it. The app writes
+    # its own access line (request id, route template, no query string), so uvicorn's is off.
+    exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8080}" --proxy-headers --forwarded-allow-ips='*' --no-access-log
     ;;
   migrate)
     # alembic upgrade head as migrator, under the migration lock; one fixed output line.
