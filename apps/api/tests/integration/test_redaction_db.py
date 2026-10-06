@@ -79,7 +79,9 @@ async def test_unique_violation_detail_redacted(
     assert "UniqueViolation" in traceback or "IntegrityError" in traceback
     assert "uq_users_email_lower" in traceback
     assert "Key (lower(email))=([REDACTED])" in traceback
-    assert "[parameters: [REDACTED]]" in traceback
+    # C5: the engine hides bound values, so SQLAlchemy never renders them at all
+    assert "[SQL parameters hidden due to hide_parameters=True]" in traceback
+    assert "[parameters:" not in traceback
 
     [event] = sentry_events.events()
     assert event["tags"]["request_id"] == "abc"
