@@ -96,6 +96,8 @@ seed_repository_imports_api() { new_file apps/api/app/repositories/x.py 'from ap
 seed_scope_literal() { append apps/api/app/main.py '_SEEDED = "tenant_scope_checked"'; }
 seed_router_sqlalchemy() { append apps/api/app/api/health.py 'from sqlalchemy import text'; }
 seed_router_db() { append apps/api/app/api/v1/router.py 'import app.db.session'; }
+seed_products_router_sqlalchemy() { append apps/api/app/api/v1/routers/products.py 'from sqlalchemy import select'; }
+seed_products_router_db() { append apps/api/app/api/v1/routers/products.py 'import app.db.session'; }
 seed_service_session() { new_file apps/api/app/services/x.py 'from app.db.session import get_engine'; }
 seed_no_uv_project_env() {
   cp .env.example .env  # as the CI job does before `make bootstrap`
@@ -350,6 +352,11 @@ leg lint-imports-router-sqla lint-imports 'app.api never imports sqlalchemy or a
   seed_router_sqlalchemy make lint-imports
 leg lint-imports-router-db lint-imports 'app.api never imports sqlalchemy or app.db directly BROKEN' \
   seed_router_db make lint-imports
+# S12 T13 (Done-when 2): the real products router, not only the health and v1 routers.
+leg lint-imports-products-sqla lint-imports 'app.api never imports sqlalchemy or app.db directly BROKEN' \
+  seed_products_router_sqlalchemy make lint-imports
+leg lint-imports-products-db lint-imports 'app.api never imports sqlalchemy or app.db directly BROKEN' \
+  seed_products_router_db make lint-imports
 leg lint-imports-service-db lint-imports 'app.services never imports app.db.session .*BROKEN' \
   seed_service_session make lint-imports
 leg lint-imports-cli-imported lint-imports 'nothing imports app.cli BROKEN' seed_cli_imported make lint-imports

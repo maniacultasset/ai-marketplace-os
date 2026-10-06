@@ -723,3 +723,28 @@ def test_ci_bootstrap_job_env_uses_app_roles(
     if "ALEMBIC_DATABASE_URL" in env:
         assert env["ALEMBIC_DATABASE_URL"].startswith("postgresql+psycopg://migrator:")
         assert env["ALEMBIC_DATABASE_URL"] == _env_example_value(repo_root, "ALEMBIC_DATABASE_URL")
+
+
+# S12 T13 (AC6, Done-when 2): a products router importing sqlalchemy or app.db fails lint-imports.
+S12_ROUTER_LEGS = {
+    "lint-imports-products-sqla": (
+        "seed_products_router_sqlalchemy",
+        "from sqlalchemy import select",
+    ),
+    "lint-imports-products-db": ("seed_products_router_db", "import app.db.session"),
+}
+
+
+def test_prove_gates_has_products_router_legs(repo_root: Path) -> None:
+    code = _code((repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8"))
+    for name, (seed_name, line) in S12_ROUTER_LEGS.items():
+        leg = re.search(
+            rf"(?m)^[ \t]*leg {re.escape(name)} lint-imports '([^']*)' \\?\s*(\S+)", code
+        )
+        assert leg is not None, name
+        assert leg.group(1) == "app.api never imports sqlalchemy or app.db directly BROKEN", name
+        assert leg.group(2) == seed_name, name
+        seed = re.search(rf"(?m)^{seed_name}\(\) \{{(.*)\}}$", code)
+        assert seed is not None, seed_name
+        assert "append apps/api/app/api/v1/routers/products.py" in seed.group(1)
+        assert f"'{line}'" in seed.group(1)
