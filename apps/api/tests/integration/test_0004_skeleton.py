@@ -33,6 +33,7 @@ EXPECTED_STEMS: tuple[str, ...] = (
     "05_last_owner",
     "06_listings_status_guard",
     "06b_status_events",
+    "07_review_backstop",
 )
 
 
