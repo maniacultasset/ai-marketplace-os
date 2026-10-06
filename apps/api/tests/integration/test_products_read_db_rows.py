@@ -1,8 +1,7 @@
-"""S12 fix round 1, R1-F1: the read path is total over rows every DB CHECK accepts.
+"""S12: the read path is total over rows every DB CHECK accepts.
 
 A row that `ProductOut`'s input patterns would refuse (written by a later importer, the AI writers
-or by hand) must not turn `GET /products` into a 500 for the whole tenant, nor its own GET. Moved
-from docs/plans/s12/repro/test_products_read_repro.py.
+or by hand) must not turn `GET /products` into a 500 for the whole tenant, nor its own GET.
 """
 
 from __future__ import annotations

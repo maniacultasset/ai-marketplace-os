@@ -23,7 +23,7 @@ CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 
 
 def _out(view: products.ProductView) -> ProductOut:
-    """A DB-sourced row is built, not validated (R1-F1): the DB CHECKs are the read-side truth, and
+    """A DB-sourced row is built, not validated: the DB CHECKs are the read-side truth, and
     `ProductOut`'s input patterns (`Sku`, the non-blank title, the slug) must not turn one stored row
     into a 500 for the whole tenant list. The service already keeps `attributes` to wire scalars."""
     return ProductOut.model_construct(

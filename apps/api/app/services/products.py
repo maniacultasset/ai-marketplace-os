@@ -72,7 +72,7 @@ def _flat(fact: Any) -> FlatValue | None:
 
 
 def _view(row: Any) -> ProductView:
-    """Total over every row the DB CHECKs accept (R1-F1): nothing here re-applies input rules."""
+    """Total over every row the DB CHECKs accept: nothing here re-applies input rules."""
     facts: Mapping[str, Any] = row.attributes or {}
     flat = {key: _flat(fact) for key, fact in facts.items()}
     return ProductView(
