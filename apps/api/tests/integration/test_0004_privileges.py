@@ -48,6 +48,27 @@ RULE_COLUMNS = frozenset(
         "rule_def",
     }
 )
+VERSION_INSERT = frozenset(
+    {
+        "id",
+        "tenant_id",
+        "listing_id",
+        "version",
+        "content_json",
+        "image_reports_json",
+        "generated_by_user_id",
+        "edited_by_user_id",
+        "origin",
+        "parent_version_id",
+        "changed_paths",
+        "locale",
+        "rules_version",
+        "category_template_id",
+        "job_id",
+        "attempts_used",
+        "created_at",
+    }
+)
 # table → (table-level privileges, column-level UPDATE, column-level INSERT)
 MATRIX: dict[str, tuple[frozenset[str], frozenset[str], frozenset[str]]] = {
     "tenants": (APPEND, frozenset({"name", "tone", "guidelines", "glossary"}), frozenset()),
@@ -61,7 +82,7 @@ MATRIX: dict[str, tuple[frozenset[str], frozenset[str], frozenset[str]]] = {
     "variant_matrix_cells": (RW, frozenset(), frozenset()),
     "brand_profiles": (RW, frozenset(), frozenset()),
     "business_parties": (RW, frozenset(), frozenset()),
-    "listing_versions": (APPEND, frozenset({"approved_by_user_id", "approved_at"}), frozenset()),
+    "listing_versions": (READ, frozenset({"approved_by_user_id", "approved_at"}), VERSION_INSERT),
     "listing_items": (RW, frozenset(), frozenset()),
     "listing_submissions": (APPEND, OUTCOME, frozenset()),
     "listing_issues": (RW, frozenset(), frozenset()),

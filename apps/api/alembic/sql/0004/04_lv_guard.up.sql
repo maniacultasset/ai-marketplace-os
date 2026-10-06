@@ -1,6 +1,8 @@
 -- 0004/04_lv_guard.up.sql
 -- DATABASE.md §5.3 listing_versions "lv_guard" and "Privileges" (:786-789); BACKEND-ARCHITECTURE
--- §9.3 (BA:2065-2071). A version is immutable except its one-time approval:
+-- §9.3 (BA:2065-2071). A version is inserted unapproved (GRD01 otherwise: the approval is only
+-- ever the later UPDATE below, so an INSERT cannot skip the checks), and is immutable except its
+-- one-time approval:
 --   * any other column changing, or an approval changing once set → GRD01;
 --   * the approver needs an active `reviewer` or `owner` membership, read FOR SHARE (a concurrent
 --     deactivation waits, or is seen); an approver with no membership in this tenant is left to
@@ -9,7 +11,8 @@
 --     who generated or edited a version back to the last `generation` or full `regeneration`
 --     (`changed_paths` NULL) may approve → MKC01 (→ 403 MAKER_CHECKER_VIOLATION);
 --   * `approved_at` is stamped here.
--- app_rw may UPDATE only the two approval columns and may not DELETE.
+-- app_rw may INSERT every column but the two approval columns, UPDATE only those two, and may
+-- not DELETE.
 CREATE FUNCTION public.lv_guard() RETURNS trigger
   LANGUAGE plpgsql
   SET search_path = pg_catalog, public, pg_temp
@@ -22,6 +25,13 @@ DECLARE
   walk uuid;
   seen uuid[] := ARRAY[NEW.id];
 BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.approved_by_user_id IS NOT NULL OR NEW.approved_at IS NOT NULL THEN
+      RAISE EXCEPTION 'a version is inserted unapproved; the approval is a later UPDATE'
+        USING ERRCODE = 'GRD01';
+    END IF;
+    RETURN NEW;
+  END IF;
   IF (to_jsonb(NEW) - 'approved_by_user_id' - 'approved_at')
      IS DISTINCT FROM (to_jsonb(OLD) - 'approved_by_user_id' - 'approved_at') THEN
     RAISE EXCEPTION 'listing_versions are immutable except the approval' USING ERRCODE = 'GRD01';
@@ -76,8 +86,12 @@ BEGIN
 END
 $$;
 
-CREATE TRIGGER lv_guard BEFORE UPDATE ON public.listing_versions
+CREATE TRIGGER lv_guard BEFORE INSERT OR UPDATE ON public.listing_versions
   FOR EACH ROW EXECUTE FUNCTION public.lv_guard();
 
-REVOKE UPDATE, DELETE, TRUNCATE ON public.listing_versions FROM app_rw;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.listing_versions FROM app_rw;
+GRANT INSERT (id, tenant_id, listing_id, version, content_json, image_reports_json,
+              generated_by_user_id, edited_by_user_id, origin, parent_version_id, changed_paths,
+              locale, rules_version, category_template_id, job_id, attempts_used, created_at)
+  ON public.listing_versions TO app_rw;
 GRANT UPDATE (approved_by_user_id, approved_at) ON public.listing_versions TO app_rw;

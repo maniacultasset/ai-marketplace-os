@@ -165,6 +165,72 @@ def test_db_maker_checker_no_delete(db: Conn) -> None:
         expect_sqlstate(db, "42501", "DELETE FROM listing_versions WHERE id = %s", (version,))
 
 
+# ---- an INSERT never carries an approval (the approval is only the guarded UPDATE) ----
+
+INSERT_APPROVED = (
+    "INSERT INTO listing_versions (tenant_id, listing_id, version, content_json, origin, "
+    "parent_version_id, generated_by_user_id, changed_paths, approved_by_user_id, approved_at) "
+    'VALUES (%s, %s, %s, \'{"title": "t"}\', %s, %s, %s, %s, %s, %s)'
+)
+
+
+def _preapproved_cases(db: Conn) -> dict[str, tuple[Any, ...]]:
+    """Row values up to (and including) the approver, one per kind of would-be approver."""
+    tenant, listing, v1, generator = _setup(db)
+    editor = f.member(db, tenant, role="reviewer")
+    v2 = next_version(db, tenant, listing, v1, "edit", generator, edited_by=editor)
+    regenerator = f.member(db, tenant, role="operator")
+    cases: dict[str, tuple[Any, ...]] = {}
+    for name, role, active in (
+        ("operator", "operator", True),
+        ("admin", "admin", True),
+        ("inactive reviewer", "reviewer", False),
+        ("active reviewer", "reviewer", True),
+    ):
+        approver = f.member(db, tenant, role=role, is_active=active)
+        cases[name] = (tenant, listing, 90, "generation", None, regenerator, None, approver)
+    # a partial regeneration carries v2's edit forward: its editor is an earlier contributor
+    cases["earlier contributor"] = (
+        tenant,
+        listing,
+        90,
+        "regeneration",
+        v2,
+        regenerator,
+        ["content.title"],
+        editor,
+    )
+    return cases
+
+
+@pytest.mark.parametrize("columns", ["both", "approved_by only", "approved_at only"])
+def test_db_maker_checker_insert_preapproved(db: Conn, columns: str) -> None:
+    """The trigger path (as the owner, who holds every column): any approval on INSERT → GRD01,
+    whoever the approver is, so the approver, current-version and chain checks cannot be
+    skipped (the guard runs before ck_approval_ts and ck_maker_checker)."""
+    for name, (*values, approver) in _preapproved_cases(db).items():
+        by = None if columns == "approved_at only" else approver
+        at = None if columns == "approved_by only" else "2026-10-05"
+        err = expect_sqlstate(db, "GRD01", INSERT_APPROVED, (*values, by, at))
+        assert "inserted unapproved" in str(err), name
+
+
+def test_db_maker_checker_insert_preapproved_app_rw(db: Conn) -> None:
+    """The privilege path: app_rw holds no INSERT on the two approval columns (42501), while an
+    unapproved INSERT of the other columns still works."""
+    for name, (*values, approver) in _preapproved_cases(db).items():
+        with as_app_rw(db):
+            err = expect_sqlstate(db, "42501", INSERT_APPROVED, (*values, approver, "2026-10-05"))
+        assert "permission denied" in str(err), name
+    tenant, listing, _, generator = _setup(db)
+    with as_app_rw(db):
+        db.execute(
+            "INSERT INTO listing_versions (tenant_id, listing_id, version, content_json, origin, "
+            "generated_by_user_id) VALUES (%s, %s, 7, '{\"title\": \"t\"}', 'generation', %s)",
+            (tenant, listing, generator),
+        )
+
+
 # ---- two connections (DATABASE.md:1792 "approve vs deactivate") ----
 
 
