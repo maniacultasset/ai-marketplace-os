@@ -21,6 +21,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Final
 
+import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -37,13 +38,19 @@ def sql_files(direction: str) -> list[Path]:
     return sorted(SQL_DIR.glob(f"*.{direction}.sql"), key=lambda path: path.name)
 
 
+def _run(path: Path) -> None:
+    # Every colon is escaped, so `text()` never reads `:name` (or `DB:1400` in a comment) as a
+    # bind parameter; the rendered and executed SQL is the file as written.
+    op.execute(sa.text(path.read_text(encoding="utf-8").replace(":", "\\:")))
+
+
 def upgrade() -> None:
     op.execute("SET lock_timeout = '5s'")
     for path in sql_files("up"):
-        op.execute(path.read_text(encoding="utf-8"))
+        _run(path)
 
 
 def downgrade() -> None:
     op.execute("SET lock_timeout = '5s'")
     for path in reversed(sql_files("down")):
-        op.execute(path.read_text(encoding="utf-8"))
+        _run(path)
