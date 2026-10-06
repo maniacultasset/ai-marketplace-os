@@ -80,3 +80,71 @@ def insert_products(
 
 def soft_delete(conn: Conn, product_id: Any) -> None:
     conn.execute("UPDATE products SET deleted_at = now() WHERE id = %s", [product_id])
+
+
+# ---- S12 T8: bearers for the route suites (minted, never logged in: the login limit stays out) ----
+
+PRODUCTS = "/api/v1/products"
+OTHER_SECRET = "s12_not_the_ci_secret_at_least_32_characters"
+
+
+def slug_of(email: str) -> str:
+    return email.split("@", 1)[1].split(".", 1)[0]
+
+
+def bearer_for(
+    world: Any, email: str, *, tenant: str | None = None, role: str | None = None
+) -> dict[str, str]:
+    """A signed access token for a world user; `tenant` swaps the `tid`, `role` the role claim."""
+    from .auth_support import bearer, tokens_for
+
+    return bearer(tokens_for(world, email, tenant or slug_of(email), role))
+
+
+def bad_bearer(world: Any, variant: str, email: str = "operator@acme.test") -> dict[str, str]:
+    """`expired`, `bad_signature` (signed with another secret) or `wrong_typ` (a refresh token)."""
+    import time
+
+    import jwt
+    from app.core.security import issue_claims
+
+    from .auth_support import bearer, tokens_for
+
+    if variant == "wrong_typ":
+        return bearer(tokens_for(world, email, slug_of(email), typ="refresh"))
+    claims = issue_claims(
+        sub=world.user(email),
+        tid=world.tenant(slug_of(email)),
+        role=email.split("@", 1)[0],  # type: ignore[arg-type]
+        email=email,
+        typ="access",
+    ).model_dump(mode="json")
+    if variant == "expired":
+        now = int(time.time())
+        claims.update(iat=now - 3600, exp=now - 1)
+        from tests.conftest import CI_JWT_SECRET
+
+        return bearer(jwt.encode(claims, CI_JWT_SECRET, algorithm="HS256"))
+    if variant == "bad_signature":
+        return bearer(jwt.encode(claims, OTHER_SECRET, algorithm="HS256"))
+    raise ValueError(variant)
+
+
+def counts(conn: Conn) -> tuple[int, int]:
+    """(products, product.created audit rows) on the admin connection."""
+    row = conn.execute(
+        "SELECT (SELECT count(*) FROM products), "
+        "(SELECT count(*) FROM audit_log WHERE action = 'product.created')"
+    ).fetchone()
+    assert row is not None
+    return int(row[0]), int(row[1])
+
+
+def without_correlation(body: dict[str, Any]) -> dict[str, Any]:
+    """An error body with its request-specific ids blanked, for byte-equality checks."""
+    error = dict(body["error"])
+    error["correlation_id"] = "-"
+    report = dict(error["error_report"])
+    report["request_id"] = "-"
+    error["error_report"] = report
+    return {"error": error}
