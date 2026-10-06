@@ -11,7 +11,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-UNAVAILABLE = {"status": "unavailable"}
+UNAVAILABLE = {"status": "unavailable", "checks": {"postgres": "unavailable"}}
+READY = {"status": "ok", "checks": {"postgres": "ok"}}
 OK = {"status": "ok"}
 PRIVATE_JWT = "Zq9-not-committed-private-secret-32+"  # neither a Canon literal nor dev-prefixed
 TEST_SENTRY_DSN = "https://public@o0.ingest.example.invalid/0"  # never resolvable (.invalid)
@@ -87,7 +88,7 @@ def test_readyz_200_with_fake_engine(
     engine = fake_engine()
     response = _client(make_app()).get("/readyz")
     assert response.status_code == 200
-    assert response.json() == OK
+    assert response.json() == READY
     assert engine.executed == ["SELECT 1"]
 
 
@@ -262,3 +263,43 @@ def test_docs_and_openapi_off_in_production(
     assert client.get("/openapi.json").status_code == 404
     assert client.get("/healthz").status_code == 200
     assert isinstance(app.openapi(), dict)
+
+
+@pytest.mark.parametrize(
+    ("ready", "status", "body"), [(True, 200, READY), (False, 503, UNAVAILABLE)]
+)
+def test_health_readyz_names_postgres(
+    make_app: Callable[[], FastAPI],
+    monkeypatch: pytest.MonkeyPatch,
+    ready: bool,
+    status: int,
+    body: dict[str, Any],
+) -> None:
+    monkeypatch.setattr("app.services.health.ping", CountingPing(result=ready))
+    response = _client(make_app()).get("/readyz")
+    assert response.status_code == status
+    assert response.json() == body
+
+
+def test_health_probes_no_access_line_no_span(
+    make_app: Callable[[], FastAPI],
+    fake_engine: Callable[..., Any],
+    log_lines: Callable[..., Any],
+) -> None:
+    from app.core.config import Settings
+    from app.core.observability import init_tracing, tracer_from
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+    fake_engine()
+    exporter = InMemorySpanExporter()
+    app = make_app()
+    settings = Settings(
+        _env_file=None, app_env="local", app_role="shell", otel_traces_sampler="always_on"
+    )
+    app.tracer = tracer_from(init_tracing(settings, exporter=exporter))  # type: ignore[attr-defined]
+    capture = log_lines()
+    client = _client(app)
+    assert client.get("/healthz").status_code == 200
+    assert client.get("/readyz").status_code == 200
+    assert [line for line in capture.lines() if line["module"] == "app.access"] == []
+    assert exporter.get_finished_spans() == ()
