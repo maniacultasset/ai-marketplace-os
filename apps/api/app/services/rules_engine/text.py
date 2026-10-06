@@ -11,9 +11,10 @@ from __future__ import annotations
 import importlib
 import re
 import unicodedata
+from bisect import bisect_left, bisect_right
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from functools import lru_cache
+from functools import lru_cache, partial
 from typing import Any, Final, Literal
 
 from mkos_schemas.listing import CanonicalListing
@@ -210,8 +211,7 @@ _MAX_CODE_POINT: Final = 0x10FFFF
 _PROBE_SAMPLES: Final = tuple(
     chr(c) for c in (0x5F, 0x967, 0x915, 0x901, 0xA0, 0x3000, 0xFF21, 0x1F600, _MAX_CODE_POINT)
 )
-_BASE_PROBES: Final = tuple(chr(c) for c in range(256)) + _PROBE_SAMPLES
-_BASE_PROBE_TEXT: Final = "".join(_BASE_PROBES)
+_BASE_PROBE_TEXT: Final = "".join(map(chr, range(256))) + "".join(_PROBE_SAMPLES)
 _CATEGORY_RUNS: Final = (r"\w+", r"\d+", r"\s+")
 
 
@@ -232,25 +232,30 @@ def _category_probe_text() -> str:
     return _around(ends)
 
 
-def _fold_probe_text() -> str:
-    """Every character IGNORECASE can relate to another (the regex engine lowers both sides, plus
-    its extra case pairs) and their neighbours. Outside this set a class under IGNORECASE
-    matches exactly what it matches without it, so its interval ends stay probed (R3-1)."""
+def _cased_points() -> frozenset[int]:
+    """Every code point IGNORECASE can relate to another: cased characters (lower or upper case
+    differs), every lowercase they map to, and the regex engine's extra case pairs. Outside
+    this set a character's lower and upper case are itself and no other character folds to it,
+    so a literal or range matches it under IGNORECASE exactly when it does without it."""
     space = range(_MAX_CODE_POINT + 1)
-    lowered = {
-        c: low
-        for c, low in zip(space, map(_sre_lib.unicode_tolower, space), strict=True)
-        if low != c
-    }
-    cased = set(lowered) | set(lowered.values())
+    cased = set(filter(_sre_lib.unicode_iscased, space))
+    cased.update(map(_sre_lib.unicode_tolower, cased))
     for key, pairs in _sre_casefix._EXTRA_CASES.items():
         cased.add(key)
         cased.update(pairs)
-    return _around(cased)
+    return frozenset(cased)
 
 
-# Built at import (about 0.1 s, once per process), so no evaluate call pays for it and the
-# guard's latency stays flat from the first rule regex on.
+_CASED: Final = _cased_points()
+
+
+def _fold_probe_text() -> str:
+    """Every character IGNORECASE can relate to another and their neighbours. Outside this set
+    a class under IGNORECASE matches exactly what it matches without it, so its interval ends
+    stay probed (R3-1)."""
+    return _around(set(_CASED))
+
+
 _CATEGORY_PROBE_TEXT: Final = _category_probe_text()
 _FOLD_PROBE_TEXT: Final = _fold_probe_text()
 
@@ -272,12 +277,16 @@ _REPEAT_OPS: Final = frozenset({_sre.MAX_REPEAT, _sre.MIN_REPEAT})
 @dataclass(frozen=True)
 class _CharSet:
     """One single-character atom of a regex, as a one-character pattern plus extra probes:
-    the ends of its own ranges and literals and their neighbours (R3-1)."""
+    the ends of its own ranges and literals and their neighbours (R3-1). ``items`` are its class
+    items (``None`` for ``.``) and ``negate`` its negation, from which its masks over the shared
+    probe tiers are built without scanning them (see ``_tier_mask``)."""
 
     source: str
     flags: int
     probes: tuple[str, ...]
     has_category: bool = False
+    items: tuple[tuple[Any, Any], ...] | None = field(default=(), compare=False)
+    negate: bool = field(default=False, compare=False)
 
 
 @lru_cache(maxsize=_CACHE_SIZE)
@@ -290,37 +299,49 @@ def _near(*points: int) -> tuple[str, ...]:
     return tuple(chr(q) for p in points for q in (p - 1, p, p + 1) if 0 <= q <= _MAX_CODE_POINT)
 
 
-def _class_item(op: Any, av: Any) -> tuple[str, tuple[str, ...]]:
+def _item_source(op: Any, av: Any) -> str:
     if op is _sre.LITERAL:
-        return re.escape(chr(av)), _near(av)
+        return re.escape(chr(av))
     if op is _sre.RANGE:
         lo, hi = av
-        return f"{re.escape(chr(lo))}-{re.escape(chr(hi))}", _near(lo, hi)
+        return f"{re.escape(chr(lo))}-{re.escape(chr(hi))}"
     if op is _sre.CATEGORY:
-        return _CATEGORY_CLASS.get(av.name, r"\s\S"), ()
-    return r"\s\S", ()  # unknown item: match anything (more refusals, never fewer)
+        return _CATEGORY_CLASS.get(av.name, r"\s\S")
+    return r"\s\S"  # unknown item: match anything (more refusals, never fewer)
+
+
+def _class_item(op: Any, av: Any) -> tuple[str, tuple[str, ...]]:
+    if op is _sre.LITERAL:
+        return _item_source(op, av), _near(av)
+    if op is _sre.RANGE:
+        return _item_source(op, av), _near(*av)
+    return _item_source(op, av), ()
 
 
 def _charset(op: Any, av: Any, flags: int) -> _CharSet:
     if op is _sre.LITERAL:
-        return _CharSet(re.escape(chr(av)), flags, _near(av))
+        return _CharSet(re.escape(chr(av)), flags, _near(av), items=((op, av),))
     if op is _sre.NOT_LITERAL:
-        return _CharSet(f"[^{re.escape(chr(av))}]", flags, _near(av))
+        literal = ((_sre.LITERAL, av),)
+        return _CharSet(f"[^{re.escape(chr(av))}]", flags, _near(av), items=literal, negate=True)
     if op is _sre.ANY:
-        return _CharSet(".", flags, ())
-    negate = ""
+        return _CharSet(".", flags, (), items=None)
+    negate = False
     parts: list[str] = []
     probes: list[str] = []
+    items: list[tuple[Any, Any]] = []
     has_category = False
     for item_op, item_av in av:
         if item_op is _sre.NEGATE:
-            negate = "^"
+            negate = True
             continue
         has_category = has_category or item_op is _sre.CATEGORY
         part, extra = _class_item(item_op, item_av)
         parts.append(part)
         probes.extend(extra)
-    return _CharSet(f"[{negate}{''.join(parts)}]", flags, tuple(probes), has_category)
+        items.append((item_op, item_av))
+    source = f"[{'^' if negate else ''}{''.join(parts)}]"
+    return _CharSet(source, flags, tuple(probes), has_category, tuple(items), negate)
 
 
 _GUARD_STEP_BUDGET: Final = 20_000
@@ -330,21 +351,94 @@ _MAX_OPEN_ATOMS: Final = 64
 """Distinct atoms an open set may hold; above it the guard refuses (fail closed, R2-2)."""
 
 
-def _text_mask(atom: _CharSet, text: str) -> int:
-    """Bit ``i`` set when the atom matches ``text[i]``: one ``finditer``, since an atom always
-    consumes exactly one character."""
+def _scan_mask(source: str, flags: int, text: str) -> int:
+    """Bit ``i`` set when the one-character pattern matches ``text[i]``: one ``finditer``."""
     mask = 0
-    for m in _charset_pattern(atom.source, atom.flags).finditer(text):
+    for m in _charset_pattern(source, flags).finditer(text):
         mask |= 1 << m.start()
     return mask
 
 
+@dataclass(frozen=True, eq=False)
+class _Tier:
+    """A probe set in bit order: its uncased probes (sorted, bits from 0), then its cased ones
+    (sorted, after them). A literal or range matches an uncased probe exactly when the probe
+    lies inside it, with or without IGNORECASE (``_cased_points``), so those bits are one
+    contiguous run found by bisection; only the cased part is ever scanned, and only under
+    IGNORECASE for an item that is cased itself or a range."""
+
+    text: str
+    plain: tuple[int, ...]
+    cased: tuple[int, ...]
+    cased_text: str
+    full: int
+
+    @classmethod
+    def of(cls, probes: str) -> _Tier:
+        points = sorted(set(map(ord, probes)))
+        plain = tuple(c for c in points if c not in _CASED)
+        cased = tuple(c for c in points if c in _CASED)
+        cased_text = "".join(map(chr, cased))
+        text = "".join(map(chr, plain)) + cased_text
+        return cls(text, plain, cased, cased_text, (1 << len(text)) - 1)
+
+
+def _span(points: tuple[int, ...], lo: int, hi: int) -> int:
+    """Bits of the sorted ``points`` inside ``[lo, hi]``: one contiguous run."""
+    return ((1 << bisect_right(points, hi)) - 1) ^ ((1 << bisect_left(points, lo)) - 1)
+
+
+def _item_bits(op: Any, av: Any, flags: int, tier: _Tier) -> int:
+    """One class item's mask over a tier. A category item is scanned whole (few distinct, so
+    cached in ``_item_mask``); a literal or range takes its uncased bits by bisection, and its
+    cased bits by bisection, or under IGNORECASE by scanning the cased part (an uncased literal
+    matches only itself there, so it skips the scan). Exact: a class matches a character when
+    one of its items does, and IGNORECASE tests the lowered character, whose ``\\w``/``\\d``/
+    ``\\s`` class is its own (``test_regex_guard_cost_probes.py``)."""
+    if op is _sre.LITERAL:
+        lo = hi = av
+    elif op is _sre.RANGE:
+        lo, hi = av
+    else:
+        return _scan_mask(f"[{_item_source(op, av)}]", flags, tier.text)
+    if not flags & re.IGNORECASE or (lo == hi and lo not in _CASED):
+        cased = _span(tier.cased, lo, hi)
+    else:
+        cased = _scan_mask(f"[{_item_source(op, av)}]", flags, tier.cased_text)
+    return _span(tier.plain, lo, hi) | cased << len(tier.plain)
+
+
+def _atom_bits(atom: _CharSet, tier: _Tier, item: Callable[[Any, Any], int]) -> int:
+    """The atom's mask over a tier: the union of its items' masks (``item``), complemented when
+    the atom is negated; ``.`` is scanned (few distinct flag sets)."""
+    if atom.items is None:
+        return _scan_mask(atom.source, atom.flags, tier.text)
+    mask = 0
+    for op, av in atom.items:
+        mask |= item(op, av)
+    return tier.full ^ mask if atom.negate else mask
+
+
+# The shared probe tiers: 0 base, 1 category run ends, 2 case folds. Built at import (about
+# 0.2 s, once per process), so no evaluate call pays for it and the guard's latency stays flat
+# from the first rule regex on.
+_TIERS: Final = (
+    _Tier.of(_BASE_PROBE_TEXT),
+    _Tier.of(_CATEGORY_PROBE_TEXT),
+    _Tier.of(_FOLD_PROBE_TEXT),
+)
+
+
+@lru_cache(maxsize=_CACHE_SIZE)
+def _item_mask(op: Any, av: Any, flags: int, tier: int) -> int:
+    return _item_bits(op, av, flags, _TIERS[tier])
+
+
 @lru_cache(maxsize=_CACHE_SIZE)
 def _tier_mask(atom: _CharSet, tier: int) -> int:
-    """The atom's mask over one shared probe tier: 0 base, 1 category ends, 2 case folds."""
-    if tier == 0:
-        return _text_mask(atom, _BASE_PROBE_TEXT)
-    return _text_mask(atom, _CATEGORY_PROBE_TEXT if tier == 1 else _FOLD_PROBE_TEXT)
+    """The atom's mask over one shared tier, built from its items, so an atom costs a few
+    bisections and short scans however many probes the tier holds (security review, 402d888)."""
+    return _atom_bits(atom, _TIERS[tier], lambda op, av: _item_mask(op, av, atom.flags, tier))
 
 
 def _sub_flags(flags: int, av: Any) -> int:
@@ -378,17 +472,26 @@ class _Guard:
         self._atom_sets: dict[tuple[int, int], frozenset[_CharSet]] = {}
         self._masks: dict[_CharSet, int] = {}
         every = self.atoms(tree, flags)
-        self._extra_text = "".join(sorted({p for atom in every for p in atom.probes}))
+        self._extra = _Tier.of("".join({p for atom in every for p in atom.probes}))
         # (tier, bit offset): the tiers this regex needs, each at its own bits.
         self._tiers: list[tuple[int, int]] = [(0, 0)]
-        offset = len(_BASE_PROBES)
+        offset = len(_TIERS[0].text)
         if any(a.has_category and not a.flags & re.ASCII for a in every):
             self._tiers.append((1, offset))
-            offset += len(_CATEGORY_PROBE_TEXT)
+            offset += len(_TIERS[1].text)
         if any(a.flags & re.IGNORECASE and not a.flags & re.ASCII for a in every):
             self._tiers.append((2, offset))
-            offset += len(_FOLD_PROBE_TEXT)
+            offset += len(_TIERS[2].text)
         self._extra_offset = offset
+        self._extra_items: dict[tuple[Any, Any, int], int] = {}
+
+    def _extra_item(self, op: Any, av: Any, flags: int) -> int:
+        """An item's mask over this regex's own probes, memoised for the guard run."""
+        key = (op, av, flags)
+        cached = self._extra_items.get(key)
+        if cached is None:
+            cached = self._extra_items[key] = _item_bits(op, av, flags, self._extra)
+        return cached
 
     def mask(self, atom: _CharSet) -> int:
         """The probes the atom matches. Each atom's set is a union of code-point intervals, and
@@ -401,7 +504,8 @@ class _Guard:
             cached = 0
             for tier, offset in self._tiers:
                 cached |= _tier_mask(atom, tier) << offset
-            cached |= _text_mask(atom, self._extra_text) << self._extra_offset
+            item = partial(self._extra_item, flags=atom.flags)
+            cached |= _atom_bits(atom, self._extra, item) << self._extra_offset
             self._masks[atom] = cached
         return cached
 

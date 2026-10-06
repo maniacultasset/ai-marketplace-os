@@ -19,6 +19,7 @@ PACKAGE = Path("apps/api/app/services/rules_engine")
 ALLOWED_MODULES = frozenset(
     {
         "__future__",
+        "bisect",
         "collections",
         "collections.abc",
         "dataclasses",
