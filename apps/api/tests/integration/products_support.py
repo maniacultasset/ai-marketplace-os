@@ -50,3 +50,33 @@ def statements() -> Iterator[list[str]]:
 
 def as_json(value: Any) -> str:
     return json.dumps(value)
+
+
+_PROVENANCE = json.dumps(
+    {
+        "title": {"source": "seller", "captured_via": "form", "updated_at": "2026-10-06T00:00:00Z"},
+        "category": {
+            "source": "seller",
+            "captured_via": "form",
+            "updated_at": "2026-10-06T00:00:00Z",
+        },
+    }
+)
+
+
+def insert_products(
+    conn: Conn, tenant_id: Any, count: int, *, prefix: str = "S12-ROW", category: str = "kurtas"
+) -> list[Any]:
+    """`count` products in one statement (so they share one `created_at`, the keyset tiebreak
+    case), on the admin connection. Returns their ids."""
+    rows = conn.execute(
+        "INSERT INTO products (tenant_id, sku, title, category, provenance) "
+        "SELECT %s, %s || '-' || n, 'Row ' || n, %s, %s::jsonb FROM generate_series(1, %s) AS n "
+        "RETURNING id",
+        [tenant_id, prefix, category, _PROVENANCE, count],
+    ).fetchall()
+    return [r[0] for r in rows]
+
+
+def soft_delete(conn: Conn, product_id: Any) -> None:
+    conn.execute("UPDATE products SET deleted_at = now() WHERE id = %s", [product_id])
