@@ -20,7 +20,7 @@ from mkos_schemas.auth import JWTClaims
 from app.core.config import get_settings
 from app.core.passwords import hash_password, verify_password
 from app.core.rbac import Principal
-from app.core.security import encode, issue_claims, token_hash
+from app.core.security import InvalidToken, decode, encode, issue_claims, token_hash
 from app.repositories.identity import (
     AuditRepository,
     MembershipRepository,
@@ -182,3 +182,57 @@ async def login(
 
 def _membership(row: MembershipRow) -> Membership:
     return Membership(row.tenant_id, row.tenant_name, row.role)
+
+
+# ---- refresh (CODE-PLAN S10 C9; PLAN Decision 8) ----
+
+
+async def refresh(raw_token: str, *, ip: str | None, user_agent: str | None) -> TokenPair | None:
+    """Rotate a refresh token: a new pair in the same family, or None for a 401. Reusing a
+    rotated or revoked token revokes the whole family (`reuse_detected`), audits it and commits
+    before the caller answers 401; a concurrent second refresh of one token is such a reuse."""
+    try:
+        claims = decode(raw_token, typ="refresh")
+    except InvalidToken:
+        return None
+    digest = token_hash(raw_token)
+    async with identity_session() as session:
+        # the tenant and user GUCs come from the verified token, before any locking read (Q10)
+        await set_gucs(session, tenant_id=claims.tid, user_id=claims.sub, token_hash=digest)
+        tokens = RefreshTokenRepository(session)
+        row = await tokens.by_hash_for_update(digest)
+        if row is None or row.tenant_id != claims.tid or row.user_id != claims.sub:
+            return None
+        if row.revoked_at is not None:
+            await tokens.revoke_family(
+                row.tenant_id, row.family_id, "reuse_detected", expect_live=False
+            )
+            await AuditRepository(session).write(
+                tenant_id=row.tenant_id,
+                actor_type="system",
+                actor_user_id=None,
+                action="auth.refresh_reuse_detected",
+                entity_type="user",
+                entity_id=row.user_id,
+                ip=_inet(ip),
+            )
+            return None
+        if row.expires_at <= datetime.now(UTC):
+            return None
+        memberships = MembershipRepository(session)
+        member = await memberships.probe(row.tenant_id, row.user_id)
+        if member is None:
+            return None
+        access, new_refresh, new_id = await _issue(
+            session,
+            user_id=row.user_id,
+            tenant_id=row.tenant_id,
+            role=member.role,
+            email=member.email,
+            family_id=row.family_id,
+            ip=ip,
+            user_agent=user_agent,
+        )
+        await tokens.rotate(row.tenant_id, row.id, new_id)
+        listed = await memberships.list_active_for_user(row.user_id)
+    return TokenPair(access, new_refresh, _access_ttl(), [_membership(m) for m in listed])

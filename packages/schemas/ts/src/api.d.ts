@@ -116,7 +116,8 @@ export interface paths {
         put?: never;
         /**
          * Rotate the refresh token
-         * @description Rotate the refresh token; reusing a rotated one revokes the whole chain.
+         * @description Rotate the refresh token; reusing a rotated one revokes the whole chain. Refreshes must
+         *     be serialised by the client: a concurrent second refresh of one token counts as reuse.
          */
         post: operations["auth_refresh"];
         delete?: never;

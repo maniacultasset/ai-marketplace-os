@@ -58,10 +58,17 @@ async def auth_login(body: LoginRequest, request: Request) -> TokenResponse:
 
 
 @route(router, OPS["auth_refresh"])
-@stub
-async def auth_refresh(body: RefreshRequest) -> NoReturn:
-    """Rotate the refresh token; reusing a rotated one revokes the whole chain."""
-    raise NotImplementedYet("auth_refresh")
+async def auth_refresh(body: RefreshRequest, request: Request) -> TokenResponse:
+    """Rotate the refresh token; reusing a rotated one revokes the whole chain. Refreshes must
+    be serialised by the client: a concurrent second refresh of one token counts as reuse."""
+    pair = await auth.refresh(
+        body.refresh_token.get_secret_value(),
+        ip=request_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+    if pair is None:
+        raise _unauthenticated()
+    return _tokens(pair)
 
 
 @route(router, OPS["auth_logout"])

@@ -4299,7 +4299,7 @@
     },
     "/api/v1/auth/refresh": {
       "post": {
-        "description": "Rotate the refresh token; reusing a rotated one revokes the whole chain.",
+        "description": "Rotate the refresh token; reusing a rotated one revokes the whole chain. Refreshes must\nbe serialised by the client: a concurrent second refresh of one token counts as reuse.",
         "operationId": "auth_refresh",
         "requestBody": {
           "content": {
