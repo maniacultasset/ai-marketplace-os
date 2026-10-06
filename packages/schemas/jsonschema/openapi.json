@@ -11858,7 +11858,7 @@
     },
     "/api/v1/members": {
       "get": {
-        "description": "The tenant's members, active or not.",
+        "description": "The tenant's members, active or not, oldest membership first.",
         "operationId": "members_list",
         "parameters": [
           {
@@ -12143,7 +12143,7 @@
     },
     "/api/v1/members/{user_id}": {
       "patch": {
-        "description": "Change one member's role or active flag.",
+        "description": "Change one member's role or active flag. A member of another tenant is 404; an admin\ntouching an owner, or granting owner, is 403; leaving no active owner is 409\nLAST_OWNER_REQUIRED. Deactivating revokes that member's refresh tokens.",
         "operationId": "members_patch",
         "parameters": [
           {

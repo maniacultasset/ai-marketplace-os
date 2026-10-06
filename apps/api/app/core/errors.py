@@ -29,3 +29,11 @@ class RowCountError(DomainError):
         super().__init__(f"expected {expected} row(s), statement touched {actual}")
         self.expected = expected
         self.actual = actual
+
+
+class NotFoundError(DomainError):
+    """The row is missing, or belongs to another tenant (which reads as missing, PLAN D6)."""
+
+
+class ForbiddenError(DomainError):
+    """The caller's role may not make this change (403 PERMISSION_DENIED)."""

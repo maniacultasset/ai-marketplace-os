@@ -607,7 +607,7 @@ export interface paths {
         };
         /**
          * List the tenant's members
-         * @description The tenant's members, active or not.
+         * @description The tenant's members, active or not, oldest membership first.
          */
         get: operations["members_list"];
         put?: never;
@@ -633,7 +633,9 @@ export interface paths {
         head?: never;
         /**
          * Change a member's role or active flag (only an owner grants or removes owner)
-         * @description Change one member's role or active flag.
+         * @description Change one member's role or active flag. A member of another tenant is 404; an admin
+         *     touching an owner, or granting owner, is 403; leaving no active owner is 409
+         *     LAST_OWNER_REQUIRED. Deactivating revokes that member's refresh tokens.
          */
         patch: operations["members_patch"];
         trace?: never;
