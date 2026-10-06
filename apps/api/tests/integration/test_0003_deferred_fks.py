@@ -12,9 +12,24 @@ import pytest
 
 from . import factories as f
 from .conftest import expect_sqlstate
+from .integrity_support import disable_0004_guard
 from .ops_support import category_template, error_map
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
+
+
+@pytest.fixture(autouse=True)
+def _0004_guards_off(request: pytest.FixtureRequest) -> None:
+    """These suites test 0003's CHECKs, keys and RESTRICT FKs on platform rows the 0004 platform
+    guards would refuse first (test_0004_platform_guards.py proves them); the guards are off in
+    the rolled-back `db` transaction."""
+    if "db" in request.fixturenames:
+        db = request.getfixturevalue("db")
+        disable_0004_guard(db, "category_templates", "category_templates_guard")
+        disable_0004_guard(db, "marketplace_error_map", "error_map_guard")
+        disable_0004_guard(db, "attribute_definitions", "dictionary_guard")
+        disable_0004_guard(db, "category_attributes", "dictionary_guard")
+
 
 Conn = psycopg.Connection[tuple[Any, ...]]
 
