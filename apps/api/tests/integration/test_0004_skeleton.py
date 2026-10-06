@@ -46,6 +46,7 @@ EXPECTED_STEMS: tuple[str, ...] = (
     "16_tenant_lifecycle",
     "17_display",
     "18_purge_tenant",
+    "19_redact_prune",
 )
 
 
