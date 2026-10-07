@@ -113,3 +113,64 @@ def chunk_rows(
     cur = conn.execute(query + " ORDER BY source_id, chunk_index, created_at", params)
     names = [d.name for d in cur.description or ()]
     return [dict(zip(names, row, strict=True)) for row in cur.fetchall()]
+
+
+class MemoryStore:
+    """An in-memory `DocumentStore`; `fail_delete` makes `delete` raise."""
+
+    def __init__(self) -> None:
+        self.objects: dict[tuple[str, str], tuple[bytes, str]] = {}
+        self.fail_delete = False
+        self.puts = 0
+
+    async def put(self, bucket: str, key: str, data: bytes, content_type: str) -> None:
+        self.puts += 1
+        self.objects[(bucket, key)] = (data, content_type)
+
+    async def get(self, bucket: str, key: str) -> bytes:
+        from app.services.brand_storage import StorageNotFound
+
+        try:
+            return self.objects[(bucket, key)][0]
+        except KeyError:
+            raise StorageNotFound("the object does not exist") from None
+
+    async def delete(self, bucket: str, key: str) -> None:
+        if self.fail_delete:
+            raise ConnectionError("store down")
+        self.objects.pop((bucket, key), None)
+
+
+def principal(world: Any, email: str = "owner@acme.test", slug: str = "acme") -> Any:
+    from app.core.rbac import Principal
+
+    return Principal(
+        user_id=world.user(email),
+        tenant_id=world.tenant(slug),
+        role=email.split("@", 1)[0],  # type: ignore[arg-type]
+        email=email,
+        jti=str(uuid.uuid4()),
+    )
+
+
+GUIDE = (
+    b"# Brand voice\n\nWe sound warm, plain and factual.\n\n"
+    b"- Say kurta set, not kurta outfit.\n- Name the fabric first.\n\n"
+    b"Compliance\n----------\n1. Never claim a product cures anything.\n"
+)
+
+
+def finish_jobs(conn: Conn, status: str) -> None:
+    """Move queued jobs through `running` to `status` on the admin login (the guard's edges)."""
+    from psycopg.types.json import Jsonb
+
+    conn.execute(
+        "UPDATE job_runs SET status = 'running', started_at = now(), "
+        "lease_expires_at = now() + interval '1 hour' WHERE status = 'queued'"
+    )
+    report = Jsonb({"status": "failed"}) if status in ("failed", "dead_letter") else None
+    conn.execute(
+        "UPDATE job_runs SET status = %s, finished_at = now(), error_report_json = %s "
+        "WHERE status = 'running'",
+        [status, report],
+    )
