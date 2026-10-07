@@ -289,9 +289,13 @@ def _url_errors(s: Settings) -> list[str]:
     if not bad:
         return []
     return [f"APP_ENV={s.app_env} refuses http or loopback {', '.join(bad)}"]
+
+
 def _pipeline_stub_installed() -> bool:
+    try:
         metadata.distribution(PIPELINE_STUB_DISTRIBUTION)
     except metadata.PackageNotFoundError:
+        return False
     return True
 
 
