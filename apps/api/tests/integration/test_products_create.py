@@ -104,7 +104,9 @@ async def test_products_create_validation(
     error = response.json()["error"]
     assert error["type"] == "VALIDATION_FAILED"
     if case in _NUL_LOC:
-        assert error["details"] == [{"loc": _NUL_LOC[case], "msg": "Invalid value."}]
+        # a missing category is refused by the request model since T115, the NULs by the service
+        msg = "Field required" if case == "no_category" else "Invalid value."
+        assert error["details"] == [{"loc": _NUL_LOC[case], "msg": msg}]
     assert "\u0000" not in response.text
     assert counts(auth_db) == before
 
