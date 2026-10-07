@@ -7,7 +7,6 @@ SHELL := bash
 # Per-checkout host ports (ADR-0011 amendment):
 # `.worktree.env` is optional and git-ignored; the helper validates it before make reads it.
 WORKTREE_KEYS := COMPOSE_PROJECT_NAME PG_HOST_PORT MINIO_API_HOST_PORT MINIO_CONSOLE_HOST_PORT API_HOST_PORT MOCK_HOST_PORT FAKE_MARKETPLACE_HOST_PORT
-WORKTREE_KEYS := COMPOSE_PROJECT_NAME PG_HOST_PORT MINIO_API_HOST_PORT MINIO_CONSOLE_HOST_PORT API_HOST_PORT MOCK_HOST_PORT
 # `make e2e` against a caller's own stack (S13b): an API_HOST_PORT in the environment wins over
 # .worktree.env there (read before the file is included).
 E2E_ENV_API_PORT := $(if $(filter environment,$(origin API_HOST_PORT)),$(API_HOST_PORT))
@@ -267,13 +266,6 @@ RESET_LIMITS ?= scripts/ci/reset_rate_limits.sh
 FAKE_CTL ?= scripts/ci/fake_marketplace.sh
 REFRESH_ONCE ?= APP_ROLE=worker uv run --frozen python -m app.workers.oneshot refresh_marketplace_tokens
 
-.PHONY: e2e
-e2e:
-	base="http://127.0.0.1:$(API_HOST_PORT)"; \
-	$(FAKE_CTL) start $(FAKE_MARKETPLACE_HOST_PORT) || exit $$?; \
-	trap '$(FAKE_CTL) stop $(FAKE_MARKETPLACE_HOST_PORT)' EXIT; \
-	export $(FAKE_MARKETPLACE_ENV); \
-	export FAKE_URL="$(FAKE_MARKETPLACE_URL)" REFRESH_ONCE="$(REFRESH_ONCE)"; \
 # The import flow's hooks (S13b): a local worker beside `make dev` (its PID in E2E_WORKER_PIDFILE)
 # and the migrator's `templates load`. DATABASE_URL, ALEMBIC_DATABASE_URL and API_HOST_PORT set in
 # the caller's environment win over .env and .worktree.env (a caller with its own stack).
@@ -292,6 +284,10 @@ e2e:
 	export WORKER_START='$(E2E_WORKER_START)' WORKER_STOP='$(E2E_WORKER_STOP)' \
 	  TEMPLATES_LOAD='$(E2E_TEMPLATES_LOAD)'; \
 	base="http://127.0.0.1:$(or $(E2E_ENV_API_PORT),$(API_HOST_PORT))"; \
+	$(FAKE_CTL) start $(FAKE_MARKETPLACE_HOST_PORT) || exit $$?; \
+	trap '$(FAKE_CTL) stop $(FAKE_MARKETPLACE_HOST_PORT)' EXIT; \
+	export $(FAKE_MARKETPLACE_ENV); \
+	export FAKE_URL="$(FAKE_MARKETPLACE_URL)" REFRESH_ONCE="$(REFRESH_ONCE)"; \
 	for script in $(E2E_DIR)/*.sh; do \
 	  [ -e "$$script" ] || { echo "make e2e: no scripts in $(E2E_DIR)" >&2; exit 1; }; \
 	  [ "$$(basename "$$script")" != onboarding.sh ] || continue; \

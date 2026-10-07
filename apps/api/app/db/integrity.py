@@ -69,7 +69,7 @@ def to_conflict(exc: IntegrityError) -> ConflictError:
     return ConflictError(code, name or "<none>")
 
 
-# The 0006 facts guard (DATABASE.md:1182-1185): a refused fact is the writer's 422, not a 409.
+# The 0007 facts guard (DATABASE.md:1182-1185): a refused fact is the writer's 422, not a 409.
 FACT_SQLSTATES: Final[Mapping[str, ErrorCode]] = MappingProxyType(
     {
         "PRV01": ErrorCode.FACT_SOURCE_FORBIDDEN,

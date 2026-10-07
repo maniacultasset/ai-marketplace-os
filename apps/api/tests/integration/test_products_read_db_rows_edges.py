@@ -33,7 +33,7 @@ def _fact(**fields: Any) -> dict[str, Any]:
 
 def _insert_raw(conn: Conn, tenant: Any, sku: str, title: str, attributes_json: str) -> Any:
     """A row a later writer may store (keys today's dictionary does not hold): written with the
-    user triggers (the 0006 facts guard) off for this one transaction (`SET LOCAL`, superuser)."""
+    user triggers (the 0007 facts guard) off for this one transaction (`SET LOCAL`, superuser)."""
     with conn.transaction():
         conn.execute("SET LOCAL session_replication_role = replica")
         row = conn.execute(

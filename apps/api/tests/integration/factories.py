@@ -25,7 +25,7 @@ FACT_TABLES = ("products", "product_colourways", "brand_profiles")
 
 
 def facts_guard_off(conn: Conn, *tables: str) -> None:
-    """Turn the 0006 facts guard off for the caller's open transaction (rolled back with it):
+    """Turn the 0007 facts guard off for the caller's open transaction (rolled back with it):
     the 0001 CHECK tests and the hostile-row reads store keys and levels the dictionary refuses,
     and the BEFORE trigger would refuse them before the CHECK under test runs."""
     for table in tables or FACT_TABLES:

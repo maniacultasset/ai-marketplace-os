@@ -1,6 +1,6 @@
 """facts_guard: the fact provenance backstop on products, colourways and brand profiles
 
-DATABASE.md rev 3 §5.6 `facts_guard()` (steps 1-3) and :1797; CANON.md ledger row 0006 (S13b).
+DATABASE.md rev 3 §5.6 `facts_guard()` (steps 1-3) and :1797; CANON.md ledger row 0007 (S13b).
 BEFORE INSERT OR UPDATE OF `attributes`, `provenance` and the typed fact columns on `products`,
 `product_colourways` and `brand_profiles`, SECURITY INVOKER with a pinned search_path:
 
@@ -20,8 +20,8 @@ sync` after `upgrade` (DATABASE.md:1785). CREATE TRIGGER takes SHARE ROW EXCLUSI
 rewrites nothing. Messages carry no key or value; the API maps the SQLSTATE (PRV01
 FACT_SOURCE_FORBIDDEN, PRV02 UNKNOWN_FACT_KEY, PRV03 FACT_LEVEL_INVALID).
 
-Revision ID: 0006_facts_guard
-Revises: 0005_rls
+Revision ID: 0007_facts_guard
+Revises: 0006_oauth_pending
 Create Date: 2026-10-07
 
 """
@@ -33,8 +33,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0006_facts_guard"
-down_revision: str | Sequence[str] | None = "0005_rls"
+revision: str = "0007_facts_guard"
+down_revision: str | Sequence[str] | None = "0006_oauth_pending"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

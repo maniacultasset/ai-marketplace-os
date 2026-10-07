@@ -26,11 +26,11 @@ def test_mig_single_head() -> None:
 
 def test_facts_guard_down_revision_is_ledger_head() -> None:
     script = ScriptDirectory.from_config(alembic_config())
-    revision = script.get_revision("0006_facts_guard")
+    revision = script.get_revision("0007_facts_guard")
     assert revision is not None
     ledger = _ledger()
-    assert "0006_facts_guard" in ledger
-    assert revision.down_revision == ledger[ledger.index("0006_facts_guard") - 1]
+    assert "0007_facts_guard" in ledger
+    assert revision.down_revision == ledger[ledger.index("0007_facts_guard") - 1]
     # every revision file is claimed in the ledger
     claimed = set(ledger)
     for rev in script.walk_revisions():
