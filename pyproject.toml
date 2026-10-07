@@ -16,7 +16,7 @@ build-constraint-dependencies = [
 ]
 
 [tool.uv.workspace]
-members = ["apps/api", "packages/schemas"]
+members = ["apps/api", "packages/schemas", "packages/pipeline-stub"]
 
 [dependency-groups]
 dev = [
@@ -51,6 +51,7 @@ ignore = ["E501"]
 [tool.ruff.lint.per-file-ignores]
 "apps/api/tests/**" = ["S101", "S105", "S106", "S603", "S607"]
 "packages/schemas/tests/**" = ["S101", "S105", "S106", "S603", "S607"]
+"packages/pipeline-stub/tests/**" = ["S101", "S105", "S106", "S603", "S607"]
 "scripts/ci/**" = ["T201", "S603", "S607"]
 "scripts/schemas/**" = ["T201"]
 "apps/api/app_mock/__main__.py" = ["T201"]
@@ -75,14 +76,20 @@ extend-exclude = "^/(scaffold|scripts/docgen|scripts/trace|docs)/"
 [tool.mypy]
 strict = true
 plugins = ["pydantic.mypy"]
-files = ["apps/api", "packages/schemas/src", "packages/schemas/tests"]
+files = [
+  "apps/api",
+  "packages/schemas/src",
+  "packages/schemas/tests",
+  "packages/pipeline-stub/src",
+  "packages/pipeline-stub/tests",
+]
 explicit_package_bases = true
-mypy_path = ["apps/api", "packages/schemas/src"]
+mypy_path = ["apps/api", "packages/schemas/src", "packages/pipeline-stub/src"]
 # Generated revision files (CANON.md:135).
 exclude = ["^apps/api/alembic/versions/"]
 
 [tool.pytest.ini_options]
-testpaths = ["apps/api/tests", "packages/schemas/tests"]
+testpaths = ["apps/api/tests", "packages/schemas/tests", "packages/pipeline-stub/tests"]
 pythonpath = ["apps/api"]
 addopts = "--strict-markers --strict-config -ra --import-mode=importlib --disable-socket --allow-unix-socket"
 asyncio_mode = "auto"

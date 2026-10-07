@@ -61,10 +61,10 @@ help:
 
 .PHONY: test-unit
 test-unit:
-	uv run --frozen pytest -q apps/api/tests/unit apps/api/tests/meta packages/schemas/tests
+	uv run --frozen pytest -q apps/api/tests/unit apps/api/tests/meta packages/schemas/tests packages/pipeline-stub/tests
 
 # ---- required checks (one target per check id) ----
-LINT_PATHS := apps/api packages/schemas scripts
+LINT_PATHS := apps/api packages/schemas packages/pipeline-stub scripts
 
 .PHONY: api-lint
 api-lint:

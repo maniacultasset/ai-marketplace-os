@@ -5,6 +5,7 @@ requires-python = "==3.13.*"
 [manifest]
 members = [
     "mkos-api",
+    "mkos-pipeline-stub",
     "mkos-schemas",
 ]
 build-constraints = [
@@ -853,6 +854,7 @@ dependencies = [
     { name = "cryptography" },
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "mkos-pipeline-stub" },
     { name = "mkos-schemas" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-sdk" },
@@ -878,6 +880,7 @@ requires-dist = [
     { name = "cryptography", specifier = "==50.0.2" },
     { name = "fastapi", specifier = "==0.141.1" },
     { name = "httpx", specifier = "==0.28.1" },
+    { name = "mkos-pipeline-stub", editable = "packages/pipeline-stub" },
     { name = "mkos-schemas", editable = "packages/schemas" },
     { name = "opentelemetry-api", specifier = ">=1.45,<2" },
     { name = "opentelemetry-sdk", specifier = ">=1.45,<2" },
@@ -896,6 +899,17 @@ requires-dist = [
     { name = "structlog", specifier = ">=26.1,<27" },
     { name = "uvicorn", specifier = "==0.54.0" },
 ]
+
+[[package]]
+name = "mkos-pipeline-stub"
+version = "0.0.0"
+source = { editable = "packages/pipeline-stub" }
+dependencies = [
+    { name = "mkos-schemas" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "mkos-schemas", editable = "packages/schemas" }]
 
 [[package]]
 name = "mkos-schemas"

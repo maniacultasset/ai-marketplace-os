@@ -15,12 +15,14 @@ WORKDIR /src
 # Manifests first: this layer caches until a dependency actually changes.
 COPY pyproject.toml uv.lock .python-version ./
 COPY packages/schemas/pyproject.toml packages/schemas/
+COPY packages/pipeline-stub/pyproject.toml packages/pipeline-stub/
 COPY apps/api/pyproject.toml apps/api/
 # --no-editable on every sync: an editable build makes hatchling fetch `editables` from PyPI,
 # unpinned and unhashed; a wheel build needs only the pinned build constraints (uv.lock).
 RUN uv venv "$VIRTUAL_ENV" \
  && uv sync --frozen --no-dev --no-editable --no-install-workspace --package mkos-api
 COPY packages/schemas/ packages/schemas/
+COPY packages/pipeline-stub/ packages/pipeline-stub/
 COPY apps/api/ apps/api/
 COPY scripts/db/ scripts/db/
 RUN uv sync --frozen --no-dev --no-editable --package mkos-api

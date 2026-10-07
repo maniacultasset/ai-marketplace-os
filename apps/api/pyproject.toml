@@ -21,6 +21,7 @@ dependencies = [
   "opentelemetry-api>=1.45,<2",
   "opentelemetry-sdk>=1.45,<2",
   "mkos-schemas",
+  "mkos-pipeline-stub",
   "pwdlib[argon2]==0.3.1",
   "pyjwt[crypto]>=2.15,<3",
   "cryptography==50.0.2",
@@ -29,6 +30,7 @@ dependencies = [
 
 [tool.uv.sources]
 mkos-schemas = { workspace = true }
+mkos-pipeline-stub = { workspace = true }
 
 [build-system]
 requires = ["hatchling==1.31.0"]

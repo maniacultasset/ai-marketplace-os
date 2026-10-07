@@ -1,0 +1,22 @@
+# The in-repo stub of the AI team's `mkos-pipeline` (ADR-0012 §3; CANON.md:128; S14b D1, OQ18). It
+# implements `run_listing_pipeline` deterministically from fixtures, so the backend's own tests and
+# local runs exercise the seam with no model, no credential and no network. The deploy build
+# replaces it with the tagged `mkos-pipeline` (ADR-0013 §5; S4/S18). It depends on the contracts
+# package only (CANON.md:125).
+[project]
+name = "mkos-pipeline-stub"
+version = "0.0.0"
+description = "AI Marketplace OS pipeline stub (deterministic, fixtures only)"
+requires-python = "==3.13.*"
+dependencies = ["mkos-schemas"]
+
+[tool.uv.sources]
+mkos-schemas = { workspace = true }
+
+[build-system]
+requires = ["hatchling==1.31.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mkos_pipeline"]
+dev-mode-dirs = ["src"]
