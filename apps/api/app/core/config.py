@@ -224,11 +224,20 @@ class Settings(BaseSettings):
         raise ValueError("must be exactly 1536")
 
 
-def _is_committed_jwt_secret(secret: str) -> bool:
+# The committed admin session literal (ENV.md ADMIN_SESSION_SECRET row, `.env.example`).
+COMMITTED_ADMIN_SECRETS: Final[frozenset[str]] = frozenset(
+    {"dev_only_admin_session_secret_at_least_32_chars"}
+)
+ADMIN_MOUNT_PATH: Final[str] = "/internal/admin"
+
+
+def _is_committed_secret(secret: str, committed: frozenset[str]) -> bool:
     folded = secret.strip().casefold()
-    return secret.strip() in COMMITTED_JWT_SECRETS or folded.startswith(
-        COMMITTED_JWT_SECRET_PREFIXES
-    )
+    return secret.strip() in committed or folded.startswith(COMMITTED_JWT_SECRET_PREFIXES)
+
+
+def _is_committed_jwt_secret(secret: str) -> bool:
+    return _is_committed_secret(secret, COMMITTED_JWT_SECRETS)
 
 
 def _is_loopback_host(host: str) -> bool:
@@ -309,12 +318,35 @@ def _boot_errors(s: Settings) -> list[str]:
         errors.append(f"APP_ENV={s.app_env} refuses a committed or dev-prefixed JWT_SECRET")
     if s.app_env != "local" and s.app_role in ("api", "worker") and s.sentry_dsn is None:
         errors.append(f"APP_ENV={s.app_env} requires SENTRY_DSN for APP_ROLE={s.app_role}")
+    errors += _admin_errors(s)
     if s.app_env == "production" and s.app_role == "worker" and _pipeline_stub_installed():
         errors.append("APP_ENV=production APP_ROLE=worker refuses mkos-pipeline-stub")
     if s.log_level.upper() not in logging.getLevelNamesMapping():
         errors.append("LOG_LEVEL is not a logging level")
     errors += _kms_errors(s)
     errors += _url_errors(s)
+    return errors
+
+
+def _admin_errors(s: Settings) -> list[str]:
+    """The `/internal/admin` guards (ENV.md:22-27; ADR-0013 §1; S14b D10): never in production, a
+    real session secret outside local, read-only in v1 (requeue is the staff CLI), one mount path.
+    """
+    errors: list[str] = []
+    if s.app_env == "production" and s.admin_enabled:
+        errors.append("APP_ENV=production refuses ADMIN_ENABLED=true")
+    if (
+        s.app_env != "local"
+        and s.admin_enabled
+        and _is_committed_secret(s.admin_session_secret, COMMITTED_ADMIN_SECRETS)
+    ):
+        errors.append(
+            f"APP_ENV={s.app_env} refuses a committed or dev-prefixed ADMIN_SESSION_SECRET"
+        )
+    if not s.admin_read_only:
+        errors.append("ADMIN_READ_ONLY=false is refused in v1")
+    if s.admin_base_url != ADMIN_MOUNT_PATH:
+        errors.append(f"ADMIN_BASE_URL must be {ADMIN_MOUNT_PATH}")
     return errors
 
 

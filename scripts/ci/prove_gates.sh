@@ -441,6 +441,11 @@ leg lint-imports-engine-repositories lint-imports 'app.services.rules_engine is 
 leg lint-imports-unseal-from-router lint-imports 'only app.adapters and app.workers import the decrypt path BROKEN' \
   seed_unseal_from_router make lint-imports
 
+# S14b T16: the production admin kill switch (A§14) is the only guard the killswitch test trips.
+seed_admin_prod_guard_removed() {
+  cp "$root/.env" .env
+  replace apps/api/app/core/config.py $'    if s.app_env == "production" and s.admin_enabled:\n        errors.append("APP_ENV=production refuses ADMIN_ENABLED=true")\n' ''
+}
 # S14b T2: the pipeline stub stays pure (AC 4) and only the workers may import it.
 seed_pipeline_imports_app() { append packages/pipeline-stub/src/mkos_pipeline/graph.py 'import app'; }
 seed_service_imports_pipeline() { new_file apps/api/app/services/x.py $'"""Seeded."""\n\nimport mkos_pipeline\n\nSEEDED = mkos_pipeline'; }
@@ -465,6 +470,7 @@ if [ "$with_docker" -eq 1 ]; then
   leg contracts-response-field-removed contracts 'response-required-property-removed' seed_response_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
   leg contracts-response-optional-property-removed contracts 'response-optional-property-removed' seed_optional_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
   leg contracts-response-non-success-status-removed contracts 'response-non-success-status-removed' seed_error_status_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
+  leg api-tests-admin-prod-guard-removed api-tests 'test_admin_killswitch_enabled_exits' seed_admin_prod_guard_removed COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-engine-impure api-tests 'test_rules_engine_import_allowlist' seed_engine_impure COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-engine-coverage api-tests 'rules_engine branch coverage' seed_engine_coverage COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-revoke-no-shred api-tests 'ck_ma_revoked_shredded|test_revoke_crypto_shreds' seed_revoke_no_shred COMPOSE_PROJECT_NAME="$self_project" make api-tests
