@@ -7,8 +7,8 @@
 # narrowed type). oasdiff rates a removed optional response field, a removed declared error status
 # and a removed optional response header INFO; scripts/ci/oasdiff-levels.txt raises them to WARN,
 # because FE and AI consumers read those too. scripts/ci/oasdiff-err-ignore.txt lists breaking
-# changes the user approved by name (one line each, METHOD PATH message; T115: ProductCreate.category
-# required, 2026-10-06); empty it once main carries them. A base without the file (the PR that first adds it)
+# changes the user approved by name (one line each, METHOD PATH message), only until main carries
+# them; then the file goes back to empty (T115 ProductCreate.category: added in #25, emptied after). A base without the file (the PR that first adds it)
 # is a logged skip; a base ref that does not resolve is an error, never a skip. The container gets
 # no network.
 set -euo pipefail
