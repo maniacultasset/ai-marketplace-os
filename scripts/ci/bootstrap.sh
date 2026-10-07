@@ -214,6 +214,14 @@ export WORKER_STOP="docker stop --time 10 '$import_worker' >/dev/null && docker 
 export TEMPLATES_LOAD="docker run --rm --network '$network' -e APP_ENV=local -e APP_ROLE=shell -e ALEMBIC_DATABASE_URL='$migrator_dsn' -v \"\$1\":/tmp/templates.json:ro '$image' -m app.cli templates load --file /tmp/templates.json"
 scripts/ci/reset_rate_limits.sh "http://127.0.0.1:${api_port}"
 scripts/e2e/import_flow.sh "http://127.0.0.1:${api_port}"
+# S16 brand onboarding leg (CODE-PLAN S16 T22; AC10): the same worker hooks, and the staff CLI
+# through the image's shell role as migrator (stdin open for the new users' passwords). It runs
+# twice: a rerun must pass on its own fresh tenant.
+export MKOS_CLI="docker run -i --rm --network '$network' -e APP_ENV=local -e APP_ROLE=shell -e ALEMBIC_DATABASE_URL='$migrator_dsn' '$image' -m app.cli"
+scripts/ci/reset_rate_limits.sh "http://127.0.0.1:${api_port}"
+scripts/e2e/brand_onboarding.sh "http://127.0.0.1:${api_port}"
+scripts/ci/reset_rate_limits.sh "http://127.0.0.1:${api_port}"
+scripts/e2e/brand_onboarding.sh "http://127.0.0.1:${api_port}"
 docker rm -f "$e2e_container" >/dev/null
 # S13 worker leg (DW11): the image as APP_ROLE=worker on the compose network, as app_rw. It must
 # register its procrastinate workers within 30 s, then SIGTERM (docker stop; SIGKILL only after
