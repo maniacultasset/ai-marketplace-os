@@ -51,3 +51,52 @@ async def test_all_failed_update_keeps_existing_listing() -> None:
     got = await adapter.get_listing("SKU-LIVE")
     assert (got.status, got.marketplace_state) == ("published", MarketplaceState.LIVE)
     assert adapter.creates == 1
+
+
+# ---- conductor (S14b R2 suggestion 6): the status comes from the fields never accepted ----
+
+
+async def test_unrelated_update_keeps_partial_state() -> None:
+    from app.adapters.fake import FakeAdapter
+    from mkos_schemas.enums import MarketplaceState
+
+    adapter = FakeAdapter("amazon", fail_fields={"content.title": ("8541", "bad")})
+    sent = item(sku="SKU-MASK")
+    await adapter.create_listing(sent)
+    await adapter.update_listing(item(sent.listing, sku="SKU-MASK"), fields=["content.bullets"])
+    got = await adapter.get_listing("SKU-MASK")
+    assert "content.title" not in [f.field for f in got.fields]
+    assert (got.status, got.marketplace_state) == (
+        "partially_published",
+        MarketplaceState.PARTIALLY_LIVE,
+    ), "the title never went live, yet the listing reads back fully live"
+
+
+async def test_failed_update_of_a_live_field_keeps_it_live() -> None:
+    from app.adapters.fake import FakeAdapter
+    from mkos_schemas.enums import MarketplaceState
+
+    adapter = FakeAdapter("amazon")
+    sent = item(sku="SKU-LIVE")
+    await adapter.create_listing(sent)
+    adapter._fail["content.title"] = ("8541", "bad")  # the marketplace starts refusing the title
+    update = item(sent.listing, sku="SKU-LIVE")
+    result = await adapter.update_listing(update, fields=["content.title", "content.bullets"])
+    assert result.status == "partially_published"  # this write was partial
+    got = await adapter.get_listing("SKU-LIVE")
+    # the old title is still live on the marketplace, so the listing is
+    assert (got.status, got.marketplace_state) == ("published", MarketplaceState.LIVE)
+
+
+async def test_retried_field_clears_the_partial_state() -> None:
+    from app.adapters.fake import FakeAdapter
+    from mkos_schemas.enums import MarketplaceState
+
+    adapter = FakeAdapter("amazon", fail_fields={"content.title": ("8541", "bad")})
+    sent = item(sku="SKU-RETRY")
+    await adapter.create_listing(sent)
+    del adapter._fail["content.title"]  # the fix went in
+    await adapter.update_listing(item(sent.listing, sku="SKU-RETRY"), fields=["content.title"])
+    got = await adapter.get_listing("SKU-RETRY")
+    assert (got.status, got.marketplace_state) == ("published", MarketplaceState.LIVE)
+    assert "content.title" in [f.field for f in got.fields]

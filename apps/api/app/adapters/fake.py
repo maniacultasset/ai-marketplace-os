@@ -6,8 +6,9 @@ No network and no clock. It behaves as the adapter contract demands:
   text kept on the item; some fields failed → `partially_published` (`API_REJECTED_PARTIAL`), all
   failed → `failed` (`PUBLISH_FAILED`), none → `published`;
 - an all-failed create stores nothing and counts no create, so the SKU stays unknown;
-- `get_listing` reads back the status and marketplace state of the last write that stored
-  something; an all-failed update leaves an existing listing as it was;
+- `get_listing` derives the status from the fields the marketplace never accepted: any such field
+  → `partially_published`/`PARTIALLY_LIVE`, none → `published`/`LIVE`. A failed update of a field
+  that is already live keeps the old value live; an all-failed update leaves the listing as it was;
 - `update_listing` writes only the given fields; an unknown SKU raises `ListingNotFound`;
 - `get_performance` refuses a range with `to_date < from_date`.
 """
@@ -50,9 +51,16 @@ def _retryable(code: ErrorCode) -> bool:
 @dataclass
 class _Stored:
     listing_id: UUID
-    status: str
-    state: MarketplaceState
     values: dict[str, object] = dc_field(default_factory=dict)
+    rejected: set[str] = dc_field(default_factory=set)  # sent, refused, no live value yet
+
+    @property
+    def status(self) -> str:
+        return "partially_published" if self.rejected else "published"
+
+    @property
+    def state(self) -> MarketplaceState:
+        return MarketplaceState.PARTIALLY_LIVE if self.rejected else MarketplaceState.LIVE
 
 
 class FakeAdapter(MarketplaceAdapter):
@@ -157,13 +165,13 @@ class FakeAdapter(MarketplaceAdapter):
             if result.status == "failed":
                 return result  # nothing was accepted: no new listing, an existing one unchanged
             written = {f: v for f, v in self._values(item, fields).items() if f not in self._fail}
-            state = result.marketplace_state or MarketplaceState.LIVE
             stored = self._store.get(sku)
             if stored is None:
-                stored = self._store[sku] = _Stored(item.listing_id, result.status, state)
+                stored = self._store[sku] = _Stored(item.listing_id)
                 self.creates += 1
             stored.values.update(written)
-            stored.status, stored.state = result.status, state
+            stored.rejected -= written.keys()
+            stored.rejected |= {f for f in fields if f in self._fail and f not in stored.values}
             return result
 
     # ---- the interface ----
