@@ -50,6 +50,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "products_list",
         "marketplaces_connect",
         "marketplaces_callback",
+        "marketplaces_connect_confirm",
     }
 )
 

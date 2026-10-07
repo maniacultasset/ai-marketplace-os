@@ -26,7 +26,7 @@ import secrets
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Final
+from typing import Any, Final, Literal
 
 from mkos_schemas.codes import ErrorCode
 
@@ -39,7 +39,7 @@ from app.adapters.oauth import (
     get_oauth_client,
 )
 from app.core.config import get_settings
-from app.core.crypto import get_key_wrapper, seal
+from app.core.crypto import SealedTokens, get_key_wrapper, seal
 from app.core.errors import ConflictError
 from app.core.rbac import Principal
 from app.repositories.identity import consume_oauth_state
@@ -47,13 +47,21 @@ from app.repositories.transactions import identity_session
 from app.repositories.uow import tenant_uow
 
 __all__ = [
+    "SELLER_CONFLICT_MESSAGE",
+    "AccountView",
     "MarketplaceNotConfiguredError",
     "MarketplaceUnavailableError",
     "MarketplaceUnknownError",
     "complete_callback",
+    "confirm",
     "start_connect",
 ]
 
+SELLER_CONFLICT_MESSAGE: Final = (
+    "This seller account already has a live connection; revoke it first."
+)
+"""The one message for both seller conflicts (D3, Q1): it never names or hints at another tenant."""
+AccountStatus = Literal["active", "needs_reconnect", "revoked"]
 STATE_BYTES: Final = 32
 VERIFIER_BYTES: Final = 48
 
@@ -157,7 +165,7 @@ class AccountView:
     marketplace: str
     seller_id: str
     region: str | None
-    status: str
+    status: AccountStatus
     needs_reconnect_since: datetime | None
     expires_at: datetime | None
     created_at: datetime
@@ -165,3 +173,84 @@ class AccountView:
 
 def _audit_json(status: str) -> str:
     return json.dumps({"status": status})
+
+
+def _view(row: Any) -> AccountView:
+    return AccountView(
+        id=row.id,
+        marketplace=row.marketplace,
+        seller_id=row.seller_id,
+        region=row.region,
+        status=row.status,
+        needs_reconnect_since=row.needs_reconnect_since,
+        expires_at=row.expires_at,
+        created_at=row.created_at,
+    )
+
+
+def seller_conflict() -> ConflictError:
+    return ConflictError(ErrorCode.MARKETPLACE_ACCOUNT_CONFLICT, "marketplace_accounts")
+
+
+async def confirm(principal: Principal, pending: str) -> AccountView:
+    """Turn the caller's pending connection into the tenant's live account, in one transaction.
+    Only the user who started the flow, in its tenant, can confirm it; the same seller reconnects
+    the existing account (same id, its reconnect task applied). Any conflict rolls back, so the
+    handle stays usable until it expires."""
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        row = await uow.oauth_states.consume_pending(
+            handle_hash=sha256(pending), user_id=principal.user_id
+        )
+        if row is None:
+            raise bad_state()
+        sealed = SealedTokens(blob=row.token_enc, key_version=row.kms_key_version)
+        accounts = uow.marketplace_accounts
+        live = await accounts.live_for_update(row.marketplace)
+        if live is None:
+            created = await accounts.insert_live(
+                marketplace=row.marketplace,
+                seller_id=row.seller_id,
+                region=row.region,
+                scopes=row.scopes,
+                sealed=sealed,
+                expires_at=row.token_expires_at,
+                connected_by=principal.user_id,
+            )
+            if created is not None:
+                await uow.audit.write(
+                    tenant_id=principal.tenant_id,
+                    actor_type="user",
+                    actor_user_id=principal.user_id,
+                    action="marketplace_account.connected",
+                    entity_type="marketplace_account",
+                    entity_id=created.id,
+                    after=_audit_json(created.status),
+                )
+                return _view(created)
+            # another request of this tenant connected first: treat it as the live account
+            live = await accounts.live_for_update(row.marketplace)
+            if live is None:
+                raise seller_conflict()
+        if live.seller_id != row.seller_id:
+            raise seller_conflict()
+        live_id, before = live.id, live.status  # reconnect() expires the loaded row
+        await accounts.reconnect(
+            live_id,
+            sealed=sealed,
+            expires_at=row.token_expires_at,
+            region=row.region,
+            scopes=row.scopes,
+            user_id=principal.user_id,
+        )
+        await uow.human_tasks.apply_reconnect(live_id, principal.user_id)
+        await uow.audit.write(
+            tenant_id=principal.tenant_id,
+            actor_type="user",
+            actor_user_id=principal.user_id,
+            action="marketplace_account.reconnected",
+            entity_type="marketplace_account",
+            entity_id=live_id,
+            before=_audit_json(before),
+            after=_audit_json("active"),
+        )
+        return _view(await accounts.reload(live))

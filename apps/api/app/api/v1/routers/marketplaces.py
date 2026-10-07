@@ -25,9 +25,11 @@ from app.api.v1.schemas.marketplaces import (
     ConnectConfirmRequest,
     ConnectOut,
     ConnectRequest,
+    MarketplaceAccountOut,
 )
 from app.api.v1.surface import OPS, route, stub
 from app.core.config import get_settings
+from app.core.errors import ConflictError
 from app.core.rbac import Principal
 from app.services import marketplaces as service
 
@@ -37,6 +39,20 @@ NO_STORE = "no-store"
 OAuthParam = Annotated[str, Query(min_length=1, max_length=OAUTH_PARAM_MAX)]
 OptionalOAuthParam = Annotated[str | None, Query(min_length=1, max_length=OAUTH_PARAM_MAX)]
 SellerParam = Annotated[str | None, Query(pattern=SELLER_ID_PATTERN)]
+
+
+def account_out(view: service.AccountView) -> MarketplaceAccountOut:
+    """A DB-sourced row is built, not validated (the DB CHECKs are the read-side truth)."""
+    return MarketplaceAccountOut.model_construct(
+        id=view.id,
+        marketplace=Marketplace(view.marketplace),
+        seller_id=view.seller_id,
+        region=view.region,
+        status=view.status,
+        needs_reconnect_since=view.needs_reconnect_since,
+        expires_at=view.expires_at,
+        created_at=view.created_at,
+    )
 
 
 def _one_code(code: str | None, spapi_oauth_code: str | None) -> str:
@@ -107,14 +123,21 @@ async def marketplaces_accounts(page: Annotated[PageParams, Depends()]) -> NoRet
 
 
 @route(router, OPS["marketplaces_connect_confirm"])
-@stub
-async def marketplaces_connect_confirm(body: ConnectConfirmRequest) -> NoReturn:
+async def marketplaces_connect_confirm(
+    body: ConnectConfirmRequest, principal: CurrentPrincipal
+) -> MarketplaceAccountOut:
     """Confirm the pending connection named by the callback's `pending` handle (owner or admin).
     Only the user who started the flow, in its tenant, can confirm it; an unknown, used, expired
     or foreign handle is 409 OAUTH_STATE_INVALID. A seller account already live (in this tenant
     under another seller, or in any other tenant) is 409 MARKETPLACE_ACCOUNT_CONFLICT: revoke it
     first."""
-    raise NotImplementedYet("marketplaces_connect_confirm")
+    try:
+        view = await service.confirm(principal, body.pending)
+    except ConflictError as exc:
+        if exc.code is not ErrorCode.MARKETPLACE_ACCOUNT_CONFLICT:
+            raise
+        raise ApiError(409, exc.code, service.SELLER_CONFLICT_MESSAGE) from None
+    return account_out(view)
 
 
 @route(router, OPS["marketplaces_accounts_revoke"])
