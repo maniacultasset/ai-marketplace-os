@@ -30,6 +30,8 @@ PUBLISH_FILE = "publish-schemas.yml"
 ALL_FILES = [*PR_FILES, PUSH_FILE, PUBLISH_FILE]
 TEN_CHECKS = {job for jobs in PR_FILES.values() for job in jobs}
 TIMEOUTS = {"ci-api.yml": 15, "contracts.yml": 10, "ci-meta.yml": 5, PUSH_FILE: 5, PUBLISH_FILE: 10}
+# Per-job exceptions: the full api suite with coverage outgrew 15 min on the runner (S13b).
+JOB_TIMEOUTS = {("ci-api.yml", "api-tests"): 30}
 ENV_JOBS = {
     "api-lint": "mos_test",
     "api-typecheck": "mos_test",
@@ -256,7 +258,8 @@ def test_timeouts_and_concurrency_set(workflows: dict[str, dict[str, Any]]) -> N
             name not in {PUSH_FILE, PUBLISH_FILE}
         ), name
         for job_id, job in workflow["jobs"].items():
-            assert job["timeout-minutes"] == TIMEOUTS[name], (name, job_id)
+            want = JOB_TIMEOUTS.get((name, job_id), TIMEOUTS[name])
+            assert job["timeout-minutes"] == want, (name, job_id)
 
 
 def test_main_scan_uses_push_range(workflows: dict[str, dict[str, Any]]) -> None:
