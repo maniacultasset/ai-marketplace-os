@@ -279,7 +279,7 @@ def _idle_in_transaction(jw: JobWorld) -> int:
     return count(
         jw.conn,
         "SELECT count(*) FROM pg_stat_activity WHERE usename = 'app_rw' "
-        "AND state LIKE 'idle in transaction%%'",
+        "AND datname = current_database() AND state LIKE 'idle in transaction%%'",
     )
 
 

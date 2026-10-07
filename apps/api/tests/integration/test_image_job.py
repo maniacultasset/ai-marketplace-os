@@ -255,7 +255,7 @@ async def test_image_job_no_transaction_open_during_get_and_check(
         return count(
             images_db.conn,
             "SELECT count(*) FROM pg_stat_activity WHERE usename = 'app_rw' "
-            "AND state LIKE 'idle in transaction%%'",
+            "AND datname = current_database() AND state LIKE 'idle in transaction%%'",
         )
 
     real_get = store.get
