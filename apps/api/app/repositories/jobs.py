@@ -151,9 +151,13 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
 
     # ---- the worker's claim and terminal writes (A5, A6) ----
 
-    async def claim(self, job_id: uuid.UUID, lease_s: int) -> Claimed | None:
+    async def claim(
+        self, job_id: uuid.UUID, lease_s: int, *, request_id: str | None = None
+    ) -> Claimed | None:
         """`queued → running`, `attempt + 1`, a lease of `lease_s` seconds, only while the
-        tenant is `trial` or `active`. None: a duplicate or stale delivery, or a stopped tenant."""
+        tenant is `trial` or `active`; a row with no `request_id` takes the worker's (so the
+        job envelope always names one). None: a duplicate or stale delivery, or a stopped
+        tenant."""
         tenant_running = exists(
             select(Tenant.id).where(
                 Tenant.id == JobRun.tenant_id, Tenant.status.in_(RUNNING_TENANT)
@@ -172,6 +176,7 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
                 "attempt": JobRun.attempt + 1,
                 "started_at": func.now(),
                 "lease_expires_at": func.now() + timedelta(seconds=lease_s),
+                "request_id": func.coalesce(JobRun.request_id, request_id),
             },
         )
         return None if job is None else Claimed(job, job.attempt)

@@ -86,15 +86,15 @@ async def run_job(job_run_id: str) -> None:
         bind_tenant(head.tenant_id)
         kind = JobKind(head.kind)
         policy = policy_for(kind)
-        claimed = await _claim(job_id, head, policy)
+        claimed = await _claim(job_id, head, policy, ctx.request_id)
         if claimed is not None:
             await _execute(job_id, head, kind, policy, claimed, ctx.request_id)
 
 
-async def _claim(job_id: UUID, head: JobHead, policy: JobPolicy) -> Claimed | None:
+async def _claim(job_id: UUID, head: JobHead, policy: JobPolicy, request_id: str) -> Claimed | None:
     async with unit_of_work(head.tenant_id) as session:
         repo = JobRunRepository(session, head.tenant_id)
-        claimed = await repo.claim(job_id, lease_s(policy))
+        claimed = await repo.claim(job_id, lease_s(policy), request_id=request_id)
         if claimed is not None:
             log.info("job.claimed", job_run_id=str(job_id), kind=head.kind, attempt=claimed.attempt)
             return claimed
