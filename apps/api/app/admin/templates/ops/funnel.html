@@ -1,0 +1,15 @@
+{% extends "sqladmin/layout.html" %}
+{% block content %}
+{% include "ops/_nav.html" %}
+<h2>Listing funnel (last 24 hours)</h2>
+<table class="table table-vcenter card-table" data-ops="funnel">
+  <thead><tr><th>Status</th><th>Listings</th></tr></thead>
+  <tbody>
+  {% for row in rows %}
+    <tr><td>{{ row.status }}</td><td>{{ row.count }}</td></tr>
+  {% else %}
+    <tr><td colspan="2">No status changes.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

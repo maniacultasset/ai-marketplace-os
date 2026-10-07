@@ -3,13 +3,25 @@ on the emptied test database, in `local` or `staging`."""
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from html.parser import HTMLParser
 from typing import Any
 
 import httpx
+import psycopg
 import pytest
+from psycopg.types.json import Jsonb
+
+from . import factories as f
+from .auth_support import World
+from .jobs_support import insert_job
+
+Conn = psycopg.Connection[tuple[Any, ...]]
 
 ADMIN = "/internal/admin"
 DSN = "https://public@o0.ingest.example.invalid/0"
@@ -97,3 +109,99 @@ def external_refs(html: str, own_host: str = "testserver") -> list[str]:
         elif parts.path.startswith("/") and not parts.path.startswith(ADMIN):
             bad.append(ref)
     return bad
+
+
+# ---- T21-T22: the ops world (two tenants, fixed timestamps) ----
+
+NOW = datetime(2026, 10, 5, 12, 0, 0, tzinfo=UTC)
+REPORT = {"status": "failed", "error_code": "JOB_TIMEOUT", "errors": []}
+
+
+@dataclass
+class OpsWorld:
+    world: World
+    conn: Conn
+    queue: str
+
+
+def _job(conn: Conn, tenant: uuid.UUID, status: str, **columns: Any) -> uuid.UUID:
+    values: dict[str, Any] = {"status": status}
+    if status in ("succeeded", "failed", "dead_letter", "cancelled", "partial"):
+        values.update(attempt=1, started_at=NOW - timedelta(hours=2))
+        values.setdefault("finished_at", NOW - timedelta(hours=1))
+    if status == "running":
+        values.update(attempt=1, started_at=NOW, lease_expires_at=NOW + timedelta(minutes=5))
+    if status in ("failed", "dead_letter"):
+        values.update(error_report_json=Jsonb(REPORT), error_code="JOB_TIMEOUT")
+    values.update(columns)
+    return insert_job(conn, tenant, **values)
+
+
+def _listing(
+    conn: Conn,
+    tenant: uuid.UUID,
+    status: str,
+    changed: datetime,
+    first_published_at: datetime | None = None,
+) -> None:
+    """A listing moved straight to `status` (the status guards are skipped for the fixture row;
+    the CHECKs still hold: a published row names its version and a marketplace state)."""
+    listing_id = f.listing(conn, tenant)
+    columns: dict[str, Any] = {"status": status, "status_changed_at": changed}
+    if status == "published":
+        columns.update(
+            published_version_id=f.version(conn, tenant, listing_id),
+            first_published_at=first_published_at,
+            marketplace_state="processing",
+        )
+    sets = ", ".join(f"{name} = %s" for name in columns)
+    conn.execute("SET session_replication_role = replica")
+    try:
+        conn.execute(
+            f"UPDATE listings SET {sets} WHERE id = %s",  # noqa: S608 - fixed column names
+            [*columns.values(), listing_id],
+        )
+    finally:
+        conn.execute("RESET session_replication_role")
+
+
+@pytest.fixture
+def ops_world(products_world: World, auth_db: Conn) -> OpsWorld:
+    """Jobs, agent spend and listings for `acme` and `bharat` around `NOW`."""
+    from app.workers.policy import POLICIES
+    from mkos_schemas.enums import JobKind
+
+    acme, bharat = products_world.tenant("acme"), products_world.tenant("bharat")
+    _job(auth_db, acme, "queued", queued_at=NOW - timedelta(seconds=600))
+    _job(auth_db, bharat, "queued", queued_at=NOW - timedelta(seconds=60))
+    _job(auth_db, acme, "running", queued_at=NOW - timedelta(seconds=30))
+    _job(auth_db, acme, "succeeded")
+    for n in range(3):
+        _job(auth_db, bharat, "dead_letter", finished_at=NOW - timedelta(minutes=n))
+    # spend: the IST/UTC boundary and the UTC midnight
+    for tenant, at, cost in (
+        (acme, "2026-10-04T18:29:59Z", "0.100000"),  # 23:59:59 IST on 4 Oct
+        (acme, "2026-10-04T18:30:00Z", "0.200000"),  # 00:00:00 IST on 5 Oct, still 4 Oct UTC
+        (bharat, "2026-10-04T23:59:59Z", "0.050000"),
+        (bharat, "2026-10-05T00:00:00Z", "0.400000"),
+        (acme, "2026-09-01T00:00:00Z", "9.000000"),  # outside every window
+    ):
+        f.agent_run(auth_db, tenant, cost_usd=Decimal(cost), created_at=at, started_at=at)
+    _listing(
+        auth_db,
+        acme,
+        "published",
+        NOW - timedelta(hours=1),
+        first_published_at=NOW - timedelta(days=2),
+    )
+    _listing(
+        auth_db,
+        bharat,
+        "published",
+        NOW - timedelta(hours=30),
+        first_published_at=NOW - timedelta(days=40),
+    )
+    _listing(auth_db, acme, "created", NOW - timedelta(hours=2))
+    _listing(auth_db, bharat, "created", NOW - timedelta(hours=3))
+    _listing(auth_db, bharat, "created", NOW - timedelta(hours=25))  # outside the 24 h window
+    return OpsWorld(products_world, auth_db, POLICIES[JobKind.BULK_IMPORT].queue)

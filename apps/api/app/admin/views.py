@@ -148,7 +148,7 @@ NEVER_LISTED: Final = frozenset(
         "raw_row",
     }
 )
-OPS_PAGES: Final[tuple[str, ...]] = ()
+OPS_PAGES: Final[tuple[str, ...]] = ("ops/queue", "ops/cost", "ops/funnel", "ops/dlq")
 
 
 class ReadOnlyView(ModelView):
@@ -235,5 +235,8 @@ def view_identities() -> list[str]:
 
 
 def register_views(admin: Admin) -> None:
+    from app.admin.ops_views import OpsView
+
     for view in ADMIN_VIEWS:
         admin.add_view(view)
+    admin.add_base_view(OpsView)

@@ -7,6 +7,8 @@ a production process never loads sqladmin (A§14). Nothing else imports it (the
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from sqladmin import Admin
 from starlette.middleware import Middleware
@@ -16,6 +18,7 @@ from app.admin.session import PlatformSessionMaker
 from app.core.config import Settings
 
 TITLE = "AI Marketplace OS staff"
+TEMPLATES = Path(__file__).resolve().parent / "templates"
 
 
 def mount_admin(app: FastAPI, settings: Settings) -> Admin:
@@ -27,6 +30,7 @@ def mount_admin(app: FastAPI, settings: Settings) -> Admin:
         session_maker=PlatformSessionMaker(),  # type: ignore[arg-type]
         base_url=settings.admin_base_url,
         title=TITLE,
+        templates_dir=str(TEMPLATES),
         middlewares=[
             Middleware(StaffGate, app_env=settings.app_env, local_email=settings.admin_local_email)
         ],

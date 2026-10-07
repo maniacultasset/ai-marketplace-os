@@ -1,0 +1,24 @@
+{% extends "sqladmin/layout.html" %}
+{% block content %}
+{% include "ops/_nav.html" %}
+<h2>AI cost</h2>
+<p class="text-muted">UTC days, from <code>agent_runs.cost_usd</code>.</p>
+<table class="table table-vcenter card-table" data-ops="daily-spend">
+  <thead><tr><th>Day (UTC)</th><th>Total USD</th><th>Per tenant</th></tr></thead>
+  <tbody>
+  {% for day in days %}
+    <tr>
+      <td>{{ day.day.isoformat() }}</td>
+      <td>{{ day.total }}</td>
+      <td>{% for slug, amount in day.per_tenant.items() %}{{ slug }}: {{ amount }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<h3>Cost per published listing (30 days)</h3>
+<dl data-ops="per-listing">
+  <dt>Spend USD</dt><dd>{{ per_listing.spend }}</dd>
+  <dt>Listings first published</dt><dd>{{ per_listing.published }}</dd>
+  <dt>Per listing USD</dt><dd>{{ per_listing.per_listing if per_listing.per_listing is not none else "-" }}</dd>
+</dl>
+{% endblock %}

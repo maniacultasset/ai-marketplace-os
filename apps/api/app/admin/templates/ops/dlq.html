@@ -1,0 +1,16 @@
+{% extends "sqladmin/layout.html" %}
+{% block content %}
+{% include "ops/_nav.html" %}
+<h2>Dead letters (newest 50)</h2>
+<p class="text-muted">Requeue with the staff CLI: <code>python -m app.cli jobs requeue</code>.</p>
+<table class="table table-vcenter card-table" data-ops="dlq">
+  <thead><tr><th>Job</th><th>Tenant</th><th>Kind</th><th>Error code</th><th>Finished</th></tr></thead>
+  <tbody>
+  {% for row in rows %}
+    <tr><td>{{ row.id }}</td><td>{{ row.tenant_name }} ({{ row.tenant_slug }})</td><td>{{ row.kind }}</td><td>{{ row.error_code or "-" }}</td><td>{{ row.finished_at.isoformat() if row.finished_at else "-" }}</td></tr>
+  {% else %}
+    <tr><td colspan="5">No dead letters.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

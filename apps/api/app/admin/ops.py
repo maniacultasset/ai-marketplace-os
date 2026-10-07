@@ -47,6 +47,7 @@ class QueueStat:
 class DeadLetter:
     id: UUID
     tenant_slug: str
+    tenant_name: str
     kind: str
     error_code: str | None
     finished_at: datetime | None
@@ -102,7 +103,9 @@ async def dead_letters(session: AsyncSession, limit: int = DEAD_LETTER_LIMIT) ->
     if isinstance(limit, bool) or not 1 <= limit <= DEAD_LETTER_LIMIT:
         raise ValueError(f"limit must be in 1..{DEAD_LETTER_LIMIT}")
     stmt = (
-        select(JobRun.id, Tenant.slug, JobRun.kind, JobRun.error_code, JobRun.finished_at)
+        select(
+            JobRun.id, Tenant.slug, Tenant.name, JobRun.kind, JobRun.error_code, JobRun.finished_at
+        )
         .join(Tenant, Tenant.id == JobRun.tenant_id)
         .where(JobRun.status == "dead_letter")
         .order_by(desc(JobRun.finished_at), JobRun.id)
