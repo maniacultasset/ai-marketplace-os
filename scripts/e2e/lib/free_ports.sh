@@ -38,7 +38,7 @@ for _ in keys:
     ports.append(s.getsockname()[1])
 for s in sockets:
     s.close()
-for key, port in zip(keys, ports, strict=True):
+for key, port in zip(keys, ports):  # noqa: B905 - the system python3 may predate strict=
     print(f"{key}={port}")
 PY
 }
