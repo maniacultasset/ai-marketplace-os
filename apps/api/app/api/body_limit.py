@@ -7,10 +7,14 @@ form or JSON body and before any auth dependency (FastAPI reads the body first,
 - a non-numeric, signed or repeated `Content-Length`: 400 `VALIDATION_FAILED`;
 - a stream (chunked, or a `Content-Length` that lies) that passes the cap: it stops reading and
   answers the same 413, replacing whatever the app would have sent, if no response has started.
+
+`path_caps` (S14b T12, C7) tightens the cap for exact request paths: the effective cap of a path
+is `min(max_bytes, path_caps[path])`. Every other path keeps `max_bytes`.
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Final
 
 from mkos_schemas.codes import ErrorCode
@@ -39,23 +43,34 @@ def _content_length(scope: Scope) -> tuple[bool, int | None]:
 
 
 class BodyLimitMiddleware:
-    def __init__(self, app: ASGIApp, max_bytes: int) -> None:
+    def __init__(
+        self, app: ASGIApp, max_bytes: int, path_caps: Mapping[str, int] | None = None
+    ) -> None:
         if max_bytes < 0:
             raise ValueError("max_bytes must be >= 0")
+        caps = dict(path_caps or {})
+        if any(cap < 0 for cap in caps.values()):
+            raise ValueError("path caps must be >= 0")
         self.app = app
         self.max_bytes = max_bytes
+        self.path_caps = caps
+
+    def cap_for(self, path: str) -> int:
+        cap = self.path_caps.get(path)
+        return self.max_bytes if cap is None else min(self.max_bytes, cap)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
+        max_bytes = self.cap_for(scope.get("path", ""))
         well_formed, declared = _content_length(scope)
         if not well_formed:
             await error_response_for_scope(scope, 400, ErrorCode.VALIDATION_FAILED)(
                 scope, receive, send
             )
             return
-        if declared is not None and declared > self.max_bytes:
+        if declared is not None and declared > max_bytes:
             await error_response_for_scope(scope, 413, ErrorCode.PAYLOAD_TOO_LARGE)(
                 scope, receive, send
             )
@@ -72,7 +87,7 @@ class BodyLimitMiddleware:
             message = await receive()
             if message["type"] == "http.request":
                 received += len(message.get("body", b""))
-                if received > self.max_bytes:
+                if received > max_bytes:
                     too_large = True
                     raise _BodyTooLarge
             return message

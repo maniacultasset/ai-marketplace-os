@@ -332,18 +332,18 @@ The openapi path is `packages/schemas/jsonschema/openapi.json` and nothing else;
 The production guard is NOT relaxed. The test constructs `Settings` with a complete production fixture, so the guard and the 404 assertion coexist. File: `apps/api/tests/test_admin_killswitch.py`, no marker, runs inside `api-tests`:
 ```python
 PROD_ENV = {
+    # The CI env block (CANON.md:21: psycopg, no REDIS_URL, ADR-0004) plus SENTRY_DSN,
+    # which S11 made required for the api and worker roles outside APP_ENV=local.
     "APP_ENV": "production",
-    "DATABASE_URL": "postgresql+asyncpg://u:p@127.0.0.1:5432/x",
-    "REDIS_URL": "redis://127.0.0.1:6379/0",
+    "DATABASE_URL": "postgresql+psycopg://u:p@127.0.0.1:5432/x",
     "JWT_SECRET": "x" * 32,
+    # A never-resolvable `.invalid` host: the test can never reach a real Sentry project.
+    "SENTRY_DSN": "https://public@o0.ingest.example.invalid/0",
     "ADMIN_ENABLED": "false",
-    "ADMIN_SESSION_SECRET": "y" * 32,
-    "GCP_PROJECT_ID": "aimos-prod",
-    "KMS_KEY_URI": "projects/aimos-prod/locations/asia-south1/keyRings/"
-                   "marketplace-os/cryptoKeys/oauth-token-key",
-    "OPENAI_API_KEY": "sk-test-not-a-real-key",
-    "SENTRY_DSN": "https://public@o0.ingest.sentry.io/0",
-    "STORAGE_BACKEND": "gcs",
+    # Amended by S14b (2026-10-07): no asyncpg, REDIS_URL, GCP_PROJECT_ID, KMS_KEY_URI,
+    # OPENAI_API_KEY or STORAGE_BACKEND. The enabled case adds a non-committed
+    # ADMIN_SESSION_SECRET, so only the production guard can fire, and a fresh
+    # interpreter proves production never imports sqladmin.
 }
 ```
 The test monkeypatches os.environ to `PROD_ENV`, calls `get_settings.cache_clear()`, builds the app factory, and asserts `client.get("/internal/admin").status_code == 404`. A second case sets `ADMIN_ENABLED="true"` and asserts `SystemExit` — the guard itself is the kill switch and both halves are covered.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The `bootstrap` required check: CANON-ADDENDUM.md §7, reduced per ADR-0013 §4 (the image import
-# omits mkos_pipeline until S14). Alembic runs after bootstrap-db (S5), then the demo seed (S9);
+# The `bootstrap` required check: CANON-ADDENDUM.md §7, reduced per ADR-0013 §4 (since S14b the image
+# import includes mkos_pipeline, the in-repo stub). Alembic runs after bootstrap-db (S5), then the demo seed (S9);
 # the image's `migrate` and `seed` roles run once each on the compose network before the Cloud
 # SQL mimic. The seed refuses any APP_ENV but local, so both runs pass APP_ENV=local.
 # It never copies .env and never runs `docker compose down -v`.
@@ -118,7 +118,7 @@ curl -sf "http://127.0.0.1:${api_port}/healthz" && curl -sf "http://127.0.0.1:${
 echo
 
 docker build -f apps/api/Dockerfile -t "$image" .
-docker run --rm -e APP_ROLE=shell "$image" -c "import app, mkos_schemas"
+docker run --rm -e APP_ROLE=shell "$image" -c "import app, mkos_schemas, mkos_pipeline"
 scripts/ci/check_image.sh "$image"
 
 # S11 e2e leg: the built image serves on the compose network; one request with a known

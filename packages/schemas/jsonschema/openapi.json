@@ -14663,7 +14663,7 @@
     },
     "/api/v1/rules/dry-run": {
       "post": {
-        "description": "Run the Rules Engine on a draft listing; nothing is saved.",
+        "description": "Run the Rules Engine on a draft listing; nothing is saved.\n\nThe dry-run knows no product facts and no marketplace account, so a rule conditioned on\n`product.*` or `account.*` never applies here. A marketplace and category pair with no current\ncategory template is refused with 422 `VALIDATION_FAILED` on `listing.category`. The request\nbody is capped at 256 KiB.",
         "operationId": "rules_dry_run",
         "requestBody": {
           "content": {

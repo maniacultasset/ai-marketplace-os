@@ -74,7 +74,7 @@ def test_no_gunicorn_or_web_concurrency(dockerfile: str, entrypoint: Path) -> No
         assert "UvicornWorker" not in text
 
 
-def test_copies_only_schemas_api_and_scripts_db(dockerfile: str) -> None:
+def test_copies_only_schemas_stub_api_and_scripts_db(dockerfile: str) -> None:
     sources = []
     for instruction in _instructions(dockerfile):
         if instruction.startswith("COPY ") and "--from=" not in instruction:
@@ -85,14 +85,17 @@ def test_copies_only_schemas_api_and_scripts_db(dockerfile: str) -> None:
         "uv.lock",
         ".python-version",
         "packages/schemas/pyproject.toml",
+        "packages/pipeline-stub/pyproject.toml",
         "apps/api/pyproject.toml",
         "packages/schemas/",
+        "packages/pipeline-stub/",
         "apps/api/",
         "scripts/db/",
         "apps/api/docker-entrypoint.sh",
     ]
     assert "build-essential" not in dockerfile
-    assert "packages/pipeline" not in dockerfile
+    # S14b T1: the in-repo stub ships in the image (ADR-0013 §4); the AI team's package never does.
+    assert "packages/pipeline/" not in dockerfile
 
 
 def test_runtime_uid_10001(dockerfile: str) -> None:

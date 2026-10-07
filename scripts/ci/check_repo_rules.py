@@ -52,7 +52,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
-SCOPE = ("apps/api/app", "apps/api/alembic", "packages/schemas/src", "scripts")
+SCOPE = (
+    "apps/api/app",
+    "apps/api/alembic",
+    "packages/schemas/src",
+    "packages/pipeline-stub/src",
+    "scripts",
+)
 EXCLUDED = ("scripts/docgen", "scripts/trace")
 CONFIG_MODULE = "apps/api/app/core/config.py"
 SERVICES = "apps/api/app/services"

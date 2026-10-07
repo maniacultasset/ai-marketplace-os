@@ -333,6 +333,14 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         )
         return row is not None
 
+    async def set_node(self, job_id: uuid.UUID, node: str) -> bool:
+        """The transient pipeline stage of a running job (`emit_node_event`, BA:1536; S14b T5).
+        Only a `running` row moves; a queued, terminal or foreign row is left as it is (False)."""
+        row = await self._update_returning(
+            job_id, self._where(job_id, JobRun.status == "running"), {"node": node}
+        )
+        return row is not None
+
     # ---- API cancel (A14) ----
 
     async def cancel_queued(self, job_id: uuid.UUID) -> JobRun | None:

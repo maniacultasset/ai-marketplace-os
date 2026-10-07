@@ -144,9 +144,54 @@ async def _seed(profile: str, *, reset: bool, admin_url: str) -> SeedCounts:
                 products += await seed_ops.seed_products(session, tenant, profile)
                 if profile == "demo":
                     await seed_ops.seed_brand_data(session, tenant)
+        if profile == "demo":
+            await _seed_demo_listing()
     finally:
         await dispose_engine()
     return SeedCounts(len(seed_ops.TENANTS), products, users)
+
+
+async def _seed_demo_listing() -> None:
+    """S14b T19 (D12): the demo listing's rules run is made by the engine itself, from the
+    seeded rules and template, then written by `seed_ops` (this module holds no SQL, R4)."""
+    from mkos_schemas.listing import CanonicalListing
+
+    from app.db import seed_ops
+    from app.db.session import unit_of_work
+    from app.repositories.uow import tenant_uow
+    from app.services.rules_engine import evaluate
+    from app.services.rules_loader import load_rules
+
+    tenant_id = seed_ops.seed_tenant_id("acme")
+    async with tenant_uow(tenant_id) as uow:
+        loaded = await load_rules(
+            uow,
+            tenant_id=tenant_id,
+            marketplace=seed_ops.DEMO_LISTING_MARKETPLACE,
+            category=seed_ops.DEMO_LISTING_CATEGORY,
+        )
+        product_id = await seed_ops.demo_listing_product(uow.session)
+    if loaded.template is None or loaded.template_id is None or loaded.template_version is None:
+        raise RuntimeError("the demo listing's category template is missing")
+    listing = CanonicalListing.model_validate(
+        {
+            "listing_id": seed_ops.demo_listing_ids()[0],
+            "product_id": product_id,
+            "marketplace": seed_ops.DEMO_LISTING_MARKETPLACE,
+            "category": seed_ops.DEMO_LISTING_CATEGORY,
+            "content": seed_ops.demo_listing_content(),
+            "attributes": dict(seed_ops.DEMO_ATTRIBUTES),
+        }
+    )
+    report = evaluate(listing, loaded.ruleset, template=loaded.template)
+    async with unit_of_work(tenant_id) as session:
+        await seed_ops.seed_demo_listing(
+            session,
+            report=report,
+            rules_version=loaded.ruleset.rules_version,
+            template_id=loaded.template_id,
+            template_version=loaded.template_version,
+        )
 
 
 async def run_seed(profile: str, *, reset: bool) -> int:

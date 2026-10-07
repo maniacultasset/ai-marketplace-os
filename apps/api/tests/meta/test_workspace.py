@@ -61,14 +61,18 @@ def _build_constraints(repo_root: Path) -> dict[str, tuple[str, list[str]]]:
     return pins
 
 
-def test_members_exactly_api_and_schemas(repo_root: Path) -> None:
+MEMBERS = ("apps/api", "packages/schemas", "packages/pipeline-stub")
+
+
+def test_members_exactly_api_schemas_and_stub(repo_root: Path) -> None:
     root = _toml(repo_root / "pyproject.toml")
     assert "project" not in root, "the workspace root is virtual"
-    assert root["tool"]["uv"]["workspace"]["members"] == ["apps/api", "packages/schemas"]
+    # S14b T1 (D1, OQ18): the in-repo pipeline stub is the third member.
+    assert root["tool"]["uv"]["workspace"]["members"] == list(MEMBERS)
 
 
 def test_requires_python_313_in_every_member(repo_root: Path) -> None:
-    for member in ("apps/api", "packages/schemas"):
+    for member in MEMBERS:
         project = _toml(repo_root / member / "pyproject.toml")["project"]
         assert project["requires-python"] == "==3.13.*", member
 
@@ -163,13 +167,15 @@ def test_lockfile_has_no_banned_packages(repo_root: Path, banned: str) -> None:
 
 
 def test_lockfile_has_no_pipeline_package(repo_root: Path) -> None:
+    # S14b T1: the in-repo stub is the only pipeline package; PR and nightly jobs never fetch the
+    # AI team's `mkos-pipeline` (ADR-0013 §5).
     names = _lock_package_names(repo_root)
-    assert not {n for n in names if "pipeline" in n}, "the AI pipeline is pinned in S14 (ADR-0012)"
+    assert {n for n in names if "pipeline" in n} == {"mkos-pipeline-stub"}
 
 
 def test_member_manifests_have_no_readme_key(repo_root: Path) -> None:
     # .dockerignore drops README.md, so a readme key would break the image build.
-    for member in ("apps/api", "packages/schemas"):
+    for member in MEMBERS:
         assert "readme" not in _toml(repo_root / member / "pyproject.toml")["project"], member
 
 
@@ -184,7 +190,7 @@ def test_build_constraints_agree(repo_root: Path) -> None:
     configured = _toml(repo_root / "pyproject.toml")["tool"]["uv"]["build-constraint-dependencies"]
     assert sorted(configured) == expected
     hatchling = f"hatchling=={pins['hatchling'][0]}"
-    for member in ("apps/api", "packages/schemas"):
+    for member in MEMBERS:
         build = _toml(repo_root / member / "pyproject.toml")["build-system"]
         assert build["requires"] == [hatchling], member
 

@@ -24,10 +24,11 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any, Final, get_args
 
+from mkos_schemas.errors import ErrorReport
 from mkos_schemas.jobs import BrandChunkType
 from mkos_schemas.rules import RuleSet
 from pydantic import TypeAdapter
-from sqlalchemy import Connection, delete, func, or_, select, text
+from sqlalchemy import Connection, delete, func, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 
@@ -38,8 +39,10 @@ from app.db.base import metadata
 from app.db.models.audit_brand import BrandChunk
 from app.db.models.catalog import Product
 from app.db.models.facts import BrandProfile
+from app.db.models.listings import Listing, ListingVersion
 from app.db.models.platform import AttributeDefinition, CategoryTemplate
 from app.db.models.rules import Rule
+from app.db.models.runs import ValidationRun
 from app.db.models.tenancy import Tenant, TenantMembership, User
 from app.repositories.base import TenantScopedRepository
 
@@ -96,6 +99,14 @@ def seed_user_email(role: str, slug: str) -> str:
 
 class _TenantRows(TenantScopedRepository[Tenant]):
     model = Tenant
+
+
+class _Products(TenantScopedRepository[Product]):
+    model = Product
+
+
+class _Listings(TenantScopedRepository[Listing]):
+    model = Listing
 
 
 def _seller_fact(value: object) -> dict[str, object]:
@@ -376,3 +387,116 @@ async def seed_brand_data(session: AsyncSession, tenant: SeedTenant) -> None:
 
 def _content_hash(body: str) -> str:
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+# ---- the demo listing (S14b T19; D12): one Amazon listing whose title the seeded rule flags ----
+
+DEMO_LISTING_SKU: Final = "KURTA-001"
+DEMO_LISTING_MARKETPLACE: Final = "amazon"
+DEMO_LISTING_CATEGORY: Final = "ethnic_wear_kurta_sets"
+DEMO_TITLE_UNIT: Final = "Cotton Kurta Set for Women with Straight Fit and Round Neck "
+DEMO_TITLE: Final = (DEMO_TITLE_UNIT * 4)[:220] + "."  # 221 characters: one over the seeded 200
+DEMO_ATTRIBUTES: Final[Mapping[str, str]] = {"color": "indigo", "fabric_type": "cotton"}
+
+
+def demo_listing_ids() -> tuple[uuid.UUID, uuid.UUID, uuid.UUID]:
+    """(listing, version 1, its rules run): fixed `uuid5` ids, so a rerun inserts nothing."""
+    return (
+        uuid.uuid5(SEED_NAMESPACE, "acme:demo-listing"),
+        uuid.uuid5(SEED_NAMESPACE, "acme:demo-listing:v1"),
+        uuid.uuid5(SEED_NAMESPACE, "acme:demo-listing:rules-run-1"),
+    )
+
+
+def demo_listing_content() -> dict[str, Any]:
+    """The version's `content_json` (the canonical listing's `content`)."""
+    return {
+        "title": DEMO_TITLE,
+        "bullets": ["Soft cotton fabric that stays comfortable through the day"],
+        "description": "A cotton kurta set with a straight fit and a round neck.",
+    }
+
+
+async def demo_listing_product(session: AsyncSession) -> uuid.UUID:
+    """acme's KURTA-001, read back through the scoped repository's session."""
+    tenant_id = seed_tenant_id("acme")
+
+    repo = _Products(session, tenant_id)
+    stmt = repo._select().where(Product.sku == DEMO_LISTING_SKU)
+    found = (await session.execute(stmt)).scalar_one()
+    return found.id
+
+
+async def seed_demo_listing(
+    session: AsyncSession,
+    *,
+    report: ErrorReport,
+    rules_version: int,
+    template_id: uuid.UUID,
+    template_version: int,
+) -> None:
+    """Write the demo listing, its version 1 and the version's rules run under acme's unit of
+    work. The report is the engine's own (`app.cli` computes it with the loader and `evaluate`).
+    Idempotent: every row has a fixed id and is inserted `ON CONFLICT DO NOTHING`."""
+    tenant_id = seed_tenant_id("acme")
+    listing_id, version_id, run_id = demo_listing_ids()
+    product_id = await demo_listing_product(session)
+    operator = await _user_id(session, seed_user_email("operator", "acme"))
+    if operator is None:
+        raise RuntimeError("the acme operator is missing: seed the tenants first")
+    await session.execute(
+        insert(Listing)
+        .values(
+            id=listing_id,
+            tenant_id=tenant_id,
+            product_id=product_id,
+            marketplace=DEMO_LISTING_MARKETPLACE,
+            category=DEMO_LISTING_CATEGORY,
+        )
+        .on_conflict_do_nothing()
+    )
+    await session.execute(
+        insert(ListingVersion)
+        .values(
+            id=version_id,
+            tenant_id=tenant_id,
+            listing_id=listing_id,
+            version=1,
+            content_json=demo_listing_content(),
+            generated_by_user_id=operator,
+            origin="generation",
+            rules_version=rules_version,
+            category_template_id=template_id,
+        )
+        .on_conflict_do_nothing()
+    )
+    listings = _Listings(session, tenant_id)
+    criterion = listings._tenant_criterion(include_platform=False)
+    await session.execute(
+        listings._scoped_write(
+            update(Listing)
+            .where(Listing.id == listing_id, Listing.current_version_id.is_(None), criterion)
+            .values(current_version_id=version_id)
+        )
+    )
+    await session.execute(
+        insert(ValidationRun)
+        .values(
+            id=run_id,
+            tenant_id=tenant_id,
+            listing_id=listing_id,
+            listing_version_id=version_id,
+            marketplace=DEMO_LISTING_MARKETPLACE,
+            source="rules_engine",
+            passed=report.passed,
+            error_report_json=report.model_dump(mode="json"),
+            attempt=1,
+            rules_version=rules_version,
+            category_template_id=template_id,
+            template_version=template_version,
+            facts_digest=hashlib.sha256(b"{}").digest(),
+            blocking_count=len(report.blocking),
+            warning_count=len(report.errors) - len(report.blocking),
+        )
+        .on_conflict_do_nothing()
+    )

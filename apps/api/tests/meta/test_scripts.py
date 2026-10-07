@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from collections.abc import Callable
@@ -1122,3 +1123,296 @@ def test_prove_gates_s15_legs(repo_root: Path) -> None:
     assert code.index("leg api-tests-revoke-no-shred") > docker
     assert hash_leg > docker
     assert code.index("leg lint-imports-unseal-from-router") < docker
+
+
+def test_bootstrap_imports_pipeline(repo_root: Path) -> None:
+    # S14b T14 (ADR-0013 §4): the image ships the pipeline module the generation worker imports.
+    text = (repo_root / "scripts" / "ci" / "bootstrap.sh").read_text(encoding="utf-8")
+    assert '-c "import app, mkos_schemas, mkos_pipeline"' in text
+
+
+# ---- S14b T15 (AC 16): the rules e2e ----
+
+RULES_E2E_STEPS = (
+    "health",
+    "login_acme_owner",
+    "rules_list_200",
+    "dry_run_221_fails",
+    "dry_run_200_passes",
+    "no_token_401",
+    "login_acme_reviewer",
+    "reviewer_dry_run_403",
+    "unknown_pair_422",
+)
+
+
+def test_rules_e2e_steps(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "e2e" / "rules.sh").read_text(encoding="utf-8")
+    code = _code(text)
+    assert "set -euo pipefail" in code
+    assert tuple(re.findall(r"(?m)^step (\w+)$", code)) == RULES_E2E_STEPS
+    assert code.count("$(login ") == 2  # the login budget (S12)
+    assert not re.search(r":\d{2,5}\b", code)
+    assert "scripts/ci/worktree_env.sh exports .worktree.env" in code
+    assert "FAILED at step $current (HTTP status ${status:-none})" in code
+    assert 'cat "$body"' not in code
+    assert "psql" not in code and "docker compose exec" not in code  # HTTP only
+
+
+@pytest.mark.parametrize("url", NON_LOCAL_URLS)
+def test_rules_e2e_refuses_non_local_url(repo_root: Path, tmp_path: Path, url: str) -> None:
+    env, log = _stub_path(tmp_path)
+    result = subprocess.run(
+        [str(repo_root / "scripts" / "e2e" / "rules.sh"), url],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 2, result.stderr
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""
+
+
+# ---- S14b T23 (AC 16): the admin e2e ----
+
+ADMIN_E2E_STEPS = (
+    "health",
+    "admin_index_200",
+    "listing_versions_list_200",
+    "seeded_version_detail_has_title",
+    "seeded_run_detail_has_field_too_long",
+    "db_read_seeded_secrets_then_grep",
+    "post_refused_405",
+    "ops_queue_200",
+)
+
+
+def _admin_e2e(repo_root: Path) -> str:
+    return (repo_root / "scripts" / "e2e" / "admin.sh").read_text(encoding="utf-8")
+
+
+def test_admin_e2e_steps(repo_root: Path) -> None:
+    from app.db.seed_ops import SEED_NAMESPACE
+
+    code = _code(_admin_e2e(repo_root))
+    assert "set -euo pipefail" in code
+    assert tuple(re.findall(r"(?m)^step (\w+)$", code)) == ADMIN_E2E_STEPS
+    assert not re.search(r":\d{2,5}\b", code)
+    assert "FAILED at step $current (HTTP status ${status:-none})" in code
+    assert 'cat "$body"' not in code
+    assert f'seed_namespace="{SEED_NAMESPACE}"' in code  # the seed's fixed ids
+
+
+@pytest.mark.parametrize("url", NON_LOCAL_URLS)
+def test_admin_e2e_refuses_non_local_url(repo_root: Path, tmp_path: Path, url: str) -> None:
+    env, log = _stub_path(tmp_path)
+    result = subprocess.run(
+        [str(repo_root / "scripts" / "e2e" / "admin.sh"), url],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 2, result.stderr
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""
+
+
+def test_admin_e2e_psql_only_in_db_steps(repo_root: Path) -> None:
+    current = "setup"
+    hits: list[tuple[str, str]] = []
+    for line in _code(_admin_e2e(repo_root)).splitlines():
+        match = re.match(r"^step (\w+)$", line)
+        if match:
+            current = match.group(1)
+        if "psql" in line or "docker compose exec" in line:
+            hits.append((current, line.strip()))
+    assert hits, "the db step reads the seeded secrets"
+    assert all(step.startswith("db_") for step, _ in hits), hits
+
+
+# ---- S14b T25 (AC 16; Done-when 7): ONBOARDING.md on a clean clone ----
+
+ONBOARDING_E2E = "scripts/e2e/onboarding.sh"
+DEFAULT_PORTS = {"5432", "9000", "9001", "8000", "4010"}
+
+
+def _onboarding_e2e(repo_root: Path) -> str:
+    return _code((repo_root / ONBOARDING_E2E).read_text(encoding="utf-8"))
+
+
+def test_onboarding_e2e_uses_temp_clone_and_trap(repo_root: Path) -> None:
+    code = _onboarding_e2e(repo_root)
+    assert 'work="$(mktemp -d)"' in code
+    assert 'git clone --quiet --local --branch "$branch" "$root" "$clone_dir"' in code
+    assert "trap cleanup EXIT" in code
+    assert "docker compose down -v --remove-orphans" in code
+    assert 'rm -rf "$work"' in code
+    assert 'kill -TERM -- "-$pid"' in code  # the background process group
+
+
+def test_onboarding_e2e_own_project_name(repo_root: Path) -> None:
+    assert 'project="mkos-onb-$$-$RANDOM"' in _onboarding_e2e(repo_root)
+
+
+def test_e2e_target_skips_onboarding(repo_root: Path) -> None:
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    recipe = makefile.split("\ne2e:\n", 1)[1].split("\n\n", 1)[0]
+    assert '[ "$$(basename "$$script")" != onboarding.sh ] || continue' in recipe
+    assert "\ne2e-onboarding:\n\tscripts/e2e/onboarding.sh\n" in makefile
+
+
+def test_onboarding_e2e_shares_parser_with_test(repo_root: Path) -> None:
+    code = _onboarding_e2e(repo_root)
+    assert 'python3 "$root/scripts/ci/onboarding_commands.py" "$dir/ONBOARDING.md"' in code
+    test = (repo_root / "apps/api/tests/meta/test_onboarding.py").read_text(encoding="utf-8")
+    assert 'PARSER = "scripts/ci/onboarding_commands.py"' in test
+
+
+def test_free_ports_helper_shared(repo_root: Path) -> None:
+    code = _onboarding_e2e(repo_root)
+    assert ". scripts/e2e/lib/free_ports.sh" in code
+    assert "socket" not in code and "free_ports()" not in code
+    assert "free_ports()" in (repo_root / "scripts/e2e/lib/free_ports.sh").read_text("utf-8")
+
+
+def _stand_in(repo_root: Path, tmp_path: Path) -> Path:
+    """A clone stand-in: a Makefile WORKTREE_KEYS line with one extra key, the real
+    .env.example and worktree_env.sh, and its own git repository."""
+    import shutil
+
+    clone = tmp_path / "clone"
+    (clone / "scripts/ci").mkdir(parents=True)
+    shutil.copy(repo_root / "scripts/ci/worktree_env.sh", clone / "scripts/ci/worktree_env.sh")
+    shutil.copy(repo_root / ".env.example", clone / ".env.example")
+    (clone / "Makefile").write_text(
+        "WORKTREE_KEYS := COMPOSE_PROJECT_NAME PG_HOST_PORT MINIO_API_HOST_PORT "
+        "MINIO_CONSOLE_HOST_PORT API_HOST_PORT MOCK_HOST_PORT\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q", str(clone)], check=True)
+    return clone
+
+
+def _prepare(repo_root: Path, clone: Path, **env: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [str(repo_root / ONBOARDING_E2E), "--prepare", str(clone)],
+        capture_output=True,
+        text=True,
+        env={**os.environ, **env},
+        timeout=60,
+        check=False,
+    )
+
+
+def test_onboarding_e2e_allocates_ports_not_defaults(repo_root: Path, tmp_path: Path) -> None:
+    clone = _stand_in(repo_root, tmp_path)
+    result = _prepare(repo_root, clone)
+    assert result.returncode == 0, result.stderr
+    values = dict(line.split("=", 1) for line in (clone / ".worktree.env").read_text().splitlines())
+    ports = {k: v for k, v in values.items() if k != "COMPOSE_PROJECT_NAME"}
+    assert set(ports) == {
+        "PG_HOST_PORT",
+        "MINIO_API_HOST_PORT",
+        "MINIO_CONSOLE_HOST_PORT",
+        "API_HOST_PORT",
+        "MOCK_HOST_PORT",
+    }
+    assert len(set(ports.values())) == len(ports)
+    assert not set(ports.values()) & DEFAULT_PORTS
+    mine = subprocess.run(
+        [str(repo_root / "scripts/ci/worktree_env.sh"), "exports", ".worktree.env"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    for key, port in ports.items():
+        assert f"export {key}={port}" not in mine
+    assert values["COMPOSE_PROJECT_NAME"].startswith("mkos-onb-")
+    env = (clone / ".env").read_text(encoding="utf-8")
+    assert f"@localhost:{ports['PG_HOST_PORT']}/marketplace_os" in env
+    assert f"S3_ENDPOINT_URL=http://localhost:{ports['MINIO_API_HOST_PORT']}" in env
+    assert f"PORT={ports['API_HOST_PORT']}\n" in env
+    leaked = {"DATABASE_URL", "ALEMBIC_DATABASE_URL", "S3_ENDPOINT_URL", "PORT", *ports}
+    clean = {k: v for k, v in os.environ.items() if k not in leaked | {"COMPOSE_PROJECT_NAME"}}
+    check = subprocess.run(
+        ["scripts/ci/worktree_env.sh", "check"],
+        cwd=clone,
+        capture_output=True,
+        text=True,
+        env=clean,
+    )
+    assert check.returncode == 0, check.stderr
+    forced = _prepare(
+        repo_root,
+        _stand_in(repo_root, tmp_path / "again"),
+        ONBOARDING_FORCE_PORTS="PG_HOST_PORT=5432",
+    )
+    assert forced.returncode == 2, forced.stderr
+
+
+def _alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+@pytest.mark.parametrize("outcome", ["success", "failure"])
+def test_onboarding_e2e_background_waits_and_is_killed(
+    repo_root: Path, tmp_path: Path, outcome: str
+) -> None:
+    # sockets in a child process: pytest-socket blocks them in this one
+    free = "import socket; s = socket.socket(); s.bind(('127.0.0.1', 0)); print(s.getsockname()[1])"
+    port = int(subprocess.run(["python3", "-c", free], capture_output=True, text=True).stdout)
+    served = tmp_path / "served"
+    served.mkdir()
+    (served / "healthz").write_text("ok", encoding="utf-8")
+    clone = tmp_path / "clone"
+    (clone / "scripts/ci").mkdir(parents=True)
+    import shutil
+
+    shutil.copy(repo_root / "scripts/ci/worktree_env.sh", clone / "scripts/ci/worktree_env.sh")
+    (clone / ".worktree.env").write_text(f"API_HOST_PORT={port}\n", encoding="utf-8")
+    marker = tmp_path / "ran"
+    last = "false" if outcome == "failure" else f"touch {marker}"
+    (clone / "ONBOARDING.md").write_text(
+        "```sh\n"
+        f"python3 -m http.server {port} --bind 127.0.0.1 --directory {served}"
+        "  # background: wait /healthz\n"
+        "make bootstrap  # skip: CI only\n"
+        f"{last}\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [str(repo_root / ONBOARDING_E2E), "--run", str(clone)],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "ONBOARDING_WAIT_SECONDS": "30"},
+        timeout=90,
+        check=False,
+    )
+    assert "SKIP make bootstrap: CI only" in result.stdout
+    if outcome == "success":
+        assert result.returncode == 0, result.stderr
+        assert marker.exists()
+    else:
+        assert result.returncode != 0
+    # nothing listens on the port any more: the background server was killed
+    refused = (
+        "import socket, sys\n"
+        "try:\n"
+        f"    socket.create_connection(('127.0.0.1', {port}), timeout=2)\n"
+        "except ConnectionRefusedError:\n"
+        "    sys.exit(0)\n"
+        "sys.exit(1)\n"
+    )
+    assert subprocess.run(["python3", "-c", refused], capture_output=True).returncode == 0
+    leftover = subprocess.run(
+        ["pgrep", "-f", f"http.server {port}"], capture_output=True, text=True, check=False
+    )
+    assert leftover.stdout.strip() == "" or not any(_alive(int(p)) for p in leftover.stdout.split())

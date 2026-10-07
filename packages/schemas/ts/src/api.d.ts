@@ -788,6 +788,11 @@ export interface paths {
         /**
          * Run the Rules Engine on a draft listing; saves nothing
          * @description Run the Rules Engine on a draft listing; nothing is saved.
+         *
+         *     The dry-run knows no product facts and no marketplace account, so a rule conditioned on
+         *     `product.*` or `account.*` never applies here. A marketplace and category pair with no current
+         *     category template is refused with 422 `VALIDATION_FAILED` on `listing.category`. The request
+         *     body is capped at 256 KiB.
          */
         post: operations["rules_dry_run"];
         delete?: never;

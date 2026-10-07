@@ -109,8 +109,11 @@ Source: `docs/architecture/BACKEND-ARCHITECTURE.md:1204`, `:2080`, `:3106`.
 - Context is pushed, not pulled. Open: when it is assembled (BACKEND-ARCHITECTURE.md §13.5).
 - There are exactly five ports: `retrieve_brand_chunks`, `validate_rules`, `validate_images`, `get_model_credentials`, `emit_node_event`.
 - The graph has 12 transient stages and no approval or publish node. Only the backend writes `agent_runs`, one row per model call.
-- **Home** [Decided ADR-0012; Open: T104]: the pipeline lives in the AI team's repo, pinned by tag. This repo keeps a stub.
+- **Home** [Decided ADR-0012; Open: T104]: the pipeline lives in the AI team's repo, pinned by tag. This repo keeps a stub (`packages/pipeline-stub`, scenarios `ok`, `blocked`, `failed`, `vision_warn` chosen by a `stub:<name>` prefix of `user_instructions`).
+- **Backend ports** (S14b): `BackendPipelineDeps` holds only ids, the loaded RuleSet and template, product facts, stored image reports and a model-settings snapshot; never `Settings`, an account or an ORM row. A refused port call raises `SeamPortError(code, field)` before any SQL (a foreign tenant is `INTERNAL_ERROR`); a rules check that cannot run returns an `INTERNAL_ERROR` report, never a pass; `emit_node_event` writes only `job_runs.node` on a running job.
 - **Changes:** a Canon PR plus a schemas bump, approved by three leads. MAJOR changes land only on Day 14, 28 or 42.
+
+- **Staff admin** (S14b): read-only SQLAdmin at `/internal/admin`, mounted only when `ADMIN_ENABLED=true` and never in production (boot refuses it there). Every view reads through `platform_scope()` with `load_only` on the read-only role's granted columns; `token_enc` and `hashed_password` are never selected. A staff gate allows GET/HEAD only, and outside local refuses every request until the IAP/IAM identity lands (S4). Ops pages: queue, cost, funnel, dead letters (requeue stays the staff CLI).
 
 Source: `docs/canon/CANON.md:100-131`; `docs/architecture/BACKEND-ARCHITECTURE.md:1454-1635` (§6); `docs/adr/0012-backend-only-repository.md:25-46`.
 
