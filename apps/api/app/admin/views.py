@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Any, ClassVar, Final
@@ -18,6 +19,7 @@ from typing import Any, ClassVar, Final
 from sqladmin import Admin, ModelView
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import load_only
+from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
 from app.db.models.audit_brand import AuditLog
@@ -168,6 +170,10 @@ class ReadOnlyView(ModelView):
         return select(self.model).options(load_only(*self._columns()))
 
     def details_query(self, request: Request) -> Select[Any]:
+        try:
+            uuid.UUID(str(request.path_params.get("pk", "")))
+        except ValueError:
+            raise HTTPException(status_code=404) from None  # every admin table has a UUID id
         stmt: Select[Any] = super().details_query(request)
         return stmt.options(load_only(*self._columns()))
 
@@ -200,7 +206,6 @@ def _view(model: type[Any], table: str, label: str) -> type[ReadOnlyView]:
         "table": table,
         "name": label,
         "name_plural": label,
-        "identity": table.replace("_", "-"),
         "column_list": columns,
         "column_details_list": columns,
         "column_sortable_list": [],

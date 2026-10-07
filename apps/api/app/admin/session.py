@@ -4,7 +4,8 @@ DATABASE.md:154-158) and never commits; there is no plain-engine fallback."""
 
 from __future__ import annotations
 
-from contextlib import AbstractAsyncContextManager
+from collections.abc import AsyncIterator
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,4 +23,16 @@ class PlatformSessionMaker:
         """sqladmin passes autoflush/autocommit; the platform scope never writes or commits."""
 
     def __call__(self, **_: Any) -> AbstractAsyncContextManager[AsyncSession]:
-        return platform_scope()
+        return _detached_scope()
+
+
+@asynccontextmanager
+async def _detached_scope() -> AsyncIterator[AsyncSession]:
+    """`platform_scope()`, with every loaded row detached before its closing rollback: a rollback
+    expires the instances, and sqladmin renders them after the session is gone. Only the columns
+    a view loaded (`ADMIN_COLUMNS`) stay readable; nothing can lazy-load another."""
+    async with platform_scope() as session:
+        try:
+            yield session
+        finally:
+            session.expunge_all()
