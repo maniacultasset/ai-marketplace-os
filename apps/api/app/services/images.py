@@ -302,6 +302,11 @@ async def accept_image_upload(
     if (file is None) == (form.storage_key is None):
         raise InputError(ErrorCode.VALIDATION_FAILED, "file")
     payload = upload_payload(form, file)
+    parsed = None
+    if form.storage_key is not None:  # the key's shape is checked before any DB or store call
+        parsed = parse_image_key(form.storage_key)
+        if parsed is None:
+            raise InputError(ErrorCode.VALIDATION_FAILED, "storage_key")
     replayed = await _peek(principal, idem_key, payload)
     if replayed is not None:
         return replayed

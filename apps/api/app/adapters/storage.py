@@ -30,7 +30,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import lru_cache
 from typing import Any, Final
-from urllib.parse import urlsplit
 
 import boto3  # type: ignore[import-untyped]
 from botocore.config import Config  # type: ignore[import-untyped]
@@ -97,7 +96,7 @@ def storage_config_errors(settings: Settings) -> list[str]:
         errors.append("S3_ACCESS_KEY and S3_SECRET_KEY must be set outside APP_ENV=local")
     elif any(k.strip().casefold().startswith(LOCAL_ONLY_PREFIX) for k in keys):
         errors.append("S3 credentials are local-only values")
-    if urlsplit(settings.s3_endpoint_url or "").scheme != "https":
+    if not (settings.s3_endpoint_url or "").strip().casefold().startswith("https://"):
         errors.append("S3_ENDPOINT_URL must use https outside APP_ENV=local")
     return errors
 
