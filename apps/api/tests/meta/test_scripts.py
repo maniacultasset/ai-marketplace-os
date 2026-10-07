@@ -972,3 +972,17 @@ def test_bootstrap_worker_leg_checks_exit_and_time(repo_root: Path) -> None:
     assert '"$worker_took" -ge 10' in leg
     assert "carries a DSN" in leg and "grep -Eq" in leg
     assert '"$(worker_rows)" != "0"' in leg  # unregistered on the way out
+
+
+def test_prove_gates_has_s13a_legs(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    assert "leg lint-imports-platform-scope-in-wrapper lint-imports ': R5 '" in text
+    assert "leg lint-imports-job-guc-outside-context lint-imports ': R8 '" in text
+    docker = text.split('if [ "$with_docker" -eq 1 ]; then', 1)[1]
+    assert "leg api-tests-cas-without-status api-tests 'test_claim_cas_drops_duplicate'" in docker
+    for seed in (
+        "seed_platform_scope_in_wrapper",
+        "seed_job_guc_outside_context",
+        "seed_cas_without_status",
+    ):
+        assert f"{seed}() {{" in text

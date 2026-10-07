@@ -23,3 +23,4 @@ change.
 | 0014 | Tenant offboarding, the two-phase purge and user erasure | ⚑ proposed (S10a, revision 0004_integrity) | 2026-10-06 |
 | 0015 | Listing lifecycle and the publish ledger | ⚑ proposed (S10a, revision 0004_integrity) | 2026-10-06 |
 | 0016 | The tenant switch is the one request field naming a tenant | ⚑ proposed (S10c, PLAN Decision 4) | 2026-10-06 |
+| 0017 | Job retry, shutdown release and lease recovery | ⚑ proposed (S13a, PLAN Decision 5) | 2026-10-07 |

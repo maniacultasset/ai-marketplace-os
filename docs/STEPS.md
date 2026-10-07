@@ -431,7 +431,8 @@ start before billing. S14b gains S14a as a dependency because `/rules/dry-run` c
   - `asyncio.timeout` per kind (generation 300 s, publish 600 s, import 1800 s) → `failed` +
     `JOB_TIMEOUT`; backoff retries for transport/5xx/429; generation `max_attempts=1` for domain failures
     (ADR-0004 §5-§6); a reaper for lost leases; graceful SIGTERM (KNOWN-ISSUES.md:48).
-  - `GET /api/v1/jobs/{job_id}`, `GET /api/v1/jobs/dead-letter`, `POST /api/v1/jobs/dead-letter/{id}/requeue`
+  - `GET /api/v1/jobs/{job_id}`; the dead-letter list and requeue are the staff CLI
+    (`python -m app.cli jobs dead-letter list`, `jobs requeue`), not `/api/v1` paths (S13 PLAN D2)
     (new row with `parent_job_id`) (CANON.md:60-61).
   - `POST /api/v1/products/bulk` (Idempotency-Key; 10 MiB multipart or an object key after a signed
     upload, CANON.md:83), header and per-row checks, `parent_sku` (ADR-0007 §2), `ImportReport`;

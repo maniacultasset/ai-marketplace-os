@@ -406,7 +406,12 @@ def check_file(relative: str, path: Path) -> list[Violation]:
             found += [Violation(relative, n, "R4", m) for n, m in _app_db_names(relative, tree)]
     if not (_under(relative, PLATFORM_SCOPE_ALLOWED) or relative in PLATFORM_SCOPE_FILES):
         found += [
-            Violation(relative, n, "R5", f"{m} outside app/admin, app/cli.py and scripts")
+            Violation(
+                relative,
+                n,
+                "R5",
+                f"{m} outside app/admin, app/cli.py, app/workers/periodic.py and scripts",
+            )
             for n, m in _names(tree, "platform_scope", "app.db.session")
         ]
     if not (_under(relative, SCOPE_OK_ALLOWED) or relative in SCOPE_OK_FILES):
