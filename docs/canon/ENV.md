@@ -22,7 +22,7 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | `OAUTH_STATE_TTL_SECONDS` | `600` | local .env | required | Marketplace OAuth state parameter lifetime (stored in Postgres `oauth_states`). |
 | `ADMIN_ENABLED` | `true` | local .env | required | The internal SQLAdmin mounts only when ADMIN_ENABLED=true AND APP_ENV != production. CI test asserts /internal/admin returns 404 with APP_ENV=production. |
 | `ADMIN_BASE_URL` | `/internal/admin` | local .env | optional | Unversioned by design. |
-| `ADMIN_READ_ONLY` | `true` | local .env | required | false only on api-staging, to allow DLQ requeue. |
+| `ADMIN_READ_ONLY` | `true` | local .env | required | Must be `true` in v1; `false` refuses boot (requeue is the staff CLI, `python -m app.cli jobs requeue`). |
 | `ADMIN_SESSION_SECRET` | `dev_only_admin_session_secret_at_least_32_chars` | both | required | Secret Manager in staging/prod; 32+ random bytes. |
 | `ADMIN_STAFF_EMAILS` | `(empty — leave blank)` | local .env | optional | Comma-separated allowlist, second layer behind IAP/IAM. |
 | `ADMIN_LOCAL_EMAIL` | `dev@local` | local .env | optional | Used only when APP_ENV=local. |

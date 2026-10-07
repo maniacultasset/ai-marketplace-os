@@ -165,7 +165,7 @@ apps/api/app/
   services/pipeline_deps.py, rules_loader.py  S14b (the five seam ports, the RuleSet loader)
   adapters/base.py, fake.py                   S14b (the ABC, FakeAdapter, the contract suite)
   adapters/ (Amazon, Flipkart)                S20-S22 (KeyWrapper S15)
-  admin/ (read-only /internal/admin)          S14b
+  admin/ (read-only /internal/admin)          S14b (12 views, ops pages, staff gate, platform_scope)
   cli.py (seed, staff, backfill commands)     S9 onward (may use platform_scope)
 apps/api/alembic.ini, alembic/versions/       S5-S10 (0001 to 0005_rls)
 packages/schemas/src/mkos_schemas/            S2 (17 modules)

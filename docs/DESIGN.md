@@ -113,6 +113,8 @@ Source: `docs/architecture/BACKEND-ARCHITECTURE.md:1204`, `:2080`, `:3106`.
 - **Backend ports** (S14b): `BackendPipelineDeps` holds only ids, the loaded RuleSet and template, product facts, stored image reports and a model-settings snapshot; never `Settings`, an account or an ORM row. A refused port call raises `SeamPortError(code, field)` before any SQL (a foreign tenant is `INTERNAL_ERROR`); a rules check that cannot run returns an `INTERNAL_ERROR` report, never a pass; `emit_node_event` writes only `job_runs.node` on a running job.
 - **Changes:** a Canon PR plus a schemas bump, approved by three leads. MAJOR changes land only on Day 14, 28 or 42.
 
+- **Staff admin** (S14b): read-only SQLAdmin at `/internal/admin`, mounted only when `ADMIN_ENABLED=true` and never in production (boot refuses it there). Every view reads through `platform_scope()` with `load_only` on the read-only role's granted columns; `token_enc` and `hashed_password` are never selected. A staff gate allows GET/HEAD only, and outside local refuses every request until the IAP/IAM identity lands (S4). Ops pages: queue, cost, funnel, dead letters (requeue stays the staff CLI).
+
 Source: `docs/canon/CANON.md:100-131`; `docs/architecture/BACKEND-ARCHITECTURE.md:1454-1635` (§6); `docs/adr/0012-backend-only-repository.md:25-46`.
 
 ## 8. Observability
