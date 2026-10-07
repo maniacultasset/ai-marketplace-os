@@ -248,6 +248,7 @@ def test_list_ops_are_the_page_models() -> None:
         "marketplaces_accounts",
         "rules_list",
         "members_list",
+        "brand_documents_list",
     }
 
 

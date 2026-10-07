@@ -29,7 +29,11 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("members_list", "GET", "/members"),
     ("members_patch", "PATCH", "/members/{user_id}"),
     ("tenants_me", "GET", "/tenants/me"),
+    # S16: the profile update, the document list and delete (40 + 3)
+    ("tenants_me_update", "PATCH", "/tenants/me"),
     ("brand_documents_upload", "POST", "/brand/documents"),
+    ("brand_documents_list", "GET", "/brand/documents"),
+    ("brand_documents_delete", "DELETE", "/brand/documents/{document_id}"),
     ("products_create", "POST", "/products"),
     ("products_list", "GET", "/products"),
     ("products_get", "GET", "/products/{product_id}"),
@@ -68,7 +72,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 40
+    assert len(FROZEN) == 43
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -193,7 +197,10 @@ D9_IDEMPOTENT = {
 
 def test_idempotency_set_is_d9() -> None:
     assert {o.op_id for o in OPS.values() if o.idempotency} == D9_IDEMPOTENT
-    assert {o.op_id for o in OPS.values() if o.if_match} == {"listings_content_patch"}
+    assert {o.op_id for o in OPS.values() if o.if_match} == {
+        "listings_content_patch",
+        "tenants_me_update",
+    }
 
 
 # S3's `test_roles_are_d10` is replaced by S10's `tests/unit/test_ops_roles.py`: the roles are
@@ -220,6 +227,7 @@ def test_error_codes_per_d2() -> None:
     conflict = {
         "products_create": (E.SKU_CONFLICT,),
         "listings_content_patch": (E.STALE_VERSION,),
+        "tenants_me_update": (E.STALE_VERSION,),
         "jobs_cancel": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "imports_rows_retry": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "marketplaces_callback": (E.OAUTH_STATE_INVALID,),
