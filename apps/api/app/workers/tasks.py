@@ -25,22 +25,18 @@ def _task_body() -> Callable[[str], Awaitable[None]]:
 
 
 def register_bodies() -> None:
-    """The job bodies the steps own (S13b `bulk_import`); a body already set is kept (tests
-    install fakes first)."""
+    """The job bodies the merged steps own (S13b `bulk_import`, S16 `brand_embed`); a body a
+    test installed first is kept."""
+    from app.services.brand_embed import run_brand_embed
+
     if registry.body_for(JobKind.BULK_IMPORT) is None:
         registry.register(JobKind.BULK_IMPORT, run_import)
+    if registry.body_for(JobKind.BRAND_EMBED) is None:
+        registry.register(JobKind.BRAND_EMBED, run_brand_embed)
 
 
 def register_tasks(app: procrastinate.App) -> None:
     """Register the job bodies and the six kind tasks on `app`; a second call is a no-op."""
-    """The bodies of the kinds a merged step owns; a body a test installed first is kept."""
-    from app.services.brand_embed import run_brand_embed
-
-    registry.REGISTRY.setdefault(JobKind.BRAND_EMBED, run_brand_embed)
-
-
-def register_tasks(app: procrastinate.App) -> None:
-    """Register the six kind tasks on `app` (and the owned bodies); a second call is a no-op."""
     register_bodies()
     for kind, policy in POLICIES.items():
         if kind.value in app.tasks:

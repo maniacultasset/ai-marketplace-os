@@ -447,7 +447,6 @@ async def run_templates_load(path: Path) -> int:
     return EXIT_OK
 
 
-def main(argv: Sequence[str] | None = None) -> int:
 # ---- staff onboarding (S16 T19-T20a) ----
 
 EXIT_BAD_INPUT: Final = 2
@@ -634,14 +633,6 @@ def build_parser() -> argparse.ArgumentParser:
     templates_commands = templates.add_subparsers(dest="command", required=True)
     load = templates_commands.add_parser("load", help="load versioned category templates")
     load.add_argument("--file", type=Path, required=True)
-    args = parser.parse_args(argv)
-    if args.group == "templates":
-        if not args.file.is_file():
-            sys.stderr.write("templates load: no such file\n")
-            return EXIT_NO_FILE
-        return asyncio.run(run_templates_load(args.file))
-    if args.group == "dictionary":
-        return asyncio.run(run_dictionary_sync(args.file))
     _add_onboarding(groups)
     return parser
 
@@ -650,6 +641,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.group in ("tenant", "user"):
         return asyncio.run(run_tenant_command(args, sys.stdin))
+    if args.group == "templates":
+        if not args.file.is_file():
+            sys.stderr.write("templates load: no such file\n")
+            return EXIT_NO_FILE
+        return asyncio.run(run_templates_load(args.file))
+    if args.group == "dictionary":
+        return asyncio.run(run_dictionary_sync(args.file))
     if args.group == "jobs":
         if args.command == "requeue":
             return asyncio.run(run_requeue(args.job_id, args.staff_email, args.reason))

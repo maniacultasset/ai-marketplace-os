@@ -26,6 +26,8 @@ def test_hook_maps_hold_only_the_import_hooks() -> None:
 
     assert {JobKind.BULK_IMPORT: import_terminal_hook} == job_hooks.TERMINAL_HOOKS
     assert {JobKind.BULK_IMPORT: import_requeue_hook} == job_hooks.REQUEUE_HOOKS
+
+
 def test_hook_maps_start_empty() -> None:
     """Only the kinds a merged step owns have hooks (S16: `brand_embed`)."""
     from app.services.brand_embed import on_brand_embed_requeue, on_brand_embed_terminal
