@@ -1,22 +1,28 @@
 """Products (owner steps S12, S13). Create, list and read are S12's (CODE-PLAN S12 T9-T12): the
 route maps the request onto the service and the view onto `ProductOut`; domain errors render
-through the shared handlers (`app/api/errors.py`). The CSV import stays S13's stub."""
+through the shared handlers (`app/api/errors.py`). The CSV import is S13b's: the route reads the `file` part and hands it to
+`app.services.imports.upload`; a file or header problem is 422 `IMPORT_FAILED` with the file-level
+report in the envelope's `error_report`."""
 
 from __future__ import annotations
 
-from typing import Annotated, NoReturn
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi import Path as PathParam
+from mkos_schemas.codes import ErrorCode
 
-from app.api.errors import NotImplementedYet
+from app.api.errors import ApiError
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import IdempotencyKey, get_current_principal
+from app.api.v1.schemas.imports import ImportAccepted
 from app.api.v1.schemas.products import ProductCreate, ProductOut, ProductPage
-from app.api.v1.surface import OPS, route, stub
+from app.api.v1.surface import OPS, route
+from app.core.errors import ConflictError
 from app.core.rbac import Principal
 from app.services import products
+from app.services.imports import upload
 
 router = APIRouter()
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
@@ -72,14 +78,27 @@ async def products_list(
 
 
 @route(router, OPS["products_bulk"])
-@stub
 async def products_bulk(
     file: Annotated[UploadFile, File(description="The CSV file (multipart only, 10 MiB cap).")],
     idempotency_key: IdempotencyKey,
-) -> NoReturn:
+    principal: CurrentPrincipal,
+    request: Request,
+) -> ImportAccepted:
     """Start a CSV import: 202 with the import and its job. Bad rows are isolated, never failing
     the batch, and the import does not start generation."""
-    raise NotImplementedYet("products_bulk")
+    data = await file.read()
+    try:
+        result = await upload.accept_upload(
+            principal, idempotency_key, request.url.path, file.filename, data
+        )
+    except ConflictError as exc:
+        if exc.code is not ErrorCode.IDEMPOTENCY_KEY_REUSED:
+            raise
+        raise ApiError(409, exc.code) from None
+    report = result.report
+    if report is not None:
+        raise ApiError(422, ErrorCode.IMPORT_FAILED, report=report)
+    return ImportAccepted.model_validate(result.body)
 
 
 @route(router, OPS["products_get"])

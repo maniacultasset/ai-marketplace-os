@@ -55,3 +55,13 @@ class InputError(DomainError):
 
 class ForbiddenError(DomainError):
     """The caller's role may not make this change (403 PERMISSION_DENIED)."""
+
+
+class LimitError(DomainError):
+    """A per-tenant cap refused the request (429 `RATE_LIMITED`; the live-import cap, PD13).
+    `limit` names the cap (a server constant), never a request value."""
+
+    def __init__(self, limit: str, code: ErrorCode = ErrorCode.RATE_LIMITED) -> None:
+        super().__init__(f"{code.value} ({limit})")
+        self.code = code
+        self.limit = limit

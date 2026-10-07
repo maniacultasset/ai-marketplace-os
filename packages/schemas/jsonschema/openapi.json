@@ -14038,7 +14038,7 @@
                 }
               }
             },
-            "description": "Request validation failed. Codes: `VALIDATION_FAILED`."
+            "description": "Request validation failed. Codes: `VALIDATION_FAILED`, `IMPORT_FAILED`."
           },
           "429": {
             "content": {

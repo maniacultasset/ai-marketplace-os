@@ -27,7 +27,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
 from starlette.types import Scope
 
-from app.core.errors import ConflictError, InputError, NotFoundError
+from app.core.errors import ConflictError, InputError, LimitError, NotFoundError
 from app.core.request_context import REQUEST_ID_PATTERN, current_request_id, new_request_id
 
 CORRELATION_ID_PATTERN: Final = REQUEST_ID_PATTERN
@@ -116,9 +116,11 @@ class ApiError(Exception):
         message: str | None = None,
         details: Sequence[Mapping[str, Any]] | None = None,
         headers: Mapping[str, str] | None = None,
+        report: ErrorReport | None = None,
     ) -> None:
         self.status = status
         self.code = code
+        self.report = report
         self.message = message or STATUS_MESSAGES.get(status, STATUS_MESSAGES[500])
         self.details = [dict(d) for d in details] if details is not None else None
         self.headers = dict(headers or {})
@@ -165,22 +167,28 @@ def envelope_body(
     message: str,
     correlation: str,
     details: Sequence[Mapping[str, Any]] | None = None,
+    report: ErrorReport | None = None,
 ) -> dict[str, Any]:
+    """The envelope. `report` replaces the default one-item `request` report when the failure
+    has its own (an import's file-level `IMPORT_FAILED` report); it carries this request's id."""
     retryable = ERROR_CODE_META[code].retry_class is RetryClass.AUTO_RETRY
-    item = ErrorItem(
-        field="request",
-        error_code=code,
-        message=message,
-        source=ErrorSource.SYSTEM,
-        retryable=retryable,
-    )
-    report = ErrorReport(
-        status="failed",
-        error_code=code,
-        retryable=retryable,
-        errors=[item],
-        request_id=correlation,
-    )
+    if report is not None:
+        report = report.model_copy(update={"request_id": correlation})
+    else:
+        item = ErrorItem(
+            field="request",
+            error_code=code,
+            message=message,
+            source=ErrorSource.SYSTEM,
+            retryable=retryable,
+        )
+        report = ErrorReport(
+            status="failed",
+            error_code=code,
+            retryable=retryable,
+            errors=[item],
+            request_id=correlation,
+        )
     body = ErrorEnvelope(
         error=ErrorBody(
             type=code,
@@ -210,13 +218,14 @@ def error_response_for_scope(
     message: str | None = None,
     details: Sequence[Mapping[str, Any]] | None = None,
     headers: Mapping[str, str] | None = None,
+    report: ErrorReport | None = None,
 ) -> JSONResponse:
     """The envelope as a response. Also used by pure ASGI middleware, which has only the scope."""
     correlation = _correlation_from_scope(scope)
     resolved = code or code_for_status(status)
     text = message or STATUS_MESSAGES.get(status) or STATUS_MESSAGES[500 if status >= 500 else 400]
     return JSONResponse(
-        envelope_body(status, resolved, text, correlation, details),
+        envelope_body(status, resolved, text, correlation, details, report),
         status_code=status,
         headers=envelope_headers(status, headers),
     )
@@ -256,7 +265,7 @@ def validation_details(errors: Sequence[Any]) -> list[dict[str, Any]]:
 async def _api_error(request: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, ApiError)  # noqa: S101 - handler registered for ApiError only
     return error_response_for_scope(
-        request.scope, exc.status, exc.code, exc.message, exc.details, exc.headers
+        request.scope, exc.status, exc.code, exc.message, exc.details, exc.headers, exc.report
     )
 
 
@@ -323,6 +332,8 @@ def domain_api_error(exc: Exception) -> ApiError:
         return ApiError(409, exc.code)
     if isinstance(exc, NotFoundError):
         return ApiError(404, ErrorCode.NOT_FOUND, f"{path_label(exc.field)} not found.")
+    if isinstance(exc, LimitError):
+        return ApiError(429, exc.code)
     if isinstance(exc, InputError):
         msg = _INPUT_MESSAGES.get(exc.code, "Invalid value.")
         return ApiError(
@@ -349,7 +360,7 @@ async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
 def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(ApiError, _api_error)
     app.add_exception_handler(NotImplementedYet, _not_implemented)
-    for domain in (ConflictError, NotFoundError, InputError):
+    for domain in (ConflictError, NotFoundError, InputError, LimitError):
         app.add_exception_handler(domain, _domain_error)
     app.add_exception_handler(RequestValidationError, _validation_error)
     app.add_exception_handler(StarletteHTTPException, _http_exception)

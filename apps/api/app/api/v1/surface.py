@@ -336,7 +336,8 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("products_get", "GET", "/products/{product_id}", 200, ProductOut, "products",
               "Read one product", "S12", path_id="product_id", action=A.TENANT_READ),
     Operation("products_bulk", "POST", "/products/bulk", 202, ImportAccepted, "products",
-              "Import products from a CSV file", "S13", has_body=True, idempotency=True, action=A.PRODUCT_IMPORT),
+              "Import products from a CSV file", "S13", has_body=True, idempotency=True,
+              extra_codes=MappingProxyType({422: (E.IMPORT_FAILED,)}), action=A.PRODUCT_IMPORT),
     # ---- imports (S13) ----
     Operation("imports_get", "GET", "/imports/{import_id}", 200, ImportReport, "imports",
               "The import report (counts; rows via /rows)", "S13", path_id="import_id", action=A.TENANT_READ),

@@ -12124,7 +12124,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Request validation failed. Codes: `VALIDATION_FAILED`. */
+            /** @description Request validation failed. Codes: `VALIDATION_FAILED`, `IMPORT_FAILED`. */
             422: {
                 headers: {
                     [name: string]: unknown;
