@@ -11,7 +11,8 @@ from typing import Annotated, Final, Literal
 from uuid import UUID
 
 from mkos_schemas.base import NonBlankStr, Slug, StrictModel, WireModel
-from pydantic import AwareDatetime, Field
+from pydantic import AfterValidator, AwareDatetime, Field
+from pydantic_core import PydanticCustomError
 
 from app.api.pagination import Page
 from app.api.v1.schemas.common import StorageKey
@@ -20,12 +21,23 @@ MAX_PRODUCT_IMAGES: Final = 50
 MAX_PRODUCT_ATTRIBUTES: Final = 200
 MAX_ATTRIBUTE_TEXT: Final = 2000
 
+
+def _no_bom(value: str) -> str:
+    if "\ufeff" in value:
+        raise PydanticCustomError("mkos_invalid", "SKU must not contain whitespace.")
+    return value
+
+
+# The pattern is read as ECMA-262 by JSON Schema validators and JS clients, where `\s` also covers
+# U+FEFF; pydantic's Rust regex does not, so the validator closes that gap. A validator, not a new
+# pattern: the declared contract stays as S3 froze it.
 Sku = Annotated[
     str,
     Field(
         pattern=r"^[^\]\s]{1,64}$",
         description="1-64 characters, no whitespace and no `]` (T72; unique per brand).",
     ),
+    AfterValidator(_no_bom),
 ]
 ProductTitle = Annotated[NonBlankStr, Field(max_length=500)]
 AttributeKey = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]{0,63}$")]
