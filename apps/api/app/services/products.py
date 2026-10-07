@@ -8,6 +8,8 @@
   `product.created` audit row with the created facts. The SKU unique is the natural key: a
   duplicate or a lost-response retry is 409 `SKU_CONFLICT`.
 - `get_product` / `list_products`: the caller's tenant only; another tenant's id reads as missing.
+  `images` holds the product's live image keys in slot order (S17b CP7), one query per page;
+  `images` on create stays 404 (S17b D11: images arrive through `/images/upload`).
 
 Tenant and actor come only from the principal.
 """
@@ -71,8 +73,9 @@ def _flat(fact: Any) -> FlatValue | None:
     return flat if isinstance(flat, str | bool | int | float) else None
 
 
-def _view(row: Any) -> ProductView:
-    """Total over every row the DB CHECKs accept: nothing here re-applies input rules."""
+def _view(row: Any, images: list[str] | None = None) -> ProductView:
+    """Total over every row the DB CHECKs accept: nothing here re-applies input rules. `images`
+    are the product's live image keys in slot order (S17b CP7)."""
     facts: Mapping[str, Any] = row.attributes or {}
     flat = {key: _flat(fact) for key, fact in facts.items()}
     return ProductView(
@@ -83,7 +86,7 @@ def _view(row: Any) -> ProductView:
         category=row.category,
         # CP1: flat values under canonical keys; the envelopes come later as `facts`
         attributes={key: value for key, value in flat.items() if value is not None},
-        images=[],
+        images=list(images or []),
         parent_product_id=row.parent_product_id,
         created_at=row.created_at,
         updated_at=row.updated_at,
@@ -135,7 +138,8 @@ async def get_product(principal: Principal, product_id: uuid.UUID) -> ProductVie
         row = await uow.products.get_by_id(product_id)
         if row is None:
             raise NotFoundError("product_id")
-        return _view(row)
+        keys = await uow.images.live_keys_for_products([row.id])
+        return _view(row, keys[row.id])
 
 
 async def list_products(
@@ -143,4 +147,5 @@ async def list_products(
 ) -> tuple[list[ProductView], bool]:
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
         rows, has_more = await uow.products.list_page(limit=limit, after=after)
-        return [_view(r) for r in rows], has_more
+        keys = await uow.images.live_keys_for_products([r.id for r in rows])  # one query a page
+        return [_view(r, keys[r.id]) for r in rows], has_more
