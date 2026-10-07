@@ -185,6 +185,18 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         ).scalar_one_or_none()
         return row
 
+    async def latest_for_entity(self, entity_type: str, entity_id: uuid.UUID) -> JobRun | None:
+        """The newest job (by `queued_at`, then id) on one entity of this tenant (S17b D8)."""
+        if not isinstance(entity_id, uuid.UUID):
+            raise ValueError("entity_id must be a UUID")
+        stmt = (
+            self._select()
+            .where(JobRun.entity_type == entity_type, JobRun.entity_id == entity_id)
+            .order_by(JobRun.queued_at.desc(), JobRun.id.desc())
+            .limit(1)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
     # ---- enqueue (DW1, AC1-2) ----
 
     async def enqueue(self, spec: EnqueueSpec) -> Enqueued:
