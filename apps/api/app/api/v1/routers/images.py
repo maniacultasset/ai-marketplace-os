@@ -5,19 +5,25 @@ Routes import no `sqlalchemy` or `app.db`; domain errors render through the shar
 
 from __future__ import annotations
 
-from typing import Annotated, NoReturn
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from fastapi import Path as PathParam
 from mkos_schemas.codes import ErrorCode
-from mkos_schemas.enums import ImageSlot
+from mkos_schemas.enums import ImageSlot, Marketplace
 
-from app.api.errors import ApiError, NotImplementedYet
+from app.api.errors import ApiError
 from app.api.v1.deps import IdempotencyKey, get_current_principal
 from app.api.v1.schemas.common import StorageKey
-from app.api.v1.schemas.images import ImageAccepted, UploadUrlOut, UploadUrlRequest
-from app.api.v1.surface import OPS, route, stub
+from app.api.v1.schemas.images import (
+    ImageAccepted,
+    ImageReportOut,
+    ImageReports,
+    UploadUrlOut,
+    UploadUrlRequest,
+)
+from app.api.v1.surface import OPS, route
 from app.core.rbac import Principal
 from app.services import images
 
@@ -79,7 +85,17 @@ async def images_upload(
 
 
 @route(router, OPS["images_report"])
-@stub
-async def images_report(image_id: Annotated[UUID, PathParam()]) -> NoReturn:
-    """The image's compliance status and per-marketplace `ImageReport`s."""
-    raise NotImplementedYet("images_report")
+async def images_report(
+    image_id: Annotated[UUID, PathParam()], principal: CurrentPrincipal
+) -> ImageReportOut:
+    """The image's compliance status and per-marketplace `ImageReport`s (`{}` while pending).
+    A replaced or unknown image is 404."""
+    view = await images.get_report(principal, image_id)
+    return ImageReportOut(
+        image_id=view.image_id,
+        compliance_status=view.compliance_status,
+        reports=ImageReports(
+            amazon=view.reports.get(Marketplace.AMAZON),
+            flipkart=view.reports.get(Marketplace.FLIPKART),
+        ),
+    )

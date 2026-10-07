@@ -61,6 +61,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "imports_rows_retry",
         "images_upload_url",
         "images_upload",
+        "images_report",
     }
 )
 
