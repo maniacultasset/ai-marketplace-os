@@ -8,6 +8,7 @@
 # The app logs in as app_rw and Alembic as migrator (ENV.md; CODE-PLAN S10 Q5): the DSNs come from
 # the environment or .env (CI's copy of .env.example) with the host rewritten for the compose
 # network, and the auth leg first proves the app's own login is neither superuser nor BYPASSRLS.
+# The S13 worker leg boots the image as APP_ROLE=worker and stops it with SIGTERM.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -97,8 +98,12 @@ uv run --frozen python -m app.cli seed --profile demo
 uv run --frozen uvicorn app.main:app --port "$api_port" --app-dir apps/api &
 server=$!
 e2e_container="mkos-s11-e2e-${project}"
+worker_container="mkos-s13-worker-${project}"
 stop_server() { if kill -0 "$server" 2>/dev/null; then kill "$server"; wait "$server" || true; fi; }
-cleanup() { stop_server; docker rm -f "$e2e_container" >/dev/null 2>&1 || true; }
+cleanup() {
+  stop_server
+  docker rm -f "$e2e_container" "$worker_container" >/dev/null 2>&1 || true
+}
 trap cleanup EXIT
 
 for _ in $(seq 1 30); do
@@ -198,6 +203,45 @@ scripts/e2e/walking_skeleton.sh "http://127.0.0.1:${api_port}"
 scripts/ci/reset_rate_limits.sh "http://127.0.0.1:${api_port}"
 scripts/e2e/walking_skeleton.sh "http://127.0.0.1:${api_port}"
 docker rm -f "$e2e_container" >/dev/null
+# S13 worker leg (DW11): the image as APP_ROLE=worker on the compose network, as app_rw. It must
+# register its procrastinate workers within 30 s, then SIGTERM (docker stop; SIGKILL only after
+# 10 s) must end it with exit 0 in under 10 s, unregistered, and no log line may carry a DSN.
+docker rm -f "$worker_container" >/dev/null 2>&1 || true
+docker run -d --name "$worker_container" --network "$network" -e APP_ENV=local -e APP_ROLE=worker \
+  -e LOG_FORMAT=json -e DATABASE_URL="$app_dsn" "$image" >/dev/null
+worker_rows() {
+  docker compose exec -T postgres psql -U postgres -d marketplace_os -tAc \
+    "SELECT count(*) FROM procrastinate_workers"
+}
+registered=0
+for _ in $(seq 1 30); do
+  if [ "$(worker_rows)" -ge 1 ]; then registered=1; break; fi
+  sleep 1
+done
+if [ "$registered" -ne 1 ]; then
+  echo "bootstrap: the worker registered no procrastinate_workers row within 30 s" >&2
+  docker logs "$worker_container" >&2 || true
+  exit 1
+fi
+worker_started="$(date +%s)"
+docker stop --time 10 "$worker_container" >/dev/null
+worker_took="$(( $(date +%s) - worker_started ))"
+worker_code="$(docker inspect -f '{{.State.ExitCode}}' "$worker_container")"
+if [ "$worker_code" != "0" ] || [ "$worker_took" -ge 10 ]; then
+  echo "bootstrap: the worker exited $worker_code after SIGTERM in ${worker_took}s (want 0, < 10 s)" >&2
+  docker logs "$worker_container" >&2 || true
+  exit 1
+fi
+if [ "$(worker_rows)" != "0" ]; then
+  echo "bootstrap: the worker left its procrastinate_workers rows behind" >&2
+  exit 1
+fi
+if docker logs "$worker_container" 2>&1 | grep -Eq 'postgres(ql)?(\+psycopg)?://|app_rw:'; then
+  echo "bootstrap: a worker log line carries a DSN" >&2
+  exit 1
+fi
+docker rm -f "$worker_container" >/dev/null
+echo "bootstrap: worker leg OK (SIGTERM exit 0 in ${worker_took}s)"
 # The Cloud Run migrate job's path through the image, as migrator (local dev-only password).
 docker run --rm --network "$network" -e APP_ENV=local -e APP_ROLE=migrate -e ALEMBIC_DATABASE_URL="$migrator_dsn" "$image"
 # The image's seed role (SEED_PROFILE unset: the entrypoint's demo default); idempotent after the host seed.
