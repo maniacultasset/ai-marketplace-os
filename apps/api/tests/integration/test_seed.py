@@ -465,3 +465,81 @@ def test_seed_role_refused_under_staging(superuser_conn: Conn) -> None:
     assert done.returncode == 3, done.stderr
     assert "seed: refused: APP_ENV=staging" in done.stderr
     assert _all_counts(superuser_conn) == before
+
+
+# ---- S14b T19 (AC 14 seed half; D12): the demo listing ----
+
+
+def _demo_rows(conn: Conn) -> tuple[int, int, int]:
+    from app.db.seed_ops import demo_listing_ids
+
+    listing, version, run = demo_listing_ids()
+    return (
+        int(_scalar(conn, "SELECT count(*) FROM listings WHERE id = %s", [listing])),
+        int(_scalar(conn, "SELECT count(*) FROM listing_versions WHERE id = %s", [version])),
+        int(_scalar(conn, "SELECT count(*) FROM validation_runs WHERE id = %s", [run])),
+    )
+
+
+async def test_seed_demo_listing_once(superuser_conn: Conn) -> None:
+    from app.db.seed_ops import demo_listing_ids
+
+    assert await _seed("demo") == 0
+    assert await _seed("demo") == 0
+    assert _demo_rows(superuser_conn) == (1, 1, 1)
+    listing, version, _ = demo_listing_ids()
+    row = superuser_conn.execute(
+        "SELECT l.status, l.current_version_id, l.tenant_id, v.content_json ->> 'title', "
+        "v.generated_by_user_id = u.id FROM listings l JOIN listing_versions v ON v.listing_id = l.id "
+        "JOIN users u ON u.email = 'operator@acme.test' WHERE l.id = %s",
+        [listing],
+    ).fetchone()
+    assert row is not None
+    assert (row[0], row[1], row[2]) == ("created", version, _ids()["acme"])
+    assert len(row[3]) == 221 and row[4] is True
+
+
+async def test_seed_demo_listing_report_from_engine(superuser_conn: Conn) -> None:
+    from app.db.seed_ops import DEMO_ATTRIBUTES, demo_listing_content, demo_listing_ids
+    from app.repositories.uow import tenant_uow
+    from app.services.rules_engine import evaluate
+    from app.services.rules_loader import load_rules
+    from mkos_schemas.errors import ErrorReport
+    from mkos_schemas.listing import CanonicalListing
+
+    assert await _seed("demo") == 0
+    acme = _ids()["acme"]
+    listing_id, version_id, run_id = demo_listing_ids()
+    row = superuser_conn.execute(
+        "SELECT source, passed, error_report_json, rules_version, category_template_id, "
+        "template_version, facts_digest, listing_version_id, blocking_count FROM validation_runs "
+        "WHERE id = %s",
+        [run_id],
+    ).fetchone()
+    assert row is not None
+    async with tenant_uow(acme) as uow:
+        loaded = await load_rules(
+            uow, tenant_id=acme, marketplace="amazon", category="ethnic_wear_kurta_sets"
+        )
+    product = _scalar(superuser_conn, "SELECT product_id FROM listings WHERE id = %s", [listing_id])
+    listing = CanonicalListing.model_validate(
+        {
+            "listing_id": listing_id,
+            "product_id": product,
+            "marketplace": "amazon",
+            "category": "ethnic_wear_kurta_sets",
+            "content": demo_listing_content(),
+            "attributes": dict(DEMO_ATTRIBUTES),
+        }
+    )
+    expected = evaluate(listing, loaded.ruleset, template=loaded.template)
+    assert ErrorReport.model_validate(row[2]) == expected
+    assert [e.error_code.value for e in expected.errors] == ["FIELD_TOO_LONG"]
+    assert (row[0], row[1], row[3]) == ("rules_engine", False, loaded.ruleset.rules_version)
+    assert (row[4], row[5]) == (loaded.template_id, loaded.template_version)
+    assert row[6] is not None and row[7] == version_id and row[8] == 1
+
+
+async def test_seed_demo_listing_absent_in_isolation_profile(superuser_conn: Conn) -> None:
+    assert await _seed("isolation") == 0
+    assert _demo_rows(superuser_conn) == (0, 0, 0)
