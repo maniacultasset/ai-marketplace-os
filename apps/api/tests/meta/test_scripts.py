@@ -1169,3 +1169,61 @@ def test_rules_e2e_refuses_non_local_url(repo_root: Path, tmp_path: Path, url: s
     )
     assert result.returncode == 2, result.stderr
     assert not log.exists() or log.read_text(encoding="utf-8") == ""
+
+
+# ---- S14b T23 (AC 16): the admin e2e ----
+
+ADMIN_E2E_STEPS = (
+    "health",
+    "admin_index_200",
+    "listing_versions_list_200",
+    "seeded_version_detail_has_title",
+    "seeded_run_detail_has_field_too_long",
+    "db_read_seeded_secrets_then_grep",
+    "post_refused_405",
+    "ops_queue_200",
+)
+
+
+def _admin_e2e(repo_root: Path) -> str:
+    return (repo_root / "scripts" / "e2e" / "admin.sh").read_text(encoding="utf-8")
+
+
+def test_admin_e2e_steps(repo_root: Path) -> None:
+    from app.db.seed_ops import SEED_NAMESPACE
+
+    code = _code(_admin_e2e(repo_root))
+    assert "set -euo pipefail" in code
+    assert tuple(re.findall(r"(?m)^step (\w+)$", code)) == ADMIN_E2E_STEPS
+    assert not re.search(r":\d{2,5}\b", code)
+    assert "FAILED at step $current (HTTP status ${status:-none})" in code
+    assert 'cat "$body"' not in code
+    assert f'seed_namespace="{SEED_NAMESPACE}"' in code  # the seed's fixed ids
+
+
+@pytest.mark.parametrize("url", NON_LOCAL_URLS)
+def test_admin_e2e_refuses_non_local_url(repo_root: Path, tmp_path: Path, url: str) -> None:
+    env, log = _stub_path(tmp_path)
+    result = subprocess.run(
+        [str(repo_root / "scripts" / "e2e" / "admin.sh"), url],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 2, result.stderr
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""
+
+
+def test_admin_e2e_psql_only_in_db_steps(repo_root: Path) -> None:
+    current = "setup"
+    hits: list[tuple[str, str]] = []
+    for line in _code(_admin_e2e(repo_root)).splitlines():
+        match = re.match(r"^step (\w+)$", line)
+        if match:
+            current = match.group(1)
+        if "psql" in line or "docker compose exec" in line:
+            hits.append((current, line.strip()))
+    assert hits, "the db step reads the seeded secrets"
+    assert all(step.startswith("db_") for step, _ in hits), hits
