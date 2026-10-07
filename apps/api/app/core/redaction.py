@@ -51,6 +51,8 @@ DENY_KEYS: Final[frozenset[str]] = frozenset(
         "token_hash",
         "state_hash",
         "code_verifier",
+        "code_challenge",
+        "pending_handle",
         "secret",
         "api_key",
         "secret_key",
@@ -93,7 +95,8 @@ DENY_SUFFIXES: Final[tuple[str, ...]] = (
 # carries the authorization code and state. `code` and `state` are query-only: as dict keys
 # they stay (the error envelope `code`, a listing `state`).
 QUERY_ONLY_DENY_KEYS: Final[frozenset[str]] = frozenset(
-    {"code", "spapi_oauth_code", "oauth_code", "state", "mws_auth_token"}
+    # `pending`: the OAuth callback's opaque confirm handle (S15), in its 303 Location
+    {"code", "spapi_oauth_code", "oauth_code", "state", "mws_auth_token", "pending"}
 )
 QUERY_DENY_KEYS: Final[frozenset[str]] = DENY_KEYS | QUERY_ONLY_DENY_KEYS
 

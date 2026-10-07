@@ -40,6 +40,7 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
     "listings_content_patch": {"content": {"title": "T", "bullets": ["b"], "description": "d"}},
     "listings_regenerate": {"instructions": "Shorter title."},
     "marketplaces_connect": {"marketplace": "amazon"},
+    "marketplaces_connect_confirm": {"pending": "p" * 43},
     "images_upload_url": {
         "product_id": ID,
         "slot": "main",

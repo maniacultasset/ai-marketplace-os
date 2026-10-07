@@ -255,8 +255,13 @@ def _run_make_e2e(repo_root: Path, tmp_path: Path, fail_first: bool) -> list[str
         f'#!/usr/bin/env bash\nprintf "%s\\n" "reset $1" >> "{log}"\n', encoding="utf-8"
     )
     reset.chmod(0o755)
+    fake = tmp_path / "fake.sh"
+    fake.write_text(
+        f'#!/usr/bin/env bash\nprintf "%s\\n" "fake-$1 $2" >> "{log}"\n', encoding="utf-8"
+    )
+    fake.chmod(0o755)
     result = subprocess.run(
-        ["make", "-s", "e2e", f"E2E_DIR={scripts}", f"RESET_LIMITS={reset}"],
+        ["make", "-s", "e2e", f"E2E_DIR={scripts}", f"RESET_LIMITS={reset}", f"FAKE_CTL={fake}"],
         cwd=repo_root,
         capture_output=True,
         text=True,
@@ -269,8 +274,67 @@ def _run_make_e2e(repo_root: Path, tmp_path: Path, fail_first: bool) -> list[str
 
 
 def test_make_e2e_resets_limits_before_each_script(repo_root: Path, tmp_path: Path) -> None:
-    assert _run_make_e2e(repo_root, tmp_path, fail_first=False) == ["reset", "a", "reset", "b"]
+    assert _run_make_e2e(repo_root, tmp_path, fail_first=False) == [
+        "fake-start",
+        "reset",
+        "a",
+        "reset",
+        "b",
+        "fake-stop",
+    ]
 
 
 def test_make_e2e_stops_on_first_failure(repo_root: Path, tmp_path: Path) -> None:
-    assert _run_make_e2e(repo_root, tmp_path, fail_first=True) == ["reset", "a"]
+    assert _run_make_e2e(repo_root, tmp_path, fail_first=True) == [
+        "fake-start",
+        "reset",
+        "a",
+        "fake-stop",
+    ]
+
+
+def test_fake_marketplace_target_loopback(repo_root: Path) -> None:
+    """S15: `make fake-marketplace` runs the test-support fake on its worktree port; the module
+    binds 127.0.0.1 itself and the recipe never passes a host."""
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    recipe = _target(makefile, "fake-marketplace").strip()
+    assert recipe == (
+        "uv run --frozen python apps/api/tests/support/fake_marketplace.py "
+        "--port $(FAKE_MARKETPLACE_HOST_PORT)"
+    )
+    assert "--host" not in recipe and "0.0.0.0" not in recipe  # noqa: S104
+    source = (repo_root / "apps/api/tests/support/fake_marketplace.py").read_text(encoding="utf-8")
+    assert 'host="127.0.0.1"' in source
+    assert "0.0.0.0" not in source  # noqa: S104
+
+
+def test_make_e2e_sets_fake_and_refresh_hooks(repo_root: Path) -> None:
+    """S15: `make e2e` starts the fake for the pass (and stops it on any exit), and hands every
+    script FAKE_URL and REFRESH_ONCE, the worker's one-shot refresh with the dev env."""
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert "FAKE_CTL ?= scripts/ci/fake_marketplace.sh" in makefile
+    assert (
+        "REFRESH_ONCE ?= APP_ROLE=worker uv run --frozen python -m app.workers.oneshot "
+        "refresh_marketplace_tokens" in makefile
+    )
+    recipe = _e2e_recipe(repo_root)
+    start = recipe.index("$(FAKE_CTL) start $(FAKE_MARKETPLACE_HOST_PORT)")
+    trap = recipe.index("trap '$(FAKE_CTL) stop $(FAKE_MARKETPLACE_HOST_PORT)' EXIT")
+    hooks = recipe.index('export FAKE_URL="$(FAKE_MARKETPLACE_URL)" REFRESH_ONCE="$(REFRESH_ONCE)"')
+    assert start < trap < hooks < recipe.index("for script in")
+    assert "export $(FAKE_MARKETPLACE_ENV)" in recipe
+
+
+def test_make_dev_points_marketplace_urls_at_fake(repo_root: Path) -> None:
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert "FAKE_MARKETPLACE_URL = http://127.0.0.1:$(FAKE_MARKETPLACE_HOST_PORT)" in makefile
+    joined = makefile.replace("\\\n\t", " ")
+    for name, path in (
+        ("AMAZON_AUTHORIZE_URL", "amazon/authorize"),
+        ("AMAZON_LWA_TOKEN_URL", "amazon/token"),
+        ("FLIPKART_AUTHORIZE_URL", "flipkart/authorize"),
+        ("FLIPKART_TOKEN_URL", "flipkart/token"),
+    ):
+        assert f"{name}=$(FAKE_MARKETPLACE_URL)/{path}" in joined
+    dev = _target(makefile, "dev")
+    assert "$(FAKE_MARKETPLACE_ENV) uv run --frozen uvicorn app.main:app" in dev

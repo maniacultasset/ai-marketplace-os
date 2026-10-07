@@ -19,7 +19,6 @@ build-constraints = [
 [manifest.dependency-groups]
 dev = [
     { name = "black", specifier = "==26.5.1" },
-    { name = "httpx", specifier = "==0.28.1" },
     { name = "hypothesis", specifier = "==6.168.3" },
     { name = "import-linter", specifier = "==2.15" },
     { name = "mutmut", specifier = "==3.8.0" },
@@ -851,7 +850,9 @@ version = "0.0.0"
 source = { editable = "apps/api" }
 dependencies = [
     { name = "alembic" },
+    { name = "cryptography" },
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "mkos-schemas" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-sdk" },
@@ -874,7 +875,9 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "alembic", specifier = ">=1.20,<2" },
+    { name = "cryptography", specifier = "==50.0.2" },
     { name = "fastapi", specifier = "==0.141.1" },
+    { name = "httpx", specifier = "==0.28.1" },
     { name = "mkos-schemas", editable = "packages/schemas" },
     { name = "opentelemetry-api", specifier = ">=1.45,<2" },
     { name = "opentelemetry-sdk", specifier = ">=1.45,<2" },

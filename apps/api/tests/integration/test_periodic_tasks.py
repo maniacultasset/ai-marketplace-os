@@ -34,6 +34,8 @@ def test_periodic_table_literal() -> None:
         "prune_idempotency_keys": "0 * * * *",
         "expire_trials": "15 * * * *",
         "retention_daily": "0 3 * * *",
+        "marketplace_token_refresh": "*/5 * * * *",  # S15
+        "oauth_states_prune": "30 * * * *",  # S15
     }
 
 

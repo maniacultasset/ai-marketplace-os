@@ -241,6 +241,37 @@ seed_iso_no_before_flush() {
 }
 seed_iso_env() { cp "$root/.env" .env; }
 
+# S15: the decrypt path from a router (import contract), the hash branch without its
+# `token_enc IS NULL` (the public callback could read and delete a pending row), and a revoke that
+# keeps the ciphertext.
+seed_unseal_from_router() { append apps/api/app/api/v1/routers/marketplaces.py 'import app.adapters.credentials  # noqa: F401'; }
+seed_hash_branch_pending() {
+  cp "$root/.env" .env
+  replace apps/api/alembic/versions/0006_oauth_pending.py \
+    'f"USING (state_hash = {HASH_GUC} AND token_enc IS NULL)",
+    ),
+    (
+        "oauth_states_hash_delete",' \
+    'f"USING (state_hash = {HASH_GUC})",
+    ),
+    (
+        "oauth_states_hash_delete",'
+  replace apps/api/alembic/versions/0006_oauth_pending.py \
+    'f"USING (state_hash = {HASH_GUC} AND token_enc IS NULL)",' 'f"USING (state_hash = {HASH_GUC})",'
+}
+seed_revoke_no_shred() {
+  cp "$root/.env" .env
+  replace apps/api/app/repositories/marketplace_accounts.py \
+    "SET status = 'revoked', token_enc = NULL, kms_key_version = NULL, " \
+    "SET status = 'revoked', kms_key_version = NULL, "
+}
+# Re-migrate mos_iso with this checkout's revisions (after a leg migrated it with seeded ones).
+remigrate_iso() {
+  local url="postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_iso"
+  APP_ENV=local APP_ROLE=migrate ALEMBIC_DATABASE_URL="$url" uv run --frozen alembic -c apps/api/alembic.ini downgrade 0005_rls
+  APP_ENV=local APP_ROLE=migrate ALEMBIC_DATABASE_URL="$url" uv run --frozen alembic -c apps/api/alembic.ini upgrade head
+}
+
 # leg <name> <gate> <expected; ;-separated extended regexes> <seed fn> <command...>
 leg() {
   local name="$1" gate="$2" expected="$3" seed="$4"
@@ -402,6 +433,8 @@ leg api-lint-engine-openai api-lint 'TID251' seed_engine_openai make api-lint
 leg lint-imports-engine-sqla lint-imports 'app.services.rules_engine is pure .*BROKEN' seed_engine_sqla make lint-imports
 leg lint-imports-engine-repositories lint-imports 'app.services.rules_engine is pure .*BROKEN' \
   seed_engine_repositories make lint-imports
+leg lint-imports-unseal-from-router lint-imports 'only app.adapters and app.workers import the decrypt path BROKEN' \
+  seed_unseal_from_router make lint-imports
 
 if [ "$with_docker" -eq 1 ]; then
   self_project="$(docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"
@@ -419,6 +452,7 @@ if [ "$with_docker" -eq 1 ]; then
   leg contracts-response-non-success-status-removed contracts 'response-non-success-status-removed' seed_error_status_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
   leg api-tests-engine-impure api-tests 'test_rules_engine_import_allowlist' seed_engine_impure COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-engine-coverage api-tests 'rules_engine branch coverage' seed_engine_coverage COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-revoke-no-shred api-tests 'ck_ma_revoked_shredded|test_revoke_crypto_shreds' seed_revoke_no_shred COMPOSE_PROJECT_NAME="$self_project" make api-tests
   # A throwaway database with 0000, so the seeded revision legs never stamp mos_test. The broken
   # downgrade leaves its revision stamped there, so that leg runs last.
   docker compose exec -T postgres dropdb -U postgres --if-exists --force mos_prove
@@ -442,6 +476,10 @@ if [ "$with_docker" -eq 1 ]; then
   leg tenant-isolation-guard-all-mappers tenant-isolation 'test_raw_select_raises_guard\[[a-z_]+-(join|subquery|exists|cte|select_from|core_table)\]' seed_iso_all_mappers COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-guard-table-only tenant-isolation 'test_raw_select_raises_guard\[[a-z_]+-table_clause\]' seed_iso_table_only COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-no-before-flush tenant-isolation 'test_flush_rejects_other_tenant' seed_iso_no_before_flush COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
+  # mos_iso is migrated already: the leg downgrades it below 0007 so the seeded revision applies,
+  # and remigrate_iso puts this checkout's revisions back afterwards.
+  leg tenant-isolation-hash-branch-pending tenant-isolation 'hides_pending_row' seed_hash_branch_pending COMPOSE_PROJECT_NAME="$self_project" sh -c 'APP_ENV=local APP_ROLE=migrate ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_iso uv run --frozen alembic -c apps/api/alembic.ini downgrade 0005_rls && make tenant-isolation'
+  remigrate_iso >>"$logs/tenant-isolation-hash-branch-pending.log" 2>&1
   # Bootstrap legs use their own project on this checkout's host ports; pause this stack meanwhile.
   docker compose stop >/dev/null 2>&1
   leg bootstrap-empty-venv bootstrap "No module named 'mkos_schemas'" seed_no_uv_project_env COMPOSE_PROJECT_NAME="prove-gates-bootstrap-${self_project}" DATABASE_URL=postgresql+psycopg://app_rw:ci_only_app_rw_not_a_real_password@localhost:${PG_HOST_PORT:-5432}/marketplace_os ALEMBIC_DATABASE_URL=postgresql+psycopg://migrator:ci_only_migrator_not_a_real_password@localhost:${PG_HOST_PORT:-5432}/marketplace_os S3_ENDPOINT_URL=http://localhost:${MINIO_API_HOST_PORT:-9000} PORT=${API_HOST_PORT:-8000} make bootstrap

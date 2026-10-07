@@ -216,3 +216,14 @@ def test_entrypoint_no_access_log(entrypoint: Path) -> None:
         if "exec uvicorn" in line
     ]
     assert line.rstrip().endswith("--no-access-log")
+
+
+def test_image_excludes_tests_dir(repo_root: Path) -> None:
+    """S15: the fake marketplace and every other test helper stay out of the image (the
+    Dockerfile copies apps/api/, so .dockerignore drops its tests)."""
+    lines = (repo_root / ".dockerignore").read_text(encoding="utf-8").splitlines()
+    assert "apps/api/tests/" in lines
+    app_sources = "\n".join(
+        p.read_text(encoding="utf-8") for p in (repo_root / "apps/api/app").rglob("*.py")
+    )
+    assert "fake_marketplace" not in app_sources

@@ -17,7 +17,10 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.attribute_definitions import AttributeDefinitionRepository
+from app.repositories.human_tasks import HumanTaskRepository
 from app.repositories.identity import AuditRepository
+from app.repositories.marketplace_accounts import MarketplaceAccountRepository
+from app.repositories.oauth_states import OAuthStateRepository
 from app.repositories.products import ProductRepository
 from app.repositories.transactions import unit_of_work
 
@@ -30,6 +33,9 @@ class TenantUnitOfWork:
     products: ProductRepository
     attribute_definitions: AttributeDefinitionRepository
     audit: AuditRepository
+    marketplace_accounts: MarketplaceAccountRepository
+    oauth_states: OAuthStateRepository
+    human_tasks: HumanTaskRepository
 
 
 @asynccontextmanager
@@ -42,4 +48,7 @@ async def tenant_uow(
             products=ProductRepository(session, tenant_id),
             attribute_definitions=AttributeDefinitionRepository(session),
             audit=AuditRepository(session),
+            marketplace_accounts=MarketplaceAccountRepository(session, tenant_id),
+            oauth_states=OAuthStateRepository(session, tenant_id),
+            human_tasks=HumanTaskRepository(session, tenant_id),
         )

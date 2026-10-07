@@ -986,3 +986,139 @@ def test_prove_gates_has_s13a_legs(repo_root: Path) -> None:
         "seed_cas_without_status",
     ):
         assert f"{seed}() {{" in text
+
+
+# ---- S15 T19 (AC16): the marketplace connect e2e ----
+
+MARKETPLACE_STEPS = (
+    "health",
+    "fake_health",
+    "login_acme_owner",
+    "cleanup_live_amazon",
+    "connect_200",
+    "consent",
+    "callback_303",
+    "callback_replay_409",
+    "login_bharat_owner",
+    "bharat_confirm_409",
+    "confirm_200",
+    "list_active",
+    "login_acme_reviewer",
+    "reviewer_connect_403",
+    "login_acme_operator",
+    "operator_connect_403",
+    "db_ciphertext_no_canary",
+    "force_invalid_grant",
+    "refresh_once",
+    "list_needs_reconnect",
+    "db_one_reconnect_task",
+    "reconnect",
+    "revoke_200",
+    "revoke_again_200",
+    "db_revoked_shredded",
+)
+MARKETPLACE_E2E = "scripts/e2e/marketplace_connect.sh"
+
+
+def _marketplace_code(repo_root: Path) -> str:
+    return _code((repo_root / MARKETPLACE_E2E).read_text(encoding="utf-8"))
+
+
+def test_e2e_marketplace_connect_steps(repo_root: Path) -> None:
+    code = _marketplace_code(repo_root)
+    assert "set -euo pipefail" in code
+    assert tuple(re.findall(r"(?m)^step (\w+)$", code)) == MARKETPLACE_STEPS
+    logins = re.findall(r"login (\w+@\w+\.test)", code)
+    assert sorted(logins) == sorted(set(logins))  # one login per email per run
+    assert not re.search(r":\d{2,5}\b", code)  # ports come from .worktree.env, never a literal
+    assert "scripts/ci/worktree_env.sh exports .worktree.env" in code
+    assert "FAILED at step $current (HTTP status ${status:-none})" in code
+    assert 'cat "$body"' not in code
+    # the seller id passes the API's pattern (letters and digits only)
+    assert 'seller="E2E$(date +%s)$RANDOM"' in code
+    assert "--max-time" in code and "bound=60" in code
+
+
+@pytest.mark.parametrize("url", NON_LOCAL_URLS)
+def test_e2e_marketplace_connect_refuses_non_local_url(
+    repo_root: Path, tmp_path: Path, url: str
+) -> None:
+    env, log = _stub_path(tmp_path)
+    env["REFRESH_ONCE"] = "true"
+    env["FAKE_URL"] = "http://127.0.0.1:4020"
+    result = subprocess.run(
+        [str(repo_root / MARKETPLACE_E2E), url],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 2, result.stderr
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""
+    env["FAKE_URL"] = url
+    fake = subprocess.run(
+        [str(repo_root / MARKETPLACE_E2E), "http://127.0.0.1:8123"],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert fake.returncode == 2, fake.stderr
+
+
+def test_e2e_marketplace_connect_without_hooks_exits_2(repo_root: Path, tmp_path: Path) -> None:
+    env, log = _stub_path(tmp_path)
+    env.pop("REFRESH_ONCE", None)
+    result = subprocess.run(
+        [str(repo_root / MARKETPLACE_E2E), "http://127.0.0.1:8123"],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 2
+    assert "usage: FAKE_URL=" in result.stderr
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""
+
+
+def test_e2e_marketplace_connect_ends_revoked(repo_root: Path) -> None:
+    """Later scripts connect their own account: this one leaves no live acme Amazon account."""
+    code = _marketplace_code(repo_root)
+    steps = list(re.findall(r"(?m)^step (\w+)$", code))
+    account_steps = [
+        s for s in steps if s.startswith(("connect", "confirm", "reconnect", "revoke"))
+    ]
+    assert account_steps[-2:] == ["revoke_200", "revoke_again_200"]
+    after = code[code.index("step revoke_200") :]
+    assert "connect_confirm" not in after and "/marketplaces/connect" not in after
+
+
+S15_LEGS = {
+    "lint-imports-unseal-from-router": (
+        "lint-imports",
+        "only app.adapters and app.workers import the decrypt path BROKEN",
+    ),
+    "tenant-isolation-hash-branch-pending": ("tenant-isolation", "hides_pending_row"),
+    "api-tests-revoke-no-shred": ("api-tests", "ck_ma_revoked_shredded|test_revoke_crypto_shreds"),
+}
+
+
+def test_prove_gates_s15_legs(repo_root: Path) -> None:
+    code = _code((repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8"))
+    for name, (gate, regex) in S15_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+    assert "import app.adapters.credentials" in code
+    assert "AND token_enc IS NULL" in code and "0006_oauth_pending.py" in code
+    assert "SET status = 'revoked', token_enc = NULL" in code
+    # the migration leg re-migrates mos_iso afterwards with the checkout's own revisions
+    hash_leg = code.index("leg tenant-isolation-hash-branch-pending")
+    assert code.index("remigrate_iso >>", hash_leg) > hash_leg
+    docker = code.index('if [ "$with_docker" -eq 1 ]; then')
+    assert code.index("leg api-tests-revoke-no-shred") > docker
+    assert hash_leg > docker
+    assert code.index("leg lint-imports-unseal-from-router") < docker

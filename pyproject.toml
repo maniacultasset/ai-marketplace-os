@@ -22,7 +22,6 @@ members = ["apps/api", "packages/schemas"]
 dev = [
   "black==26.5.1",
   "hypothesis==6.168.3",
-  "httpx==0.28.1",
   "import-linter==2.15",
   "mutmut==3.8.0",
   "mypy==2.3.1",

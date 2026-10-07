@@ -43,6 +43,18 @@ SECRET_FIELDS = {
     "SENTRY_DSN": "https://Zq9sentry@o0.ingest.sentry.io/0",
     "ALERT_SLACK_WEBHOOK": "https://hooks.slack.com/services/Zq9slack",
 }
+# S15: what a deployed api/worker also needs (the token key, an https dashboard origin).
+DEPLOYED_S15 = {
+    "KMS_KEY_URI": (
+        "projects/aimos-staging/locations/asia-south1/keyRings/marketplace-os/cryptoKeys/"
+        "oauth-token-key"
+    ),
+    "DASHBOARD_BASE_URL": "https://app.example.invalid",
+    "AMAZON_OAUTH_REDIRECT_URI": "https://api.example.invalid/api/v1/marketplaces/amazon/callback",
+    "FLIPKART_OAUTH_REDIRECT_URI": (
+        "https://api.example.invalid/api/v1/marketplaces/flipkart/callback"
+    ),
+}
 TEST_SENTRY_DSN = "https://public@o0.ingest.example.invalid/0"  # never resolvable (.invalid)
 PRIVATE_JWT = "Zq9-not-committed-private-secret-32+"  # neither a Canon literal nor dev-prefixed
 OTEL_SAMPLERS = (
@@ -217,6 +229,7 @@ def test_committed_jwt_secrets_refused_outside_local(
         "DATABASE_URL": LOCAL_URL,
         "JWT_SECRET": secret,
         "SENTRY_DSN": TEST_SENTRY_DSN,
+        **DEPLOYED_S15,
     }
     # A§14:338's "x" * 32 is the control: S14's production fixture must keep booting.
     if app_env == "local" or secret == "x" * 32:
@@ -453,7 +466,7 @@ def test_a9_defaults(ci_env: dict[str, str]) -> None:
 
 
 def _deployed_env(role: str, app_env: str) -> dict[str, str]:
-    env = {"APP_ENV": app_env, "APP_ROLE": role, "DATABASE_URL": LOCAL_URL}
+    env = {"APP_ENV": app_env, "APP_ROLE": role, "DATABASE_URL": LOCAL_URL, **DEPLOYED_S15}
     if role == "api":
         env["JWT_SECRET"] = PRIVATE_JWT
     return env
@@ -545,3 +558,199 @@ def test_blank_gcp_project_id_is_none(
     # `.env.example` ships `GCP_PROJECT_ID=`: blank must not become `projects//traces/...`.
     loaded = boot(monkeypatch, APP_ROLE="shell", APP_ENV="local", GCP_PROJECT_ID=value)
     assert loaded.gcp_project_id is None
+
+
+# ---- S15: the KMS boot rows, the dashboard origin and the deployed marketplace URLs ----
+
+KMS_URI = (
+    "projects/aimos-staging/locations/asia-south1/keyRings/marketplace-os/cryptoKeys/"
+    "oauth-token-key"
+)
+
+
+def _deployed_kms_env(role: str, app_env: str = "staging") -> dict[str, str]:
+    env = _deployed_env(role, app_env)
+    env["SENTRY_DSN"] = TEST_SENTRY_DSN
+    del env["KMS_KEY_URI"]
+    return env
+
+
+@pytest.mark.parametrize("role", ["api", "worker"])
+def test_boot_kms_missing_uri_refused(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, role: str
+) -> None:
+    env = _deployed_kms_env(role)
+    message = abort(monkeypatch, **env)
+    assert f"APP_ENV=staging requires KMS_KEY_URI for APP_ROLE={role}" in message
+    assert boot(monkeypatch, **env, KMS_KEY_URI=KMS_URI).kms_key_uri == KMS_URI
+
+
+@pytest.mark.parametrize(
+    "uri",
+    [
+        KMS_URI.replace("keyRings/marketplace-os", "keyRings/aimos"),
+        KMS_URI.replace("cryptoKeys/oauth-token-key", "cryptoKeys/marketplace-tokens"),
+    ],
+    ids=["aimos", "marketplace-tokens"],
+)
+def test_boot_kms_forbidden_ring_refused(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, uri: str
+) -> None:
+    message = abort(monkeypatch, **_deployed_kms_env("api"), KMS_KEY_URI=uri)
+    assert "KMS_KEY_URI names a forbidden key ring or key" in message
+
+
+@pytest.mark.parametrize(
+    "uri",
+    [
+        KMS_URI.replace("asia-south1", "us-central1"),
+        KMS_URI + "/cryptoKeyVersions/1",
+        "projects/x/locations/asia-south1/keyRings/marketplace-os/cryptoKeys/oauth-token-key",
+        " " + KMS_URI,
+    ],
+)
+def test_boot_kms_wrong_region_refused(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, uri: str
+) -> None:
+    message = abort(monkeypatch, **_deployed_kms_env("worker"), KMS_KEY_URI=uri)
+    assert "KMS_KEY_URI must be projects/<project>/locations/asia-south1" in message
+
+
+@pytest.mark.parametrize("role", ["api", "worker", "migrate", "shell"])
+def test_boot_kms_local_key_refused_when_deployed(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, role: str
+) -> None:
+    env = _deployed_kms_env(role) if role in ("api", "worker") else {"APP_ROLE": role}
+    env.update(APP_ENV="production", KMS_KEY_URI=KMS_URI, ALEMBIC_DATABASE_URL=LOCAL_URL)
+    message = abort(monkeypatch, **env, KMS_LOCAL_DEV_KEY="Zq9kmslocal")
+    assert "APP_ENV=production refuses KMS_LOCAL_DEV_KEY" in message
+    assert "Zq9" not in message
+
+
+@pytest.mark.parametrize("role", ["migrate", "shell"])
+def test_boot_kms_not_required_for_migrate_shell(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, role: str
+) -> None:
+    loaded = boot(monkeypatch, APP_ENV="staging", APP_ROLE=role, ALEMBIC_DATABASE_URL=LOCAL_URL)
+    assert loaded.kms_key_uri is None
+
+
+@pytest.mark.parametrize("uri", ["", "  "])
+def test_boot_kms_local_ok_without_uri(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, uri: str
+) -> None:
+    loaded = boot(
+        monkeypatch,
+        APP_ENV="local",
+        APP_ROLE="worker",
+        DATABASE_URL=LOCAL_URL,
+        KMS_KEY_URI=uri,
+        KMS_LOCAL_DEV_KEY="bG9jYWxfZGV2X29ubHlfMzJfYnl0ZV9rZXlfMDAwMDA=",
+    )
+    assert loaded.kms_key_uri is None
+    assert loaded.dashboard_base_url == "http://localhost:3000"
+
+
+def test_boot_kms_messages_hold_no_value(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    uri = "projects/Zq9secretproj/locations/asia-south1/keyRings/aimos/cryptoKeys/k"
+    env = _deployed_kms_env("api")
+    env["DASHBOARD_BASE_URL"] = "http://Zq9dash.example"
+    message = abort(
+        monkeypatch,
+        **env,
+        KMS_KEY_URI=uri,
+        KMS_LOCAL_DEV_KEY="Zq9localkey",
+        AMAZON_AUTHORIZE_URL="http://127.0.0.1:4020/Zq9",
+    )
+    assert "KMS_KEY_URI" in message and "DASHBOARD_BASE_URL" in message
+    assert "AMAZON_AUTHORIZE_URL" in message
+    assert "Zq9" not in message
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "http://localhost:3000/marketplaces",
+        "http://localhost:3000?next=x",
+        "http://user:pw@localhost:3000",
+        "http://localhost:3000#frag",
+        "ftp://localhost:3000",
+        "localhost:3000",
+    ],
+    ids=["path", "query", "userinfo", "fragment", "scheme", "no-scheme"],
+)
+def test_dashboard_base_url_origin_only(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    message = abort(
+        monkeypatch,
+        APP_ENV="local",
+        DATABASE_URL=LOCAL_URL,
+        JWT_SECRET=CI_LITERAL,
+        DASHBOARD_BASE_URL=value,
+    )
+    assert "DASHBOARD_BASE_URL" in message
+
+
+def test_dashboard_base_url_drops_trailing_slash(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    loaded = boot(
+        monkeypatch,
+        APP_ENV="local",
+        DATABASE_URL=LOCAL_URL,
+        JWT_SECRET=CI_LITERAL,
+        DASHBOARD_BASE_URL="http://localhost:3130/",
+    )
+    assert loaded.dashboard_base_url == "http://localhost:3130"
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "AMAZON_AUTHORIZE_URL",
+        "AMAZON_LWA_TOKEN_URL",
+        "FLIPKART_AUTHORIZE_URL",
+        "FLIPKART_TOKEN_URL",
+        "AMAZON_OAUTH_REDIRECT_URI",
+        "FLIPKART_OAUTH_REDIRECT_URI",
+        "DASHBOARD_BASE_URL",
+    ],
+)
+@pytest.mark.parametrize(
+    "value", ["http://marketplace.example.invalid/x", "https://127.0.0.1/x", "https://localhost/x"]
+)
+def test_deployed_refuses_http_or_loopback_marketplace_urls(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, name: str, value: str
+) -> None:
+    env = _deployed_kms_env("api") | {"KMS_KEY_URI": KMS_URI}
+    if name == "DASHBOARD_BASE_URL":
+        value = value.removesuffix("/x")
+    env[name] = value
+    message = abort(monkeypatch, **env)
+    assert f"refuses http or loopback {name}" in message
+    # the same value boots locally (the fake marketplace runs on 127.0.0.1)
+    env["APP_ENV"] = "local"
+    assert boot(monkeypatch, **env).app_env == "local"
+
+
+@pytest.mark.parametrize("name", ["AMAZON_OAUTH_REDIRECT_URI", "FLIPKART_OAUTH_REDIRECT_URI"])
+def test_deployed_refuses_the_loopback_redirect_default(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    # An unset redirect URI falls back to the localhost default, which a deployed boot refuses.
+    env = _deployed_kms_env("api") | {"KMS_KEY_URI": KMS_URI}
+    del env[name]
+    assert f"refuses http or loopback {name}" in abort(monkeypatch, **env)
+
+
+def test_deployed_api_boots_with_https_urls(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = _deployed_kms_env("api") | {
+        "KMS_KEY_URI": KMS_URI,
+        "AMAZON_AUTHORIZE_URL": "https://sellercentral.amazon.in/apps/authorize/consent",
+    }
+    loaded = boot(monkeypatch, **env)
+    assert loaded.amazon_authorize_url is not None
+    assert loaded.flipkart_authorize_url is None

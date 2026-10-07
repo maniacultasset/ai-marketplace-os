@@ -16,6 +16,11 @@ queue entry carries only `{"timestamp"}`, never tenant data.
 - `retention_daily` (03:00): per tenant, in batches of 1,000, children first: `import_rows`,
   `imports`, then `job_runs` chains (`app.repositories.retention`); then the queue's own
   finished entries (succeeded after 7 days, every other final state after 90).
+- `refresh_marketplace_tokens` (every 5 min, S15): the `active` accounts whose token expires
+  within 15 minutes, in `trial`/`active` tenants, oldest expiry first, at most 500 a pass, each
+  through `refresh_account` (its own lock and short transactions), one after another. One
+  account's failure is logged and the pass goes on.
+- `prune_oauth_states` (hourly, S15): expired OAuth state and pending rows, tenant by tenant.
 """
 
 from __future__ import annotations
@@ -35,9 +40,12 @@ from app.db.session import platform_scope, unit_of_work
 from app.repositories import rate_limits, retention
 from app.repositories.idempotency import IdempotencyKeyRepository
 from app.repositories.jobs import JobRunRepository, expired_running
+from app.repositories.marketplace_accounts import due_accounts
+from app.repositories.oauth_states import OAuthStateRepository, tenants_with_expired
 from app.services.job_hooks import run_terminal_hook
 from app.workers.errors import system_report
 from app.workers.settings import STALLED_WORKER_S
+from app.workers.token_refresh import REFRESH_MARGIN, refresh_account
 
 log = get_logger(__name__)
 REAPER_ID: Final = "reaper"
@@ -124,6 +132,43 @@ async def run_expire_trials() -> int:
     return expired
 
 
+REFRESH_BATCH: Final = 500
+
+
+async def refresh_marketplace_tokens() -> dict[str, int]:
+    """One refresh pass over the due accounts; the count per outcome."""
+    async with platform_scope() as session:
+        due = await due_accounts(session, margin=REFRESH_MARGIN, limit=REFRESH_BATCH)
+    counts: dict[str, int] = {}
+    for tenant_id, account_id in due:
+        try:
+            outcome: str = await refresh_account(tenant_id, account_id)
+        except Exception as exc:
+            # this account's transactions rolled back alone; it is retried next pass, and one bad
+            # row never blocks another tenant's refresh (the reaper's rule, S13 fix F1)
+            log.exception(
+                "marketplace.token_refresh_errored",
+                tenant_id=str(tenant_id),
+                account_id=str(account_id),
+                error_class=type(exc).__name__,
+            )
+            outcome = "error"
+        counts[outcome] = counts.get(outcome, 0) + 1
+    log.info("periodic.marketplace_tokens_refreshed", accounts=len(due), **counts)
+    return counts
+
+
+async def prune_oauth_states() -> int:
+    async with platform_scope() as session:
+        tenants = await tenants_with_expired(session)
+    total = 0
+    for tenant_id in tenants:
+        async with unit_of_work(tenant_id) as session:
+            total += await OAuthStateRepository(session, tenant_id).prune_expired()
+    log.info("periodic.oauth_states_pruned", rows=total)
+    return total
+
+
 QUEUE_SUCCEEDED_HOURS: Final = 7 * 24
 QUEUE_OTHER_HOURS: Final = 90 * 24
 
@@ -174,6 +219,8 @@ PERIODIC: Final[dict[str, tuple[str, Any, bool]]] = {
     "prune_idempotency_keys": ("0 * * * *", _plain(prune_idempotency_keys), False),
     "expire_trials": ("15 * * * *", _plain(run_expire_trials), False),
     "retention_daily": ("0 3 * * *", _retention, True),
+    "marketplace_token_refresh": ("*/5 * * * *", _plain(refresh_marketplace_tokens), False),
+    "oauth_states_prune": ("30 * * * *", _plain(prune_oauth_states), False),
 }
 
 

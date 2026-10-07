@@ -41,6 +41,8 @@ Q7: dict[str, str] = {
     "marketplaces_connect": "marketplace:connect",
     "marketplaces_callback": PUBLIC,
     "marketplaces_accounts": "tenant:read",
+    "marketplaces_connect_confirm": "marketplace:connect",
+    "marketplaces_accounts_revoke": "marketplace:connect",
     "images_upload_url": "product:import",
     "images_upload": "product:import",
     "images_report": "tenant:read",
@@ -76,7 +78,7 @@ def _operation(spec: dict[str, Any], op_id: str) -> dict[str, Any]:
 
 
 def test_ops_are_the_q7_list() -> None:
-    assert len(OPS) == 38
+    assert len(OPS) == 40  # S10 38 + S15 confirm and revoke
     assert set(OPS) == set(Q7)
 
 

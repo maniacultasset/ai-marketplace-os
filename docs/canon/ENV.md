@@ -14,11 +14,12 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | `LOG_LEVEL` | `INFO` | local .env | optional | DEBUG locally if you want SQL echo context; INFO everywhere else. |
 | `LOG_FORMAT` | `console` | local .env | optional | console locally for readability; json in staging/prod (Cloud Run stdout is the transport). |
 | `ALLOWED_ORIGINS` | `http://localhost:3000` | local .env | required | Comma-separated. staging: https://app-staging.<domain>; prod: https://app.<domain>. |
+| `DASHBOARD_BASE_URL` | `http://localhost:3000` | local .env | optional | The dashboard origin (scheme, host and port only) the OAuth callback redirects to: `{DASHBOARD_BASE_URL}/marketplaces/connected?pending=<handle>` (S15). Staging/prod: the FE's https origin; http or loopback values are refused outside local. |
 | `REQUEST_MAX_BODY_BYTES` | `10485760` | local .env | required | 10 MiB hard cap. Cloud Run rejects bodies over 32 MiB; the 50 MB multipart bulk path is forbidden — large CSVs go via signed GCS upload URL. |
 | `RATE_LIMIT_PER_TENANT_PER_MIN` | `120` | local .env | required | The 600 figure is deleted. |
 | `RATE_LIMIT_PER_IP_PER_MIN` | `60` | local .env | required | Applies to unauthenticated routes. |
 | `AUTH_LOGIN_RATE_LIMIT_PER_MIN` | `5` | local .env | required | Per IP + per email on POST /api/v1/auth/login. |
-| `OAUTH_STATE_TTL_SECONDS` | `600` | local .env | required | Marketplace OAuth state parameter lifetime (Redis-backed). |
+| `OAUTH_STATE_TTL_SECONDS` | `600` | local .env | required | Marketplace OAuth state parameter lifetime (stored in Postgres `oauth_states`). |
 | `ADMIN_ENABLED` | `true` | local .env | required | The internal SQLAdmin mounts only when ADMIN_ENABLED=true AND APP_ENV != production. CI test asserts /internal/admin returns 404 with APP_ENV=production. |
 | `ADMIN_BASE_URL` | `/internal/admin` | local .env | optional | Unversioned by design. |
 | `ADMIN_READ_ONLY` | `true` | local .env | required | false only on api-staging, to allow DLQ requeue. |
@@ -97,6 +98,7 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | `AMAZON_APP_ID` | `amzn1.sp.solution.REPLACE_ME` | both | required | From the SP-API developer application (2–4 week approval; application filed Day 2). |
 | `AMAZON_CLIENT_ID` | `amzn1.application-oa2-client.REPLACE_ME` | both | required | LWA client id. |
 | `AMAZON_CLIENT_SECRET` | `REPLACE_ME` | Secret Manager | required | Never in a committed .env. Sentry/log redaction deny-list includes it. |
+| `AMAZON_AUTHORIZE_URL` | `http://127.0.0.1:4020/amazon/authorize` | local .env | optional | The Seller Central consent page the connect step sends the brand to (S15). Locally the fake marketplace (`make fake-marketplace`); staging/prod: the real https URL, confirmed with the SP-API application (T77). Unset: connect answers 501. http or loopback values are refused outside local. |
 | `AMAZON_LWA_TOKEN_URL` | `https://api.amazon.com/auth/o2/token` | local .env | required | Same in all environments. |
 | `AMAZON_SPAPI_ENDPOINT` | `https://sellingpartnerapi-eu.amazon.com` | local .env | required | India sits in the EU region group. AMAZON_SP_API_ENDPOINT (with underscore split) is forbidden. |
 | `AMAZON_MARKETPLACE_ID` | `A21TJRUUN4KGV` | local .env | required | amazon.in. |
@@ -109,6 +111,7 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 |---|---|---|---|---|
 | `FLIPKART_CLIENT_ID` | `REPLACE_ME` | both | required | From the Flipkart Seller API application. |
 | `FLIPKART_CLIENT_SECRET` | `REPLACE_ME` | Secret Manager | required | Never in a committed .env; in the redaction deny-list. |
+| `FLIPKART_AUTHORIZE_URL` | `http://127.0.0.1:4020/flipkart/authorize` | local .env | optional | The Flipkart seller consent page (S15). Locally the fake marketplace; staging/prod: the real https URL (T78). Unset: connect answers 501. http or loopback values are refused outside local. |
 | `FLIPKART_TOKEN_URL` | `https://api.flipkart.net/oauth-service/oauth/token` | local .env | required | Same in all environments. |
 | `FLIPKART_API_BASE` | `https://api.flipkart.net/sellers` | local .env | required | India-only API. |
 | `FLIPKART_OAUTH_REDIRECT_URI` | `http://localhost:8000/api/v1/marketplaces/flipkart/callback` | local .env | required | Exact string for the application; FLIPKART_REDIRECT_URI is forbidden. |

@@ -7,15 +7,20 @@
 - Boot requirements depend on `APP_ROLE` (ADR-0013 §1): `api` needs DATABASE_URL and JWT_SECRET,
   `worker` needs DATABASE_URL, `migrate` needs ALEMBIC_DATABASE_URL, `shell` nothing more.
   Outside `APP_ENV=local`, `api` and `worker` also need SENTRY_DSN (CANON-ADDENDUM.md §14); a
-  blank value counts as missing.
+  blank value counts as missing. They also need a KMS_KEY_URI naming the one token key
+  (CANON.md:70), refuse KMS_LOCAL_DEV_KEY (any role), and refuse an http or loopback marketplace
+  authorize/token URL or DASHBOARD_BASE_URL (S15).
 - There is no module-level `settings`: call `get_settings()` where the value is needed.
 """
 
 from __future__ import annotations
 
+import ipaddress
 import logging
+import re
 from functools import lru_cache
 from typing import Final, Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -35,6 +40,25 @@ COMMITTED_JWT_SECRETS: Final[frozenset[str]] = frozenset(
 COMMITTED_JWT_SECRET_PREFIXES: Final[tuple[str, ...]] = ("dev_only", "ci_only", "local_only")
 
 _PSYCOPG_URL: Final[str] = r"^postgresql\+psycopg://"
+
+# CANON.md:70: the one token key outside local (S15). The kickoff pack's `aimos` ring and
+# `marketplace-tokens` key are forbidden by name (KNOWN-ISSUES.md:13).
+KMS_KEY_URI_RE: Final = re.compile(
+    r"^projects/[a-z][a-z0-9-]{4,28}[a-z0-9]/locations/asia-south1/"
+    r"keyRings/marketplace-os/cryptoKeys/oauth-token-key$"
+)
+FORBIDDEN_KMS_PARTS: Final[tuple[str, ...]] = ("keyRings/aimos", "cryptoKeys/marketplace-tokens")
+# Settings field -> env-var name: the marketplace, OAuth redirect and dashboard URLs a deployed
+# api/worker must serve over https on a non-loopback host (the redirect defaults are loopback).
+DEPLOYED_HTTPS_URLS: Final[tuple[tuple[str, str], ...]] = (
+    ("amazon_authorize_url", "AMAZON_AUTHORIZE_URL"),
+    ("amazon_lwa_token_url", "AMAZON_LWA_TOKEN_URL"),
+    ("flipkart_authorize_url", "FLIPKART_AUTHORIZE_URL"),
+    ("flipkart_token_url", "FLIPKART_TOKEN_URL"),
+    ("amazon_oauth_redirect_uri", "AMAZON_OAUTH_REDIRECT_URI"),
+    ("flipkart_oauth_redirect_uri", "FLIPKART_OAUTH_REDIRECT_URI"),
+    ("dashboard_base_url", "DASHBOARD_BASE_URL"),
+)
 
 OtelSampler = Literal[
     "always_on",
@@ -60,6 +84,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_format: Literal["json", "console"] = "json"
     allowed_origins: str = "http://localhost:3000"
+    dashboard_base_url: str = "http://localhost:3000"  # an origin: the OAuth callback's 303 target
     request_max_body_bytes: int = 10_485_760  # Cloud Run hard cap is 32 MiB
     rate_limit_per_tenant_per_min: int = 120
     rate_limit_per_ip_per_min: int = 60
@@ -129,6 +154,7 @@ class Settings(BaseSettings):
     amazon_app_id: str | None = None
     amazon_client_id: str | None = None
     amazon_client_secret: str | None = Field(default=None, repr=False)
+    amazon_authorize_url: str | None = None  # the consent page; unset: connect answers 501
     amazon_lwa_token_url: str = "https://api.amazon.com/auth/o2/token"  # noqa: S105 - a URL
     amazon_spapi_endpoint: str = "https://sellingpartnerapi-eu.amazon.com"
     amazon_marketplace_id: str = "A21TJRUUN4KGV"
@@ -138,6 +164,7 @@ class Settings(BaseSettings):
     # ---- flipkart ----
     flipkart_client_id: str | None = None
     flipkart_client_secret: str | None = Field(default=None, repr=False)
+    flipkart_authorize_url: str | None = None
     flipkart_token_url: str = "https://api.flipkart.net/oauth-service/oauth/token"  # noqa: S105
     flipkart_api_base: str = "https://api.flipkart.net/sellers"
     flipkart_oauth_redirect_uri: str = "http://localhost:8000/api/v1/marketplaces/flipkart/callback"
@@ -151,13 +178,36 @@ class Settings(BaseSettings):
     otel_traces_sampler_arg: float = Field(default=0.1, ge=0, le=1, allow_inf_nan=False)
     alert_slack_webhook: str | None = Field(default=None, repr=False)
 
-    @field_validator("sentry_dsn", "gcp_project_id", mode="before")
+    @field_validator(
+        "sentry_dsn",
+        "gcp_project_id",
+        "kms_key_uri",
+        "amazon_app_id",
+        "amazon_authorize_url",
+        "flipkart_authorize_url",
+        mode="before",
+    )
     @classmethod
     def _blank_is_none(cls, value: object) -> object:
-        # `.env.example` ships `SENTRY_DSN=` and `GCP_PROJECT_ID=`: blank means unset.
+        # `.env.example` ships `SENTRY_DSN=`, `GCP_PROJECT_ID=`, `KMS_KEY_URI=` and
+        # `AMAZON_APP_ID=`: blank means unset.
         if isinstance(value, str) and not value.strip():
             return None
         return value
+
+    @field_validator("dashboard_base_url")
+    @classmethod
+    def _origin_only(cls, value: str) -> str:
+        # The callback builds `{origin}/marketplaces/connected?pending=…`: scheme, host and port
+        # only (a trailing `/` is dropped), never a path, query, fragment or userinfo.
+        parts = urlsplit(value.strip())
+        if parts.scheme not in ("http", "https") or not parts.hostname:
+            raise ValueError("must be an http(s) origin")
+        if parts.username is not None or parts.password is not None or "@" in parts.netloc:
+            raise ValueError("must not carry userinfo")
+        if parts.path not in ("", "/") or parts.query or parts.fragment or "#" in value:
+            raise ValueError("must be an origin: no path, query or fragment")
+        return f"{parts.scheme}://{parts.netloc}"
 
     @field_validator("embedding_dimensions", mode="before")
     @classmethod
@@ -175,6 +225,57 @@ def _is_committed_jwt_secret(secret: str) -> bool:
     return secret.strip() in COMMITTED_JWT_SECRETS or folded.startswith(
         COMMITTED_JWT_SECRET_PREFIXES
     )
+
+
+def _is_loopback_host(host: str) -> bool:
+    if host == "localhost" or host.endswith(".localhost"):
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _not_deployable_url(value: str) -> bool:
+    parts = urlsplit(value.strip())
+    host = (parts.hostname or "").lower()
+    return parts.scheme != "https" or not host or _is_loopback_host(host)
+
+
+def _kms_errors(s: Settings) -> list[str]:
+    """CANON.md:68-70 and ENV.md:60-61: a deployed api or worker seals tokens with Cloud KMS,
+    never the LocalKmsStub key."""
+    errors: list[str] = []
+    if s.app_env == "local":
+        return errors
+    if "kms_local_dev_key" in s.model_fields_set:
+        errors.append(f"APP_ENV={s.app_env} refuses KMS_LOCAL_DEV_KEY (LocalKmsStub only)")
+    if s.app_role not in ("api", "worker"):
+        return errors
+    uri = s.kms_key_uri
+    if uri is None:
+        errors.append(f"APP_ENV={s.app_env} requires KMS_KEY_URI for APP_ROLE={s.app_role}")
+    elif any(part in uri for part in FORBIDDEN_KMS_PARTS):
+        errors.append("KMS_KEY_URI names a forbidden key ring or key (use marketplace-os)")
+    elif not KMS_KEY_URI_RE.fullmatch(uri):
+        errors.append(
+            "KMS_KEY_URI must be projects/<project>/locations/asia-south1/keyRings/"
+            "marketplace-os/cryptoKeys/oauth-token-key"
+        )
+    return errors
+
+
+def _url_errors(s: Settings) -> list[str]:
+    if s.app_env == "local" or s.app_role not in ("api", "worker"):
+        return []
+    bad = []
+    for field, name in DEPLOYED_HTTPS_URLS:
+        value = getattr(s, field)
+        if value is not None and _not_deployable_url(value):
+            bad.append(name)
+    if not bad:
+        return []
+    return [f"APP_ENV={s.app_env} refuses http or loopback {', '.join(bad)}"]
 
 
 def _boot_errors(s: Settings) -> list[str]:
@@ -202,6 +303,8 @@ def _boot_errors(s: Settings) -> list[str]:
         errors.append(f"APP_ENV={s.app_env} requires SENTRY_DSN for APP_ROLE={s.app_role}")
     if s.log_level.upper() not in logging.getLevelNamesMapping():
         errors.append("LOG_LEVEL is not a logging level")
+    errors += _kms_errors(s)
+    errors += _url_errors(s)
     return errors
 
 

@@ -6,7 +6,7 @@ SHELL := bash
 
 # Per-checkout host ports (ADR-0011 amendment):
 # `.worktree.env` is optional and git-ignored; the helper validates it before make reads it.
-WORKTREE_KEYS := COMPOSE_PROJECT_NAME PG_HOST_PORT MINIO_API_HOST_PORT MINIO_CONSOLE_HOST_PORT API_HOST_PORT MOCK_HOST_PORT
+WORKTREE_KEYS := COMPOSE_PROJECT_NAME PG_HOST_PORT MINIO_API_HOST_PORT MINIO_CONSOLE_HOST_PORT API_HOST_PORT MOCK_HOST_PORT FAKE_MARKETPLACE_HOST_PORT
 ifneq ($(wildcard .worktree.env),)
 ifneq ($(shell scripts/ci/worktree_env.sh exports .worktree.env >/dev/null 2>&1; echo $$?),0)
 $(error .worktree.env rejected: $(shell scripts/ci/worktree_env.sh exports .worktree.env 2>&1 >/dev/null))
@@ -17,6 +17,7 @@ $(foreach k,$(WORKTREE_KEYS),$(if $(and $(filter file,$(origin $(k))),$(strip $(
 PG_HOST_PORT := $(or $(PG_HOST_PORT),5432)
 API_HOST_PORT := $(or $(API_HOST_PORT),8000)
 MOCK_HOST_PORT := $(or $(MOCK_HOST_PORT),4010)
+FAKE_MARKETPLACE_HOST_PORT := $(or $(FAKE_MARKETPLACE_HOST_PORT),4020)
 
 # A reason when $(1) is not one all-digit word in 1..65535. Non-digits never reach the shell.
 _nondigit = $(subst 0,,$(subst 1,,$(subst 2,,$(subst 3,,$(subst 4,,$(subst 5,,$(subst 6,,$(subst 7,,$(subst 8,,$(subst 9,,$(1)))))))))))
@@ -33,6 +34,10 @@ endif
 mock_port_problem := $(call port_problem,$(MOCK_HOST_PORT))
 ifneq ($(mock_port_problem),)
 $(error MOCK_HOST_PORT is not a valid port: $(mock_port_problem))
+endif
+fake_port_problem := $(call port_problem,$(FAKE_MARKETPLACE_HOST_PORT))
+ifneq ($(fake_port_problem),)
+$(error FAKE_MARKETPLACE_HOST_PORT is not a valid port: $(fake_port_problem))
 endif
 minio_api_port_problem := $(if $(strip $(MINIO_API_HOST_PORT)),$(call port_problem,$(MINIO_API_HOST_PORT)))
 ifneq ($(minio_api_port_problem),)
@@ -180,6 +185,17 @@ bootstrap-mimic:
 	uv run --frozen pytest -q -m cloudsql_mimic --no-cov apps/api/tests/cloudsql_mimic
 
 # ---- local development (CANON-ADDENDUM.md §2 order: bootstrap-db, then Alembic) ----
+# S15: the local API and the e2e refresh pass talk OAuth to the fake marketplace
+# (`make fake-marketplace`) on this checkout's FAKE_MARKETPLACE_HOST_PORT, with the fake's
+# placeholder SP-API application id. The client ids and secrets are the .env.example placeholders.
+FAKE_MARKETPLACE_URL = http://127.0.0.1:$(FAKE_MARKETPLACE_HOST_PORT)
+FAKE_AMAZON_APP_ID := amzn1.sp.solution.REPLACE_ME
+FAKE_MARKETPLACE_ENV = AMAZON_APP_ID=$(FAKE_AMAZON_APP_ID) \
+	AMAZON_AUTHORIZE_URL=$(FAKE_MARKETPLACE_URL)/amazon/authorize \
+	AMAZON_LWA_TOKEN_URL=$(FAKE_MARKETPLACE_URL)/amazon/token \
+	FLIPKART_AUTHORIZE_URL=$(FAKE_MARKETPLACE_URL)/flipkart/authorize \
+	FLIPKART_TOKEN_URL=$(FAKE_MARKETPLACE_URL)/flipkart/token
+
 # uvicorn keeps its 127.0.0.1 default: never pass --host here.
 .PHONY: dev
 dev:
@@ -190,7 +206,7 @@ dev:
 	uv sync --frozen --all-packages
 	uv run --frozen alembic -c apps/api/alembic.ini upgrade head
 	$(MAKE) hooks
-	uv run --frozen uvicorn app.main:app --reload --port $(API_HOST_PORT) --app-dir apps/api
+	$(FAKE_MARKETPLACE_ENV) uv run --frozen uvicorn app.main:app --reload --port $(API_HOST_PORT) --app-dir apps/api
 
 # A local worker beside `make dev` (S13): both queues, the same env as the dev API (.env, as app_rw).
 .PHONY: worker
@@ -209,6 +225,13 @@ publish-schemas:
 mock:
 	uv run --frozen python -m app_mock --host 127.0.0.1 --port $(MOCK_HOST_PORT)
 
+# The local fake marketplace (S15): Amazon and Flipkart OAuth consent and token endpoints for the
+# connect flow, on 127.0.0.1 only (the module binds loopback; never pass --host). Dev tooling under
+# apps/api/tests/support/, never imported by the app and not in the image.
+.PHONY: fake-marketplace
+fake-marketplace:
+	uv run --frozen python apps/api/tests/support/fake_marketplace.py --port $(FAKE_MARKETPLACE_HOST_PORT)
+
 .PHONY: mock-smoke
 mock-smoke:
 	scripts/ci/mock_smoke.sh
@@ -226,12 +249,21 @@ seed:
 # scripts/e2e/*.sh in order, each after the shared limiter reset, stopping at the first failure.
 # The real limiter stays on (no RATE_LIMIT_* override); the variables exist for the meta test.
 # `|| exit` because make 3.81 (macOS) ignores .SHELLFLAGS, so `-e` cannot be relied on here.
+# S15: the fake marketplace runs for the whole pass (FAKE_CTL starts and stops it, PID file), and
+# the scripts get its URL (FAKE_URL) and a one-refresh-pass command (REFRESH_ONCE, the worker's
+# one-shot entry with the same env as `make dev`).
 E2E_DIR ?= scripts/e2e
 RESET_LIMITS ?= scripts/ci/reset_rate_limits.sh
+FAKE_CTL ?= scripts/ci/fake_marketplace.sh
+REFRESH_ONCE ?= APP_ROLE=worker uv run --frozen python -m app.workers.oneshot refresh_marketplace_tokens
 
 .PHONY: e2e
 e2e:
 	base="http://127.0.0.1:$(API_HOST_PORT)"; \
+	$(FAKE_CTL) start $(FAKE_MARKETPLACE_HOST_PORT) || exit $$?; \
+	trap '$(FAKE_CTL) stop $(FAKE_MARKETPLACE_HOST_PORT)' EXIT; \
+	export $(FAKE_MARKETPLACE_ENV); \
+	export FAKE_URL="$(FAKE_MARKETPLACE_URL)" REFRESH_ONCE="$(REFRESH_ONCE)"; \
 	for script in $(E2E_DIR)/*.sh; do \
 	  [ -e "$$script" ] || { echo "make e2e: no scripts in $(E2E_DIR)" >&2; exit 1; }; \
 	  $(RESET_LIMITS) "$$base" || exit $$?; \
