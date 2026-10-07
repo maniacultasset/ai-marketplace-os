@@ -83,6 +83,12 @@ def test_every_request_model_is_strict() -> None:
         ("a b", False),
         ("a]b", False),
         ("a\tb", False),
+        # JSON Schema patterns are ECMA-262, whose \s also covers U+FEFF; Rust's does not
+        ("a\ufeffb", False),
+        ("\ufeff", False),
+        ("a\u00a0b", False),
+        ("a\u2028b", False),
+        ("a\u3000b", False),
         ("कुर्ता-1", True),
         ("SKU[1", True),
     ],
@@ -145,6 +151,24 @@ def test_request_models_have_no_tenant_id() -> None:
     for model in request_models():
         schema = model.model_json_schema(mode="validation")
         assert not _schema_has_tenant_id(schema), model.__name__
+
+
+# ECMA-262 WhiteSpace + LineTerminator: what `\s` means to a JSON Schema validator and to JS clients.
+_ECMA_SPACE = frozenset("\t\n\v\f\r \u00a0\u1680\u2028\u2029\u202f\u205f\u3000\ufeff") | {
+    chr(c) for c in range(0x2000, 0x200B)
+}
+
+
+@settings(max_examples=300)
+@given(st.text(min_size=1, max_size=64))
+def test_accepted_sku_matches_the_contract_pattern(sku: str) -> None:
+    # The server never accepts a SKU that the declared pattern, read as ECMA-262, refuses.
+    body = {"sku": sku, "title": "t", "category": "kurta_sets"}
+    try:
+        stored = ProductCreate.model_validate(body).sku  # StrictModel strips the ends first
+    except ValidationError:
+        return
+    assert "]" not in stored and not set(stored) & _ECMA_SPACE
 
 
 def test_product_create_site_body() -> None:
