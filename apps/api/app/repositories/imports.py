@@ -241,6 +241,15 @@ class ImportRowRepository(TenantScopedRepository[ImportRow]):
         failed = sum(1 for s in statuses if s == "failed")
         return ImportTotals(total=imported + failed, imported=imported, failed=failed)
 
+    async def row_number_of(self, import_id: uuid.UUID, row_id: uuid.UUID) -> int | None:
+        stmt = (
+            self._select()
+            .where(ImportRow.import_id == import_id, ImportRow.id == row_id)
+            .with_only_columns(ImportRow.row_number)
+        )
+        found = (await self.db.execute(stmt)).scalar_one_or_none()
+        return None if found is None else int(found)
+
     async def page(
         self, import_id: uuid.UUID, *, status: str | None, after: int | None, limit: int
     ) -> tuple[builtins.list[ImportRow], bool]:

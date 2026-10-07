@@ -56,6 +56,8 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "rules_list",
         "rules_dry_run",
         "products_bulk",
+        "imports_get",
+        "imports_rows",
     }
 )
 
