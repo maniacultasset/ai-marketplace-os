@@ -85,3 +85,11 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   record `failed`/`INTERNAL_ERROR` in a second fenced transaction). `retention_daily` holds one
   transaction per tenant, not per 1,000-row batch. Rows whose reap keeps failing are skipped per job
   (F1), but 500 of them would fill the oldest-lease page (fix: push the lease forward on failure).
+- **AI-seam follow-ups from the S14b review (LOW).** `JobRunRepository.set_node` fences on status,
+  not on the claimed attempt, so a reaped attempt 1 can overwrite attempt 2's `node` (fix in S18:
+  pass the attempt to `_fence`). `BackendPipelineDeps.validate_rules` runs the synchronous rules
+  engine on the worker's event loop (fix in S18: `anyio.to_thread.run_sync` with a shared limiter,
+  as the API does). `seed_ops.py` uses `on_conflict_do_nothing()` without a target, so a foreign
+  listing on the same SKU skips the insert and the version insert then fails its FK (local seed
+  only). API CORS also answers preflights on `/internal/admin` (the gate still refuses the GET).
+  `FakeAdapter.update_listing` on a path the listing lacks raises a raw `KeyError`.
