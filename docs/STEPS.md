@@ -467,13 +467,13 @@ start before billing. S14b gains S14a as a dependency because `/rules/dry-run` c
 - **Depends on:** S3, S9, S10, S13, S14a.
 - **Scope:**
   - Backend implementations of the 5 ports; a stub `run_listing_pipeline` returning a valid
-    `GenerationResult` from fixtures; the `MarketplaceAdapter` ABC and `FakeAdapter` (CANON.md:128;
+    `GenerationResult` from fixtures; the `MarketplaceAdapter` ABC and `FakeAdapter` (CANON.md:129;
     spec L5246-5253); an import-linter contract that the pipeline imports nothing from `app`.
   - `GET /api/v1/rules`, `POST /api/v1/rules/dry-run` (persists nothing).
   - Read-only SQLAdmin at `/internal/admin` through `platform_scope`, `token_enc` and `hashed_password`
     excluded; ops pages for queue, cost, funnel and dead letters (BUILD-SEQUENCE.md:235); the
     `ADMIN_ENABLED` kill switch (A§14) and the admin-secret deploy guard (ADR-0013 §1).
-  - `ONBOARDING.md`: invariants, repo tour, how to run, CANON.md:129's ownership line verbatim.
+  - `ONBOARDING.md`: invariants, repo tour, how to run, CANON.md:130's ownership line verbatim.
 - **Done when:**
   1. With sockets disabled and no GCP or model credentials, `run_listing_pipeline(ctx, deps)` on the stub
      returns a valid `GenerationResult`, every port going through the backend implementation. Proof:
