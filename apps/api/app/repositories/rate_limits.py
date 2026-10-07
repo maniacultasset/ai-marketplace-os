@@ -29,3 +29,15 @@ async def increment(bucket_key: str, window_start: datetime) -> int:
         autocommit = await connection.execution_options(isolation_level="AUTOCOMMIT")
         count = await autocommit.scalar(_UPSERT, {"bucket": bucket_key, "window": window_start})
     return int(count)
+
+
+_PRUNE: Final = text("DELETE FROM rate_limit_counters WHERE window_start < :before")
+
+
+async def prune(before: datetime) -> int:
+    """Delete every counter whose window started before `before` (the 5-minute prune, PLAN
+    D12; DATABASE.md:1842). Autocommit, like `increment`; returns the rows deleted."""
+    async with get_engine().connect() as connection:
+        autocommit = await connection.execution_options(isolation_level="AUTOCOMMIT")
+        result = await autocommit.execute(_PRUNE, {"before": before})
+    return int(getattr(result, "rowcount", 0) or 0)
