@@ -521,7 +521,8 @@ async def _new_user(engine: AsyncEngine, email: str, stdin: TextIO) -> NewUser:
 
 
 async def run_tenant_command(args: argparse.Namespace, stdin: TextIO) -> int:
-    from app.core.request_context import new_request_id, request_context
+    from app.core.request_context import new_request_id
+    from app.core.request_context import request_context as request_scope
     from app.db import staff_ops
 
     command = f"{args.group} {args.command}"
@@ -531,7 +532,7 @@ async def run_tenant_command(args: argparse.Namespace, stdin: TextIO) -> int:
         sys.stderr.write(f"{command}: failed (ALEMBIC_DATABASE_URL is required)\n")
         return EXIT_FAILED
     try:
-        with request_context(new_request_id()) as ctx:
+        with request_scope(new_request_id()) as ctx:
             if args.group == "user":
                 from app.core.passwords import hash_password, read_password
 
