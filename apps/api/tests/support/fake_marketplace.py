@@ -30,7 +30,9 @@ import asyncio
 import base64
 import hashlib
 import secrets
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Final
 from urllib.parse import urlencode
 
@@ -268,14 +270,65 @@ def build_fake(config: FakeConfig | None = None) -> Starlette:
     return app
 
 
+CONFIG_KEYS: Final = (
+    "AMAZON_APP_ID",
+    "AMAZON_CLIENT_ID",
+    "AMAZON_CLIENT_SECRET",
+    "AMAZON_OAUTH_REDIRECT_URI",
+    "FLIPKART_CLIENT_ID",
+    "FLIPKART_CLIENT_SECRET",
+    "FLIPKART_OAUTH_REDIRECT_URI",
+)
+
+
+def _dotenv(path: Path) -> dict[str, str]:
+    found: dict[str, str] = {}
+    if not path.is_file():
+        return found
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.removeprefix("export ").partition("=")
+        found[key.strip()] = value.strip().strip("'\"")
+    return found
+
+
+def config_from_env(environ: Mapping[str, str], dotenv: Path) -> FakeConfig:
+    """The credentials the local API uses, read the way the API reads them: the environment wins
+    over `.env`; a blank or missing value keeps the fake's default. So the fake accepts exactly
+    the client ids, secrets, redirect URIs and application id this checkout's API sends."""
+    file_values = _dotenv(dotenv)
+    values = {k: environ.get(k) or file_values.get(k) or "" for k in CONFIG_KEYS}
+    base = FakeConfig()
+
+    def pick(key: str, default: str) -> str:
+        return values[key] or default
+
+    return FakeConfig(
+        amazon=FakeApp(
+            pick("AMAZON_CLIENT_ID", base.amazon.client_id),
+            pick("AMAZON_CLIENT_SECRET", base.amazon.client_secret),
+            pick("AMAZON_OAUTH_REDIRECT_URI", base.amazon.redirect_uri),
+        ),
+        flipkart=FakeApp(
+            pick("FLIPKART_CLIENT_ID", base.flipkart.client_id),
+            pick("FLIPKART_CLIENT_SECRET", base.flipkart.client_secret),
+            pick("FLIPKART_OAUTH_REDIRECT_URI", base.flipkart.redirect_uri),
+        ),
+        amazon_application_id=pick("AMAZON_APP_ID", base.amazon_application_id),
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
+    import os
+
     import uvicorn
 
     parser = argparse.ArgumentParser(description="The local fake marketplace (127.0.0.1 only).")
     parser.add_argument("--port", type=int, default=4020)
-    parser.add_argument("--amazon-application-id", default=FakeConfig.amazon_application_id)
     args = parser.parse_args(argv)
-    config = FakeConfig(amazon_application_id=args.amazon_application_id)
+    config = config_from_env(os.environ, Path.cwd() / ".env")
     uvicorn.run(build_fake(config), host="127.0.0.1", port=args.port, log_level="warning")
     return 0
 

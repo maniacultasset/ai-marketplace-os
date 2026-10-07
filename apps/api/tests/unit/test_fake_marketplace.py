@@ -216,3 +216,19 @@ async def test_fake_authorize_deny(fake: httpx.AsyncClient) -> None:
 
 async def test_fake_healthz(fake: httpx.AsyncClient) -> None:
     assert (await fake.get("/healthz")).text == "ok"
+
+
+def test_fake_config_from_env_and_dotenv(tmp_path: Any) -> None:
+    from tests.support.fake_marketplace import config_from_env
+
+    dotenv = tmp_path / ".env"
+    dotenv.write_text(
+        "AMAZON_OAUTH_REDIRECT_URI=http://localhost:8130/api/v1/marketplaces/amazon/callback\n"
+        "AMAZON_APP_ID=\nFLIPKART_CLIENT_ID=fk-from-file\n",
+        encoding="utf-8",
+    )
+    cfg = config_from_env({"FLIPKART_CLIENT_ID": "fk-from-env", "AMAZON_APP_ID": ""}, dotenv)
+    assert cfg.amazon.redirect_uri.startswith("http://localhost:8130/")
+    assert cfg.flipkart.client_id == "fk-from-env"
+    assert cfg.amazon_application_id == CFG.amazon_application_id
+    assert cfg.amazon.client_secret == CFG.amazon.client_secret
