@@ -216,6 +216,20 @@ def test_api_tests_gates_rules_engine_branch_coverage(repo_root: Path) -> None:
     assert "COV_FAIL_UNDER ?= 70" in makefile
 
 
+def test_api_tests_runs_pytest_under_xdist(repo_root: Path) -> None:
+    """api-tests spreads pytest over at most 4 xdist workers (`auto` by default), xdist_group
+    tests stay on one worker, and coverage is still enforced over the combined data."""
+    lines = _dry_run(repo_root, "api-tests")
+    joined = " ".join(lines[_first(lines, "pytest -q") :])
+    # `-n` may be overridden (`make api-tests API_TEST_WORKERS=1` reaches this sub-make).
+    assert re.search(r" -n \S+ --maxprocesses=4 --dist loadgroup ", joined), joined
+    assert "--cov=app" in joined and "--cov-fail-under=" in joined
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert "API_TEST_WORKERS ?= auto" in makefile
+    for target in ("tenant-isolation", "bootstrap-mimic"):
+        assert " -n " not in _target(makefile, target), target
+
+
 # ---- S12 T14: `make e2e` runs every scripts/e2e/*.sh, each after a limiter reset ----
 
 

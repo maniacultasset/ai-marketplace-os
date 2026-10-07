@@ -264,7 +264,7 @@ async def test_no_transaction_open_during_body(jobs_db: JobWorld, override_body:
     async def body(ctx: JobContext) -> Outcome:
         row = jobs_db.conn.execute(
             "SELECT count(*) FROM pg_stat_activity WHERE usename = 'app_rw' "
-            "AND state LIKE 'idle in transaction%%'"
+            "AND datname = current_database() AND state LIKE 'idle in transaction%%'"
         ).fetchone()
         assert row is not None
         states.append(int(row[0]))

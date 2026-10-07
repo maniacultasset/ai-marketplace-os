@@ -15,9 +15,9 @@ GOOD = hash_password("devpassword123")
         "$argon2id$",
         "$argon2id$v=19$m=65536,t=3,p=4$",
         "$argon2i$v=19$m=65536,t=3,p=4$c2FsdHNhbHQ$aGFzaGhhc2hoYXNoaGFzaA",
-        GOOD[:-4],
-        GOOD + "AAAA",
-        GOOD.replace("m=65536", "m=1"),
+        pytest.param(GOOD[:-4], id="good-truncated"),  # a fixed id: GOOD is salted per process
+        pytest.param(GOOD + "AAAA", id="good-extended"),
+        pytest.param(GOOD.replace("m=65536", "m=1"), id="good-m1"),
         "plaintext",
         "\x00",
     ],

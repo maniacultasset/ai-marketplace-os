@@ -44,7 +44,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    # the full suite with coverage passed 15 min on the runner at S13b (~12 min locally)
+    # the full suite with coverage passed 15 min on the runner at S13b (~12 min locally); since then
+    # `make api-tests` spreads it over pytest-xdist workers (auto, at most 4), one mos_test copy each
     timeout-minutes: 30
     env:
       APP_ENV: local

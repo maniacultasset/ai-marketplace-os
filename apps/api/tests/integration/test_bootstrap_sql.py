@@ -2,17 +2,28 @@
 
 from __future__ import annotations
 
+import os
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 import psycopg
 import pytest
+from tests.support.xdist_db import role_catalog_lock
 
 Conn = psycopg.Connection[tuple[Any, ...]]
 
 # pytest-socket blocks socket.getaddrinfo, which psycopg calls to resolve the host before libpq
 # connects. Database tests may resolve and reach the loopback test database only.
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
+
+
+@pytest.fixture(autouse=True)
+def _role_catalog_lock() -> Iterator[None]:
+    """Every test here reruns 0000 (cluster-wide ALTER ROLE and GRANT): one at a time across
+    xdist workers (tests/support/xdist_db.py)."""
+    with role_catalog_lock(os.environ["DATABASE_URL"]):
+        yield
 
 
 @pytest.fixture

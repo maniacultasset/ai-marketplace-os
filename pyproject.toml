@@ -32,6 +32,7 @@ dev = [
   "pytest-cov==7.1.0",
   "pytest-randomly==5.0.0",
   "pytest-socket==0.8.1",
+  "pytest-xdist==3.8.0",
   "pyyaml==6.0.3",
   "ruff==0.16.9",
   "schemathesis==4.28.0",
