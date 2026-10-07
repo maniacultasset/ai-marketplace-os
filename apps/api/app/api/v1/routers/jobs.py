@@ -39,7 +39,7 @@ async def jobs_cancel(
     principal: CurrentPrincipal,
     request: Request,
 ) -> JobEnvelope:
-    """Cancel a queued job; a running or finished one is 409 INVALID_STATUS_TRANSITION."""
+    """Cancel a queued job; a finished one is 409 INVALID_STATUS_TRANSITION."""
     try:
         return await jobs.cancel(principal, job_id, idempotency_key, request.url.path)
     except NotFoundError:
