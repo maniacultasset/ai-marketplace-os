@@ -21,8 +21,9 @@
   tenant GUCs, and `session.py` re-exports `text`, `get_engine` and `get_sessionmaker`.
   `SCOPE_OK` and star imports of `app.db.session`/`app.db.guard` are left to R5/R6.
 - R5: `platform_scope` (the read-only cross-tenant bypass, CANON-ADDENDUM.md A§6) is named only in
-  `apps/api/app/admin/**`, `apps/api/app/cli.py`, `scripts/**`, and `apps/api/app/db/session.py`,
-  which defines it. Any import form counts, including `import app.db.session as s` plus the
+  `apps/api/app/admin/**`, `apps/api/app/cli.py`, `scripts/**`, `apps/api/app/workers/periodic.py`
+  (the reaper and the retention loop read across tenants, S13 PLAN D4) and
+  `apps/api/app/db/session.py`, which defines it. Any import form counts, including `import app.db.session as s` plus the
   attribute, and a `getattr`/`setattr`/`hasattr`/`delattr` lookup by string.
 - R6: `SCOPE_OK` is named only in `apps/api/app/db/**` and `apps/api/app/repositories/base.py`. Its
   two writers are `platform_scope` (`session.info`) and `TenantScopedRepository._select()` /
@@ -31,7 +32,11 @@
   named only in `apps/api/app/repositories/identity.py` and `apps/api/app/db/session.py`, which
   defines it, in any import or lookup form R5 checks (a star import of `app.db.session` is R5's).
 
-`--rules R5,R6,R7` limits the run to those rules (`lint-imports` runs R5-R7; `api-lint` all).
+- R8: the job GUC (the `jr_by_id` branch, DATABASE.md:950) stays in one place: the literal
+  `app.job_id` appears in `apps/api/app/**` only in `apps/api/app/db/job_context.py`, and only
+  `apps/api/app/workers/wrapper.py` imports `app.db.job_context` (any import form, relative too).
+
+`--rules R5,R6,R7,R8` limits the run to those rules (`lint-imports` runs R5-R8; `api-lint` all).
 
 Scope: `apps/api/app/**`, `apps/api/alembic/**`, `packages/schemas/src/**` and `scripts/**`,
 less the Python 3.9 doc tooling in `scripts/docgen/**` and `scripts/trace/**`. Stdlib only.
@@ -45,6 +50,7 @@ import sys
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Final
 
 SCOPE = ("apps/api/app", "apps/api/alembic", "packages/schemas/src", "scripts")
 EXCLUDED = ("scripts/docgen", "scripts/trace")
@@ -55,10 +61,18 @@ ASYNC_ENGINE_MODULE = "sqlalchemy.ext.asyncio"
 APP = "apps/api/app"
 RAW_SQL_ALLOWED = ("apps/api/app/db", "apps/api/app/repositories")
 PLATFORM_SCOPE_ALLOWED = ("apps/api/app/admin", "scripts")
-PLATFORM_SCOPE_FILES = ("apps/api/app/cli.py", "apps/api/app/db/session.py")
+PLATFORM_SCOPE_FILES = (
+    "apps/api/app/cli.py",
+    "apps/api/app/db/session.py",
+    "apps/api/app/workers/periodic.py",
+)
 SCOPE_OK_ALLOWED = ("apps/api/app/db",)
 SCOPE_OK_FILES = ("apps/api/app/repositories/base.py",)
 IDENTITY_SCOPE_FILES = ("apps/api/app/db/session.py", "apps/api/app/repositories/identity.py")
+JOB_GUC: Final = "app.job_id"
+JOB_CONTEXT_MODULE: Final = "app.db.job_context"
+JOB_CONTEXT_FILE: Final = "apps/api/app/db/job_context.py"
+JOB_CONTEXT_IMPORTER: Final = "apps/api/app/workers/wrapper.py"
 SQLALCHEMY_TEXT_MODULES = frozenset({"sqlalchemy", "sqlalchemy.sql", "sqlalchemy.sql.expression"})
 RAW_SQL_NAMES = frozenset({"text", "TextClause", "literal_column", "table", "TableClause", "DDL"})
 RAW_SQL_CALLS = frozenset(
@@ -90,13 +104,16 @@ APP_DB_ALLOWED: dict[str, frozenset[str]] = {
     "session": frozenset({"unit_of_work", "platform_scope", "dispose_engine", "ping"}),
     # identity_scope is R7's; app code outside app/db and app/repositories never reaches it.
     "guard": frozenset({"CrossTenantQueryError"}),
+    # the worker's entry points (S13): R8 narrows job_context to app/workers/wrapper.py
+    "job_context": frozenset({"resolve_job", "JobHead"}),
+    "queue": frozenset({"get_queue_app", "QUEUES", "QUEUE_POOL_MAX_SIZE", "libpq_conninfo"}),
 }
 # Reported by R5/R6 instead, so each violation names one rule: `SCOPE_OK`, and a star import of
 # the module R5 or R6 watches.
 APP_DB_DEFERRED_NAMES = frozenset({"SCOPE_OK", "identity_scope"})
 APP_DB_DEFERRED_STARS = frozenset({"app.db.session", "app.db.guard"})
 ATTR_LOOKUPS = frozenset({"getattr", "setattr", "hasattr", "delattr"})
-ALL_RULES = frozenset({"R1", "R2", "R3", "R4", "R5", "R6", "R7"})
+ALL_RULES = frozenset({"R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8"})
 
 
 @dataclass(frozen=True, order=True)
@@ -348,6 +365,26 @@ def _names(tree: ast.AST, name: str, star_module: str) -> Iterator[tuple[int, st
             yield node.lineno, f"looks up `{name}` by string"
 
 
+def _job_guc(relative: str, tree: ast.AST) -> Iterator[tuple[int, str]]:
+    if relative != JOB_CONTEXT_FILE:
+        for node in ast.walk(tree):
+            value = node.value if isinstance(node, ast.Constant) else None
+            if isinstance(value, str) and JOB_GUC in value:
+                yield node.lineno, f"names `{JOB_GUC}` outside app/db/job_context.py"
+    if relative == JOB_CONTEXT_IMPORTER:
+        return
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == JOB_CONTEXT_MODULE:
+                    yield node.lineno, f"imports `{JOB_CONTEXT_MODULE}`"
+        elif isinstance(node, ast.ImportFrom):
+            module = _absolute(relative, node)
+            names = {f"{module}.{alias.name}" for alias in node.names}
+            if module == JOB_CONTEXT_MODULE or JOB_CONTEXT_MODULE in names:
+                yield node.lineno, f"imports `{JOB_CONTEXT_MODULE}`"
+
+
 def check_file(relative: str, path: Path) -> list[Violation]:
     try:
         tree = ast.parse(path.read_bytes(), filename=relative)
@@ -381,6 +418,11 @@ def check_file(relative: str, path: Path) -> list[Violation]:
             # a star import of app.db.session is already R5's (and R4's) everywhere R7 applies
             for n, m in _names(tree, "identity_scope", "")
         ]
+    if relative.startswith(APP + "/"):
+        found += [
+            Violation(relative, n, "R8", f"{m}; only app/workers/wrapper.py imports it")
+            for n, m in _job_guc(relative, tree)
+        ]
     return found
 
 
@@ -403,7 +445,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0] if __doc__ else None)
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="the repository root")
     parser.add_argument(
-        "--rules", type=_rules_arg, default=ALL_RULES, help="comma-separated, e.g. R5,R6,R7"
+        "--rules", type=_rules_arg, default=ALL_RULES, help="comma-separated, e.g. R5,R6,R7,R8"
     )
     args = parser.parse_args(argv)
     root: Path = args.root.resolve()
