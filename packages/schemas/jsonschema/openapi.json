@@ -12250,7 +12250,7 @@
     },
     "/api/v1/marketplaces/{marketplace}/callback": {
       "get": {
-        "description": "OAuth return (no JWT). Flipkart sends `code`; Amazon sends `spapi_oauth_code` and\n`selling_partner_id`. A forged, expired or replayed `state`, or a path marketplace that is not\nthe state's, is 409 OAUTH_STATE_INVALID.",
+        "description": "OAuth return (no JWT). Flipkart sends `code`; Amazon sends `spapi_oauth_code` and\n`selling_partner_id`. A forged, expired or replayed `state`, or a path marketplace that is not\nthe state's, is 409 OAUTH_STATE_INVALID. The answer is a 303 to the dashboard's fixed route\ncarrying only an opaque single-use `pending` handle.",
         "operationId": "marketplaces_callback",
         "parameters": [
           {

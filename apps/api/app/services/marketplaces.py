@@ -28,14 +28,29 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Final
 
-from app.adapters.oauth import OAuthClient, get_oauth_client
+from mkos_schemas.codes import ErrorCode
+
+from app.adapters.oauth import (
+    CallbackParams,
+    OAuthClient,
+    OAuthProtocolError,
+    OAuthRejectedError,
+    OAuthTransientError,
+    get_oauth_client,
+)
 from app.core.config import get_settings
-from app.core.crypto import get_key_wrapper
+from app.core.crypto import get_key_wrapper, seal
+from app.core.errors import ConflictError
 from app.core.rbac import Principal
+from app.repositories.identity import consume_oauth_state
+from app.repositories.transactions import identity_session
 from app.repositories.uow import tenant_uow
 
 __all__ = [
     "MarketplaceNotConfiguredError",
+    "MarketplaceUnavailableError",
+    "MarketplaceUnknownError",
+    "complete_callback",
     "start_connect",
 ]
 
@@ -47,8 +62,21 @@ class MarketplaceNotConfiguredError(Exception):
     """The marketplace's OAuth client (or the token key wrapper) is not configured here: 501."""
 
 
+class MarketplaceUnavailableError(Exception):
+    """The token endpoint failed transiently (5xx, timeout): MARKETPLACE_UNAVAILABLE."""
+
+
+class MarketplaceUnknownError(Exception):
+    """The marketplace's callback was not usable (Amazon without `selling_partner_id`)."""
+
+
+def bad_state() -> ConflictError:
+    """The one answer for a forged, expired, replayed, mismatched or foreign state or handle."""
+    return ConflictError(ErrorCode.OAUTH_STATE_INVALID, "oauth_states")
+
+
 def sha256(value: str) -> bytes:
-    return hashlib.sha256(value.encode("ascii")).digest()
+    return hashlib.sha256(value.encode("utf-8")).digest()
 
 
 def s256_challenge(verifier: str) -> str:
@@ -82,6 +110,45 @@ async def start_connect(principal: Principal, marketplace: str) -> str:
             ttl_s=get_settings().oauth_state_ttl_seconds,
         )
     return client.authorize_url(state=state, code_challenge=challenge)
+
+
+async def complete_callback(
+    marketplace: str, *, state: str, code: str, selling_partner_id: str | None
+) -> str:
+    """The OAuth return: consume the state once, exchange the code with no transaction open,
+    seal the tokens for the state's tenant and store them under a fresh opaque handle (returned).
+    The tenant and user come only from the consumed state row."""
+    client = _client(marketplace)
+    async with identity_session() as session:
+        row = await consume_oauth_state(session, state_hash=sha256(state), marketplace=marketplace)
+    if row is None:
+        raise bad_state()
+    if client.marketplace == "amazon" and selling_partner_id is None:
+        raise MarketplaceUnknownError
+    outcome: Exception | None = None
+    try:
+        grant = await client.exchange(
+            code_verifier=row.code_verifier,
+            callback=CallbackParams(code=code, selling_partner_id=selling_partner_id),
+        )
+    except (OAuthRejectedError, OAuthProtocolError):
+        outcome = bad_state()
+    except OAuthTransientError:
+        outcome = MarketplaceUnavailableError()
+    if outcome is not None:
+        raise outcome
+    sealed = await seal(grant.tokens, tenant_id=row.tenant_id, wrapper=get_key_wrapper())
+    handle = secrets.token_urlsafe(STATE_BYTES)
+    async with tenant_uow(row.tenant_id, user_id=row.user_id) as uow:
+        await uow.oauth_states.insert_pending(
+            handle_hash=sha256(handle),
+            user_id=row.user_id,
+            marketplace=marketplace,
+            sealed=sealed,
+            grant=grant,
+            ttl_s=get_settings().oauth_state_ttl_seconds,
+        )
+    return handle
 
 
 @dataclass(frozen=True, slots=True)

@@ -635,7 +635,8 @@ export interface paths {
          * OAuth return: 303 to the app with an opaque pending handle
          * @description OAuth return (no JWT). Flipkart sends `code`; Amazon sends `spapi_oauth_code` and
          *     `selling_partner_id`. A forged, expired or replayed `state`, or a path marketplace that is not
-         *     the state's, is 409 OAUTH_STATE_INVALID.
+         *     the state's, is 409 OAUTH_STATE_INVALID. The answer is a 303 to the dashboard's fixed route
+         *     carrying only an opaque single-use `pending` handle.
          */
         get: operations["marketplaces_callback"];
         put?: never;

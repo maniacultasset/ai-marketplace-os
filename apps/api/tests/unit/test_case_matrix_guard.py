@@ -49,6 +49,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "products_get",
         "products_list",
         "marketplaces_connect",
+        "marketplaces_callback",
     }
 )
 

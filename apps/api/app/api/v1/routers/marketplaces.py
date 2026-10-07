@@ -19,6 +19,7 @@ from app.api.errors import ApiError, NotImplementedYet
 from app.api.pagination import PageParams
 from app.api.v1.deps import get_current_principal
 from app.api.v1.schemas.marketplaces import (
+    CALLBACK_LOCATION_TEMPLATE,
     OAUTH_PARAM_MAX,
     SELLER_ID_PATTERN,
     ConnectConfirmRequest,
@@ -26,6 +27,7 @@ from app.api.v1.schemas.marketplaces import (
     ConnectRequest,
 )
 from app.api.v1.surface import OPS, route, stub
+from app.core.config import get_settings
 from app.core.rbac import Principal
 from app.services import marketplaces as service
 
@@ -65,19 +67,36 @@ async def marketplaces_connect(
 
 
 @route(router, OPS["marketplaces_callback"])
-@stub
 async def marketplaces_callback(
     marketplace: Annotated[Marketplace, PathParam()],
     state: OAuthParam,
     code: OptionalOAuthParam = None,
     spapi_oauth_code: OptionalOAuthParam = None,
     selling_partner_id: SellerParam = None,
-) -> NoReturn:
+) -> Response:
     """OAuth return (no JWT). Flipkart sends `code`; Amazon sends `spapi_oauth_code` and
     `selling_partner_id`. A forged, expired or replayed `state`, or a path marketplace that is not
-    the state's, is 409 OAUTH_STATE_INVALID."""
-    _one_code(code, spapi_oauth_code)
-    raise NotImplementedYet("marketplaces_callback")
+    the state's, is 409 OAUTH_STATE_INVALID. The answer is a 303 to the dashboard's fixed route
+    carrying only an opaque single-use `pending` handle."""
+    the_code = _one_code(code, spapi_oauth_code)
+    try:
+        handle = await service.complete_callback(
+            marketplace.value,
+            state=state,
+            code=the_code,
+            selling_partner_id=selling_partner_id,
+        )
+    except service.MarketplaceNotConfiguredError:
+        raise NotImplementedYet("marketplaces_callback") from None
+    except service.MarketplaceUnavailableError:
+        raise ApiError(503, ErrorCode.MARKETPLACE_UNAVAILABLE) from None
+    except service.MarketplaceUnknownError:
+        raise ApiError(502, ErrorCode.MARKETPLACE_UNKNOWN_ERROR) from None
+    location = get_settings().dashboard_base_url + CALLBACK_LOCATION_TEMPLATE.format(pending=handle)
+    return Response(
+        status_code=303,
+        headers={"Location": location, "Cache-Control": NO_STORE, "Referrer-Policy": "no-referrer"},
+    )
 
 
 @route(router, OPS["marketplaces_accounts"])
