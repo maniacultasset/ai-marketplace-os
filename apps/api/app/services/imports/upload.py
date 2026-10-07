@@ -27,6 +27,7 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any, Final
 
+import anyio
 from mkos_schemas.enums import JobKind
 from mkos_schemas.errors import ErrorReport
 
@@ -101,6 +102,12 @@ async def _peek_and_precheck(
     return None
 
 
+# Parsing up to 10 MiB of CSV is CPU work: it runs in a thread, at most this many at once, so the
+# event loop keeps serving (S13b review #7; the dry-run's pattern, C7).
+PARSE_CONCURRENCY: Final = 2
+_PARSE_LIMITER: Final = anyio.CapacityLimiter(PARSE_CONCURRENCY)
+
+
 def _file_problem(data: bytes) -> tuple[ErrorReport | None, int]:
     try:
         parsed = parse_upload(data)
@@ -117,7 +124,7 @@ async def accept_upload(
     if replayed is not None:
         return replayed
 
-    report, row_count = _file_problem(data)
+    report, row_count = await anyio.to_thread.run_sync(_file_problem, data, limiter=_PARSE_LIMITER)
     if report is not None:
         refused = {"report": report.model_dump(mode="json")}
 
