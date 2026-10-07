@@ -3,21 +3,23 @@ cursor), and the rows retry. Another tenant's import is 404, never 403."""
 
 from __future__ import annotations
 
-from typing import Annotated, NoReturn
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi import Path as PathParam
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.imports import ImportReport
+from mkos_schemas.jobs import JobAccepted
 
-from app.api.errors import ApiError, NotImplementedYet
+from app.api.errors import ApiError
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import IdempotencyKey, get_current_principal
 from app.api.v1.schemas.imports import ImportRowPage, ImportRowStatus
-from app.api.v1.surface import OPS, route, stub
+from app.api.v1.surface import OPS, route
+from app.core.errors import ConflictError
 from app.core.rbac import Principal
-from app.services.imports import reports
+from app.services.imports import reports, retry
 
 router = APIRouter()
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
@@ -59,9 +61,19 @@ async def imports_rows(
 
 
 @route(router, OPS["imports_rows_retry"])
-@stub
 async def imports_rows_retry(
-    import_id: Annotated[UUID, PathParam()], idempotency_key: IdempotencyKey
-) -> NoReturn:
+    import_id: Annotated[UUID, PathParam()],
+    idempotency_key: IdempotencyKey,
+    principal: CurrentPrincipal,
+    request: Request,
+) -> JobAccepted:
     """Re-run every failed row of the import, and only those."""
-    raise NotImplementedYet("imports_rows_retry")
+    try:
+        body = await retry.retry_failed_rows(
+            principal, import_id, idempotency_key, request.url.path
+        )
+    except ConflictError as exc:
+        if exc.code not in (ErrorCode.INVALID_STATUS_TRANSITION, ErrorCode.IDEMPOTENCY_KEY_REUSED):
+            raise
+        raise ApiError(409, exc.code) from None
+    return JobAccepted.model_validate(body)

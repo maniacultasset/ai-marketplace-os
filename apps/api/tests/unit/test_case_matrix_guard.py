@@ -58,6 +58,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "products_bulk",
         "imports_get",
         "imports_rows",
+        "imports_rows_retry",
     }
 )
 

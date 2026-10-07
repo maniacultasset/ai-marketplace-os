@@ -6878,7 +6878,7 @@
                 }
               }
             },
-            "description": "The request conflicts with the current state. Codes: `IDEMPOTENCY_KEY_REUSED`."
+            "description": "The request conflicts with the current state. Codes: `IDEMPOTENCY_KEY_REUSED`, `INVALID_STATUS_TRANSITION`."
           },
           "422": {
             "content": {

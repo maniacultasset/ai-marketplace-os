@@ -221,6 +221,7 @@ def test_error_codes_per_d2() -> None:
         "products_create": (E.SKU_CONFLICT,),
         "listings_content_patch": (E.STALE_VERSION,),
         "jobs_cancel": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
+        "imports_rows_retry": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "marketplaces_callback": (E.OAUTH_STATE_INVALID,),
         "marketplaces_connect_confirm": (E.MARKETPLACE_ACCOUNT_CONFLICT, E.OAUTH_STATE_INVALID),
         "members_patch": (E.LAST_OWNER_REQUIRED,),

@@ -5439,7 +5439,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description The request conflicts with the current state. Codes: `IDEMPOTENCY_KEY_REUSED`. */
+            /** @description The request conflicts with the current state. Codes: `IDEMPOTENCY_KEY_REUSED`, `INVALID_STATUS_TRANSITION`. */
             409: {
                 headers: {
                     [name: string]: unknown;

@@ -21,7 +21,7 @@ from typing import Any, Final
 
 from sqlalchemy import func, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.orm import defer
+from sqlalchemy.orm import defer, undefer
 
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
 from app.db.models.ops import Import, ImportRow, JobRun
@@ -206,12 +206,24 @@ class ImportRowRepository(TenantScopedRepository[ImportRow]):
         return {int(n) for n in (await self.db.execute(stmt)).scalars()}
 
     async def failed_rows(self, import_id: uuid.UUID) -> builtins.list[ImportRow]:
+        """The failed rows with their stored cells (`raw_row` is deferred everywhere else)."""
         stmt = (
             self._select()
             .where(ImportRow.import_id == import_id, ImportRow.status == "failed")
+            .options(undefer(ImportRow.raw_row))
             .order_by(ImportRow.row_number)
         )
         return builtins.list((await self.db.execute(stmt)).scalars())
+
+    async def count_status(self, import_id: uuid.UUID, status: str) -> int:
+        if status not in ROW_STATES:
+            raise ValueError("status must be imported or failed")
+        stmt = (
+            self._select()
+            .where(ImportRow.import_id == import_id, ImportRow.status == status)
+            .with_only_columns(func.count(ImportRow.id))
+        )
+        return int((await self.db.execute(stmt)).scalar_one())
 
     async def imported_skus(self, import_id: uuid.UUID) -> dict[str, int]:
         """SKU → the first `imported` row that holds it (a rows retry's duplicate check)."""
