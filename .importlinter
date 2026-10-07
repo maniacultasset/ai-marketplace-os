@@ -128,3 +128,20 @@ forbidden_modules =
     app.adapters
     app.core
     app.cli
+
+# The token decrypt path (invariant 6; EXECUTION-PLAN decision 15): the API encrypts only, and
+# anything needing plaintext runs in an adapter or a worker job. Indirect imports count too, so
+# no service or router can reach the unseal through a helper.
+[importlinter:contract:decrypt-path-only-in-adapters-and-workers]
+name = only app.adapters and app.workers import the decrypt path
+type = forbidden
+source_modules =
+    app.api
+    app.services
+    app.repositories
+    app.cli
+    app.core
+    app.db
+    app.main
+forbidden_modules =
+    app.adapters.credentials
