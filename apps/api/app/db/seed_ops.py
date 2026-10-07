@@ -3,6 +3,9 @@ only orchestrates; the SQL lives here, inside `app/db` (repo rule R4).
 
 - Platform rows (`category_templates`, the NULL-tenant `rules` from `rules.seed.json`) go through
   the migrator engine (DATABASE.md:158), upserted on their natural keys.
+- The two dictionary rows S12 needs (`color`, `fabric_type` with alias `material`; CODE-PLAN S12
+  CP3) go in with the platform rows, inserted once and never updated; the dictionary step (S13/S16)
+  owns the full file and its sync.
 - Tenant rows go through one `unit_of_work(seed_tenant_id(slug))` per tenant (D16): the tenant
   is inserted with its fixed `uuid5` id, then read back through the scoped repository.
 - `reset_seed_tenants` purges the two seed tenants through the database's `purge_tenant`
@@ -17,6 +20,7 @@ import hashlib
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Final, get_args
 
@@ -34,7 +38,7 @@ from app.db.base import metadata
 from app.db.models.audit_brand import BrandChunk
 from app.db.models.catalog import Product
 from app.db.models.facts import BrandProfile
-from app.db.models.platform import CategoryTemplate
+from app.db.models.platform import AttributeDefinition, CategoryTemplate
 from app.db.models.rules import Rule
 from app.db.models.tenancy import Tenant, TenantMembership, User
 from app.repositories.base import TenantScopedRepository
@@ -167,6 +171,49 @@ def _template_rows() -> list[dict[str, Any]]:
     ]
 
 
+# CODE-PLAN S12 CP3 (DATABASE.md:1166-1170; T32 alias). The dictionary step owns the final values.
+ALL_FACT_SOURCES: Final = ("seller", "document", "pim", "marketplace", "derived", "ai")
+ATTRIBUTE_DEFINITION_ROWS: Final[tuple[Mapping[str, Any], ...]] = (
+    {
+        "key": "color",
+        "section": "attributes",
+        "storage": "attributes",
+        "owner_levels": ["colour", "standalone"],
+        "value_type": "text",
+        "input_aliases": [],
+        "is_critical": False,
+        "allowed_sources": list(ALL_FACT_SOURCES),
+        "min_confidence": Decimal("0.70"),
+        "confirm_agent_captures": False,
+        "enabled": True,
+    },
+    {
+        "key": "fabric_type",
+        "section": "attributes",
+        "storage": "attributes",
+        "owner_levels": ["style", "standalone"],
+        "value_type": "text",
+        "input_aliases": ["material"],
+        "is_critical": True,
+        "allowed_sources": ["seller", "document", "pim"],
+        "min_confidence": None,
+        "confirm_agent_captures": True,
+        "enabled": True,
+    },
+)
+
+
+async def seed_attribute_definitions(connection: AsyncConnection) -> None:
+    """Insert the S12 dictionary rows on the migrator connection (`attribute_definitions` is
+    SELECT-only for the app roles, DATABASE.md:1152). A stored row is left as it is, so a rerun
+    never moves its `revision`."""
+    await connection.execute(
+        insert(AttributeDefinition)
+        .values([dict(row) for row in ATTRIBUTE_DEFINITION_ROWS])
+        .on_conflict_do_nothing(index_elements=["key"])
+    )
+
+
 def _assume_migrator(connection: Connection) -> None:
     from app.db.migrations import assume_migration_role
 
@@ -186,6 +233,7 @@ async def seed_platform_rows(connection: AsyncConnection, rules_path: Path) -> N
     if rule_rows:
         # Any unique conflict (the fixed id or `rules_scope_key`) leaves the stored row alone.
         await connection.execute(insert(Rule).values(rule_rows).on_conflict_do_nothing())
+    await seed_attribute_definitions(connection)
 
 
 async def _migrator_session(connection: AsyncConnection) -> None:

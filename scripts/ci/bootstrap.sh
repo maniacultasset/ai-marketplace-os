@@ -188,6 +188,15 @@ SELECT t.id, u.id, 'reviewer' FROM public.tenants t, public.users u
  WHERE t.slug = 'bharat' AND lower(u.email) = 'operator@acme.test'
 ON CONFLICT (tenant_id, user_id) DO NOTHING;"
 python3 scripts/ci/auth_e2e.py "http://127.0.0.1:${api_port}"
+# S12 walking-skeleton leg (CODE-PLAN S12 T15; Done-when 3): the image, as `api` and app_rw, is
+# ready, then the HTTP e2e runs twice (a rerun must pass on its own fresh SKU). Each run starts
+# from an empty limiter, so the auth leg's logins above never need counting.
+ready="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${api_port}/readyz")"
+[ "$ready" = "200" ] || { echo "bootstrap: the image's /readyz gave $ready, want 200" >&2; exit 1; }
+scripts/ci/reset_rate_limits.sh "http://127.0.0.1:${api_port}"
+scripts/e2e/walking_skeleton.sh "http://127.0.0.1:${api_port}"
+scripts/ci/reset_rate_limits.sh "http://127.0.0.1:${api_port}"
+scripts/e2e/walking_skeleton.sh "http://127.0.0.1:${api_port}"
 docker rm -f "$e2e_container" >/dev/null
 # The Cloud Run migrate job's path through the image, as migrator (local dev-only password).
 docker run --rm --network "$network" -e APP_ENV=local -e APP_ROLE=migrate -e ALEMBIC_DATABASE_URL="$migrator_dsn" "$image"

@@ -8,18 +8,18 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 - **Every line of the client spec is traced.** All 13,711 lines of the snapshot are in the register:
   11,167 entries, of which 8,916 are checkable statements. `scripts/trace/check_coverage.py` proves 100% line coverage.
 - **Every statement has a verdict**, with a reference, adversarially verified per chunk (`scripts/trace/check_mapping.py`).
-- **7,021 of 8,916 (79%) are covered by our plan**: 6,072 as written and
-  949 deliberately changed by an ADR, Canon row or recorded decision.
-- **526 are gaps** (backend/DB 269, shared seams 132, ops 105, AI team 4, FE team 0, client 16).
+- **7,024 of 8,916 (79%) are covered by our plan**: 6,074 as written and
+  950 deliberately changed by an ADR, Canon row or recorded decision.
+- **523 are gaps** (backend/DB 266, shared seams 132, ops 105, AI team 4, FE team 0, client 16).
 - **319 need the team or client** (54 conflicts, 265 questions);
   each points to a row in `TEAM-QUESTIONS.md`.
 - 511 belong to the AI or FE team, and 539 are marked Phase 2/3 by the site itself.
 
 | Status | Statements | Share |
 |---|---:|---:|
-| ✅ covered | 6,072 | 68.1% |
-| 🔁 covered-changed | 949 | 10.6% |
-| ⚠️ gap | 526 | 5.9% |
+| ✅ covered | 6,074 | 68.1% |
+| 🔁 covered-changed | 950 | 10.7% |
+| ⚠️ gap | 523 | 5.9% |
 | ❌ conflict | 54 | 0.6% |
 | ❓ needs-client | 265 | 3.0% |
 | 🧩 other-team | 511 | 5.7% |
@@ -158,7 +158,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [101] Database Indexing Strategy | 7 | 1 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [102] Vector Storage | 5 | 1 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [103] API Architecture | 27 | 10 | 0 | 1 | 2 | 0 | 0 | 3 |
-| [104] Product APIs | 8 | 2 | 3 | 0 | 1 | 0 | 0 | 4 |
+| [104] Product APIs | 10 | 3 | 0 | 0 | 1 | 0 | 0 | 1 |
 | [105] Bulk Import APIs | 7 | 1 | 0 | 2 | 1 | 0 | 0 | 3 |
 | [106] Listing Generation APIs | 12 | 0 | 0 | 0 | 0 | 0 | 1 | ✔ |
 | [107] Validation APIs | 5 | 1 | 0 | 0 | 0 | 0 | 0 | ✔ |
@@ -1029,7 +1029,7 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 | R13665 | L13665 | Production launch checklist: All Phase 1 features implemented. | T16; VISION Q25 | Phase-1 set per plan scope lock (T16); steps after S14 unsequenced |
 | R13668 | L13668 | Production launch checklist: Marketplace OAuth flows verified with production accounts. | T77 | Prod filings/app approval status unknown (STATE open decision 5); verify step itself unplanned |
 
-## ⚠️ Gaps we own: backend + DB (269)
+## ⚠️ Gaps we own: backend + DB (266)
 
 Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITECTURE.md and the build steps.
 
@@ -1434,14 +1434,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 |---|---|---|---|---|
 | R11145i | L11145 | Audit-logged action: listing creation. | docs/architecture/BACKEND-ARCHITECTURE.md:2219; docs/architecture/DATABASE.md:300 | Listing creation is not named as an audited action; only status changes |
 | R11145m | L11145 | Audit-logged action: rule changes. | docs/architecture/DATABASE.md:508; docs/architecture/DATABASE.md:543 | Brand rule writes and rules.enabled audited; platform app.cli rules import not stated as audited |
-
-### [104] Product APIs
-
-| R-id | Lines | The site says | Ref | What is missing / differs |
-|---|---|---|---|---|
-| R11326 | L11326 | POST /products response field "id" (example "prod_456"). | docs/architecture/DATABASE.md:1197; docs/architecture/BACKEND-ARCHITECTURE.md:1332 | ProductOut is named but its id/sku/created_at response fields are not specified |
-| R11327 | L11327 | POST /products response field "sku" (example "KS-001"). | docs/architecture/DATABASE.md:1197; docs/architecture/BACKEND-ARCHITECTURE.md:1332 | ProductOut is named but its id/sku/created_at response fields are not specified |
-| R11329 | L11329 | POST /products response field "created_at" (example "2024-01-15T10:30:00Z"). | docs/architecture/DATABASE.md:1197; docs/architecture/BACKEND-ARCHITECTURE.md:1332 | ProductOut is named but its id/sku/created_at response fields are not specified |
 
 ### [111] Analytics APIs
 

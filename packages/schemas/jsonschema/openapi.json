@@ -2518,16 +2518,9 @@
             "type": "object"
           },
           "category": {
-            "anyOf": [
-              {
-                "pattern": "^[a-z0-9_]{2,64}$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category"
+            "pattern": "^[a-z0-9_]{2,64}$",
+            "title": "Category",
+            "type": "string"
           },
           "images": {
             "items": {
@@ -2556,7 +2549,8 @@
         },
         "required": [
           "sku",
-          "title"
+          "title",
+          "category"
         ],
         "title": "ProductCreate",
         "type": "object"
@@ -2585,16 +2579,9 @@
             "type": "object"
           },
           "category": {
-            "anyOf": [
-              {
-                "pattern": "^[a-z0-9_]{2,64}$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category"
+            "pattern": "^[a-z0-9_]{2,64}$",
+            "title": "Category",
+            "type": "string"
           },
           "created_at": {
             "format": "date-time",
@@ -2660,6 +2647,7 @@
           "sku",
           "title",
           "status",
+          "category",
           "created_at",
           "updated_at"
         ],

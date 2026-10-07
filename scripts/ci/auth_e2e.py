@@ -84,11 +84,12 @@ def run(base: str) -> int:
     if (me["role"], me["tenant_id"]) != ("owner", acme):
         sys.exit(f"auth e2e: me says {me['role']} in {me['tenant_id']}")
 
-    # a verified token reaches a route that is still S3's stub (the check_image.sh 501 probe)
+    # a verified token reaches a route that is still S3's stub (the check_image.sh 501 probe);
+    # S12 implemented GET /products, so the probe reads the listings list
     stub = leg.expect(
         "a verified token reaches a stub",
         501,
-        leg.call("GET", "/products", token=owner["access_token"]),
+        leg.call("GET", "/listings", token=owner["access_token"]),
     )
     if stub["error"]["type"] != "NOT_IMPLEMENTED":
         sys.exit("auth e2e: the stub did not answer NOT_IMPLEMENTED")

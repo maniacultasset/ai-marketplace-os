@@ -723,3 +723,210 @@ def test_ci_bootstrap_job_env_uses_app_roles(
     if "ALEMBIC_DATABASE_URL" in env:
         assert env["ALEMBIC_DATABASE_URL"].startswith("postgresql+psycopg://migrator:")
         assert env["ALEMBIC_DATABASE_URL"] == _env_example_value(repo_root, "ALEMBIC_DATABASE_URL")
+
+
+# S12 T13 (AC6, Done-when 2): a products router importing sqlalchemy or app.db fails lint-imports.
+S12_ROUTER_LEGS = {
+    "lint-imports-products-sqla": (
+        "seed_products_router_sqlalchemy",
+        "from sqlalchemy import select",
+    ),
+    "lint-imports-products-db": ("seed_products_router_db", "import app.db.session"),
+}
+
+
+def test_prove_gates_has_products_router_legs(repo_root: Path) -> None:
+    code = _code((repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8"))
+    for name, (seed_name, line) in S12_ROUTER_LEGS.items():
+        leg = re.search(
+            rf"(?m)^[ \t]*leg {re.escape(name)} lint-imports '([^']*)' \\?\s*(\S+)", code
+        )
+        assert leg is not None, name
+        assert leg.group(1) == "app.api never imports sqlalchemy or app.db directly BROKEN", name
+        assert leg.group(2) == seed_name, name
+        seed = re.search(rf"(?m)^{seed_name}\(\) \{{(.*)\}}$", code)
+        assert seed is not None, seed_name
+        assert "append apps/api/app/api/v1/routers/products.py" in seed.group(1)
+        assert f"'{line}'" in seed.group(1)
+
+
+# ---- S12 T14 (AC8; PLAN D8): the walking-skeleton e2e and the shared limiter reset ----
+
+E2E_STEPS = (
+    "health",
+    "login_acme_operator",
+    "create_201",
+    "get_200",
+    "list_contains",
+    "create_again_409",
+    "login_acme_reviewer",
+    "reviewer_create_403",
+    "no_token_401",
+    "login_bharat_operator",
+    "bharat_get_404",
+    "bharat_list_lacks",
+    "db_row_under_acme",
+)
+NON_LOCAL_URLS = (
+    "https://example.invalid",
+    "http://example.invalid",
+    "http://localhost.example.invalid",
+    "http://127.0.0.1@example.invalid",
+    "http://user:pw@127.0.0.1:8000",
+    "https://127.0.0.1:8000",
+    "http://127.0.0.1:8000/api",
+)
+
+
+def _stub_path(tmp_path: Path) -> tuple[dict[str, str], Path]:
+    """PATH with `docker` and `curl` stubs that only record their argv (one line per call)."""
+    import os
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    log = tmp_path / "calls.log"
+    for name in ("docker", "curl"):
+        stub = bin_dir / name
+        stub.write_text(
+            f'#!/usr/bin/env bash\nprintf "%s\\n" "{name} $*" >> "{log}"\n', encoding="utf-8"
+        )
+        stub.chmod(0o755)
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
+    return env, log
+
+
+def _e2e_script(repo_root: Path) -> str:
+    return (repo_root / "scripts" / "e2e" / "walking_skeleton.sh").read_text(encoding="utf-8")
+
+
+def test_e2e_script_steps(repo_root: Path) -> None:
+    text = _e2e_script(repo_root)
+    code = _code(text)
+    assert "set -euo pipefail" in code
+    steps = re.findall(r"(?m)^step (\w+)$", code)
+    assert tuple(steps) == E2E_STEPS
+    assert 'sku="E2E-$(date +%s)-$RANDOM"' in code
+    # the port comes from .worktree.env / API_HOST_PORT, never a literal
+    assert not re.search(r":\d{2,5}\b", code)
+    assert "scripts/ci/worktree_env.sh exports .worktree.env" in code
+    # a failure names the step and the status, never a body
+    assert "FAILED at step $current (HTTP status ${status:-none})" in code
+    assert 'cat "$body"' not in code
+
+
+@pytest.mark.parametrize("url", NON_LOCAL_URLS)
+def test_e2e_refuses_non_local_url(repo_root: Path, tmp_path: Path, url: str) -> None:
+    env, log = _stub_path(tmp_path)
+    result = subprocess.run(
+        [str(repo_root / "scripts" / "e2e" / "walking_skeleton.sh"), url],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 2, result.stderr
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""
+
+
+@pytest.mark.parametrize("url", NON_LOCAL_URLS)
+def test_reset_rate_limits_refuses_non_local_url(repo_root: Path, tmp_path: Path, url: str) -> None:
+    env, log = _stub_path(tmp_path)
+    result = subprocess.run(
+        [str(repo_root / "scripts" / "ci" / "reset_rate_limits.sh"), url],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 2, result.stderr
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""
+
+
+@pytest.mark.parametrize("url", ["http://127.0.0.1:8123", "http://localhost:8123/"])
+def test_reset_rate_limits_truncates_only_counters(
+    repo_root: Path, tmp_path: Path, url: str
+) -> None:
+    env, log = _stub_path(tmp_path)
+    result = subprocess.run(
+        [str(repo_root / "scripts" / "ci" / "reset_rate_limits.sh"), url],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert log.read_text(encoding="utf-8").splitlines() == [
+        "docker compose exec -T postgres psql -U postgres -d marketplace_os -c "
+        "TRUNCATE rate_limit_counters"
+    ]
+
+
+def test_e2e_scripts_never_truncate(repo_root: Path) -> None:
+    scripts = sorted((repo_root / "scripts" / "e2e").glob("*.sh"))
+    assert scripts
+    for script in scripts:
+        text = script.read_text(encoding="utf-8")
+        assert "TRUNCATE" not in text.upper(), script
+        assert "rate_limit_counters" not in text, script
+        assert "RATE_LIMIT_" not in text, script
+
+
+def test_local_url_check(script: Callable[[str], Any]) -> None:
+    local_url = script("scripts/ci/local_url.py")
+    for url in (*NON_LOCAL_URLS, "", "http://", "http://127.0.0.1:0", "http://[::1]:8000"):
+        assert not local_url.is_local(url), url
+    for url in ("http://127.0.0.1", "http://127.0.0.1:8080", "http://localhost:8000/"):
+        assert local_url.is_local(url), url
+
+
+# ---- S12 T15 (AC7, AC8; Done-when 3): bootstrap runs the e2e twice on the built image ----
+
+E2E_CALL = 'scripts/e2e/walking_skeleton.sh "http://127.0.0.1:${api_port}"'
+RESET_CALL = 'scripts/ci/reset_rate_limits.sh "http://127.0.0.1:${api_port}"'
+
+
+def test_bootstrap_runs_e2e(repo_root: Path) -> None:
+    code = _bootstrap_code(repo_root)
+    assert code.count(E2E_CALL) == 2
+    first = code.index(E2E_CALL)
+    serve = code.index('docker run -d --name "$e2e_container"')
+    auth = code.index('python3 scripts/ci/auth_e2e.py "http://127.0.0.1:${api_port}"')
+    ready = code.index('/readyz")"', auth)
+    rm = code.index('docker rm -f "$e2e_container" >/dev/null', auth)
+    assert serve < auth < ready < first < code.rindex(E2E_CALL) < rm
+    assert '[ "$ready" = "200" ]' in code[ready:first]
+    # the trap that removes the container is set before the image serves
+    assert code.index("trap cleanup EXIT") < serve
+
+
+def test_bootstrap_resets_before_each_e2e_run(repo_root: Path) -> None:
+    code = _bootstrap_code(repo_root)
+    lines = [line.strip() for line in code.splitlines() if line.strip()]
+    e2e = [i for i, line in enumerate(lines) if line == E2E_CALL]
+    assert len(e2e) == 2
+    for i in e2e:
+        assert lines[i - 1] == RESET_CALL
+    assert "TRUNCATE" not in code.upper()
+    assert "rate_limit_counters" not in code
+
+
+def test_auth_leg_stub_probe_is_still_a_stub(repo_root: Path) -> None:
+    # S12 implemented GET /products: the auth leg's "verified token reaches a stub" probe moved
+    # to a GET route that is still S3's 501 stub.
+    import importlib
+
+    from app.api.v1.surface import OPS, is_stub
+
+    script = (repo_root / "scripts" / "ci" / "auth_e2e.py").read_text(encoding="utf-8")
+    probe = re.search(
+        r'"a verified token reaches a stub",\s*501,\s*leg\.call\("GET", "([^"]+)"', script
+    )
+    assert probe is not None
+    ops = [o for o in OPS.values() if o.method == "GET" and o.path == probe.group(1)]
+    assert len(ops) == 1
+    module = importlib.import_module(f"app.api.v1.routers.{ops[0].group}")
+    assert is_stub(getattr(module, ops[0].op_id))

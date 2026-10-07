@@ -6,7 +6,9 @@
 # fails on any breaking change at WARN or above (a removed response field, path or status, a
 # narrowed type). oasdiff rates a removed optional response field, a removed declared error status
 # and a removed optional response header INFO; scripts/ci/oasdiff-levels.txt raises them to WARN,
-# because FE and AI consumers read those too. A base without the file (the PR that first adds it)
+# because FE and AI consumers read those too. scripts/ci/oasdiff-err-ignore.txt lists breaking
+# changes the user approved by name (one line each, METHOD PATH message; T115: ProductCreate.category
+# required, 2026-10-06); empty it once main carries them. A base without the file (the PR that first adds it)
 # is a logged skip; a base ref that does not resolve is an error, never a skip. The container gets
 # no network.
 set -euo pipefail
@@ -31,7 +33,9 @@ trap 'rm -rf "$work"' EXIT
 git show "${base_ref}:${spec}" >"$work/base.json"
 cp "$spec" "$work/head.json"
 cp scripts/ci/oasdiff-levels.txt "$work/levels.txt"
+cp scripts/ci/oasdiff-err-ignore.txt "$work/err-ignore.txt"
 chmod -R a+rX "$work"
 docker run --rm --network none -v "$work:/specs:ro" "$image" \
-  breaking /specs/base.json /specs/head.json --fail-on WARN --severity-levels /specs/levels.txt
+  breaking /specs/base.json /specs/head.json --fail-on WARN --severity-levels /specs/levels.txt \
+  --err-ignore /specs/err-ignore.txt
 echo "oasdiff: no breaking change against ${base_ref}"

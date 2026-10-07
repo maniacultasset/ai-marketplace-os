@@ -27,6 +27,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
 from starlette.types import Scope
 
+from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.request_context import REQUEST_ID_PATTERN, current_request_id, new_request_id
 
 CORRELATION_ID_PATTERN: Final = REQUEST_ID_PATTERN
@@ -297,6 +298,48 @@ async def _not_implemented(request: Request, exc: Exception) -> JSONResponse:
     )
 
 
+# ---- domain errors (S12 T1): each becomes the `ApiError` a route would have raised ----
+
+_INPUT_MESSAGES: Final[Mapping[ErrorCode, str]] = MappingProxyType(
+    {ErrorCode.UNKNOWN_FACT_KEY: "Unknown key."}
+)
+_PATH_PART: Final = re.compile(r"([^.\[\]]+)|\[(\d{1,4})\]")
+
+
+def path_segments(field: str) -> list[str | int]:
+    """`images[0]` -> `["images", 0]`, `attributes.color` -> `["attributes", "color"]`. A part
+    that is not a safe name becomes `<key>`, as in `validation_details`."""
+    parts: list[str | int] = []
+    for name, index in _PATH_PART.findall(field):
+        parts.append(int(index) if index else _safe_loc_part(name))
+    return parts[:_MAX_LOC_PARTS]
+
+
+def domain_api_error(exc: Exception) -> ApiError:
+    """The `ApiError` for a `DomainError` the routes let through (S12 T1)."""
+    if isinstance(exc, ConflictError):
+        if exc.code is ErrorCode.INTERNAL_ERROR:
+            return ApiError(500, ErrorCode.INTERNAL_ERROR)
+        return ApiError(409, exc.code)
+    if isinstance(exc, NotFoundError):
+        return ApiError(404, ErrorCode.NOT_FOUND, f"{path_label(exc.field)} not found.")
+    if isinstance(exc, InputError):
+        msg = _INPUT_MESSAGES.get(exc.code, "Invalid value.")
+        return ApiError(
+            422, exc.code, details=[{"loc": ["body", *path_segments(exc.field)], "msg": msg}]
+        )
+    raise TypeError(f"no HTTP mapping for {type(exc).__name__}")
+
+
+def path_label(field: str) -> str:
+    """The field name as the static message shows it: a server constant, or `resource`."""
+    return field if _SAFE_LOC_PART.fullmatch(field) else "resource"
+
+
+async def _domain_error(request: Request, exc: Exception) -> JSONResponse:
+    return await _api_error(request, domain_api_error(exc))
+
+
 async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
     # Starlette's ServerErrorMiddleware calls this, sends the response, then re-raises `exc` to the
     # server, so the failure is still logged; the body is fixed text with no exception detail.
@@ -306,6 +349,8 @@ async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
 def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(ApiError, _api_error)
     app.add_exception_handler(NotImplementedYet, _not_implemented)
+    for domain in (ConflictError, NotFoundError, InputError):
+        app.add_exception_handler(domain, _domain_error)
     app.add_exception_handler(RequestValidationError, _validation_error)
     app.add_exception_handler(StarletteHTTPException, _http_exception)
     app.add_exception_handler(Exception, _unhandled)

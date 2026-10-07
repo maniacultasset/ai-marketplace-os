@@ -301,3 +301,21 @@ async def api(auth_db: Conn) -> AsyncIterator[Any]:
     transport = httpx.ASGITransport(app=create_app(), client=("203.0.113.7", 40000))
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
         yield client
+
+
+# ---- S12: the products suites (CODE-PLAN S12 T8) ----
+
+
+@pytest.fixture
+def products_world(auth_db: Conn) -> Any:
+    """`auth_db` plus the S12 dictionary rows and the two-tenant world (one user per role), with
+    the rate-limit counters emptied last, so no test inherits another's tenant budget."""
+    from tests.support.rate_limits import reset_rate_limits
+
+    from .auth_support import build_world
+    from .products_support import seed_dictionary
+
+    seed_dictionary(auth_db)
+    world = build_world(auth_db)
+    reset_rate_limits(auth_db)
+    return world

@@ -33,7 +33,7 @@ def test_implemented_routes_not_presence_only(v1_app: FastAPI) -> None:
     assert failures == []
 
 
-# The ops S10 implements; every other /api/v1 route is still S3's 501 stub.
+# The ops S10 and S12 implement; every other /api/v1 route is still S3's 501 stub.
 IMPLEMENTED: frozenset[str] = frozenset(
     {
         "auth_login",
@@ -43,6 +43,9 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "auth_switch_tenant",
         "members_list",
         "members_patch",
+        "products_create",
+        "products_get",
+        "products_list",
     }
 )
 
