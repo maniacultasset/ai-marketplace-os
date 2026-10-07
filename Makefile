@@ -266,9 +266,16 @@ e2e:
 	export FAKE_URL="$(FAKE_MARKETPLACE_URL)" REFRESH_ONCE="$(REFRESH_ONCE)"; \
 	for script in $(E2E_DIR)/*.sh; do \
 	  [ -e "$$script" ] || { echo "make e2e: no scripts in $(E2E_DIR)" >&2; exit 1; }; \
+	  [ "$$(basename "$$script")" != onboarding.sh ] || continue; \
 	  $(RESET_LIMITS) "$$base" || exit $$?; \
 	  "$$script" "$$base" || exit $$?; \
 	done
+
+# ONBOARDING.md on a clean clone of this branch (S14b T25): its own compose project and free ports,
+# every documented command, then the clone, its stack and its processes removed. Not a CI check.
+.PHONY: e2e-onboarding
+e2e-onboarding:
+	scripts/e2e/onboarding.sh
 
 .PHONY: bootstrap
 bootstrap:

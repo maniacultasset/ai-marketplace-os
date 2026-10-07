@@ -12,7 +12,8 @@ a plain argv (`shlex.split`): shell metacharacters are refused, so a line can ne
 or redirect.
 
 Usage: python3 scripts/ci/onboarding_commands.py ONBOARDING.md
-prints one tab-separated `mode<TAB>wait_path<TAB>reason<TAB>command` line per command.
+prints one `mode wait_path reason command` line per command, fields split by the ASCII unit
+separator (0x1f), which a shell `read` keeps even when a field is empty (a tab would collapse).
 """
 
 from __future__ import annotations
@@ -28,7 +29,8 @@ Mode = Literal["run", "background", "skip"]
 _FENCE: Final = re.compile(r"^```\s*([A-Za-z0-9_-]*)\s*$")
 _MARKER: Final = re.compile(r"\s+#\s*(background|skip):\s*(.*)$")
 _WAIT: Final = re.compile(r"^wait\s+(/[A-Za-z0-9/_-]*)$")
-_FORBIDDEN: Final = frozenset(";|&<>$`\\(){}*?!~\n")
+_FORBIDDEN: Final = frozenset(";|&<>$`\\(){}*?!~\n\x1f")
+SEPARATOR: Final = "\x1f"
 
 
 class OnboardingError(ValueError):
@@ -95,7 +97,7 @@ def main(argv: list[str]) -> int:
         sys.stderr.write(f"onboarding_commands: {exc}\n")
         return 1
     for c in commands:
-        print("\t".join((c.mode, c.wait_path or "", c.reason or "", c.line)))
+        print(SEPARATOR.join((c.mode, c.wait_path or "", c.reason or "", c.line)))
     return 0
 
 
