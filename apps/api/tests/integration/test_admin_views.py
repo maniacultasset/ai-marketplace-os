@@ -159,4 +159,7 @@ def test_admin_twelve_views_registered() -> None:
     assert sorted(v.table for v in ADMIN_VIEWS) == sorted(TABLES)
     admin = Admin(FastAPI(), session_maker=PlatformSessionMaker(), title=TITLE)  # type: ignore[arg-type]
     register_views(admin)
-    assert len(admin.views) == 12
+    from sqladmin import ModelView
+
+    assert len([v for v in admin.views if isinstance(v, ModelView)]) == 12
+    assert len(admin.views) == 13  # plus the ops pages (T22)

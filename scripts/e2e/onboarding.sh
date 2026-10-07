@@ -96,7 +96,11 @@ for line in (d / ".env.example").read_text(encoding="utf-8").splitlines():
     out.append(line)
 (d / ".env").write_text("\n".join(out) + "\n", encoding="utf-8")
 PY
-  (cd "$dir" && scripts/ci/worktree_env.sh check) || exit 1
+  # The clone's own files decide: a caller's URLs and ports (`make api-tests` exports DATABASE_URL)
+  # must not stand in for them.
+  (cd "$dir" && env -u DATABASE_URL -u ALEMBIC_DATABASE_URL -u S3_ENDPOINT_URL -u PORT \
+    -u COMPOSE_PROJECT_NAME -u PG_HOST_PORT -u MINIO_API_HOST_PORT -u MINIO_CONSOLE_HOST_PORT \
+    -u API_HOST_PORT -u MOCK_HOST_PORT scripts/ci/worktree_env.sh check) || exit 1
   log "prepared $dir (project $project)"
 }
 

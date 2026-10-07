@@ -78,12 +78,11 @@ def _scalar(conn: Conn, query: str, params: list[Any]) -> Any:
 async def seam(auth_db: Conn, monkeypatch: pytest.MonkeyPatch) -> Seam:
     from app.cli import run_seed
     from app.core.config import get_settings
+    from app.db import seed_ops
     from app.db.seed_ops import seed_tenant_id
     from app.repositories.jobs import EnqueueSpec
     from app.repositories.uow import tenant_uow
     from mkos_schemas.enums import JobKind
-
-    from . import factories as f
 
     reset_queue(auth_db)
     for name in ("OPENAI_API_KEY", "DEEPSEEK_API_KEY", "GCP_PROJECT_ID", "KMS_KEY_URI"):
@@ -95,7 +94,7 @@ async def seam(auth_db: Conn, monkeypatch: pytest.MonkeyPatch) -> Seam:
     product = _scalar(
         auth_db, "SELECT id FROM products WHERE tenant_id = %s AND sku = 'KURTA-001'", [tenant]
     )
-    listing = f.listing(auth_db, tenant, product_id=product, category=CATEGORY)
+    listing = seed_ops.demo_listing_ids()[0]  # the demo seed's KURTA-001 x amazon listing (T19)
     spec = EnqueueSpec(
         kind=JobKind.LISTING_GENERATE,
         entity_type="listing",

@@ -1333,8 +1333,14 @@ def test_onboarding_e2e_allocates_ports_not_defaults(repo_root: Path, tmp_path: 
     assert f"@localhost:{ports['PG_HOST_PORT']}/marketplace_os" in env
     assert f"S3_ENDPOINT_URL=http://localhost:{ports['MINIO_API_HOST_PORT']}" in env
     assert f"PORT={ports['API_HOST_PORT']}\n" in env
+    leaked = {"DATABASE_URL", "ALEMBIC_DATABASE_URL", "S3_ENDPOINT_URL", "PORT", *ports}
+    clean = {k: v for k, v in os.environ.items() if k not in leaked | {"COMPOSE_PROJECT_NAME"}}
     check = subprocess.run(
-        ["scripts/ci/worktree_env.sh", "check"], cwd=clone, capture_output=True, text=True
+        ["scripts/ci/worktree_env.sh", "check"],
+        cwd=clone,
+        capture_output=True,
+        text=True,
+        env=clean,
     )
     assert check.returncode == 0, check.stderr
     forced = _prepare(
