@@ -32,6 +32,12 @@ dictionary tables as `migrator` (ALEMBIC_DATABASE_URL), after every `upgrade` (D
 an unchanged file writes no row. It prints one line: `ok (...)` on stdout and exit 0, or
 `failed (<class>[, SQLSTATE])` on stderr and exit 1.
 
+`templates load --file PATH` (S13 B7) loads a JSON list of `{version, product_type, template}`
+into `category_templates` as `migrator`, in one transaction: a stored version with the same
+content is a no-op, one with other content refuses the file ("bump version", exit 1, nothing
+written), a new version is inserted and promoted when it is newer than the current one (audited
+with a NULL tenant). An invalid file exits 1, a missing one 2.
+
 `jobs dead-letter list [--tenant SLUG] [--limit 1..500]` and `jobs requeue <job_id> --staff-email E
 --reason R` are the staff dead-letter tools (S13 PLAN D2; DATABASE.md:312; BACKEND-ARCHITECTURE
 :990-1031): no `/api/v1` path exists for them. Each command mints its own `request_id`. The list
@@ -372,6 +378,55 @@ async def run_dictionary_sync(path: Path | None) -> int:
     return EXIT_OK
 
 
+EXIT_NO_FILE: Final = 2
+
+
+async def _templates_load(admin_url: str, path: Path) -> tuple[int, int, int]:
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from app.db.platform_loads import load_template_file, load_templates
+
+    entries = load_template_file(path)
+    engine = create_async_engine(admin_url)
+    try:
+        counts = await load_templates(engine, entries)
+    finally:
+        await engine.dispose()
+    return counts.inserted, counts.unchanged, counts.promoted
+
+
+async def run_templates_load(path: Path) -> int:
+    from pydantic import ValidationError
+
+    from app.core.config import get_settings
+    from app.db.platform_loads import TemplateConflict
+
+    settings = get_settings()
+    if settings.alembic_database_url is None:
+        sys.stderr.write("templates load: failed (ALEMBIC_DATABASE_URL is required)\n")
+        return EXIT_FAILED
+    try:
+        inserted, unchanged, promoted = await _templates_load(settings.alembic_database_url, path)
+    except TemplateConflict as exc:
+        sys.stderr.write(
+            f"templates load: refused: {exc.key} already holds other content; bump version "
+            "(nothing was written)\n"
+        )
+        return EXIT_FAILED
+    except (ValidationError, ValueError) as exc:
+        sys.stderr.write(
+            f"templates load: invalid file ({type(exc).__name__}); nothing was written\n"
+        )
+        return EXIT_FAILED
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"templates load: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    sys.stdout.write(
+        f"templates load: ok ({inserted} inserted, {unchanged} unchanged, {promoted} promoted)\n"
+    )
+    return EXIT_OK
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     groups = parser.add_subparsers(dest="group", required=True)
@@ -396,7 +451,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     dictionary_commands = dictionary.add_subparsers(dest="command", required=True)
     sync = dictionary_commands.add_parser("sync", help="upsert attribute_dictionary.json")
     sync.add_argument("--file", type=Path, default=None, help=argparse.SUPPRESS)
+    templates = groups.add_parser("templates", help="category templates (migrator)")
+    templates_commands = templates.add_subparsers(dest="command", required=True)
+    load = templates_commands.add_parser("load", help="load versioned category templates")
+    load.add_argument("--file", type=Path, required=True)
     args = parser.parse_args(argv)
+    if args.group == "templates":
+        if not args.file.is_file():
+            sys.stderr.write("templates load: no such file\n")
+            return EXIT_NO_FILE
+        return asyncio.run(run_templates_load(args.file))
     if args.group == "dictionary":
         return asyncio.run(run_dictionary_sync(args.file))
     if args.group == "jobs":

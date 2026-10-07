@@ -22,12 +22,25 @@ from importlib import resources
 from pathlib import Path
 from typing import Annotated, Any, Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
-from sqlalchemy import Connection, literal_column, tuple_, update
+from mkos_schemas.jobs import CategoryTemplate as CategoryTemplateModel
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    TypeAdapter,
+    model_validator,
+)
+from sqlalchemy import Connection, func, literal_column, select, text, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
-from app.db.models.platform import AttributeColumn, AttributeDefinition, CategoryAttribute
+from app.db.models.platform import (
+    AttributeColumn,
+    AttributeDefinition,
+    CategoryAttribute,
+    CategoryTemplate,
+)
 
 DICTIONARY_RESOURCE: Final = ("mkos_schemas", "data/attribute_dictionary.json")
 Key = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{1,63}$")]
@@ -222,3 +235,166 @@ async def sync_dictionary(engine: AsyncEngine, path: Path | None = None) -> Sync
     dictionary = load_dictionary(path)
     async with engine.begin() as connection:
         return await sync_rows(connection, dictionary)
+
+
+# ---- `templates load` (S13 B7; PD11; DATABASE.md §5.2 category_templates :523-545) ----
+#
+# `category_templates` is versioned (`ct_version_key (marketplace, category, version)`, one
+# `is_current` per pair) and the 0004 guard keeps content immutable, so there is no upsert. Each
+# entry, keyed on `(marketplace, category, version)`: the same key with the same content
+# (canonical `attributes`, `external_category_id`, `product_type`) is a no-op; the same key with
+# other content refuses the whole file ("bump version"), before any row is written; a new
+# version is inserted not current (`source='manual'`, no `raw_schema_key`) and promoted when it is
+# newer than the current one. The whole file is one transaction.
+
+TEMPLATE_SOURCE: Final = "manual"
+
+
+class TemplateLoad(_Strict):
+    version: Annotated[int, Field(ge=1)]
+    product_type: Annotated[str, StringConstraints(min_length=1, max_length=200)]
+    template: CategoryTemplateModel
+
+
+class TemplateConflict(Exception):  # noqa: N818 - the CLI names it in its exit line
+    """A stored version holds other content: the file must bump the version."""
+
+    def __init__(self, marketplace: str, category: str, version: int) -> None:
+        super().__init__(f"{marketplace}/{category} v{version}")
+        self.key = f"{marketplace}/{category} v{version}"
+
+
+@dataclass(frozen=True, slots=True)
+class TemplateCounts:
+    inserted: int
+    unchanged: int
+    promoted: int
+
+
+def load_template_file(path: Path) -> list[TemplateLoad]:
+    """The file as `list[TemplateLoad]`; `FileNotFoundError` and `ValidationError` propagate."""
+    return TypeAdapter(list[TemplateLoad]).validate_json(path.read_bytes())
+
+
+def _template_content(entry: TemplateLoad) -> dict[str, Any]:
+    body: dict[str, Any] = entry.template.model_dump(
+        mode="json", exclude={"marketplace", "category", "external_category_id"}
+    )
+    return body
+
+
+async def promote_template(
+    connection: AsyncConnection, marketplace: str, category: str, version: int
+) -> bool:
+    """Make `version` the current template of `(marketplace, category)`: the two ordered
+    UPDATEs of DATABASE.md:543 (the old current off, then the new one on), in the caller's
+    transaction, audited with a NULL tenant. False (and nothing written) when it is already
+    current. `LookupError` when that version does not exist."""
+    table = CategoryTemplate.__table__
+    target = (
+        await connection.execute(
+            select(table.c.id, table.c.is_current).where(
+                table.c.marketplace == marketplace,
+                table.c.category == category,
+                table.c.version == version,
+            )
+        )
+    ).one_or_none()
+    if target is None:
+        raise LookupError("no such template version")
+    if target.is_current:
+        return False
+    await connection.execute(
+        update(CategoryTemplate)
+        .where(
+            CategoryTemplate.marketplace == marketplace,
+            CategoryTemplate.category == category,
+            CategoryTemplate.is_current.is_(True),
+        )
+        .values(is_current=False)
+    )
+    await connection.execute(
+        update(CategoryTemplate).where(CategoryTemplate.id == target.id).values(is_current=True)
+    )
+    await connection.execute(
+        text(
+            "SELECT audit(NULL, 'system', NULL, 'category_template.promoted', "
+            "'category_template', :id, NULL, CAST(:after AS jsonb), :reason, NULL, NULL, NULL, "
+            "NULL)"
+        ),
+        {
+            "id": target.id,
+            "after": json.dumps({"marketplace": marketplace, "category": category}),
+            "reason": f"templates load: version {version}",
+        },
+    )
+    return True
+
+
+async def load_template_rows(
+    connection: AsyncConnection, entries: Sequence[TemplateLoad]
+) -> TemplateCounts:
+    """The load on an open transaction (`load_templates` opens one, as migrator)."""
+    await connection.run_sync(_assume_migrator)
+    table = CategoryTemplate.__table__
+    inserted = unchanged = promoted = 0
+    ordered = sorted(
+        entries, key=lambda e: (e.template.marketplace.value, e.template.category, e.version)
+    )
+    for entry in ordered:
+        marketplace, category = entry.template.marketplace.value, entry.template.category
+        content = _template_content(entry)
+        stored = (
+            await connection.execute(
+                select(table.c.attributes, table.c.external_category_id, table.c.product_type)
+                .where(
+                    table.c.marketplace == marketplace,
+                    table.c.category == category,
+                    table.c.version == entry.version,
+                )
+                .with_for_update()
+            )
+        ).one_or_none()
+        if stored is not None:
+            same = (
+                stored.attributes == content
+                and stored.external_category_id == entry.template.external_category_id
+                and stored.product_type == entry.product_type
+            )
+            if not same:
+                raise TemplateConflict(marketplace, category, entry.version)
+            unchanged += 1
+            continue
+        await connection.execute(
+            insert(CategoryTemplate).values(
+                marketplace=marketplace,
+                category=category,
+                version=entry.version,
+                is_current=False,
+                product_type=entry.product_type,
+                external_category_id=entry.template.external_category_id,
+                source=TEMPLATE_SOURCE,
+                raw_schema_key=None,
+                attributes=content,
+            )
+        )
+        inserted += 1
+        current = (
+            await connection.execute(
+                select(func.max(table.c.version)).where(
+                    table.c.marketplace == marketplace,
+                    table.c.category == category,
+                    table.c.is_current.is_(True),
+                )
+            )
+        ).scalar_one_or_none()
+        if (current is None or current < entry.version) and await promote_template(
+            connection, marketplace, category, entry.version
+        ):
+            promoted += 1
+    return TemplateCounts(inserted=inserted, unchanged=unchanged, promoted=promoted)
+
+
+async def load_templates(engine: AsyncEngine, entries: Sequence[TemplateLoad]) -> TemplateCounts:
+    async with engine.begin() as connection:
+        return await load_template_rows(connection, entries)
