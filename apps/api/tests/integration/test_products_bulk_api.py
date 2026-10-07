@@ -363,7 +363,7 @@ class _HeldStorage(ObjectStorage):
         await self.release.wait()
         self.data[key] = data
 
-    async def get(self, bucket: str, key: str) -> bytes:
+    async def get(self, bucket: str, key: str, *, max_bytes: int | None = None) -> bytes:
         return self.data[key]
 
 
