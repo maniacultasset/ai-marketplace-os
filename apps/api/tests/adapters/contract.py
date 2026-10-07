@@ -91,6 +91,25 @@ async def run_contract_suite(factory: Factory) -> list[str]:
         assert result.status == "failed", result.status
         assert result.error is not None and result.error.status == "failed", "no failed report"
 
+    async def rejected_create_not_found() -> None:
+        sent = item()
+        everything = dict.fromkeys(submitted_fields(sent.listing), ("X1", "Rejected."))
+        adapter = factory(everything)
+        await adapter.create_listing(sent)
+        try:
+            await adapter.get_listing(sent.seller_sku)
+        except ListingNotFound:
+            return
+        raise AssertionError("get_listing found a listing whose create was fully rejected")
+
+    async def partial_create_reads_partial() -> None:
+        adapter = factory(title_fail)
+        sent = item()
+        await adapter.create_listing(sent)
+        got = _is_result(await adapter.get_listing(sent.seller_sku), "get_listing")
+        assert got.status == "partially_published", got.status
+        assert got.marketplace_state == "partially_live", got.marketplace_state
+
     async def replay_is_equal() -> None:
         adapter = factory({})
         sent = item(key="replay-key")
@@ -146,6 +165,8 @@ async def run_contract_suite(factory: Factory) -> list[str]:
         ("one_field_result_per_field", one_result_per_field),
         ("partial_keeps_raw_code_and_text", partial_keeps_raw),
         ("all_failed_is_failed", all_failed_is_failed),
+        ("rejected_create_is_not_found", rejected_create_not_found),
+        ("partial_create_reads_back_partial", partial_create_reads_partial),
         ("replayed_key_is_equal", replay_is_equal),
         ("update_touches_only_given_fields", update_only_given),
         ("unknown_sku_raises", unknown_sku_raises),

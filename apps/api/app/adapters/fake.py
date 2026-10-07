@@ -5,6 +5,9 @@ No network and no clock. It behaves as the adapter contract demands:
 - a field named in `fail_fields` fails with `MARKETPLACE_UNKNOWN_ERROR`, its raw code and raw
   text kept on the item; some fields failed → `partially_published` (`API_REJECTED_PARTIAL`), all
   failed → `failed` (`PUBLISH_FAILED`), none → `published`;
+- an all-failed create stores nothing and counts no create, so the SKU stays unknown;
+- `get_listing` reads back the status and marketplace state of the last write that stored
+  something; an all-failed update leaves an existing listing as it was;
 - `update_listing` writes only the given fields; an unknown SKU raises `ListingNotFound`;
 - `get_performance` refuses a range with `to_date < from_date`.
 """
@@ -13,6 +16,8 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from dataclasses import field as dc_field
 from datetime import date, timedelta
 from typing import Final
 from uuid import UUID
@@ -42,6 +47,14 @@ def _retryable(code: ErrorCode) -> bool:
     return ERROR_CODE_META[code].retry_class in (RetryClass.AUTO_RETRY, RetryClass.AI_CORRECT)
 
 
+@dataclass
+class _Stored:
+    listing_id: UUID
+    status: str
+    state: MarketplaceState
+    values: dict[str, object] = dc_field(default_factory=dict)
+
+
 class FakeAdapter(MarketplaceAdapter):
     def __init__(
         self, marketplace: Marketplace | str, *, fail_fields: Mapping[str, tuple[str, str]] = {}
@@ -49,7 +62,7 @@ class FakeAdapter(MarketplaceAdapter):
         self.marketplace = Marketplace(marketplace)
         self._fail = dict(fail_fields)
         self._results: dict[str, ListingResult] = {}
-        self._store: dict[str, tuple[UUID, dict[str, object]]] = {}
+        self._store: dict[str, _Stored] = {}
         self._lock = asyncio.Lock()
         self.creates = 0
 
@@ -58,7 +71,7 @@ class FakeAdapter(MarketplaceAdapter):
     def stored(self, seller_sku: str) -> dict[str, object]:
         if seller_sku not in self._store:
             raise ListingNotFound(seller_sku)
-        return dict(self._store[seller_sku][1])
+        return dict(self._store[seller_sku].values)
 
     # ---- results ----
 
@@ -140,13 +153,17 @@ class FakeAdapter(MarketplaceAdapter):
             if not create and sku not in self._store:
                 raise ListingNotFound(sku)
             result = self._result(item, fields)
-            written = {f: v for f, v in self._values(item, fields).items() if f not in self._fail}
-            if sku in self._store:
-                self._store[sku][1].update(written)
-            else:
-                self._store[sku] = (item.listing_id, written)
-                self.creates += 1
             self._results[item.idempotency_key] = result
+            if result.status == "failed":
+                return result  # nothing was accepted: no new listing, an existing one unchanged
+            written = {f: v for f, v in self._values(item, fields).items() if f not in self._fail}
+            state = result.marketplace_state or MarketplaceState.LIVE
+            stored = self._store.get(sku)
+            if stored is None:
+                stored = self._store[sku] = _Stored(item.listing_id, result.status, state)
+                self.creates += 1
+            stored.values.update(written)
+            stored.status, stored.state = result.status, state
             return result
 
     # ---- the interface ----
@@ -154,16 +171,16 @@ class FakeAdapter(MarketplaceAdapter):
     async def get_listing(self, seller_sku: str) -> ListingResult:
         if seller_sku not in self._store:
             raise ListingNotFound(seller_sku)
-        listing_id, values = self._store[seller_sku]
+        stored = self._store[seller_sku]
         return ListingResult.model_validate(
             {
-                "listing_id": listing_id,
+                "listing_id": stored.listing_id,
                 "marketplace": self.marketplace,
                 "external_id": f"fake-{seller_sku}",
-                "status": "published",
+                "status": stored.status,
                 "idempotency_key": f"get:{seller_sku}",
-                "fields": [FieldResult(field=f, status="succeeded") for f in sorted(values)],
-                "marketplace_state": MarketplaceState.LIVE,
+                "fields": [FieldResult(field=f, status="succeeded") for f in sorted(stored.values)],
+                "marketplace_state": stored.state,
             }
         )
 
