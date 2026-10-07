@@ -1092,3 +1092,31 @@ def test_e2e_marketplace_connect_ends_revoked(repo_root: Path) -> None:
     assert account_steps[-2:] == ["revoke_200", "revoke_again_200"]
     after = code[code.index("step revoke_200") :]
     assert "connect_confirm" not in after and "/marketplaces/connect" not in after
+
+
+S15_LEGS = {
+    "lint-imports-unseal-from-router": (
+        "lint-imports",
+        "only app.adapters and app.workers import the decrypt path BROKEN",
+    ),
+    "tenant-isolation-hash-branch-pending": ("tenant-isolation", "hides_pending_row"),
+    "api-tests-revoke-no-shred": ("api-tests", "ck_ma_revoked_shredded|test_revoke_crypto_shreds"),
+}
+
+
+def test_prove_gates_s15_legs(repo_root: Path) -> None:
+    code = _code((repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8"))
+    for name, (gate, regex) in S15_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+    assert "import app.adapters.credentials" in code
+    assert "AND token_enc IS NULL" in code and "0007_oauth_pending.py" in code
+    assert "SET status = 'revoked', token_enc = NULL" in code
+    # the migration leg re-migrates mos_iso afterwards with the checkout's own revisions
+    hash_leg = code.index("leg tenant-isolation-hash-branch-pending")
+    assert code.index("remigrate_iso >>", hash_leg) > hash_leg
+    docker = code.index('if [ "$with_docker" -eq 1 ]; then')
+    assert code.index("leg api-tests-revoke-no-shred") > docker
+    assert hash_leg > docker
+    assert code.index("leg lint-imports-unseal-from-router") < docker
