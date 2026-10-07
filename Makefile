@@ -52,7 +52,7 @@ endif
 
 .PHONY: help
 help:
-	@echo "make dev | hooks | test-unit | bootstrap-db | test-db | mock | mock-smoke | seed | e2e | <check-id>"
+	@echo "make dev | worker | hooks | test-unit | bootstrap-db | test-db | mock | mock-smoke | seed | e2e | <check-id>"
 
 .PHONY: test-unit
 test-unit:
@@ -191,6 +191,12 @@ dev:
 	uv run --frozen alembic -c apps/api/alembic.ini upgrade head
 	$(MAKE) hooks
 	uv run --frozen uvicorn app.main:app --reload --port $(API_HOST_PORT) --app-dir apps/api
+
+# A local worker beside `make dev` (S13): both queues, the same env as the dev API (.env, as app_rw).
+.PHONY: worker
+worker:
+	APP_ROLE=worker APP_NAME=marketplace-os-worker OTEL_SERVICE_NAME=marketplace-os-worker \
+	  uv run --frozen python -m app.workers.main
 
 # The local /api/v1 mock (S3 D5): committed openapi.json examples on 127.0.0.1 only. `Prefer:
 # code=<status>` answers a declared error example. `mock-smoke` starts it on a free port and probes it.

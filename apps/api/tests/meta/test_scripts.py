@@ -930,3 +930,17 @@ def test_auth_leg_stub_probe_is_still_a_stub(repo_root: Path) -> None:
     assert len(ops) == 1
     module = importlib.import_module(f"app.api.v1.routers.{ops[0].group}")
     assert is_stub(getattr(module, ops[0].op_id))
+
+
+# ---- S13 A8: a local worker beside `make dev` ----
+
+
+def test_make_worker_target(repo_root: Path) -> None:
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert ".PHONY: worker\nworker:\n" in makefile
+    block = makefile.split("\nworker:\n", 1)[1].split("\n\n", 1)[0]
+    assert "APP_ROLE=worker" in block
+    assert "APP_NAME=marketplace-os-worker" in block
+    assert "OTEL_SERVICE_NAME=marketplace-os-worker" in block
+    assert "uv run --frozen python -m app.workers.main" in block
+    assert "uvicorn" not in block and "--port" not in block

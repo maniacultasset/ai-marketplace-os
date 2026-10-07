@@ -115,7 +115,7 @@ def test_entrypoint_roles(entrypoint: Path) -> None:
     assert subprocess.run(["sh", "-n", str(entrypoint)], check=False).returncode == 0
     bogus = _run_entrypoint(entrypoint, "bogus")
     assert bogus.returncode == 64
-    assert "api|migrate|seed|shell" in bogus.stderr
+    assert "api|worker|migrate|seed|shell" in bogus.stderr
     shell = _run_entrypoint(entrypoint, "shell", "-c", "print(1)")
     assert shell.returncode == 0, shell.stderr
     assert shell.stdout == "1\n"
@@ -204,7 +204,7 @@ def test_entrypoint_seed_role_verbatim(entrypoint: Path) -> None:
 def test_entrypoint_unknown_role_lists_seed(entrypoint: Path) -> None:
     bogus = _run_entrypoint(entrypoint, "bogus")
     assert bogus.returncode == 64
-    assert "unknown APP_ROLE='bogus' (api|migrate|seed|shell)" in bogus.stderr
+    assert "unknown APP_ROLE='bogus' (api|worker|migrate|seed|shell)" in bogus.stderr
 
 
 def test_entrypoint_no_access_log(entrypoint: Path) -> None:
