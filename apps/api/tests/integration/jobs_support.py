@@ -1,0 +1,115 @@
+"""The S13 job-spine test world: the auth world (`acme`, `bharat`, one member per role) on an
+emptied test database, the app under test as `app_rw`, and an empty procrastinate queue.
+
+Rows are built and read back on the admin (superuser, autocommit) connection, so a row is seen
+there only if the code under test committed it.
+"""
+
+from __future__ import annotations
+
+import uuid
+from collections.abc import AsyncIterator, Iterator
+from dataclasses import dataclass
+from typing import Any
+
+import psycopg
+import pytest
+from psycopg.types.json import Jsonb
+
+from .auth_support import World, build_world
+
+Conn = psycopg.Connection[tuple[Any, ...]]
+QUEUE_TABLES = (
+    "procrastinate_events",
+    "procrastinate_periodic_defers",
+    "procrastinate_jobs",
+    "procrastinate_workers",
+)
+
+
+def reset_queue(conn: Conn) -> None:
+    conn.execute(f"TRUNCATE {', '.join(QUEUE_TABLES)} RESTART IDENTITY CASCADE")
+
+
+@dataclass
+class JobWorld:
+    conn: Conn
+    world: World
+
+    def tenant(self, slug: str) -> uuid.UUID:
+        return self.world.tenant(slug)
+
+    def owner(self, slug: str) -> uuid.UUID:
+        return self.world.user(f"owner@{slug}.test")
+
+
+@pytest.fixture
+async def jobs_db(auth_db: Conn) -> AsyncIterator[JobWorld]:
+    from app.db.queue import get_queue_app
+
+    reset_queue(auth_db)
+    get_queue_app.cache_clear()
+    yield JobWorld(auth_db, build_world(auth_db))
+    get_queue_app.cache_clear()
+
+
+@pytest.fixture
+def override_body() -> Iterator[Any]:
+    """Register fake bodies for the test only; the registry is restored afterwards."""
+    from app.workers import registry
+
+    saved = dict(registry.REGISTRY)
+
+    def install(kind: Any, body: Any) -> None:
+        registry.register(kind, body)
+
+    yield install
+    registry.REGISTRY.clear()
+    registry.REGISTRY.update(saved)
+
+
+def insert_job(conn: Conn, tenant_id: uuid.UUID, **columns: Any) -> uuid.UUID:
+    """A queued `bulk_import` job on an `import` entity, written by the admin login."""
+    values: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "kind": "bulk_import",
+        "entity_type": "import",
+        "entity_id": uuid.uuid4(),
+        "payload_json": {},
+        "correlation_id": uuid.uuid4(),
+        **columns,
+    }
+    names = ", ".join(values)
+    marks = ", ".join(["%s"] * len(values))
+    row = conn.execute(
+        f"INSERT INTO job_runs ({names}) VALUES ({marks}) RETURNING id",  # noqa: S608
+        [Jsonb(v) if isinstance(v, dict) else v for v in values.values()],
+    ).fetchone()
+    assert row is not None
+    return row[0]  # type: ignore[no-any-return]
+
+
+def job_row(conn: Conn, job_id: uuid.UUID) -> dict[str, Any]:
+    cur = conn.execute("SELECT * FROM job_runs WHERE id = %s", [job_id])
+    names = [d.name for d in cur.description or ()]
+    row = cur.fetchone()
+    assert row is not None, f"no job_runs row {job_id}"
+    return dict(zip(names, row, strict=True))
+
+
+def queue_row(conn: Conn, queue_job_id: str | int) -> dict[str, Any]:
+    cur = conn.execute(
+        "SELECT id, queue_name, task_name, status, args, attempts, scheduled_at "
+        "FROM procrastinate_jobs WHERE id = %s",
+        [int(queue_job_id)],
+    )
+    names = [d.name for d in cur.description or ()]
+    row = cur.fetchone()
+    assert row is not None, f"no procrastinate_jobs row {queue_job_id}"
+    return dict(zip(names, row, strict=True))
+
+
+def count(conn: Conn, query: str, params: list[Any] | None = None) -> int:
+    row = conn.execute(query, params or []).fetchone()
+    assert row is not None
+    return int(row[0])
