@@ -484,6 +484,13 @@ def test_config_sentry_required(
     message = abort(monkeypatch, **env)
     assert f"APP_ENV={app_env} requires SENTRY_DSN for APP_ROLE={role}" in message
     env["SENTRY_DSN"] = TEST_SENTRY_DSN
+    if (app_env, role) == ("production", "worker"):
+        # S14b CD2: this environment has the pipeline stub installed, which a production worker
+        # refuses (tests/unit/test_config_boot.py); the SENTRY_DSN check itself is satisfied.
+        message = abort(monkeypatch, **env)
+        assert "requires SENTRY_DSN" not in message
+        assert "refuses mkos-pipeline-stub" in message
+        return
     assert boot(monkeypatch, **env).sentry_dsn == TEST_SENTRY_DSN
 
 

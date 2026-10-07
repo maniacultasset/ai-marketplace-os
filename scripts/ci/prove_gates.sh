@@ -103,6 +103,11 @@ seed_no_uv_project_env() {
   cp .env.example .env  # as the CI job does before `make bootstrap`
   replace apps/api/Dockerfile $'ENV UV_PROJECT_ENVIRONMENT=/opt/venv\n' ''
 }
+# S14b T14: the image without the pipeline stub's source cannot import mkos_pipeline.
+seed_bootstrap_no_pipeline() {
+  cp .env.example .env  # as the CI job does before `make bootstrap`
+  replace apps/api/Dockerfile $'COPY packages/pipeline-stub/ packages/pipeline-stub/\n' ''
+}
 seed_misspelled_bucket() {
   cp .env.example .env
   replace docker-compose.yml 'local/marketplace-csv' 'local/marketplace-csx'
@@ -493,6 +498,9 @@ if [ "$with_docker" -eq 1 ]; then
   # Bootstrap legs use their own project on this checkout's host ports; pause this stack meanwhile.
   docker compose stop >/dev/null 2>&1
   leg bootstrap-empty-venv bootstrap "No module named 'mkos_schemas'" seed_no_uv_project_env COMPOSE_PROJECT_NAME="prove-gates-bootstrap-${self_project}" DATABASE_URL=postgresql+psycopg://app_rw:ci_only_app_rw_not_a_real_password@localhost:${PG_HOST_PORT:-5432}/marketplace_os ALEMBIC_DATABASE_URL=postgresql+psycopg://migrator:ci_only_migrator_not_a_real_password@localhost:${PG_HOST_PORT:-5432}/marketplace_os S3_ENDPOINT_URL=http://localhost:${MINIO_API_HOST_PORT:-9000} PORT=${API_HOST_PORT:-8000} make bootstrap
+  docker compose -p "prove-gates-bootstrap-${self_project}" down -v >/dev/null 2>&1
+  docker image rm -f "mkos-api:ci-prove-gates-bootstrap-${self_project}" >/dev/null 2>&1
+  leg bootstrap-no-pipeline bootstrap "No module named 'mkos_pipeline'" seed_bootstrap_no_pipeline COMPOSE_PROJECT_NAME="prove-gates-bootstrap-${self_project}" DATABASE_URL=postgresql+psycopg://app_rw:ci_only_app_rw_not_a_real_password@localhost:${PG_HOST_PORT:-5432}/marketplace_os ALEMBIC_DATABASE_URL=postgresql+psycopg://migrator:ci_only_migrator_not_a_real_password@localhost:${PG_HOST_PORT:-5432}/marketplace_os S3_ENDPOINT_URL=http://localhost:${MINIO_API_HOST_PORT:-9000} PORT=${API_HOST_PORT:-8000} make bootstrap
   docker compose -p "prove-gates-bootstrap-${self_project}" down -v >/dev/null 2>&1
   docker image rm -f "mkos-api:ci-prove-gates-bootstrap-${self_project}" >/dev/null 2>&1
   leg bootstrap-misspelled-bucket bootstrap 'bucket marketplace-csv missing' seed_misspelled_bucket COMPOSE_PROJECT_NAME="prove-gates-bootstrap-${self_project}" DATABASE_URL=postgresql+psycopg://app_rw:ci_only_app_rw_not_a_real_password@localhost:${PG_HOST_PORT:-5432}/marketplace_os ALEMBIC_DATABASE_URL=postgresql+psycopg://migrator:ci_only_migrator_not_a_real_password@localhost:${PG_HOST_PORT:-5432}/marketplace_os S3_ENDPOINT_URL=http://localhost:${MINIO_API_HOST_PORT:-9000} PORT=${API_HOST_PORT:-8000} make bootstrap

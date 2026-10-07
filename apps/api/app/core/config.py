@@ -19,6 +19,7 @@ import ipaddress
 import logging
 import re
 from functools import lru_cache
+from importlib import metadata
 from typing import Final, Literal
 from urllib.parse import urlsplit
 
@@ -40,6 +41,9 @@ COMMITTED_JWT_SECRETS: Final[frozenset[str]] = frozenset(
 COMMITTED_JWT_SECRET_PREFIXES: Final[tuple[str, ...]] = ("dev_only", "ci_only", "local_only")
 
 _PSYCOPG_URL: Final[str] = r"^postgresql\+psycopg://"
+# The in-repo pipeline stub's distribution (S14b CD2). A production worker refuses to run it; the
+# check reads the installed metadata only, it never imports `mkos_pipeline`.
+PIPELINE_STUB_DISTRIBUTION: Final[str] = "mkos-pipeline-stub"
 
 # CANON.md:70: the one token key outside local (S15). The kickoff pack's `aimos` ring and
 # `marketplace-tokens` key are forbidden by name (KNOWN-ISSUES.md:13).
@@ -276,6 +280,10 @@ def _url_errors(s: Settings) -> list[str]:
     if not bad:
         return []
     return [f"APP_ENV={s.app_env} refuses http or loopback {', '.join(bad)}"]
+def _pipeline_stub_installed() -> bool:
+        metadata.distribution(PIPELINE_STUB_DISTRIBUTION)
+    except metadata.PackageNotFoundError:
+    return True
 
 
 def _boot_errors(s: Settings) -> list[str]:
@@ -301,6 +309,8 @@ def _boot_errors(s: Settings) -> list[str]:
         errors.append(f"APP_ENV={s.app_env} refuses a committed or dev-prefixed JWT_SECRET")
     if s.app_env != "local" and s.app_role in ("api", "worker") and s.sentry_dsn is None:
         errors.append(f"APP_ENV={s.app_env} requires SENTRY_DSN for APP_ROLE={s.app_role}")
+    if s.app_env == "production" and s.app_role == "worker" and _pipeline_stub_installed():
+        errors.append("APP_ENV=production APP_ROLE=worker refuses mkos-pipeline-stub")
     if s.log_level.upper() not in logging.getLevelNamesMapping():
         errors.append("LOG_LEVEL is not a logging level")
     errors += _kms_errors(s)
