@@ -287,6 +287,14 @@ class OAuthState(TenantScoped, Base):
     code_verifier: Mapped[str | None] = mapped_column(Text, deferred=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_column()
+    # 0007 (S15): a pending row holds the sealed token pair between the callback and the confirm;
+    # a state row leaves all six NULL. Never granted to the read-only roles.
+    token_enc: Mapped[bytes | None] = mapped_column(LargeBinary, deferred=True)
+    kms_key_version: Mapped[str | None] = mapped_column(Text)
+    seller_id: Mapped[str | None] = mapped_column(Text)
+    region: Mapped[str | None] = mapped_column(Text)
+    scopes: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
+    token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class RateLimitCounter(Base):

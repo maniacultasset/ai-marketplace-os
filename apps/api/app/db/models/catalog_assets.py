@@ -38,6 +38,9 @@ from app.db.models.tenancy import (
 )
 
 EMPTY_OBJECT = text("'{}'::jsonb")
+# T31 (DATABASE.md:1015): one live seller account, one tenant, across all tenants. The repository
+# maps a violation of this index to `SellerLiveElsewhere` by this name.
+UQ_MA_SELLER_LIVE = "uq_marketplace_accounts_marketplace_seller_id"
 
 
 class MarketplaceAccount(TenantScoped, Base):
@@ -59,7 +62,7 @@ class MarketplaceAccount(TenantScoped, Base):
         ),
         # T31: one seller account, one tenant (global by design)
         Index(
-            conv("uq_marketplace_accounts_marketplace_seller_id"),
+            conv(UQ_MA_SELLER_LIVE),
             "marketplace",
             "seller_id",
             unique=True,

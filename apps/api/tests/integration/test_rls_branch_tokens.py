@@ -206,7 +206,11 @@ def test_rls_branch_hash_branches_cannot_update(db: Conn, table: str, column: st
         locked = sql.SQL("SELECT id FROM {} WHERE id = %s FOR UPDATE").format(ident)
         assert db.execute(locked, [row]).fetchall() == []
         delete = sql.SQL("DELETE FROM {} WHERE id = %s").format(ident)
-        assert db.execute(delete, [row]).rowcount == 0
+        # 0007: the callback consumes its state row by hash (oauth_states_hash_delete); a
+        # savepoint keeps the row for the tenant UPDATE below
+        with db.transaction(force_rollback=True):
+            deleted = db.execute(delete, [row]).rowcount
+        assert deleted == (1 if table == "oauth_states" else 0)
     set_gucs(db, tenant_id=side.tenant_id)
     with as_app_rw(db):
         assert db.execute(update, [row]).rowcount == 1
