@@ -21,6 +21,8 @@ from .jobs_support import Conn, JobWorld, as_member, reset_queue
 PREFIX = "/api/v1"
 UPLOAD_URL = f"{PREFIX}/images/upload-url"
 UPLOAD = f"{PREFIX}/images/upload"
+# the modules that call `get_storage()` (each step adds its own)
+IMAGE_MODULES: list[str] = ["app.services.image_compliance"]
 
 
 def report_url(image_id: Any) -> str:
@@ -144,6 +146,15 @@ class FakeStorage:
         return f"http://127.0.0.1:1/{bucket}/{key}?X-Amz-Signature=fake"
 
 
+def use_storage(monkeypatch: pytest.MonkeyPatch, store: Any) -> None:
+    """Point every image module's `get_storage` at `store`."""
+    import importlib
+
+    for name in IMAGE_MODULES:
+        module = importlib.import_module(name)
+        monkeypatch.setattr(module, "get_storage", lambda: store)
+
+
 def headers(
     jw: JobWorld, email: str = "operator@acme.test", key: str | None = None
 ) -> dict[str, str]:
@@ -187,3 +198,43 @@ def image_db_row(conn: Conn, image_id: Any) -> dict[str, Any]:
     found = cur.fetchone()
     assert found is not None, f"no images row {image_id}"
     return dict(zip(names, found, strict=True))
+
+
+async def enqueue_image_job(
+    tenant_id: uuid.UUID, image_id: uuid.UUID, *, created_by: uuid.UUID | None = None
+) -> uuid.UUID:
+    """An `image_compliance` job row and its queue entry, as the upload service writes them."""
+    from app.repositories.jobs import EnqueueSpec
+    from app.repositories.uow import tenant_uow
+    from mkos_schemas.enums import JobKind
+
+    async with tenant_uow(tenant_id) as uow:
+        enqueued = await uow.job_runs.enqueue(
+            EnqueueSpec(
+                kind=JobKind.IMAGE_COMPLIANCE,
+                entity_type="image",
+                entity_id=image_id,
+                created_by=created_by,
+                payload={"image_id": str(image_id)},
+            )
+        )
+    return enqueued.job.id
+
+
+async def run_image_job(job_id: uuid.UUID, *, max_runs: int = 1) -> int:
+    """The job through the real wrapper; a `RetryLater` runs it again, up to `max_runs` times.
+    Returns the number of executions."""
+    from app.workers import wrapper
+    from app.workers.errors import RetryLater
+    from app.workers.tasks import register_bodies
+
+    register_bodies()
+    runs = 0
+    while runs < max_runs:
+        runs += 1
+        try:
+            await wrapper.run_job(str(job_id))
+        except RetryLater:
+            continue
+        break
+    return runs
