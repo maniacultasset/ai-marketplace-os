@@ -63,6 +63,10 @@ def test_export_ignores_app_env_production(tmp_path: Path) -> None:
             "oauth-token-key"
         ),
         DASHBOARD_BASE_URL="https://app.example.invalid",
+        AMAZON_OAUTH_REDIRECT_URI="https://api.example.invalid/api/v1/marketplaces/amazon/callback",
+        FLIPKART_OAUTH_REDIRECT_URI=(
+            "https://api.example.invalid/api/v1/marketplaces/flipkart/callback"
+        ),
     )
     assert local == production
 
