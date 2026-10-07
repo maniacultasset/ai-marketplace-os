@@ -246,11 +246,12 @@ async def test_image_jobs_hold_at_most_one_default_slot(
 async def test_waiting_image_job_timeout_not_started(
     images_db: JobWorld, store: FakeStorage, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A job waiting `todo` behind the lock has not started its timeout: with a 2 s body timeout
-    and three 1.2 s jobs in a row, the third waited longer than 2 s and still succeeds."""
+    """A job waiting `todo` behind the lock has not started its timeout: with a 3 s body timeout
+    and four jobs of at least 1.2 s in a row, the fourth waited at least 3.6 s and still succeeds
+    (each body keeps 1.8 s of headroom for the real check child on a loaded machine)."""
     policies = dict(POLICIES)
     policies[JobKind.IMAGE_COMPLIANCE] = dataclasses.replace(
-        policies[JobKind.IMAGE_COMPLIANCE], timeout_s=2
+        policies[JobKind.IMAGE_COMPLIANCE], timeout_s=3
     )
     monkeypatch.setattr(wrapper, "POLICIES", policies)
     real = image_runner.run_checks_isolated
@@ -260,14 +261,14 @@ async def test_waiting_image_job_timeout_not_started(
         return await real(*a, **k)
 
     monkeypatch.setattr(image_runner, "run_checks_isolated", slow)
-    jobs = await _image_jobs(images_db, store, 3)
+    jobs = await _image_jobs(images_db, store, 4)
     async with running_worker(concurrency=4):
         await eventually(
-            lambda: _states(images_db).get("image_compliance", []).count("succeeded") == 3,
+            lambda: _states(images_db).get("image_compliance", []).count("succeeded") == 4,
             timeout_s=60,
         )
     statuses = [
         images_db.conn.execute("SELECT status FROM job_runs WHERE id = %s", [j]).fetchone()[0]  # type: ignore[index]
         for j in jobs
     ]
-    assert statuses == ["succeeded"] * 3
+    assert statuses == ["succeeded"] * 4
