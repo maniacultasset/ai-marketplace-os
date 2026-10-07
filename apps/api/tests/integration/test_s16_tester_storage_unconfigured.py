@@ -1,6 +1,7 @@
-"""S16 tester round 3 (F3/F4/F5, D1): with no document store installed, `POST /api/v1/brand/documents`
-fails closed. It answers 500 INTERNAL_ERROR without naming the store, writes no document, job or
-idempotency row, and the same Idempotency-Key succeeds once a store is installed."""
+"""S16 tester round 3 (F3/F4/F5, D1), kept after the S13b rebase wired the real store: when the
+document store cannot be reached, `POST /api/v1/brand/documents` fails closed. It answers 500
+INTERNAL_ERROR without naming the store, writes no document, job or idempotency row, and the same
+Idempotency-Key succeeds once the store is back."""
 
 from __future__ import annotations
 
@@ -20,11 +21,26 @@ __all__ = ["jobs_db"]
 URL = f"{PREFIX}/brand/documents"
 
 
+class _DownStore:
+    """A store that cannot be reached (what `get_storage()` raises on a refused connection)."""
+
+    async def put(self, bucket: str, key: str, data: bytes, content_type: str) -> None:
+        from app.services.brand_storage import StorageUnavailable
+
+        raise StorageUnavailable("the store could not be reached")
+
+    async def get(self, bucket: str, key: str) -> bytes:
+        raise AssertionError("not reached")
+
+    async def delete(self, bucket: str, key: str) -> None:
+        raise AssertionError("not reached")
+
+
 @pytest.fixture
 def no_store() -> Iterator[None]:
     from app.services.brand_storage import use_document_store
 
-    use_document_store(None)
+    use_document_store(_DownStore())
     yield
     use_document_store(None)
 

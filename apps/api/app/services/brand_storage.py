@@ -1,10 +1,9 @@
 """Where brand documents are stored (S16 T11; PLAN D7): one narrow store interface.
 
-`DocumentStore` has the S13b `ObjectStorage` shapes (`put(bucket, key, data, content_type)`,
-`get(bucket, key) -> bytes`, a missing object raises `StorageNotFound`) plus `delete(bucket, key)`
-(CP10). `get_document_store()` is the one provider; until the S3-API adapter lands on this branch
-(S13b's `app/adapters/storage.py`) no store is configured and it raises `StorageNotConfigured`,
-so an upload fails closed instead of losing the file. Tests install a store with
+`DocumentStore` is the S13b `ObjectStorage` shape (`put(bucket, key, data, content_type)`,
+`get(bucket, key) -> bytes`, `delete(bucket, key)`; a missing object raises `StorageNotFound`,
+an unreachable store `StorageUnavailable`). `get_document_store()` is the one provider: the
+S3-API `get_storage()` (MinIO locally, GCS in the cloud) unless a test installed a store with
 `use_document_store`.
 
 Objects live in `GCS_BUCKET_CSV` under the tenant prefix, `<tenant_id>/brand-documents/<id>`.
@@ -15,16 +14,18 @@ from __future__ import annotations
 import uuid
 from typing import Protocol
 
+from app.adapters.storage import StorageNotFound, StorageUnavailable, get_storage
 from app.core.config import get_settings
 
-
-class StorageNotFound(Exception):  # noqa: N818 - the S13b name
-    """The object does not exist. The message names neither the bucket nor the key."""
-
-
-class StorageNotConfigured(Exception):  # noqa: N818 - a deployment fault, never a user error
-    def __init__(self) -> None:
-        super().__init__("no document store is configured")
+__all__ = [
+    "DocumentStore",
+    "StorageNotFound",
+    "StorageUnavailable",
+    "brand_bucket",
+    "brand_document_object_key",
+    "get_document_store",
+    "use_document_store",
+]
 
 
 class DocumentStore(Protocol):
@@ -44,9 +45,7 @@ def use_document_store(store: DocumentStore | None) -> None:
 
 
 def get_document_store() -> DocumentStore:
-    if _store is None:
-        raise StorageNotConfigured
-    return _store
+    return get_storage() if _store is None else _store
 
 
 def brand_document_object_key(tenant_id: uuid.UUID, document_id: uuid.UUID) -> str:

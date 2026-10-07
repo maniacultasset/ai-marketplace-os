@@ -55,6 +55,26 @@ async def test_storage_missing_key_not_found(storage: ObjectStorage) -> None:
     assert csv_bucket() not in str(caught.value)
 
 
+@pytest.mark.allow_hosts(LOCAL_HOSTS)
+async def test_brand_document_round_trip_and_delete(storage: ObjectStorage) -> None:
+    # S16 T11 (CP10): the brand document store is this adapter; delete is idempotent
+    from app.services.brand_storage import (
+        brand_bucket,
+        brand_document_object_key,
+        get_document_store,
+    )
+
+    assert isinstance(get_document_store(), ObjectStorage)  # no test store installed here
+    key = brand_document_object_key(uuid.uuid4(), uuid.uuid4())
+    data = b"# Brand voice\nWarm, plain words.\n"
+    await storage.put(brand_bucket(), key, data, "text/markdown")
+    assert await storage.get(brand_bucket(), key) == data
+    await storage.delete(brand_bucket(), key)
+    await storage.delete(brand_bucket(), key)  # already gone: not an error
+    with pytest.raises(StorageNotFound):
+        await storage.get(brand_bucket(), key)
+
+
 def test_import_object_key_literal() -> None:
     tenant = uuid.UUID("11111111-2222-3333-4444-555555555555")
     upload = uuid.UUID("66666666-7777-8888-9999-000000000000")

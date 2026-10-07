@@ -1,7 +1,8 @@
 """Object storage through the S3 API (S13 PD8; ADR-0001: MinIO locally, GCS's S3 interface in the
 cloud). The one module that imports boto3/botocore (`.importlinter`).
 
-`ObjectStorage.put(bucket, key, data, content_type)` and `.get(bucket, key) -> bytes` run the
+`ObjectStorage.put(bucket, key, data, content_type)`, `.get(bucket, key) -> bytes` and
+`.delete(bucket, key)` (S16) run the
 blocking client in a thread (`asyncio.to_thread`); a missing object is `StorageNotFound`, and a transport failure (a timeout, a refused
 connection, a 5xx) on `get` is `StorageUnavailable`. These
 names and the two positional arguments of `get` are the interface later steps extend: they add
@@ -85,6 +86,23 @@ class ObjectStorage:
             return data
 
         return await asyncio.to_thread(read)
+
+    async def delete(self, bucket: str, key: str) -> None:
+        """Remove one object; a missing one is not an error (S3 DeleteObject is idempotent).
+        Added for S16 brand documents (CP10)."""
+
+        def remove() -> None:
+            try:
+                self._client.delete_object(Bucket=bucket, Key=key)
+            except ClientError as exc:
+                status = int(exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0))
+                if status >= 500:
+                    raise StorageUnavailable("the store answered 5xx") from None
+                raise
+            except BotoCoreError:
+                raise StorageUnavailable("the store could not be reached") from None
+
+        await asyncio.to_thread(remove)
 
 
 def new_storage() -> ObjectStorage:
