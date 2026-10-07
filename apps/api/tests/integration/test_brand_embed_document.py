@@ -226,7 +226,8 @@ async def test_brand_embed_no_transaction_open_during_embed(
 
     async def embed(texts: Any) -> Any:
         row = auth_db.execute(
-            "SELECT count(*) FROM pg_stat_activity WHERE usename = 'app_rw' AND state LIKE 'idle in transaction%'"
+            "SELECT count(*) FROM pg_stat_activity WHERE usename = 'app_rw' "
+            "AND datname = current_database() AND state LIKE 'idle in transaction%'"
         ).fetchone()
         seen.append(int(row[0]) if row else -1)
         return await real(texts)
