@@ -16,6 +16,12 @@ READY = {"status": "ok", "checks": {"postgres": "ok"}}
 OK = {"status": "ok"}
 PRIVATE_JWT = "Zq9-not-committed-private-secret-32+"  # neither a Canon literal nor dev-prefixed
 TEST_SENTRY_DSN = "https://public@o0.ingest.example.invalid/0"  # never resolvable (.invalid)
+# S15: a deployed api also needs the token key and an https dashboard origin.
+TEST_KMS_KEY_URI = (
+    "projects/aimos-staging/locations/asia-south1/keyRings/marketplace-os/cryptoKeys/"
+    "oauth-token-key"
+)
+TEST_DASHBOARD = "https://app.example.invalid"
 
 
 def _client(app: FastAPI) -> TestClient:
@@ -107,6 +113,8 @@ def test_docs_and_openapi_served(
     monkeypatch.setenv("APP_ENV", app_env)
     monkeypatch.setenv("JWT_SECRET", PRIVATE_JWT)
     monkeypatch.setenv("SENTRY_DSN", TEST_SENTRY_DSN)
+    monkeypatch.setenv("KMS_KEY_URI", TEST_KMS_KEY_URI)
+    monkeypatch.setenv("DASHBOARD_BASE_URL", TEST_DASHBOARD)
     get_settings.cache_clear()
     client = _client(create_app())
     assert client.get("/docs").status_code == 200
@@ -255,6 +263,8 @@ def test_docs_and_openapi_off_in_production(
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("JWT_SECRET", PRIVATE_JWT)
     monkeypatch.setenv("SENTRY_DSN", TEST_SENTRY_DSN)
+    monkeypatch.setenv("KMS_KEY_URI", TEST_KMS_KEY_URI)
+    monkeypatch.setenv("DASHBOARD_BASE_URL", TEST_DASHBOARD)
     monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://app_rw:pw@127.0.0.1:5432/x")
     get_settings.cache_clear()
     app = create_app()

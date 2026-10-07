@@ -58,6 +58,11 @@ def test_export_ignores_app_env_production(tmp_path: Path) -> None:
         APP_ENV="production",
         JWT_SECRET="a-production-shaped-secret-that-is-not-committed-0123",
         SENTRY_DSN="https://public@o0.ingest.example.invalid/0",
+        KMS_KEY_URI=(
+            "projects/aimos-staging/locations/asia-south1/keyRings/marketplace-os/cryptoKeys/"
+            "oauth-token-key"
+        ),
+        DASHBOARD_BASE_URL="https://app.example.invalid",
     )
     assert local == production
 
