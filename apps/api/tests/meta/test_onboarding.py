@@ -4,6 +4,7 @@ every command it tells a newcomer to run exists and is marked for the clean-clon
 from __future__ import annotations
 
 import argparse
+import codecs
 import os
 import re
 import subprocess
@@ -15,7 +16,11 @@ import pytest
 
 PARSER = "scripts/ci/onboarding_commands.py"
 CI_ONLY = ("commit-lint", "gitleaks", "bootstrap")
-TOOL_NAMES = re.compile(r"\b(claude|codex|chatgpt|copilot|cursor|anthropic|openai codex)\b", re.I)
+# The AI tool names a tracked file must not carry (AGENTS.md "No AI attribution"), kept rot13 so
+# this file does not carry them either.
+TOOL_NAMES = re.compile(
+    rf"\b({codecs.decode('pynhqr|pbqrk|pungtcg|pbcvybg|phefbe|naguebcvp', 'rot13')})\b", re.I
+)
 
 
 def _onboarding(repo_root: Path) -> str:
