@@ -71,6 +71,15 @@ jobs:
             -v ON_ERROR_STOP=1 -f scripts/db/0000_bootstrap.sql
           APP_RW_SCRAM="$(make -s app-rw-scram)" psql "postgresql://postgres:postgres@localhost:5432/mos_test" \
             -v ON_ERROR_STOP=1 -X -q -f scripts/db/0000_role_passwords.sql
+      # The CSV import tests read and write objects (S13b): the compose MinIO and its buckets, on
+      # the local-only dev credentials of .env.example.
+      - name: object storage
+        env:
+          S3_ACCESS_KEY: local_only_minio_root_user
+          S3_SECRET_KEY: local_only_minio_root_password_32_chars
+        run: |
+          docker compose up -d --wait minio
+          docker compose run --rm minio-init
       - run: make api-tests
   tenant-isolation:
     runs-on: ubuntu-latest

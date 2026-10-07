@@ -132,6 +132,8 @@ app-rw-scram:
 
 # ---- tests (CANON.md:136-137; the CI env block is these three variables, CANON.md:21) ----
 TEST_DATABASE_URL ?= postgresql+psycopg://postgres:postgres@localhost:$(PG_HOST_PORT)/mos_test
+# The compose MinIO (the CSV import tests, S13b); the bucket names and keys are the settings' defaults.
+TEST_S3_ENDPOINT_URL ?= http://localhost:$(or $(MINIO_API_HOST_PORT),9000)
 CI_JWT_SECRET := ci_only_not_a_real_secret_at_least_32_chars
 CI_APP_RW_PASSWORD := ci_only_app_rw_not_a_real_password
 CI_MIGRATOR_PASSWORD := ci_only_migrator_not_a_real_password
@@ -159,7 +161,7 @@ api-tests:
 	sql="$$(mktemp)"; trap 'rm -f "$$sql"' EXIT; \
 	  $(MIGRATE_ENV) $(ALEMBIC) upgrade head --sql >"$$sql"; \
 	  uv run --frozen python scripts/ci/squawk_report.py "$$sql"
-	APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) \
+	APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) S3_ENDPOINT_URL=$(TEST_S3_ENDPOINT_URL) \
 	  uv run --frozen pytest -q -m "not tenant_isolation and not cloudsql_mimic" --cov=app --cov-report=term-missing \
 	  --cov-fail-under=$(COV_FAIL_UNDER)
 	cov="$$(mktemp)"; trap 'rm -f "$$cov"' EXIT; \
