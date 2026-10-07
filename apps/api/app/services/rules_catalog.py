@@ -1,4 +1,4 @@
-"""`GET /api/v1/rules` (S14b T11; s3/CODE-PLAN.md:566): the platform rules and the caller's own
+"""`GET /api/v1/rules` (S14b T11; the S3 `rules_list` registry row): the platform rules and the caller's own
 brand rules, keyset-paged by `(created_at, id)`. Another tenant's rules are never read (the
 repository filters on the JWT tenant and RLS backs it). `scope` is `platform` for a NULL tenant."""
 

@@ -1,0 +1,29 @@
+{
+  "attempts_used": 0,
+  "error_code": "VALIDATION_FAILED",
+  "errors": [
+    {
+      "auto_fixable": false,
+      "error_class": "content_error",
+      "error_code": "FIELD_TOO_LONG",
+      "field": "content.title",
+      "fix_action": null,
+      "marketplace": "amazon",
+      "message": "title longer than 200 characters",
+      "raw_code": null,
+      "retry_class": "ai_correct",
+      "retryable": true,
+      "rule_id": "5eed0000-0000-4000-8000-000100010001",
+      "severity": "error",
+      "source": "rules_engine",
+      "suggestion": null,
+      "value_submitted": "Cotton Kurta Set for Women with Straight Fit and Round Neck Cotton Kurta Set for Women with Straight Fit and Round Neck Cotton Kurta Set for Women with Straight Fit and Round Neck Cotton Kurta Set for Women with Straight."
+    }
+  ],
+  "listing_id": "8d0f6f4e-14b2-4f8e-9d1a-221221221221",
+  "max_attempts": 3,
+  "request_id": null,
+  "retryable": true,
+  "schema_version": "1.0.0",
+  "status": "failed"
+}
