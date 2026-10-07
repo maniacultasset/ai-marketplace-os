@@ -44,6 +44,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "members_list",
         "members_patch",
         "jobs_get",
+        "jobs_cancel",
         "products_create",
         "products_get",
         "products_list",

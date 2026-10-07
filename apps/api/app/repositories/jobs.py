@@ -21,7 +21,7 @@ from datetime import timedelta
 from typing import Any, Final
 
 from mkos_schemas.enums import JobKind
-from sqlalchemy import exists, func, select, update
+from sqlalchemy import exists, func, null, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.sql.elements import ColumnElement
@@ -241,8 +241,9 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             self._fence(job_id, attempt),
             {
                 "status": status,
-                "result_json": result_json,
-                "error_report_json": error_report_json,
+                # SQL NULL, not JSON `null`: the JSONB columns would store 'null' for None
+                "result_json": null() if result_json is None else result_json,
+                "error_report_json": null() if error_report_json is None else error_report_json,
                 "error_code": error_code,
                 "lease_expires_at": None,
                 "finished_at": func.now(),
