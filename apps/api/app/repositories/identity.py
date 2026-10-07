@@ -289,7 +289,7 @@ async def consume_oauth_state(
 ) -> ConsumedState | None:
     """The OAuth callback's one-time consume (DATABASE.md:1017-1018; S15): before any tenant is
     known, `app.token_hash` names the state row, and one `DELETE ... RETURNING` takes it if it is
-    a live state row (not a pending row) for this marketplace. The 0007 hash branches
+    a live state row (not a pending row) for this marketplace. The 0006 hash branches
     (`oauth_states_hash_select` / `_delete`) also require `token_enc IS NULL`; the filter is kept
     here so the intent reads in one place. A forged, expired, replayed or mismatched state is None
     (and a mismatched one stays unconsumed)."""

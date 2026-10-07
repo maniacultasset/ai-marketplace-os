@@ -1005,6 +1005,8 @@ MARKETPLACE_STEPS = (
     "list_active",
     "login_acme_reviewer",
     "reviewer_connect_403",
+    "login_acme_operator",
+    "operator_connect_403",
     "db_ciphertext_no_canary",
     "force_invalid_grant",
     "refresh_once",
@@ -1111,7 +1113,7 @@ def test_prove_gates_s15_legs(repo_root: Path) -> None:
         assert leg is not None, name
         assert leg.group(1) == regex, name
     assert "import app.adapters.credentials" in code
-    assert "AND token_enc IS NULL" in code and "0007_oauth_pending.py" in code
+    assert "AND token_enc IS NULL" in code and "0006_oauth_pending.py" in code
     assert "SET status = 'revoked', token_enc = NULL" in code
     # the migration leg re-migrates mos_iso afterwards with the checkout's own revisions
     hash_leg = code.index("leg tenant-isolation-hash-branch-pending")

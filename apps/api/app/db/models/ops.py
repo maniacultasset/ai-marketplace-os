@@ -287,7 +287,7 @@ class OAuthState(TenantScoped, Base):
     code_verifier: Mapped[str | None] = mapped_column(Text, deferred=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_column()
-    # 0007 (S15): a pending row holds the sealed token pair between the callback and the confirm;
+    # 0006 (S15): a pending row holds the sealed token pair between the callback and the confirm;
     # a state row leaves all six NULL. Never granted to the read-only roles.
     token_enc: Mapped[bytes | None] = mapped_column(LargeBinary, deferred=True)
     kms_key_version: Mapped[str | None] = mapped_column(Text)

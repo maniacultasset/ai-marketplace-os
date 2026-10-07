@@ -41,7 +41,7 @@ layers.
   failure is one detail-free `CredentialUnsealError`. Plaintext lives only in the caller's locals as
   `SecretStr`.
 - **Pending store:** the callback seals the exchanged tokens into an `oauth_states` pending row
-  (revision 0007) under the sha256 of a fresh opaque handle; the authenticated confirm moves the
+  (revision 0006) under the sha256 of a fresh opaque handle; the authenticated confirm moves the
   same blob to `marketplace_accounts`. The public hash branch never sees a pending row.
 - **Refresh** runs in the worker (`app/workers/token_refresh.py`): unseal, refresh, re-seal, with
   no transaction open across the marketplace call, and a `credential_used` audit row each time the

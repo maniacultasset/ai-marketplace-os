@@ -247,7 +247,7 @@ seed_iso_env() { cp "$root/.env" .env; }
 seed_unseal_from_router() { append apps/api/app/api/v1/routers/marketplaces.py 'import app.adapters.credentials  # noqa: F401'; }
 seed_hash_branch_pending() {
   cp "$root/.env" .env
-  replace apps/api/alembic/versions/0007_oauth_pending.py \
+  replace apps/api/alembic/versions/0006_oauth_pending.py \
     'f"USING (state_hash = {HASH_GUC} AND token_enc IS NULL)",
     ),
     (
@@ -256,7 +256,7 @@ seed_hash_branch_pending() {
     ),
     (
         "oauth_states_hash_delete",'
-  replace apps/api/alembic/versions/0007_oauth_pending.py \
+  replace apps/api/alembic/versions/0006_oauth_pending.py \
     'f"USING (state_hash = {HASH_GUC} AND token_enc IS NULL)",' 'f"USING (state_hash = {HASH_GUC})",'
 }
 seed_revoke_no_shred() {

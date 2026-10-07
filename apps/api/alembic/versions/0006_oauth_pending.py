@@ -1,6 +1,6 @@
 """oauth pending: the sealed-token store between the OAuth callback and the confirm
 
-DATABASE.md §5.4 `oauth_states` and §8.2 ledger row 0007; CANON.md ledger row 0007 (S15). The
+DATABASE.md §5.4 `oauth_states` and §8.2 ledger row 0006; CANON.md ledger row 0006 (S15). The
 public callback has no JWT, so it cannot create the account: it seals the exchanged tokens into a
 *pending* row (a fresh opaque handle, stored as its sha256 in `state_hash`), and the
 authenticated confirm by the user who started the flow consumes that row under the tenant policy.
@@ -20,7 +20,7 @@ Downgrade: pending rows are deleted first (a restored 0005 branch would let the 
 one as a state row), then the two policies are replaced by 0005's `oauth_states_hash` verbatim and
 the CHECKs and columns are dropped.
 
-Revision ID: 0007_oauth_pending
+Revision ID: 0006_oauth_pending
 Revises: 0005_rls
 Create Date: 2026-10-07
 
@@ -32,7 +32,7 @@ from typing import Final
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0007_oauth_pending"
+revision: str = "0006_oauth_pending"
 down_revision: str | Sequence[str] | None = "0005_rls"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None

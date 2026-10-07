@@ -28,7 +28,7 @@ POLICIES: dict[str, frozenset[str]] = {
     "tenant_memberships": TEMPLATE | {"memberships_own"},
     "refresh_tokens": TEMPLATE | {"refresh_tokens_hash", "refresh_tokens_own"},
     "invitations": TEMPLATE | {"invitations_hash"},
-    # 0007_oauth_pending replaced 0005's SELECT-only branch with a SELECT and a DELETE branch
+    # 0006_oauth_pending replaced 0005's SELECT-only branch with a SELECT and a DELETE branch
     "oauth_states": TEMPLATE | {"oauth_states_hash_select", "oauth_states_hash_delete"},
     "job_runs": TEMPLATE | {"jr_by_id"},
     "rules": frozenset({"rules_read", "rules_write", "rules_toggle", "t_platform", "t_migrator"}),

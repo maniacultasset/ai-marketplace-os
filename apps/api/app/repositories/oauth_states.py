@@ -3,7 +3,7 @@
 - A *state* row is written by connect: the sha256 of the `state` sent to the marketplace, the
   user who started the flow, the marketplace, the PKCE verifier (Flipkart; NULL for Amazon) and a
   TTL taken from the database clock. The public callback consumes it once by hash
-  (`identity.consume_oauth_state`, under the 0007 hash branch).
+  (`identity.consume_oauth_state`, under the 0006 hash branch).
 - A *pending* row is written by the callback in the state's tenant: the sha256 of a fresh opaque
   handle, the sealed token pair, its key version, the seller, region, scopes and the token's
   expiry. The authenticated confirm consumes it once here, under the tenant policy, and only for

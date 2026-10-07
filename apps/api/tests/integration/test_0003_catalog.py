@@ -41,7 +41,7 @@ SECRET_COLUMNS = frozenset(
         ("oauth_states", "code_verifier"),
         ("idempotency_keys", "request_hash"),
         ("import_rows", "raw_row"),
-        # 0007_oauth_pending's pending-row columns: no grant to the read-only roles (S15)
+        # 0006_oauth_pending's pending-row columns: no grant to the read-only roles (S15)
         ("oauth_states", "token_enc"),
         ("oauth_states", "kms_key_version"),
         ("oauth_states", "seller_id"),

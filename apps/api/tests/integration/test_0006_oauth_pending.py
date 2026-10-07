@@ -1,4 +1,4 @@
-"""Revision 0007_oauth_pending (S15 T5; DATABASE.md §5.4 oauth_states): the callback's pending
+"""Revision 0006_oauth_pending (S15 T5; DATABASE.md §5.4 oauth_states): the callback's pending
 store. Six nullable columns on `oauth_states` hold a sealed token pair between the public callback
 and the authenticated confirm, three CHECKs keep a row either a state row (no token) or a complete
 pending row (token, key version and seller, no PKCE verifier), and the hash branch is rebuilt as a
@@ -27,7 +27,7 @@ pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 
 MakeConfig = Callable[[Path | None], Config]
 Conn = psycopg.Connection[tuple[Any, ...]]
-REVISION = "0007_oauth_pending"
+REVISION = "0006_oauth_pending"
 PREVIOUS = "0005_rls"
 NEW_COLUMNS = {"token_enc", "kms_key_version", "seller_id", "region", "scopes", "token_expires_at"}
 CHECKS = {
@@ -102,7 +102,7 @@ def _columns(conn: psycopg.Connection[tuple[Any, ...]]) -> set[str]:
     return {str(r[0]) for r in rows}
 
 
-def test_0007_up_down_up(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None:
+def test_0006_up_down_up(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None:
     cfg = alembic_env(None)
     command.upgrade(cfg, PREVIOUS)
     with psycopg.connect(scratch_db.libpq, autocommit=True) as conn:
@@ -133,7 +133,7 @@ def test_0007_up_down_up(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None
     command.check(cfg)
 
 
-def test_0007_down_restores_s10_hash_policy(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None:
+def test_0006_down_restores_s10_hash_policy(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None:
     cfg = alembic_env(None)
     command.upgrade(cfg, PREVIOUS)
     with psycopg.connect(scratch_db.libpq, autocommit=True) as conn:
@@ -144,7 +144,7 @@ def test_0007_down_restores_s10_hash_policy(alembic_env: MakeConfig, scratch_db:
         assert _policies(conn) == snapshot
 
 
-def test_0007_alembic_check_no_drift(alembic_env: MakeConfig) -> None:
+def test_0006_alembic_check_no_drift(alembic_env: MakeConfig) -> None:
     cfg = alembic_env(None)
     command.upgrade(cfg, "head")
     command.check(cfg)
@@ -156,7 +156,7 @@ def test_mig_single_head() -> None:
     assert ScriptDirectory.from_config(alembic_config()).get_heads() == [REVISION]
 
 
-def test_0007_down_revision_is_ledger_head(repo_root: Path) -> None:
+def test_0006_down_revision_is_ledger_head(repo_root: Path) -> None:
     """The revision's parent is the ledger row before its own (CANON.md migration ledger)."""
     from app.db.migrations import alembic_config
 
@@ -171,7 +171,7 @@ def test_0007_down_revision_is_ledger_head(repo_root: Path) -> None:
     assert ledger[ledger.index(REVISION) - 1] == PREVIOUS
 
 
-def test_0007_checks_present(db: Conn) -> None:
+def test_0006_checks_present(db: Conn) -> None:
     rows = db.execute(
         "SELECT conname, convalidated FROM pg_constraint "
         "WHERE conrelid = 'oauth_states'::regclass AND contype = 'c'"
@@ -209,7 +209,7 @@ REJECTS: dict[str, tuple[dict[str, Any], str]] = {
 
 
 @pytest.mark.parametrize("case", sorted(REJECTS))
-def test_0007_checks_reject(db: Conn, case: str) -> None:
+def test_0006_checks_reject(db: Conn, case: str) -> None:
     extra, constraint = REJECTS[case]
     tenant, user = _world(db)
     columns: dict[str, Any] = {
@@ -231,7 +231,7 @@ def test_0007_checks_reject(db: Conn, case: str) -> None:
     )
 
 
-def test_0007_accepts_state_row_and_pending_row(db: Conn) -> None:
+def test_0006_accepts_state_row_and_pending_row(db: Conn) -> None:
     tenant, user = _world(db)
     _state(db, tenant, user, "plain-state", code_verifier="v" * 64)
     _state(db, tenant, user, "amazon-state")  # Amazon: no PKCE verifier
@@ -242,7 +242,7 @@ def test_0007_accepts_state_row_and_pending_row(db: Conn) -> None:
 
 
 @pytest.mark.parametrize("role", ["app_ro", "app_platform_ro"])
-def test_0007_readonly_roles_cannot_read_new_columns(db: Conn, role: str) -> None:
+def test_0006_readonly_roles_cannot_read_new_columns(db: Conn, role: str) -> None:
     for column in sorted(NEW_COLUMNS):
         row = db.execute(
             "SELECT has_column_privilege(%s, 'public.oauth_states', %s, 'SELECT')",
@@ -251,7 +251,7 @@ def test_0007_readonly_roles_cannot_read_new_columns(db: Conn, role: str) -> Non
         assert row == (False,), column
 
 
-def test_0007_app_rw_insert_delete_pending(db: Conn) -> None:
+def test_0006_app_rw_insert_delete_pending(db: Conn) -> None:
     tenant, user = _world(db)
     set_gucs(db, tenant_id=tenant)
     with as_app_rw(db):
