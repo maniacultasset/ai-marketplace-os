@@ -246,6 +246,36 @@ async def test_refresh_timeout_is_transient(
     assert info.value.__cause__ is None
 
 
+async def test_bad_content_encoding_is_protocol_error(use_app: Callable[[Any], None]) -> None:
+    """A 200 whose gzip body does not decode raises httpx.DecodingError (not a TransportError)
+    while the body streams; it must map to OAuthProtocolError, never escape as httpx's own."""
+    from app.adapters.oauth import OAuthProtocolError
+
+    async def bad_gzip(request: Request) -> Response:
+        return Response(
+            b"not-gzip", media_type="application/json", headers={"Content-Encoding": "gzip"}
+        )
+
+    use_app(Starlette(routes=[Route("/amazon/token", bad_gzip, methods=["POST"])]))
+    with pytest.raises(OAuthProtocolError) as info:
+        await _client("amazon").refresh(SecretStr("r0"))
+    assert info.value.__cause__ is None
+
+
+async def test_other_httpx_error_is_transient(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Any other httpx.HTTPError (a RequestError subclass outside the transport family) still
+    lands on one of the three outcomes."""
+    from app.adapters.oauth import OAuthTransientError
+
+    monkeypatch.setattr(
+        "app.adapters.oauth.http.make_transport",
+        lambda: _Raising(httpx.RequestError("odd")),
+    )
+    with pytest.raises(OAuthTransientError) as info:
+        await _client("amazon").refresh(SecretStr("r0"))
+    assert info.value.__cause__ is None
+
+
 async def test_invalid_client_is_protocol_error(fake: Starlette) -> None:
     from app.adapters.oauth import OAuthProtocolError
 

@@ -7,10 +7,10 @@ refresh is called only by the worker, which unseals first.
 
 Outcomes are three exceptions, none of which carries the response body or any token:
 `OAuthRejectedError` (the marketplace said `invalid_grant`: the user must reconnect),
-`OAuthTransientError` (a 5xx, a 429, a timeout or a connection error: retry later) and
-`OAuthProtocolError` (anything else: our configuration or a reply we cannot trust, such as
-`invalid_client`, a non-JSON or oversized body, a missing field, an out-of-range `expires_in` or a
-seller id that fails `SELLER_ID_RE`).
+`OAuthTransientError` (a 5xx, a 429, a timeout, a connection error or any other httpx error:
+retry later) and `OAuthProtocolError` (anything else: our configuration or a reply we cannot
+trust, such as `invalid_client`, a non-JSON, undecodable or oversized body, a missing field, an
+out-of-range `expires_in` or a seller id that fails `SELLER_ID_RE`).
 """
 
 from __future__ import annotations
@@ -122,7 +122,13 @@ async def post_token(url: str, form: dict[str, str]) -> dict[str, Any]:
             raw = await _read_capped(reply)
     except OAuthProtocolError:
         failure = OAuthProtocolError
+    except httpx.DecodingError:
+        # a body whose Content-Encoding does not decode: a reply we cannot trust
+        failure = OAuthProtocolError
     except (httpx.TimeoutException, httpx.TransportError):
+        failure = OAuthTransientError
+    except httpx.HTTPError:
+        # any other httpx failure still lands on one of the three outcomes
         failure = OAuthTransientError
     if failure is not None:
         raise failure from None

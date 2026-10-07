@@ -143,6 +143,30 @@ async def test_token_refresh_timeout_stays_active(
     assert row["status"] == "active" and row["last_refresh_error_code"] == "MARKETPLACE_UNAVAILABLE"
 
 
+class _BadGzip(httpx.AsyncBaseTransport):
+    """A 200 whose gzip body does not decode: httpx raises DecodingError while the body streams."""
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"Content-Type": "application/json", "Content-Encoding": "gzip"},
+            content=b"not-gzip",
+        )
+
+
+async def test_token_refresh_bad_encoding_audited_once(
+    mkt: MktWorld, due_account: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("app.adapters.oauth.http.make_transport", _BadGzip)
+    assert await _refresh(mkt, due_account["id"]) == "transient"
+    row = _row(mkt, due_account["id"])
+    assert (
+        row["status"] == "active" and row["last_refresh_error_code"] == "MARKETPLACE_UNKNOWN_ERROR"
+    )
+    assert len(_used(mkt)) == 1
+    assert _tasks(mkt, due_account["id"]) == []
+
+
 async def test_token_refresh_invalid_client_no_reconnect(
     mkt: MktWorld, due_account: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:
