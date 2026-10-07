@@ -681,7 +681,8 @@ class _Writer:
                 "gender",
             ):
                 mine, theirs = getattr(row, column), getattr(style, column)
-                if mine is not None and theirs is not None and mine != theirs:
+                # a child's value equal to the style's is dropped; a different one is an error
+                if mine is not None and mine != theirs:
                     shown = "product_name" if column == "title" else column
                     p.errors = [
                         row_error(
