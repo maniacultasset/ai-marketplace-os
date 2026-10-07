@@ -29,7 +29,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
 from app.db.models.ops import JobRun
 from app.db.models.tenancy import Tenant
-from app.db.queue import defer_on_session, retire_on_session
+from app.db.queue import cancel_on_session, defer_on_session, retire_on_session
 from app.repositories.base import TenantScopedRepository
 from app.workers.policy import POLICIES
 
@@ -77,6 +77,14 @@ class Reaped:
 
     action: str
     job: JobRun | None = None
+
+
+async def cancel_queue_entry(session: Any, job: JobRun) -> bool:
+    """Cancel the job's `todo` queue entry in the session's transaction (a no-op without one).
+    The row is already `cancelled`, so a delivery that races this is dropped by the claim CAS."""
+    if job.queue_job_id is None:
+        return False
+    return await cancel_on_session(session, job.queue_job_id)
 
 
 async def expired_running(session: Any, *, limit: int = 500) -> list[tuple[uuid.UUID, uuid.UUID]]:

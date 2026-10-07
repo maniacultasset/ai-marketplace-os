@@ -167,3 +167,47 @@ async def eventually(check: Callable[[], bool], timeout_s: float = 15.0) -> None
         if asyncio.get_running_loop().time() > deadline:
             raise AssertionError("condition not reached in time")
         await asyncio.sleep(0.05)
+
+
+# ---- API callers (A13-A14) ----
+
+
+def as_member(jw: JobWorld, email: str) -> dict[str, str]:
+    from .auth_support import bearer, tokens_for
+
+    slug = email.split("@", 1)[1].split(".", 1)[0]
+    return bearer(tokens_for(jw.world, email, slug))
+
+
+def bad_token(jw: JobWorld, variant: str) -> dict[str, str]:
+    """An access token for owner@acme.test that the API must refuse: `expired`,
+    `bad_signature` (re-signed with another key) or `wrong_typ` (a refresh token)."""
+    import time
+
+    import jwt
+    from tests.conftest import CI_JWT_SECRET
+
+    email = "owner@acme.test"
+    now = int(time.time())
+    claims: dict[str, Any] = {
+        "sub": str(jw.world.user(email)),
+        "tid": str(jw.tenant("acme")),
+        "roles": ["owner"],
+        "email": email,
+        "typ": "access",
+        "jti": str(uuid.uuid4()),
+        "iss": "http://localhost:8000",
+        "aud": "ai-marketplace-os",
+        "iat": now,
+        "exp": now + 600,
+    }
+    secret = CI_JWT_SECRET
+    if variant == "expired":
+        claims.update(iat=now - 3600, exp=now - 1)
+    elif variant == "wrong_typ":
+        claims["typ"] = "refresh"
+    elif variant == "bad_signature":
+        secret = "another_secret_that_is_at_least_32_chars"
+    else:
+        raise ValueError(variant)
+    return {"Authorization": f"Bearer {jwt.encode(claims, secret, algorithm='HS256')}"}
