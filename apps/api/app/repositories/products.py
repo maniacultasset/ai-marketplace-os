@@ -90,6 +90,17 @@ class ProductRepository(TenantScopedRepository[Product]):
         found: uuid.UUID | None = (await self.db.execute(stmt)).scalar_one_or_none()
         return found
 
+    async def family_role_of_sku(self, sku: str) -> tuple[uuid.UUID | None, str | None] | None:
+        """The stored `(parent_product_id, variation_theme)` of `sku` (soft-deleted rows
+        included), or None for a new SKU: a child has a parent, a family's style a theme."""
+        stmt = (
+            self._select()
+            .where(Product.sku == sku)
+            .with_only_columns(Product.parent_product_id, Product.variation_theme)
+        )
+        found = (await self.db.execute(stmt)).one_or_none()
+        return None if found is None else (found[0], found[1])
+
     async def id_of_sku(self, sku: str) -> uuid.UUID | None:
         stmt = self._select().where(Product.sku == sku).with_only_columns(Product.id)
         found: uuid.UUID | None = (await self.db.execute(stmt)).scalar_one_or_none()

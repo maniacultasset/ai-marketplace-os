@@ -310,6 +310,50 @@ async def test_import_variant_family_grows(imports_db: JobWorld, api: httpx.Asyn
     ]
 
 
+@pytest.mark.parametrize(
+    ("sizes", "colours", "theme", "size_run"),
+    [
+        (("M", "L"), ("Red", "Blue"), "size_color", ["m", "l"]),
+        (("M", "L"), (None, None), "size", ["m", "l"]),
+        ((None, None), ("Red", "Blue"), "color", None),
+    ],
+)
+async def test_import_style_resent_alone_is_a_row_error(
+    imports_db: JobWorld,
+    api: httpx.AsyncClient,
+    sizes: tuple[str | None, str | None],
+    colours: tuple[str | None, str | None],
+    theme: str,
+    size_run: list[str] | None,
+) -> None:
+    """A stored style sent again as a plain row (sku = the style key, no children in the file)
+    fails with CROSS_FIELD_MISMATCH; its variation_theme, size_run and cells stay (round-2 F5)."""
+    tenant = imports_db.tenant("acme")
+    style = row(1, seller_sku="TEE", product_name="Cotton Tee", brand_name="Acme")
+    await run(
+        imports_db,
+        api,
+        [style, child(2, "TEE", sizes[0], colours[0]), child(3, "TEE", sizes[1], colours[1])],
+    )
+    query = (
+        "SELECT title, variation_theme, size_run, updated_at FROM products "
+        "WHERE tenant_id = %s AND sku = 'TEE'"
+    )
+    stored = imports_db.conn.execute(query, [tenant]).fetchone()
+    assert stored is not None and stored[1] == theme and stored[2] == size_run
+    before = cells(imports_db.conn, "TEE", tenant)
+    import_id = await run(imports_db, api, [{**style, "product_name": "Cotton Tee v2"}])
+    assert failed(imports_db.conn, import_id) == {2: ["CROSS_FIELD_MISMATCH"]}
+    report = one(
+        imports_db.conn,
+        "SELECT error_report_json FROM import_rows WHERE import_id = %s AND row_number = 2",
+        [import_id],
+    )
+    assert "parent_style_id" in ErrorReport.model_validate(report).errors[0].message
+    assert imports_db.conn.execute(query, [tenant]).fetchone() == stored
+    assert cells(imports_db.conn, "TEE", tenant) == before
+
+
 async def test_import_child_resent_standalone_is_a_row_error(
     imports_db: JobWorld, api: httpx.AsyncClient
 ) -> None:

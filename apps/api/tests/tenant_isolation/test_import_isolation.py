@@ -126,6 +126,7 @@ async def test_import_family_reads_are_tenant_scoped(
         products = ProductRepository(session, a)
         assert await products.id_of_sku(sku) is None
         assert await products.family_of_sku(sku) is None
+        assert await products.family_role_of_sku(sku) is None
         assert await products.size_run_of(product_id) == []
         assert await ColourwayRepository(session, a).live_ids(product_id) == []
     with pytest.raises(RowCountError):

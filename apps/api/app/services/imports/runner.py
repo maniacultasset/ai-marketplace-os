@@ -467,17 +467,16 @@ class _Writer:
             return
         row = p.row
         assert row is not None  # noqa: S101
-        if await self.products.family_of_sku(row.sku) is not None:
-            # a family's child sent without its parent: never detach it from its matrix cell
-            await self._fail(
-                p,
-                [
-                    row_error(
-                        ErrorCode.CROSS_FIELD_MISMATCH,
-                        "parent_style_id is missing for a variant of a family",
-                    )
-                ],
+        role = await self.products.family_role_of_sku(row.sku)
+        if role is not None and (role[0] is not None or role[1] is not None):
+            # a family's member sent as a plain row: a child would be detached from its matrix
+            # cell, a style would lose its theme and size run under its children and cells
+            reason = (
+                "parent_style_id is missing for a variant of a family"
+                if role[0] is not None
+                else "a family's style must be sent with its children (parent_style_id)"
             )
+            await self._fail(p, [row_error(ErrorCode.CROSS_FIELD_MISMATCH, reason)])
             return
 
         async def write() -> uuid.UUID:
