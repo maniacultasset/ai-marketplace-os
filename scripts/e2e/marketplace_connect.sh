@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # The S15 marketplace connect flow, HTTP only, against the local fake marketplace: an acme owner
 # connects Amazon (connect -> consent on the fake -> callback -> confirm), a replayed callback and
-# a bharat confirm of acme's handle are refused, a reviewer may not connect, the stored token is
-# ciphertext; a rejected refresh puts the account in needs_reconnect with one reconnect task; the
-# same seller reconnects (same account, task applied); revoke deletes the tokens, twice.
+# a bharat confirm of acme's handle are refused, a reviewer or operator may not connect, the stored
+# token is ciphertext; a rejected refresh puts the account in needs_reconnect with one reconnect
+# task; the same seller reconnects (same account, task applied); revoke deletes the tokens, twice.
 #
 # Usage: scripts/e2e/marketplace_connect.sh [base_url]   default http://127.0.0.1:<API_HOST_PORT>
 # Hooks (from `make e2e`): FAKE_URL (the fake marketplace, default
@@ -222,6 +222,13 @@ reviewer="$(login reviewer@acme.test)"
 
 step reviewer_connect_403
 call POST "$api/marketplaces/connect" "$reviewer" '{"marketplace": "amazon"}'
+expect 403
+
+step login_acme_operator
+operator="$(login operator@acme.test)"
+
+step operator_connect_403
+call POST "$api/marketplaces/connect" "$operator" '{"marketplace": "amazon"}'
 expect 403
 
 step db_ciphertext_no_canary

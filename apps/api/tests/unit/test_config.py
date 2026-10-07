@@ -50,6 +50,10 @@ DEPLOYED_S15 = {
         "oauth-token-key"
     ),
     "DASHBOARD_BASE_URL": "https://app.example.invalid",
+    "AMAZON_OAUTH_REDIRECT_URI": "https://api.example.invalid/api/v1/marketplaces/amazon/callback",
+    "FLIPKART_OAUTH_REDIRECT_URI": (
+        "https://api.example.invalid/api/v1/marketplaces/flipkart/callback"
+    ),
 }
 TEST_SENTRY_DSN = "https://public@o0.ingest.example.invalid/0"  # never resolvable (.invalid)
 PRIVATE_JWT = "Zq9-not-committed-private-secret-32+"  # neither a Canon literal nor dev-prefixed
@@ -708,6 +712,8 @@ def test_dashboard_base_url_drops_trailing_slash(
         "AMAZON_LWA_TOKEN_URL",
         "FLIPKART_AUTHORIZE_URL",
         "FLIPKART_TOKEN_URL",
+        "AMAZON_OAUTH_REDIRECT_URI",
+        "FLIPKART_OAUTH_REDIRECT_URI",
         "DASHBOARD_BASE_URL",
     ],
 )
@@ -726,6 +732,16 @@ def test_deployed_refuses_http_or_loopback_marketplace_urls(
     # the same value boots locally (the fake marketplace runs on 127.0.0.1)
     env["APP_ENV"] = "local"
     assert boot(monkeypatch, **env).app_env == "local"
+
+
+@pytest.mark.parametrize("name", ["AMAZON_OAUTH_REDIRECT_URI", "FLIPKART_OAUTH_REDIRECT_URI"])
+def test_deployed_refuses_the_loopback_redirect_default(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    # An unset redirect URI falls back to the localhost default, which a deployed boot refuses.
+    env = _deployed_kms_env("api") | {"KMS_KEY_URI": KMS_URI}
+    del env[name]
+    assert f"refuses http or loopback {name}" in abort(monkeypatch, **env)
 
 
 def test_deployed_api_boots_with_https_urls(

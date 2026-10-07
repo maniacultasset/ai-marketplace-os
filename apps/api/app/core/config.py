@@ -48,13 +48,15 @@ KMS_KEY_URI_RE: Final = re.compile(
     r"keyRings/marketplace-os/cryptoKeys/oauth-token-key$"
 )
 FORBIDDEN_KMS_PARTS: Final[tuple[str, ...]] = ("keyRings/aimos", "cryptoKeys/marketplace-tokens")
-# Settings field -> env-var name: the marketplace and dashboard URLs a deployed api/worker must
-# serve over https on a non-loopback host.
+# Settings field -> env-var name: the marketplace, OAuth redirect and dashboard URLs a deployed
+# api/worker must serve over https on a non-loopback host (the redirect defaults are loopback).
 DEPLOYED_HTTPS_URLS: Final[tuple[tuple[str, str], ...]] = (
     ("amazon_authorize_url", "AMAZON_AUTHORIZE_URL"),
     ("amazon_lwa_token_url", "AMAZON_LWA_TOKEN_URL"),
     ("flipkart_authorize_url", "FLIPKART_AUTHORIZE_URL"),
     ("flipkart_token_url", "FLIPKART_TOKEN_URL"),
+    ("amazon_oauth_redirect_uri", "AMAZON_OAUTH_REDIRECT_URI"),
+    ("flipkart_oauth_redirect_uri", "FLIPKART_OAUTH_REDIRECT_URI"),
     ("dashboard_base_url", "DASHBOARD_BASE_URL"),
 )
 
