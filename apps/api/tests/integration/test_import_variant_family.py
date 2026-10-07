@@ -283,3 +283,28 @@ async def test_import_variant_family_child_db_error_matrix_still_valid(
         [tenant],
     )
     assert orphans == 0
+
+
+async def test_import_variant_family_grows(imports_db: JobWorld, api: httpx.AsyncClient) -> None:
+    """A family that grows in a later file keeps a complete matrix: the stored sizes get a gap
+    cell for the new colour, and the new size one for the stored colour (round-1 F1)."""
+    tenant = imports_db.tenant("acme")
+    first = await run(imports_db, api, [child(1, "TEE", "M", "Navy"), child(2, "TEE", "L", "Navy")])
+    assert failed(imports_db.conn, first) == {}
+    second = await run(
+        imports_db, api, [child(3, "TEE", "XL", "Navy"), child(4, "TEE", "M", "Red")]
+    )
+    assert failed(imports_db.conn, second) == {}
+    assert one(
+        imports_db.conn,
+        "SELECT size_run FROM products WHERE sku = 'TEE' AND tenant_id = %s",
+        [tenant],
+    ) == ["m", "l", "xl"]
+    assert cells(imports_db.conn, "TEE", tenant) == [
+        ("navy", "l", "available", None, "seller", "SKU-00002"),
+        ("navy", "m", "available", None, "seller", "SKU-00001"),
+        ("navy", "xl", "available", None, "seller", "SKU-00003"),
+        ("red", "l", "unavailable", "not_provided", "derived", None),
+        ("red", "m", "available", None, "seller", "SKU-00004"),
+        ("red", "xl", "unavailable", "not_provided", "derived", None),
+    ]

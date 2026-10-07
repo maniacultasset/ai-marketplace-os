@@ -656,7 +656,7 @@ class _Writer:
             await self._child(p, style_id, style, theme, colourway_ids)
         for p in orphans:
             await self._fail(p, p.errors)
-        await self._fill_gaps(style_id, theme, sizes, colourway_ids)
+        await self._fill_gaps(style_id, theme)
 
     def _item(self, exc: Exception) -> ErrorItem:
         if isinstance(exc, RowDbError):
@@ -772,17 +772,16 @@ class _Writer:
 
         await self._guarded(p, write)
 
-    async def _fill_gaps(
-        self,
-        style_id: uuid.UUID,
-        theme: str,
-        sizes: list[str],
-        colourway_ids: dict[str, uuid.UUID],
-    ) -> None:
+    async def _fill_gaps(self, style_id: uuid.UUID, theme: str) -> None:
+        """One derived gap per missing colour x size of the **stored** family: its whole
+        `size_run` and every live colourway, so a family that grows in a later file stays
+        complete (AC 17). A one-axis theme has no gaps: each stored size or colour came from a
+        child that holds its available cell."""
         if theme != "size_color":
             return
         async with row_savepoint(self.session):
-            for colourway in colourway_ids.values():
+            sizes = await self.products.size_run_of(style_id)
+            for colourway in await self.colourways.live_ids(style_id):
                 for size in sizes:
                     await self.cells.fill_gap(style_id, colourway, size, self.run.evidence)
 

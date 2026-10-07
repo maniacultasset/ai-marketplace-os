@@ -74,6 +74,20 @@ class ColourwayRepository(TenantScopedRepository[ProductColourway]):
         ).scalar_one()
         return found
 
+    async def live_ids(self, style_id: uuid.UUID) -> list[uuid.UUID]:
+        """Every live colourway of `style_id`, in position order (a gap fill covers the stored
+        family, not only one file's colours)."""
+        stmt = (
+            self._select()
+            .where(
+                ProductColourway.style_product_id == style_id,
+                ProductColourway.deleted_at.is_(None),
+            )
+            .with_only_columns(ProductColourway.id)
+            .order_by(ProductColourway.position, ProductColourway.id)
+        )
+        return list((await self.db.execute(stmt)).scalars())
+
 
 class MatrixCellRepository(TenantScopedRepository[VariantMatrixCell]):
     model = VariantMatrixCell

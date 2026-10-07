@@ -83,6 +83,12 @@ class ProductRepository(TenantScopedRepository[Product]):
         stmt = self._select().where(Product.id == id, Product.deleted_at.is_(None))
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
+    async def size_run_of(self, id: uuid.UUID) -> builtins.list[str]:
+        """The stored `size_run` read as a column (never a cached ORM row)."""
+        stmt = self._select().where(Product.id == id).with_only_columns(Product.size_run)
+        found = (await self.db.execute(stmt)).scalar_one_or_none()
+        return builtins.list(found or [])
+
     async def list_page(
         self, *, limit: int, after: tuple[datetime, uuid.UUID] | None
     ) -> tuple[builtins.list[Product], bool]:
