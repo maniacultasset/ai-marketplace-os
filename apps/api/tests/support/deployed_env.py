@@ -1,6 +1,7 @@
 """What a deployed (staging or production) api or worker must set since S15, for tests that boot
-one: a Cloud KMS key URI of the Canon shape and https, non-loopback marketplace URLs (the OAuth
-redirect defaults are loopback, so a deployed boot refuses them). Values are `.invalid` and never
+one: a Cloud KMS key URI of the Canon shape, https non-loopback marketplace and object-store URLs
+(the OAuth redirect and S3 defaults are loopback, so a deployed boot refuses them) and S3
+credentials that are not the committed MinIO pair. Values are `.invalid` and never
 resolve."""
 
 from __future__ import annotations
@@ -17,4 +18,8 @@ DEPLOYED_S15_ENV: Final[dict[str, str]] = {
     "FLIPKART_OAUTH_REDIRECT_URI": (
         "https://api.example.invalid/api/v1/marketplaces/flipkart/callback"
     ),
+    # S13b: never the committed `local_only_` MinIO pair, and an https store
+    "S3_ENDPOINT_URL": "https://storage.example.invalid",
+    "S3_ACCESS_KEY": "Zq9-deployed-access-key",
+    "S3_SECRET_KEY": "Zq9-deployed-secret-key-not-committed",
 }

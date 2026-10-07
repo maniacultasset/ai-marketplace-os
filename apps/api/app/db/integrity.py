@@ -17,7 +17,7 @@ from typing import Final
 from mkos_schemas.codes import ErrorCode
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
-from app.core.errors import ConflictError, DomainError
+from app.core.errors import ConflictError, DomainError, InputError
 
 logger = logging.getLogger(__name__)
 
@@ -69,12 +69,24 @@ def to_conflict(exc: IntegrityError) -> ConflictError:
     return ConflictError(code, name or "<none>")
 
 
+# The 0007 facts guard (DATABASE.md:1182-1185): a refused fact is the writer's 422, not a 409.
+FACT_SQLSTATES: Final[Mapping[str, ErrorCode]] = MappingProxyType(
+    {
+        "PRV01": ErrorCode.FACT_SOURCE_FORBIDDEN,
+        "PRV02": ErrorCode.UNKNOWN_FACT_KEY,
+        "PRV03": ErrorCode.FACT_LEVEL_INVALID,
+    }
+)
+
+
 def map_db_error(exc: DBAPIError) -> DomainError | None:
     """The `DomainError` for a 0004 guard's refusal, by SQLSTATE (LST02 also by constraint);
     None for a standard Postgres SQLSTATE (not a guard's) or a driver error without one."""
     sqlstate = getattr(exc.orig, "sqlstate", None)
     if not isinstance(sqlstate, str) or not _SQLSTATE.fullmatch(sqlstate) or sqlstate[0].isdigit():
         return None
+    if sqlstate in FACT_SQLSTATES:
+        return InputError(FACT_SQLSTATES[sqlstate], "attributes")
     name = _constraint_name(exc)
     code = GUARD_SQLSTATES.get(sqlstate)
     if sqlstate == "LST02":

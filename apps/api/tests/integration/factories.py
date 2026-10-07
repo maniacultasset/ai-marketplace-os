@@ -21,6 +21,19 @@ def _next() -> int:
     return next(_counter)
 
 
+FACT_TABLES = ("products", "product_colourways", "brand_profiles")
+
+
+def facts_guard_off(conn: Conn, *tables: str) -> None:
+    """Turn the 0007 facts guard off for the caller's open transaction (rolled back with it):
+    the 0001 CHECK tests and the hostile-row reads store keys and levels the dictionary refuses,
+    and the BEFORE trigger would refuse them before the CHECK under test runs."""
+    for table in tables or FACT_TABLES:
+        conn.execute(
+            sql.SQL("ALTER TABLE {} DISABLE TRIGGER facts_guard").format(sql.Identifier(table))
+        )
+
+
 def fact(source: Any = "seller", captured_via: Any = "form", **fields: Any) -> dict[str, Any]:
     """One fact envelope (DATABASE.md §5.6). `value` defaults to "x"; pass `value=None` to omit
     it. A non-seller source gets an `image:` evidence ref unless one is given."""

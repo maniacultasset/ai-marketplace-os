@@ -172,7 +172,8 @@ def test_platform_tables_ad_key_regex(mig: Conn, key: str) -> None:
 
 
 def test_platform_tables_ad_key_regex_accepts(mig: Conn) -> None:
-    for key in ("fabric_type", "ab", "a" * 64, "gsm2"):
+    # not dictionary keys: the head database holds the synced dictionary (0006)
+    for key in ("fabric_type_x", "ab", "a" * 64, "gsm2"):
         attribute_definition(mig, key=key)
 
 

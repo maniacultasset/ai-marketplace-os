@@ -247,7 +247,11 @@ async def test_login_writes_under_tenant_guc(
     api: httpx.AsyncClient, world: World, auth_db: Conn
 ) -> None:
     owner = world.user("owner@acme.test")
-    before = datetime.now(UTC)
+    # the database's own clock: last_*_at are its now(), and the app and DB clocks can differ by
+    # milliseconds (a 4 ms gap failed this once in the S13b run)
+    clock = auth_db.execute("SELECT clock_timestamp()").fetchone()
+    assert clock is not None
+    before = clock[0]
     response = await _login(api, "owner@acme.test", **{"User-Agent": "test-agent/1"})
     assert response.status_code == 200
     rows = auth_db.execute(

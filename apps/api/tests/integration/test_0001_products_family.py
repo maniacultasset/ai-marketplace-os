@@ -159,6 +159,7 @@ def test_product_family_attributes_iff_parent(db: Conn) -> None:
 
 @pytest.mark.parametrize("column", STYLE_OWNED)
 def test_product_family_style_owned(db: Conn, column: str) -> None:
+    f.facts_guard_off(db)
     tenant_id = f.tenant(db)
     owned: dict[str, Any] = {column: STYLE_OWNED_VALUES[column]}
     style = f.product(db, tenant_id, "style", **owned)

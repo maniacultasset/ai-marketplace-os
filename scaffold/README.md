@@ -12,17 +12,19 @@ cp -R scaffold/. /path/to/ai-marketplace-os/
 | `apps/api/Dockerfile` | One multi-stage image serving api, worker, migrate and seed; APP_ROLE parameterises the entrypoint so both Cloud Run services run the same digest. |
 | `apps/api/docker-entrypoint.sh` | The parameterised entrypoint: APP_ROLE selects api, worker, migrate or seed out of the one image. |
 | `.dockerignore` | Repo-root ignore file (the build context is the root); keeps secrets, venvs and node_modules out of the image and the layer cache warm. |
-| `apps/api/app/workers/main.py` | Worker process: ARQ consumer plus a $PORT health server in one process, so the worker can deploy as a Cloud Run service. |
+| ~~`apps/api/app/workers/main.py`~~ | Retired (S13b, KNOWN-ISSUES.md C): the real worker is `apps/api/app/workers/main.py` (procrastinate, no health server, ADR-0017). |
 | `apps/api/app/core/config.py` | The canonical env register as a pydantic-settings Settings class; four required vars, everything else defaulted, refuses to boot otherwise. |
 | `apps/api/app/db/session.py` | Async engine factory, lazy sessionmaker, the FastAPI dependencies and the unit-of-work / platform-scope transaction boundaries. |
 | `packages/schemas/src/mkos_schemas/rules.py` | The rules-table row format as a discriminated union, plus RuleSet - the object RulesEngine.validate() takes and load_rules() returns. |
 | `packages/schemas/fixtures/rules.seed.json` | Four real rules-table rows - the two title caps, the banned-term list and a required attribute - loaded by scripts/seed.py and by the rules fixture suite. |
 | `packages/pipeline/src/mkos_pipeline/state.py` | AgentState: the LangGraph channel schema plus the two adapters that make GenerationContext -> GenerationResult the only cross-team seam. |
 | `apps/web/eslint.config.mjs` | ESLint 9 flat config for apps/web - the web-lint branch-protection gate, with the eslint / tsc / prettier boundary made explicit. |
-| `apps/api/app/services/imports/row_model.py` | The bulk-import CSV contract as executable code: header validation (file-level 422) and the per-row Pydantic model (row-level errors). |
+| ~~`apps/api/app/services/imports/row_model.py`~~ | Retired (S13b, KNOWN-ISSUES.md C): the real header contract and row model are `apps/api/app/services/imports/headers.py` and `row_model.py`. |
 | `scripts/seed.py` | One command that creates two tenants with deliberately identical SKUs, so cross-tenant isolation is testable; deterministic, re-runnable, no GCP or LLM credentials. |
 
 ## Bulk import CSV contract
+
+> **Superseded (S13b).** The import takes the BRD master names of DATABASE.md Appendix A.6 (`seller_sku`, `product_name`, `category`, ...), with the aliases `parent_sku`, `mrp_inr`, `price_inr`, `weight_grams` and `package_weight_g`; see `apps/api/app/services/imports/headers.py` and `row_model.py`. The table below is the older draft, kept for history.
 
 | Column | Required | Validation rule |
 |---|---|---|

@@ -618,8 +618,9 @@ links `parent_sku` values to parent products, writes the totals and ends the job
   per-row approval (L11345, L12075). Our default (open question Q11): **no**; the user picks rows and
   marketplaces through a batch-generate contract (gap G10) [Proposed]. This departs
   from the site and has no T-row yet (candidate row, §13.2).
-- **Template shape is open:** the BRD has a 64-column field dictionary (L1560–2082); ours is core
-  columns plus a JSON `attributes` cell (VISION-ALIGNMENT C4), to be settled by an ADR before S13.
+- **Template shape (settled in S13b, PD10):** the import takes the BRD's 64-column field dictionary
+  verbatim (L1560–2082; DATABASE.md Appendix A.6), plus the aliases `parent_sku`, `mrp_inr`,
+  `price_inr`, `weight_grams` and `package_weight_g`; there is no JSON `attributes` cell.
 - **Not specified:** the endpoint that returns the per-row `ImportReport`, and whether a corrected
   re-upload skips or updates SKUs that were already imported. Draft import-report paths are listed
   in §5.2 [Proposed].

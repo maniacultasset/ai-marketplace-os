@@ -222,6 +222,14 @@ seed_cas_without_status() {
   replace apps/api/app/repositories/jobs.py $'                JobRun.status == "queued",\n                JobRun.attempt < JobRun.max_attempts,' \
     '                JobRun.attempt < JobRun.max_attempts,'
 }
+# S13b: the row model accepts NaN as a price again (KNOWN-ISSUES.md:47), and a module outside the
+# storage adapter imports boto3.
+seed_row_model_nan() {
+  cp "$root/.env" .env
+  replace apps/api/app/services/imports/row_model.py 'MONEY_PATTERN: Final = re.compile(r"[0-9]{1,10}(\.[0-9]{1,2})?")' \
+    'MONEY_PATTERN: Final = re.compile(r"[0-9]{1,10}(\.[0-9]{1,2})?|nan|NaN")'
+}
+seed_boto3_outside_adapter() { append apps/api/app/services/jobs.py 'import boto3  # noqa: F401'; }
 seed_engine_in_worker() { new_file apps/api/app/workers/x.py $'"""Seeded."""\n\nfrom app.db.session import get_engine\n\n__all__ = ["get_engine"]'; }
 seed_iso_no_filter() {
   cp "$root/.env" .env
@@ -420,6 +428,8 @@ leg lint-imports-scope-ok-service lint-imports ': R6 ' seed_scope_ok_service mak
 leg api-lint-text-in-service api-lint ': R4 ' seed_text_in_service make api-lint
 leg api-lint-text-attribute-chain api-lint ': R4 ' seed_text_attribute_chain make api-lint
 leg api-lint-engine-in-worker api-lint ': R4 ' seed_engine_in_worker make api-lint
+leg lint-imports-boto3-outside-adapter lint-imports 'boto3 and botocore only in app.adapters.storage BROKEN' \
+  seed_boto3_outside_adapter make lint-imports
 
 # S14a: the Rules Engine stays pure (AC 11) and its branch coverage is gated (AC 12).
 seed_engine_openai() { new_file apps/api/app/services/rules_engine/x.py $'"""Seeded."""\n\nimport openai\n\nCLIENT = openai'; }
@@ -470,6 +480,7 @@ if [ "$with_docker" -eq 1 ]; then
   leg api-tests-route-without-role api-tests 'test_every_route_declares_role' seed_route_without_role COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-limiter-off api-tests 'test_rate_limit_sixth_login_429' seed_limiter_off COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-cas-without-status api-tests 'test_claim_cas_drops_duplicate' seed_cas_without_status COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-row-model-nan api-tests 'test_row_model_nan_infinity_row_error' seed_row_model_nan COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg contracts-response-field-removed contracts 'response-required-property-removed' seed_response_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
   leg contracts-response-optional-property-removed contracts 'response-optional-property-removed' seed_optional_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
   leg contracts-response-non-success-status-removed contracts 'response-non-success-status-removed' seed_error_status_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'

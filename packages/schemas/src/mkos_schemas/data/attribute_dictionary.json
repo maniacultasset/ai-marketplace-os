@@ -1,0 +1,2439 @@
+{
+  "dictionary_version": 1,
+  "attributes": [
+    {
+      "key": "title",
+      "section": "identity",
+      "storage": "column",
+      "owner_levels": [
+        "style",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 product_name",
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "title"
+        }
+      ]
+    },
+    {
+      "key": "brand_name",
+      "section": "identity",
+      "storage": "column",
+      "owner_levels": [
+        "style",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 brand_name",
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "brand_name"
+        }
+      ]
+    },
+    {
+      "key": "style_number",
+      "section": "identity",
+      "storage": "column",
+      "owner_levels": [
+        "style",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "style_number"
+        }
+      ]
+    },
+    {
+      "key": "stock_ref",
+      "section": "identity",
+      "storage": "column",
+      "owner_levels": [
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "stock_ref"
+        }
+      ]
+    },
+    {
+      "key": "category",
+      "section": "classification",
+      "storage": "column",
+      "owner_levels": [
+        "style",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "enum",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.80",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 category",
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "category"
+        }
+      ]
+    },
+    {
+      "key": "sub_category",
+      "section": "classification",
+      "storage": "column",
+      "owner_levels": [
+        "style",
+        "standalone"
+      ],
+      "value_type": "enum",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.80",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 sub_category",
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "sub_category"
+        }
+      ]
+    },
+    {
+      "key": "product_type",
+      "section": "classification",
+      "storage": "column",
+      "owner_levels": [
+        "style",
+        "standalone"
+      ],
+      "value_type": "enum",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.80",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 product_type",
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "product_type"
+        }
+      ]
+    },
+    {
+      "key": "gender",
+      "section": "classification",
+      "storage": "column",
+      "owner_levels": [
+        "style",
+        "standalone"
+      ],
+      "value_type": "enum",
+      "unit": null,
+      "vocabulary": [
+        "men",
+        "women",
+        "unisex",
+        "boys",
+        "girls"
+      ],
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.80",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 gender",
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "gender"
+        }
+      ]
+    },
+    {
+      "key": "mrp",
+      "section": "commercial",
+      "storage": "column",
+      "owner_levels": [
+        "style",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "money",
+      "unit": "INR",
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": "A.6 mrp",
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "mrp"
+        }
+      ]
+    },
+    {
+      "key": "selling_price",
+      "section": "commercial",
+      "storage": "column",
+      "owner_levels": [
+        "style",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "money",
+      "unit": "INR",
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": "A.6 selling_price",
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "selling_price"
+        }
+      ]
+    },
+    {
+      "key": "tax_rate",
+      "section": "commercial",
+      "storage": "column",
+      "owner_levels": [
+        "style",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "number",
+      "unit": "percent",
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": "A.6 tax_rate",
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "tax_rate"
+        }
+      ]
+    },
+    {
+      "key": "hsn_code",
+      "section": "compliance",
+      "storage": "column",
+      "owner_levels": [
+        "style",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": "A.6 hsn_code",
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "hsn_code"
+        }
+      ]
+    },
+    {
+      "key": "country_of_origin",
+      "section": "compliance",
+      "storage": "column",
+      "owner_levels": [
+        "brand",
+        "style",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "enum",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": "A.6 country_of_origin",
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "country_of_origin"
+        },
+        {
+          "table": "brand_profiles",
+          "column": "default_country_of_origin"
+        }
+      ]
+    },
+    {
+      "key": "generic_name",
+      "section": "compliance",
+      "storage": "column",
+      "owner_levels": [
+        "style",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "generic_name"
+        }
+      ]
+    },
+    {
+      "key": "net_quantity",
+      "section": "compliance",
+      "storage": "column",
+      "owner_levels": [
+        "style",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "measure",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "net_quantity"
+        },
+        {
+          "table": "products",
+          "column": "net_quantity_unit"
+        }
+      ]
+    },
+    {
+      "key": "identifier",
+      "section": "identity",
+      "storage": "column",
+      "owner_levels": [
+        "variant",
+        "standalone"
+      ],
+      "value_type": "object",
+      "unit": null,
+      "vocabulary": [
+        "type",
+        "value",
+        "status"
+      ],
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": "A.6 product_identifier",
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "identifier_type"
+        },
+        {
+          "table": "products",
+          "column": "identifier_value"
+        },
+        {
+          "table": "products",
+          "column": "identifier_status"
+        }
+      ]
+    },
+    {
+      "key": "package_dimensions",
+      "section": "dimensions",
+      "storage": "column",
+      "owner_levels": [
+        "style",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "measure",
+      "unit": "cm",
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": "A.6 package_length_cm",
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "package_length_cm"
+        },
+        {
+          "table": "products",
+          "column": "package_breadth_cm"
+        },
+        {
+          "table": "products",
+          "column": "package_height_cm"
+        }
+      ]
+    },
+    {
+      "key": "package_weight",
+      "section": "dimensions",
+      "storage": "column",
+      "owner_levels": [
+        "style",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "measure",
+      "unit": "g",
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": "A.6 package_weight",
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "package_weight_g"
+        }
+      ]
+    },
+    {
+      "key": "product_weight",
+      "section": "dimensions",
+      "storage": "column",
+      "owner_levels": [
+        "style",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "measure",
+      "unit": "g",
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "product_weight_g"
+        }
+      ]
+    },
+    {
+      "key": "manufacturer",
+      "section": "compliance",
+      "storage": "column",
+      "owner_levels": [
+        "brand",
+        "style",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "party",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "manufacturer_party_id"
+        },
+        {
+          "table": "brand_profiles",
+          "column": "default_manufacturer_party_id"
+        }
+      ]
+    },
+    {
+      "key": "marketer",
+      "section": "compliance",
+      "storage": "column",
+      "owner_levels": [
+        "brand",
+        "style",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "party",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "marketer_party_id"
+        },
+        {
+          "table": "brand_profiles",
+          "column": "default_marketer_party_id"
+        }
+      ]
+    },
+    {
+      "key": "packer",
+      "section": "compliance",
+      "storage": "column",
+      "owner_levels": [
+        "brand",
+        "style",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "party",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "packer_party_id"
+        },
+        {
+          "table": "brand_profiles",
+          "column": "default_packer_party_id"
+        }
+      ]
+    },
+    {
+      "key": "importer",
+      "section": "compliance",
+      "storage": "column",
+      "owner_levels": [
+        "brand",
+        "style",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "party",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "importer_party_id"
+        },
+        {
+          "table": "brand_profiles",
+          "column": "default_importer_party_id"
+        }
+      ]
+    },
+    {
+      "key": "consumer_care",
+      "section": "compliance",
+      "storage": "column",
+      "owner_levels": [
+        "brand",
+        "style",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "party",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": [
+        {
+          "table": "products",
+          "column": "consumer_care_party_id"
+        },
+        {
+          "table": "brand_profiles",
+          "column": "consumer_care_party_id"
+        }
+      ]
+    },
+    {
+      "key": "brand_names",
+      "section": "identity",
+      "storage": "column",
+      "owner_levels": [
+        "brand"
+      ],
+      "value_type": "text_list",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": [
+        {
+          "table": "brand_profiles",
+          "column": "brand_names"
+        }
+      ]
+    },
+    {
+      "key": "brand_owner_type",
+      "section": "identity",
+      "storage": "column",
+      "owner_levels": [
+        "brand"
+      ],
+      "value_type": "enum",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": [
+        {
+          "table": "brand_profiles",
+          "column": "brand_owner_type"
+        }
+      ]
+    },
+    {
+      "key": "website_url",
+      "section": "identity",
+      "storage": "column",
+      "owner_levels": [
+        "brand"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": [
+        {
+          "table": "brand_profiles",
+          "column": "website_url"
+        }
+      ]
+    },
+    {
+      "key": "brand_description",
+      "section": "identity",
+      "storage": "column",
+      "owner_levels": [
+        "brand"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": [
+        {
+          "table": "brand_profiles",
+          "column": "brand_description"
+        }
+      ]
+    },
+    {
+      "key": "logo",
+      "section": "identity",
+      "storage": "column",
+      "owner_levels": [
+        "brand"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": [
+        {
+          "table": "brand_profiles",
+          "column": "logo_storage_key"
+        }
+      ]
+    },
+    {
+      "key": "legal_entity",
+      "section": "identity",
+      "storage": "column",
+      "owner_levels": [
+        "brand"
+      ],
+      "value_type": "party",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": [
+        {
+          "table": "brand_profiles",
+          "column": "legal_entity_party_id"
+        }
+      ]
+    },
+    {
+      "key": "content_locale",
+      "section": "identity",
+      "storage": "column",
+      "owner_levels": [
+        "brand"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": [
+        {
+          "table": "brand_profiles",
+          "column": "content_locale"
+        }
+      ]
+    },
+    {
+      "key": "size",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": "A.6 size_name",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "size_measurements",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "object",
+      "unit": null,
+      "vocabulary": [
+        "chest",
+        "waist",
+        "hip",
+        "length",
+        "shoulder",
+        "sleeve",
+        "inseam",
+        "basis"
+      ],
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "fabric_type",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [
+        "material"
+      ],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": "A.6 fabric_type",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "fiber_composition",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "composition",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": "A.6 fiber_composition",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "lining",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "object",
+      "unit": null,
+      "vocabulary": [
+        "lined",
+        "material"
+      ],
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": "A.6 lining",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "gsm",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "number",
+      "unit": "g/m2",
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "wash_care",
+      "section": "care",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": "A.6 wash_care",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "iron_care",
+      "section": "care",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": "A.6 iron_care",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "certifications",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text_list",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "performance_claims",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text_list",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "set_composition",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "number_of_pieces",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "integer",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "product_dimensions",
+      "section": "dimensions",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "measure",
+      "unit": "cm",
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": true,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": true,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "color",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "colour",
+        "style",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 color_name",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "secondary_color",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "colour",
+        "style",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "size_system",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "standalone"
+      ],
+      "value_type": "enum",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 size_system",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "body_type",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "age_group",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "construction",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "weave_finish",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "transparency",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "stretch",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 stretch",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "fit",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 fit",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "pattern",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 pattern",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "silhouette",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "neckline",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 neckline",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "collar_type",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 collar_type",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "sleeve_type",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 sleeve_type",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "sleeve_length",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 sleeve_length",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "cuff_type",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "garment_length",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 garment_length",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "rise",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 rise",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "waist_style",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "leg_style",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 leg_style",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "closure",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 closure",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "pocket_type",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "object",
+      "unit": null,
+      "vocabulary": [
+        "present",
+        "type",
+        "count"
+      ],
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 pocket_type",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "hem",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "placket",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "print_type",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "embroidery",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "occasion",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 occasion",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "season",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 season",
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "kurta_type",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "dress_type",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "side_slits",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "wash",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "distressed",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "pleat",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "insulation",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "hood",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "fleece",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    }
+  ],
+  "category_attributes": []
+}

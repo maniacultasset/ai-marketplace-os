@@ -8,7 +8,10 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 
 import procrastinate
+from mkos_schemas.enums import JobKind
 
+from app.services.imports.runner import run_import
+from app.workers import registry
 from app.workers.policy import POLICIES
 from app.workers.retry import JobRetryStrategy
 from app.workers.wrapper import run_job
@@ -21,8 +24,16 @@ def _task_body() -> Callable[[str], Awaitable[None]]:
     return task
 
 
+def register_bodies() -> None:
+    """The job bodies the steps own (S13b `bulk_import`); a body already set is kept (tests
+    install fakes first)."""
+    if registry.body_for(JobKind.BULK_IMPORT) is None:
+        registry.register(JobKind.BULK_IMPORT, run_import)
+
+
 def register_tasks(app: procrastinate.App) -> None:
-    """Register the six kind tasks on `app`; a second call is a no-op."""
+    """Register the job bodies and the six kind tasks on `app`; a second call is a no-op."""
+    register_bodies()
     for kind, policy in POLICIES.items():
         if kind.value in app.tasks:
             continue

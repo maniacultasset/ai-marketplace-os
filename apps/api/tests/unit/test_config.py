@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
+from tests.support.deployed_env import DEPLOYED_S15_ENV
 
 if TYPE_CHECKING:
     from app.core.config import Settings
@@ -44,17 +45,7 @@ SECRET_FIELDS = {
     "ALERT_SLACK_WEBHOOK": "https://hooks.slack.com/services/Zq9slack",
 }
 # S15: what a deployed api/worker also needs (the token key, an https dashboard origin).
-DEPLOYED_S15 = {
-    "KMS_KEY_URI": (
-        "projects/aimos-staging/locations/asia-south1/keyRings/marketplace-os/cryptoKeys/"
-        "oauth-token-key"
-    ),
-    "DASHBOARD_BASE_URL": "https://app.example.invalid",
-    "AMAZON_OAUTH_REDIRECT_URI": "https://api.example.invalid/api/v1/marketplaces/amazon/callback",
-    "FLIPKART_OAUTH_REDIRECT_URI": (
-        "https://api.example.invalid/api/v1/marketplaces/flipkart/callback"
-    ),
-}
+DEPLOYED_S15 = DEPLOYED_S15_ENV
 TEST_SENTRY_DSN = "https://public@o0.ingest.example.invalid/0"  # never resolvable (.invalid)
 PRIVATE_JWT = "Zq9-not-committed-private-secret-32+"  # neither a Canon literal nor dev-prefixed
 OTEL_SAMPLERS = (
@@ -761,3 +752,45 @@ def test_deployed_api_boots_with_https_urls(
     loaded = boot(monkeypatch, **env)
     assert loaded.amazon_authorize_url is not None
     assert loaded.flipkart_authorize_url is None
+
+
+# ---- S13b (KNOWN-ISSUES.md D): the object store outside local ----
+
+
+@pytest.mark.parametrize("role", ["api", "worker"])
+@pytest.mark.parametrize("name", ["S3_ACCESS_KEY", "S3_SECRET_KEY"])
+@pytest.mark.parametrize(
+    "value", [None, "local_only_minio_root_user", "  LOCAL_ONLY_x  ", "ci_only_key", "dev_only_k"]
+)
+def test_deployed_refuses_committed_s3_credentials(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, role: str, name: str, value: str | None
+) -> None:
+    env = _deployed_kms_env(role) | {"KMS_KEY_URI": KMS_URI}
+    if role == "worker":
+        env.pop("JWT_SECRET", None)
+    if value is None:
+        del env[name]  # unset: the committed `local_only_` default
+    else:
+        env[name] = value
+    message = abort(monkeypatch, **env)
+    assert f"refuses a committed or dev-prefixed {name}" in message
+    assert "minio_root" not in message and "Zq9" not in message
+
+
+@pytest.mark.parametrize(
+    "value", [None, "http://storage.example.invalid", "https://127.0.0.1:9000", "https://localhost"]
+)
+def test_deployed_refuses_http_or_loopback_s3_endpoint(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, value: str | None
+) -> None:
+    env = _deployed_kms_env("api") | {"KMS_KEY_URI": KMS_URI}
+    if value is None:
+        del env["S3_ENDPOINT_URL"]  # unset: the committed http://localhost:9000 default
+    else:
+        env["S3_ENDPOINT_URL"] = value
+    assert "refuses http or loopback S3_ENDPOINT_URL" in abort(monkeypatch, **env)
+
+
+def test_local_keeps_the_minio_defaults(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    loaded = boot(monkeypatch, APP_ENV="local", DATABASE_URL=LOCAL_URL, JWT_SECRET=CI_LITERAL)
+    assert loaded.s3_access_key == "local_only_minio_root_user"

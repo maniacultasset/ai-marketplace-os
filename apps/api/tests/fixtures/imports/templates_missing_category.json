@@ -1,0 +1,13 @@
+[
+  {
+    "version": 1,
+    "product_type": "DUPATTA",
+    "template": {
+      "marketplace": "amazon",
+      "category": "ethnic_wear_dupattas",
+      "required_attributes": ["fabric_type", "color"],
+      "optional_attributes": ["pattern", "occasion"],
+      "specs": {}
+    }
+  }
+]

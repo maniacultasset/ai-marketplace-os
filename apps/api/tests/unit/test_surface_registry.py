@@ -221,6 +221,7 @@ def test_error_codes_per_d2() -> None:
         "products_create": (E.SKU_CONFLICT,),
         "listings_content_patch": (E.STALE_VERSION,),
         "jobs_cancel": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
+        "imports_rows_retry": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "marketplaces_callback": (E.OAUTH_STATE_INVALID,),
         "marketplaces_connect_confirm": (E.MARKETPLACE_ACCOUNT_CONFLICT, E.OAUTH_STATE_INVALID),
         "members_patch": (E.LAST_OWNER_REQUIRED,),
@@ -253,11 +254,11 @@ def test_error_codes_per_d2() -> None:
         if op.has_body:
             assert codes[413] == (E.PAYLOAD_TOO_LARGE,)
         if "validation" in c:
-            expected_422 = (
-                (E.VALIDATION_FAILED, E.UNKNOWN_FACT_KEY)
-                if op.op_id == "products_create"
-                else (E.VALIDATION_FAILED,)
-            )
+            extra_422 = {
+                "products_create": (E.UNKNOWN_FACT_KEY,),
+                "products_bulk": (E.IMPORT_FAILED,),  # S13b: the file-level import report
+            }
+            expected_422 = (E.VALIDATION_FAILED, *extra_422.get(op.op_id, ()))
             assert codes[422] == expected_422, op.op_id
         else:
             assert 422 not in codes, op.op_id

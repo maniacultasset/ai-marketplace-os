@@ -5439,7 +5439,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description The request conflicts with the current state. Codes: `IDEMPOTENCY_KEY_REUSED`. */
+            /** @description The request conflicts with the current state. Codes: `IDEMPOTENCY_KEY_REUSED`, `INVALID_STATUS_TRANSITION`. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -12124,7 +12124,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Request validation failed. Codes: `VALIDATION_FAILED`. */
+            /** @description Request validation failed. Codes: `VALIDATION_FAILED`, `IMPORT_FAILED`. */
             422: {
                 headers: {
                     [name: string]: unknown;

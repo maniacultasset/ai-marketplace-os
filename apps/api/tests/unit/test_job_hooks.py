@@ -19,6 +19,10 @@ def test_hook_type_aliases_literal() -> None:
     assert typing.get_args(requeue_ret) == (None,)
 
 
-def test_hook_maps_start_empty() -> None:
-    assert job_hooks.TERMINAL_HOOKS == {}
-    assert job_hooks.REQUEUE_HOOKS == {}
+def test_hook_maps_hold_only_the_import_hooks() -> None:
+    """S13b adds the first entries: the `bulk_import` hooks (later steps add their kinds)."""
+    from app.services.imports.hooks import import_requeue_hook, import_terminal_hook
+    from mkos_schemas.enums import JobKind
+
+    assert {JobKind.BULK_IMPORT: import_terminal_hook} == job_hooks.TERMINAL_HOOKS
+    assert {JobKind.BULK_IMPORT: import_requeue_hook} == job_hooks.REQUEUE_HOOKS

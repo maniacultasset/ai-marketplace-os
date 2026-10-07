@@ -40,16 +40,22 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 | Several "Done when" lines depend on artifacts from later steps (S7, S8, S11), which creates ordering cycles. S1's part is resolved: migrations move to S5, the seed to S9, and the worker to S13 (ADR-0013 §4). | Move those tests to the later step. | planning |
 | Numbering drift: the Canon cites "invariant 12" (two schemes, 10 vs 14 items); ADR numbers collide in the pack; Day 11 is a Thursday while the MAJOR windows fall on Sundays. | Use the `docs/RULES.md` §1 numbering. Keep an ADR ledger in `docs/adr/README.md`. | ongoing |
 
+## B2. Open after S13b
+
+| Item | State | Next |
+|---|---|---|
+| `facts_guard` PRV04 (a changed typed value needs a changed `provenance.<key>.updated_at`) and PRV05 (a party used as manufacturer … consumer care lists that role and is live), DATABASE.md:1184-1185 | Revision `0007_facts_guard` (S13b) ships PRV01-PRV03 only (CODE-PLAN S13 Q13); no step owns PRV04/PRV05 yet. The FactWriter always writes the provenance with the value, and the import's parties carry their role, so v1 writers keep both rules by construction. | Unowned: name the step (a new revision) before S18 writes facts from the AI. |
+
 ## C. Scaffold bugs (fix when the file moves into place in S1, then test)
 
 | File | Bug | Fix |
 |---|---|---|
 | `app/db/session.py` | `SET LOCAL app.tenant_id = :tid` cannot be parameterized in Postgres, so **every tenant session fails**. | `SELECT set_config('app.tenant_id', :tid, true)` |
-| `app/db/session.py`, `app/services/imports/row_model.py`, `app/workers/main.py`, `scripts/seed.py` | These four scaffold .py files, still unmoved, fail the canonical ruff + black run (semicolon-joined lines and more). | Reformat when moving the files. |
-| `app/services/imports/row_model.py` | Before-validators run in reverse order, so blank prices become errors. `NaN`/`Infinity` prices crash with a non-ValueError. A header that passes after lowercasing still fails the exact-key model. A blank `status` fails instead of defaulting to `draft`. Short rows become `None`. A JSON attributes cell skips the key regex and the 50-pair cap. | Normalize the row once before validation, and reorder or merge the validators. Add a test per CSV contract row. |
+| `app/db/session.py`, `app/services/imports/row_model.py`, `app/workers/main.py`, `scripts/seed.py` | These four scaffold .py files, still unmoved, fail the canonical ruff + black run (semicolon-joined lines and more). | Reformat when moving the files. Fixed in S13b for the last two: the scaffold `row_model.py` and `workers/main.py` are deleted; the real modules pass ruff and black. |
+| `app/services/imports/row_model.py` | Before-validators run in reverse order, so blank prices become errors. `NaN`/`Infinity` prices crash with a non-ValueError. A header that passes after lowercasing still fails the exact-key model. A blank `status` fails instead of defaulting to `draft`. Short rows become `None`. A JSON attributes cell skips the key regex and the 50-pair cap. | Normalize the row once before validation, and reorder or merge the validators. Add a test per CSV contract row. Fixed in S13b: `normalize_row` runs once (trim, collapse, blank → None, alias → canonical) before one validation pass with no before-validators; NaN/Infinity, 3 decimals and out-of-range prices are row errors; a lower-cased header and alias match; there is no `status` column (always `draft`); short rows pad with `""`; a JSON-looking cell is plain text (one test each, `tests/unit/test_row_model.py`). |
 | `app/workers/main.py` | Shutdown cancels in-flight jobs and never calls `worker.close()` / `on_shutdown`. | Drain gracefully, then close. Fixed in S13a: SIGTERM gives running jobs 8 s, releases the rest uncounted, unregisters the workers and closes the queue app (ADR-0017). |
 | `app/workers/main.py` | Uses FastAPI + uvicorn where the Canon says an aiohttp health server. | Accept with an ADR, or switch. Fixed in S13a: no health server at all (CANON.md row 63 superseded by row 25). |
-| `app/db/session.py` | Commits in dependency teardown with `autoflush=False`, so constraint errors surface outside the handler. | Flush inside the service; map IntegrityError explicitly. |
+| `app/db/session.py` | Commits in dependency teardown with `autoflush=False`, so constraint errors surface outside the handler. | Flush inside the service; map IntegrityError explicitly. Import rows also flush inside their own SAVEPOINT (S13b `row_savepoint`), so a row's constraint error is that row's result, mapped by constraint name. |
 | `app/db/session.py`, `workers/main.py` | Import modules that exist nowhere (`app.core.security`, `app.db.guard`, `app.workers.settings`, `app.models`). | Create them in S9/S10/S13. Note `get_current_user` vs the Canon's `get_current_principal`. |
 | `scripts/seed.py` | Creates no `category_templates`, so every CSV row fails `CATEGORY_NOT_MAPPED`. `SEED_PASSWORD` is claimed but never read. `--reset` misses the later tables. `assert` fails ruff S101. No fixture export. | Rewrite as `app/cli.py` per A§5 with these fixes. |
 | `packages/schemas` (CONTRACTS reference code) | `ImageReport.model_dump()` emits `pass_`, not `pass` (needs `serialize_by_alias`). `value_submitted max_length=600` raises instead of truncating. `resolve()` rejects attribute paths with digits. The RuleDef discriminator is optional in JSON Schema. The rule message uses an undocumented `{allowed_values}` placeholder. | Fixed in S2 (`mkos-schemas` 1.0.0: `serialize_by_alias`, truncation, digit paths, required discriminator, documented placeholders). |
@@ -66,7 +72,9 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 - `CANON.md` was never merged with the Addendum and never mentions it. `docs/README.md` "When sources disagree" sets the
   precedence until someone merges them.
 - The step that adds the S3 client must refuse `local_only_` S3 values outside `APP_ENV=local`
-  (`apps/api/app/core/config.py` does this only for the JWT secret).
+  (`apps/api/app/core/config.py` does this only for the JWT secret). Fixed in S13b: a deployed api
+  or worker refuses committed or dev-prefixed `S3_ACCESS_KEY`/`S3_SECRET_KEY` and an http or loopback
+  `S3_ENDPOINT_URL`.
 - The commit-msg attribution hook is bypassed by `git commit --no-verify` and by GitHub-written
   squash messages and PR bodies; a later step can run the check in the `commit-lint` CI job.
 
@@ -93,3 +101,10 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   listing on the same SKU skips the insert and the version insert then fails its FK (local seed
   only). API CORS also answers preflights on `/internal/admin` (the gate still refuses the GET).
   `FakeAdapter.update_listing` on a path the listing lacks raises a raw `KeyError`.
+- **CSV-import follow-ups from the S13b review (LOW).** A row of only commas fails instead of
+  being skipped as blank (`csv_file.py`). On a rows retry, a row the parser refused (`raw_row {}`)
+  loses its real error and shows four `REQUIRED_FIELD_MISSING` (keep the stored report). In
+  `storage.py`, `body.read()` sits outside the error mapping, so a stream timeout is
+  `INTERNAL_ERROR`, not a retryable `TIMEOUT`, and `put()` maps nothing. DB backstop:
+  `variant_matrix_complete` does not fire when a child's `parent_product_id` goes NOT NULL → NULL
+  (the import runner checks it; a DB-level check needs its own migration).

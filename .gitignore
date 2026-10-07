@@ -16,6 +16,9 @@ build/
 .env.*
 !.env.example
 
+# The local e2e worker's PID file and log (`make e2e`, S13b)
+.e2e/
+
 # Per-checkout host ports (`.worktree.env`, ADR-0011 amendment): no secrets, never committed
 .worktree.env
 

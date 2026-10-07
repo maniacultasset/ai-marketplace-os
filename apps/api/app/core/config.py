@@ -278,6 +278,20 @@ def _kms_errors(s: Settings) -> list[str]:
     return errors
 
 
+def _storage_errors(s: Settings) -> list[str]:
+    """KNOWN-ISSUES.md D: outside local, an api or worker refuses the committed `local_only_` MinIO
+    credentials and a non-https or loopback object-store endpoint (S13b, the step adding S3)."""
+    if s.app_env == "local" or s.app_role not in ("api", "worker"):
+        return []
+    errors: list[str] = []
+    for name, value in (("S3_ACCESS_KEY", s.s3_access_key), ("S3_SECRET_KEY", s.s3_secret_key)):
+        if _is_committed_secret(value, frozenset()):
+            errors.append(f"APP_ENV={s.app_env} refuses a committed or dev-prefixed {name}")
+    if _not_deployable_url(s.s3_endpoint_url):
+        errors.append(f"APP_ENV={s.app_env} refuses http or loopback S3_ENDPOINT_URL")
+    return errors
+
+
 def _url_errors(s: Settings) -> list[str]:
     if s.app_env == "local" or s.app_role not in ("api", "worker"):
         return []
@@ -329,6 +343,7 @@ def _boot_errors(s: Settings) -> list[str]:
         errors.append("LOG_LEVEL is not a logging level")
     errors += _kms_errors(s)
     errors += _url_errors(s)
+    errors += _storage_errors(s)
     return errors
 
 

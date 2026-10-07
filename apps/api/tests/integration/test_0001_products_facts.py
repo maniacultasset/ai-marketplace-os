@@ -169,10 +169,12 @@ FACT_REJECTS: list[tuple[str, dict[str, Any], str]] = [
     ("columns", "constraint"), [pytest.param(c, k, id=n) for n, c, k in FACT_REJECTS]
 )
 def test_0001_checks_products(db: Conn, columns: dict[str, Any], constraint: str) -> None:
+    f.facts_guard_off(db)
     _fails(db, psycopg.errors.CheckViolation, constraint, tenant_id=f.tenant(db), **columns)
 
 
 def test_0001_products_facts_accepts(db: Conn) -> None:
+    f.facts_guard_off(db)
     tenant_id = f.tenant(db)
     party = f.party(db, tenant_id)
     product_id = f.product(

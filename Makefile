@@ -7,6 +7,9 @@ SHELL := bash
 # Per-checkout host ports (ADR-0011 amendment):
 # `.worktree.env` is optional and git-ignored; the helper validates it before make reads it.
 WORKTREE_KEYS := COMPOSE_PROJECT_NAME PG_HOST_PORT MINIO_API_HOST_PORT MINIO_CONSOLE_HOST_PORT API_HOST_PORT MOCK_HOST_PORT FAKE_MARKETPLACE_HOST_PORT
+# `make e2e` against a caller's own stack (S13b): an API_HOST_PORT in the environment wins over
+# .worktree.env there (read before the file is included).
+E2E_ENV_API_PORT := $(if $(filter environment,$(origin API_HOST_PORT)),$(API_HOST_PORT))
 ifneq ($(wildcard .worktree.env),)
 ifneq ($(shell scripts/ci/worktree_env.sh exports .worktree.env >/dev/null 2>&1; echo $$?),0)
 $(error .worktree.env rejected: $(shell scripts/ci/worktree_env.sh exports .worktree.env 2>&1 >/dev/null))
@@ -132,6 +135,8 @@ app-rw-scram:
 
 # ---- tests (CANON.md:136-137; the CI env block is these three variables, CANON.md:21) ----
 TEST_DATABASE_URL ?= postgresql+psycopg://postgres:postgres@localhost:$(PG_HOST_PORT)/mos_test
+# The compose MinIO (the CSV import tests, S13b); the bucket names and keys are the settings' defaults.
+TEST_S3_ENDPOINT_URL ?= http://localhost:$(or $(MINIO_API_HOST_PORT),9000)
 CI_JWT_SECRET := ci_only_not_a_real_secret_at_least_32_chars
 CI_APP_RW_PASSWORD := ci_only_app_rw_not_a_real_password
 CI_MIGRATOR_PASSWORD := ci_only_migrator_not_a_real_password
@@ -143,7 +148,8 @@ MIGRATOR_SCRAM_CMD = printf '%s' '$(CI_MIGRATOR_PASSWORD)' | uv run --frozen pyt
 COV_FAIL_UNDER ?= 70
 
 # Alembic on mos_test before pytest (CANON.md:136): upgrade, check, downgrade, upgrade, then squawk
-# over the rendered SQL, report-only until the first prod tag (EXECUTION-PLAN.md:303-305). env.py
+# over the rendered SQL, report-only until the first prod tag (EXECUTION-PLAN.md:303-305). Then the
+# attribute dictionary sync (DATABASE.md:1785), which the facts guard reads at write time. env.py
 # switches the postgres login to migrator. The CI env block stays three variables: the URL is here.
 ALEMBIC := uv run --frozen alembic -c apps/api/alembic.ini
 MIGRATE_ENV = APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) ALEMBIC_DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET)
@@ -159,7 +165,8 @@ api-tests:
 	sql="$$(mktemp)"; trap 'rm -f "$$sql"' EXIT; \
 	  $(MIGRATE_ENV) $(ALEMBIC) upgrade head --sql >"$$sql"; \
 	  uv run --frozen python scripts/ci/squawk_report.py "$$sql"
-	APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) \
+	$(MIGRATE_ENV) uv run --frozen python -m app.cli dictionary sync
+	APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) S3_ENDPOINT_URL=$(TEST_S3_ENDPOINT_URL) \
 	  uv run --frozen pytest -q -m "not tenant_isolation and not cloudsql_mimic" --cov=app --cov-report=term-missing \
 	  --cov-fail-under=$(COV_FAIL_UNDER)
 	cov="$$(mktemp)"; trap 'rm -f "$$cov"' EXIT; \
@@ -175,6 +182,7 @@ mutation-rules:
 tenant-isolation:
 	$(PG_PORT_GUARD)
 	APP_ENV=local APP_ROLE=migrate ALEMBIC_DATABASE_URL=$(ISO_ADMIN_URL) uv run --frozen python -m app.cli db migrate
+	APP_ENV=local APP_ROLE=migrate ALEMBIC_DATABASE_URL=$(ISO_ADMIN_URL) uv run --frozen python -m app.cli dictionary sync
 	APP_ENV=local DATABASE_URL=$(ISO_DATABASE_URL) ALEMBIC_DATABASE_URL=$(ISO_ADMIN_URL) JWT_SECRET=$(CI_JWT_SECRET) \
 	  uv run --frozen pytest -q -m tenant_isolation --no-cov
 
@@ -205,6 +213,7 @@ dev:
 	$(MAKE) bootstrap-db
 	uv sync --frozen --all-packages
 	uv run --frozen alembic -c apps/api/alembic.ini upgrade head
+	uv run --frozen python -m app.cli dictionary sync
 	$(MAKE) hooks
 	$(FAKE_MARKETPLACE_ENV) uv run --frozen uvicorn app.main:app --reload --port $(API_HOST_PORT) --app-dir apps/api
 
@@ -257,9 +266,24 @@ RESET_LIMITS ?= scripts/ci/reset_rate_limits.sh
 FAKE_CTL ?= scripts/ci/fake_marketplace.sh
 REFRESH_ONCE ?= APP_ROLE=worker uv run --frozen python -m app.workers.oneshot refresh_marketplace_tokens
 
+# The import flow's hooks (S13b): a local worker beside `make dev` (its PID in E2E_WORKER_PIDFILE)
+# and the migrator's `templates load`. DATABASE_URL, ALEMBIC_DATABASE_URL and API_HOST_PORT set in
+# the caller's environment win over .env and .worktree.env (a caller with its own stack).
+E2E_WORKER_PIDFILE ?= $(CURDIR)/.e2e/worker.pid
+E2E_WORKER_START = mkdir -p "$$(dirname "$(E2E_WORKER_PIDFILE)")"; \
+  APP_ROLE=worker APP_NAME=marketplace-os-worker OTEL_SERVICE_NAME=marketplace-os-worker \
+  nohup uv run --frozen python -m app.workers.main >"$$(dirname "$(E2E_WORKER_PIDFILE)")/worker.log" 2>&1 & \
+  echo $$! >"$(E2E_WORKER_PIDFILE)"
+E2E_WORKER_STOP = pid="$$(cat "$(E2E_WORKER_PIDFILE)")"; kill -TERM "$$pid"; \
+  for _ in $$(seq 1 30); do kill -0 "$$pid" 2>/dev/null || break; sleep 1; done; \
+  ! kill -0 "$$pid" 2>/dev/null && rm -f "$(E2E_WORKER_PIDFILE)"
+E2E_TEMPLATES_LOAD = uv run --frozen python -m app.cli templates load --file "$$1"
+
 .PHONY: e2e
 e2e:
-	base="http://127.0.0.1:$(API_HOST_PORT)"; \
+	export WORKER_START='$(E2E_WORKER_START)' WORKER_STOP='$(E2E_WORKER_STOP)' \
+	  TEMPLATES_LOAD='$(E2E_TEMPLATES_LOAD)'; \
+	base="http://127.0.0.1:$(or $(E2E_ENV_API_PORT),$(API_HOST_PORT))"; \
 	$(FAKE_CTL) start $(FAKE_MARKETPLACE_HOST_PORT) || exit $$?; \
 	trap '$(FAKE_CTL) stop $(FAKE_MARKETPLACE_HOST_PORT)' EXIT; \
 	export $(FAKE_MARKETPLACE_ENV); \

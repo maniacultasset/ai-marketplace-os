@@ -3,9 +3,9 @@ only orchestrates; the SQL lives here, inside `app/db` (repo rule R4).
 
 - Platform rows (`category_templates`, the NULL-tenant `rules` from `rules.seed.json`) go through
   the migrator engine (DATABASE.md:158), upserted on their natural keys.
-- The two dictionary rows S12 needs (`color`, `fabric_type` with alias `material`; CODE-PLAN S12
-  CP3) go in with the platform rows, inserted once and never updated; the dictionary step (S13/S16)
-  owns the full file and its sync.
+- The attribute dictionary goes in with the platform rows: the full `attribute_dictionary.json`
+  through `dictionary sync`'s upsert (S13b; the 0007 facts guard reads it), then the two S12 rows
+  (`color`, `fabric_type` with alias `material`; CODE-PLAN S12 CP3), inserted only if missing.
 - Tenant rows go through one `unit_of_work(seed_tenant_id(slug))` per tenant (D16): the tenant
   is inserted with its fixed `uuid5` id, then read back through the scoped repository.
 - `reset_seed_tenants` purges the two seed tenants through the database's `purge_tenant`
@@ -44,6 +44,7 @@ from app.db.models.platform import AttributeDefinition, CategoryTemplate
 from app.db.models.rules import Rule
 from app.db.models.runs import ValidationRun
 from app.db.models.tenancy import Tenant, TenantMembership, User
+from app.db.platform_loads import load_dictionary, sync_rows
 from app.repositories.base import TenantScopedRepository
 
 SEED_NAMESPACE: Final = uuid.UUID("5eed0000-9c1e-4d6a-8a51-0c5a1e5eed00")
@@ -244,6 +245,8 @@ async def seed_platform_rows(connection: AsyncConnection, rules_path: Path) -> N
     if rule_rows:
         # Any unique conflict (the fixed id or `rules_scope_key`) leaves the stored row alone.
         await connection.execute(insert(Rule).values(rule_rows).on_conflict_do_nothing())
+    # The whole dictionary first (S13b): the 0007 facts guard reads it for every seeded fact.
+    await sync_rows(connection, load_dictionary())
     await seed_attribute_definitions(connection)
 
 

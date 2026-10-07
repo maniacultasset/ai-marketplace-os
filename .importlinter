@@ -197,3 +197,18 @@ source_modules =
     app.cli
 forbidden_modules =
     app.admin
+# Object storage through the S3 API (S13 PD8): boto3 and botocore live in the storage adapter only,
+# so no other module builds a client with its own credentials or timeouts.
+[importlinter:contract:boto3-only-in-storage-adapter]
+name = boto3 and botocore only in app.adapters.storage
+type = forbidden
+source_modules =
+    app
+    mkos_schemas
+forbidden_modules =
+    boto3
+    botocore
+ignore_imports =
+    app.adapters.storage -> boto3
+    app.adapters.storage -> botocore
+allow_indirect_imports = True

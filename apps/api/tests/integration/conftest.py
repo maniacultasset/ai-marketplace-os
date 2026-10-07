@@ -200,11 +200,44 @@ def upgrade_to_head(db: ScratchDb, tmp: Path) -> None:
             get_settings.cache_clear()
 
 
+def sync_dictionary_on(url: str) -> None:
+    """`app.cli dictionary sync` on a scratch database (the CI order is upgrade, then the sync,
+    then the tests: DATABASE.md:1785), in its own thread so a running event loop never clashes."""
+    import asyncio
+    import threading
+
+    from app.db.platform_loads import sync_dictionary
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    async def run() -> None:
+        engine = create_async_engine(url)
+        try:
+            await sync_dictionary(engine)
+        finally:
+            await engine.dispose()
+
+    failure: list[BaseException] = []
+
+    def target() -> None:
+        try:
+            asyncio.run(run())
+        except BaseException as exc:  # re-raised in the caller's thread
+            failure.append(exc)
+
+    thread = threading.Thread(target=target)
+    thread.start()
+    thread.join()
+    if failure:
+        raise failure[0]
+
+
 @contextmanager
 def head_database(tmp: Path) -> Iterator[ScratchDb]:
-    """A scratch database with 0000 applied and the code's Alembic head, dropped afterwards."""
+    """A scratch database with 0000 applied, the code's Alembic head and the attribute
+    dictionary synced (the facts guard reads it at write time), dropped afterwards."""
     with _admin_connect() as admin, scratch_database(admin) as db:
         upgrade_to_head(db, tmp)
+        sync_dictionary_on(db.url)
         yield db
 
 

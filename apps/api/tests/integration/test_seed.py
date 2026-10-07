@@ -427,14 +427,14 @@ async def test_seed_attribute_definitions_idempotent(superuser_conn: Conn) -> No
     first = superuser_conn.execute(_DICTIONARY_SQL).fetchall()
     assert await _seed("demo") == 0
     assert superuser_conn.execute(_DICTIONARY_SQL).fetchall() == first
-    # a stored row is never rewritten: an operator's change survives a rerun
+    # S13b: the seed syncs the dictionary file, which owns the rows: a hand edit is put back
     superuser_conn.execute("UPDATE attribute_definitions SET enabled = false WHERE key = 'color'")
     try:
         assert await _seed("demo") == 0
         enabled = _scalar(
             superuser_conn, "SELECT enabled FROM attribute_definitions WHERE key = 'color'"
         )
-        assert enabled is False
+        assert enabled is True
     finally:
         superuser_conn.execute(
             "UPDATE attribute_definitions SET enabled = true WHERE key = 'color'"

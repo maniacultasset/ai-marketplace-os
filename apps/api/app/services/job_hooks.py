@@ -9,8 +9,9 @@ cancel path (S13 PLAN §2; BACKEND-ARCHITECTURE:1718).
 - `RequeueHook(session, old, new)`: called in the staff requeue transaction (A15).
 
 A hook that writes an entity row fences on the job (`... WHERE job_id = :this_job`), so an old
-job's hook never overwrites a newer job's state. Both maps start empty; the steps that own a
-kind add to them (S13b `bulk_import`; S18 and S21 the listing moves).
+job's hook never overwrites a newer job's state. The steps that own a kind add to the maps:
+S13b's `bulk_import` hooks (`app.services.imports.hooks`) are the first; S18 and S21 add the
+listing moves.
 
 `session` is the terminal transaction's `AsyncSession`, typed `Any` here: repo rule R3 keeps
 `sqlalchemy.ext.asyncio` out of `app/services`; hooks hand it to repositories only.
@@ -24,13 +25,14 @@ from typing import Any, Final
 from mkos_schemas.enums import JobKind
 
 from app.db.models.ops import JobRun
+from app.services.imports.hooks import import_requeue_hook, import_terminal_hook
 from app.workers.registry import Outcome
 
 Hook = Callable[[Any, JobRun, Outcome | None], Awaitable[None]]
 RequeueHook = Callable[[Any, JobRun, JobRun], Awaitable[None]]
 
-TERMINAL_HOOKS: Final[dict[JobKind, Hook]] = {}
-REQUEUE_HOOKS: Final[dict[JobKind, RequeueHook]] = {}
+TERMINAL_HOOKS: Final[dict[JobKind, Hook]] = {JobKind.BULK_IMPORT: import_terminal_hook}
+REQUEUE_HOOKS: Final[dict[JobKind, RequeueHook]] = {JobKind.BULK_IMPORT: import_requeue_hook}
 
 
 async def run_terminal_hook(

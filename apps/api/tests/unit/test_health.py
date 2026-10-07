@@ -10,6 +10,7 @@ import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from tests.support.deployed_env import DEPLOYED_S15_ENV
 
 UNAVAILABLE = {"status": "unavailable", "checks": {"postgres": "unavailable"}}
 READY = {"status": "ok", "checks": {"postgres": "ok"}}
@@ -21,8 +22,6 @@ TEST_KMS_KEY_URI = (
     "projects/aimos-staging/locations/asia-south1/keyRings/marketplace-os/cryptoKeys/"
     "oauth-token-key"
 )
-TEST_DASHBOARD = "https://app.example.invalid"
-TEST_REDIRECT = "https://api.example.invalid/api/v1/marketplaces/{}/callback"
 
 
 def _client(app: FastAPI) -> TestClient:
@@ -115,9 +114,8 @@ def test_docs_and_openapi_served(
     monkeypatch.setenv("JWT_SECRET", PRIVATE_JWT)
     monkeypatch.setenv("SENTRY_DSN", TEST_SENTRY_DSN)
     monkeypatch.setenv("KMS_KEY_URI", TEST_KMS_KEY_URI)
-    monkeypatch.setenv("DASHBOARD_BASE_URL", TEST_DASHBOARD)
-    monkeypatch.setenv("AMAZON_OAUTH_REDIRECT_URI", TEST_REDIRECT.format("amazon"))
-    monkeypatch.setenv("FLIPKART_OAUTH_REDIRECT_URI", TEST_REDIRECT.format("flipkart"))
+    for key, value in DEPLOYED_S15_ENV.items():
+        monkeypatch.setenv(key, value)
     get_settings.cache_clear()
     client = _client(create_app())
     assert client.get("/docs").status_code == 200
@@ -267,9 +265,8 @@ def test_docs_and_openapi_off_in_production(
     monkeypatch.setenv("JWT_SECRET", PRIVATE_JWT)
     monkeypatch.setenv("SENTRY_DSN", TEST_SENTRY_DSN)
     monkeypatch.setenv("KMS_KEY_URI", TEST_KMS_KEY_URI)
-    monkeypatch.setenv("DASHBOARD_BASE_URL", TEST_DASHBOARD)
-    monkeypatch.setenv("AMAZON_OAUTH_REDIRECT_URI", TEST_REDIRECT.format("amazon"))
-    monkeypatch.setenv("FLIPKART_OAUTH_REDIRECT_URI", TEST_REDIRECT.format("flipkart"))
+    for key, value in DEPLOYED_S15_ENV.items():
+        monkeypatch.setenv(key, value)
     monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://app_rw:pw@127.0.0.1:5432/x")
     get_settings.cache_clear()
     app = create_app()

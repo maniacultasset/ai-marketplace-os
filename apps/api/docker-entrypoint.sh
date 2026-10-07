@@ -23,8 +23,10 @@ case "$ROLE" in
     exec python -m app.workers.main
     ;;
   migrate)
-    # alembic upgrade head as migrator, under the migration lock; one fixed output line.
-    exec python -m app.cli db migrate
+    # alembic upgrade head as migrator, under the migration lock, then the attribute dictionary
+    # sync the facts guard reads (DATABASE.md §8.2); one fixed output line each.
+    python -m app.cli db migrate
+    exec python -m app.cli dictionary sync
     ;;
   seed)
     exec python -m app.cli seed --profile "${SEED_PROFILE:-demo}"

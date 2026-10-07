@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 from tests.conftest import CI_DATABASE_URL, CI_JWT_SECRET, settings_env_names
+from tests.support.deployed_env import DEPLOYED_S15_ENV
 
 REPO = Path(__file__).resolve().parents[4]
 
@@ -58,15 +59,7 @@ def test_export_ignores_app_env_production(tmp_path: Path) -> None:
         APP_ENV="production",
         JWT_SECRET="a-production-shaped-secret-that-is-not-committed-0123",
         SENTRY_DSN="https://public@o0.ingest.example.invalid/0",
-        KMS_KEY_URI=(
-            "projects/aimos-staging/locations/asia-south1/keyRings/marketplace-os/cryptoKeys/"
-            "oauth-token-key"
-        ),
-        DASHBOARD_BASE_URL="https://app.example.invalid",
-        AMAZON_OAUTH_REDIRECT_URI="https://api.example.invalid/api/v1/marketplaces/amazon/callback",
-        FLIPKART_OAUTH_REDIRECT_URI=(
-            "https://api.example.invalid/api/v1/marketplaces/flipkart/callback"
-        ),
+        **DEPLOYED_S15_ENV,
     )
     assert local == production
 

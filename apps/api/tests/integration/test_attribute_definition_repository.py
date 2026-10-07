@@ -38,14 +38,17 @@ async def _resolve(names: list[str]) -> list[object]:
 
 
 async def test_resolve_by_key(dictionary: Conn) -> None:
+    from app.db.platform_loads import load_dictionary
     from app.repositories.attribute_definitions import AttributeDef
 
+    # the synced dictionary file (S13b) holds the final values of the S12 rows
+    (color,) = [e for e in load_dictionary().attributes if e.key == "color"]
     found = await _resolve(["color"])
     assert found == [
         AttributeDef(
             key="color",
             storage="attributes",
-            owner_levels=("colour", "standalone"),
+            owner_levels=tuple(color.owner_levels),
             input_aliases=(),
         )
     ]

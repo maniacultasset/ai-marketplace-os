@@ -8,7 +8,8 @@
 # The app logs in as app_rw and Alembic as migrator (ENV.md; CODE-PLAN S10 Q5): the DSNs come from
 # the environment or .env (CI's copy of .env.example) with the host rewritten for the compose
 # network, and the auth leg first proves the app's own login is neither superuser nor BYPASSRLS.
-# The S13 worker leg boots the image as APP_ROLE=worker and stops it with SIGTERM.
+# The S13 worker leg boots the image as APP_ROLE=worker and stops it with SIGTERM; the S13b import
+# leg runs the HTTP import flow on the image with its own worker container.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -93,16 +94,18 @@ case "$migrator_dsn" in postgresql+psycopg://migrator:*@postgres:5432/marketplac
 
 make bootstrap-db
 uv run --frozen alembic -c apps/api/alembic.ini upgrade head
+uv run --frozen python -m app.cli dictionary sync
 uv run --frozen python -m app.cli seed --profile demo
 
 uv run --frozen uvicorn app.main:app --port "$api_port" --app-dir apps/api &
 server=$!
 e2e_container="mkos-s11-e2e-${project}"
 worker_container="mkos-s13-worker-${project}"
+import_worker="mkos-s13b-import-worker-${project}"
 stop_server() { if kill -0 "$server" 2>/dev/null; then kill "$server"; wait "$server" || true; fi; }
 cleanup() {
   stop_server
-  docker rm -f "$e2e_container" "$worker_container" >/dev/null 2>&1 || true
+  docker rm -f "$e2e_container" "$worker_container" "$import_worker" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
@@ -129,7 +132,7 @@ stop_server
 docker rm -f "$e2e_container" >/dev/null 2>&1 || true
 docker run -d --name "$e2e_container" --network "$network" --env-file .env \
   -e LOG_FORMAT=json -e APP_ENV=local -e APP_ROLE=api -e PORT=8080 \
-  -e DATABASE_URL="$app_dsn" \
+  -e DATABASE_URL="$app_dsn" -e S3_ENDPOINT_URL=http://minio:9000 \
   -p "127.0.0.1:${api_port}:8080" "$image" >/dev/null
 up=0
 for _ in $(seq 1 30); do
@@ -202,6 +205,15 @@ scripts/ci/reset_rate_limits.sh "http://127.0.0.1:${api_port}"
 scripts/e2e/walking_skeleton.sh "http://127.0.0.1:${api_port}"
 scripts/ci/reset_rate_limits.sh "http://127.0.0.1:${api_port}"
 scripts/e2e/walking_skeleton.sh "http://127.0.0.1:${api_port}"
+# S13b import leg (CODE-PLAN S13 B15; AC 22): the HTTP import flow against the image. Its hooks
+# start and stop the image as APP_ROLE=worker on the compose network (as app_rw, MinIO by service
+# name) and run `templates load` through the image's shell role as migrator, with the flow's
+# templates file mounted read-only. No other worker runs against this stack meanwhile.
+export WORKER_START="docker run -d --name '$import_worker' --network '$network' -e APP_ENV=local -e APP_ROLE=worker -e LOG_FORMAT=json -e DATABASE_URL='$app_dsn' -e S3_ENDPOINT_URL=http://minio:9000 '$image' >/dev/null"
+export WORKER_STOP="docker stop --time 10 '$import_worker' >/dev/null && docker rm -f '$import_worker' >/dev/null"
+export TEMPLATES_LOAD="docker run --rm --network '$network' -e APP_ENV=local -e APP_ROLE=shell -e ALEMBIC_DATABASE_URL='$migrator_dsn' -v \"\$1\":/tmp/templates.json:ro '$image' -m app.cli templates load --file /tmp/templates.json"
+scripts/ci/reset_rate_limits.sh "http://127.0.0.1:${api_port}"
+scripts/e2e/import_flow.sh "http://127.0.0.1:${api_port}"
 docker rm -f "$e2e_container" >/dev/null
 # S13 worker leg (DW11): the image as APP_ROLE=worker on the compose network, as app_rw. It must
 # register its procrastinate workers within 30 s, then SIGTERM (docker stop; SIGKILL only after
