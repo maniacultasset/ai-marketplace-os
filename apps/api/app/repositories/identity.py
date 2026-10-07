@@ -277,7 +277,7 @@ class RefreshTokenRepository:
 _AUDIT_SQL: Final = text(
     "SELECT public.audit(:tenant_id, :actor_type, :actor_user_id, :action, :entity_type, "
     ":entity_id, CAST(:before AS jsonb), CAST(:after AS jsonb), :reason, :request_id, "
-    "NULL, CAST(:ip AS inet), NULL)"
+    "NULL, CAST(:ip AS inet), :actor_email)"
 )
 
 
@@ -301,7 +301,9 @@ class AuditRepository:
         after: str | None = None,
         reason: str | None = None,
         ip: str | None = None,
+        actor_email: str | None = None,
     ) -> None:
+        """`actor_email` names a staff actor (`actor_type='staff'`, DATABASE.md:312)."""
         if entity_type not in AUDITED_ENTITIES:
             raise ValueError(f"{entity_type} is not in AUDITED_ENTITIES")
         await self.db.execute(
@@ -318,5 +320,6 @@ class AuditRepository:
                 "reason": reason,
                 "request_id": current_request_id(),
                 "ip": ip,
+                "actor_email": actor_email,
             },
         )

@@ -26,15 +26,32 @@ opens. It only orchestrates; every seed write lives in `app/db/seed_ops.py` (rep
 | any failure                          | stderr | 1    |
 | bad arguments (argparse)             | stderr | 2    |
 | refused: APP_ENV is not local        | stderr | 3    |
+
+`jobs dead-letter list [--tenant SLUG] [--limit 1..500]` and `jobs requeue <job_id> --staff-email E
+--reason R` are the staff dead-letter tools (S13 PLAN D2; DATABASE.md:312; BACKEND-ARCHITECTURE
+:990-1031): no `/api/v1` path exists for them. Each command mints its own `request_id`. The list
+reads through `platform_scope()` (read-only, cross-tenant) and prints ids, kinds, attempts,
+codes and times only, never payloads, reports or secrets. A requeue is one transaction in the
+job's tenant: a NEW `job_runs` row (`parent_job_id` = the old one, a fresh `correlation_id`), its
+queue entry, the kind's requeue hook and a `staff` audit row naming E and R.
+
+| outcome                              | stream | exit |
+|--------------------------------------|--------|------|
+| listed / requeued                    | stdout | 0    |
+| any other failure                    | stderr | 1    |
+| bad arguments (argparse)             | stderr | 2    |
+| not eligible (unknown, not dead_letter or failed, already requeued, tenant not running) | stderr | 4 |
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import logging
 import re
 import sys
+import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -57,6 +74,9 @@ EXIT_FAILED: Final = 1
 EXIT_DATABASE_AHEAD: Final = 3
 EXIT_LOCK_BUSY: Final = 4
 EXIT_REFUSED: Final = 3
+EXIT_NOT_ELIGIBLE: Final = 4
+DEAD_LETTER_LIMIT_MAX: Final = 500
+_EMAIL: Final = re.compile(r"[^@\s]{1,64}@[^@\s]{1,189}")
 SEED_PROFILES: Final = ("demo", "isolation")
 RULES_SEED_PATH: Final = (
     Path(__file__).resolve().parents[3] / "packages/schemas/fixtures/rules.seed.json"
@@ -153,6 +173,124 @@ async def run_seed(profile: str, *, reset: bool) -> int:
     return EXIT_OK
 
 
+def _limit(value: str) -> int:
+    try:
+        number = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("--limit must be an integer") from None
+    if not 1 <= number <= DEAD_LETTER_LIMIT_MAX:
+        raise argparse.ArgumentTypeError(f"--limit must be in 1..{DEAD_LETTER_LIMIT_MAX}")
+    return number
+
+
+def _staff_email(value: str) -> str:
+    if not _EMAIL.fullmatch(value.strip()):
+        raise argparse.ArgumentTypeError("--staff-email must be an email address")
+    return value.strip().lower()
+
+
+def _reason(value: str) -> str:
+    text = value.strip()
+    if not text or len(text) > 500:
+        raise argparse.ArgumentTypeError("--reason must be 1-500 characters")
+    return text
+
+
+def _job_id(value: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("job_id must be a UUID") from None
+
+
+async def run_dead_letter_list(tenant: str | None, limit: int) -> int:
+    from app.core.request_context import new_request_id
+    from app.core.request_context import request_context as request_scope
+    from app.db.session import dispose_engine, platform_scope
+    from app.repositories.jobs import list_dead_letters
+
+    try:
+        with request_scope(new_request_id()):
+            async with platform_scope() as session:
+                rows = await list_dead_letters(session, tenant_slug=tenant, limit=limit)
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"jobs dead-letter list: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    finally:
+        await dispose_engine()
+    for row in rows:
+        finished = row.finished_at.isoformat() if row.finished_at else "-"
+        sys.stdout.write(
+            f"{row.job_id}\t{row.tenant_slug}\t{row.kind}\t{row.status}\t"
+            f"attempt {row.attempt}\t{row.error_code or '-'}\t{finished}\n"
+        )
+    sys.stdout.write(f"jobs dead-letter list: {len(rows)} job(s)\n")
+    return EXIT_OK
+
+
+async def _requeue(job_id: uuid.UUID, staff_email: str, reason: str) -> uuid.UUID:
+    from app.core.request_context import bind_tenant
+    from app.db.session import platform_scope, unit_of_work
+    from app.repositories.identity import AuditRepository
+    from app.repositories.jobs import JobRunRepository, NotEligibleError, job_tenant
+    from app.services.job_hooks import run_requeue_hook
+
+    async with platform_scope() as session:
+        tenant_id = await job_tenant(session, job_id)
+    if tenant_id is None:
+        raise NotEligibleError("unknown job")
+    bind_tenant(tenant_id)
+    async with unit_of_work(tenant_id) as session:
+        old, new = await JobRunRepository(session, tenant_id).requeue(job_id)
+        await run_requeue_hook(session, old, new)
+        await AuditRepository(session).write(
+            tenant_id=tenant_id,
+            actor_type="staff",
+            actor_user_id=None,
+            actor_email=staff_email,
+            action="job.requeue",
+            entity_type="job_run",
+            entity_id=new.id,
+            before=json.dumps(
+                {
+                    "kind": old.kind,
+                    "status": old.status,
+                    "parent_job_id": str(old.parent_job_id) if old.parent_job_id else None,
+                }
+            ),
+            after=json.dumps(
+                {"kind": new.kind, "status": new.status, "parent_job_id": str(old.id)}
+            ),
+            reason=reason,
+        )
+    return new.id
+
+
+async def run_requeue(job_id: uuid.UUID, staff_email: str, reason: str) -> int:
+    from app.core.errors import ConflictError
+    from app.core.request_context import new_request_id
+    from app.core.request_context import request_context as request_scope
+    from app.db.session import dispose_engine
+    from app.repositories.jobs import NotEligibleError
+
+    try:
+        with request_scope(new_request_id()):
+            new_id = await _requeue(job_id, staff_email, reason)
+    except NotEligibleError as exc:
+        sys.stderr.write(f"jobs requeue: not eligible ({exc})\n")
+        return EXIT_NOT_ELIGIBLE
+    except ConflictError:  # a concurrent requeue won the UNIQUE (parent_job_id)
+        sys.stderr.write("jobs requeue: not eligible (the job was already requeued)\n")
+        return EXIT_NOT_ELIGIBLE
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"jobs requeue: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    finally:
+        await dispose_engine()
+    sys.stdout.write(f"jobs requeue: ok (new job {new_id}, parent {job_id})\n")
+    return EXIT_OK
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     groups = parser.add_subparsers(dest="group", required=True)
@@ -162,7 +300,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     seed = groups.add_parser("seed", help="local demo or isolation data (APP_ENV=local only)")
     seed.add_argument("--profile", required=True, choices=SEED_PROFILES)
     seed.add_argument("--reset", action="store_true", help="delete the seed tenants first")
+    jobs = groups.add_parser("jobs", help="staff dead-letter tools (S13)")
+    jobs_commands = jobs.add_subparsers(dest="command", required=True)
+    dead = jobs_commands.add_parser("dead-letter", help="dead-lettered jobs")
+    dead_commands = dead.add_subparsers(dest="action", required=True)
+    listing = dead_commands.add_parser("list", help="the newest dead letters, all tenants")
+    listing.add_argument("--tenant", metavar="SLUG", default=None)
+    listing.add_argument("--limit", type=_limit, default=100)
+    requeue = jobs_commands.add_parser("requeue", help="a new job for a dead_letter/failed one")
+    requeue.add_argument("job_id", type=_job_id)
+    requeue.add_argument("--staff-email", type=_staff_email, required=True)
+    requeue.add_argument("--reason", type=_reason, required=True)
     args = parser.parse_args(argv)
+    if args.group == "jobs":
+        if args.command == "requeue":
+            return asyncio.run(run_requeue(args.job_id, args.staff_email, args.reason))
+        return asyncio.run(run_dead_letter_list(args.tenant, args.limit))
     if args.group == "seed":
         return asyncio.run(run_seed(args.profile, reset=args.reset))
     return run_migrate(alembic_config())

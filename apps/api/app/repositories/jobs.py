@@ -56,6 +56,7 @@ class EnqueueSpec:
     payload: dict[str, Any] | None = None
     batch_id: uuid.UUID | None = None
     parent_job_id: uuid.UUID | None = None
+    max_attempts: int | None = None  # a requeue copies its parent's; else the kind's policy
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +69,11 @@ class Enqueued:
 class Claimed:
     job: JobRun
     attempt: int
+
+
+class NotEligibleError(Exception):
+    """A staff requeue refused: unknown job, not `dead_letter`/`failed`, already requeued, or a
+    tenant that is not `trial|active`. The message is a fixed phrase, never row data."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +91,51 @@ async def cancel_queue_entry(session: Any, job: JobRun) -> bool:
     if job.queue_job_id is None:
         return False
     return await cancel_on_session(session, job.queue_job_id)
+
+
+async def job_tenant(session: Any, job_id: uuid.UUID) -> uuid.UUID | None:
+    """The tenant of job `job_id`, or None. Cross-tenant: run it only in `platform_scope()`."""
+    stmt = select(JobRun.tenant_id).where(JobRun.id == job_id)
+    found: uuid.UUID | None = (await session.execute(stmt)).scalar_one_or_none()
+    return found
+
+
+@dataclass(frozen=True, slots=True)
+class DeadLetter:
+    job_id: uuid.UUID
+    tenant_slug: str
+    kind: str
+    status: str
+    attempt: int
+    error_code: str | None
+    finished_at: Any
+
+
+async def list_dead_letters(
+    session: Any, *, tenant_slug: str | None = None, limit: int = 100
+) -> list[DeadLetter]:
+    """The newest dead letters, ids and codes only (never payloads or reports). Cross-tenant:
+    run it only in `platform_scope()` (the staff CLI, DATABASE.md:312)."""
+    if isinstance(limit, bool) or not 1 <= limit <= 500:
+        raise ValueError("limit must be in 1..500")
+    stmt = (
+        select(
+            JobRun.id,
+            Tenant.slug,
+            JobRun.kind,
+            JobRun.status,
+            JobRun.attempt,
+            JobRun.error_code,
+            JobRun.finished_at,
+        )
+        .join(Tenant, Tenant.id == JobRun.tenant_id)
+        .where(JobRun.status == "dead_letter")
+        .order_by(JobRun.finished_at.desc(), JobRun.id)
+        .limit(limit)
+    )
+    if tenant_slug is not None:
+        stmt = stmt.where(Tenant.slug == tenant_slug)
+    return [DeadLetter(*row) for row in (await session.execute(stmt)).all()]
 
 
 async def expired_running(session: Any, *, limit: int = 500) -> list[tuple[uuid.UUID, uuid.UUID]]:
@@ -161,7 +212,9 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             "parent_job_id": spec.parent_job_id,
             "created_by": spec.created_by,
             "batch_id": spec.batch_id,
-            "max_attempts": POLICIES[kind].max_attempts,
+            "max_attempts": (
+                POLICIES[kind].max_attempts if spec.max_attempts is None else spec.max_attempts
+            ),
         }
         insert = pg_insert(JobRun).values(**values)
         if key is not None:
@@ -350,3 +403,49 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             },
         )
         return Reaped("dead_letter", done)
+
+    # ---- the staff requeue (A15; DATABASE.md:312; BACKEND-ARCHITECTURE:990-1031) ----
+
+    async def requeue(self, old_id: uuid.UUID) -> tuple[JobRun, JobRun]:
+        """A NEW row for a `dead_letter` or `failed` job (CANON.md:61): the same kind, entity,
+        listing, payload, `created_by` and `max_attempts`, `parent_job_id` = the old row, a fresh
+        `correlation_id`, no idempotency key, and a new queue entry. The old row is untouched
+        (it is terminal). Returns (old, new); `NotEligibleError` otherwise."""
+        self._own_session()
+        old = (
+            await self.db.execute(self._select().where(JobRun.id == old_id).with_for_update())
+        ).scalar_one_or_none()
+        if old is None:
+            raise NotEligibleError("unknown job")
+        if old.status not in ("dead_letter", "failed"):
+            raise NotEligibleError("only a dead_letter or failed job is requeued")
+        tenant_ok = (
+            await self.db.execute(
+                self._select()
+                .where(JobRun.id == old_id, _tenant_running())
+                .with_only_columns(JobRun.id)
+            )
+        ).scalar_one_or_none()
+        if tenant_ok is None:
+            raise NotEligibleError("the tenant is not trial or active")
+        child = (
+            await self.db.execute(
+                self._select().where(JobRun.parent_job_id == old_id).with_only_columns(JobRun.id)
+            )
+        ).scalar_one_or_none()
+        if child is not None:
+            raise NotEligibleError("the job was already requeued")
+        new = await self.enqueue(
+            EnqueueSpec(
+                kind=JobKind(old.kind),
+                entity_type=old.entity_type,
+                entity_id=old.entity_id,
+                created_by=old.created_by,
+                listing_id=old.listing_id,
+                payload=dict(old.payload_json or {}),
+                batch_id=old.batch_id,
+                parent_job_id=old.id,
+                max_attempts=old.max_attempts,
+            )
+        )
+        return old, new.job
