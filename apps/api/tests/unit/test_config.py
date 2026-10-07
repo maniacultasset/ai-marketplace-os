@@ -45,6 +45,8 @@ SECRET_FIELDS = {
     "ALERT_SLACK_WEBHOOK": "https://hooks.slack.com/services/Zq9slack",
 }
 # S15: what a deployed api/worker also needs (the token key, an https dashboard origin).
+# S15: what a deployed api/worker also needs (the token key, an https dashboard origin), and since
+# S16 the worker's embedding key: the one shared helper (tests/support/deployed_env.py).
 DEPLOYED_S15 = DEPLOYED_S15_ENV
 TEST_SENTRY_DSN = "https://public@o0.ingest.example.invalid/0"  # never resolvable (.invalid)
 PRIVATE_JWT = "Zq9-not-committed-private-secret-32+"  # neither a Canon literal nor dev-prefixed

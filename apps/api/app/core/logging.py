@@ -10,6 +10,9 @@ structlog and the stdlib (`app.*`, uvicorn, SQLAlchemy) share one chain: a root 
 the traceback is rendered, so no secret or personal value reaches stdout.
 
 - `uvicorn.access` is off: the request middleware writes the one access line per request.
+- The HTTP client and model SDK loggers (`httpx`, `httpx2`, `httpcore`, `httpcore2`, `openai`)
+  sit at WARNING: at INFO/DEBUG they print request URLs, headers and bodies (an embedding input is
+  brand text), so they never log below WARNING whatever `LOG_LEVEL` says (S16).
 - SQLAlchemy never prints on its own: `DATABASE_ECHO` maps to the `sqlalchemy.engine` level, a
   no-op handler on the Engine logger stops `echo=True` from attaching SQLAlchemy's plain-text stdout
   handler, and bound parameters on echo lines are replaced before formatting.
@@ -198,6 +201,9 @@ def _drop_own_handlers(root: logging.Logger) -> None:
             handler.close()
 
 
+_HTTP_CLIENT_LOGGERS: Final = ("httpx", "httpx2", "httpcore", "httpcore2", "openai")
+
+
 def _quiet_libraries(settings: Settings) -> None:
     access = logging.getLogger("uvicorn.access")
     access.handlers.clear()
@@ -218,6 +224,8 @@ def _quiet_libraries(settings: Settings) -> None:
     instance.handlers.clear()
     instance.addHandler(logging.NullHandler())
     instance.propagate = True
+    for name in _HTTP_CLIENT_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)
 
 
 def configure_logging(settings: Settings, *, stream: TextIO | None = None) -> None:

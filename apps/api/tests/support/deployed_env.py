@@ -22,4 +22,7 @@ DEPLOYED_S15_ENV: Final[dict[str, str]] = {
     "S3_ENDPOINT_URL": "https://storage.example.invalid",
     "S3_ACCESS_KEY": "Zq9-deployed-access-key",
     "S3_SECRET_KEY": "Zq9-deployed-secret-key-not-committed",
+    # S16 (PLAN D4): a deployed worker needs a usable embedding key; this one never reaches a
+    # provider (no test makes a network call).
+    "OPENAI_API_KEY": "test-only-not-a-real-key",
 }

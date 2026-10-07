@@ -46,7 +46,9 @@ def _envelope(response: Any, status: int, code: str) -> dict[str, Any]:
     "value", ["a" * 129, "has space", "semi;colon", 'quote"x', "\u00e9t\u00e9".encode()]
 )
 def test_invalid_request_id_gets_fresh_uuid(client: TestClient, value: str | bytes) -> None:
-    r = client.get("/api/v1/listings", headers={**BEARER, "X-Request-ID": value})
+    # bytes header values on purpose; the TestClient's stub types only `str` (httpx2 since S16)
+    headers: Any = {**BEARER, "X-Request-ID": value}
+    r = client.get("/api/v1/listings", headers=headers)
     body = _envelope(r, 501, "NOT_IMPLEMENTED")
     uuid.UUID(body["error"]["correlation_id"])
 
@@ -137,9 +139,10 @@ def test_foreign_cursors_are_422(client: TestClient, cursor: str) -> None:
 
 @pytest.mark.parametrize("key", ["", "has space", "x" * 256, "tab\tkey", "caf\u00e9".encode()])
 def test_bad_idempotency_key_is_422(client: TestClient, key: str | bytes) -> None:
+    headers: Any = {**BEARER, "Idempotency-Key": key}
     r = client.post(
         "/api/v1/listings/generate",
-        headers={**BEARER, "Idempotency-Key": key},
+        headers=headers,
         json={"product_id": ID, "marketplace": "amazon"},
     )
     _envelope(r, 422, "VALIDATION_FAILED")
