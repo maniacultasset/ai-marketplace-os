@@ -57,6 +57,9 @@ class EnqueueSpec:
     batch_id: uuid.UUID | None = None
     parent_job_id: uuid.UUID | None = None
     max_attempts: int | None = None  # a requeue copies its parent's; else the kind's policy
+    # S17b (PLAN D15(b)): a procrastinate lock; jobs sharing one never run at the same time,
+    # and a waiting one stays unfetched (`todo`), holding no worker slot
+    lock: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -240,7 +243,7 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             existing = await self.db.execute(self._select().where(JobRun.idempotency_key == key))
             return Enqueued(existing.scalar_one(), created=False)
         queue_job_id = await defer_on_session(
-            self.db, kind=kind.value, queue=job.queue, job_run_id=job.id
+            self.db, kind=kind.value, queue=job.queue, job_run_id=job.id, lock=spec.lock
         )
         await self.db.execute(
             self._scoped_write(

@@ -16,7 +16,7 @@ from mkos_schemas.enums import ImageSlot
 from app.api.errors import ApiError, NotImplementedYet
 from app.api.v1.deps import IdempotencyKey, get_current_principal
 from app.api.v1.schemas.common import StorageKey
-from app.api.v1.schemas.images import UploadUrlOut, UploadUrlRequest
+from app.api.v1.schemas.images import ImageAccepted, UploadUrlOut, UploadUrlRequest
 from app.api.v1.surface import OPS, route, stub
 from app.core.rbac import Principal
 from app.services import images
@@ -47,9 +47,9 @@ async def images_upload_url(body: UploadUrlRequest, principal: CurrentPrincipal)
 
 
 @route(router, OPS["images_upload"])
-@stub
 async def images_upload(
     idempotency_key: IdempotencyKey,
+    principal: CurrentPrincipal,
     product_id: Annotated[UUID, Form()],
     slot: Annotated[ImageSlot, Form()],
     file: Annotated[UploadFile | None, File(description="The image (10 MiB cap).")] = None,
@@ -57,16 +57,25 @@ async def images_upload(
         StorageKey | None, Form(description="A key from `/images/upload-url`, instead of `file`.")
     ] = None,
     colourway_id: Annotated[UUID | None, Form()] = None,
-) -> NoReturn:
+) -> ImageAccepted:
     """Upload an image, or name one already uploaded, and start the compliance checks. Send
-    exactly one of `file` and `storage_key`."""
+    exactly one of `file` and `storage_key`; a key is registered within 23 hours of its PUT.
+    202 with the image and its `image_compliance` job (poll `poll_url`)."""
     if (file is None) == (storage_key is None):
         raise ApiError(
             422,
             ErrorCode.VALIDATION_FAILED,
             details=[{"loc": ["body", "file"], "msg": "Send exactly one of file or storage_key."}],
         )
-    raise NotImplementedYet("images_upload")
+    data = None if file is None else await file.read()
+    form = images.ImageUploadForm(
+        product_id=product_id, slot=slot, colourway_id=colourway_id, storage_key=storage_key
+    )
+    try:
+        body = await images.accept_image_upload(principal, idempotency_key, form, data)
+    except images.ImageTooLargeError:
+        raise ApiError(413, ErrorCode.PAYLOAD_TOO_LARGE) from None
+    return ImageAccepted.model_validate(body)
 
 
 @route(router, OPS["images_report"])

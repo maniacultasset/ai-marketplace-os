@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import sys
 import weakref
 from collections.abc import Mapping, Sequence
@@ -35,6 +34,7 @@ from mkos_schemas.images import ImageCheck, ImageIssue, ImageReport
 from mkos_schemas.rules import Rule
 from pydantic import ValidationError
 
+from app.core.config import child_process_env
 from app.repositories.images import ImageMeta
 from app.services.image_checks import CHECK_CODES, DEFAULT_SUGGESTIONS
 from app.workers.errors import JobFailed, RetryableJobError
@@ -44,7 +44,6 @@ CHILD_MODULE: Final = "app.services.image_check_child"
 EXIT_RULE_MISCONFIGURED: Final = 4
 # apps/api: the child's cwd, so `-m app.services...` resolves to this checkout's package
 API_ROOT: Final = Path(__file__).resolve().parents[2]
-ENV_ALLOW: Final = ("PATH", "PYTHONPATH", "VIRTUAL_ENV")
 _SEMAPHORES: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore] = (
     weakref.WeakKeyDictionary()
 )
@@ -66,7 +65,7 @@ def _semaphore() -> asyncio.Semaphore:
 
 def child_env() -> dict[str, str]:
     """The allow-listed environment: no DSN, token, key or secret reaches the decoder."""
-    env = {k: os.environ[k] for k in ENV_ALLOW if k in os.environ}
+    env = child_process_env()
     env["LANG"] = "C.UTF-8"
     env["PYTHONHASHSEED"] = "0"
     return env
