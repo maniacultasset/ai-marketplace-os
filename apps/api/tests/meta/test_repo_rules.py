@@ -279,8 +279,8 @@ def test_rules_flag_limits_rules(rules: ModuleType, tmp_path: Path) -> None:
 def test_lint_imports_runs_r5_r6(repo_root: Path) -> None:
     makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
     block = makefile.split("\nlint-imports:\n", 1)[1].split("\n\n", 1)[0]
-    assert "uv run --frozen python scripts/ci/check_repo_rules.py --rules R5,R6,R7" in block
-    assert block.index("--rules R5,R6,R7") < block.index("grep -rl")
+    assert "uv run --frozen python scripts/ci/check_repo_rules.py --rules R5,R6,R7,R8" in block
+    assert block.index("--rules R5,R6,R7,R8") < block.index("grep -rl")
 
 
 # ---- S10: R7 identity_scope only in app/repositories/identity.py (CODE-PLAN S10 Q4) ----
@@ -317,3 +317,81 @@ def test_identity_scope_importers(
 def test_identity_scope_allowed_files(rules: ModuleType, tmp_path: Path, relative: str) -> None:
     root = _tree(tmp_path, {relative: "from app.db.session import identity_scope\n"})
     assert _found(rules, root) == []
+
+
+# ---- S13 A4: R5 allows app/workers/periodic.py; R8 keeps the job GUC in app/db/job_context.py ----
+
+
+def test_r5_allows_workers_periodic(rules: ModuleType, tmp_path: Path) -> None:
+    root = _tree(tmp_path, {"apps/api/app/workers/periodic.py": PLATFORM_IMPORTS[0]})
+    assert _found(rules, root) == []
+
+
+def test_r5_flags_workers_wrapper(rules: ModuleType, tmp_path: Path) -> None:
+    root = _tree(tmp_path, {"apps/api/app/workers/wrapper.py": PLATFORM_IMPORTS[0]})
+    assert {rule for _, _, rule in _found(rules, root)} == {"R5"}
+
+
+JOB_CONTEXT_IMPORTS = [
+    "from app.db.job_context import resolve_job\n",
+    "from app.db.job_context import resolve_job as r\n",
+    "from app.db import job_context\n",
+    "import app.db.job_context\n",
+    "import app.db.job_context as jc\n",
+]
+
+
+@pytest.mark.parametrize("body", JOB_CONTEXT_IMPORTS)
+@pytest.mark.parametrize(
+    "relative",
+    [
+        "apps/api/app/workers/periodic.py",
+        "apps/api/app/services/jobs.py",
+        "apps/api/app/repositories/jobs.py",
+        "apps/api/app/db/queue.py",
+    ],
+)
+def test_r8_flags_job_context_importers(
+    rules: ModuleType, tmp_path: Path, relative: str, body: str
+) -> None:
+    root = _tree(tmp_path, {relative: body})
+    assert "R8" in {rule for _, _, rule in _found(rules, root)}
+
+
+def test_r8_flags_relative_import(rules: ModuleType, tmp_path: Path) -> None:
+    root = _tree(tmp_path, {"apps/api/app/db/other.py": "from .job_context import resolve_job\n"})
+    assert {rule for _, _, rule in _found(rules, root)} == {"R8"}
+
+
+@pytest.mark.parametrize("body", JOB_CONTEXT_IMPORTS[:2])
+def test_r8_allows_wrapper(rules: ModuleType, tmp_path: Path, body: str) -> None:
+    root = _tree(tmp_path, {"apps/api/app/workers/wrapper.py": body})
+    assert _found(rules, root) == []
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "X = 'app.job_id'\n",
+        "def f(s):\n    return s.execute(\"SELECT set_config('app.job_id', '1', true)\")\n",
+    ],
+)
+@pytest.mark.parametrize(
+    "relative", ["apps/api/app/repositories/jobs.py", "apps/api/app/workers/wrapper.py"]
+)
+def test_r8_flags_job_guc_literal(
+    rules: ModuleType, tmp_path: Path, relative: str, body: str
+) -> None:
+    root = _tree(tmp_path, {relative: body})
+    assert {rule for _, _, rule in _found(rules, root)} == {"R8"}
+
+
+def test_r8_allows_job_guc_in_job_context(rules: ModuleType, tmp_path: Path) -> None:
+    root = _tree(tmp_path, {"apps/api/app/db/job_context.py": "X = 'app.job_id'\n"})
+    assert _found(rules, root) == []
+
+
+def test_r8_ignores_alembic_and_scripts(rules: ModuleType, tmp_path: Path) -> None:
+    body = "X = 'app.job_id'\nimport app.db.job_context\n"
+    root = _tree(tmp_path, {"apps/api/alembic/versions/x.py": body, "scripts/x.py": body})
+    assert "R8" not in {rule for _, _, rule in _found(rules, root)}

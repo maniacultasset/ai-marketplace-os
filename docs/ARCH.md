@@ -58,8 +58,9 @@ flowchart TB
   `job_run_id`; the worker loads `tenant_id` from that `job_runs` row. Two queues, `default` and
   `publish`, run with separate concurrency. Task timeouts (`asyncio.timeout`): generation 300 s,
   publish 600 s, import 1800 s. `job_runs` is the status source the dashboard polls.
-- **Built today:** `/healthz`, `/readyz` and an empty `/api/v1` router. The image runs the `api` or
-  `shell` role; the worker role returns in S13.
+- **Built today:** `/healthz`, `/readyz` and the `/api/v1` routers. The image runs the `api`,
+  `worker`, `migrate`, `seed` or `shell` role. The worker (S13a) runs both queues in one process
+  with no port, a lease reaper and the periodic prunes; `make worker` runs one beside `make dev`.
 - **Open: T3.** The queue choice waits on the ADR-0004 spike.
 
 Source: BACKEND-ARCHITECTURE.md §4.1-4.4; ADR-0004 §Decision 2, 4, 5;
@@ -110,7 +111,7 @@ Source: BACKEND-ARCHITECTURE.md §9.1; CANON.md migration ledger; EXECUTION-PLAN
 |---|---|---|---|
 | Runs on | Laptop, Docker Desktop | GCP project `aimos-staging` | GCP project `aimos-prod` |
 | API | `make dev`: uvicorn on `127.0.0.1:8000` | Cloud Run, min 0 / max 1 | Cloud Run, 1 vCPU / 1 GiB, min 1 / max 3 |
-| Worker | not yet (S13) | worker pool, 1 instance, 0 off-hours | worker pool, 1 vCPU / 2 GiB, 1 instance |
+| Worker | `make worker` (S13a) | worker pool, 1 instance, 0 off-hours | worker pool, 1 vCPU / 2 GiB, 1 instance |
 | Database | `pgvector/pgvector:0.8.5-pg17`; db `marketplace_os`, tests on `mos_test` / `mos_iso` | Cloud SQL PG17 `aimos-db`, stopped nights and weekends | Cloud SQL PG17 Enterprise `db-custom-1-3840`, PITR 7 days |
 | Storage | MinIO (compose, Chainguard images; TEAM-QUESTIONS T107) | GCS, own buckets | GCS, own buckets |
 | Ingress | `127.0.0.1` only | `api-staging.<APEX>` (Firebase Hosting rewrite) | `api.<APEX>` (global external ALB) |

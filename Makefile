@@ -52,7 +52,7 @@ endif
 
 .PHONY: help
 help:
-	@echo "make dev | hooks | test-unit | bootstrap-db | test-db | mock | mock-smoke | seed | e2e | <check-id>"
+	@echo "make dev | worker | hooks | test-unit | bootstrap-db | test-db | mock | mock-smoke | seed | e2e | <check-id>"
 
 .PHONY: test-unit
 test-unit:
@@ -68,12 +68,12 @@ api-lint:
 	uv run --frozen python scripts/ci/check_repo_rules.py
 	uv run --frozen python scripts/ci/run_pip_audit.py
 
-# import-linter, repo rules R5-R7 (platform_scope, SCOPE_OK, identity_scope), then the tenant_scope_checked grep (CANON-ADDENDUM.md §6): the literal may appear
+# import-linter, repo rules R5-R8 (platform_scope, SCOPE_OK, identity_scope, the job GUC), then the tenant_scope_checked grep (CANON-ADDENDUM.md §6): the literal may appear
 # only in apps/api/app/db/{guard,session}.py. Zero hits pass until S9 adds them.
 .PHONY: lint-imports
 lint-imports:
 	PYTHONPATH=apps/api uv run --frozen lint-imports --config .importlinter
-	uv run --frozen python scripts/ci/check_repo_rules.py --rules R5,R6,R7
+	uv run --frozen python scripts/ci/check_repo_rules.py --rules R5,R6,R7,R8
 	@hits="$$(grep -rl --include='*.py' tenant_scope_checked apps packages scripts)" || [ $$? -eq 1 ]; \
 	bad=0; \
 	for hit in $$hits; do \
@@ -191,6 +191,12 @@ dev:
 	uv run --frozen alembic -c apps/api/alembic.ini upgrade head
 	$(MAKE) hooks
 	uv run --frozen uvicorn app.main:app --reload --port $(API_HOST_PORT) --app-dir apps/api
+
+# A local worker beside `make dev` (S13): both queues, the same env as the dev API (.env, as app_rw).
+.PHONY: worker
+worker:
+	APP_ROLE=worker APP_NAME=marketplace-os-worker OTEL_SERVICE_NAME=marketplace-os-worker \
+	  uv run --frozen python -m app.workers.main
 
 # The local /api/v1 mock (S3 D5): committed openapi.json examples on 127.0.0.1 only. `Prefer:
 # code=<status>` answers a declared error example. `mock-smoke` starts it on a free port and probes it.

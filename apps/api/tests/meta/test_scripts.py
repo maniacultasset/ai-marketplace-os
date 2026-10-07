@@ -930,3 +930,59 @@ def test_auth_leg_stub_probe_is_still_a_stub(repo_root: Path) -> None:
     assert len(ops) == 1
     module = importlib.import_module(f"app.api.v1.routers.{ops[0].group}")
     assert is_stub(getattr(module, ops[0].op_id))
+
+
+# ---- S13 A8: a local worker beside `make dev` ----
+
+
+def test_make_worker_target(repo_root: Path) -> None:
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert ".PHONY: worker\nworker:\n" in makefile
+    block = makefile.split("\nworker:\n", 1)[1].split("\n\n", 1)[0]
+    assert "APP_ROLE=worker" in block
+    assert "APP_NAME=marketplace-os-worker" in block
+    assert "OTEL_SERVICE_NAME=marketplace-os-worker" in block
+    assert "uv run --frozen python -m app.workers.main" in block
+    assert "uvicorn" not in block and "--port" not in block
+
+
+# ---- S13 A16: the bootstrap check boots the image as a worker ----
+
+
+def _worker_leg(repo_root: Path) -> str:
+    text = (repo_root / "scripts/ci/bootstrap.sh").read_text(encoding="utf-8")
+    return text.split("# S13 worker leg", 1)[1].split("# The Cloud Run migrate job", 1)[0]
+
+
+def test_bootstrap_has_worker_leg(repo_root: Path) -> None:
+    leg = _worker_leg(repo_root)
+    assert "-e APP_ROLE=worker" in leg
+    assert '-e DATABASE_URL="$app_dsn"' in leg  # app_rw, on the compose network
+    assert '--network "$network"' in leg
+    assert "procrastinate_workers" in leg
+    assert "seq 1 30" in leg  # registered within 30 s
+    text = (repo_root / "scripts/ci/bootstrap.sh").read_text(encoding="utf-8")
+    assert '"$worker_container"' in text.split("cleanup() {", 1)[1].split("}", 1)[0]
+
+
+def test_bootstrap_worker_leg_checks_exit_and_time(repo_root: Path) -> None:
+    leg = _worker_leg(repo_root)
+    assert "docker stop --time 10" in leg  # SIGTERM first, SIGKILL only after 10 s
+    assert '"$worker_code" != "0"' in leg
+    assert '"$worker_took" -ge 10' in leg
+    assert "carries a DSN" in leg and "grep -Eq" in leg
+    assert '"$(worker_rows)" != "0"' in leg  # unregistered on the way out
+
+
+def test_prove_gates_has_s13a_legs(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    assert "leg lint-imports-platform-scope-in-wrapper lint-imports ': R5 '" in text
+    assert "leg lint-imports-job-guc-outside-context lint-imports ': R8 '" in text
+    docker = text.split('if [ "$with_docker" -eq 1 ]; then', 1)[1]
+    assert "leg api-tests-cas-without-status api-tests 'test_claim_cas_drops_duplicate'" in docker
+    for seed in (
+        "seed_platform_scope_in_wrapper",
+        "seed_job_guc_outside_context",
+        "seed_cas_without_status",
+    ):
+        assert f"{seed}() {{" in text

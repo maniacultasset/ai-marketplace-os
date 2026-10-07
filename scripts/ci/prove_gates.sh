@@ -208,6 +208,15 @@ seed_platform_scope_worker() { new_file apps/api/app/workers/x.py $'"""Seeded.""
 seed_scope_ok_service() { new_file apps/api/app/services/x.py $'"""Seeded."""\n\nfrom app.db.guard import SCOPE_OK\n\n__all__ = ["SCOPE_OK"]'; }
 seed_text_in_service() { new_file apps/api/app/services/x.py $'"""Seeded."""\n\nfrom sqlalchemy import text\n\n__all__ = ["text"]'; }
 seed_text_attribute_chain() { new_file apps/api/app/services/x.py $'"""Seeded."""\n\nimport sqlalchemy as sa\n\nQUERY = sa.sql.text("SELECT 1")'; }
+# S13a: platform_scope in the job wrapper (R5), the job GUC outside app/db/job_context.py (R8),
+# and the claim compare-and-set without its `status = 'queued'` clause.
+seed_platform_scope_in_wrapper() { append apps/api/app/workers/wrapper.py 'from app.db.session import platform_scope  # noqa: F401'; }
+seed_job_guc_outside_context() { append apps/api/app/repositories/jobs.py '_SEEDED_GUC = "app.job_id"'; }
+seed_cas_without_status() {
+  cp "$root/.env" .env
+  replace apps/api/app/repositories/jobs.py $'                JobRun.status == "queued",\n                JobRun.attempt < JobRun.max_attempts,' \
+    '                JobRun.attempt < JobRun.max_attempts,'
+}
 seed_engine_in_worker() { new_file apps/api/app/workers/x.py $'"""Seeded."""\n\nfrom app.db.session import get_engine\n\n__all__ = ["get_engine"]'; }
 seed_iso_no_filter() {
   cp "$root/.env" .env
@@ -369,6 +378,8 @@ leg contracts-schemas-tagged-unbumped contracts 'already tagged; bump per CHANGE
   sh -c 'd="$(mktemp -d)"; trap "rm -rf \"\$d\"" EXIT; git clone -q --no-checkout "$PWD" "$d/r" && cd "$d/r" && git checkout -q "$(git -C "$OLDPWD" rev-parse HEAD)" && git tag schemas-v1.0.0 && printf "\n" >>packages/schemas/jsonschema/openapi.json && git add packages/schemas/jsonschema/openapi.json && git -c core.hooksPath=/dev/null -c user.name=prove-gates -c user.email=prove-gates@example.invalid commit -q -m "test: seeded post-tag edit" && make contracts'
 
 leg lint-imports-platform-scope-worker lint-imports ': R5 ' seed_platform_scope_worker make lint-imports
+leg lint-imports-platform-scope-in-wrapper lint-imports ': R5 ' seed_platform_scope_in_wrapper make lint-imports
+leg lint-imports-job-guc-outside-context lint-imports ': R8 ' seed_job_guc_outside_context make lint-imports
 leg lint-imports-scope-ok-service lint-imports ': R6 ' seed_scope_ok_service make lint-imports
 leg api-lint-text-in-service api-lint ': R4 ' seed_text_in_service make api-lint
 leg api-lint-text-attribute-chain api-lint ': R4 ' seed_text_attribute_chain make api-lint
@@ -402,6 +413,7 @@ if [ "$with_docker" -eq 1 ]; then
   leg api-tests-presence-only-auth api-tests 'tenants_me: presence-only bearer_required' seed_presence_only_auth COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-route-without-role api-tests 'test_every_route_declares_role' seed_route_without_role COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-limiter-off api-tests 'test_rate_limit_sixth_login_429' seed_limiter_off COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-cas-without-status api-tests 'test_claim_cas_drops_duplicate' seed_cas_without_status COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg contracts-response-field-removed contracts 'response-required-property-removed' seed_response_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
   leg contracts-response-optional-property-removed contracts 'response-optional-property-removed' seed_optional_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
   leg contracts-response-non-success-status-removed contracts 'response-non-success-status-removed' seed_error_status_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'

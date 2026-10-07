@@ -14,7 +14,19 @@ from collections.abc import Iterator
 from typing import Any, ClassVar
 from uuid import UUID
 
-from sqlalchemy import CTE, ColumnElement, Select, Subquery, Table, inspect, or_, select, update
+from sqlalchemy import (
+    CTE,
+    ColumnElement,
+    Delete,
+    Select,
+    Subquery,
+    Table,
+    Update,
+    inspect,
+    or_,
+    select,
+    update,
+)
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapper
@@ -116,6 +128,18 @@ class TenantScopedRepository[ModelT: TenantScoped]:
         if any(_own_tables(node) & tenant_tables() for node in _children_outside(stmt, inner)):
             raise TypeError("outer statement reads a tenant table outside the scoped inner")
         return stmt.execution_options(**{SCOPE_OK: True})
+
+    def _scoped_write[DmlT: (Update, Delete)](self, stmt: DmlT) -> DmlT:
+        """Stamp a Core UPDATE or DELETE of this repository's table whose WHERE carries one of
+        this instance's tenant criteria (from `_tenant_criterion()`), so it names the tenant
+        exactly as `_select()` does. Anything else is refused."""
+        if getattr(stmt.table, "name", None) != self.model.__table__.name:
+            raise TypeError("statement does not target this repository's table")
+        where = getattr(stmt, "_where_criteria", ())
+        if not any(mine is criterion for mine in self._criteria for criterion in where):
+            raise TypeError("statement does not carry this repository's tenant criterion")
+        stamped = stmt.execution_options(**{SCOPE_OK: True}, synchronize_session=False)
+        return stamped
 
     # ---- reads ----
 
