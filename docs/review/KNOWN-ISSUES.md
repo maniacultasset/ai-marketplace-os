@@ -78,3 +78,10 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   (`app/workers/periodic.py`) reads only expired `running` rows, so that job never runs or ends.
   Fix: a reaper sweep that re-defers `queued` rows whose entry belongs to a pruned worker, with a
   kill-at-that-point test. A graceful SIGTERM does not hit this (ADR-0017 drain).
+- **Job-spine follow-ups from the S13a review (LOW; S26 unless a later step hits them first).**
+  Periodic tasks share the 4-slot `default` queue with `bulk_import` (1,800 s timeout), so four
+  long imports can delay the reaper up to 30 min (fix: a `periodic` queue). An exception in the
+  terminal write leaves the row `running` until its lease expires, then the body runs again (fix:
+  record `failed`/`INTERNAL_ERROR` in a second fenced transaction). `retention_daily` holds one
+  transaction per tenant, not per 1,000-row batch. Rows whose reap keeps failing are skipped per job
+  (F1), but 500 of them would fill the oldest-lease page (fix: push the lease forward on failure).
