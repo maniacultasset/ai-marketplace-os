@@ -26,17 +26,19 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Final
 
-from sqlalchemy import literal, text, tuple_
+from sqlalchemy import exists, func, literal, select, text, tuple_
 from sqlalchemy.exc import IntegrityError
 
 from app.core.errors import ConflictError
 from app.db.models.catalog_assets import UQ_MA_SELLER_LIVE, MarketplaceAccount
+from app.db.models.tenancy import Tenant
 from app.db.session import get_engine
 from app.repositories.base import TenantScopedRepository
 
 if TYPE_CHECKING:
     from app.core.crypto import SealedTokens
 
+LIVE_TENANT: Final = ("trial", "active")
 PAGE_LIMIT_MIN: Final = 1
 PAGE_LIMIT_MAX: Final = 200
 
@@ -297,3 +299,27 @@ async def refresh_lock(account_id: uuid.UUID) -> AsyncIterator[bool]:
         finally:
             if held:
                 await conn.execute(_UNLOCK, {"key": key})
+
+
+async def due_accounts(
+    session: Any, *, margin: timedelta, limit: int = 500
+) -> builtins.list[tuple[uuid.UUID, uuid.UUID]]:
+    """`(tenant_id, id)` of every `active` account whose token expires within `margin`, in a
+    `trial`/`active` tenant, soonest first, at most `limit`. Cross-tenant: run it only in
+    `platform_scope()` (the periodic refresh). Reads no credential column."""
+    model = MarketplaceAccount
+    stmt = (
+        select(model.tenant_id, model.id)
+        .where(
+            model.status == "active",
+            model.expires_at < func.now() + margin,
+            exists(
+                select(Tenant.id).where(
+                    Tenant.id == model.tenant_id, Tenant.status.in_(LIVE_TENANT)
+                )
+            ),
+        )
+        .order_by(model.expires_at, model.id)
+        .limit(limit)
+    )
+    return [(row.tenant_id, row.id) for row in (await session.execute(stmt)).all()]

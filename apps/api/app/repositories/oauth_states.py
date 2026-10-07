@@ -18,9 +18,9 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Any, Final
 
-from sqlalchemy import text
+from sqlalchemy import func, select, text
 
 from app.db.models.ops import OAuthState
 from app.repositories.base import TenantScopedRepository
@@ -148,3 +148,15 @@ class OAuthStateRepository(TenantScopedRepository[OAuthState]):
         """Delete this tenant's expired state and pending rows; the count."""
         result = await self.db.execute(_PRUNE, {"t": self.tenant_id})
         return int(getattr(result, "rowcount", 0) or 0)
+
+
+async def tenants_with_expired(session: Any) -> list[uuid.UUID]:
+    """Every tenant holding an expired state or pending row. Cross-tenant: run it only in
+    `platform_scope()` (the hourly prune)."""
+    stmt = (
+        select(OAuthState.tenant_id)
+        .where(OAuthState.expires_at <= func.now())
+        .distinct()
+        .order_by(OAuthState.tenant_id)
+    )
+    return list((await session.execute(stmt)).scalars())
