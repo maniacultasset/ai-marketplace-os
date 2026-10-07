@@ -1416,3 +1416,249 @@ def test_onboarding_e2e_background_waits_and_is_killed(
         ["pgrep", "-f", f"http.server {port}"], capture_output=True, text=True, check=False
     )
     assert leftover.stdout.strip() == "" or not any(_alive(int(p)) for p in leftover.stdout.split())
+# ---- S13b B15 (AC 22): the HTTP import flow, its hooks, make e2e and the bootstrap leg ----
+
+IMPORT_FLOW = "scripts/e2e/import_flow.sh"
+IMPORT_STEPS = (
+    "health",
+    "login_acme_operator",
+    "worker_start",
+    "upload_202",
+    "job_partial",
+    "report_45_5",
+    "failed_rows_5",
+    "replay_same_ids",
+    "key_reuse_409",
+    "bharat_import_404",
+    "templates_load",
+    "retry_202",
+    "retry_partial_46_4",
+    "worker_stop",
+    "upload_queued",
+    "cancel_200",
+)
+
+# A `curl` stand-in for the import flow: it answers each request the flow makes from the URL,
+# method and headers, writes the body to `-o` and prints the status (`-w '%{http_code}'`). The
+# late job's status (`queued`, or `running` when a foreign worker took it) comes from LATE_STATUS.
+_CURL_STUB = r"""#!/usr/bin/env python3
+import json, os, re, sys
+args = sys.argv[1:]
+out = None; method = "GET"; headers = {}; form = ""; url = ""; data = ""
+i = 0
+while i < len(args):
+    a = args[i]
+    if a == "-o": out = args[i + 1]; i += 2; continue
+    if a == "-X": method = args[i + 1]; i += 2; continue
+    if a == "-H":
+        k, _, v = args[i + 1].partition(": "); headers[k.lower()] = v; i += 2; continue
+    if a == "-F": form = args[i + 1]; i += 2; continue
+    if a == "--data-binary": data = args[i + 1]; i += 2; continue
+    if a == "-w": i += 2; continue
+    if a.startswith("http"): url = a
+    i += 1
+state = os.environ["STUB_STATE"]
+with open(state, "a", encoding="utf-8") as fh:
+    fh.write(f"{method} {url}\n")
+retried = os.path.exists(state + ".retried")
+token = headers.get("authorization", "")
+path = re.sub(r"^https?://[^/]+", "", url)
+status, body = 404, {"error": {"type": "NOT_FOUND"}}
+if path == "/readyz":
+    status, body = 200, {}
+elif path.endswith("/auth/login"):
+    who = json.loads(data)["email"]
+    status, body = 200, {"access_token": "bharat" if "bharat" in who else "acme"}
+elif path.endswith("/products/bulk"):
+    key = headers.get("idempotency-key", "")
+    if key.startswith("e2e-late"):
+        status, body = 202, {"import_id": "I2", "job_id": "LATE"}
+    elif "other.csv" in form:
+        status, body = 409, {"error": {"type": "IDEMPOTENCY_KEY_REUSED"}}
+    else:
+        status, body = 202, {"import_id": "IMP", "job_id": "JOB"}
+elif path.endswith("/jobs/JOB") or path.endswith("/jobs/RETRY"):
+    status, body = 200, {"status": "partial"}
+elif path.endswith("/jobs/LATE"):
+    status, body = 200, {"status": os.environ.get("LATE_STATUS", "queued")}
+elif path.endswith("/jobs/LATE/cancel"):
+    status, body = 200, {"status": "cancelled"}
+elif path.endswith("/imports/IMP/rows/retry"):
+    open(state + ".retried", "w").close()
+    status, body = 202, {"job_id": "RETRY"}
+elif "/imports/IMP/rows" in path:
+    status, body = 200, {"data": [{"row_number": n, "errors": [{"x": 1}]} for n in (8, 15, 22, 35, 43)]}
+elif path.endswith("/imports/IMP"):
+    if "bharat" in token:
+        status, body = 404, {"error": {"type": "NOT_FOUND"}}
+    else:
+        counts = (46, 4) if retried else (45, 5)
+        status, body = 200, {"total_rows": 50, "imported": counts[0], "failed": counts[1], "rows": []}
+if out:
+    with open(out, "w", encoding="utf-8") as fh:
+        json.dump(body, fh)
+sys.stdout.write(str(status))
+"""
+
+
+def _run_import_flow(
+    repo_root: Path, tmp_path: Path, *, hooks: bool = True, late: str = "queued"
+) -> tuple[subprocess.CompletedProcess[str], list[str]]:
+    import os
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    curl = bin_dir / "curl"
+    curl.write_text(_CURL_STUB, encoding="utf-8")
+    curl.chmod(0o755)
+    hook_log = tmp_path / "hooks.log"
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
+    env["STUB_STATE"] = str(tmp_path / "requests.log")
+    env["LATE_STATUS"] = late
+    for name in ("WORKER_START", "WORKER_STOP", "TEMPLATES_LOAD"):
+        env.pop(name, None)
+    if hooks:
+        env["WORKER_START"] = f'echo start >> "{hook_log}"'
+        env["WORKER_STOP"] = f'echo stop >> "{hook_log}"'
+        env["TEMPLATES_LOAD"] = f'test -s "$1" && echo templates >> "{hook_log}"'
+    result = subprocess.run(
+        [str(repo_root / IMPORT_FLOW), "http://127.0.0.1:8123"],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=120,
+        check=False,
+    )
+    calls = hook_log.read_text(encoding="utf-8").split() if hook_log.exists() else []
+    return result, calls
+
+
+def test_e2e_import_flow_steps(repo_root: Path, tmp_path: Path) -> None:
+    code = _code((repo_root / IMPORT_FLOW).read_text(encoding="utf-8"))
+    assert "set -euo pipefail" in code
+    assert tuple(re.findall(r"(?m)^step (\w+)$", code)) == IMPORT_STEPS
+    assert "POLL_LIMIT_S=120" in code and "$(( $(date +%s) + POLL_LIMIT_S ))" in code
+    assert "FAILED at step $current (HTTP status ${status:-none})" in code
+    assert 'cat "$body"' not in code
+    assert not re.search(r":\d{2,5}\b", code)
+    result, calls = _run_import_flow(repo_root, tmp_path)
+    assert result.returncode == 0, result.stderr
+    assert calls == ["start", "templates", "stop"]  # in this order, once each
+    assert result.stdout.strip().endswith("e2e: import_flow OK (import IMP)")
+
+
+def test_e2e_import_flow_without_hooks_exits_2(repo_root: Path, tmp_path: Path) -> None:
+    result, calls = _run_import_flow(repo_root, tmp_path, hooks=False)
+    assert result.returncode == 2
+    assert result.stderr.startswith(
+        "usage: WORKER_START=<cmd> WORKER_STOP=<cmd> TEMPLATES_LOAD=<cmd>"
+    )
+    assert not (tmp_path / "requests.log").exists()
+    assert calls == []
+
+
+def test_e2e_import_flow_fails_fast_if_foreign_worker(repo_root: Path, tmp_path: Path) -> None:
+    result, calls = _run_import_flow(repo_root, tmp_path, late="running")
+    assert result.returncode == 1
+    assert "FAILED at step upload_queued" in result.stderr
+    assert "a worker outside WORKER_START is running" in result.stderr
+    requests = (tmp_path / "requests.log").read_text(encoding="utf-8")
+    assert "/jobs/LATE/cancel" not in requests
+    assert calls == ["start", "templates", "stop"]
+
+
+def _make_e2e_dry_run(repo_root: Path, *extra: str, env: dict[str, str] | None = None) -> str:
+    import os
+
+    full = dict(os.environ) | (env or {})
+    result = subprocess.run(
+        ["make", "-n", "e2e", *extra],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        env=full,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    return result.stdout
+
+
+def test_make_e2e_sets_worker_hooks(repo_root: Path) -> None:
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    block = makefile.split("\ne2e:\n", 1)[1].split("\n\n", 1)[0]
+    assert "export WORKER_START='$(E2E_WORKER_START)'" in block
+    assert "WORKER_STOP='$(E2E_WORKER_STOP)'" in block
+    assert "TEMPLATES_LOAD='$(E2E_TEMPLATES_LOAD)'" in block
+    out = _make_e2e_dry_run(repo_root)
+    start = out.split("WORKER_START='", 1)[1].split("' WORKER_STOP=", 1)[0]
+    assert "APP_ROLE=worker" in start and "uv run --frozen python -m app.workers.main" in start
+    assert "&" in start and "echo $! >" in start
+    stop = out.split("WORKER_STOP='", 1)[1].split("'", 1)[0]
+    assert 'kill -TERM "$pid"' in stop
+    load = out.split("TEMPLATES_LOAD='", 1)[1].split("'", 1)[0]
+    assert load == 'uv run --frozen python -m app.cli templates load --file "$1"'
+    assert ".e2e/" in (repo_root / ".gitignore").read_text(encoding="utf-8")
+
+
+def test_make_e2e_hooks_honour_overrides(repo_root: Path, tmp_path: Path) -> None:
+    pidfile = tmp_path / "w.pid"
+    out = _make_e2e_dry_run(
+        repo_root,
+        f"E2E_WORKER_PIDFILE={pidfile}",
+        env={"API_HOST_PORT": "8999", "DATABASE_URL": "postgresql+psycopg://x:y@localhost:1/z"},
+    )
+    start = out.split("WORKER_START='", 1)[1].split("' WORKER_STOP=", 1)[0]
+    stop = out.split("WORKER_STOP='", 1)[1].split("'", 1)[0]
+    assert str(pidfile) in start and str(pidfile) in stop
+    assert 'base="http://127.0.0.1:8999"' in out
+    # the hooks set no database URL: the caller's DATABASE_URL / ALEMBIC_DATABASE_URL reach them
+    for hook in (start, stop, out.split("TEMPLATES_LOAD='", 1)[1].split("'", 1)[0]):
+        assert "DATABASE_URL=" not in hook
+
+
+def test_bootstrap_runs_import_flow(repo_root: Path) -> None:
+    code = _bootstrap_code(repo_root)
+    call = 'scripts/e2e/import_flow.sh "http://127.0.0.1:${api_port}"'
+    assert code.count(call) == 1
+    flow = code.index(call)
+    hooks = [
+        code.index(f"export {name}=") for name in ("WORKER_START", "WORKER_STOP", "TEMPLATES_LOAD")
+    ]
+    assert all(h < flow for h in hooks)
+    start = code[hooks[0] : hooks[1]]
+    assert "-e APP_ROLE=worker" in start and "DATABASE_URL='$app_dsn'" in start
+    assert "S3_ENDPOINT_URL=http://minio:9000" in start
+    load = code[hooks[2] : flow]
+    assert "-e APP_ROLE=shell" in load and "ALEMBIC_DATABASE_URL='$migrator_dsn'" in load
+    assert "-m app.cli templates load --file /tmp/templates.json" in load
+    lines = [line.strip() for line in code.splitlines() if line.strip()]
+    assert (
+        lines[lines.index(call) - 1]
+        == 'scripts/ci/reset_rate_limits.sh "http://127.0.0.1:${api_port}"'
+    )
+    assert (
+        code.index(E2E_CALL) < flow < code.index('docker rm -f "$e2e_container" >/dev/null', flow)
+    )
+    assert '"$import_worker"' in code.split("trap cleanup EXIT")[0]
+    assert code.index("app.cli dictionary sync") < code.index("app.cli seed --profile demo")
+
+
+def test_scaffold_import_files_retired(repo_root: Path) -> None:
+    for name in ("app/workers/main.py", "app/services/imports/row_model.py"):
+        assert not (repo_root / "scaffold/apps/api" / name).exists(), name
+
+
+def test_prove_gates_has_s13b_legs(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    nan = re.search(r"(?m)^[ \t]*leg api-tests-row-model-nan .*$", text)
+    assert nan is not None and "test_row_model_nan_infinity_row_error" in nan.group(0)
+    assert 'COMPOSE_PROJECT_NAME="$self_project"' in nan.group(0)
+    assert re.search(r"(?m)^leg lint-imports-boto3-outside-adapter lint-imports ", text)
+    row_model = (repo_root / "apps/api/app/services/imports/row_model.py").read_text(
+        encoding="utf-8"
+    )
+    seed = text.split("seed_row_model_nan() {", 1)[1].split("\n}", 1)[0]
+    old = seed.split("row_model.py '", 1)[1].split("'", 1)[0]
+    assert old in row_model  # the seed still applies to today's file

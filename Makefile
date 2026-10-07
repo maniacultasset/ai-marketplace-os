@@ -7,6 +7,10 @@ SHELL := bash
 # Per-checkout host ports (ADR-0011 amendment):
 # `.worktree.env` is optional and git-ignored; the helper validates it before make reads it.
 WORKTREE_KEYS := COMPOSE_PROJECT_NAME PG_HOST_PORT MINIO_API_HOST_PORT MINIO_CONSOLE_HOST_PORT API_HOST_PORT MOCK_HOST_PORT FAKE_MARKETPLACE_HOST_PORT
+WORKTREE_KEYS := COMPOSE_PROJECT_NAME PG_HOST_PORT MINIO_API_HOST_PORT MINIO_CONSOLE_HOST_PORT API_HOST_PORT MOCK_HOST_PORT
+# `make e2e` against a caller's own stack (S13b): an API_HOST_PORT in the environment wins over
+# .worktree.env there (read before the file is included).
+E2E_ENV_API_PORT := $(if $(filter environment,$(origin API_HOST_PORT)),$(API_HOST_PORT))
 ifneq ($(wildcard .worktree.env),)
 ifneq ($(shell scripts/ci/worktree_env.sh exports .worktree.env >/dev/null 2>&1; echo $$?),0)
 $(error .worktree.env rejected: $(shell scripts/ci/worktree_env.sh exports .worktree.env 2>&1 >/dev/null))
@@ -270,6 +274,24 @@ e2e:
 	trap '$(FAKE_CTL) stop $(FAKE_MARKETPLACE_HOST_PORT)' EXIT; \
 	export $(FAKE_MARKETPLACE_ENV); \
 	export FAKE_URL="$(FAKE_MARKETPLACE_URL)" REFRESH_ONCE="$(REFRESH_ONCE)"; \
+# The import flow's hooks (S13b): a local worker beside `make dev` (its PID in E2E_WORKER_PIDFILE)
+# and the migrator's `templates load`. DATABASE_URL, ALEMBIC_DATABASE_URL and API_HOST_PORT set in
+# the caller's environment win over .env and .worktree.env (a caller with its own stack).
+E2E_WORKER_PIDFILE ?= $(CURDIR)/.e2e/worker.pid
+E2E_WORKER_START = mkdir -p "$$(dirname "$(E2E_WORKER_PIDFILE)")"; \
+  APP_ROLE=worker APP_NAME=marketplace-os-worker OTEL_SERVICE_NAME=marketplace-os-worker \
+  nohup uv run --frozen python -m app.workers.main >"$$(dirname "$(E2E_WORKER_PIDFILE)")/worker.log" 2>&1 & \
+  echo $$! >"$(E2E_WORKER_PIDFILE)"
+E2E_WORKER_STOP = pid="$$(cat "$(E2E_WORKER_PIDFILE)")"; kill -TERM "$$pid"; \
+  for _ in $$(seq 1 30); do kill -0 "$$pid" 2>/dev/null || break; sleep 1; done; \
+  ! kill -0 "$$pid" 2>/dev/null && rm -f "$(E2E_WORKER_PIDFILE)"
+E2E_TEMPLATES_LOAD = uv run --frozen python -m app.cli templates load --file "$$1"
+
+.PHONY: e2e
+e2e:
+	export WORKER_START='$(E2E_WORKER_START)' WORKER_STOP='$(E2E_WORKER_STOP)' \
+	  TEMPLATES_LOAD='$(E2E_TEMPLATES_LOAD)'; \
+	base="http://127.0.0.1:$(or $(E2E_ENV_API_PORT),$(API_HOST_PORT))"; \
 	for script in $(E2E_DIR)/*.sh; do \
 	  [ -e "$$script" ] || { echo "make e2e: no scripts in $(E2E_DIR)" >&2; exit 1; }; \
 	  [ "$$(basename "$$script")" != onboarding.sh ] || continue; \
