@@ -50,7 +50,9 @@ __all__ = [
 ]
 
 ROW_FIELD: Final = "file.row"
-SKU_PATTERN: Final = re.compile(r"[^\]\s]{1,64}")
+# The API `Sku` pattern read as ECMA-262 (JSON Schema): its `\s` also covers U+FEFF, which Python's
+# `\s` does not, so it is named (an imported SKU is later returned by the products API).
+SKU_PATTERN: Final = re.compile(r"[^\]\s\ufeff]{1,64}")
 SLUG_PATTERN: Final = re.compile(r"[a-z0-9_]{2,64}")
 HSN_PATTERN: Final = re.compile(r"[0-9]{4}|[0-9]{6}|[0-9]{8}")
 MONEY_PATTERN: Final = re.compile(r"[0-9]{1,10}(\.[0-9]{1,2})?")

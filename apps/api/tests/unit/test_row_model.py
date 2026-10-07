@@ -161,11 +161,33 @@ def test_row_model_whitespace_collapsed() -> None:
     assert row.sku == "KURTA-001"
 
 
-@pytest.mark.parametrize("sku", ["A]B", "x" * 65])
+@pytest.mark.parametrize("sku", ["A]B", "x" * 65, "A\ufeffB", "A\u00a0B", "A\u3000B", "A\u2028B"])
 def test_row_model_bad_sku(sku: str) -> None:
     result = run(seller_sku=sku)
     assert result.row is None
     assert codes(result)[0] in {ErrorCode.PATTERN_MISMATCH, ErrorCode.FIELD_TOO_LONG}
+
+
+@settings(max_examples=300)
+@given(st.text(min_size=1, max_size=64))
+def test_row_model_sku_never_wider_than_the_api(sku: str) -> None:
+    # A CSV SKU is later returned by the products API, so the CSV refuses whatever its `Sku` refuses
+    # (U+FEFF included: the contract pattern is ECMA-262, where `\s` covers it).
+    from app.api.v1.schemas.products import Sku
+    from pydantic import TypeAdapter, ValidationError
+
+    result = run(seller_sku=sku)
+    if result.row is None:
+        return
+    try:
+        TypeAdapter(Sku).validate_python(result.row.sku)
+    except ValidationError as exc:  # pragma: no cover - the failure message is the point
+        raise AssertionError(f"CSV accepted {result.row.sku!r}, the API refuses it") from exc
+
+
+def test_row_model_parent_sku_refuses_bom() -> None:
+    result = run(parent_style_id="STYLE\ufeff1")
+    assert ErrorCode.PATTERN_MISMATCH in codes(result)
 
 
 def test_row_model_media_http_rejected() -> None:
