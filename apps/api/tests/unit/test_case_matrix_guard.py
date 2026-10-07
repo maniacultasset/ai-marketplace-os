@@ -62,6 +62,9 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "imports_rows_retry",
         "tenants_me",
         "tenants_me_update",
+        "brand_documents_upload",
+        "brand_documents_list",
+        "brand_documents_delete",
     }
 )
 

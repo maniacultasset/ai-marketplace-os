@@ -369,3 +369,39 @@ __all__ = [
     "accept_upload",
     "delete_document",
 ]
+
+
+@dataclass(frozen=True, slots=True)
+class DocumentView:
+    id: uuid.UUID
+    filename: str
+    status: str
+    chunk_count: int
+    error_report: dict[str, Any] | None
+    created_at: Any
+
+
+@dataclass(frozen=True, slots=True)
+class DocumentList:
+    items: list[DocumentView]
+    has_more: bool
+
+
+async def list_documents(
+    principal: Principal, *, limit: int, after: tuple[Any, uuid.UUID] | None
+) -> DocumentList:
+    """The tenant's live documents, newest first (keyset on `created_at DESC, id DESC`)."""
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        page = await uow.brand_documents.list_page(limit=limit, after=after)
+    items = [
+        DocumentView(
+            id=d.id,
+            filename=d.filename,
+            status=d.status,
+            chunk_count=d.chunk_count,
+            error_report=d.error_report_json if d.status == "failed" else None,
+            created_at=d.created_at,
+        )
+        for d in page.items
+    ]
+    return DocumentList(items=items, has_more=page.has_more)

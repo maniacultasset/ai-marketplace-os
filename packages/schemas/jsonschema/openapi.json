@@ -4991,7 +4991,7 @@
     },
     "/api/v1/brand/documents": {
       "get": {
-        "description": "The tenant's live brand documents, newest first.",
+        "description": "The tenant's live brand documents, newest first; a `failed` one carries its `error`.",
         "operationId": "brand_documents_list",
         "parameters": [
           {
@@ -5229,7 +5229,7 @@
         "x-mkos-action": "tenant:read"
       },
       "post": {
-        "description": "Upload a brand document (`.txt` or `.md`, UTF-8); a job chunks and embeds it.",
+        "description": "Upload a brand document (`.txt` or `.md`, UTF-8); a job chunks and embeds it. The same\nbytes again (under any key) answer the first upload's job.",
         "operationId": "brand_documents_upload",
         "parameters": [
           {
@@ -5562,7 +5562,7 @@
     },
     "/api/v1/brand/documents/{document_id}": {
       "delete": {
-        "description": "Delete a brand document; its chunks stop being used at once.",
+        "description": "Delete a brand document; its chunks stop being used at once. Another tenant's document,\nan unknown id and an already deleted one are the same 404.",
         "operationId": "brand_documents_delete",
         "parameters": [
           {
@@ -15638,7 +15638,7 @@
     },
     "/api/v1/tenants/me": {
       "get": {
-        "description": "The brand profile of the caller's tenant (tone, guidelines, glossary).",
+        "description": "The brand profile of the caller's tenant (tone, guidelines, glossary), with its `ETag`.",
         "operationId": "tenants_me",
         "responses": {
           "200": {
@@ -15800,7 +15800,7 @@
         "x-mkos-action": "tenant:read"
       },
       "patch": {
-        "description": "Update the brand profile; a voice change re-embeds the profile chunks.",
+        "description": "Update the brand profile. `If-Match` is the `ETag` from GET; a stale one is 409\n`STALE_VERSION`. A voice change (tone, guidelines, glossary) re-embeds the profile chunks.",
         "operationId": "tenants_me_update",
         "parameters": [
           {

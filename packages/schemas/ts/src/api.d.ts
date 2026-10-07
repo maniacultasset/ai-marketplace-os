@@ -160,13 +160,14 @@ export interface paths {
         };
         /**
          * List the brand documents
-         * @description The tenant's live brand documents, newest first.
+         * @description The tenant's live brand documents, newest first; a `failed` one carries its `error`.
          */
         get: operations["brand_documents_list"];
         put?: never;
         /**
          * Upload a brand document for chunking
-         * @description Upload a brand document (`.txt` or `.md`, UTF-8); a job chunks and embeds it.
+         * @description Upload a brand document (`.txt` or `.md`, UTF-8); a job chunks and embeds it. The same
+         *     bytes again (under any key) answer the first upload's job.
          */
         post: operations["brand_documents_upload"];
         delete?: never;
@@ -187,7 +188,8 @@ export interface paths {
         post?: never;
         /**
          * Delete a brand document and deactivate its chunks
-         * @description Delete a brand document; its chunks stop being used at once.
+         * @description Delete a brand document; its chunks stop being used at once. Another tenant's document,
+         *     an unknown id and an already deleted one are the same 404.
          */
         delete: operations["brand_documents_delete"];
         options?: never;
@@ -834,7 +836,7 @@ export interface paths {
         };
         /**
          * The brand profile
-         * @description The brand profile of the caller's tenant (tone, guidelines, glossary).
+         * @description The brand profile of the caller's tenant (tone, guidelines, glossary), with its `ETag`.
          */
         get: operations["tenants_me"];
         put?: never;
@@ -844,7 +846,8 @@ export interface paths {
         head?: never;
         /**
          * Update the brand profile (If-Match: the ETag from GET)
-         * @description Update the brand profile; a voice change re-embeds the profile chunks.
+         * @description Update the brand profile. `If-Match` is the `ETag` from GET; a stale one is 409
+         *     `STALE_VERSION`. A voice change (tone, guidelines, glossary) re-embeds the profile chunks.
          */
         patch: operations["tenants_me_update"];
         trace?: never;
