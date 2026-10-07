@@ -3,7 +3,8 @@
 The version token is `ETag: "<uuid5(TENANT_ETAG_NS, '<id>:<updated_at>')>"` (CP3: `tenants` has
 no version column). `update_profile` checks the patch's voice text with the chunker's seam and
 credential scan before any transaction, then in one transaction: the tenant row `FOR UPDATE`,
-the `If-Match` compare (stale → 409 `STALE_VERSION`), the update of the set fields only, the
+the `If-Match` compare (stale → 409 `STALE_VERSION`), the merged profile (patch over row) against
+`MAX_PROFILE_CHUNKS` (over → 422 `VALIDATION_FAILED` at `profile`), the update of the set fields only, the
 `tenant.profile_updated` audit row with the changed keys only, and, when a voice field changed and
 no profile job is still `queued` (that row locked, so a worker's claim waits for this commit), one
 `brand_embed` profile job. A PATCH storm therefore coalesces into the queued job and never 429s.
@@ -91,6 +92,22 @@ def _check_voice(fields: Mapping[str, Any]) -> None:
         check("tone", chunk_profile(fields["tone"], None, None))
 
 
+def _check_merged(before: TenantView, fields: Mapping[str, Any]) -> None:
+    """The profile the `brand_embed` job will chunk: the patch overlaid on the locked row (a
+    `tone: null` clears it). Per-field caps can each pass while the sum exceeds
+    `MAX_PROFILE_CHUNKS`, so the merged drafts are checked before any UPDATE."""
+    if not set(fields) & set(VOICE_FIELDS):
+        return
+    merged = {key: fields[key] if key in fields else _current(before, key) for key in VOICE_FIELDS}
+    drafts = chunk_profile(merged["tone"], merged["guidelines"], merged["glossary"])
+    if not drafts:
+        return
+    try:
+        check_chunks(drafts, field="profile", max_chunks=MAX_PROFILE_CHUNKS)
+    except ChunkingError:
+        raise InputError(ErrorCode.VALIDATION_FAILED, "profile") from None
+
+
 def _current(view: TenantView, key: str) -> Any:
     return getattr(view, key)
 
@@ -108,6 +125,7 @@ async def update_profile(
         if etag(row.id, row.updated_at) != if_match:
             raise ConflictError(ErrorCode.STALE_VERSION, "tenants_etag")
         before_view = _view(row)
+        _check_merged(before_view, fields)
         changed = {k: v for k, v in fields.items() if _current(before_view, k) != v}
         updated = await uow.tenants.update_profile(dict(fields))
         await uow.audit.write(
