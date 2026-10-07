@@ -10,22 +10,28 @@ from __future__ import annotations
 from typing import Annotated, NoReturn
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from fastapi import Path as PathParam
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import Marketplace
 
 from app.api.errors import ApiError, NotImplementedYet
 from app.api.pagination import PageParams
+from app.api.v1.deps import get_current_principal
 from app.api.v1.schemas.marketplaces import (
     OAUTH_PARAM_MAX,
     SELLER_ID_PATTERN,
     ConnectConfirmRequest,
+    ConnectOut,
     ConnectRequest,
 )
 from app.api.v1.surface import OPS, route, stub
+from app.core.rbac import Principal
+from app.services import marketplaces as service
 
 router = APIRouter()
+CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
+NO_STORE = "no-store"
 OAuthParam = Annotated[str, Query(min_length=1, max_length=OAUTH_PARAM_MAX)]
 OptionalOAuthParam = Annotated[str | None, Query(min_length=1, max_length=OAUTH_PARAM_MAX)]
 SellerParam = Annotated[str | None, Query(pattern=SELLER_ID_PATTERN)]
@@ -45,10 +51,17 @@ def _one_code(code: str | None, spapi_oauth_code: str | None) -> str:
 
 
 @route(router, OPS["marketplaces_connect"])
-@stub
-async def marketplaces_connect(body: ConnectRequest) -> NoReturn:
-    """Start OAuth for a marketplace: returns the consent URL (owner or admin)."""
-    raise NotImplementedYet("marketplaces_connect")
+async def marketplaces_connect(
+    body: ConnectRequest, principal: CurrentPrincipal, response: Response
+) -> ConnectOut:
+    """Start OAuth for a marketplace: returns the consent URL (owner or admin). A marketplace
+    that is not configured here answers 501 NOT_IMPLEMENTED and writes nothing."""
+    try:
+        url = await service.start_connect(principal, body.marketplace.value)
+    except service.MarketplaceNotConfiguredError:
+        raise NotImplementedYet("marketplaces_connect") from None
+    response.headers["Cache-Control"] = NO_STORE
+    return ConnectOut(authorize_url=url)
 
 
 @route(router, OPS["marketplaces_callback"])

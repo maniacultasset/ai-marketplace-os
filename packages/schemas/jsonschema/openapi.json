@@ -11651,7 +11651,7 @@
     },
     "/api/v1/marketplaces/connect": {
       "post": {
-        "description": "Start OAuth for a marketplace: returns the consent URL (owner or admin).",
+        "description": "Start OAuth for a marketplace: returns the consent URL (owner or admin). A marketplace\nthat is not configured here answers 501 NOT_IMPLEMENTED and writes nothing.",
         "operationId": "marketplaces_connect",
         "requestBody": {
           "content": {

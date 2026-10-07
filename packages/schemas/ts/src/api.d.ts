@@ -590,7 +590,8 @@ export interface paths {
         put?: never;
         /**
          * Start OAuth; returns the consent URL
-         * @description Start OAuth for a marketplace: returns the consent URL (owner or admin).
+         * @description Start OAuth for a marketplace: returns the consent URL (owner or admin). A marketplace
+         *     that is not configured here answers 501 NOT_IMPLEMENTED and writes nothing.
          */
         post: operations["marketplaces_connect"];
         delete?: never;
