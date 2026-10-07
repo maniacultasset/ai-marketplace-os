@@ -361,3 +361,105 @@ async def test_attack_reconnect_mid_refresh_keeps_reconnect_tokens(
     assert row["status"] == "active"
     assert bytes(row["token_enc"]) == seen["blob"]
     assert row["last_refresh_at"] is None
+
+
+# ---- round 2: every httpx failure at the token endpoint lands on one outcome (F1) ----
+
+
+class _Reply(httpx.AsyncBaseTransport):
+    """A canned token-endpoint reply (status, headers, raw body) without the fake's logic."""
+
+    def __init__(self, status: int, body: bytes, **headers: str) -> None:
+        self.status, self.body, self.headers = status, body, headers
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        return httpx.Response(self.status, headers=self.headers, content=self.body)
+
+
+class _Raise(httpx.AsyncBaseTransport):
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        raise self.error
+
+
+def _bad_gzip() -> _Reply:
+    return _Reply(
+        200, b"not-gzip", **{"Content-Type": "application/json", "Content-Encoding": "gzip"}
+    )
+
+
+def _gzip_bomb() -> _Reply:
+    import gzip
+
+    inflated = json.dumps({"access_token": "a", "refresh_token": "r", "pad": "x" * 200_000})
+    return _Reply(
+        200,
+        gzip.compress(inflated.encode()),
+        **{"Content-Type": "application/json", "Content-Encoding": "gzip"},
+    )
+
+
+@pytest.mark.parametrize("make", [_bad_gzip, _gzip_bomb], ids=["bad_gzip", "gzip_over_cap"])
+async def test_attack_callback_undecodable_exchange_reply_409_not_500(
+    mkt: MktWorld, mapi: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch, make: Any
+) -> None:
+    """The exchange reply's Content-Encoding does not decode (or inflates past the 64 KiB cap):
+    the callback answers the uniform 409, not a 500; the state is burnt and no pending row."""
+    query = await consent(mkt, await connect(mapi, mkt, marketplace="flipkart"))
+    monkeypatch.setattr("app.adapters.oauth.http.make_transport", make)
+    response = await callback(mapi, "flipkart", query)
+    assert response.status_code == 409, response.text
+    assert response.json()["error"]["type"] == "OAUTH_STATE_INVALID"
+    assert "not-gzip" not in response.text
+    assert oauth_rows(mkt.conn) == []
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        httpx.TooManyRedirects("loop"),
+        httpx.RemoteProtocolError("peer closed"),
+        httpx.ReadError("reset"),
+        httpx.RequestError("odd"),
+    ],
+    ids=lambda e: type(e).__name__,
+)
+async def test_attack_callback_other_httpx_errors_are_503(
+    mkt: MktWorld, mapi: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch, error: Exception
+) -> None:
+    query = await consent(mkt, await connect(mapi, mkt, marketplace="flipkart"))
+    monkeypatch.setattr("app.adapters.oauth.http.make_transport", lambda: _Raise(error))
+    response = await callback(mapi, "flipkart", query)
+    assert response.status_code == 503, response.text
+    assert response.json()["error"]["type"] == "MARKETPLACE_UNAVAILABLE"
+    assert oauth_rows(mkt.conn) == []
+
+
+@pytest.mark.parametrize(
+    ("make", "code"),
+    [
+        (lambda: _Raise(httpx.TooManyRedirects("loop")), "MARKETPLACE_UNAVAILABLE"),
+        (lambda: _Raise(httpx.RequestError("odd")), "MARKETPLACE_UNAVAILABLE"),
+        (_gzip_bomb, "MARKETPLACE_UNKNOWN_ERROR"),
+    ],
+    ids=["too_many_redirects", "request_error", "gzip_over_cap"],
+)
+async def test_attack_refresh_other_httpx_errors_audited_once(
+    mkt: MktWorld,
+    mapi: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    make: Any,
+    code: str,
+) -> None:
+    """T15 step 7: once unsealed, exactly one `credential_used` and the error code recorded,
+    whatever httpx raised; the account stays active and opens no reconnect task."""
+    account = await connected_account(mapi, mkt, seller="A1HTTPXERR")
+    _due(mkt, account["id"])
+    monkeypatch.setattr("app.adapters.oauth.http.make_transport", make)
+    assert await _refresh(mkt, account["id"]) == "transient"
+    row = _row(mkt, account["id"])
+    assert row["status"] == "active" and row["last_refresh_error_code"] == code
+    assert len(audit_rows(mkt.conn, "marketplace_account.credential_used")) == 1
+    assert audit_rows(mkt.conn, "marketplace_account.needs_reconnect") == []
