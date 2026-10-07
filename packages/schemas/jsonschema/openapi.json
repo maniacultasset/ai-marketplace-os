@@ -11125,7 +11125,7 @@
     },
     "/api/v1/marketplaces/accounts": {
       "get": {
-        "description": "Connected marketplace accounts and their connection health. No credential is returned.",
+        "description": "Connected marketplace accounts and their connection health (`status`: `active`,\n`needs_reconnect` or `revoked`), newest first. No credential is returned.",
         "operationId": "marketplaces_accounts",
         "parameters": [
           {

@@ -546,7 +546,8 @@ export interface paths {
         };
         /**
          * Connected accounts and their health
-         * @description Connected marketplace accounts and their connection health. No credential is returned.
+         * @description Connected marketplace accounts and their connection health (`status`: `active`,
+         *     `needs_reconnect` or `revoked`), newest first. No credential is returned.
          */
         get: operations["marketplaces_accounts"];
         put?: never;

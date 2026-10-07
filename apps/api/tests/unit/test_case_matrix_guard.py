@@ -51,6 +51,8 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "marketplaces_connect",
         "marketplaces_callback",
         "marketplaces_connect_confirm",
+        "marketplaces_accounts",
+        "marketplaces_accounts_revoke",
     }
 )
 

@@ -1,13 +1,14 @@
-"""Marketplace stubs (owner step S15).
+"""Marketplace accounts and OAuth (owner step S15): connect, the callback, confirm, the list and
+revoke. The routes map requests onto `app.services.marketplaces` and its views onto the API models.
 
 The callback is public: the tenant comes only from the server-side `oauth_states` row, consumed
-once. It answers `303 See Other` to a fixed app route with only an opaque single-use `pending`
-handle; S15's authenticated confirm step binds the account to the user who started the flow.
+once. It answers `303 See Other` to the dashboard's fixed route with only an opaque single-use
+`pending` handle; the authenticated confirm binds the account to the user who started the flow.
 """
 
 from __future__ import annotations
 
-from typing import Annotated, NoReturn
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response
@@ -16,7 +17,7 @@ from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import Marketplace
 
 from app.api.errors import ApiError, NotImplementedYet
-from app.api.pagination import PageParams
+from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import get_current_principal
 from app.api.v1.schemas.marketplaces import (
     CALLBACK_LOCATION_TEMPLATE,
@@ -26,8 +27,9 @@ from app.api.v1.schemas.marketplaces import (
     ConnectOut,
     ConnectRequest,
     MarketplaceAccountOut,
+    MarketplaceAccountPage,
 )
-from app.api.v1.surface import OPS, route, stub
+from app.api.v1.surface import OPS, route
 from app.core.config import get_settings
 from app.core.errors import ConflictError
 from app.core.rbac import Principal
@@ -116,10 +118,18 @@ async def marketplaces_callback(
 
 
 @route(router, OPS["marketplaces_accounts"])
-@stub
-async def marketplaces_accounts(page: Annotated[PageParams, Depends()]) -> NoReturn:
-    """Connected marketplace accounts and their connection health. No credential is returned."""
-    raise NotImplementedYet("marketplaces_accounts")
+async def marketplaces_accounts(
+    page: Annotated[PageParams, Depends()], principal: CurrentPrincipal
+) -> MarketplaceAccountPage:
+    """Connected marketplace accounts and their connection health (`status`: `active`,
+    `needs_reconnect` or `revoked`), newest first. No credential is returned."""
+    views, has_more = await service.list_accounts(principal, limit=page.limit, after=page.after)
+    last = views[-1] if views else None
+    next_cursor = encode_cursor(last.created_at, last.id) if has_more and last else None
+    return MarketplaceAccountPage(
+        data=[account_out(v) for v in views],
+        page=PageInfo(next_cursor=next_cursor, has_more=has_more, limit=page.limit),
+    )
 
 
 @route(router, OPS["marketplaces_connect_confirm"])
@@ -141,9 +151,10 @@ async def marketplaces_connect_confirm(
 
 
 @route(router, OPS["marketplaces_accounts_revoke"])
-@stub
-async def marketplaces_accounts_revoke(account_id: Annotated[UUID, PathParam()]) -> NoReturn:
+async def marketplaces_accounts_revoke(
+    account_id: Annotated[UUID, PathParam()], principal: CurrentPrincipal
+) -> MarketplaceAccountOut:
     """Revoke a marketplace connection (owner or admin). This deletes the stored tokens only: the
     app stays authorized at the marketplace until the brand removes it in Seller Central (Amazon)
     or the Flipkart seller dashboard. Revoking an already revoked account returns it unchanged."""
-    raise NotImplementedYet("marketplaces_accounts_revoke")
+    return account_out(await service.revoke(principal, account_id))

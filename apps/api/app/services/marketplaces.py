@@ -40,7 +40,7 @@ from app.adapters.oauth import (
 )
 from app.core.config import get_settings
 from app.core.crypto import SealedTokens, get_key_wrapper, seal
-from app.core.errors import ConflictError
+from app.core.errors import ConflictError, NotFoundError
 from app.core.rbac import Principal
 from app.repositories.identity import consume_oauth_state
 from app.repositories.transactions import identity_session
@@ -54,6 +54,8 @@ __all__ = [
     "MarketplaceUnknownError",
     "complete_callback",
     "confirm",
+    "list_accounts",
+    "revoke",
     "start_connect",
 ]
 
@@ -254,3 +256,39 @@ async def confirm(principal: Principal, pending: str) -> AccountView:
             after=_audit_json("active"),
         )
         return _view(await accounts.reload(live))
+
+
+async def revoke(principal: Principal, account_id: uuid.UUID) -> AccountView:
+    """Delete the stored tokens of one account (D9: not a crypto-shred; the app stays authorized
+    at the marketplace until the brand removes it there). Another tenant's id reads as missing.
+    An already revoked account is returned unchanged, with no write and no audit row."""
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        accounts = uow.marketplace_accounts
+        row = await accounts.get_for_update(account_id)
+        if row is None:
+            raise NotFoundError("account_id")
+        if row.status == "revoked":
+            return _view(row)
+        row_id, before = row.id, row.status
+        await accounts.revoke(row_id)
+        await uow.human_tasks.cancel_reconnect(row_id)
+        await uow.audit.write(
+            tenant_id=principal.tenant_id,
+            actor_type="user",
+            actor_user_id=principal.user_id,
+            action="marketplace_account.revoked",
+            entity_type="marketplace_account",
+            entity_id=row_id,
+            before=_audit_json(before),
+            after=_audit_json("revoked"),
+        )
+        return _view(await accounts.reload(row))
+
+
+async def list_accounts(
+    principal: Principal, *, limit: int, after: tuple[datetime, uuid.UUID] | None
+) -> tuple[list[AccountView], bool]:
+    """The tenant's accounts, every status, newest first; `status` is the connection health."""
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        rows, has_more = await uow.marketplace_accounts.page(limit=limit, after=after)
+        return [_view(row) for row in rows], has_more
