@@ -19,7 +19,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any, Final
 
-from sqlalchemy import func, select, text, update
+from sqlalchemy import func, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import defer, undefer
 
@@ -210,6 +210,26 @@ class ImportRowRepository(TenantScopedRepository[ImportRow]):
         stmt = (
             self._select()
             .where(ImportRow.import_id == import_id, ImportRow.status == "failed")
+            .options(undefer(ImportRow.raw_row))
+            .order_by(ImportRow.row_number)
+        )
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
+    async def imported_family_rows(
+        self, import_id: uuid.UUID, keys: Iterable[str]
+    ) -> builtins.list[ImportRow]:
+        """The `imported` rows (with their stored cells) whose SKU or parent SKU is one of
+        `keys`: a rows retry re-checks a failed family member against its imported siblings."""
+        wanted = sorted(set(keys))
+        if not wanted:
+            return []
+        stmt = (
+            self._select()
+            .where(
+                ImportRow.import_id == import_id,
+                ImportRow.status == "imported",
+                or_(ImportRow.sku.in_(wanted), ImportRow.parent_sku.in_(wanted)),
+            )
             .options(undefer(ImportRow.raw_row))
             .order_by(ImportRow.row_number)
         )

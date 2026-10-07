@@ -97,3 +97,37 @@ async def test_fact_writer_other_tenant_product_is_missing(
     with pytest.raises(RowCountError):
         async with unit_of_work(a) as session:
             await FactWriter(session, a).set_attribute(product_id, "fit", fact)
+
+
+async def test_import_family_reads_are_tenant_scoped(
+    iso_settings: None, world: World, admin_conn: Conn
+) -> None:
+    """The round-1 family reads: another tenant's imported rows, product SKU, size run and
+    colourways read as missing, and a size-run write to its product touches nothing."""
+    from app.core.errors import RowCountError
+    from app.db.session import unit_of_work
+    from app.repositories.imports import ImportRowRepository
+    from app.repositories.products import ProductRepository
+    from app.repositories.variants import ColourwayRepository
+
+    a, b = world.tenants
+    product = admin_conn.execute(
+        "SELECT id, sku FROM products WHERE tenant_id = %s LIMIT 1", [b]
+    ).fetchone()
+    assert product is not None
+    product_id: Any = product[0]
+    sku = str(product[1])
+    theirs = world.rows["imports"][b]
+    async with unit_of_work(b) as session:
+        assert await ProductRepository(session, b).id_of_sku(sku) == product_id
+    async with unit_of_work(a) as session:
+        rows = ImportRowRepository(session, a)
+        assert await rows.imported_family_rows(theirs, [sku, "S"]) == []
+        products = ProductRepository(session, a)
+        assert await products.id_of_sku(sku) is None
+        assert await products.family_of_sku(sku) is None
+        assert await products.size_run_of(product_id) == []
+        assert await ColourwayRepository(session, a).live_ids(product_id) == []
+    with pytest.raises(RowCountError):
+        async with unit_of_work(a) as session:
+            await ProductRepository(session, a).extend_size_run(product_id, ["m"])

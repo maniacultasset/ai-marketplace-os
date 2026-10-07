@@ -14,18 +14,23 @@ import pytest
 from app.adapters.storage import StorageUnavailable
 from app.services.imports import runner
 from app.workers.errors import RetryLater
+from mkos_schemas.errors import ErrorReport
 from mkos_schemas.jobs import JobAccepted
 
 from .auth_support import PREFIX
 from .conftest import LOCAL_HOSTS
 from .imports_support import (
     FIXTURES,
+    UNMAPPED,
+    csv_bytes,
     fixture_bytes,
     headers,
     import_fixture,
     import_row,
     imports_db,
     one,
+    row,
+    row_results,
     run_job,
 )
 from .jobs_support import JobWorld, as_member, bad_token, count, insert_job, job_row
@@ -306,3 +311,117 @@ async def test_imports_rows_retry_cap_429(imports_db: JobWorld, api: httpx.Async
     assert response.status_code == 429
     assert response.json()["error"]["type"] == "RATE_LIMITED"
     assert import_row(imports_db.conn, import_id)["status"] == "partial"
+
+
+# ---- a rows retry of a partly imported family (round-1 F3) ----
+
+
+def row_codes(conn: Any, import_id: uuid.UUID) -> dict[int, tuple[str, list[str]]]:
+    out: dict[int, tuple[str, list[str]]] = {}
+    for number, status, _sku, _pid, report in row_results(conn, import_id):
+        codes = (
+            [e.error_code.value for e in ErrorReport.model_validate(report).errors]
+            if status == "failed"
+            else []
+        )
+        out[number] = (status, codes)
+    return out
+
+
+def family_state(conn: Any, tenant: uuid.UUID) -> list[tuple[Any, ...]]:
+    found: list[tuple[Any, ...]] = conn.execute(
+        "SELECT sku, title, category, variation_theme, size_run, parent_product_id, updated_at "
+        "FROM products WHERE tenant_id = %s AND (sku = 'S' OR parent_product_id IS NOT NULL) "
+        "ORDER BY sku",
+        [tenant],
+    ).fetchall()
+    return found
+
+
+def imported_rows(conn: Any, import_id: uuid.UUID) -> list[tuple[Any, ...]]:
+    found: list[tuple[Any, ...]] = conn.execute(
+        "SELECT row_number, job_id, product_id FROM import_rows "
+        "WHERE import_id = %s AND status = 'imported' AND sku IN ('S', 'C1', 'C2') "
+        "ORDER BY row_number",
+        [import_id],
+    ).fetchall()
+    return found
+
+
+async def retry_and_run(jw: JobWorld, api: httpx.AsyncClient, import_id: uuid.UUID) -> str:
+    accepted = JobAccepted.model_validate((await retry(jw, api, import_id)).json())
+    await run_job(accepted.job_id)
+    status: str = job_row(jw.conn, accepted.job_id)["status"]
+    return status
+
+
+async def test_imports_rows_retry_family_child_keeps_its_mismatch(
+    imports_db: JobWorld, api: httpx.AsyncClient
+) -> None:
+    """A failed child of a partly imported family is checked against the imported family on a
+    rows retry: it never becomes the style's lead, never rewrites the style, and keeps its
+    CROSS_FIELD_MISMATCH (invariant 10)."""
+    tenant = imports_db.tenant("acme")
+    data = csv_bytes(
+        [
+            row(1, seller_sku="S", product_name="Kurta"),
+            row(2, seller_sku="C1", product_name="Kurta", parent_style_id="S", size_name="M"),
+            row(3, seller_sku="C2", product_name="Kurta X", parent_style_id="S", size_name="L"),
+            row(4, category=UNMAPPED, fabric_type="Silk", color_name="Red"),
+        ]
+    )
+    import_id, job_id = await import_fixture(imports_db, api, data)
+    await run_job(job_id)
+    first = row_codes(imports_db.conn, import_id)
+    assert first == {
+        2: ("imported", []),
+        3: ("imported", []),
+        4: ("failed", ["CROSS_FIELD_MISMATCH"]),
+        5: ("failed", ["CATEGORY_NOT_MAPPED"]),
+    }
+    before = family_state(imports_db.conn, tenant)
+    rows_before = imported_rows(imports_db.conn, import_id)
+    await load_templates()
+    assert await retry_and_run(imports_db, api, import_id) == "partial"
+    assert row_codes(imports_db.conn, import_id) == {
+        **first,
+        5: ("imported", []),
+    }
+    assert family_state(imports_db.conn, tenant) == before
+    assert before[-1][:5] == ("S", "Kurta", "ethnic_wear_kurta_sets", "size", ["m"])
+    assert imported_rows(imports_db.conn, import_id) == rows_before
+
+
+async def test_imports_rows_retry_failed_style_row_never_flattens_its_family(
+    imports_db: JobWorld, api: httpx.AsyncClient
+) -> None:
+    """A style row that failed while its children were imported is retried inside its family,
+    never as a standalone product: the style keeps its theme, size_run and category, and a
+    style row that disagrees with the imported family fails CROSS_FIELD_MISMATCH."""
+    tenant = imports_db.tenant("acme")
+    data = csv_bytes(
+        [
+            row(1, seller_sku="S", product_name="Kurta", category=UNMAPPED),
+            row(2, seller_sku="C1", product_name="Kurta", parent_style_id="S", size_name="M"),
+            row(3, seller_sku="C2", product_name="Kurta", parent_style_id="S", size_name="L"),
+        ]
+    )
+    import_id, job_id = await import_fixture(imports_db, api, data)
+    await run_job(job_id)
+    assert row_codes(imports_db.conn, import_id) == {
+        2: ("failed", ["CATEGORY_NOT_MAPPED"]),
+        3: ("imported", []),
+        4: ("imported", []),
+    }
+    before = family_state(imports_db.conn, tenant)
+    assert before[-1][:5] == ("S", "Kurta", "ethnic_wear_kurta_sets", "size", ["m", "l"])
+    rows_before = imported_rows(imports_db.conn, import_id)
+    await load_templates()
+    assert await retry_and_run(imports_db, api, import_id) == "partial"
+    assert row_codes(imports_db.conn, import_id) == {
+        2: ("failed", ["CROSS_FIELD_MISMATCH"]),
+        3: ("imported", []),
+        4: ("imported", []),
+    }
+    assert family_state(imports_db.conn, tenant) == before
+    assert imported_rows(imports_db.conn, import_id) == rows_before

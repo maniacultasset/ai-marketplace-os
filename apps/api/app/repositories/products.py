@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import builtins
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -89,6 +89,19 @@ class ProductRepository(TenantScopedRepository[Product]):
         stmt = self._select().where(Product.sku == sku).with_only_columns(Product.parent_product_id)
         found: uuid.UUID | None = (await self.db.execute(stmt)).scalar_one_or_none()
         return found
+
+    async def id_of_sku(self, sku: str) -> uuid.UUID | None:
+        stmt = self._select().where(Product.sku == sku).with_only_columns(Product.id)
+        found: uuid.UUID | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        return found
+
+    async def extend_size_run(self, id: uuid.UUID, sizes: Sequence[str]) -> None:
+        """Append the sizes the stored `size_run` lacks (nothing is written when none is new),
+        leaving every identity column as it is."""
+        stored = await self.size_run_of(id)
+        new = [size for size in sizes if size not in stored]
+        if new:
+            await self.update_one(id, size_run=[*stored, *new])
 
     async def size_run_of(self, id: uuid.UUID) -> builtins.list[str]:
         """The stored `size_run` read as a column (never a cached ORM row)."""
