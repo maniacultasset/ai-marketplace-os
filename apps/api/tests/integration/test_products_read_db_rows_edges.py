@@ -32,11 +32,15 @@ def _fact(**fields: Any) -> dict[str, Any]:
 
 
 def _insert_raw(conn: Conn, tenant: Any, sku: str, title: str, attributes_json: str) -> Any:
-    row = conn.execute(
-        "INSERT INTO products (tenant_id, sku, title, category, attributes, provenance) "
-        "VALUES (%s, %s, %s, 'kurtas', %s::jsonb, %s::jsonb) RETURNING id",
-        [tenant, sku, title, attributes_json, _PROV],
-    ).fetchone()
+    """A row a later writer may store (keys today's dictionary does not hold): written with the
+    user triggers (the 0006 facts guard) off for this one transaction (`SET LOCAL`, superuser)."""
+    with conn.transaction():
+        conn.execute("SET LOCAL session_replication_role = replica")
+        row = conn.execute(
+            "INSERT INTO products (tenant_id, sku, title, category, attributes, provenance) "
+            "VALUES (%s, %s, %s, 'kurtas', %s::jsonb, %s::jsonb) RETURNING id",
+            [tenant, sku, title, attributes_json, _PROV],
+        ).fetchone()
     assert row is not None
     return row[0]
 

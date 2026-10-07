@@ -48,6 +48,14 @@ def _issues_guard(db: ScratchDb) -> str:
     return str(row[0])
 
 
+def _check_at_revision(cfg: Config) -> None:
+    """`alembic check` needs the head; a later revision (0006) adds no table or column, so the
+    check runs at head and the database goes back to REVISION."""
+    command.upgrade(cfg, "head")
+    command.check(cfg)
+    command.downgrade(cfg, REVISION)
+
+
 def test_0005_round_trip(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None:
     cfg = alembic_env(None)
     command.upgrade(cfg, PREVIOUS)
@@ -56,6 +64,7 @@ def test_0005_round_trip(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None
     guard_previous = _issues_guard(scratch_db)
     assert "AND EXISTS (SELECT 1 FROM public.rules r" in guard_previous
     command.upgrade(cfg, REVISION)
+    _check_at_revision(cfg)
     at_head = _rls(scratch_db)
     guard_head = _issues_guard(scratch_db)
     assert "AND NOT EXISTS (SELECT 1 FROM public.rules r" in guard_head
@@ -67,6 +76,7 @@ def test_0005_round_trip(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None
     assert _grants(scratch_db) == grants_previous
     assert _issues_guard(scratch_db) == guard_previous
     command.upgrade(cfg, REVISION)
+    _check_at_revision(cfg)
     assert _rls(scratch_db) == at_head
     assert _issues_guard(scratch_db) == guard_head
     command.upgrade(cfg, "head")

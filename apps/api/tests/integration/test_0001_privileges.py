@@ -71,6 +71,7 @@ def _set_role(conn: Conn, role: str) -> None:
 
 
 def test_0001_privileges_app_rw_writes_full_graph(db: Conn) -> None:
+    f.facts_guard_off(db)  # the graph's facts use 0001-era keys; this test is about grants
     _set_role(db, "app_rw")
     tenant_id = rls_tenant(db)  # 0005: the GUCs come first under RLS
     owner = rls_member(db, tenant_id)
