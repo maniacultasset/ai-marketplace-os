@@ -87,6 +87,17 @@ _JOB_ENVELOPE: Final = {
     "started_at": T1,
     "finished_at": None,
 }
+_ACCOUNT: Final = {
+    "id": ACCOUNT,
+    "marketplace": "amazon",
+    "seller_id": "A1EXAMPLESELLER",
+    "region": "eu",
+    "status": "active",
+    "needs_reconnect_since": None,
+    "expires_at": None,
+    "created_at": T0,
+}
+
 _LISTING: Final = {
     "id": LISTING,
     "product_id": PRODUCT_1,
@@ -321,20 +332,14 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "authorize_url": "https://sellercentral.amazon.in/apps/authorize/consent?state=st_ex"
         },
         "marketplaces_callback": {"location": CALLBACK_LOCATION},
-        "marketplaces_accounts": _page(
-            [
-                {
-                    "id": ACCOUNT,
-                    "marketplace": "amazon",
-                    "seller_id": "A1EXAMPLESELLER",
-                    "region": "eu",
-                    "status": "active",
-                    "needs_reconnect_since": None,
-                    "expires_at": None,
-                    "created_at": T0,
-                }
-            ]
-        ),
+        "marketplaces_connect_confirm": _ACCOUNT,
+        "marketplaces_accounts_revoke": {
+            **_ACCOUNT,
+            "status": "revoked",
+            "needs_reconnect_since": None,
+            "expires_at": None,
+        },
+        "marketplaces_accounts": _page([_ACCOUNT]),
         "images_upload_url": {
             "upload_url": "http://localhost:9000/marketplace-images/t/example?X-Amz-Signature=ex",
             "storage_key": f"t/{TENANT}/img/{PRODUCT_1}/main.jpg",

@@ -1,6 +1,7 @@
 """The frozen `/api/v1` surface: one row per operation (S3; BACKEND-ARCHITECTURE.md §5.2).
 
-`OPS` is the frozen list (35 operations at S3, 38 with S10's switch and members; no dead-letter path,
+`OPS` is the frozen list (35 operations at S3, 38 with S10's switch and members, 40 with S15's
+connect confirm and account revoke; no dead-letter path,
 which is staff tooling per T82). It
 drives the routers (`route()`), the declared OpenAPI responses (`declared_responses()`), the
 parametrized surface tests and the case-matrix guard (`cases()`), so a route, its contract and its
@@ -37,7 +38,11 @@ from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.images import ImageAccepted, ImageReportOut, UploadUrlOut
 from app.api.v1.schemas.imports import ImportAccepted, ImportRowPage
 from app.api.v1.schemas.listings import ListingDetail, ListingPage, ListingStatusOut
-from app.api.v1.schemas.marketplaces import ConnectOut, MarketplaceAccountPage
+from app.api.v1.schemas.marketplaces import (
+    ConnectOut,
+    MarketplaceAccountOut,
+    MarketplaceAccountPage,
+)
 from app.api.v1.schemas.products import ProductOut, ProductPage
 from app.api.v1.schemas.rules import RulePage
 from app.api.v1.schemas.tenants import TenantOut
@@ -377,10 +382,20 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "marketplaces", "Start OAuth; returns the consent URL", "S15", has_body=True, action=A.MARKETPLACE_CONNECT),
     Operation("marketplaces_callback", "GET", "/marketplaces/{marketplace}/callback", 303, None,
               "marketplaces", "OAuth return: 303 to the app with an opaque pending handle",
-              "S15", public=True, query=("code", "state"), oauth_state=True),
+              "S15", public=True,
+              query=("code", "state", "spapi_oauth_code", "selling_partner_id"), oauth_state=True),
     Operation("marketplaces_accounts", "GET", "/marketplaces/accounts", 200,
               MarketplaceAccountPage, "marketplaces", "Connected accounts and their health",
               "S15", query=("limit", "cursor"), action=A.TENANT_READ),
+    Operation("marketplaces_connect_confirm", "POST", "/marketplaces/connect/confirm", 200,
+              MarketplaceAccountOut, "marketplaces",
+              "Confirm a pending connection: the account joins the caller's tenant", "S15",
+              has_body=True, conflict_code=E.MARKETPLACE_ACCOUNT_CONFLICT, oauth_state=True,
+              action=A.MARKETPLACE_CONNECT),
+    Operation("marketplaces_accounts_revoke", "POST", "/marketplaces/accounts/{account_id}/revoke",
+              200, MarketplaceAccountOut, "marketplaces",
+              "Revoke a connection: delete the stored tokens", "S15", path_id="account_id",
+              action=A.MARKETPLACE_CONNECT),
     # ---- images (S17b) ----
     Operation("images_upload_url", "POST", "/images/upload-url", 200, UploadUrlOut, "images",
               "A signed upload URL for one image", "S17b", has_body=True,

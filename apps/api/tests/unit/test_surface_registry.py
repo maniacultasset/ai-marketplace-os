@@ -50,6 +50,9 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("marketplaces_connect", "POST", "/marketplaces/connect"),
     ("marketplaces_callback", "GET", "/marketplaces/{marketplace}/callback"),
     ("marketplaces_accounts", "GET", "/marketplaces/accounts"),
+    # S15: the confirm and the revoke (38 + 2)
+    ("marketplaces_connect_confirm", "POST", "/marketplaces/connect/confirm"),
+    ("marketplaces_accounts_revoke", "POST", "/marketplaces/accounts/{account_id}/revoke"),
     ("images_upload_url", "POST", "/images/upload-url"),
     ("images_upload", "POST", "/images/upload"),
     ("images_report", "GET", "/images/{image_id}/report"),
@@ -65,7 +68,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 38
+    assert len(FROZEN) == 40
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -135,7 +138,36 @@ def test_maker_checker_and_bad_state_rows() -> None:
     assert "maker_checker" in cases(OPS["listings_approve"])
     assert "bad_state" in cases(OPS["marketplaces_callback"])
     assert [o.op_id for o in OPS.values() if "maker_checker" in cases(o)] == ["listings_approve"]
-    assert [o.op_id for o in OPS.values() if "bad_state" in cases(o)] == ["marketplaces_callback"]
+    assert [o.op_id for o in OPS.values() if "bad_state" in cases(o)] == [
+        "marketplaces_callback",
+        "marketplaces_connect_confirm",
+    ]
+
+
+def test_confirm_and_revoke_case_rows() -> None:
+    """S15: the confirm is a mutating, authenticated consume of the pending handle (its 409s are
+    the seller conflict and the uniform bad handle); the revoke is a path-id write with no key
+    (naturally idempotent)."""
+    assert cases(OPS["marketplaces_connect_confirm"]) == {
+        "success",
+        "validation",
+        "missing_auth",
+        "invalid_token",
+        "wrong_tenant",
+        "wrong_role",
+        "conflict",
+        "bad_state",
+    }
+    assert cases(OPS["marketplaces_accounts_revoke"]) == {
+        "success",
+        "validation",
+        "missing_auth",
+        "invalid_token",
+        "wrong_tenant",
+        "wrong_role",
+        "not_found",
+    }
+    assert not OPS["marketplaces_accounts_revoke"].idempotency
 
 
 def test_storage_key_body_fields_count_as_body_ids() -> None:
@@ -190,6 +222,7 @@ def test_error_codes_per_d2() -> None:
         "listings_content_patch": (E.STALE_VERSION,),
         "jobs_cancel": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "marketplaces_callback": (E.OAUTH_STATE_INVALID,),
+        "marketplaces_connect_confirm": (E.MARKETPLACE_ACCOUNT_CONFLICT, E.OAUTH_STATE_INVALID),
         "members_patch": (E.LAST_OWNER_REQUIRED,),
     }
     for op in OPS.values():

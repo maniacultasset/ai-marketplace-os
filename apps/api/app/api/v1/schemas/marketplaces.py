@@ -17,12 +17,24 @@ from pydantic import AwareDatetime, Field
 from app.api.pagination import Page
 
 OAUTH_PARAM_MAX: Final = 2048
+SELLER_ID_PATTERN: Final = r"^[A-Za-z0-9]{1,64}$"
+"""A marketplace seller id (D4): letters and digits only, so it can never inject a path segment
+into a later marketplace URL. The real formats are confirmed with the marketplaces (T77)."""
+PENDING_HANDLE_PATTERN: Final = r"^[A-Za-z0-9_-]{43}$"
+"""The callback's opaque handle: `secrets.token_urlsafe(32)`, 43 URL-safe characters."""
 CALLBACK_LOCATION_TEMPLATE: Final = "/marketplaces/connected?pending={pending}"
 """The FE route the callback redirects to; S15 makes the base URL a setting (ENV.md)."""
 
 
 class ConnectRequest(StrictModel):
     marketplace: Marketplace
+
+
+class ConnectConfirmRequest(StrictModel):
+    """The handle the callback put in `?pending=`; only the user who started the flow, in the
+    tenant that started it, can confirm it."""
+
+    pending: Annotated[str, Field(pattern=PENDING_HANDLE_PATTERN)]
 
 
 class ConnectOut(WireModel):
