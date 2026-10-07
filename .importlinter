@@ -5,6 +5,7 @@ root_packages =
     app
     app_mock
     mkos_schemas
+    mkos_pipeline
 include_external_packages = True
 
 [importlinter:contract:schemas-never-imports-app]
@@ -145,3 +146,35 @@ source_modules =
     app.main
 forbidden_modules =
     app.adapters.credentials
+
+# The AI seam (CANON.md:125; S14b T2): the pipeline (the in-repo stub now, the tagged
+# `mkos-pipeline` later) imports no app, web, DB or queue framework. Only installed packages can be
+# named; the stub's AST allowlist test covers openai, langgraph and boto3 (S14b C3).
+[importlinter:contract:pipeline-never-imports-app]
+name = mkos_pipeline imports no app, web, DB or queue framework
+type = forbidden
+source_modules =
+    mkos_pipeline
+forbidden_modules =
+    app
+    sqlalchemy
+    fastapi
+    starlette
+    psycopg
+    procrastinate
+
+# Only the generation worker calls `run_listing_pipeline` (CANON.md:104): no other layer imports it.
+[importlinter:contract:only-workers-import-pipeline]
+name = only app.workers imports mkos_pipeline
+type = forbidden
+source_modules =
+    app.api
+    app.services
+    app.repositories
+    app.adapters
+    app.core
+    app.db
+    app.main
+    app.cli
+forbidden_modules =
+    mkos_pipeline

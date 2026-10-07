@@ -436,6 +436,16 @@ leg lint-imports-engine-repositories lint-imports 'app.services.rules_engine is 
 leg lint-imports-unseal-from-router lint-imports 'only app.adapters and app.workers import the decrypt path BROKEN' \
   seed_unseal_from_router make lint-imports
 
+# S14b T2: the pipeline stub stays pure (AC 4) and only the workers may import it.
+seed_pipeline_imports_app() { append packages/pipeline-stub/src/mkos_pipeline/graph.py 'import app'; }
+seed_service_imports_pipeline() { new_file apps/api/app/services/x.py $'"""Seeded."""\n\nimport mkos_pipeline\n\nSEEDED = mkos_pipeline'; }
+seed_pipeline_environ() { append packages/pipeline-stub/src/mkos_pipeline/graph.py $'\n\ndef _seeded() -> str | None:\n    import os\n\n    return os.environ.get("X")'; }
+leg lint-imports-pipeline-app lint-imports 'mkos_pipeline imports no app, web, DB or queue framework BROKEN' \
+  seed_pipeline_imports_app make lint-imports
+leg lint-imports-service-imports-pipeline lint-imports 'only app.workers imports mkos_pipeline BROKEN' \
+  seed_service_imports_pipeline make lint-imports
+leg api-lint-pipeline-environ api-lint ': R1 ' seed_pipeline_environ make api-lint
+
 if [ "$with_docker" -eq 1 ]; then
   self_project="$(docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"
   leg api-tests-failing-test api-tests 'test_seeded' seed_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests
