@@ -1416,6 +1416,8 @@ def test_onboarding_e2e_background_waits_and_is_killed(
         ["pgrep", "-f", f"http.server {port}"], capture_output=True, text=True, check=False
     )
     assert leftover.stdout.strip() == "" or not any(_alive(int(p)) for p in leftover.stdout.split())
+
+
 # ---- S13b B15 (AC 22): the HTTP import flow, its hooks, make e2e and the bootstrap leg ----
 
 IMPORT_FLOW = "scripts/e2e/import_flow.sh"

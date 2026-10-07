@@ -72,7 +72,9 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 - `CANON.md` was never merged with the Addendum and never mentions it. `docs/README.md` "When sources disagree" sets the
   precedence until someone merges them.
 - The step that adds the S3 client must refuse `local_only_` S3 values outside `APP_ENV=local`
-  (`apps/api/app/core/config.py` does this only for the JWT secret).
+  (`apps/api/app/core/config.py` does this only for the JWT secret). Fixed in S13b: a deployed api
+  or worker refuses committed or dev-prefixed `S3_ACCESS_KEY`/`S3_SECRET_KEY` and an http or loopback
+  `S3_ENDPOINT_URL`.
 - The commit-msg attribution hook is bypassed by `git commit --no-verify` and by GitHub-written
   squash messages and PR bodies; a later step can run the check in the `commit-lint` CI job.
 
