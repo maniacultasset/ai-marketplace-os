@@ -7,8 +7,11 @@ there only if the code under test committed it.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import uuid
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any
 
@@ -113,3 +116,54 @@ def count(conn: Conn, query: str, params: list[Any] | None = None) -> int:
     row = conn.execute(query, params or []).fetchone()
     assert row is not None
     return int(row[0])
+
+
+# ---- a real worker in-process (A6-A9) ----
+
+
+@asynccontextmanager
+async def running_worker(
+    *,
+    queues: list[str] | None = None,
+    graceful_s: float = 0.5,
+    poll_s: float = 0.2,
+    concurrency: int = 4,
+    name: str = "test-worker",
+) -> AsyncIterator[asyncio.Task[None]]:
+    """A procrastinate worker on a fresh queue app (as app_rw) with the six kind tasks, stopped
+    on exit the way SIGTERM stops it: running jobs get `graceful_s`, then are aborted."""
+    from app.db.queue import new_queue_app
+    from app.workers.tasks import register_tasks
+
+    app = new_queue_app()
+    register_tasks(app)
+    options: dict[str, Any] = {} if queues is None else {"queues": queues}
+    async with app.open_async():
+        task = asyncio.create_task(
+            app.run_worker_async(
+                **options,
+                name=name,
+                wait=True,
+                concurrency=concurrency,
+                fetch_job_polling_interval=poll_s,
+                abort_job_polling_interval=poll_s,
+                shutdown_graceful_timeout=graceful_s,
+                install_signal_handlers=False,
+                listen_notify=True,
+                update_heartbeat_interval=1.0,
+            )
+        )
+        try:
+            yield task
+        finally:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+
+
+async def eventually(check: Callable[[], bool], timeout_s: float = 15.0) -> None:
+    deadline = asyncio.get_running_loop().time() + timeout_s
+    while not check():
+        if asyncio.get_running_loop().time() > deadline:
+            raise AssertionError("condition not reached in time")
+        await asyncio.sleep(0.05)

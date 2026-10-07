@@ -40,10 +40,8 @@ def libpq_conninfo(database_url: str) -> str:
     return database_url.replace("postgresql+psycopg://", "postgresql://", 1)
 
 
-@lru_cache(maxsize=1)
-def get_queue_app() -> procrastinate.App:
-    """The procrastinate app on DATABASE_URL (`app_rw`). Built lazily; opening its pool is the
-    worker's job alone, so building it opens no connection."""
+def new_queue_app() -> procrastinate.App:
+    """A procrastinate app on DATABASE_URL (`app_rw`); building it opens no connection."""
     settings = get_settings()
     if settings.database_url is None:
         raise RuntimeError("DATABASE_URL is required to build the queue app")
@@ -53,6 +51,12 @@ def get_queue_app() -> procrastinate.App:
         max_size=QUEUE_POOL_MAX_SIZE,
     )
     return procrastinate.App(connector=connector)
+
+
+@lru_cache(maxsize=1)
+def get_queue_app() -> procrastinate.App:
+    """The process's queue app, built lazily. Opening its pool is the worker's job alone."""
+    return new_queue_app()
 
 
 async def _driver_connection(session: AsyncSession) -> Any:

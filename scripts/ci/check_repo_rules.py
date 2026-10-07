@@ -106,7 +106,9 @@ APP_DB_ALLOWED: dict[str, frozenset[str]] = {
     "guard": frozenset({"CrossTenantQueryError"}),
     # the worker's entry points (S13): R8 narrows job_context to app/workers/wrapper.py
     "job_context": frozenset({"resolve_job", "JobHead"}),
-    "queue": frozenset({"get_queue_app", "QUEUES", "QUEUE_POOL_MAX_SIZE", "libpq_conninfo"}),
+    "queue": frozenset(
+        {"get_queue_app", "new_queue_app", "QUEUES", "QUEUE_POOL_MAX_SIZE", "libpq_conninfo"}
+    ),
 }
 # Reported by R5/R6 instead, so each violation names one rule: `SCOPE_OK`, and a star import of
 # the module R5 or R6 watches.
