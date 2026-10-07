@@ -115,5 +115,4 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 |---|---|---|
 | S18 planner | The brand profile lives on `tenants` (`tone`, `guidelines`, `glossary`); `brand_profiles` has no API (S16 PLAN D3). | S18 decides whether generation reads `brand_profiles` or only the profile chunks. |
 | Auth (DATABASE open decision 8) | No self-service password change or reset: staff set one with `python -m app.cli user set-password`, which revokes the user's refresh tokens (S16 PLAN D6). | Decide reset-by-email with the invite work (C6, 1.1). |
-| `app/services/brand_storage.py` | S16 stores brand documents through a narrow store interface; until S13b's S3-API adapter is on the branch no store is configured and an upload answers 500. | On the rebase onto S13b, `get_document_store()` returns its `get_storage()` with a `delete`. |
 
