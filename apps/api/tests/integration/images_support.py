@@ -22,7 +22,7 @@ PREFIX = "/api/v1"
 UPLOAD_URL = f"{PREFIX}/images/upload-url"
 UPLOAD = f"{PREFIX}/images/upload"
 # the modules that call `get_storage()` (each step adds its own)
-IMAGE_MODULES: list[str] = ["app.services.image_compliance"]
+IMAGE_MODULES: list[str] = ["app.services.image_compliance", "app.services.images"]
 
 
 def report_url(image_id: Any) -> str:
@@ -238,3 +238,28 @@ async def run_image_job(job_id: uuid.UUID, *, max_runs: int = 1) -> int:
             continue
         break
     return runs
+
+
+def style_and_child(conn: Conn, tenant_id: uuid.UUID) -> tuple[uuid.UUID, uuid.UUID]:
+    """A size-themed style (size run s, m) and one live child in an available cell, in one
+    transaction (the variant matrix check is deferred to COMMIT)."""
+    with conn.transaction():
+        style = f.product(
+            conn, tenant_id, "style", variation_theme="size", size_run=["s", "m"], category="kurtas"
+        )
+        child = f.product(
+            conn,
+            tenant_id,
+            "child",
+            parent=style,
+            category="kurtas",
+            variant_attributes={"size": "s"},
+            attributes={"size": f.fact(value="S", normalized="s")},
+        )
+        conn.execute(
+            "INSERT INTO variant_matrix_cells (tenant_id, style_product_id, colourway_id, size_key, "
+            "availability, unavailable_reason, variant_product_id, source) "
+            "VALUES (%s, %s, NULL, 's', 'available', NULL, %s, 'seller')",
+            [tenant_id, style, child],
+        )
+    return style, child

@@ -97,6 +97,14 @@ DENY_SUFFIXES: Final[tuple[str, ...]] = (
 QUERY_ONLY_DENY_KEYS: Final[frozenset[str]] = frozenset(
     # `pending`: the OAuth callback's opaque confirm handle (S15), in its 303 Location
     {"code", "spapi_oauth_code", "oauth_code", "state", "mws_auth_token", "pending"}
+    # S17b: a signed object URL (S3 V4 / GCS V4) carries its signature and credential scope
+    | {
+        "x_amz_signature",
+        "x_amz_credential",
+        "x_amz_security_token",
+        "x_goog_signature",
+        "x_goog_credential",
+    }
 )
 QUERY_DENY_KEYS: Final[frozenset[str]] = DENY_KEYS | QUERY_ONLY_DENY_KEYS
 

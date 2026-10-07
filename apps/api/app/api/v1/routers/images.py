@@ -1,30 +1,49 @@
-"""Image stubs (owner step S17b)."""
+"""Images (owner step S17b): the signed upload URL, the upload (a multipart `file` or a
+`storage_key` from the signed step) and the report. Writes need `product:import` (owner,
+operator); the report any member. Another tenant's product, key or image is 404, never 403.
+Routes import no `sqlalchemy` or `app.db`; domain errors render through the shared handlers."""
 
 from __future__ import annotations
 
 from typing import Annotated, NoReturn
 from uuid import UUID
 
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from fastapi import Path as PathParam
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ImageSlot
 
 from app.api.errors import ApiError, NotImplementedYet
-from app.api.v1.deps import IdempotencyKey
+from app.api.v1.deps import IdempotencyKey, get_current_principal
 from app.api.v1.schemas.common import StorageKey
-from app.api.v1.schemas.images import UploadUrlRequest
+from app.api.v1.schemas.images import UploadUrlOut, UploadUrlRequest
 from app.api.v1.surface import OPS, route, stub
+from app.core.rbac import Principal
+from app.services import images
 
 router = APIRouter()
+CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 
 
 @route(router, OPS["images_upload_url"])
-@stub
-async def images_upload_url(body: UploadUrlRequest) -> NoReturn:
+async def images_upload_url(body: UploadUrlRequest, principal: CurrentPrincipal) -> UploadUrlOut:
     """A short-lived signed URL to PUT one image to; its `storage_key` is then sent to
-    `/images/upload`."""
-    raise NotImplementedYet("images_upload_url")
+    `/images/upload`. Send every returned header with the PUT (`Content-Type` and
+    `If-None-Match: *`; the length is signed too): the URL can create the object once and
+    never overwrite it."""
+    minted = await images.mint_upload_url(
+        principal,
+        product_id=body.product_id,
+        slot=body.slot,
+        content_type=body.content_type,
+        size=body.bytes,
+    )
+    return UploadUrlOut(
+        upload_url=minted.upload_url,
+        storage_key=minted.storage_key,
+        expires_at=minted.expires_at,
+        headers=minted.headers,
+    )
 
 
 @route(router, OPS["images_upload"])
