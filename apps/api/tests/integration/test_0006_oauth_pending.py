@@ -130,6 +130,8 @@ def test_0006_up_down_up(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None
         hashes = {bytes(r[0]) for r in conn.execute("SELECT state_hash FROM oauth_states")}
         assert hashes == {_digest("state-row")}
     command.upgrade(cfg, REVISION)
+    # `alembic check` compares at head; later revisions sit on top of this one
+    command.upgrade(cfg, "head")
     command.check(cfg)
 
 
@@ -153,7 +155,11 @@ def test_0006_alembic_check_no_drift(alembic_env: MakeConfig) -> None:
 def test_mig_single_head() -> None:
     from app.db.migrations import alembic_config
 
-    assert ScriptDirectory.from_config(alembic_config()).get_heads() == [REVISION]
+    # one head; REVISION is in the chain below it (S13b's 0007_facts_guard sits on top)
+    script = ScriptDirectory.from_config(alembic_config())
+    heads = script.get_heads()
+    assert len(heads) == 1, heads
+    assert REVISION in {r.revision for r in script.walk_revisions("base", heads[0])}
 
 
 def test_0006_down_revision_is_ledger_head(repo_root: Path) -> None:
