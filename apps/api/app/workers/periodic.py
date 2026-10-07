@@ -8,7 +8,8 @@ queue entry carries only `{"timestamp"}`, never tenant data.
   handles each job in its own tenant's `unit_of_work`: a stopped tenant's job is cancelled, one
   with attempts left is re-queued and re-deferred, an exhausted one is `dead_letter` +
   `JOB_TIMEOUT`; the dead queue entry is retired and the kind's terminal hook runs for the two
-  terminal moves. Then stale worker rows are pruned (spike REPORT §4 gotcha 5).
+  terminal moves. A job whose reap raises rolls back alone, is logged `job.reap_failed` and
+  skipped, and the pass goes on. Then stale worker rows are pruned (spike REPORT §4 gotcha 5).
 - `prune_rate_limits` (every 5 min): counters whose window started over 5 minutes ago.
 - `prune_idempotency_keys` (hourly): expired HTTP keys, tenant by tenant.
 - `expire_trials` (hourly): `expire_trials()` (trials past their end → `suspended`).
@@ -70,12 +71,24 @@ async def reap_once(job_manager: Any | None = None) -> ReapResult:
         async with platform_scope() as session:
             expired = await expired_running(session)
         for job_id, tenant_id in expired:
-            async with unit_of_work(tenant_id) as session:
-                reaped = await JobRunRepository(session, tenant_id).reap(
-                    job_id, lambda job: _timeout_report(job, ctx.request_id)
+            try:
+                async with unit_of_work(tenant_id) as session:
+                    reaped = await JobRunRepository(session, tenant_id).reap(
+                        job_id, lambda job: _timeout_report(job, ctx.request_id)
+                    )
+                    if reaped.action in ("dead_letter", "cancelled") and reaped.job is not None:
+                        await run_terminal_hook(session, reaped.job, None)
+            except Exception as exc:
+                # this job's transaction rolled back alone; it stays expired and is retried next
+                # pass, and one bad row never blocks another tenant's recovery (S13 fix F1)
+                log.exception(
+                    "job.reap_failed",
+                    job_run_id=str(job_id),
+                    tenant_id=str(tenant_id),
+                    error_class=type(exc).__name__,
                 )
-                if reaped.action in ("dead_letter", "cancelled") and reaped.job is not None:
-                    await run_terminal_hook(session, reaped.job, None)
+                result.skipped.append(job_id)
+                continue
             bucket = {
                 "requeued": result.requeued,
                 "dead_letter": result.dead_lettered,
