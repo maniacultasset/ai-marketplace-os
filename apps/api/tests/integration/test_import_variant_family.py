@@ -308,3 +308,35 @@ async def test_import_variant_family_grows(imports_db: JobWorld, api: httpx.Asyn
         ("red", "m", "available", None, "seller", "SKU-00004"),
         ("red", "xl", "unavailable", "not_provided", "derived", None),
     ]
+
+
+async def test_import_child_resent_standalone_is_a_row_error(
+    imports_db: JobWorld, api: httpx.AsyncClient
+) -> None:
+    """A family's child sent again without parent_style_id fails its row with
+    CROSS_FIELD_MISMATCH and stays attached to its matrix cell (round-1 F2)."""
+    tenant = imports_db.tenant("acme")
+    await run(imports_db, api, [child(1, "TEE", "M", None), child(2, "TEE", "L", None)])
+    stored = imports_db.conn.execute(
+        "SELECT parent_product_id, variant_attributes, updated_at FROM products "
+        "WHERE tenant_id = %s AND sku = 'SKU-00001'",
+        [tenant],
+    ).fetchone()
+    import_id = await run(imports_db, api, [row(1), row(2, seller_sku="PLAIN-1")])
+    assert failed(imports_db.conn, import_id) == {2: ["CROSS_FIELD_MISMATCH"]}
+    report = one(
+        imports_db.conn,
+        "SELECT error_report_json FROM import_rows WHERE import_id = %s AND row_number = 2",
+        [import_id],
+    )
+    message = ErrorReport.model_validate(report).errors[0].message
+    assert "parent_style_id" in message and "SKU-00001" not in message
+    after = imports_db.conn.execute(
+        "SELECT parent_product_id, variant_attributes, updated_at FROM products "
+        "WHERE tenant_id = %s AND sku = 'SKU-00001'",
+        [tenant],
+    ).fetchone()
+    assert after == stored
+    assert ("m", "available", "SKU-00001") in [
+        (c[1], c[2], c[5]) for c in cells(imports_db.conn, "TEE", tenant)
+    ]

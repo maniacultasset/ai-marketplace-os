@@ -439,6 +439,18 @@ class _Writer:
             return
         row = p.row
         assert row is not None  # noqa: S101
+        if await self.products.family_of_sku(row.sku) is not None:
+            # a family's child sent without its parent: never detach it from its matrix cell
+            await self._fail(
+                p,
+                [
+                    row_error(
+                        ErrorCode.CROSS_FIELD_MISMATCH,
+                        "parent_style_id is missing for a variant of a family",
+                    )
+                ],
+            )
+            return
 
         async def write() -> uuid.UUID:
             done = await self.products.upsert_by_sku(self._upsert(row))
