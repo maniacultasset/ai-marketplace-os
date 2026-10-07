@@ -274,3 +274,18 @@ def test_make_e2e_resets_limits_before_each_script(repo_root: Path, tmp_path: Pa
 
 def test_make_e2e_stops_on_first_failure(repo_root: Path, tmp_path: Path) -> None:
     assert _run_make_e2e(repo_root, tmp_path, fail_first=True) == ["reset", "a"]
+
+
+def test_fake_marketplace_target_loopback(repo_root: Path) -> None:
+    """S15: `make fake-marketplace` runs the test-support fake on its worktree port; the module
+    binds 127.0.0.1 itself and the recipe never passes a host."""
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    recipe = _target(makefile, "fake-marketplace").strip()
+    assert recipe == (
+        "uv run --frozen python apps/api/tests/support/fake_marketplace.py "
+        "--port $(FAKE_MARKETPLACE_HOST_PORT)"
+    )
+    assert "--host" not in recipe and "0.0.0.0" not in recipe  # noqa: S104
+    source = (repo_root / "apps/api/tests/support/fake_marketplace.py").read_text(encoding="utf-8")
+    assert 'host="127.0.0.1"' in source
+    assert "0.0.0.0" not in source  # noqa: S104

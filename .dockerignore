@@ -30,6 +30,7 @@
 
 # not needed at runtime
 apps/api/app_mock/
+apps/api/tests/
 docs/
 deliverables/
 scaffold/

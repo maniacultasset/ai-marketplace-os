@@ -6,7 +6,7 @@ SHELL := bash
 
 # Per-checkout host ports (ADR-0011 amendment):
 # `.worktree.env` is optional and git-ignored; the helper validates it before make reads it.
-WORKTREE_KEYS := COMPOSE_PROJECT_NAME PG_HOST_PORT MINIO_API_HOST_PORT MINIO_CONSOLE_HOST_PORT API_HOST_PORT MOCK_HOST_PORT
+WORKTREE_KEYS := COMPOSE_PROJECT_NAME PG_HOST_PORT MINIO_API_HOST_PORT MINIO_CONSOLE_HOST_PORT API_HOST_PORT MOCK_HOST_PORT FAKE_MARKETPLACE_HOST_PORT
 ifneq ($(wildcard .worktree.env),)
 ifneq ($(shell scripts/ci/worktree_env.sh exports .worktree.env >/dev/null 2>&1; echo $$?),0)
 $(error .worktree.env rejected: $(shell scripts/ci/worktree_env.sh exports .worktree.env 2>&1 >/dev/null))
@@ -17,6 +17,7 @@ $(foreach k,$(WORKTREE_KEYS),$(if $(and $(filter file,$(origin $(k))),$(strip $(
 PG_HOST_PORT := $(or $(PG_HOST_PORT),5432)
 API_HOST_PORT := $(or $(API_HOST_PORT),8000)
 MOCK_HOST_PORT := $(or $(MOCK_HOST_PORT),4010)
+FAKE_MARKETPLACE_HOST_PORT := $(or $(FAKE_MARKETPLACE_HOST_PORT),4020)
 
 # A reason when $(1) is not one all-digit word in 1..65535. Non-digits never reach the shell.
 _nondigit = $(subst 0,,$(subst 1,,$(subst 2,,$(subst 3,,$(subst 4,,$(subst 5,,$(subst 6,,$(subst 7,,$(subst 8,,$(subst 9,,$(1)))))))))))
@@ -33,6 +34,10 @@ endif
 mock_port_problem := $(call port_problem,$(MOCK_HOST_PORT))
 ifneq ($(mock_port_problem),)
 $(error MOCK_HOST_PORT is not a valid port: $(mock_port_problem))
+endif
+fake_port_problem := $(call port_problem,$(FAKE_MARKETPLACE_HOST_PORT))
+ifneq ($(fake_port_problem),)
+$(error FAKE_MARKETPLACE_HOST_PORT is not a valid port: $(fake_port_problem))
 endif
 minio_api_port_problem := $(if $(strip $(MINIO_API_HOST_PORT)),$(call port_problem,$(MINIO_API_HOST_PORT)))
 ifneq ($(minio_api_port_problem),)
@@ -208,6 +213,13 @@ publish-schemas:
 .PHONY: mock
 mock:
 	uv run --frozen python -m app_mock --host 127.0.0.1 --port $(MOCK_HOST_PORT)
+
+# The local fake marketplace (S15): Amazon and Flipkart OAuth consent and token endpoints for the
+# connect flow, on 127.0.0.1 only (the module binds loopback; never pass --host). Dev tooling under
+# apps/api/tests/support/, never imported by the app and not in the image.
+.PHONY: fake-marketplace
+fake-marketplace:
+	uv run --frozen python apps/api/tests/support/fake_marketplace.py --port $(FAKE_MARKETPLACE_HOST_PORT)
 
 .PHONY: mock-smoke
 mock-smoke:
