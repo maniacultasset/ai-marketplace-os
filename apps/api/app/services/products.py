@@ -51,7 +51,7 @@ class ProductView:
     sku: str
     title: str
     status: Literal["draft", "active"]
-    category: str | None
+    category: str  # products.category is NOT NULL (DATABASE.md:410)
     attributes: dict[str, FlatValue]
     images: list[str]
     parent_product_id: uuid.UUID | None

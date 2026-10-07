@@ -1678,7 +1678,7 @@ export interface components {
                 [key: string]: string | boolean | number;
             };
             /** Category */
-            category?: string | null;
+            category: string;
             /** Images */
             images?: string[];
             /**
@@ -1696,7 +1696,7 @@ export interface components {
                 [key: string]: string | boolean | number;
             };
             /** Category */
-            category?: string | null;
+            category: string;
             /**
              * Created At
              * Format: date-time

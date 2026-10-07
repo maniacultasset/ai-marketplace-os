@@ -40,7 +40,7 @@ AttributeScalar = (
 class ProductCreate(StrictModel):
     sku: Sku
     title: ProductTitle
-    category: Slug | None = None
+    category: Slug
     images: Annotated[list[StorageKey], Field(max_length=MAX_PRODUCT_IMAGES)] = Field(
         default_factory=list
     )
@@ -54,7 +54,7 @@ class ProductOut(WireModel):
     sku: Sku
     title: ProductTitle
     status: Literal["draft", "active"]
-    category: Slug | None = None
+    category: Slug
     attributes: dict[str, AttributeScalar] = Field(default_factory=dict)
     images: list[StorageKey] = Field(default_factory=list)
     parent_product_id: UUID | None = None

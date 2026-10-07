@@ -53,7 +53,7 @@ def _minimal(model: type[BaseModel]) -> dict[str, Any]:
         "LoginRequest": {"email": "a@b.co", "password": "pw"},
         "RefreshRequest": {"refresh_token": "t"},
         "LogoutRequest": {"refresh_token": "t"},
-        "ProductCreate": {"sku": "SKU-1", "title": "Kurta"},
+        "ProductCreate": {"sku": "SKU-1", "title": "Kurta", "category": "kurta_sets"},
     }
     return samples[model.__name__]
 
@@ -88,7 +88,7 @@ def test_every_request_model_is_strict() -> None:
     ],
 )
 def test_sku_rules(sku: str, ok: bool) -> None:
-    body = {"sku": sku, "title": "t"}
+    body = {"sku": sku, "title": "t", "category": "kurta_sets"}
     if ok:
         assert ProductCreate.model_validate(body).sku == sku
     else:
@@ -99,7 +99,7 @@ def test_sku_rules(sku: str, ok: bool) -> None:
 @pytest.mark.parametrize("title", ["", "   ", "x" * 501])
 def test_title_rejected(title: str) -> None:
     with pytest.raises(ValidationError):
-        ProductCreate.model_validate({"sku": "a", "title": title})
+        ProductCreate.model_validate({"sku": "a", "title": title, "category": "kurta_sets"})
 
 
 def test_login_repr_hides_password() -> None:
@@ -148,10 +148,12 @@ def test_request_models_have_no_tenant_id() -> None:
 
 
 def test_product_create_site_body() -> None:
-    # spec L11318-11320: the site's own example body, unchanged.
+    # spec L11318-11320: the site's own example body, plus the category T115 makes required
+    # (user, 2026-10-06; products.category is NOT NULL).
     body = {
         "sku": "FAB-KURTA-001",
         "title": "Organic Cotton Kurta Set",
+        "category": "kurta_sets",
         "attributes": {"color": "indigo", "material": "organic cotton", "size": "M"},
         "images": ["t/0b1c/img/1.jpg"],
     }
@@ -159,8 +161,12 @@ def test_product_create_site_body() -> None:
     assert product.model_dump(exclude_defaults=True) == body
 
 
-def test_product_create_category_optional() -> None:
-    assert ProductCreate.model_validate({"sku": "a", "title": "t"}).category is None
+def test_product_create_category_required() -> None:
+    """T115 (user, 2026-10-06): `products.category` is NOT NULL, so the contract requires it."""
+    with pytest.raises(ValidationError):
+        ProductCreate.model_validate({"sku": "a", "title": "t"})
+    with pytest.raises(ValidationError):
+        ProductCreate.model_validate({"sku": "a", "title": "t", "category": None})
     assert ProductCreate.model_validate({"sku": "a", "title": "t", "category": "kurta_sets"})
 
 
@@ -179,7 +185,9 @@ def test_product_create_category_optional() -> None:
 )
 def test_attributes_rejected(attributes: dict[str, Any]) -> None:
     with pytest.raises(ValidationError):
-        ProductCreate.model_validate({"sku": "a", "title": "t", "attributes": attributes})
+        ProductCreate.model_validate(
+            {"sku": "a", "title": "t", "category": "kurta_sets", "attributes": attributes}
+        )
 
 
 @pytest.mark.parametrize("raw", ["NaN", "Infinity", "-Infinity"])
@@ -192,7 +200,9 @@ def test_attributes_non_finite_rejected(raw: str) -> None:
 
 def test_attributes_scalars_accepted() -> None:
     attrs = {"color": "red", "count": 3, "weight": 1.5, "organic": True}
-    got = ProductCreate.model_validate({"sku": "a", "title": "t", "attributes": attrs})
+    got = ProductCreate.model_validate(
+        {"sku": "a", "title": "t", "category": "kurta_sets", "attributes": attrs}
+    )
     assert got.attributes == attrs
     assert type(got.attributes["organic"]) is bool
     assert type(got.attributes["count"]) is int
@@ -201,8 +211,12 @@ def test_attributes_scalars_accepted() -> None:
 def test_images_capped() -> None:
     keys = [f"t/x/{i}.jpg" for i in range(51)]
     with pytest.raises(ValidationError):
-        ProductCreate.model_validate({"sku": "a", "title": "t", "images": keys})
-    ProductCreate.model_validate({"sku": "a", "title": "t", "images": keys[:50]})
+        ProductCreate.model_validate(
+            {"sku": "a", "title": "t", "category": "kurta_sets", "images": keys}
+        )
+    ProductCreate.model_validate(
+        {"sku": "a", "title": "t", "category": "kurta_sets", "images": keys[:50]}
+    )
 
 
 _STORAGE_KEY = TypeAdapter(StorageKey)

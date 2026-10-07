@@ -1,0 +1,3 @@
+POST /api/v1/products the request property `category` became required
+POST /api/v1/products request property `category` list-of-types was narrowed by removing types `null` from media type `application/json`
+POST /api/v1/products added the pattern `^[a-z0-9_]{2,64}$` to the request property `category`

@@ -20,6 +20,7 @@ import pytest
 
 _SCRIPT = Path("scripts/ci/oasdiff_check.sh")
 _LEVELS = Path("scripts/ci/oasdiff-levels.txt")
+_IGNORE = Path("scripts/ci/oasdiff-err-ignore.txt")
 _SPEC = Path("packages/schemas/jsonschema/openapi.json")
 
 Spec = dict[str, Any]
@@ -49,7 +50,7 @@ def _git(cwd: Path, *args: str) -> None:
 
 def _repo(repo_root: Path, tmp_path: Path) -> Path:
     repo = tmp_path / "repo"
-    for rel in (_SCRIPT, _LEVELS, _SPEC):
+    for rel in (_SCRIPT, _LEVELS, _IGNORE, _SPEC):
         (repo / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(repo_root / rel, repo / rel)
     _git(repo, "init", "-q")
@@ -71,7 +72,7 @@ def _repo(repo_root: Path, tmp_path: Path) -> Path:
 
 
 def _drop_optional_property(spec: Spec) -> None:
-    del spec["components"]["schemas"]["ProductOut"]["properties"]["category"]
+    del spec["components"]["schemas"]["ProductOut"]["properties"]["parent_product_id"]
 
 
 def _drop_next_cursor(spec: Spec) -> None:
