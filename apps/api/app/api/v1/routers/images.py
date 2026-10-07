@@ -34,9 +34,9 @@ CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 @route(router, OPS["images_upload_url"])
 async def images_upload_url(body: UploadUrlRequest, principal: CurrentPrincipal) -> UploadUrlOut:
     """A short-lived signed URL to PUT one image to; its `storage_key` is then sent to
-    `/images/upload`. Send every returned header with the PUT (`Content-Type` and
-    `If-None-Match: *`; the length is signed too): the URL can create the object once and
-    never overwrite it."""
+    `/images/upload`."""
+    # The client sends every returned header with the PUT (`Content-Type`, `If-None-Match: *`;
+    # the length is signed too): the URL creates the object once and never overwrites it.
     minted = await images.mint_upload_url(
         principal,
         product_id=body.product_id,
@@ -65,8 +65,9 @@ async def images_upload(
     colourway_id: Annotated[UUID | None, Form()] = None,
 ) -> ImageAccepted:
     """Upload an image, or name one already uploaded, and start the compliance checks. Send
-    exactly one of `file` and `storage_key`; a key is registered within 23 hours of its PUT.
-    202 with the image and its `image_compliance` job (poll `poll_url`)."""
+    exactly one of `file` and `storage_key`."""
+    # A key is registered within 23 hours of its PUT (CP3); 202 names the image and its
+    # `image_compliance` job (poll `poll_url`). The docstrings above are the frozen OpenAPI text.
     if (file is None) == (storage_key is None):
         raise ApiError(
             422,
@@ -88,8 +89,8 @@ async def images_upload(
 async def images_report(
     image_id: Annotated[UUID, PathParam()], principal: CurrentPrincipal
 ) -> ImageReportOut:
-    """The image's compliance status and per-marketplace `ImageReport`s (`{}` while pending).
-    A replaced or unknown image is 404."""
+    """The image's compliance status and per-marketplace `ImageReport`s."""
+    # `reports` is empty while pending; a replaced or unknown image is 404 (CP4).
     view = await images.get_report(principal, image_id)
     return ImageReportOut(
         image_id=view.image_id,
