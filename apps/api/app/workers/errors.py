@@ -11,7 +11,8 @@
 from __future__ import annotations
 
 from mkos_schemas.codes import ErrorCode
-from mkos_schemas.errors import ErrorReport
+from mkos_schemas.enums import ErrorSource
+from mkos_schemas.errors import ErrorItem, ErrorReport
 
 
 class RetryableJobError(Exception):
@@ -30,3 +31,26 @@ class RetryLater(Exception):  # noqa: N818 - a signal to the queue, not an error
     def __init__(self, delay_s: float) -> None:
         super().__init__(f"retry in {delay_s:.3f}s")
         self.delay_s = delay_s
+
+
+def system_report(
+    code: ErrorCode, message: str, *, attempt: int, max_attempts: int, request_id: str
+) -> ErrorReport:
+    """The one-item `ErrorReport` of a job-spine failure (`source=system`, field `request`):
+    a timeout, retry exhaustion or an unexpected body error. `message` is our own text."""
+    item = ErrorItem(
+        field="request",
+        error_code=code,
+        message=message,
+        source=ErrorSource.SYSTEM,
+        retryable=False,
+    )
+    return ErrorReport(
+        status="failed",
+        error_code=code,
+        retryable=False,
+        attempts_used=attempt,
+        max_attempts=max_attempts,
+        errors=[item],
+        request_id=request_id,
+    )

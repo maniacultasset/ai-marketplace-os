@@ -27,8 +27,8 @@ from typing import Any
 from uuid import UUID
 
 from mkos_schemas.codes import ErrorCode
-from mkos_schemas.enums import ErrorSource, JobKind
-from mkos_schemas.errors import ErrorItem, ErrorReport
+from mkos_schemas.enums import JobKind
+from mkos_schemas.errors import ErrorReport
 
 from app.core.logging import get_logger
 from app.core.request_context import bind_tenant, new_request_id, request_context
@@ -37,7 +37,7 @@ from app.db.session import unit_of_work
 from app.repositories.jobs import Claimed, JobRunRepository
 from app.services.job_hooks import run_terminal_hook
 from app.workers import registry
-from app.workers.errors import JobFailed, RetryableJobError, RetryLater
+from app.workers.errors import JobFailed, RetryableJobError, RetryLater, system_report
 from app.workers.policy import POLICIES, JobPolicy, backoff_s, lease_s
 from app.workers.registry import JobContext, Outcome
 
@@ -47,27 +47,6 @@ _rand = secrets.SystemRandom()
 
 def policy_for(kind: JobKind, policies: Mapping[JobKind, JobPolicy] | None = None) -> JobPolicy:
     return (POLICIES if policies is None else policies)[kind]
-
-
-def _report(
-    code: ErrorCode, message: str, *, attempt: int, max_attempts: int, request_id: str
-) -> ErrorReport:
-    item = ErrorItem(
-        field="request",
-        error_code=code,
-        message=message,
-        source=ErrorSource.SYSTEM,
-        retryable=False,
-    )
-    return ErrorReport(
-        status="failed",
-        error_code=code,
-        retryable=False,
-        attempts_used=attempt,
-        max_attempts=max_attempts,
-        errors=[item],
-        request_id=request_id,
-    )
 
 
 async def run_job(job_run_id: str) -> None:
@@ -128,7 +107,7 @@ async def _execute(
     )
 
     def failure(code: ErrorCode, message: str) -> ErrorReport:
-        return _report(
+        return system_report(
             code, message, attempt=attempt, max_attempts=max_attempts, request_id=request_id
         )
 

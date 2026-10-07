@@ -29,7 +29,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
 from app.db.models.ops import JobRun
 from app.db.models.tenancy import Tenant
-from app.db.queue import defer_on_session
+from app.db.queue import defer_on_session, retire_on_session
 from app.repositories.base import TenantScopedRepository
 from app.workers.policy import POLICIES
 
@@ -68,6 +68,34 @@ class Enqueued:
 class Claimed:
     job: JobRun
     attempt: int
+
+
+@dataclass(frozen=True, slots=True)
+class Reaped:
+    """What the reaper did to one job: `requeued`, `dead_letter`, `cancelled` or `skipped`
+    (another reaper holds it, or it is no longer an expired `running` row)."""
+
+    action: str
+    job: JobRun | None = None
+
+
+async def expired_running(session: Any, *, limit: int = 500) -> list[tuple[uuid.UUID, uuid.UUID]]:
+    """`(id, tenant_id)` of every `running` row whose lease has expired, oldest lease first.
+    Cross-tenant: run it only in `platform_scope()` (the reaper, DATABASE.md:1028)."""
+    stmt = (
+        select(JobRun.id, JobRun.tenant_id)
+        .where(JobRun.status == "running", JobRun.lease_expires_at < func.now())
+        .order_by(JobRun.lease_expires_at)
+        .limit(limit)
+    )
+    return [(row.id, row.tenant_id) for row in (await session.execute(stmt)).all()]
+
+
+def _tenant_running() -> ColumnElement[bool]:
+    """The job's tenant is `trial` or `active` (PLAN D14), correlated on `job_runs.tenant_id`."""
+    return exists(
+        select(Tenant.id).where(Tenant.id == JobRun.tenant_id, Tenant.status.in_(RUNNING_TENANT))
+    )
 
 
 def _payload_bytes(payload: dict[str, Any]) -> int:
@@ -158,18 +186,13 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         tenant is `trial` or `active`; a row with no `request_id` takes the worker's (so the
         job envelope always names one). None: a duplicate or stale delivery, or a stopped
         tenant."""
-        tenant_running = exists(
-            select(Tenant.id).where(
-                Tenant.id == JobRun.tenant_id, Tenant.status.in_(RUNNING_TENANT)
-            )
-        )
         job = await self._update_returning(
             job_id,
             self._where(
                 job_id,
                 JobRun.status == "queued",
                 JobRun.attempt < JobRun.max_attempts,
-                tenant_running,
+                _tenant_running(),
             ),
             {
                 "status": "running",
@@ -183,14 +206,9 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
 
     async def cancel_non_running(self, job_id: uuid.UUID) -> JobRun | None:
         """A queued job of a tenant that is not `trial|active` → `cancelled` (PLAN D14)."""
-        tenant_running = exists(
-            select(Tenant.id).where(
-                Tenant.id == JobRun.tenant_id, Tenant.status.in_(RUNNING_TENANT)
-            )
-        )
         return await self._update_returning(
             job_id,
-            self._where(job_id, JobRun.status == "queued", ~tenant_running),
+            self._where(job_id, JobRun.status == "queued", ~_tenant_running()),
             {"status": "cancelled", "finished_at": func.now()},
         )
 
@@ -262,3 +280,64 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             self._where(job_id, JobRun.status == "queued"),
             {"status": "cancelled", "finished_at": func.now()},
         )
+
+    # ---- the reaper (A9; DATABASE.md:1028) ----
+
+    async def reap(self, job_id: uuid.UUID, report_json: Any) -> Reaped:
+        """One expired `running` row, locked `FOR UPDATE SKIP LOCKED` (a concurrent reaper skips
+        it): a stopped tenant's job is `cancelled`; with attempts left it goes back to `queued`
+        and is re-deferred (a new queue entry); exhausted, it is `dead_letter` with
+        `report_json(job)` (`JOB_TIMEOUT`). The dead entry is retired in every case, so it can
+        never run. A reaped attempt counts (s8 D6): the next claim takes `attempt + 1`."""
+        self._own_session()
+        locked = await self.db.execute(
+            self._select()
+            .where(
+                JobRun.id == job_id,
+                JobRun.status == "running",
+                JobRun.lease_expires_at < func.now(),
+            )
+            .with_for_update(skip_locked=True)
+        )
+        job = locked.scalar_one_or_none()
+        if job is None:
+            return Reaped("skipped")
+        if job.queue_job_id is not None:
+            await retire_on_session(self.db, job.queue_job_id)
+        fence = self._fence(job_id, job.attempt)
+        stopped = await self._update_returning(
+            job_id,
+            [*fence, ~_tenant_running()],
+            {"status": "cancelled", "lease_expires_at": None, "finished_at": func.now()},
+        )
+        if stopped is not None:
+            return Reaped("cancelled", stopped)
+        if job.attempt < job.max_attempts:
+            done = await self._update_returning(
+                job_id, fence, {"status": "queued", "lease_expires_at": None, "started_at": None}
+            )
+            if done is None:
+                return Reaped("skipped")
+            queue_job_id = await defer_on_session(
+                self.db, kind=done.kind, queue=done.queue, job_run_id=done.id
+            )
+            await self.db.execute(
+                self._scoped_write(
+                    update(JobRun).where(*self._where(job_id)).values(queue_job_id=queue_job_id)
+                )
+            )
+            set_committed_value(done, "queue_job_id", queue_job_id)
+            return Reaped("requeued", done)
+        report = report_json(job)
+        done = await self._update_returning(
+            job_id,
+            fence,
+            {
+                "status": "dead_letter",
+                "lease_expires_at": None,
+                "finished_at": func.now(),
+                "error_report_json": report,
+                "error_code": report.get("error_code"),
+            },
+        )
+        return Reaped("dead_letter", done)

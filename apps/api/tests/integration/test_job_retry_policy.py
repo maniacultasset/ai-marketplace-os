@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 from app.workers import wrapper
-from app.workers.errors import JobFailed, RetryableJobError, RetryLater
+from app.workers.errors import JobFailed, RetryableJobError, RetryLater, system_report
 from app.workers.registry import JobContext, Outcome
 from app.workers.retry import JobRetryStrategy
 from mkos_schemas.codes import ErrorCode
@@ -134,7 +134,7 @@ async def test_job_retry_policy_generation_domain_failure_not_retried(
     async def body(ctx: JobContext) -> Outcome:
         runs.append(ctx.attempt)
         raise JobFailed(
-            wrapper._report(
+            system_report(
                 ErrorCode.GENERATION_FAILED, "no", attempt=1, max_attempts=1, request_id="r"
             )
         )
