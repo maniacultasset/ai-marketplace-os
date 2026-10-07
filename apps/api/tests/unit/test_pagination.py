@@ -6,7 +6,7 @@ import base64
 import json
 import uuid
 from datetime import UTC, datetime, timedelta, timezone
-from typing import Annotated
+from typing import Annotated, Any
 
 import pytest
 from app.api.errors import ApiError, install_error_handlers
@@ -71,8 +71,12 @@ def test_bad_limit_422(client: TestClient, bad: str) -> None:
     assert response.json()["error"]["type"] == ErrorCode.VALIDATION_FAILED.value
 
 
-def _bad_cursors() -> list[str]:
-    naive = _b64(json.dumps({"t": "2026-10-05T10:00:00", "id": str(uuid.uuid4())}).encode())
+def _bad_cursors() -> list[Any]:
+    # The random-id cursors carry fixed ids: every pytest-xdist worker must collect the same names.
+    naive = pytest.param(
+        _b64(json.dumps({"t": "2026-10-05T10:00:00", "id": str(uuid.uuid4())}).encode()),
+        id="naive-timestamp",
+    )
     return [
         "",
         "not base64!!",
@@ -81,8 +85,13 @@ def _bad_cursors() -> list[str]:
         _b64(b"[1, 2]"),
         _b64(json.dumps({"t": "x", "id": "y"}).encode()),
         naive,
-        _b64(json.dumps({"t": "NaN", "id": str(uuid.uuid4())}).encode()),
-        _b64(json.dumps({"t": "2026-10-05T10:00:00Z", "id": str(uuid.uuid4()), "x": 1}).encode()),
+        pytest.param(_b64(json.dumps({"t": "NaN", "id": str(uuid.uuid4())}).encode()), id="nan-t"),
+        pytest.param(
+            _b64(
+                json.dumps({"t": "2026-10-05T10:00:00Z", "id": str(uuid.uuid4()), "x": 1}).encode()
+            ),
+            id="extra-key",
+        ),
         "a" * (MAX_CURSOR_LENGTH + 1),
         "é" * 10,
         _b64(b"\xff\xfe"),

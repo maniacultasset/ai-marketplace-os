@@ -30,6 +30,33 @@ _EXTRA_ENV_NAMES = ("ENV", "REDIS_URL")
 _REGISTER_ROW = re.compile(r"^\| `([A-Z][A-Z0-9_]*)` \|")
 
 
+def _xdist_controller(config: pytest.Config) -> bool:
+    return not hasattr(config, "workerinput") and bool(config.getoption("numprocesses", None))
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Under pytest-xdist each worker runs on its own copy of mos_test (tests/support/xdist_db.py),
+    set up here, before any test, settings object or engine exists."""
+    import os
+
+    from tests.support.xdist_db import drop_worker_databases, use_worker_database
+
+    workerinput = getattr(config, "workerinput", None)
+    if workerinput is not None:
+        use_worker_database(str(workerinput["workerid"]))
+    elif _xdist_controller(config):
+        drop_worker_databases(os.environ.get("DATABASE_URL"))
+
+
+def pytest_unconfigure(config: pytest.Config) -> None:
+    import os
+
+    from tests.support.xdist_db import drop_worker_databases
+
+    if _xdist_controller(config):
+        drop_worker_databases(os.environ.get("DATABASE_URL"))
+
+
 @pytest.fixture
 def repo_root() -> Path:
     return REPO_ROOT

@@ -146,6 +146,9 @@ ISO_DATABASE_URL ?= postgresql+psycopg://app_rw:$(CI_APP_RW_PASSWORD)@localhost:
 APP_RW_SCRAM_CMD = printf '%s' '$(CI_APP_RW_PASSWORD)' | uv run --frozen python scripts/db/scram_verifier.py
 MIGRATOR_SCRAM_CMD = printf '%s' '$(CI_MIGRATOR_PASSWORD)' | uv run --frozen python scripts/db/scram_verifier.py
 COV_FAIL_UNDER ?= 70
+# api-tests runs pytest under pytest-xdist: `auto` workers, never more than 4 (--maxprocesses).
+# Each worker gwN copies the migrated, synced mos_test to mos_test_gwN (tests/support/xdist_db.py).
+API_TEST_WORKERS ?= auto
 
 # Alembic on mos_test before pytest (CANON.md:136): upgrade, check, downgrade, upgrade, then squawk
 # over the rendered SQL, report-only until the first prod tag (EXECUTION-PLAN.md:303-305). Then the
@@ -167,7 +170,8 @@ api-tests:
 	  uv run --frozen python scripts/ci/squawk_report.py "$$sql"
 	$(MIGRATE_ENV) uv run --frozen python -m app.cli dictionary sync
 	APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) S3_ENDPOINT_URL=$(TEST_S3_ENDPOINT_URL) \
-	  uv run --frozen pytest -q -m "not tenant_isolation and not cloudsql_mimic" --cov=app --cov-report=term-missing \
+	  uv run --frozen pytest -q -m "not tenant_isolation and not cloudsql_mimic" \
+	  -n $(API_TEST_WORKERS) --maxprocesses=4 --dist loadgroup --cov=app --cov-report=term-missing \
 	  --cov-fail-under=$(COV_FAIL_UNDER)
 	cov="$$(mktemp)"; trap 'rm -f "$$cov"' EXIT; \
 	  uv run --frozen coverage json -q --include='*/app/services/rules_engine/*' -o "$$cov" && \

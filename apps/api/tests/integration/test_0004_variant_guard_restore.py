@@ -83,7 +83,8 @@ def _wait_for_lock(libpq: str) -> None:
     with psycopg.connect(libpq, autocommit=True) as probe:
         for _ in range(100):
             row = probe.execute(
-                "SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock'"
+                "SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock' "
+                "AND datname = current_database()"
             ).fetchone()
             if row and row[0] >= 1:
                 return
