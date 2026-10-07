@@ -16,29 +16,31 @@ from __future__ import annotations
 
 import builtins
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Final
 
-from sqlalchemy import and_, func, insert, select, text, update
+from sqlalchemy import and_, delete, func, insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import undefer
 
 from app.core.errors import RowCountError
 from app.core.request_context import current_request_id
-from app.db.models.ops import RefreshToken
+from app.db.models.ops import OAuthState, RefreshToken
 from app.db.models.tenancy import Tenant, TenantMembership, User
-from app.db.session import identity_scope
+from app.db.session import identity_scope, set_gucs
 from app.repositories.audit import AUDITED_ENTITIES
 
 __all__ = [
     "AUDITED_ENTITIES",
     "AuditRepository",
+    "ConsumedState",
     "MembershipRepository",
     "MembershipRow",
     "RefreshRow",
     "RefreshTokenRepository",
     "UserRepository",
+    "consume_oauth_state",
 ]
 
 LIVE_TENANT_STATUSES: Final = ("trial", "active")
@@ -272,6 +274,43 @@ class RefreshTokenRepository:
         if expect_live and count < 1:
             raise RowCountError(1, count)
         return count
+
+
+@dataclass(frozen=True, slots=True)
+class ConsumedState:
+    tenant_id: uuid.UUID
+    user_id: uuid.UUID
+    marketplace: str
+    code_verifier: str | None = field(repr=False)
+
+
+async def consume_oauth_state(
+    session: AsyncSession, *, state_hash: bytes, marketplace: str
+) -> ConsumedState | None:
+    """The OAuth callback's one-time consume (DATABASE.md:1017-1018; S15): before any tenant is
+    known, `app.token_hash` names the state row, and one `DELETE ... RETURNING` takes it if it is
+    a live state row (not a pending row) for this marketplace. The 0007 hash branches
+    (`oauth_states_hash_select` / `_delete`) also require `token_enc IS NULL`; the filter is kept
+    here so the intent reads in one place. A forged, expired, replayed or mismatched state is None
+    (and a mismatched one stays unconsumed)."""
+    await set_gucs(session, token_hash=state_hash)
+    stmt = identity_scope(
+        delete(OAuthState)
+        .where(
+            OAuthState.state_hash == state_hash,
+            OAuthState.marketplace == marketplace,
+            OAuthState.token_enc.is_(None),
+            OAuthState.expires_at > func.now(),
+        )
+        .returning(
+            OAuthState.tenant_id,
+            OAuthState.user_id,
+            OAuthState.marketplace,
+            OAuthState.code_verifier,
+        )
+    ).execution_options(synchronize_session=False)
+    row = (await session.execute(stmt)).one_or_none()
+    return None if row is None else ConsumedState(row[0], row[1], row[2], row[3])
 
 
 _AUDIT_SQL: Final = text(
