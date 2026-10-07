@@ -239,3 +239,26 @@ def test_lock_has_no_otel_exporter_or_instrumentation(repo_root: Path) -> None:
         if n.startswith("opentelemetry-exporter") or n.startswith("opentelemetry-instrumentation")
     }
     assert not bad, sorted(bad)
+
+
+# S15 (R6, R7): the OAuth clients call the marketplaces over httpx at runtime, and the token
+# envelope uses cryptography's AES-GCM directly (it was only the pyjwt[crypto] extra before).
+# Both are exact pins at the versions already locked; httpx leaves the dev group.
+RUNTIME_EXACT_PINS = {"httpx": "0.28.1", "cryptography": "50.0.2"}
+
+
+def test_api_runtime_deps_exact_pins(repo_root: Path) -> None:
+    deps = _toml(repo_root / "apps/api/pyproject.toml")["project"]["dependencies"]
+    by_name = {re.split(r"[\[=<>!~ ]", d, maxsplit=1)[0].lower(): d for d in deps}
+    for name, version in RUNTIME_EXACT_PINS.items():
+        assert by_name.get(name) == f"{name}=={version}", name
+    dev = _toml(repo_root / "pyproject.toml")["dependency-groups"]["dev"]
+    assert not [d for d in dev if d.startswith("httpx")], "httpx is a runtime dependency now"
+
+
+def test_lock_versions_unchanged_httpx_cryptography(repo_root: Path) -> None:
+    packages = {pkg["name"]: pkg for pkg in _toml(repo_root / "uv.lock")["package"]}
+    api_deps = {dep["name"] for dep in packages["mkos-api"]["dependencies"]}
+    for name, version in RUNTIME_EXACT_PINS.items():
+        assert packages[name]["version"] == version, name
+        assert name in api_deps, name
