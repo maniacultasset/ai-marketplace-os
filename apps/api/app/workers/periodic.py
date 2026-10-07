@@ -12,6 +12,9 @@ queue entry carries only `{"timestamp"}`, never tenant data.
 - `prune_rate_limits` (every 5 min): counters whose window started over 5 minutes ago.
 - `prune_idempotency_keys` (hourly): expired HTTP keys, tenant by tenant.
 - `expire_trials` (hourly): `expire_trials()` (trials past their end → `suspended`).
+- `retention_daily` (03:00): per tenant, in batches of 1,000, children first: `import_rows`,
+  `imports`, then `job_runs` chains (`app.repositories.retention`); then the queue's own
+  finished entries (succeeded after 7 days, every other final state after 90).
 """
 
 from __future__ import annotations
@@ -108,6 +111,37 @@ async def run_expire_trials() -> int:
     return expired
 
 
+QUEUE_SUCCEEDED_HOURS: Final = 7 * 24
+QUEUE_OTHER_HOURS: Final = 90 * 24
+
+
+async def retention_daily(job_manager: Any | None = None) -> dict[str, int]:
+    """The daily retention pass; returns the rows deleted per table across tenants."""
+    async with platform_scope() as session:
+        tenants = await retention.tenant_ids(session)
+    totals: dict[str, int] = {"import_rows": 0, "imports": 0, "job_runs": 0}
+    for tenant_id in tenants:
+        async with unit_of_work(tenant_id) as session:
+            counts = await retention.prune_tenant(session, tenant_id)
+        for table, (rows, _batches) in counts.items():
+            totals[table] += rows
+    if job_manager is not None:
+        await job_manager.delete_old_jobs(nb_hours=QUEUE_SUCCEEDED_HOURS)
+        await job_manager.delete_old_jobs(
+            nb_hours=QUEUE_OTHER_HOURS,
+            include_failed=True,
+            include_cancelled=True,
+            include_aborted=True,
+        )
+    log.info("periodic.retention", **totals)
+    return totals
+
+
+async def _retention(context: procrastinate.JobContext, timestamp: int) -> None:
+    with request_context(new_request_id()):
+        await retention_daily(context.app.job_manager)
+
+
 async def _reaper(context: procrastinate.JobContext, timestamp: int) -> None:
     await reap_once(context.app.job_manager)
 
@@ -126,6 +160,7 @@ PERIODIC: Final[dict[str, tuple[str, Any, bool]]] = {
     "prune_rate_limits": ("*/5 * * * *", _plain(prune_rate_limits), False),
     "prune_idempotency_keys": ("0 * * * *", _plain(prune_idempotency_keys), False),
     "expire_trials": ("15 * * * *", _plain(run_expire_trials), False),
+    "retention_daily": ("0 3 * * *", _retention, True),
 }
 
 

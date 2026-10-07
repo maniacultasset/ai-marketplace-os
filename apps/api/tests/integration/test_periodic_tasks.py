@@ -33,6 +33,7 @@ def test_periodic_table_literal() -> None:
         "prune_rate_limits": "*/5 * * * *",
         "prune_idempotency_keys": "0 * * * *",
         "expire_trials": "15 * * * *",
+        "retention_daily": "0 3 * * *",
     }
 
 
