@@ -23,12 +23,16 @@ every outcome: an `Outcome` is `succeeded`/`partial`; the timeout is `failed` + 
 domain failure (`JobFailed`) is `failed` and never retried; a transport, 5xx or 429 failure
 (`RetryableJobError`) with attempts left goes back to `queued` and is retried after
 `min(60, 2^(attempt-1))` seconds with jitter, and at the cap is `dead_letter` + `RETRY_EXHAUSTED`;
-any other exception is `failed` + `INTERNAL_ERROR`. The queue's retry strategy has no cap: it
-only turns the wrapper's `RetryLater(delay)` into a delayed retry and re-queues a shutdown abort
-at once. A shutdown abort is not an attempt: the row goes back to `queued` with `attempt - 1`.
+any other exception is `failed` + `INTERNAL_ERROR`. The queue's retry strategy turns the
+wrapper's `RetryLater(delay)` into a delayed retry and re-queues a shutdown abort at once, with no
+cap for either. A shutdown abort is not an attempt: the row goes back to `queued` with
+`attempt - 1`. An infrastructure error that escapes the wrapper outside the body (a database
+error while naming, claiming or finishing the job) is retried by the queue with the same backoff,
+up to 20 queue attempts; the claim compare-and-set and the reaper make the redelivery safe.
 A reaper runs every minute: an expired `running` lease with attempts left goes back to `queued`
 on a new queue entry (the dead entry is retired), exhausted is `dead_letter` + `JOB_TIMEOUT`; a
-reaped attempt counts. Every write of a running attempt is fenced on `status = 'running' AND
+reaped attempt counts. Each job is reaped in its own transaction, and one that raises is logged
+and skipped, so it never blocks another tenant's recovery. Every write of a running attempt is fenced on `status = 'running' AND
 attempt = <claimed>`, so a worker whose lease was reaped can never overwrite the newer attempt.
 A staff requeue always inserts a new row with `parent_job_id` (CANON.md:61).
 

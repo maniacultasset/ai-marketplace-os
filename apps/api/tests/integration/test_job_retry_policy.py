@@ -7,17 +7,20 @@ from __future__ import annotations
 import asyncio
 import itertools
 import uuid
+from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
 from app.workers import wrapper
 from app.workers.errors import JobFailed, RetryableJobError, RetryLater, system_report
 from app.workers.registry import JobContext, Outcome
-from app.workers.retry import JobRetryStrategy
+from app.workers.retry import INFRA_RETRY_CAP, JobRetryStrategy
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import JobKind
 from mkos_schemas.errors import ErrorReport
 from procrastinate.exceptions import JobAborted
+from sqlalchemy.exc import OperationalError
 
 from . import factories as f
 from .conftest import LOCAL_HOSTS
@@ -45,12 +48,72 @@ def test_retry_strategy_decisions() -> None:
     assert now is not None
     assert later.retry_at > now.retry_at  # type: ignore[operator]
     assert strategy.get_retry_decision(exception=JobAborted(), job=job) is not None
-    for other in (
-        RuntimeError("x"),
-        RetryableJobError(ErrorCode.MARKETPLACE_UNAVAILABLE),
-        KeyError(),
-    ):
-        assert strategy.get_retry_decision(exception=other, job=job) is None
+
+
+def _queue_job(attempts: int) -> Any:
+    """A stand-in for procrastinate's `Job`: the strategy reads only its `attempts`."""
+    return SimpleNamespace(attempts=attempts)
+
+
+def test_retry_strategy_infrastructure_error_backs_off_up_to_the_cap() -> None:
+    """S13 fix F2: an exception that escapes the wrapper (a DB error while naming or claiming
+    the job) is retried with backoff, so the `queued` row is never left with a dead entry."""
+    strategy = JobRetryStrategy()
+    boom = OperationalError("SELECT 1", {}, Exception("connection reset"))
+    for other in (boom, RuntimeError("x"), KeyError()):
+        before = datetime.now(UTC)
+        first = strategy.get_retry_decision(exception=other, job=_queue_job(0))
+        assert first is not None and first.retry_at is not None
+        assert before + timedelta(seconds=0.5) <= first.retry_at
+        assert first.retry_at <= datetime.now(UTC) + timedelta(seconds=1)
+    late = strategy.get_retry_decision(exception=boom, job=_queue_job(INFRA_RETRY_CAP - 1))
+    assert late is not None and late.retry_at is not None
+    assert late.retry_at <= datetime.now(UTC) + timedelta(seconds=60)
+    assert strategy.get_retry_decision(exception=boom, job=_queue_job(INFRA_RETRY_CAP)) is None
+    # a non-Exception BaseException (interpreter exit) is never retried
+    assert strategy.get_retry_decision(exception=KeyboardInterrupt(), job=_queue_job(0)) is None
+
+
+@pytest.mark.parametrize("where", ["resolve_job", "claim"])
+async def test_infrastructure_error_before_the_body_is_retried(
+    jobs_db: JobWorld, override_body: Any, monkeypatch: pytest.MonkeyPatch, where: str
+) -> None:
+    """A DB blip in `resolve_job` or the claim once: the queue retries the entry, the row is
+    claimed on the redelivery and the job succeeds (it is never left `queued` with a dead entry)."""
+    from app.db.job_context import resolve_job
+    from app.repositories.jobs import JobRunRepository
+
+    runs: list[int] = []
+
+    async def body(ctx: JobContext) -> Outcome:
+        runs.append(ctx.attempt)
+        return Outcome("succeeded")
+
+    override_body(JobKind.BULK_IMPORT, body)
+    failed: list[str] = []
+
+    def once(real: Any) -> Any:
+        async def flaky(*args: Any, **kwargs: Any) -> Any:
+            if not failed:
+                failed.append(where)
+                raise OperationalError("SELECT 1", {}, Exception("connection reset"))
+            return await real(*args, **kwargs)
+
+        return flaky
+
+    if where == "resolve_job":
+        monkeypatch.setattr("app.workers.wrapper.resolve_job", once(resolve_job))
+    else:
+        monkeypatch.setattr(JobRunRepository, "claim", once(JobRunRepository.claim))
+    job, qid = await _enqueue(jobs_db, jobs_db.tenant("acme"))
+    async with running_worker(poll_s=0.2):
+        await eventually(lambda: job_row(jobs_db.conn, job)["status"] == "succeeded", 15)
+    assert failed == [where]
+    assert runs == [1]
+    row = job_row(jobs_db.conn, job)
+    assert row["attempt"] == 1
+    entry = queue_row(jobs_db.conn, qid)
+    assert (entry["status"], entry["attempts"]) == ("succeeded", 2)
 
 
 async def _enqueue(jw: JobWorld, tenant: uuid.UUID, **columns: Any) -> tuple[uuid.UUID, str]:
