@@ -650,6 +650,16 @@ class _Writer:
         style_id = await self.products.id_of_sku(key) if imported and identity is None else None
         if style_id is None and identity is None:
             identity = style  # a new family: the style comes from its lead
+        if identity is not None and await self.products.family_of_sku(key) is not None:
+            # the style key is a stored variant of another family: writing it as a style would
+            # detach it from that family's matrix cell
+            item = row_error(
+                ErrorCode.CROSS_FIELD_MISMATCH, "parent_style_id names a variant of another family"
+            )
+            for p in unit.rows:
+                if not p.skip:
+                    await self._fail(p, p.errors or [item])
+            return
         colourway_ids: dict[str, uuid.UUID] = {}
 
         async def write_style() -> uuid.UUID:

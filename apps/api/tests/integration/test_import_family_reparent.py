@@ -78,3 +78,36 @@ async def test_stored_child_moved_to_another_family_keeps_one_cell(
     second = await run(imports_db, api, [kid(1, "TEE2", "M")])
     assert broken_cells(imports_db.conn, tenant) == []
     assert failures(imports_db.conn, second) != {}
+
+
+async def test_stored_child_resent_as_a_style_row_is_a_row_error(
+    imports_db: JobWorld, api: httpx.AsyncClient
+) -> None:
+    """A stored child (SKU-00001 of TEE) named as the parent of a new family fails the family with
+    CROSS_FIELD_MISMATCH instead of being upserted as a style with parent_product_id NULL while
+    TEE's available cell still points at it (round-2 F4)."""
+    tenant = imports_db.tenant("acme")
+    await run(imports_db, api, [kid(1, "TEE", "M"), kid(2, "TEE", "L")])
+    stored = imports_db.conn.execute(
+        "SELECT parent_product_id, variant_attributes FROM products "
+        "WHERE tenant_id = %s AND sku = 'SKU-00001'",
+        [tenant],
+    ).fetchone()
+    second = await run(imports_db, api, [kid(3, "SKU-00001", "S")])
+    assert broken_cells(imports_db.conn, tenant) == []
+    assert failures(imports_db.conn, second) == {2: ["CROSS_FIELD_MISMATCH"]}
+    report = imports_db.conn.execute(
+        "SELECT error_report_json FROM import_rows WHERE import_id = %s AND row_number = 2",
+        [second],
+    ).fetchone()
+    assert report is not None
+    assert "parent_style_id" in ErrorReport.model_validate(report[0]).errors[0].message
+    after = imports_db.conn.execute(
+        "SELECT parent_product_id, variant_attributes FROM products "
+        "WHERE tenant_id = %s AND sku = 'SKU-00001'",
+        [tenant],
+    ).fetchone()
+    assert after == stored
+    assert imports_db.conn.execute(
+        "SELECT count(*) FROM products WHERE tenant_id = %s AND sku = 'SKU-00003'", [tenant]
+    ).fetchone() == (0,)
