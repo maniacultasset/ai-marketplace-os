@@ -2,7 +2,8 @@
 cloud). The one module that imports boto3/botocore (`.importlinter`).
 
 `ObjectStorage.put(bucket, key, data, content_type)` and `.get(bucket, key) -> bytes` run the
-blocking client in a thread (`asyncio.to_thread`); a missing object is `StorageNotFound`. These
+blocking client in a thread (`asyncio.to_thread`); a missing object is `StorageNotFound`, and a transport failure (a timeout, a refused
+connection, a 5xx) on `get` is `StorageUnavailable`. These
 names and the two positional arguments of `get` are the interface later steps extend: they add
 methods and defaulted keyword-only parameters only, never rename or make one required.
 
@@ -21,7 +22,10 @@ from typing import Any, Final
 
 import boto3  # type: ignore[import-untyped]
 from botocore.config import Config  # type: ignore[import-untyped]
-from botocore.exceptions import ClientError  # type: ignore[import-untyped]
+from botocore.exceptions import (  # type: ignore[import-untyped]
+    BotoCoreError,
+    ClientError,
+)
 
 from app.core.config import get_settings
 
@@ -33,6 +37,10 @@ _MISSING: Final = frozenset({"NoSuchKey", "404", "NotFound"})
 
 class StorageNotFound(Exception):  # noqa: N818 - the name later steps import
     """The object does not exist. The message names neither the bucket nor the key."""
+
+
+class StorageUnavailable(Exception):  # noqa: N818 - a transport failure, retried by callers
+    """The store could not be reached or answered 5xx (a timeout, a refused connection)."""
 
 
 def import_object_key(tenant_id: uuid.UUID, import_id: uuid.UUID) -> str:
@@ -61,9 +69,14 @@ class ObjectStorage:
                 response = self._client.get_object(Bucket=bucket, Key=key)
             except ClientError as exc:
                 code = str(exc.response.get("Error", {}).get("Code", ""))
+                status = int(exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0))
                 if code in _MISSING:
                     raise StorageNotFound("the object does not exist") from None
+                if status >= 500 or code in {"SlowDown", "ServiceUnavailable"}:
+                    raise StorageUnavailable("the store answered 5xx") from None
                 raise
+            except BotoCoreError:
+                raise StorageUnavailable("the store could not be reached") from None
             body = response["Body"]
             try:
                 data: bytes = body.read()

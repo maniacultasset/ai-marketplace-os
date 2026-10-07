@@ -15,16 +15,17 @@ from __future__ import annotations
 
 import builtins
 import uuid
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any, Final
 
-from sqlalchemy import func, text, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import defer
 
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
 from app.db.models.ops import Import, ImportRow, JobRun
+from app.db.models.platform import CategoryTemplate
 from app.repositories.base import TenantScopedRepository
 
 LIVE_JOB_STATES: Final = ("queued", "running")
@@ -212,6 +213,23 @@ class ImportRowRepository(TenantScopedRepository[ImportRow]):
         )
         return builtins.list((await self.db.execute(stmt)).scalars())
 
+    async def imported_skus(self, import_id: uuid.UUID) -> dict[str, int]:
+        """SKU → the first `imported` row that holds it (a rows retry's duplicate check)."""
+        stmt = (
+            self._select()
+            .where(
+                ImportRow.import_id == import_id,
+                ImportRow.status == "imported",
+                ImportRow.sku.is_not(None),
+            )
+            .with_only_columns(ImportRow.sku, ImportRow.row_number)
+            .order_by(ImportRow.row_number)
+        )
+        out: dict[str, int] = {}
+        for sku, number in (await self.db.execute(stmt)).all():
+            out.setdefault(str(sku), int(number))
+        return out
+
     async def totals(self, import_id: uuid.UUID) -> ImportTotals:
         stmt = (
             self._select()
@@ -243,3 +261,17 @@ class ImportRowRepository(TenantScopedRepository[ImportRow]):
             stmt = stmt.where(ImportRow.row_number > after)
         rows = builtins.list((await self.db.execute(stmt)).scalars())
         return rows[:limit], len(rows) > limit
+
+
+async def mapped_categories(session: Any, categories: Iterable[str]) -> set[str]:
+    """The categories among `categories` with a current template on any marketplace (the
+    import's `CATEGORY_NOT_MAPPED` lookup; `category_templates` is platform-global)."""
+    wanted = sorted(set(categories))
+    if not wanted:
+        return set()
+    stmt = (
+        select(CategoryTemplate.category)
+        .where(CategoryTemplate.category.in_(wanted), CategoryTemplate.is_current.is_(True))
+        .distinct()
+    )
+    return {str(c) for c in (await session.execute(stmt)).scalars()}

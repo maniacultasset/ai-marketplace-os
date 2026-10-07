@@ -105,3 +105,38 @@ def one(conn: Conn, query: str, params: list[Any] | None = None) -> Any:
     found = conn.execute(query, params or []).fetchone()
     assert found is not None
     return found[0]
+
+
+async def import_fixture(
+    jw: JobWorld, api: httpx.AsyncClient, data: bytes, email: str = "operator@acme.test"
+) -> tuple[uuid.UUID, uuid.UUID]:
+    """Upload `data` through the API; returns (import_id, job_id)."""
+    response = await upload(api, headers(jw, email), data)
+    assert response.status_code == 202, response.text
+    body = response.json()
+    return uuid.UUID(body["import_id"]), uuid.UUID(body["job_id"])
+
+
+async def run_job(job_id: uuid.UUID) -> None:
+    """The job's body through the real wrapper (claim, body, terminal write and hook)."""
+    from app.workers import wrapper
+    from app.workers.tasks import register_bodies
+
+    register_bodies()
+    await wrapper.run_job(str(job_id))
+
+
+def import_row(conn: Conn, import_id: uuid.UUID) -> dict[str, Any]:
+    cur = conn.execute("SELECT * FROM imports WHERE id = %s", [import_id])
+    names = [d.name for d in cur.description or ()]
+    found = cur.fetchone()
+    assert found is not None
+    return dict(zip(names, found, strict=True))
+
+
+def row_results(conn: Conn, import_id: uuid.UUID) -> list[tuple[Any, ...]]:
+    return conn.execute(
+        "SELECT row_number, status, sku, product_id, error_report_json FROM import_rows "
+        "WHERE import_id = %s ORDER BY row_number",
+        [import_id],
+    ).fetchall()
