@@ -170,8 +170,9 @@ async def test_callback_request_line_redacted(
     ]
     assert access, [line.get("route") for line in capture.lines()]
     assert all("?" not in json.dumps(line) for line in access)
+    # Since S16 the HTTP client loggers sit at WARNING (app/core/logging.py), so the client's own
+    # request line is no longer written at all; any client line that does appear is redacted.
     client_lines = [line["message"] for line in capture.lines() if "/callback?" in line["message"]]
-    assert client_lines
     for line in client_lines:
         assert "state=[REDACTED]" in line
         assert "spapi_oauth_code=[REDACTED]" in line or "code=[REDACTED]" in line

@@ -16,6 +16,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.repositories.agent_runs import AgentRunRepository
 from app.repositories.attribute_definitions import AttributeDefinitionRepository
 from app.repositories.brand_chunks import BrandChunkRepository
 from app.repositories.dictionary import DictionaryRevisionRepository
@@ -49,6 +50,8 @@ class TenantUnitOfWork:
     images: ImageRepository
     templates: CategoryTemplateRepository
     dictionary: DictionaryRevisionRepository
+    # S16: telemetry, brand documents and the brand profile.
+    agent_runs: AgentRunRepository
 
 
 @asynccontextmanager
@@ -70,4 +73,5 @@ async def tenant_uow(
             images=ImageRepository(session, tenant_id),
             templates=CategoryTemplateRepository(session),
             dictionary=DictionaryRevisionRepository(session),
+            agent_runs=AgentRunRepository(session, tenant_id),
         )
