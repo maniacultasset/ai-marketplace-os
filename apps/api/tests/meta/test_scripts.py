@@ -1126,3 +1126,46 @@ def test_bootstrap_imports_pipeline(repo_root: Path) -> None:
     # S14b T14 (ADR-0013 §4): the image ships the pipeline module the generation worker imports.
     text = (repo_root / "scripts" / "ci" / "bootstrap.sh").read_text(encoding="utf-8")
     assert '-c "import app, mkos_schemas, mkos_pipeline"' in text
+
+
+# ---- S14b T15 (AC 16): the rules e2e ----
+
+RULES_E2E_STEPS = (
+    "health",
+    "login_acme_owner",
+    "rules_list_200",
+    "dry_run_221_fails",
+    "dry_run_200_passes",
+    "no_token_401",
+    "login_acme_reviewer",
+    "reviewer_dry_run_403",
+    "unknown_pair_422",
+)
+
+
+def test_rules_e2e_steps(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "e2e" / "rules.sh").read_text(encoding="utf-8")
+    code = _code(text)
+    assert "set -euo pipefail" in code
+    assert tuple(re.findall(r"(?m)^step (\w+)$", code)) == RULES_E2E_STEPS
+    assert code.count("$(login ") == 2  # the login budget (S12)
+    assert not re.search(r":\d{2,5}\b", code)
+    assert "scripts/ci/worktree_env.sh exports .worktree.env" in code
+    assert "FAILED at step $current (HTTP status ${status:-none})" in code
+    assert 'cat "$body"' not in code
+    assert "psql" not in code and "docker compose exec" not in code  # HTTP only
+
+
+@pytest.mark.parametrize("url", NON_LOCAL_URLS)
+def test_rules_e2e_refuses_non_local_url(repo_root: Path, tmp_path: Path, url: str) -> None:
+    env, log = _stub_path(tmp_path)
+    result = subprocess.run(
+        [str(repo_root / "scripts" / "e2e" / "rules.sh"), url],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 2, result.stderr
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""

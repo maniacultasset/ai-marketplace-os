@@ -85,7 +85,11 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
 - The contract lives in `packages/schemas/src/mkos_schemas/pipeline.py`. The implementation is the AI
   team's `mkos-pipeline`, pinned by git tag.
 - A deterministic stub here serves PR and nightly CI; only the deploy build fetches the real pipeline.
-- Not built yet: the seam and its fakes land in S14b. **Open: T104** (pipeline home), **T1** (Python 3.13).
+- Built in S14b: `BackendPipelineDeps` (`app/services/pipeline_deps.py`) implements the five ports;
+  the stub is the workspace member `packages/pipeline-stub` (distribution `mkos-pipeline-stub`,
+  import `mkos_pipeline`), and a production worker refuses to boot with it installed. Import
+  contracts keep the pipeline free of `app`, web, DB and queue packages, and only `app.workers` may
+  import it. **Open: T104** (pipeline home), **T1** (Python 3.13).
 
 Source: CANON.md "The AI seam"; CANON-ADDENDUM.md §21; ADR-0012 §Decision 3; ADR-0013 §Decision 5;
 EXECUTION-PLAN.md §6.2.
@@ -158,20 +162,23 @@ apps/api/app/
   services/{embeddings,vision}.py            S16-S18 (the only backend model callers)
   services/telemetry.py                       S16-S18 (records agent_runs)
   workers/                                    S13
-  adapters/ (Amazon, Flipkart, FakeAdapter)   S20-S22 (KeyWrapper S15)
+  services/pipeline_deps.py, rules_loader.py  S14b (the five seam ports, the RuleSet loader)
+  adapters/base.py, fake.py                   S14b (the ABC, FakeAdapter, the contract suite)
+  adapters/ (Amazon, Flipkart)                S20-S22 (KeyWrapper S15)
   admin/ (read-only /internal/admin)          S14b
   cli.py (seed, staff, backfill commands)     S9 onward (may use platform_scope)
 apps/api/alembic.ini, alembic/versions/       S5-S10 (0001 to 0005_rls)
 packages/schemas/src/mkos_schemas/            S2 (17 modules)
 packages/schemas/jsonschema/openapi.json      S3 (generated)
 packages/schemas/ts/src/{api,contracts}.d.ts  S3 (generated)
+packages/pipeline-stub/src/mkos_pipeline/     S14b (the deterministic stub pipeline)
 infra/ (OpenTofu)                             S4 staging, S25 prod
 .github/workflows/deploy-{staging,prod}.yml   S4, S25
 .github/workflows/{nightly,renovate}.yml      planned
 ```
 
-- No `apps/web`, `packages/pipeline` or `app/agents`. **Open: T104** (where the stub lives), **T103**
-  (the site's single monorepo).
+- No `apps/web`, `packages/pipeline` or `app/agents`; the stub lives in `packages/pipeline-stub`
+  (S14b default for T104). **Open: T104** (where the stub lives), **T103** (the site's single monorepo).
 
 Source: CANON.md:84 and "The AI seam"; CANON-ADDENDUM.md §5-§6, §21; DATABASE.md §8.3, `audit_log`;
 BACKEND-ARCHITECTURE.md §4.3; ADR-0012 §Decision 1; EXECUTION-PLAN.md

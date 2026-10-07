@@ -71,6 +71,8 @@ Every step runs locally on Docker PostgreSQL 17 + pgvector; Cloud SQL is for sta
 | S13 | Job spine + CSV import | S12, S8, S11 | MinIO for GCS; synthetic CSVs | real CSVs (D22) | S13a job spine built (`feat/s13a-job-spine`, in review); S13b CSV import not started |
 | S14b | AI seam (5 ports + fakes), `/rules/dry-run`, `/internal/admin` | S13, S3, S9, S10 | stub pipeline, FakeAdapter | — | not started |
 | S15 | Marketplace accounts + OAuth, `KeyWrapper`, token refresh | S10, S13, S4, Amazon app | fake marketplace server + FakeAdapter; `LocalKmsStub` | credentials, domain | built on `feat/s15-marketplace-accounts` (stacked on S13a), PR pending; DW8 Cloud KMS (S4) and DW9 real OAuth deferred |
+| S14b | AI seam (5 ports + fakes), `/rules/dry-run`, `/internal/admin` | S13, S3, S9, S10 | stub pipeline, FakeAdapter | — | in progress on `feat/s14b-ai-seam`: seam half built (stub, ports, FakeAdapter, `GET /rules`, dry-run); admin and ONBOARDING next |
+| S15 | Marketplace accounts + OAuth, `KeyWrapper`, token refresh | S10, S13, S4, Amazon app | fake marketplace server + FakeAdapter; `LocalKmsStub` | credentials, domain | not started |
 | S16 | Brand onboarding, invites, chunking + embeddings | S10, S13, model API key | none named (Open: STATE dec. 5) | model API key (D27), email (D24) | not started |
 | S18 | Generation: job → `run_listing_pipeline`; `blocked` after 3 | S14b, AI drop; S16 before final gates | stub pipeline | AI drop (T104, due D29) | not started |
 | S19 | Review + approval, `review_decisions`, `GET /issues` | S18 | — | — | not started |

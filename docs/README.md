@@ -64,6 +64,8 @@ editor-specific detail.
   `.md`, then rebuild.
 - `../scaffold/` holds reference starter files with known bugs. Later steps take files one by one,
   after the SUPERSEDED/KNOWN-ISSUES fixes; never `apps/web` or `packages/pipeline` (ADR-0012).
+- `../packages/pipeline-stub/` is the in-repo stub of the AI pipeline (S14b); `../scripts/e2e/` holds the
+  local HTTP e2e scripts (`make e2e`).
 
 ## Moved on 2026-09-29 (old → new)
 
