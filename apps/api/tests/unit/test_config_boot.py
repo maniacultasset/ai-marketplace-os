@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from tests.support.deployed_env import DEPLOYED_S15_ENV
 
 LOCAL_URL = "postgresql+psycopg://postgres:postgres@localhost:5432/marketplace_os"
 DSN = "https://public@o0.ingest.example.invalid/0"
@@ -27,7 +28,13 @@ def _boot(monkeypatch: pytest.MonkeyPatch, **env: str) -> object:
 
 
 def _env(app_env: str, role: str) -> dict[str, str]:
-    env = {"APP_ENV": app_env, "APP_ROLE": role, "DATABASE_URL": LOCAL_URL, "SENTRY_DSN": DSN}
+    env = {
+        "APP_ENV": app_env,
+        "APP_ROLE": role,
+        "DATABASE_URL": LOCAL_URL,
+        "SENTRY_DSN": DSN,
+        **DEPLOYED_S15_ENV,
+    }
     if role == "api":
         env["JWT_SECRET"] = PRIVATE_JWT
     return env

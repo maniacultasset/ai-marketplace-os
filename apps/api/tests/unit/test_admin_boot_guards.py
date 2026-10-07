@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from tests.support.deployed_env import DEPLOYED_S15_ENV
 
 LOCAL_URL = "postgresql+psycopg://postgres:postgres@localhost:5432/marketplace_os"
 DSN = "https://public@o0.ingest.example.invalid/0"
@@ -21,6 +22,7 @@ def _env(app_env: str = "staging", **over: str) -> dict[str, str]:
         "SENTRY_DSN": DSN,
         "ADMIN_ENABLED": "true",
         "ADMIN_SESSION_SECRET": PRIVATE_ADMIN,
+        **DEPLOYED_S15_ENV,
     }
     env.update(over)
     return env

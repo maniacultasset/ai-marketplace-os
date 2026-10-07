@@ -1123,6 +1123,8 @@ def test_prove_gates_s15_legs(repo_root: Path) -> None:
     assert code.index("leg api-tests-revoke-no-shred") > docker
     assert hash_leg > docker
     assert code.index("leg lint-imports-unseal-from-router") < docker
+
+
 def test_bootstrap_imports_pipeline(repo_root: Path) -> None:
     # S14b T14 (ADR-0013 §4): the image ships the pipeline module the generation worker imports.
     text = (repo_root / "scripts" / "ci" / "bootstrap.sh").read_text(encoding="utf-8")

@@ -16,6 +16,7 @@ import httpx
 import psycopg
 import pytest
 from psycopg.types.json import Jsonb
+from tests.support.deployed_env import DEPLOYED_S15_ENV
 
 from . import factories as f
 from .auth_support import World
@@ -49,6 +50,8 @@ def admin_client(auth_db: Any, monkeypatch: pytest.MonkeyPatch) -> AdminClient:
             monkeypatch.setenv("SENTRY_DSN", DSN)
             monkeypatch.setenv("JWT_SECRET", PRIVATE_JWT)
             monkeypatch.setenv("ADMIN_SESSION_SECRET", PRIVATE_ADMIN)
+            for key, value in DEPLOYED_S15_ENV.items():
+                monkeypatch.setenv(key, value)
             monkeypatch.setattr(app.main, "init_sentry", lambda _: False)
         get_settings.cache_clear()
         transport = httpx.ASGITransport(app=app.main.create_app(), client=("127.0.0.1", 40000))

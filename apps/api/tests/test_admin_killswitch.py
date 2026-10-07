@@ -15,6 +15,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from tests.support.deployed_env import DEPLOYED_S15_ENV
 
 PROD_ENV = {
     "APP_ENV": "production",
@@ -23,6 +24,7 @@ PROD_ENV = {
     # A§14's shape with a `.invalid` host, so no run can ever reach a real Sentry project
     "SENTRY_DSN": "https://public@o0.ingest.example.invalid/0",
     "ADMIN_ENABLED": "false",
+    **DEPLOYED_S15_ENV,
 }
 NON_COMMITTED_SECRET = "Zq9-admin-session-not-committed-32+"
 
