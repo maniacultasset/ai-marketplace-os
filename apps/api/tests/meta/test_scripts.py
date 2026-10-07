@@ -989,6 +989,19 @@ def test_prove_gates_has_s13a_legs(repo_root: Path) -> None:
         assert f"{seed}() {{" in text
 
 
+def test_prove_gates_has_s16_legs(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    assert "leg lint-openai-outside-embeddings api-lint 'TID251'" in text
+    assert "leg lint-imports-chunker-db lint-imports 'brand chunking is pure BROKEN'" in text
+    docker = text.split('if [ "$with_docker" -eq 1 ]; then', 1)[1]
+    assert (
+        "leg tenant-isolation-brand-ingest-no-tenant-filter tenant-isolation "
+        "'test_brand_chunk_search_ingested_isolation' seed_iso_no_filter"
+    ) in docker
+    for seed in ("seed_openai_in_chunker", "seed_chunker_imports_db"):
+        assert f"{seed}() {{" in text
+
+
 # ---- S15 T19 (AC16): the marketplace connect e2e ----
 
 MARKETPLACE_STEPS = (

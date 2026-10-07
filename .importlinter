@@ -212,3 +212,18 @@ ignore_imports =
     app.adapters.storage -> boto3
     app.adapters.storage -> botocore
 allow_indirect_imports = True
+
+[importlinter:contract:brand-chunking-is-pure]
+name = brand chunking is pure
+type = forbidden
+source_modules =
+    app.services.brand_chunking
+forbidden_modules =
+    sqlalchemy
+    app.db
+    app.repositories
+    app.adapters
+    httpx
+    httpx2
+    openai
+    fastapi
