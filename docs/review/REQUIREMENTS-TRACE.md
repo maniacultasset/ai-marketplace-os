@@ -8,22 +8,22 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 - **Every line of the client spec is traced.** All 13,711 lines of the snapshot are in the register:
   11,167 entries, of which 8,916 are checkable statements. `scripts/trace/check_coverage.py` proves 100% line coverage.
 - **Every statement has a verdict**, with a reference, adversarially verified per chunk (`scripts/trace/check_mapping.py`).
-- **7,024 of 8,916 (79%) are covered by our plan**: 6,074 as written and
-  950 deliberately changed by an ADR, Canon row or recorded decision.
-- **523 are gaps** (backend/DB 266, shared seams 132, ops 105, AI team 4, FE team 0, client 16).
+- **7,030 of 8,916 (79%) are covered by our plan**: 6,079 as written and
+  951 deliberately changed by an ADR, Canon row or recorded decision.
+- **513 are gaps** (backend/DB 257, shared seams 131, ops 105, AI team 4, FE team 0, client 16).
 - **319 need the team or client** (54 conflicts, 265 questions);
   each points to a row in `TEAM-QUESTIONS.md`.
-- 511 belong to the AI or FE team, and 539 are marked Phase 2/3 by the site itself.
+- 512 belong to the AI or FE team, and 542 are marked Phase 2/3 by the site itself.
 
 | Status | Statements | Share |
 |---|---:|---:|
-| ✅ covered | 6,074 | 68.1% |
-| 🔁 covered-changed | 950 | 10.7% |
-| ⚠️ gap | 523 | 5.9% |
+| ✅ covered | 6,079 | 68.2% |
+| 🔁 covered-changed | 951 | 10.7% |
+| ⚠️ gap | 513 | 5.8% |
 | ❌ conflict | 54 | 0.6% |
 | ❓ needs-client | 265 | 3.0% |
-| 🧩 other-team | 511 | 5.7% |
-| ⏭ later-phase | 539 | 6.0% |
+| 🧩 other-team | 512 | 5.7% |
+| ⏭ later-phase | 542 | 6.1% |
 
 ## By page
 
@@ -99,14 +99,14 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [42] Marketplace-specific Content | 7 | 1 | 3 | 0 | 1 | 3 | 0 | 4 |
 | [43] Listing Versioning | 7 | 0 | 1 | 0 | 0 | 0 | 7 | 1 |
 | [44] Image Compliance Pipeline | 36 | 2 | 2 | 0 | 0 | 0 | 0 | 2 |
-| [45] Image Processing Flow | 19 | 1 | 2 | 0 | 0 | 0 | 0 | 2 |
+| [45] Image Processing Flow | 20 | 1 | 1 | 0 | 0 | 0 | 0 | 1 |
 | [46] Deterministic Image Checks | 24 | 0 | 3 | 0 | 0 | 0 | 0 | 3 |
 | [47] Vision Model Checks | 16 | 0 | 2 | 0 | 0 | 0 | 0 | 2 |
 | [48] ImageReport Schema | 32 | 1 | 0 | 0 | 1 | 0 | 0 | 1 |
 | [49] Image Error Taxonomy | 15 | 0 | 6 | 0 | 1 | 0 | 0 | 7 |
 | [50] Image Correction Loop | 12 | 0 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [51] Marketplace Image Rules | 15 | 0 | 0 | 0 | 1 | 0 | 0 | 1 |
-| [52] Image Storage Lifecycle | 3 | 1 | 8 | 0 | 0 | 0 | 0 | 8 |
+| [52] Image Storage Lifecycle | 6 | 2 | 1 | 0 | 0 | 0 | 3 | 1 |
 | [53] Brand Voice Architecture | 20 | 0 | 1 | 0 | 0 | 5 | 0 | 1 |
 | [54] Brand Voice Vectorization | 5 | 0 | 4 | 2 | 0 | 0 | 0 | 6 |
 | [55] Brand Chunking | 4 | 0 | 4 | 5 | 0 | 0 | 0 | 9 |
@@ -264,7 +264,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [207] Optimization Evolution | 0 | 0 | 0 | 0 | 0 | 0 | 7 | ✔ |
 | [208] AI Learning Loop | 1 | 0 | 0 | 0 | 0 | 0 | 10 | ✔ |
 | [209] Production Readiness Checklist | 12 | 0 | 4 | 0 | 0 | 0 | 0 | 4 |
-| [210] Development Plan | 26 | 5 | 12 | 0 | 1 | 7 | 0 | 13 |
+| [210] Development Plan | 27 | 5 | 10 | 0 | 1 | 8 | 0 | 11 |
 | [211] Module Dependency Graph | 5 | 3 | 15 | 0 | 0 | 0 | 0 | 15 |
 | [212] Build Order | 6 | 0 | 2 | 0 | 0 | 0 | 0 | 2 |
 | [213] Engineering Tasks | 10 | 0 | 1 | 0 | 0 | 1 | 0 | 1 |
@@ -1029,7 +1029,7 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 | R13665 | L13665 | Production launch checklist: All Phase 1 features implemented. | T16; VISION Q25 | Phase-1 set per plan scope lock (T16); steps after S14 unsequenced |
 | R13668 | L13668 | Production launch checklist: Marketplace OAuth flows verified with production accounts. | T77 | Prod filings/app approval status unknown (STATE open decision 5); verify step itself unplanned |
 
-## ⚠️ Gaps we own: backend + DB (266)
+## ⚠️ Gaps we own: backend + DB (257)
 
 Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITECTURE.md and the build steps.
 
@@ -1340,7 +1340,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
-| R09922b | L9922 | Step 1: Image stored with tenant-scoped path. | DATABASE.md:479; G12 | Tenant prefix implied by purge (DATABASE.md:1869); image key convention unstated (G12). |
 | R09928 | L9928 | Step 7: Return pass/warn/fail. | DATABASE.md:484 | pass bool + severities; no explicit warn outcome. |
 
 ### [46] Deterministic Image Checks
@@ -1361,18 +1360,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R10097 | L10097 | WATERMARK corrective action: Remove watermark. | DATABASE.md:510; DATABASE.md:525 | Corrective text not in the image seed. |
 | R10103 | L10103 | FILL_RATIO_LOW corrective action: Crop or recompose. | DATABASE.md:510; DATABASE.md:525 | Corrective text not in the image seed. |
 | R10109 | L10109 | WRONG_ASPECT corrective action: Crop to correct ratio. | DATABASE.md:510; DATABASE.md:525 | Corrective text not in the image seed. |
-
-### [52] Image Storage Lifecycle
-
-| R-id | Lines | The site says | Ref | What is missing / differs |
-|---|---|---|---|---|
-| R10188c | L10188 | Image storage lifecycle stage: versioning. | G12 | No image object versioning planned. |
-| R10188d | L10188 | Image storage lifecycle stage: cleanup. | DATABASE.md:485; DATABASE.md:1869 | Soft delete + tenant purge only; no per-image object cleanup. |
-| R10193 | L10193 | Images are stored in S3 with tenant-scoped paths. | DATABASE.md:479; G12 | Tenant prefix implied by purge; image key convention unstated. |
-| R10193a | L10193 | Image path: `s3://bucket/{tenant_id}/{product_id}/images/{image_id}.jpg`. | DATABASE.md:479; G12 | Key {tenant_id}/{product_id}/images/{image_id} not specified. |
-| R10193b | L10193 | Multiple image versions are kept for audit. | G12 | No retained image versions for audit. |
-| R10193c | L10193 | Processing artifacts (thumbnails) are stored alongside originals. | G12 | No thumbnails planned. |
-| R10193d | L10193 | Processing artifacts (processed versions) are stored alongside originals. | G12 | No processed derivatives planned. |
 
 ### [53] Brand Voice Architecture
 
@@ -1626,7 +1613,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R13427 | L13427 | Build step 4: Marketplace account model — OAuth flow. | docs/architecture/BACKEND-ARCHITECTURE.md:452; BUILD-SEQUENCE.md after S14; VISION Q25 | marketplace_accounts in 0002; OAuth connect flow has no S-step |
 | R13431 | L13431 | Build step 8: Brand voice vectorization — chunking. | docs/canon/CANON.md:129; BUILD-SEQUENCE.md after S14; VISION Q25 | Backend owns chunking + embedding; no S-step builds it |
 | R13431a | L13431 | Build step 8 includes embedding. | docs/canon/CANON.md:129; BUILD-SEQUENCE.md after S14; VISION Q25 | Backend owns chunking + embedding; no S-step builds it |
-| R13435 | L13435 | Build step 12: Image pipeline — deterministic checks. | docs/canon/CANON.md:129; docs/architecture/BACKEND-ARCHITECTURE.md:1540; BUILD-SEQUENCE.md after S14; VISION Q25 | Backend owns Pillow checks; no S-step builds them |
 | R13440 | L13440 | Build step 17: Amazon adapter — SP-API integration. | docs/architecture/BACKEND-ARCHITECTURE.md:837; BUILD-SEQUENCE.md after S14; VISION Q25 | Designed; only FakeAdapter in S14; no S-step builds it |
 | R13441 | L13441 | Build step 18: Flipkart adapter — Seller API integration. | docs/architecture/BACKEND-ARCHITECTURE.md:837; BUILD-SEQUENCE.md after S14; VISION Q25 | Designed; only FakeAdapter in S14; no S-step builds it |
 | R13442 | L13442 | Build step 19: Publishing — async publish. | docs/architecture/BACKEND-ARCHITECTURE.md:837; BUILD-SEQUENCE.md after S14; VISION Q25 | Designed; only FakeAdapter in S14; no S-step builds it |
@@ -1685,7 +1671,7 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R13647 | L13647 | Security checklist: TLS on all connections. | docs/architecture/BACKEND-ARCHITECTURE.md:2263 | DB and storage connection encryption stated nowhere; doc gap for ADR-0001/S4 |
 | R13650 | L13650 | Security checklist: SQL injection prevention verified. | docs/architecture/BACKEND-ARCHITECTURE.md:2204 | SQL injection prevention is verified with the repository layer (S9) and the API routes (S10): parameterised queries and tests; ruff S608 (S1) is only the lint half |
 
-## ⚠️ Gaps on a shared seam (backend + AI or FE team) (132)
+## ⚠️ Gaps on a shared seam (backend + AI or FE team) (131)
 
 
 ### [★] Complete Founder BRD (End-to-End)
@@ -2054,7 +2040,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
 | R13417 | L13417 | Page [210] Development Plan scope: MVP. | docs/drafts/BUILD-SEQUENCE.md:1; Q25 | S1-S14 re-sequences steps 1-7; steps 8, 12, 14, 17-22 unsequenced |
-| R13435a | L13435 | Build step 12 includes vision checks. | docs/architecture/BACKEND-ARCHITECTURE.md:1540; BUILD-SEQUENCE.md after S14; VISION Q25 | Backend vision call (services/vision.py); no S-step |
 | R13437 | L13437 | Build step 14: Validation — multi-stage validation pipeline. | docs/architecture/BACKEND-ARCHITECTURE.md:1338; Q25 | Validate endpoint designed (schema, rules, vision); no S-step builds it |
 
 ### [211] Module Dependency Graph

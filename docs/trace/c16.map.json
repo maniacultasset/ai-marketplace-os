@@ -689,10 +689,10 @@
   },
   {
    "id": "R09922b",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "DATABASE.md:479; G12",
-   "note": "Tenant prefix implied by purge (DATABASE.md:1869); image key convention unstated (G12)."
+   "ref": "apps/api/app/services/image_keys.py; DATABASE.md:479",
+   "note": "S17b: every image key is <tenant_id>/<product_id>/images/<image_id>, parsed exactly before any read."
   },
   {
    "id": "R09923",
@@ -1746,52 +1746,52 @@
   },
   {
    "id": "R10188c",
-   "status": "gap",
+   "status": "later-phase",
    "owner": "backend-db",
    "ref": "G12",
-   "note": "No image object versioning planned."
+   "note": "Deferred (S17b PLAN): image object versioning beyond kept soft-deleted rows."
   },
   {
    "id": "R10188d",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "DATABASE.md:485; DATABASE.md:1869",
-   "note": "Soft delete + tenant purge only; no per-image object cleanup."
+   "ref": "apps/api/app/workers/periodic.py",
+   "note": "S17b: the daily sweep deletes unregistered image objects older than 24 h (paged, per tenant); tenant purge as before."
   },
   {
    "id": "R10193",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "DATABASE.md:479; G12",
-   "note": "Tenant prefix implied by purge; image key convention unstated."
+   "ref": "apps/api/app/services/image_keys.py; DATABASE.md:479",
+   "note": "S17b: tenant-scoped image keys under the tenant prefix (D1)."
   },
   {
    "id": "R10193a",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "DATABASE.md:479; G12",
-   "note": "Key {tenant_id}/{product_id}/images/{image_id} not specified."
+   "ref": "apps/api/app/services/image_keys.py; DATABASE.md:479",
+   "note": "S17b D1: <tenant_id>/<product_id>/images/<image_id> without the .jpg extension (the job sniffs the format)."
   },
   {
    "id": "R10193b",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "G12",
-   "note": "No retained image versions for audit."
+   "ref": "apps/api/app/services/images.py; apps/api/app/workers/periodic.py",
+   "note": "S17b: a replaced main is soft-deleted and its object kept; the orphan sweep keeps every registered key, deleted rows included."
   },
   {
    "id": "R10193c",
-   "status": "gap",
+   "status": "later-phase",
    "owner": "backend-db",
    "ref": "G12",
-   "note": "No thumbnails planned."
+   "note": "Deferred (S17b PLAN): thumbnails."
   },
   {
    "id": "R10193d",
-   "status": "gap",
+   "status": "later-phase",
    "owner": "backend-db",
    "ref": "G12",
-   "note": "No processed derivatives planned."
+   "note": "Deferred (S17b PLAN): processed derivatives."
   },
   {
    "id": "R10193e",
