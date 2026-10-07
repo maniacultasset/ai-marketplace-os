@@ -53,6 +53,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "marketplaces_connect_confirm",
         "marketplaces_accounts",
         "marketplaces_accounts_revoke",
+        "rules_list",
     }
 )
 
