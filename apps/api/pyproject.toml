@@ -28,6 +28,8 @@ dependencies = [
   "httpx==0.28.1",
   # S14b T12 (C7): `to_thread` + `CapacityLimiter` for the dry-run; already locked via starlette.
   "anyio==4.15.1",
+  # S14b T17 (ARCH.md:198): the read-only staff admin; no `[auth]` extra (no itsdangerous).
+  "sqladmin==0.32.0",
 ]
 
 [tool.uv.sources]

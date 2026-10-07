@@ -455,6 +455,9 @@ leg lint-imports-pipeline-app lint-imports 'mkos_pipeline imports no app, web, D
 leg lint-imports-service-imports-pipeline lint-imports 'only app.workers imports mkos_pipeline BROKEN' \
   seed_service_imports_pipeline make lint-imports
 leg api-lint-pipeline-environ api-lint ': R1 ' seed_pipeline_environ make api-lint
+# S14b T17: only app.main may import the staff admin.
+seed_admin_imported() { append apps/api/app/api/health.py 'import app.admin'; }
+leg lint-imports-admin-imported lint-imports 'only app.main imports app.admin BROKEN' seed_admin_imported make lint-imports
 
 if [ "$with_docker" -eq 1 ]; then
   self_project="$(docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"

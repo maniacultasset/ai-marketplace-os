@@ -23,3 +23,17 @@ def test_pipeline_contracts_present(repo_root: Path) -> None:
     assert {"app.api", "app.services", "app.repositories", "app.adapters", "app.core"} <= sources
     assert {"app.db", "app.main", "app.cli"} <= sources
     assert "app.workers" not in sources
+
+
+def test_admin_contract_present(repo_root: Path) -> None:
+    parser = configparser.ConfigParser()
+    parser.read(repo_root / ".importlinter", encoding="utf-8")
+    admin = parser["importlinter:contract:only-main-imports-admin"]
+    assert admin["forbidden_modules"].split() == ["app.admin"]
+    sources = set(admin["source_modules"].split())
+    assert "app.main" not in sources
+    assert {"app.api", "app.services", "app.repositories", "app.workers", "app.core"} <= sources
+    assert (
+        "app.admin"
+        in parser["importlinter:contract:only-workers-import-pipeline"]["source_modules"].split()
+    )

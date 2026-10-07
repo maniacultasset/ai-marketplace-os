@@ -1,0 +1,99 @@
+"""Shared fixtures for the S14b admin suites (T17-T22): the app with the admin mounted, as `app_rw`
+on the emptied test database, in `local` or `staging`."""
+
+from __future__ import annotations
+
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
+from html.parser import HTMLParser
+from typing import Any
+
+import httpx
+import pytest
+
+ADMIN = "/internal/admin"
+DSN = "https://public@o0.ingest.example.invalid/0"
+PRIVATE_JWT = "Zq9-not-committed-private-secret-32+"
+PRIVATE_ADMIN = "Zq9-admin-session-not-committed-32+"
+
+AdminClient = Callable[..., Any]
+
+
+@pytest.fixture
+def admin_client(auth_db: Any, monkeypatch: pytest.MonkeyPatch) -> AdminClient:
+    """`async with admin_client(app_env="local") as client:` an httpx client on a fresh
+    `create_app()` with `ADMIN_ENABLED=true`."""
+
+    @asynccontextmanager
+    async def open_client(
+        app_env: str = "local", *, enabled: bool = True
+    ) -> AsyncIterator[httpx.AsyncClient]:
+        import app.main
+        from app.core.config import get_settings
+
+        monkeypatch.setenv("APP_ENV", app_env)
+        monkeypatch.setenv("ADMIN_ENABLED", "true" if enabled else "false")
+        if app_env != "local":
+            monkeypatch.setenv("SENTRY_DSN", DSN)
+            monkeypatch.setenv("JWT_SECRET", PRIVATE_JWT)
+            monkeypatch.setenv("ADMIN_SESSION_SECRET", PRIVATE_ADMIN)
+            monkeypatch.setattr(app.main, "init_sentry", lambda _: False)
+        get_settings.cache_clear()
+        transport = httpx.ASGITransport(app=app.main.create_app(), client=("127.0.0.1", 40000))
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            yield client
+        get_settings.cache_clear()
+
+    return open_client
+
+
+class Links(HTMLParser):
+    """Every `src`/`href` attribute and CSS `url(...)` in a page."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.refs: list[str] = []
+        self._style = False
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        for name, value in attrs:
+            if name in {"src", "href"} and value:
+                self.refs.append(value)
+            if name == "style" and value:
+                self.refs += _css_urls(value)
+        self._style = tag == "style"
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "style":
+            self._style = False
+
+    def handle_data(self, data: str) -> None:
+        if self._style:
+            self.refs += _css_urls(data)
+
+
+def _css_urls(text: str) -> list[str]:
+    import re
+
+    return [m.strip("'\" ") for m in re.findall(r"url\(([^)]*)\)", text)]
+
+
+def external_refs(html: str, own_host: str = "testserver") -> list[str]:
+    """References that leave the admin: another scheme or host, or a path outside the mount.
+    sqladmin builds absolute same-origin URLs (`url_for`), which stay allowed."""
+    from urllib.parse import urlsplit
+
+    parser = Links()
+    parser.feed(html)
+    bad = []
+    for ref in parser.refs:
+        if ref.startswith(("#", "?")) or ref == "javascript:void(0)":
+            continue
+        parts = urlsplit(ref)
+        if parts.scheme and (parts.scheme not in {"http", "https"} or parts.netloc != own_host):
+            bad.append(ref)
+        elif not parts.scheme and parts.netloc:
+            bad.append(ref)  # a protocol-relative //host
+        elif parts.path.startswith("/") and not parts.path.startswith(ADMIN):
+            bad.append(ref)
+    return bad

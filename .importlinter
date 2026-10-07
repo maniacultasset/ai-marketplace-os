@@ -64,6 +64,7 @@ source_modules =
     app.repositories
     app.workers
     app.adapters
+    app.admin
     app.core
     app.db
     app.main
@@ -172,9 +173,27 @@ source_modules =
     app.services
     app.repositories
     app.adapters
+    app.admin
     app.core
     app.db
     app.main
     app.cli
 forbidden_modules =
     mkos_pipeline
+
+# The staff admin (S14b T17; A§14): only `app.main` mounts it, and only outside production, so no
+# other layer can pull sqladmin into a process.
+[importlinter:contract:only-main-imports-admin]
+name = only app.main imports app.admin
+type = forbidden
+source_modules =
+    app.api
+    app.services
+    app.repositories
+    app.workers
+    app.adapters
+    app.core
+    app.db
+    app.cli
+forbidden_modules =
+    app.admin

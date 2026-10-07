@@ -14,6 +14,9 @@ import psycopg
 import pytest
 from psycopg import sql
 
+# S14b T17-T22: the admin suites' shared fixture, re-exported for every integration module.
+from .admin_support import admin_client as admin_client
+
 if TYPE_CHECKING:
     from alembic.config import Config
     from app.core.config import Settings

@@ -56,6 +56,12 @@ def create_app() -> FastAPI:
     install_error_handlers(app)
     app.include_router(health.router)
     app.include_router(v1_router, prefix=settings.api_v1_prefix)
+    # The staff admin (S14b; ENV.md:22): only when enabled and never in production, and the import
+    # is local so a production process never loads sqladmin (A§14).
+    if settings.admin_enabled and settings.app_env != "production":
+        from app.admin import mount_admin
+
+        mount_admin(app, settings)
     # The cap holds before any body parsing or auth dependency runs (CANON.md:83; S3 AC16).
     # The dry-run has its own, smaller cap (S14b C7): the engine is synchronous work per request.
     app.add_middleware(
