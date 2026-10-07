@@ -101,3 +101,10 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   listing on the same SKU skips the insert and the version insert then fails its FK (local seed
   only). API CORS also answers preflights on `/internal/admin` (the gate still refuses the GET).
   `FakeAdapter.update_listing` on a path the listing lacks raises a raw `KeyError`.
+- **CSV-import follow-ups from the S13b review (LOW).** A row of only commas fails instead of
+  being skipped as blank (`csv_file.py`). On a rows retry, a row the parser refused (`raw_row {}`)
+  loses its real error and shows four `REQUIRED_FIELD_MISSING` (keep the stored report). In
+  `storage.py`, `body.read()` sits outside the error mapping, so a stream timeout is
+  `INTERNAL_ERROR`, not a retryable `TIMEOUT`, and `put()` maps nothing. DB backstop:
+  `variant_matrix_complete` does not fire when a child's `parent_product_id` goes NOT NULL → NULL
+  (the import runner checks it; a DB-level check needs its own migration).
