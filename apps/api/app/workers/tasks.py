@@ -33,6 +33,14 @@ def register_bodies() -> None:
 
 def register_tasks(app: procrastinate.App) -> None:
     """Register the job bodies and the six kind tasks on `app`; a second call is a no-op."""
+    """The bodies of the kinds a merged step owns; a body a test installed first is kept."""
+    from app.services.brand_embed import run_brand_embed
+
+    registry.REGISTRY.setdefault(JobKind.BRAND_EMBED, run_brand_embed)
+
+
+def register_tasks(app: procrastinate.App) -> None:
+    """Register the six kind tasks on `app` (and the owned bodies); a second call is a no-op."""
     register_bodies()
     for kind, policy in POLICIES.items():
         if kind.value in app.tasks:

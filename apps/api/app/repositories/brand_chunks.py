@@ -200,6 +200,13 @@ class BrandChunkRepository(TenantScopedRepository[BrandChunk]):
         )
         return [(sid, int(i), str(h)) for sid, i, h in (await self.db.execute(stmt)).all()]
 
+    async def lock_profile_embed(self) -> None:
+        """The tenant's profile-embed advisory lock (transaction scope; T13): two profile jobs
+        never swap the active set at the same time."""
+        self._own_session()
+        key = f"brand_embed:{self.tenant_id}"
+        await self.db.execute(select(func.pg_advisory_xact_lock(func.hashtextextended(key, 0))))
+
     async def deactivate_profile_all(self) -> int:
         return await self._deactivate(
             [BrandChunk.source_type == "brand_profile", BrandChunk.is_active.is_(True)]
