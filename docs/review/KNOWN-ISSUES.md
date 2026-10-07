@@ -69,3 +69,12 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   (`apps/api/app/core/config.py` does this only for the JWT secret).
 - The commit-msg attribution hook is bypassed by `git commit --no-verify` and by GitHub-written
   squash messages and PR bodies; a later step can run the check in the `commit-lint` CI job.
+
+## E. Known gaps carried to a later step
+
+- **Orphaned `queued` job after a SIGKILL (S13a, LOW; fix in S26 failure injection).** A worker
+  killed after `release_retry` / `release_shutdown` commits, but before procrastinate re-queues the
+  entry, leaves the `job_runs` row `queued` and its `procrastinate_jobs` entry `doing`. `reap_once`
+  (`app/workers/periodic.py`) reads only expired `running` rows, so that job never runs or ends.
+  Fix: a reaper sweep that re-defers `queued` rows whose entry belongs to a pruned worker, with a
+  kill-at-that-point test. A graceful SIGTERM does not hit this (ADR-0017 drain).
