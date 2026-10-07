@@ -126,6 +126,20 @@ async def test_colourway_upsert_idempotent(imports_db: JobWorld) -> None:
     assert rows == [("jet black", " jet black ")]
 
 
+@pytest.mark.parametrize("value", ["İndigo", "ÉCRU", "Ölive Grün"])
+async def test_colourway_unchanged_reupload_finds_the_row(imports_db: JobWorld, value: str) -> None:
+    # An unchanged re-upload takes the lookup path; Python's lower() differs from PG's
+    # lower(btrim()) (colour_key) for these, so the key is computed in SQL (S13b review #5).
+    tenant = imports_db.tenant("acme")
+    style = await _style(tenant)
+    fact = {"value": value, "normalized": "blue", **STAMP}
+    ids = []
+    for _ in range(2):
+        async with unit_of_work(tenant) as session:
+            ids.append(await ColourwayRepository(session, tenant).upsert(style, fact, 1))
+    assert ids[0] == ids[1]
+
+
 async def test_matrix_cell_upsert_idempotent(imports_db: JobWorld) -> None:
     tenant = imports_db.tenant("acme")
     style = await _style(tenant)

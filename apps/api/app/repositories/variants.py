@@ -60,7 +60,9 @@ class ColourwayRepository(TenantScopedRepository[ProductColourway]):
         written: uuid.UUID | None = (await self.db.execute(upsert)).scalar_one_or_none()
         if written is not None:
             return written
-        key = str(colour_fact.get("value", "")).strip().lower()
+        # The generated column's own expression, so the lookup folds case and trims exactly as
+        # colour_key does (Python's lower()/strip() differ, e.g. 'İndigo').
+        key = func.lower(func.btrim(literal(str(colour_fact.get("value", "")))))
         found: uuid.UUID = (
             await self.db.execute(
                 self._select()
