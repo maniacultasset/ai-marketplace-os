@@ -6,7 +6,8 @@ BEFORE INSERT OR UPDATE OF `attributes`, `provenance` and the typed fact columns
 
 1. The row's level: `brand` (brand_profiles); `colour` (colourways; the category is the style's,
    read FOR SHARE); `variant`, `style` or `standalone` (products, by parent and theme).
-2. Each `attributes` key whose envelope changed (OLD vs NEW per key; an untouched key is never
+2. Each `attributes` key whose envelope changed (OLD vs NEW per key; every key when the row's
+   level or category changed, else an untouched key is never
    re-checked, so a dictionary change cannot block an unrelated write): the key is known, enabled
    and `storage = 'attributes'` (PRV02); the level is in `owner_levels` (PRV03); the source is in
    `allowed_sources`, and never `ai` for a key that is critical or carries `critical_override`
@@ -86,7 +87,18 @@ BRAND_FACT_COLUMNS: Final[tuple[str, ...]] = (
     "content_locale",
 )
 TRIGGERS: Final[tuple[tuple[str, tuple[str, ...]], ...]] = (
-    ("products", ("attributes", "provenance", *PRODUCT_FACT_COLUMNS)),
+    # the level columns too (category is a fact column already): a level change re-checks every
+    # key (S13b review #1)
+    (
+        "products",
+        (
+            "attributes",
+            "provenance",
+            *PRODUCT_FACT_COLUMNS,
+            "parent_product_id",
+            "variation_theme",
+        ),
+    ),
     ("product_colourways", ("attributes",)),
     ("brand_profiles", ("provenance", *BRAND_FACT_COLUMNS)),
 )
@@ -135,6 +147,7 @@ DECLARE
   cat text;
   k text;
   fact jsonb;
+  recheck boolean := false;  -- the level or category moved: an untouched key may now be wrong
 BEGIN
   IF TG_TABLE_NAME = 'brand_profiles' THEN
     lvl := 'brand';
@@ -147,13 +160,19 @@ BEGIN
     lvl := CASE WHEN NEW.parent_product_id IS NOT NULL THEN 'variant'
                 WHEN NEW.variation_theme IS NOT NULL THEN 'style'
                 ELSE 'standalone' END;
+    IF TG_OP = 'UPDATE' THEN
+      recheck := OLD.category IS DISTINCT FROM NEW.category
+        OR (OLD.parent_product_id IS NULL) <> (NEW.parent_product_id IS NULL)
+        OR (OLD.variation_theme IS NULL) <> (NEW.variation_theme IS NULL);
+    END IF;
   END IF;
   -- a malformed map is the CHECK's to refuse (fact_map_valid, 0001): BEFORE triggers run first.
   -- Nested IFs: plpgsql may evaluate both operands of AND, and brand_profiles has no attributes.
   IF TG_TABLE_NAME <> 'brand_profiles' THEN
     IF public.fact_map_valid(NEW.attributes, true) THEN
       FOR k, fact IN SELECT e.key, e.value FROM jsonb_each(NEW.attributes) e LOOP
-        CONTINUE WHEN TG_OP = 'UPDATE' AND (OLD.attributes -> k) IS NOT DISTINCT FROM fact;
+        CONTINUE WHEN TG_OP = 'UPDATE' AND NOT recheck
+          AND (OLD.attributes -> k) IS NOT DISTINCT FROM fact;
         PERFORM public.facts_guard_check(k, fact, 'attributes', lvl, cat);
       END LOOP;
     END IF;
@@ -161,7 +180,8 @@ BEGIN
   IF TG_TABLE_NAME <> 'product_colourways' THEN
     IF public.fact_map_valid(NEW.provenance, false) THEN
       FOR k, fact IN SELECT e.key, e.value FROM jsonb_each(NEW.provenance) e LOOP
-        CONTINUE WHEN TG_OP = 'UPDATE' AND (OLD.provenance -> k) IS NOT DISTINCT FROM fact;
+        CONTINUE WHEN TG_OP = 'UPDATE' AND NOT recheck
+          AND (OLD.provenance -> k) IS NOT DISTINCT FROM fact;
         PERFORM public.facts_guard_check(k, fact, 'column', lvl, cat);
       END LOOP;
     END IF;

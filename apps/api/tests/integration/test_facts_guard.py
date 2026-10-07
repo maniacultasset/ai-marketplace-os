@@ -183,6 +183,24 @@ def test_facts_guard_level_invalid_prv03(app_rw: Conn, tenant: uuid.UUID) -> Non
     assert caught.value.sqlstate == "PRV03"
 
 
+def test_facts_guard_level_change_rechecks_every_key(app_rw: Conn, tenant: uuid.UUID) -> None:
+    # S13b review #1: a standalone row keeps `size`; turning it into a style (variation_theme set)
+    # leaves the key unchanged but its level is now wrong, so the guard re-checks every key.
+    product = insert(app_rw, tenant, attributes={"size": seller()})
+    with pytest.raises(psycopg.Error) as caught:
+        app_rw.execute(
+            "UPDATE products SET variation_theme = 'size', size_run = %s WHERE id = %s",
+            [["m"], product],
+        )
+    assert caught.value.sqlstate == "PRV03"
+    # dropping the variant-only key in the same write makes the change legal
+    app_rw.execute(
+        "UPDATE products SET variation_theme = 'size', size_run = %s, attributes = '{}' "
+        "WHERE id = %s",
+        [["m"], product],
+    )
+
+
 def test_facts_guard_unchanged_key_not_rechecked(
     app_rw: Conn, tenant: uuid.UUID, superuser_conn: Conn
 ) -> None:
