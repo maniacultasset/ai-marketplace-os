@@ -1664,3 +1664,36 @@ def test_prove_gates_has_s13b_legs(repo_root: Path) -> None:
     seed = text.split("seed_row_model_nan() {", 1)[1].split("\n}", 1)[0]
     old = seed.split("row_model.py '", 1)[1].split("'", 1)[0]
     assert old in row_model  # the seed still applies to today's file
+
+
+S17B_LEGS = {
+    "lint-imports-image-child-config": (
+        "lint-imports",
+        "the image check child imports no app layer, DB, storage or HTTP client BROKEN",
+        "seed_image_child_config",
+    ),
+    "tenant-isolation-images-no-tenant-filter": (
+        "tenant-isolation",
+        "test_iso_images_repository_reads",
+        "seed_images_no_tenant_filter",
+    ),
+    "api-tests-image-key-prefix": (
+        "api-tests",
+        "test_runner_rejects_foreign_key_prefix",
+        "seed_image_key_prefix",
+    ),
+}
+
+
+def test_prove_gates_has_s17b_legs(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    code = _code(text)
+    for name, (gate, regex, seed_name) in S17B_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+        assert leg.group(2) == seed_name, name
+        assert re.search(rf"(?m)^{seed_name}\(\) \{{", code), seed_name
+    docker = code[code.index('if [ "$with_docker" -eq 1 ]; then') :]
+    assert "leg tenant-isolation-images-no-tenant-filter" in docker
+    assert "leg api-tests-image-key-prefix" in docker
