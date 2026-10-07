@@ -17,11 +17,17 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.attribute_definitions import AttributeDefinitionRepository
+from app.repositories.brand_chunks import BrandChunkRepository
+from app.repositories.dictionary import DictionaryRevisionRepository
 from app.repositories.human_tasks import HumanTaskRepository
 from app.repositories.identity import AuditRepository
+from app.repositories.images import ImageRepository
+from app.repositories.jobs import JobRunRepository
 from app.repositories.marketplace_accounts import MarketplaceAccountRepository
 from app.repositories.oauth_states import OAuthStateRepository
 from app.repositories.products import ProductRepository
+from app.repositories.rules import RuleRepository
+from app.repositories.templates import CategoryTemplateRepository
 from app.repositories.transactions import unit_of_work
 
 __all__ = ["TenantUnitOfWork", "tenant_uow"]
@@ -36,6 +42,13 @@ class TenantUnitOfWork:
     marketplace_accounts: MarketplaceAccountRepository
     oauth_states: OAuthStateRepository
     human_tasks: HumanTaskRepository
+    # S14b T5 (C4): the seam and the rules API read these on the same session.
+    rules: RuleRepository
+    brand_chunks: BrandChunkRepository
+    job_runs: JobRunRepository
+    images: ImageRepository
+    templates: CategoryTemplateRepository
+    dictionary: DictionaryRevisionRepository
 
 
 @asynccontextmanager
@@ -51,4 +64,10 @@ async def tenant_uow(
             marketplace_accounts=MarketplaceAccountRepository(session, tenant_id),
             oauth_states=OAuthStateRepository(session, tenant_id),
             human_tasks=HumanTaskRepository(session, tenant_id),
+            rules=RuleRepository(session, tenant_id),
+            brand_chunks=BrandChunkRepository(session, tenant_id),
+            job_runs=JobRunRepository(session, tenant_id),
+            images=ImageRepository(session, tenant_id),
+            templates=CategoryTemplateRepository(session),
+            dictionary=DictionaryRevisionRepository(session),
         )

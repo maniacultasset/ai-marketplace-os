@@ -33,7 +33,10 @@ def test_repository_subclass_requires_model() -> None:
 
 
 # CODE-PLAN S12 T3: readers of platform-global tables (no `tenant_id`, DATABASE.md:158).
-PLATFORM_READERS = frozenset({"AttributeDefinitionRepository"})
+# S14b T5 (CD4, C6): the current category template and the dictionary revisions.
+PLATFORM_READERS = frozenset(
+    {"AttributeDefinitionRepository", "CategoryTemplateRepository", "DictionaryRevisionRepository"}
+)
 
 
 def test_every_repository_subclasses_tenant_base() -> None:
