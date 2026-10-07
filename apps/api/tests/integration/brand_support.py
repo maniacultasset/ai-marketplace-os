@@ -71,3 +71,45 @@ def failure(*, retryable: bool = True, timed_out: bool = False) -> Exception:
 
     code = ErrorCode.TIMEOUT if timed_out else ErrorCode.MODEL_UNAVAILABLE
     return EmbeddingFailed(code, retryable=retryable, timed_out=timed_out, cause="Scripted")
+
+
+async def new_document(tenant_id: uuid.UUID, created_by: uuid.UUID, **over: Any) -> Any:
+    """A live `uploaded` document row through the repository (committed)."""
+    from app.repositories.uow import tenant_uow
+
+    doc_id = over.pop("id", uuid.uuid4())
+    values: dict[str, Any] = {
+        "id": doc_id,
+        "filename": "guide.md",
+        "content_type": "text/markdown",
+        "bytes_": 10,
+        "content_hash": uuid.uuid4().hex * 2,
+        "storage_key": f"{tenant_id}/brand-documents/{doc_id}",
+        "job_id": uuid.uuid4(),
+        "created_by": created_by,
+        **over,
+    }
+    async with tenant_uow(tenant_id, user_id=created_by) as uow:
+        await uow.brand_documents.create(**values)
+    return values
+
+
+def doc_row(conn: Conn, doc_id: uuid.UUID) -> dict[str, Any]:
+    cur = conn.execute("SELECT * FROM brand_documents WHERE id = %s", [doc_id])
+    names = [d.name for d in cur.description or ()]
+    row = cur.fetchone()
+    assert row is not None
+    return dict(zip(names, row, strict=True))
+
+
+def chunk_rows(
+    conn: Conn, tenant_id: uuid.UUID, *, active: bool | None = True
+) -> list[dict[str, Any]]:
+    query = "SELECT id, type, text, source_type, source_id, chunk_index, content_hash, embedding_model, is_active FROM brand_chunks WHERE tenant_id = %s"
+    params: list[Any] = [tenant_id]
+    if active is not None:
+        query += " AND is_active = %s"
+        params.append(active)
+    cur = conn.execute(query + " ORDER BY source_id, chunk_index, created_at", params)
+    names = [d.name for d in cur.description or ()]
+    return [dict(zip(names, row, strict=True)) for row in cur.fetchall()]
