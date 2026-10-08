@@ -7,6 +7,7 @@ retry to failure, cancel, periodic defer, heartbeat, prune, delete old jobs)."""
 
 from __future__ import annotations
 
+import asyncio
 import time
 from collections.abc import Callable, Iterator
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -227,11 +228,18 @@ async def test_procrastinate_worker_lifecycle_as_app_rw(ops_db: ScratchDb) -> No
         assert who["who"] == "app_rw"
         await probe.defer_async(job_run_id="ok")
         await boom.defer_async(job_run_id="fails")
-        await app.run_worker_async(
-            queues=["default", "publish"], wait=False, install_signal_handlers=False
-        )
-        assert ran == ["ok"]
         manager = app.job_manager
+        # wait=False stops at the first empty fetch; under parallel load the retry (scheduled
+        # "now") can be one fetch late, so drain again until both jobs are terminal (bounded)
+        for _ in range(20):
+            await app.run_worker_async(
+                queues=["default", "publish"], wait=False, install_signal_handlers=False
+            )
+            jobs = await manager.list_jobs_async()
+            if all(job.status in ("succeeded", "failed") for job in jobs):
+                break
+            await asyncio.sleep(0.1)
+        assert ran == ["ok"]
         statuses = sorted(
             (job.task_name, job.status, job.attempts) for job in await manager.list_jobs_async()
         )
