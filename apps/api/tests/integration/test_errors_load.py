@@ -17,7 +17,7 @@ from app.cli import main
 from .conftest import LOCAL_HOSTS, Conn, libpq_url
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
-FIXTURE = Path(__file__).resolve().parents[1] / "fixtures/error_map.fake.json"
+FIXTURE = Path(__file__).resolve().parents[2] / "app/db/seed_data/error_map.fake.json"
 
 
 @pytest.fixture

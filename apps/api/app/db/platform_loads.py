@@ -407,7 +407,7 @@ async def load_templates(engine: AsyncEngine, entries: Sequence[TemplateLoad]) -
 
 # ---- `errors load` (S20 T4; DATABASE.md:546-557) ----
 # The file is a JSON list of `ErrorMapIn`. Seeds come from sandbox and observed responses, never
-# invented: the committed `tests/fixtures/error_map.fake.json` holds local `FAKE-` codes only. A
+# invented: the committed `app/db/seed_data/error_map.fake.json` holds local `FAKE-` codes only. A
 # row is keyed by `mem_key (marketplace, match_on, raw_value, version)`: a stored key with the
 # same content is a no-op; one whose only difference is `enabled` flips `enabled` (the one
 # mutable column, 0004's `error_map_guard`); any other difference refuses the whole file ("bump

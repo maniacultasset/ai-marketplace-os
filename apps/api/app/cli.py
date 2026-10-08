@@ -102,10 +102,9 @@ SEED_PROFILES: Final = ("demo", "isolation")
 RULES_SEED_PATH: Final = (
     Path(__file__).resolve().parents[3] / "packages/schemas/fixtures/rules.seed.json"
 )
-# The local fake error map (S20 D7): `FAKE-` codes only; seed and `platform load` read it.
-ERROR_MAP_FAKE_PATH: Final = (
-    Path(__file__).resolve().parents[1] / "tests/fixtures/error_map.fake.json"
-)
+# The local fake error map (S20 D7): `FAKE-` codes only; seed and `platform load` read it. It ships
+# in the image (app/db/seed_data), so the image's local-only `seed` role can load it too.
+ERROR_MAP_FAKE_PATH: Final = Path(__file__).resolve().parent / "db/seed_data/error_map.fake.json"
 _SQLSTATE: Final = re.compile(r"[0-9A-Z]{5}")
 
 

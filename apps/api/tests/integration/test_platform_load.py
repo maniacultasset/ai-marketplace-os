@@ -94,7 +94,9 @@ def test_platform_load_bad_error_map_exit_1_nothing_written(
     cli_env: Path, superuser_conn: Conn, capsys: pytest.CaptureFixture[str]
 ) -> None:
     rows = json.loads(
-        (Path(__file__).resolve().parents[1] / "fixtures/error_map.fake.json").read_text("utf-8")
+        (Path(__file__).resolve().parents[2] / "app/db/seed_data/error_map.fake.json").read_text(
+            "utf-8"
+        )
     )
     rows[1]["plain_text"] = "{0.__class__}"
     bad = cli_env / "bad.json"

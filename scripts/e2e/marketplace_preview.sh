@@ -29,7 +29,7 @@ python3 scripts/ci/local_url.py "$base" || exit 2
 base="${base%/}"
 api="$base/api/v1"
 password="devpassword123" # the demo seed's local-only password (A§5)
-error_map="apps/api/tests/fixtures/error_map.fake.json"
+error_map="apps/api/app/db/seed_data/error_map.fake.json"
 seed_namespace="5eed0000-9c1e-4d6a-8a51-0c5a1e5eed00" # app.db.seed_ops.SEED_NAMESPACE
 
 work="$(mktemp -d)"
