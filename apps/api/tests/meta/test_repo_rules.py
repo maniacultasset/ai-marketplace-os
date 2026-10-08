@@ -395,3 +395,21 @@ def test_r8_ignores_alembic_and_scripts(rules: ModuleType, tmp_path: Path) -> No
     body = "X = 'app.job_id'\nimport app.db.job_context\n"
     root = _tree(tmp_path, {"apps/api/alembic/versions/x.py": body, "scripts/x.py": body})
     assert "R8" not in {rule for _, _, rule in _found(rules, root)}
+
+
+# ---- S18 T5: R8 also allows the listing repository (worker-actor moves) ----
+
+
+@pytest.mark.parametrize(
+    "body", [*JOB_CONTEXT_IMPORTS[:2], "from app.db.job_context import bind_job_actor\n"]
+)
+def test_r8_allows_listings_repository_only(rules: ModuleType, tmp_path: Path, body: str) -> None:
+    allowed = _tree(tmp_path / "a", {"apps/api/app/repositories/listings.py": body})
+    assert _found(rules, allowed) == []
+    other = _tree(tmp_path / "b", {"apps/api/app/repositories/listing_versions.py": body})
+    assert {rule for _, _, rule in _found(rules, other)} == {"R8"}
+
+
+def test_r8_listings_repository_may_not_name_the_guc(rules: ModuleType, tmp_path: Path) -> None:
+    root = _tree(tmp_path, {"apps/api/app/repositories/listings.py": "X = 'app.job_id'\n"})
+    assert {rule for _, _, rule in _found(rules, root)} == {"R8"}
