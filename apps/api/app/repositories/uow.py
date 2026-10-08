@@ -20,6 +20,7 @@ from app.repositories.agent_runs import AgentRunRepository
 from app.repositories.attribute_definitions import AttributeDefinitionRepository
 from app.repositories.brand_chunks import BrandChunkRepository
 from app.repositories.brand_documents import BrandDocumentRepository
+from app.repositories.brand_profile import BrandPromptRepository
 from app.repositories.dictionary import DictionaryRevisionRepository
 from app.repositories.human_tasks import HumanTaskRepository
 from app.repositories.identity import AuditRepository
@@ -27,6 +28,7 @@ from app.repositories.images import ImageRepository
 from app.repositories.jobs import JobRunRepository
 from app.repositories.marketplace_accounts import MarketplaceAccountRepository
 from app.repositories.oauth_states import OAuthStateRepository
+from app.repositories.product_facts import ProductFactsRepository
 from app.repositories.products import ProductRepository
 from app.repositories.rules import RuleRepository
 from app.repositories.templates import CategoryTemplateRepository
@@ -56,6 +58,9 @@ class TenantUnitOfWork:
     agent_runs: AgentRunRepository
     brand_documents: BrandDocumentRepository
     tenants: TenantProfileRepository
+    # S18: generation reads and writes.
+    product_facts: ProductFactsRepository
+    brand_profile: BrandPromptRepository
 
 
 def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
@@ -78,6 +83,8 @@ def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
         agent_runs=AgentRunRepository(session, tenant_id),
         brand_documents=BrandDocumentRepository(session, tenant_id),
         tenants=TenantProfileRepository(session, tenant_id),
+        product_facts=ProductFactsRepository(session, tenant_id),
+        brand_profile=BrandPromptRepository(session, tenant_id),
     )
 
 

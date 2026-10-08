@@ -7,7 +7,7 @@ import json
 import uuid
 from typing import Any
 
-from app.services.resolved_facts import (
+from app.core.resolved_facts import (
     RULES_KEYS,
     CellFacts,
     Commercial,
