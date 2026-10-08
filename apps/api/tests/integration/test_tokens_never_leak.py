@@ -5,6 +5,7 @@ column or the stored ciphertext. The fake marketplace marks every token `CANARYz
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from collections.abc import AsyncIterator, Callable
 from pathlib import Path
@@ -153,9 +154,16 @@ async def test_tokens_never_leak(
 
 
 async def test_callback_request_line_redacted(
-    mkt: MktWorld, leak_api: httpx.AsyncClient, log_lines: Callable[..., LogCapture]
+    mkt: MktWorld,
+    leak_api: httpx.AsyncClient,
+    log_lines: Callable[..., LogCapture],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    capture = log_lines()
+    """The redaction still covers httpx request lines if the library is turned up: S20 keeps
+    httpx at WARNING by default (`test_http_libraries_quiet_by_default`), so this test raises it
+    to INFO to keep the redaction proof non-vacuous."""
+    capture = log_lines()  # configures logging, httpx at WARNING
+    monkeypatch.setattr(logging.getLogger("httpx"), "level", logging.INFO)
     query = await consent(mkt, await connect(leak_api, mkt))
     flipkart = await consent(mkt, await connect(leak_api, mkt, marketplace="flipkart"))
     pending_of(await callback(leak_api, "amazon", query))
@@ -249,3 +257,10 @@ def test_marketplace_account_not_in_seam_types(repo_root: Path) -> None:
     )
     for name in ("MarketplaceAccount", "token_enc", "kms_key_version", "TokenPair"):
         assert name not in source
+
+
+def test_http_libraries_quiet_by_default(leak_api: httpx.AsyncClient) -> None:
+    """S20: the marketplace client writes its own `marketplace.call` line, so httpx and httpcore
+    never log a request line (seller id and SKU in the URL) below WARNING."""
+    for name in ("httpx", "httpcore"):
+        assert logging.getLogger(name).getEffectiveLevel() >= logging.WARNING, name
