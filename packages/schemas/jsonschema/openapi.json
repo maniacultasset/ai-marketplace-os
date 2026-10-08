@@ -10289,7 +10289,7 @@
                           ]
                         },
                         "productType": "SHIRT",
-                        "requirements": "LISTING"
+                        "requirements": "LISTING_PRODUCT_ONLY"
                       },
                       "product_id": "0b1c2d3e-0000-4000-8000-000000000101",
                       "seller_sku": "KURTA-001"

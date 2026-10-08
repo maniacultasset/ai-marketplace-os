@@ -331,7 +331,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
                     "item_role": "standalone",
                     "payload": {
                         "productType": "SHIRT",
-                        "requirements": "LISTING",
+                        "requirements": "LISTING_PRODUCT_ONLY",
                         "attributes": {
                             "item_name": [
                                 {
