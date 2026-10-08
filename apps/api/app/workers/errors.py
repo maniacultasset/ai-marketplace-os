@@ -3,12 +3,16 @@
 - `RetryableJobError(code)`: a transport failure, a 5xx or a 429. With attempts left the row goes
   back to `queued` and the wrapper raises `RetryLater`; at the cap it is `dead_letter` with
   `RETRY_EXHAUSTED`.
-- `JobFailed(report)`: a domain failure, never retried; the row ends `failed` with `report`.
+- `JobFailed(report, *, persist=None, zero_reservation=False)`: a domain failure, never retried;
+  the row ends `failed` with `report`; `persist` runs in the same fenced terminal transaction
+  (S18 T8: e.g. the failed run's `agent_runs`).
 - `RetryLater(delay_s)`: raised by the wrapper only, after it has released the row; the queue's
   retry strategy re-runs the same queue entry after `delay_s`. `job_runs.attempt` is the only cap.
 """
 
 from __future__ import annotations
+
+from typing import Any
 
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorSource
@@ -22,9 +26,13 @@ class RetryableJobError(Exception):
 
 
 class JobFailed(Exception):  # noqa: N818 - the name later steps import
-    def __init__(self, report: ErrorReport) -> None:
+    def __init__(
+        self, report: ErrorReport, *, persist: Any = None, zero_reservation: bool = False
+    ) -> None:
         super().__init__(report.error_code.value if report.error_code else "failed")
         self.report = report
+        self.persist = persist  # `registry.Persist | None` (typed there; no import cycle)
+        self.zero_reservation = zero_reservation
 
 
 class RetryLater(Exception):  # noqa: N818 - a signal to the queue, not an error
