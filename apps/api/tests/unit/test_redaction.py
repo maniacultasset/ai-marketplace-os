@@ -20,6 +20,7 @@ from app.core.redaction import (
 )
 from hypothesis import given
 from hypothesis import strategies as st
+from tests.timing import budget
 
 NAMED_KEYS = [
     "AMAZON_CLIENT_SECRET",
@@ -232,7 +233,7 @@ def test_redaction_linear_time_adversarial(name: str) -> None:
     text = ADVERSARIAL[name]
     started = time.perf_counter()
     redact({"message": text, "items": [text]})
-    assert time.perf_counter() - started < 0.1
+    assert time.perf_counter() - started < budget(0.1)  # machine-scaled (tests/timing.py)
 
 
 def test_input_not_mutated() -> None:

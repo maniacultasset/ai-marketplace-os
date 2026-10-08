@@ -19,6 +19,7 @@ from app.services.brand_chunking import (
 )
 from hypothesis import given, settings
 from hypothesis import strategies as st
+from tests.timing import budget
 
 
 def _texts(text: str) -> list[str]:
@@ -211,7 +212,7 @@ def test_chunk_document_worst_case_10mib_bounded(case: str) -> None:
             assert len(drafts) <= 501
         timings.append(time.perf_counter() - start)
     small, large = timings
-    assert large <= 5.0, (case, large)
+    assert large <= budget(5.0), (case, large)  # machine-scaled (tests/timing.py)
     assert large <= 15 * max(small, 0.01), (case, small, large)
 
 

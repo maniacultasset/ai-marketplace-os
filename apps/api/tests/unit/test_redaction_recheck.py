@@ -14,6 +14,7 @@ from app.core.observability import before_send
 from app.core.redaction import MAX_STR_CHARS, REDACTED, redact, redact_text
 from pydantic import BaseModel
 from tests.conftest import LogCapture
+from tests.timing import budget
 
 SECRET = "Qx7" + "leak" * 4
 LWA = f"Atza|IwEB{SECRET}|x.y-z"
@@ -103,7 +104,7 @@ def test_sentry_exception_value_redacted() -> None:
 def test_adversarial_text_is_bounded(text: str) -> None:
     started = time.perf_counter()
     out = redact_text(text)
-    assert time.perf_counter() - started < 1.0
+    assert time.perf_counter() - started < budget(1.0)  # machine-scaled (tests/timing.py)
     assert len(out) <= MAX_STR_CHARS + 64 * 1000
 
 
