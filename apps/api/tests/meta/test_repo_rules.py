@@ -413,3 +413,27 @@ def test_r8_allows_listings_repository_only(rules: ModuleType, tmp_path: Path, b
 def test_r8_listings_repository_may_not_name_the_guc(rules: ModuleType, tmp_path: Path) -> None:
     root = _tree(tmp_path, {"apps/api/app/repositories/listings.py": "X = 'app.job_id'\n"})
     assert {rule for _, _, rule in _found(rules, root)} == {"R8"}
+
+
+# ---- S18 T7 (CP9): R5 allows app/workers/budget.py and no other worker ----
+
+
+@pytest.mark.parametrize(
+    "body", ["from app.db.session import platform_scope\n", "import app.db.session\n"]
+)
+def test_r5_allows_budget(rules: ModuleType, tmp_path: Path, body: str) -> None:
+    text = body if "platform_scope" in body else body + "x = app.db.session.platform_scope\n"
+    root = _tree(tmp_path, {"apps/api/app/workers/budget.py": text})
+    assert "R5" not in {rule for _, _, rule in _found(rules, root)}
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "from app.db.session import platform_scope\n",
+        "import app.db.session\nx = app.db.session.platform_scope\n",
+    ],
+)
+def test_r5_flags_other_worker(rules: ModuleType, tmp_path: Path, body: str) -> None:
+    root = _tree(tmp_path, {"apps/api/app/workers/other.py": body})
+    assert "R5" in {rule for _, _, rule in _found(rules, root)}

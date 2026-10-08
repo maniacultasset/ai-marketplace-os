@@ -22,7 +22,8 @@
   `SCOPE_OK` and star imports of `app.db.session`/`app.db.guard` are left to R5/R6.
 - R5: `platform_scope` (the read-only cross-tenant bypass, CANON-ADDENDUM.md A§6) is named only in
   `apps/api/app/admin/**`, `apps/api/app/cli.py`, `scripts/**`, `apps/api/app/workers/periodic.py`
-  (the reaper and the retention loop read across tenants, S13 PLAN D4) and
+  (the reaper and the retention loop read across tenants, S13 PLAN D4),
+  `apps/api/app/workers/budget.py` (the claim-time global AI budget sum, S18 CP9) and
   `apps/api/app/db/session.py`, which defines it. Any import form counts, including `import app.db.session as s` plus the
   attribute, and a `getattr`/`setattr`/`hasattr`/`delattr` lookup by string.
 - R6: `SCOPE_OK` is named only in `apps/api/app/db/**` and `apps/api/app/repositories/base.py`. Its
@@ -72,6 +73,8 @@ PLATFORM_SCOPE_FILES = (
     "apps/api/app/cli.py",
     "apps/api/app/db/session.py",
     "apps/api/app/workers/periodic.py",
+    # S18 T7 (CP9): the claim-time global budget sum (CANON.md:78 allowlist, approval R1)
+    "apps/api/app/workers/budget.py",
 )
 SCOPE_OK_ALLOWED = ("apps/api/app/db",)
 SCOPE_OK_FILES = ("apps/api/app/repositories/base.py",)
@@ -421,7 +424,8 @@ def check_file(relative: str, path: Path) -> list[Violation]:
                 relative,
                 n,
                 "R5",
-                f"{m} outside app/admin, app/cli.py, app/workers/periodic.py and scripts",
+                f"{m} outside app/admin, app/cli.py, app/workers/periodic.py, app/workers/budget.py "
+                "and scripts",
             )
             for n, m in _names(tree, "platform_scope", "app.db.session")
         ]
