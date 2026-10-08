@@ -26,14 +26,18 @@ from uuid import UUID
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
 from mkos_schemas.enums import ErrorSource, Marketplace, MarketplaceState, RetryClass
 from mkos_schemas.errors import ErrorItem, ErrorReport
-from mkos_schemas.paths import is_valid_field_path, resolve
+from mkos_schemas.paths import resolve
 from mkos_schemas.publish import FieldResult, ListingResult
 
 from app.adapters.base import (
     AdapterListing,
+    AdapterPreview,
     ListingNotFound,
     MarketplaceAdapter,
     PerformanceDay,
+    PreviewItem,
+    UpdateFields,
+    fields_by_sku,
     submitted_fields,
 )
 
@@ -176,7 +180,9 @@ class FakeAdapter(MarketplaceAdapter):
 
     # ---- the interface ----
 
-    async def get_listing(self, seller_sku: str) -> ListingResult:
+    async def get_listing(
+        self, seller_sku: str, *, listing_id: UUID | None = None
+    ) -> ListingResult:
         if seller_sku not in self._store:
             raise ListingNotFound(seller_sku)
         stored = self._store[seller_sku]
@@ -195,11 +201,22 @@ class FakeAdapter(MarketplaceAdapter):
     async def create_listing(self, item: AdapterListing) -> ListingResult:
         return await self._once(item, submitted_fields(item.listing), create=True)
 
-    async def update_listing(self, item: AdapterListing, *, fields: Sequence[str]) -> ListingResult:
-        wanted = sorted(set(fields))
-        if not wanted or not all(is_valid_field_path(f) for f in wanted):
+    async def update_listing(self, item: AdapterListing, *, fields: UpdateFields) -> ListingResult:
+        wanted = fields_by_sku(item, fields).get(item.seller_sku)
+        if not wanted:
             raise ValueError("fields must be a non-empty list of legal field paths")
         return await self._once(item, wanted, create=False)
+
+    def preview(self, item: AdapterListing) -> AdapterPreview:
+        payload = self._values(item, submitted_fields(item.listing))
+        units = item.units()
+        return AdapterPreview(
+            product_type=None,
+            items=tuple(
+                PreviewItem(u.product_id, u.seller_sku, u.item_role, dict(payload)) for u in units
+            ),
+            report=ErrorReport(status="passed", listing_id=item.listing_id),
+        )
 
     async def publish_listing(self, item: AdapterListing) -> ListingResult:
         return await self._once(item, submitted_fields(item.listing), create=True)
