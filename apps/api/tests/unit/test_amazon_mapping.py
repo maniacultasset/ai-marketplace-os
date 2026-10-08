@@ -151,7 +151,7 @@ def test_amazon_mapping_reverse_index_round_trip() -> None:
     assert set(index["generic_keyword"]) == {"keywords.search_terms", "keywords.hidden_terms"}
     assert index["item_name"] == ("content.title",)
     assert index["color"] == ("attributes.color",)
-    assert index["sleeve_type"] == ("attributes.sleeve_length",)
+    assert index["sleeve_length_description"] == ("attributes.sleeve_length",)
     assert index["main_product_image_locator"] == ("images[0]",)
     for name, spec_path in (
         (s.marketplace_field, f"attributes.{k}") for k, s in template().template.specs.items()

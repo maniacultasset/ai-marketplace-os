@@ -97,7 +97,7 @@ def _apparel_specs() -> dict[str, Any]:
         "color": _enum("color", COLORS, COLOR_MAP, "required"),
         "fabric_type": _enum("fabric_type", FABRICS, FABRIC_MAP, "required"),
         "size": _enum("size", SIZES, SIZE_MAP, "optional"),
-        "sleeve_length": _enum("sleeve_type", SLEEVES, SLEEVE_MAP, "optional"),
+        "sleeve_length": _enum("sleeve_length_description", SLEEVES, SLEEVE_MAP, "optional"),
         "fit": _enum("fit_type", FITS, {}, "optional"),
         "neckline": _enum("neck_style", NECKS, NECK_MAP, "optional"),
         "pattern": _text("pattern"),
