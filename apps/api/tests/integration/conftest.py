@@ -298,7 +298,8 @@ def clean_tenant_db(superuser_conn: Conn) -> None:
     superuser_conn.execute("SET session_replication_role = replica")
     try:
         superuser_conn.execute(
-            "TRUNCATE tenants, users, category_templates, rules RESTART IDENTITY CASCADE"
+            "TRUNCATE tenants, users, category_templates, rules, marketplace_error_map "
+            "RESTART IDENTITY CASCADE"
         )
     finally:
         superuser_conn.execute("RESET session_replication_role")

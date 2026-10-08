@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.attribute_definitions import AttributeDefinitionRepository
 from app.repositories.brand_chunks import BrandChunkRepository
 from app.repositories.dictionary import DictionaryRevisionRepository
+from app.repositories.error_map import ErrorMapRepository
 from app.repositories.human_tasks import HumanTaskRepository
 from app.repositories.identity import AuditRepository
 from app.repositories.images import ImageRepository
@@ -49,6 +50,8 @@ class TenantUnitOfWork:
     images: ImageRepository
     templates: CategoryTemplateRepository
     dictionary: DictionaryRevisionRepository
+    # S20 T4: the adapter's error map (platform-global, SELECT only).
+    error_map: ErrorMapRepository
 
 
 @asynccontextmanager
@@ -70,4 +73,5 @@ async def tenant_uow(
             images=ImageRepository(session, tenant_id),
             templates=CategoryTemplateRepository(session),
             dictionary=DictionaryRevisionRepository(session),
+            error_map=ErrorMapRepository(session),
         )

@@ -38,6 +38,16 @@ content is a no-op, one with other content refuses the file ("bump version", exi
 written), a new version is inserted and promoted when it is newer than the current one (audited
 with a NULL tenant). An invalid file exits 1, a missing one 2.
 
+`errors load --file PATH` (S20 T4) loads a JSON list of `marketplace_error_map` rows as `migrator`,
+in one transaction: a stored key with the same content is a no-op, one that differs only in
+`enabled` flips it, any other difference refuses the file ("bump version", exit 1, nothing
+written); each write is audited with a NULL tenant. An invalid file exits 1, a missing one 2.
+
+`platform load [--error-map PATH]` (S20 T5b) loads every platform row a fresh database needs and
+no tenant row: the S9 platform rows (templates, NULL-tenant rules, the dictionary), the Amazon
+category mappings, and the error map (default: the local fake fixture). Like `seed` it runs only
+under `APP_ENV=local` (exit 3); staging and production use `templates load` and `errors load`.
+
 `jobs dead-letter list [--tenant SLUG] [--limit 1..500]` and `jobs requeue <job_id> --staff-email E
 --reason R` are the staff dead-letter tools (S13 PLAN D2; DATABASE.md:312; BACKEND-ARCHITECTURE
 :990-1031): no `/api/v1` path exists for them. Each command mints its own `request_id`. The list
@@ -427,6 +437,50 @@ async def run_templates_load(path: Path) -> int:
     return EXIT_OK
 
 
+async def _errors_load(admin_url: str, path: Path) -> tuple[int, int, int]:
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from app.db.platform_loads import load_error_map, load_error_map_file
+
+    rows = load_error_map_file(path)
+    engine = create_async_engine(admin_url)
+    try:
+        counts = await load_error_map(engine, rows)
+    finally:
+        await engine.dispose()
+    return counts.inserted, counts.unchanged, counts.toggled
+
+
+async def run_errors_load(path: Path) -> int:
+    from pydantic import ValidationError
+
+    from app.core.config import get_settings
+    from app.db.platform_loads import ErrorMapConflict
+
+    settings = get_settings()
+    if settings.alembic_database_url is None:
+        sys.stderr.write("errors load: failed (ALEMBIC_DATABASE_URL is required)\n")
+        return EXIT_FAILED
+    try:
+        inserted, unchanged, toggled = await _errors_load(settings.alembic_database_url, path)
+    except ErrorMapConflict as exc:
+        sys.stderr.write(
+            f"errors load: refused: {exc.key} already holds other content; bump version "
+            "(nothing was written)\n"
+        )
+        return EXIT_FAILED
+    except (ValidationError, ValueError) as exc:
+        sys.stderr.write(f"errors load: invalid file ({type(exc).__name__}); nothing was written\n")
+        return EXIT_FAILED
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"errors load: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    sys.stdout.write(
+        f"errors load: ok ({inserted} inserted, {unchanged} unchanged, {toggled} toggled)\n"
+    )
+    return EXIT_OK
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     groups = parser.add_subparsers(dest="group", required=True)
@@ -455,7 +509,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     templates_commands = templates.add_subparsers(dest="command", required=True)
     load = templates_commands.add_parser("load", help="load versioned category templates")
     load.add_argument("--file", type=Path, required=True)
+    errors = groups.add_parser("errors", help="the marketplace error map (migrator)")
+    errors_commands = errors.add_subparsers(dest="command", required=True)
+    errors_load = errors_commands.add_parser("load", help="load versioned error-map rows")
+    errors_load.add_argument("--file", type=Path, required=True)
     args = parser.parse_args(argv)
+    if args.group == "errors":
+        if not args.file.is_file():
+            sys.stderr.write("errors load: no such file\n")
+            return EXIT_NO_FILE
+        return asyncio.run(run_errors_load(args.file))
     if args.group == "templates":
         if not args.file.is_file():
             sys.stderr.write("templates load: no such file\n")

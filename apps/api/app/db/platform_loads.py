@@ -1,5 +1,5 @@
 """The migrator's platform loaders (`python -m app.cli dictionary sync`, `templates load`; S13 B5,
-B7; DATABASE.md §5.6 :1152-1179, §5.2 :543, §8.2). The SQL lives here, inside `app/db` (repo rule
+B7; `errors load`, S20 T4; DATABASE.md §5.6 :1152-1179, §5.2 :543, §8.2). The SQL lives here, inside `app/db` (repo rule
 R4); the CLI only orchestrates. Every loader runs as `migrator` in one transaction: the platform
 tables are SELECT-only for the app roles.
 
@@ -15,6 +15,7 @@ least one typed column, an `attributes` key none, and no column maps twice.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
@@ -22,7 +23,10 @@ from importlib import resources
 from pathlib import Path
 from typing import Annotated, Any, Final, Literal
 
+from mkos_schemas.codes import ErrorCode
+from mkos_schemas.enums import ErrorClass, FixAction, Marketplace, RetryClass, Severity
 from mkos_schemas.jobs import CategoryTemplate as CategoryTemplateModel
+from mkos_schemas.paths import is_valid_field_path
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -40,6 +44,7 @@ from app.db.models.platform import (
     AttributeDefinition,
     CategoryAttribute,
     CategoryTemplate,
+    MarketplaceErrorMap,
 )
 
 DICTIONARY_RESOURCE: Final = ("mkos_schemas", "data/attribute_dictionary.json")
@@ -398,3 +403,180 @@ async def load_template_rows(
 async def load_templates(engine: AsyncEngine, entries: Sequence[TemplateLoad]) -> TemplateCounts:
     async with engine.begin() as connection:
         return await load_template_rows(connection, entries)
+
+
+# ---- `errors load` (S20 T4; DATABASE.md:546-557) ----
+# The file is a JSON list of `ErrorMapIn`. Seeds come from sandbox and observed responses, never
+# invented: the committed `tests/fixtures/error_map.fake.json` holds local `FAKE-` codes only. A
+# row is keyed by `mem_key (marketplace, match_on, raw_value, version)`: a stored key with the
+# same content is a no-op; one whose only difference is `enabled` flips `enabled` (the one
+# mutable column, 0004's `error_map_guard`); any other difference refuses the whole file ("bump
+# version", nothing written). Each write is audited with a NULL tenant and only `{enabled}`.
+
+PLAIN_TEXT_MAX: Final = 500
+_PLACEHOLDER = re.compile(r"\{[^{}]*\}")
+_ALLOWED_PLACEHOLDERS: Final = frozenset({"{value}", "{field}", "{marketplace}"})
+_ERROR_MAP_CONTENT: Final = (
+    "error_code",
+    "error_class",
+    "retry_class",
+    "severity",
+    "auto_fixable",
+    "fix_action",
+    "field_hint",
+    "plain_text",
+    "seller_action",
+    "policy_ref",
+)
+
+
+class ErrorMapIn(_Strict):
+    marketplace: Marketplace
+    match_on: Literal["code", "category"]
+    raw_value: Annotated[str, StringConstraints(min_length=1, max_length=128)]
+    version: Annotated[int, Field(ge=1)]
+    error_code: ErrorCode
+    error_class: ErrorClass
+    retry_class: RetryClass
+    severity: Severity
+    auto_fixable: bool
+    fix_action: FixAction | None = None
+    field_hint: str | None = None
+    plain_text: Annotated[str, StringConstraints(min_length=1, max_length=PLAIN_TEXT_MAX)]
+    seller_action: Annotated[str, StringConstraints(min_length=1, max_length=1000)] | None = None
+    policy_ref: dict[str, Any] | None = None
+    enabled: bool = True
+
+    @model_validator(mode="after")
+    def _checks(self) -> ErrorMapIn:
+        if self.auto_fixable != (self.fix_action is not None):
+            raise ValueError("auto_fixable must match fix_action (mem_fix)")
+        if self.field_hint is not None and not is_valid_field_path(self.field_hint):
+            raise ValueError("field_hint must be a legal field path")
+        if self.raw_value != self.raw_value.strip():
+            raise ValueError("raw_value has surrounding whitespace")
+        for token in _PLACEHOLDER.findall(self.plain_text):
+            if token not in _ALLOWED_PLACEHOLDERS:
+                raise ValueError(
+                    "plain_text holds a placeholder other than {value} {field} {marketplace}"
+                )
+        return self
+
+    def content(self) -> dict[str, Any]:
+        dumped = self.model_dump(mode="json")
+        return {k: dumped[k] for k in _ERROR_MAP_CONTENT}
+
+
+class ErrorMapConflict(Exception):  # noqa: N818 - the CLI names it in its exit line
+    """A stored key holds other content: the file must bump the version."""
+
+    def __init__(self, row: ErrorMapIn) -> None:
+        self.key = f"{row.marketplace.value}/{row.match_on}/{row.raw_value} v{row.version}"
+        super().__init__(self.key)
+
+
+@dataclass(frozen=True, slots=True)
+class ErrorMapCounts:
+    inserted: int
+    unchanged: int
+    toggled: int
+
+
+def load_error_map_file(path: Path) -> list[ErrorMapIn]:
+    """The file as `list[ErrorMapIn]`; `FileNotFoundError` and `ValidationError` propagate."""
+    return TypeAdapter(list[ErrorMapIn]).validate_json(path.read_bytes())
+
+
+async def _audit_error_map(
+    connection: AsyncConnection,
+    row_id: Any,
+    action: str,
+    before: dict[str, Any] | None,
+    after: dict[str, Any],
+) -> None:
+    await connection.execute(
+        text(
+            "SELECT audit(NULL, 'system', NULL, :action, 'marketplace_error_map', :id, "
+            "CAST(:before AS jsonb), CAST(:after AS jsonb), 'errors load', NULL, NULL, NULL, NULL)"
+        ),
+        {
+            "action": action,
+            "id": row_id,
+            "before": None if before is None else json.dumps(before),
+            "after": json.dumps(after),
+        },
+    )
+
+
+async def load_error_map_rows(
+    connection: AsyncConnection, rows: Sequence[ErrorMapIn]
+) -> ErrorMapCounts:
+    """The load on an open transaction (`load_error_map` opens one, as migrator)."""
+    await connection.run_sync(_assume_migrator)
+    table = MarketplaceErrorMap.__table__
+    content_cols = [table.c[name] for name in _ERROR_MAP_CONTENT]
+    inserted = unchanged = toggled = 0
+    seen: set[tuple[str, str, str, int]] = set()
+    for row in rows:
+        key = (row.marketplace.value, row.match_on, row.raw_value, row.version)
+        if key in seen:
+            raise ErrorMapConflict(row)
+        seen.add(key)
+        stored = (
+            await connection.execute(
+                select(table.c.id, table.c.enabled, *content_cols)
+                .where(
+                    table.c.marketplace == key[0],
+                    table.c.match_on == key[1],
+                    table.c.raw_value == key[2],
+                    table.c.version == key[3],
+                )
+                .with_for_update()
+            )
+        ).one_or_none()
+        content = row.content()
+        if stored is None:
+            row_id = (
+                await connection.execute(
+                    insert(MarketplaceErrorMap)
+                    .values(
+                        marketplace=key[0],
+                        match_on=key[1],
+                        raw_value=key[2],
+                        version=key[3],
+                        enabled=row.enabled,
+                        **content,
+                    )
+                    .returning(table.c.id)
+                )
+            ).scalar_one()
+            await _audit_error_map(
+                connection, row_id, "marketplace_error_map.loaded", None, {"enabled": row.enabled}
+            )
+            inserted += 1
+            continue
+        held = {name: getattr(stored, name) for name in _ERROR_MAP_CONTENT}
+        if held != content:
+            raise ErrorMapConflict(row)
+        if stored.enabled == row.enabled:
+            unchanged += 1
+            continue
+        await connection.execute(
+            update(MarketplaceErrorMap)
+            .where(MarketplaceErrorMap.id == stored.id)
+            .values(enabled=row.enabled)
+        )
+        await _audit_error_map(
+            connection,
+            stored.id,
+            "marketplace_error_map.enabled_changed",
+            {"enabled": stored.enabled},
+            {"enabled": row.enabled},
+        )
+        toggled += 1
+    return ErrorMapCounts(inserted=inserted, unchanged=unchanged, toggled=toggled)
+
+
+async def load_error_map(engine: AsyncEngine, rows: Sequence[ErrorMapIn]) -> ErrorMapCounts:
+    async with engine.begin() as connection:
+        return await load_error_map_rows(connection, rows)
