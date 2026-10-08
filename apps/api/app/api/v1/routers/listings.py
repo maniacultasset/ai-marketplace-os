@@ -76,6 +76,14 @@ async def listings_get(listing_id: ListingId) -> NoReturn:
     raise NotImplementedYet("listings_get")
 
 
+@route(router, OPS["listings_preview"])
+@stub
+async def listings_preview(listing_id: ListingId) -> NoReturn:
+    """What the marketplace adapter would send for the current version, per SKU, with its
+    mapping errors. Sends nothing and needs no marketplace account."""
+    raise NotImplementedYet("listings_preview")
+
+
 @route(router, OPS["listings_status"])
 @stub
 async def listings_status(listing_id: ListingId) -> NoReturn:

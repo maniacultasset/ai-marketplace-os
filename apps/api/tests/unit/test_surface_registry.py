@@ -43,6 +43,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("listings_publish", "POST", "/listings/publish"),
     ("listings_list", "GET", "/listings"),
     ("listings_get", "GET", "/listings/{listing_id}"),
+    ("listings_preview", "GET", "/listings/{listing_id}/preview"),
     ("listings_status", "GET", "/listings/{listing_id}/status"),
     ("listings_content_patch", "PATCH", "/listings/{listing_id}/content"),
     ("listings_regenerate", "POST", "/listings/{listing_id}/regenerate"),
@@ -68,7 +69,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 40
+    assert len(FROZEN) == 41
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -120,6 +121,11 @@ def _op(**changes: Any) -> Operation:
         ({"idempotency": True}, {"conflict", "validation"}, set()),
         ({"if_match": True, "conflict_code": E.STALE_VERSION}, {"conflict", "validation"}, set()),
         ({"maker_checker": True}, {"maker_checker"}, set()),
+        (
+            {"path": "/x/{x_id}", "path_id": "x_id", "conflict_code": E.LISTING_BUSY},
+            {"conflict", "not_found"},
+            {"wrong_role"},
+        ),
         (
             {"oauth_state": True, "public": True, "action": None, "roles": frozenset()},
             {"bad_state"},
@@ -225,6 +231,7 @@ def test_error_codes_per_d2() -> None:
         "marketplaces_callback": (E.OAUTH_STATE_INVALID,),
         "marketplaces_connect_confirm": (E.MARKETPLACE_ACCOUNT_CONFLICT, E.OAUTH_STATE_INVALID),
         "members_patch": (E.LAST_OWNER_REQUIRED,),
+        "listings_preview": (E.LISTING_BUSY,),
     }
     for op in OPS.values():
         codes = op.error_codes
@@ -265,7 +272,9 @@ def test_error_codes_per_d2() -> None:
 
 
 def test_owner_steps_known() -> None:
-    allowed = {"S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S21", "S23"}
+    allowed = {
+        "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
+    }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id
 
@@ -294,3 +303,27 @@ def test_declared_responses_examples_use_first_code() -> None:
             example = responses[status]["content"]["application/json"]["example"]
             assert example["error"]["type"] == codes[0].value
             assert example["error"]["status"] == status
+
+
+def test_listings_preview_row() -> None:
+    """S20: a read with its own 409 (LISTING_BUSY) and 501 (no adapter for the marketplace);
+    every role reads, so wrong_role does not apply."""
+    op = OPS["listings_preview"]
+    assert op.method == "GET" and op.response_model is not None
+    assert cases(op) == {
+        "success",
+        "validation",
+        "missing_auth",
+        "invalid_token",
+        "wrong_tenant",
+        "not_found",
+        "conflict",
+    }
+    assert dict(op.error_codes) == {
+        401: (E.UNAUTHENTICATED,),
+        404: (E.NOT_FOUND,),
+        409: (E.LISTING_BUSY,),
+        422: (E.VALIDATION_FAILED,),
+        429: (E.RATE_LIMITED,),
+        501: (E.NOT_IMPLEMENTED,),
+    }

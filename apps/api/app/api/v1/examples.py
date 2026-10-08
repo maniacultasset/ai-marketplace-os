@@ -318,6 +318,40 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
         },
         "listings_list": _page([_LISTING]),
         "listings_get": {**_LISTING, "content": _CONTENT, "validation": _VALIDATION_FAILED_SUMMARY},
+        "listings_preview": {
+            "schema_version": "1.0.0",
+            "listing_id": LISTING,
+            "version": 1,
+            "marketplace": "amazon",
+            "product_type": "SHIRT",
+            "items": [
+                {
+                    "product_id": PRODUCT_1,
+                    "seller_sku": "KURTA-001",
+                    "item_role": "standalone",
+                    "payload": {
+                        "productType": "SHIRT",
+                        "requirements": "LISTING",
+                        "attributes": {
+                            "item_name": [
+                                {
+                                    "value": "Indigo Organic Cotton Kurta",
+                                    "language_tag": "en_IN",
+                                    "marketplace_id": "A21TJRUUN4KGV",
+                                }
+                            ],
+                            "main_product_image_locator": [
+                                {
+                                    "media_location": f"image:{IMAGE}",
+                                    "marketplace_id": "A21TJRUUN4KGV",
+                                }
+                            ],
+                        },
+                    },
+                }
+            ],
+            "report": {**_report(True), "request_id": None},
+        },
         "listings_status": {
             "listing_id": LISTING,
             "status": "needs_review",
