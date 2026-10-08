@@ -212,3 +212,47 @@ ignore_imports =
     app.adapters.storage -> boto3
     app.adapters.storage -> botocore
 allow_indirect_imports = True
+
+# Invariant 1 (S20 T20): the mutating marketplace adapter and its HTTP client are reached only
+# from app.adapters and app.workers (S21's publish job, after approval). A service previews
+# through the pure registry (`app.adapters.registry`); indirect imports count too.
+[importlinter:contract:marketplace-io-only-in-adapters-and-workers]
+name = only app.adapters and app.workers reach the marketplace adapter and client
+type = forbidden
+source_modules =
+    app.api
+    app.services
+    app.repositories
+    app.cli
+    app.core
+    app.db
+forbidden_modules =
+    app.adapters.amazon.client
+    app.adapters.amazon.adapter
+    app.workers.adapters
+
+# The preview path and the error mapper are pure (S20 T20): no HTTP client, socket or database,
+# directly or indirectly, so a preview can never send anything.
+[importlinter:contract:pure-mapping-no-io]
+name = adapter mapping, endpoint check, error map and registry do no I/O
+type = forbidden
+source_modules =
+    app.adapters.amazon.mapping
+    app.adapters.amazon.endpoint
+    app.adapters.error_map
+    app.adapters.registry
+forbidden_modules =
+    httpx
+    socket
+    sqlalchemy
+
+# Adapters never call a model (invariants 1 and 7; S20 T20). Only installed packages can be
+# named here; `openai` and `langgraph` are covered by the AST test
+# `test_adapters_import_no_ai_packages`.
+[importlinter:contract:adapters-no-ai]
+name = app.adapters imports no AI package
+type = forbidden
+source_modules =
+    app.adapters
+forbidden_modules =
+    mkos_pipeline

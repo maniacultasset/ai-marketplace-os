@@ -1125,6 +1125,36 @@ def test_prove_gates_s15_legs(repo_root: Path) -> None:
     assert code.index("leg lint-imports-unseal-from-router") < docker
 
 
+# ---- S20 T20 (AC5): the adapter import contracts and the preview case matrix are proven ----
+
+S20_LEGS = {
+    "lint-imports-adapter-from-service": (
+        "lint-imports",
+        "only app.adapters and app.workers reach the marketplace adapter and client BROKEN",
+    ),
+    "lint-imports-mapping-httpx": (
+        "lint-imports",
+        "adapter mapping, endpoint check, error map and registry do no I/O BROKEN",
+    ),
+    "api-tests-preview-case-matrix": ("api-tests", "listings_preview: missing endpoint cases"),
+}
+
+
+def test_prove_gates_s20_legs(repo_root: Path) -> None:
+    code = _code((repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8"))
+    for name, (gate, regex) in S20_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+    assert "import app.adapters.amazon.adapter" in code
+    assert "app/adapters/amazon/mapping.py" in code and "import httpx" in code
+    assert 'case="conflict"' in code and "test_listings_preview.py" in code
+    docker = code.index('if [ "$with_docker" -eq 1 ]; then')
+    assert code.index("leg lint-imports-adapter-from-service") < docker
+    assert code.index("leg lint-imports-mapping-httpx") < docker
+    assert code.index("leg api-tests-preview-case-matrix") > docker
+
+
 def test_bootstrap_imports_pipeline(repo_root: Path) -> None:
     # S14b T14 (ADR-0013 §4): the image ships the pipeline module the generation worker imports.
     text = (repo_root / "scripts" / "ci" / "bootstrap.sh").read_text(encoding="utf-8")
