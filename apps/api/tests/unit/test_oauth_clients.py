@@ -113,6 +113,29 @@ def test_authorize_url_params_amazon() -> None:
         client.authorize_url(state="st-2", code_challenge="c" * 43)
 
 
+def test_authorize_url_keeps_amazon_draft_app_version() -> None:
+    # Until the app is published, Amazon authorizes it only with version=beta on the consent URL
+    # (docs/EXTERNAL-SETUP.md §1.3): AMAZON_AUTHORIZE_URL carries it, and it must survive.
+    from app.adapters.oauth.amazon import AmazonOAuthClient
+
+    client = AmazonOAuthClient(
+        application_id="amzn1.sp.solution.test",
+        client_id="amzn1.application-oa2-client.test",
+        client_secret="not-a-secret",
+        authorize_base="https://sellercentral.amazon.in/apps/authorize/consent?version=beta",
+        token_url="https://api.amazon.com/auth/o2/token",
+        redirect_uri="https://api.example.invalid/api/v1/marketplaces/amazon/callback",
+    )
+    url = client.authorize_url(state="st-3", code_challenge=None)
+    assert url.startswith("https://sellercentral.amazon.in/apps/authorize/consent?version=beta&")
+    assert _params(url) == {
+        "version": ["beta"],
+        "application_id": ["amzn1.sp.solution.test"],
+        "redirect_uri": ["https://api.example.invalid/api/v1/marketplaces/amazon/callback"],
+        "state": ["st-3"],
+    }
+
+
 async def _exchange(marketplace: str, seller: str = "A7SELLER") -> Any:
     from app.adapters.oauth import CallbackParams
 
