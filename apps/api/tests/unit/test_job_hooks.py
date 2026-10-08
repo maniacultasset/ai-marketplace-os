@@ -19,10 +19,18 @@ def test_hook_type_aliases_literal() -> None:
     assert typing.get_args(requeue_ret) == (None,)
 
 
-def test_hook_maps_hold_only_the_import_hooks() -> None:
-    """S13b adds the first entries: the `bulk_import` hooks (later steps add their kinds)."""
+def test_hook_maps_hold_only_the_owned_kinds() -> None:
+    """Only the kinds a merged step owns have hooks: S13b's `bulk_import` and S16's
+    `brand_embed` (later steps add theirs)."""
+    from app.services.brand_embed import on_brand_embed_requeue, on_brand_embed_terminal
     from app.services.imports.hooks import import_requeue_hook, import_terminal_hook
     from mkos_schemas.enums import JobKind
 
-    assert {JobKind.BULK_IMPORT: import_terminal_hook} == job_hooks.TERMINAL_HOOKS
-    assert {JobKind.BULK_IMPORT: import_requeue_hook} == job_hooks.REQUEUE_HOOKS
+    assert {
+        JobKind.BULK_IMPORT: import_terminal_hook,
+        JobKind.BRAND_EMBED: on_brand_embed_terminal,
+    } == job_hooks.TERMINAL_HOOKS
+    assert {
+        JobKind.BULK_IMPORT: import_requeue_hook,
+        JobKind.BRAND_EMBED: on_brand_embed_requeue,
+    } == job_hooks.REQUEUE_HOOKS

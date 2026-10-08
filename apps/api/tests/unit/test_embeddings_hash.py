@@ -3,14 +3,10 @@ key branch and its own tests to this file)."""
 
 from __future__ import annotations
 
-import ast
 import math
-from pathlib import Path
 from typing import Any
 
 import pytest
-
-MODULE = Path(__file__).resolve().parents[2] / "app" / "services" / "embeddings.py"
 
 
 def _settings(app_env: str = "local", **over: Any) -> Any:
@@ -106,12 +102,54 @@ def test_embedder_selection_no_key_staging_raises(app_env: str) -> None:
     assert caught.value.code is ErrorCode.MODEL_UNAVAILABLE
 
 
-def test_embeddings_imports_no_network() -> None:
-    banned = {"socket", "httpx", "openai", "requests", "urllib", "aiohttp", "http"}
-    found: set[str] = set()
-    for node in ast.walk(ast.parse(MODULE.read_text(encoding="utf-8"))):
-        if isinstance(node, ast.Import):
-            found |= {a.name.split(".")[0] for a in node.names}
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            found.add(node.module.split(".")[0])
-    assert found & banned == set()
+async def test_hash_embedder_path_no_network() -> None:
+    """S16 T6 narrows S14b's import ban: the module now imports `openai`/`httpx2` for the real
+    embedder (TID251 keeps them out of the rest of `app/`), but the local no-key path makes no
+    connection: pytest-socket blocks every socket in this suite."""
+    from app.services.embeddings import HashEmbedder, get_embedder
+
+    embedder = get_embedder(_settings("local"))
+    assert isinstance(embedder, HashEmbedder)
+    batch = await embedder.embed(["a brand sentence", "another one"])
+    assert len(batch.vectors) == 2
+
+
+def test_embedder_selection_placeholder_is_fake() -> None:
+    from app.services.embeddings import HashEmbedder, get_embedder
+
+    for key in ("sk-REPLACE_ME", "", "   "):
+        assert isinstance(get_embedder(_settings("local", openai_api_key=key)), HashEmbedder)
+
+
+@pytest.mark.parametrize("app_env", ["staging", "production"])
+def test_embedder_selection_placeholder_staging_raises(app_env: str) -> None:
+    from app.services.embeddings import EmbedderUnavailable, get_embedder
+
+    with pytest.raises(EmbedderUnavailable):
+        get_embedder(_settings(app_env, openai_api_key="sk-REPLACE_ME"))
+
+
+@pytest.mark.parametrize("app_env", ["local", "staging"])
+def test_embedder_selection_real_key_openai(app_env: str) -> None:
+    from app.services.embeddings import OpenAIEmbedder, get_embedder
+
+    embedder = get_embedder(_settings(app_env, openai_api_key="test-only-not-a-real-key"))
+    assert isinstance(embedder, OpenAIEmbedder)
+    assert embedder.model == "text-embedding-3-small"
+
+
+def test_hash_embedder_unit_norm_property() -> None:
+    from app.services.embeddings import HashEmbedder
+    from hypothesis import given, settings
+    from hypothesis import strategies as st
+
+    embedder = HashEmbedder("text-embedding-3-small")
+
+    @settings(max_examples=100, deadline=None)
+    @given(st.text(max_size=300))
+    def check(text: str) -> None:
+        vector, _ = embedder._vector(text)
+        assert len(vector) == 1536
+        assert abs(math.fsum(v * v for v in vector) - 1.0) < 1e-9
+
+    check()

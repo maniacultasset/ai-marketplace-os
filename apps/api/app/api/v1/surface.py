@@ -1,7 +1,8 @@
 """The frozen `/api/v1` surface: one row per operation (S3; BACKEND-ARCHITECTURE.md §5.2).
 
 `OPS` is the frozen list (35 operations at S3, 38 with S10's switch and members, 40 with S15's
-connect confirm and account revoke; no dead-letter path,
+connect confirm and account revoke, 43 with S16's profile update and document list and delete;
+no dead-letter path,
 which is staff tooling per T82). It
 drives the routers (`route()`), the declared OpenAPI responses (`declared_responses()`), the
 parametrized surface tests and the case-matrix guard (`cases()`), so a route, its contract and its
@@ -31,10 +32,11 @@ from pydantic import BaseModel
 
 from app.api.errors import STATUS_MESSAGES, ErrorEnvelope, envelope_body
 from app.api.v1.deps import public, require
-from app.api.v1.examples import CALLBACK_LOCATION, SUCCESS_EXAMPLES
+from app.api.v1.examples import CALLBACK_LOCATION, ETAG_EXAMPLE, SUCCESS_EXAMPLES
 from app.api.v1.schemas.analytics import AnalyticsSummary
 from app.api.v1.schemas.auth import MemberOut, MemberPage, MeOut, TokenResponse
 from app.api.v1.schemas.batches import BatchAccepted, BatchResult
+from app.api.v1.schemas.brand import BrandDocumentPage
 from app.api.v1.schemas.images import ImageAccepted, ImageReportOut, UploadUrlOut
 from app.api.v1.schemas.imports import ImportAccepted, ImportRowPage
 from app.api.v1.schemas.listings import ListingDetail, ListingPage, ListingStatusOut
@@ -63,7 +65,7 @@ Case = Literal[
 CASES: Final[tuple[Case, ...]] = get_args(Case)
 ALL_ROLES: Final[frozenset[Role]] = frozenset(get_args(Role))
 NO_ROLES: Final[frozenset[Role]] = frozenset()
-Method = Literal["GET", "POST", "PATCH"]
+Method = Literal["GET", "POST", "PATCH", "DELETE"]
 EXAMPLE_CORRELATION_ID: Final = "req-example-0001"
 
 E = ErrorCode
@@ -93,6 +95,8 @@ class Operation:
     """The op's own 409 code (SKU_CONFLICT, STALE_VERSION, INVALID_STATUS_TRANSITION)."""
     maker_checker: bool = False
     oauth_state: bool = False
+    etag: bool = False
+    """The success response carries an `ETag` header (S16 CP3: the version a PATCH sends back)."""
     action: Action | None = None
     """The action `require()` checks (CODE-PLAN S10 Q7); None exactly when the op is public."""
     roles: frozenset[Role] | None = None
@@ -246,7 +250,21 @@ def success_response(op: Operation) -> dict[int | str, dict[str, Any]]:
         }
     if op.response_model is None:
         return {op.status: {"description": "Done; no body."}}
-    return {op.status: {"content": {"application/json": {"example": SUCCESS_EXAMPLES[op.op_id]}}}}
+    entry: dict[str, Any] = {
+        "content": {"application/json": {"example": SUCCESS_EXAMPLES[op.op_id]}}
+    }
+    if op.etag:
+        entry["headers"] = {
+            "ETag": {
+                "description": (
+                    "The profile's current version, a quoted UUID. Send it back as `If-Match` "
+                    "on the next PATCH."
+                ),
+                "schema": {"type": "string"},
+                "example": ETAG_EXAMPLE,
+            }
+        }
+    return {op.status: entry}
 
 
 def stub[F: Callable[..., Any]](fn: F) -> F:
@@ -323,9 +341,19 @@ _ROWS: Final[tuple[Operation, ...]] = (
               action=A.TEAM_MANAGE),
     # ---- tenants and brand (S16) ----
     Operation("tenants_me", "GET", "/tenants/me", 200, TenantOut, "tenants",
-              "The brand profile", "S16", action=A.TENANT_READ),
+              "The brand profile", "S16", etag=True, action=A.TENANT_READ),
+    Operation("tenants_me_update", "PATCH", "/tenants/me", 200, TenantOut, "tenants",
+              "Update the brand profile (If-Match: the ETag from GET)", "S16", has_body=True,
+              if_match=True, conflict_code=E.STALE_VERSION, etag=True,
+              action=A.SETTINGS_MANAGE),
     Operation("brand_documents_upload", "POST", "/brand/documents", 202, JobAccepted, "brand",
               "Upload a brand document for chunking", "S16", has_body=True, idempotency=True, action=A.SETTINGS_MANAGE),
+    Operation("brand_documents_list", "GET", "/brand/documents", 200, BrandDocumentPage,
+              "brand", "List the brand documents", "S16", query=("limit", "cursor"),
+              action=A.TENANT_READ),
+    Operation("brand_documents_delete", "DELETE", "/brand/documents/{document_id}", 204, None,
+              "brand", "Delete a brand document and deactivate its chunks", "S16",
+              path_id="document_id", action=A.SETTINGS_MANAGE),
     # ---- products (S12, S13) ----
     Operation("products_create", "POST", "/products", 201, ProductOut, "products",
               "Create one product", "S12", has_body=True, body_ids=("images",),

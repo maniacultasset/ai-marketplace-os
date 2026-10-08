@@ -1032,7 +1032,7 @@ Counters only, so no `tenant_id` and no RLS. PK `(bucket_key, window_start)` plu
 
 ### 5.5 Brand voice vectors
 
-**Plain English.** Brands upload voice guides, glossaries and compliance documents. We split them into ~200-word chunks and store each chunk's 1,536-number "meaning fingerprint" in the same Postgres. At generation time the AI receives the 8 most relevant snippets; it never queries the table.
+**Plain English.** Brands upload voice guides, glossaries and compliance documents. We split them into one chunk per meaningful unit (a rule, a glossary pair, a paragraph or bullet; at most ~200 words, T90) and store each chunk's 1,536-number "meaning fingerprint" in the same Postgres. At generation time the AI receives the 8 most relevant snippets; it never queries the table.
 
 ```mermaid
 erDiagram

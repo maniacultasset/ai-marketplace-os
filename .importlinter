@@ -213,6 +213,20 @@ ignore_imports =
     app.adapters.storage -> botocore
 allow_indirect_imports = True
 
+[importlinter:contract:brand-chunking-is-pure]
+name = brand chunking is pure
+type = forbidden
+source_modules =
+    app.services.brand_chunking
+forbidden_modules =
+    sqlalchemy
+    app.db
+    app.repositories
+    app.adapters
+    httpx
+    httpx2
+    openai
+    fastapi
 # The image check child (S17b CP6) decodes untrusted images in its own process: it imports the
 # pure S17a checks, mkos_schemas, Pillow and the stdlib only, so no settings, DSN, storage client
 # or HTTP client is ever loaded next to the decoder.

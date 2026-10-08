@@ -1803,3 +1803,311 @@ def test_bootstrap_runs_image_pipeline_twice_multipart_only(repo_root: Path) -> 
     assert code.index('scripts/e2e/import_flow.sh "http://127.0.0.1:${api_port}"') < code.index(
         call
     )
+
+
+def test_prove_gates_has_s16_legs(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    assert "leg lint-openai-outside-embeddings api-lint 'TID251'" in text
+    assert "leg lint-imports-chunker-db lint-imports 'brand chunking is pure BROKEN'" in text
+    docker = text.split('if [ "$with_docker" -eq 1 ]; then', 1)[1]
+    assert (
+        "leg tenant-isolation-brand-ingest-no-tenant-filter tenant-isolation "
+        "'test_brand_chunk_search_ingested_isolation' seed_iso_no_filter"
+    ) in docker
+    for seed in ("seed_openai_in_chunker", "seed_chunker_imports_db"):
+        assert f"{seed}() {{" in text
+
+
+# ---- S16 T22 (AC10): the brand onboarding e2e ----
+
+BRAND_FLOW = "scripts/e2e/brand_onboarding.sh"
+BRAND_STEPS = (
+    "health",
+    "cli_tenant_create",
+    "cli_duplicate_slug_fails",
+    "login_owner",
+    "get_tenant_me_etag",
+    "patch_tenant_me_200",
+    "patch_stale_409",
+    "worker_start",
+    "upload_202",
+    "job_succeeded_under_30s",
+    "list_ready_with_chunks",
+    "reupload_new_key_same_job",
+    "key_reuse_other_file_409",
+    "cli_add_member_reviewer",
+    "login_reviewer",
+    "reviewer_upload_403",
+    "login_bharat_reviewer",
+    "bharat_list_lacks",
+    "login_bharat_admin",
+    "bharat_delete_404",
+    "delete_204",
+    "delete_again_404",
+    "db_profile_chunks_present",
+    "db_doc_chunks_inactive",
+    "worker_stop",
+)
+_BRAND_TENANT = "11111111-1111-4111-8111-111111111111"
+_BRAND_DOC = "22222222-2222-4222-8222-222222222222"
+
+# A `curl` stand-in for the brand flow: it answers from the URL, method, headers and body (a
+# `--data-binary @file` is read), writes the body to `-o`, the headers to `-D`, and prints the
+# status. Every argv goes to STUB_DIR/argv.log, every login email to STUB_DIR/logins.log.
+_BRAND_CURL_STUB = r"""#!/usr/bin/env python3
+import json, os, re, sys
+d = os.environ["STUB_DIR"]
+args = sys.argv[1:]
+with open(os.path.join(d, "argv.log"), "a", encoding="utf-8") as fh:
+    fh.write("curl " + " ".join(args) + "\n")
+out = hdr = None; method = "GET"; headers = {}; form = ""; url = ""; data = ""
+i = 0
+while i < len(args):
+    a = args[i]
+    if a == "-o": out = args[i + 1]; i += 2; continue
+    if a == "-D": hdr = args[i + 1]; i += 2; continue
+    if a == "-X": method = args[i + 1]; i += 2; continue
+    if a == "-H":
+        k, _, v = args[i + 1].partition(": "); headers[k.lower()] = v; i += 2; continue
+    if a == "-F": form = args[i + 1]; i += 2; continue
+    if a == "--data-binary":
+        data = args[i + 1]
+        if data.startswith("@"):
+            with open(data[1:], encoding="utf-8") as fh:
+                data = fh.read()
+        i += 2; continue
+    if a == "-w": i += 2; continue
+    if a.startswith("http"): url = a
+    i += 1
+def flag(name):
+    return os.path.exists(os.path.join(d, name))
+def mark(name):
+    open(os.path.join(d, name), "w").close()
+token = headers.get("authorization", "").removeprefix("Bearer ")
+path = re.sub(r"^https?://[^/]+", "", url)
+status, body, etag = 404, {"error": {"type": "NOT_FOUND"}}, None
+if path == "/readyz":
+    status, body = 200, {}
+elif path.endswith("/auth/login"):
+    who = json.loads(data)["email"]
+    with open(os.path.join(d, "logins.log"), "a", encoding="utf-8") as fh:
+        fh.write(who + "\n")
+    status, body = 200, {"access_token": who}
+elif path.endswith("/tenants/me") and method == "GET":
+    with open(os.path.join(d, "slug"), encoding="utf-8") as fh:
+        slug = fh.read().strip()
+    status, body, etag = 200, {"id": "TENANT", "slug": slug}, '"v1"'
+elif path.endswith("/tenants/me") and method == "PATCH":
+    if headers.get("if-match") == '"v1"' and not flag("patched"):
+        mark("patched")
+        patch = json.loads(data)
+        status, body, etag = 200, patch, '"v2"'
+    else:
+        status, body = 409, {"error": {"type": "STALE_VERSION"}}
+elif path.endswith("/brand/documents") and method == "POST":
+    key = headers.get("idempotency-key", "")
+    if token.startswith("reviewer-"):
+        status, body = 403, {"error": {"type": "FORBIDDEN"}}
+    elif "other.md" in form:
+        status, body = 409, {"error": {"type": "IDEMPOTENCY_KEY_REUSED"}}
+    else:
+        status, body = 202, {"job_id": "JOB"}
+elif path.endswith("/jobs/JOB"):
+    status, body = 200, {"status": "succeeded"}
+elif path.endswith("/brand/documents") and method == "GET":
+    rows = [] if "bharat" in token else [
+        {"id": "DOC", "filename": "brand_guide.md", "status": "ready", "chunk_count": 5}
+    ]
+    status, body = 200, {"data": rows}
+elif path.endswith("/brand/documents/" + os.environ["STUB_DOC"]) and method == "DELETE":
+    if token.startswith("owner-") and not flag("deleted"):
+        mark("deleted")
+        status, body = 204, {}
+if out:
+    with open(out, "w", encoding="utf-8") as fh:
+        fh.write(json.dumps(body).replace("TENANT", os.environ["STUB_TENANT"]).replace("DOC", os.environ["STUB_DOC"]))
+if hdr:
+    with open(hdr, "w", encoding="utf-8") as fh:
+        fh.write("HTTP/1.1 %d\r\n" % status + ("ETag: %s\r\n" % etag if etag else "") + "\r\n")
+sys.stdout.write(str(status))
+"""
+
+# `docker` (only `compose exec ... psql` here) answers the two db reads; `mkos` is the CLI hook.
+_BRAND_DOCKER_STUB = r"""#!/usr/bin/env python3
+import os, sys
+d = os.environ["STUB_DIR"]
+with open(os.path.join(d, "argv.log"), "a", encoding="utf-8") as fh:
+    fh.write("docker " + " ".join(sys.argv[1:]) + "\n")
+sql = sys.argv[-1]
+print("3" if "brand_profile" in sql else "0 5")
+"""
+_BRAND_CLI_STUB = r"""#!/usr/bin/env python3
+import os, sys
+d = os.environ["STUB_DIR"]
+args = sys.argv[1:]
+secret = sys.stdin.readline().rstrip("\n")
+with open(os.path.join(d, "argv.log"), "a", encoding="utf-8") as fh:
+    fh.write("mkos " + " ".join(args) + "\n")
+with open(os.path.join(d, "secrets.log"), "a", encoding="utf-8") as fh:
+    fh.write(secret + "\n")
+with open(os.path.join(d, "hooks.log"), "a", encoding="utf-8") as fh:
+    fh.write("cli-" + args[1] + "\n")
+if args[:2] == ["tenant", "create"]:
+    slug = args[args.index("--slug") + 1]
+    seen = os.path.join(d, "slug")
+    if os.path.exists(seen) and open(seen, encoding="utf-8").read().strip() == slug:
+        sys.exit(4)
+    with open(seen, "w", encoding="utf-8") as fh:
+        fh.write(slug)
+    print("tenant_id=%s slug=%s" % (os.environ["STUB_TENANT"], slug))
+else:
+    print("tenant_id=%s user_id=33333333-3333-4333-8333-333333333333" % os.environ["STUB_TENANT"])
+"""
+
+
+def _run_brand_flow(
+    repo_root: Path, tmp_path: Path, *, hooks: bool = True
+) -> tuple[subprocess.CompletedProcess[str], Path]:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(parents=True)
+    stub_dir = tmp_path / "stub"
+    stub_dir.mkdir()
+    for name, text in (
+        ("curl", _BRAND_CURL_STUB),
+        ("docker", _BRAND_DOCKER_STUB),
+        ("mkos-cli", _BRAND_CLI_STUB),
+    ):
+        stub = bin_dir / name
+        stub.write_text(text, encoding="utf-8")
+        stub.chmod(0o755)
+    hook_log = stub_dir / "hooks.log"
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
+    env |= {"STUB_DIR": str(stub_dir), "STUB_TENANT": _BRAND_TENANT, "STUB_DOC": _BRAND_DOC}
+    for name in ("WORKER_START", "WORKER_STOP", "MKOS_CLI"):
+        env.pop(name, None)
+    if hooks:
+        env["WORKER_START"] = f'echo start >> "{hook_log}"'
+        env["WORKER_STOP"] = f'echo stop >> "{hook_log}"'
+        env["MKOS_CLI"] = "mkos-cli"
+    result = subprocess.run(
+        [str(repo_root / BRAND_FLOW), "http://127.0.0.1:8123"],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=120,
+        check=False,
+    )
+    return result, stub_dir
+
+
+def _lines(path: Path) -> list[str]:
+    return path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+
+
+def test_e2e_brand_onboarding_steps(repo_root: Path, tmp_path: Path) -> None:
+    code = _code((repo_root / BRAND_FLOW).read_text(encoding="utf-8"))
+    assert "set -euo pipefail" in code
+    assert tuple(re.findall(r"(?m)^step (\w+)$", code)) == BRAND_STEPS
+    assert "POLL_LIMIT_S=60" in code
+    assert 'slug="e2e-$(date +%s)-$RANDOM"' in code
+    assert "FAILED at step $current (HTTP status ${status:-none})" in code
+    assert 'cat "$body"' not in code
+    assert not re.search(r":\d{2,5}\b", code)
+    assert "scripts/ci/worktree_env.sh exports .worktree.env" in code
+    assert "TRUNCATE" not in code.upper()
+    assert "rate_limit_counters" not in code and "RATE_LIMIT_" not in code
+    # psql (and any docker call) only in the two read-only db_ steps
+    current, hits = "setup", []
+    for line in code.splitlines():
+        match = re.match(r"^step (\w+)$", line)
+        if match:
+            current = match.group(1)
+        if "psql" in line or "docker" in line:
+            hits.append(current)
+    assert sorted(set(hits)) == ["db_doc_chunks_inactive", "db_profile_chunks_present"]
+
+    result, stub_dir = _run_brand_flow(repo_root, tmp_path)
+    assert result.returncode == 0, result.stderr
+    assert (
+        result.stdout.strip().splitlines()[-1].startswith("e2e: brand_onboarding OK (tenant e2e-")
+    )
+    assert _lines(stub_dir / "hooks.log") == [
+        "cli-create",
+        "cli-create",
+        "start",
+        "cli-add-member",
+        "stop",
+    ]
+    # no password (the CLI's stdin lines) on any argv; each new user's is its own
+    secrets = _lines(stub_dir / "secrets.log")
+    assert len(secrets) == 3 and len(set(secrets)) == 2 and all(len(s) >= 24 for s in secrets)
+    argv = (stub_dir / "argv.log").read_text(encoding="utf-8")
+    assert all(secret not in argv for secret in secrets)
+    assert "devpassword123" not in argv
+    # every email logs in at most 5 times (the limiter's budget); here once each
+    logins = _lines(stub_dir / "logins.log")
+    assert len(logins) == 4 and len(set(logins)) == 4
+    assert {"reviewer@bharat.test", "admin@bharat.test"} <= set(logins)
+
+
+def test_e2e_brand_onboarding_slug_unique_per_run(repo_root: Path, tmp_path: Path) -> None:
+    first, one = _run_brand_flow(repo_root, tmp_path / "a")
+    second, two = _run_brand_flow(repo_root, tmp_path / "b")
+    assert first.returncode == 0 and second.returncode == 0, (first.stderr, second.stderr)
+    assert (one / "slug").read_text(encoding="utf-8") != (two / "slug").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("url", NON_LOCAL_URLS)
+def test_e2e_brand_onboarding_refuses_non_local_url(
+    repo_root: Path, tmp_path: Path, url: str
+) -> None:
+    env, log = _stub_path(tmp_path)
+    env |= {"WORKER_START": "true", "WORKER_STOP": "true", "MKOS_CLI": "docker"}
+    result = subprocess.run(
+        [str(repo_root / BRAND_FLOW), url],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 2, result.stderr
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""
+
+
+def test_e2e_brand_onboarding_without_hooks_exits_2(repo_root: Path, tmp_path: Path) -> None:
+    result, stub_dir = _run_brand_flow(repo_root, tmp_path, hooks=False)
+    assert result.returncode == 2
+    assert result.stderr.startswith("usage: WORKER_START=<cmd> WORKER_STOP=<cmd> MKOS_CLI=")
+    assert not (stub_dir / "argv.log").exists()
+
+
+def test_bootstrap_runs_brand_onboarding_twice(repo_root: Path) -> None:
+    code = _bootstrap_code(repo_root)
+    call = 'scripts/e2e/brand_onboarding.sh "http://127.0.0.1:${api_port}"'
+    assert code.count(call) == 2
+    lines = [line.strip() for line in code.splitlines() if line.strip()]
+    runs = [i for i, line in enumerate(lines) if line == call]
+    for i in runs:
+        assert lines[i - 1] == RESET_CALL
+    hook = code.index("export MKOS_CLI=")
+    cli = code[hook : code.index("\n", hook)]
+    assert "docker run -i --rm" in cli and "-e APP_ROLE=shell" in cli
+    assert "ALEMBIC_DATABASE_URL='$migrator_dsn'" in cli and cli.endswith('-m app.cli"')
+    flow = code.index('scripts/e2e/import_flow.sh "http://127.0.0.1:${api_port}"')
+    start = code.index("export WORKER_START=")
+    assert start < flow < hook < code.index(call)
+    assert code.rindex(call) < code.index('docker rm -f "$e2e_container" >/dev/null', flow)
+
+
+def test_make_e2e_sets_mkos_cli_hook(repo_root: Path) -> None:
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    block = makefile.split("\ne2e:\n", 1)[1].split("\n\n", 1)[0]
+    assert "MKOS_CLI='$(E2E_MKOS_CLI)'" in block
+    # S13b's and S15's hooks stay
+    for kept in ("WORKER_START=", "WORKER_STOP=", "TEMPLATES_LOAD=", "FAKE_URL=", "REFRESH_ONCE="):
+        assert kept in block, kept
+    out = _make_e2e_dry_run(repo_root)
+    cli = out.split("MKOS_CLI='", 1)[1].split("'", 1)[0]
+    assert cli == "uv run --frozen python -m app.cli"

@@ -52,6 +52,21 @@ queue entry, the kind's requeue hook and a `staff` audit row naming E and R.
 | any other failure                    | stderr | 1    |
 | bad arguments (argparse)             | stderr | 2    |
 | not eligible (unknown, not dead_letter or failed, already requeued, tenant not running) | stderr | 4 |
+
+`tenant create --name N --slug S --owner-email E --staff-email F [--trial-days D]`,
+`tenant add-member --slug S --email E --role R --staff-email F` and
+`user set-password --email E --staff-email F` are the staff onboarding tools (S16 PLAN D6;
+DATABASE.md:312): each is one migrator transaction on `ALEMBIC_DATABASE_URL` (the SQL is in
+`app/db/staff_ops.py`), audited as `actor_type='staff'`. A new user's password comes only from
+stdin (asked twice on a terminal), never from argv or the environment. Emails are trimmed,
+lower-cased and must be what the contract's login email accepts (visible ASCII, one `@`).
+
+| outcome                              | stream | exit |
+|--------------------------------------|--------|------|
+| created / added / set                | stdout | 0    |
+| any other failure                    | stderr | 1    |
+| bad arguments or password            | stderr | 2    |
+| slug taken, unknown or stopped tenant or user, membership exists | stderr | 4 |
 """
 
 from __future__ import annotations
@@ -66,12 +81,17 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final
+from typing import TYPE_CHECKING, Any, Final, TextIO
 
 from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy.exc import DBAPIError
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncEngine
+
+    from app.db.staff_ops import NewUser
 
 from app.db.migrations import (
     DatabaseAheadError,
@@ -427,7 +447,165 @@ async def run_templates_load(path: Path) -> int:
     return EXIT_OK
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+# ---- staff onboarding (S16 T19-T20a) ----
+
+EXIT_BAD_INPUT: Final = 2
+SLUG: Final = re.compile(r"[a-z0-9][a-z0-9-]{1,39}")
+EMAIL_OCTETS_MAX: Final = 254
+MEMBER_ROLES: Final = ("owner", "operator", "reviewer", "admin")
+
+
+def _member_email(value: str) -> str:
+    """Trimmed and lower-cased, then exactly what the contract's `LoginEmail` accepts (the
+    `^[^@\\s]+@[^@\\s]+$` pattern plus visible ASCII, so a U+FEFF or other look-alike is refused)
+    and what `ck_users_email` stores (at most 254 octets)."""
+    from pydantic import TypeAdapter, ValidationError
+
+    from app.api.v1.schemas.auth import LoginEmail
+
+    email = value.strip().lower()
+    try:
+        TypeAdapter(LoginEmail).validate_python(email)
+    except ValidationError:
+        raise argparse.ArgumentTypeError("must be a plain ASCII email address") from None
+    if len(email.encode("utf-8")) > EMAIL_OCTETS_MAX or email.count("@") != 1:
+        raise argparse.ArgumentTypeError("must be a plain ASCII email address") from None
+    return email
+
+
+def _slug(value: str) -> str:
+    if not SLUG.fullmatch(value):
+        raise argparse.ArgumentTypeError("--slug must match ^[a-z0-9][a-z0-9-]{1,39}$")
+    return value
+
+
+def _name(value: str) -> str:
+    text = value.strip()
+    if not text or len(text) > 200:
+        raise argparse.ArgumentTypeError("--name must be 1-200 characters")
+    return text
+
+
+def _trial_days(value: str) -> int:
+    try:
+        days = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("--trial-days must be an integer") from None
+    if not 1 <= days <= 365:
+        raise argparse.ArgumentTypeError("--trial-days must be in 1..365")
+    return days
+
+
+def _admin_engine() -> AsyncEngine:
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from app.core.config import get_settings
+
+    url = get_settings().alembic_database_url
+    if url is None:
+        raise RuntimeError("ALEMBIC_DATABASE_URL is required")
+    return create_async_engine(url)
+
+
+async def _new_user(engine: AsyncEngine, email: str, stdin: TextIO) -> NewUser:
+    """The owner or member: an existing user (no password asked), or a new one whose password
+    is read from stdin and hashed here."""
+    from app.core.passwords import hash_password, read_password
+    from app.db import staff_ops
+
+    if await staff_ops.user_exists(engine, email):
+        return staff_ops.NewUser(email=email, password_hash=None)
+    secret = read_password(stdin)
+    return staff_ops.NewUser(email=email, password_hash=hash_password(secret.get_secret_value()))
+
+
+async def run_tenant_command(args: argparse.Namespace, stdin: TextIO) -> int:
+    from app.core.request_context import new_request_id
+    from app.core.request_context import request_context as request_scope
+    from app.db import staff_ops
+
+    command = f"{args.group} {args.command}"
+    try:
+        engine = _admin_engine()
+    except RuntimeError:
+        sys.stderr.write(f"{command}: failed (ALEMBIC_DATABASE_URL is required)\n")
+        return EXIT_FAILED
+    try:
+        with request_scope(new_request_id()) as ctx:
+            if args.group == "user":
+                from app.core.passwords import hash_password, read_password
+
+                secret = read_password(stdin)
+                user_id, revoked = await staff_ops.set_password(
+                    engine,
+                    email=args.email,
+                    password_hash=hash_password(secret.get_secret_value()),
+                    staff_email=args.staff_email,
+                    request_id=ctx.request_id,
+                )
+                sys.stdout.write(f"user_id={user_id} revoked={revoked}\n")
+            elif args.command == "create":
+                owner = await _new_user(engine, args.owner_email, stdin)
+                tenant_id = await staff_ops.create_tenant_with_owner(
+                    engine,
+                    name=args.name,
+                    slug=args.slug,
+                    owner=owner,
+                    staff_email=args.staff_email,
+                    trial_days=args.trial_days,
+                    request_id=ctx.request_id,
+                )
+                sys.stdout.write(f"tenant_id={tenant_id} slug={args.slug}\n")
+            else:
+                member = await _new_user(engine, args.email, stdin)
+                tenant_id, user_id = await staff_ops.add_member(
+                    engine,
+                    slug=args.slug,
+                    user=member,
+                    role=args.role,
+                    staff_email=args.staff_email,
+                    request_id=ctx.request_id,
+                )
+                sys.stdout.write(f"tenant_id={tenant_id} user_id={user_id}\n")
+    except ValueError as exc:  # the password reader: a fixed phrase, never the password
+        sys.stderr.write(f"{command}: refused ({exc})\n")
+        return EXIT_BAD_INPUT
+    except staff_ops.SlugTakenError:
+        sys.stderr.write(f"{command}: refused (the slug is taken)\n")
+        return EXIT_NOT_ELIGIBLE
+    except staff_ops.NotEligibleError as exc:
+        sys.stderr.write(f"{command}: refused ({exc})\n")
+        return EXIT_NOT_ELIGIBLE
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"{command}: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    finally:
+        await engine.dispose()
+    return EXIT_OK
+
+
+def _add_onboarding(groups: Any) -> None:
+    tenant = groups.add_parser("tenant", help="staff tenant onboarding (S16)")
+    tenant_commands = tenant.add_subparsers(dest="command", required=True)
+    create = tenant_commands.add_parser("create", help="a tenant and its first owner")
+    create.add_argument("--name", type=_name, required=True)
+    create.add_argument("--slug", type=_slug, required=True)
+    create.add_argument("--owner-email", type=_member_email, required=True)
+    create.add_argument("--staff-email", type=_member_email, required=True)
+    create.add_argument("--trial-days", type=_trial_days, default=None)
+    add = tenant_commands.add_parser("add-member", help="a member of a running tenant")
+    add.add_argument("--slug", type=_slug, required=True)
+    add.add_argument("--email", type=_member_email, required=True)
+    add.add_argument("--role", choices=MEMBER_ROLES, required=True)
+    add.add_argument("--staff-email", type=_member_email, required=True)
+    user = groups.add_parser("user", help="staff user tools (S16)")
+    user_commands = user.add_subparsers(dest="command", required=True)
+    reset = user_commands.add_parser("set-password", help="a new password from stdin")
+    reset.add_argument("--email", type=_member_email, required=True)
+    reset.add_argument("--staff-email", type=_member_email, required=True)
+
+
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     groups = parser.add_subparsers(dest="group", required=True)
     db = groups.add_parser("db", help="database operations")
@@ -455,7 +633,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     templates_commands = templates.add_subparsers(dest="command", required=True)
     load = templates_commands.add_parser("load", help="load versioned category templates")
     load.add_argument("--file", type=Path, required=True)
-    args = parser.parse_args(argv)
+    _add_onboarding(groups)
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    if args.group in ("tenant", "user"):
+        return asyncio.run(run_tenant_command(args, sys.stdin))
     if args.group == "templates":
         if not args.file.is_file():
             sys.stderr.write("templates load: no such file\n")

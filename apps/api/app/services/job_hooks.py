@@ -35,6 +35,15 @@ TERMINAL_HOOKS: Final[dict[JobKind, Hook]] = {JobKind.BULK_IMPORT: import_termin
 REQUEUE_HOOKS: Final[dict[JobKind, RequeueHook]] = {JobKind.BULK_IMPORT: import_requeue_hook}
 
 
+def _register_owned_hooks() -> None:
+    """Hooks of the kinds a merged step owns, present from import time (the API cancel path and
+    the reaper need them as much as the worker does)."""
+    from app.services.brand_embed import on_brand_embed_requeue, on_brand_embed_terminal
+
+    TERMINAL_HOOKS.setdefault(JobKind.BRAND_EMBED, on_brand_embed_terminal)
+    REQUEUE_HOOKS.setdefault(JobKind.BRAND_EMBED, on_brand_embed_requeue)
+
+
 async def run_terminal_hook(
     session: Any, job: JobRun, outcome: Outcome | None, hooks: Mapping[JobKind, Hook] | None = None
 ) -> None:
@@ -48,3 +57,6 @@ async def run_requeue_hook(session: Any, old: JobRun, new: JobRun) -> None:
     hook = REQUEUE_HOOKS.get(JobKind(old.kind))
     if hook is not None:
         await hook(session, old, new)
+
+
+_register_owned_hooks()

@@ -445,6 +445,11 @@ path.write_text(path.read_text(encoding="utf-8") + f"\n\ndef _seeded(x: int) -> 
 PY
 }
 leg api-lint-engine-openai api-lint 'TID251' seed_engine_openai make api-lint
+# S16 T21: openai stays in embeddings.py; the chunker stays pure
+seed_openai_in_chunker() { append apps/api/app/services/brand_chunking.py $'\nimport openai  # noqa: F401'; }
+seed_chunker_imports_db() { append apps/api/app/services/brand_chunking.py $'\nimport app.db.session  # noqa: F401'; }
+leg lint-openai-outside-embeddings api-lint 'TID251' seed_openai_in_chunker make api-lint
+leg lint-imports-chunker-db lint-imports 'brand chunking is pure BROKEN' seed_chunker_imports_db make lint-imports
 leg lint-imports-engine-sqla lint-imports 'app.services.rules_engine is pure .*BROKEN' seed_engine_sqla make lint-imports
 leg lint-imports-engine-repositories lint-imports 'app.services.rules_engine is pure .*BROKEN' \
   seed_engine_repositories make lint-imports
@@ -518,6 +523,7 @@ if [ "$with_docker" -eq 1 ]; then
   docker compose exec -T postgres dropdb -U postgres --force mos_prove
   leg tenant-isolation-no-marker tenant-isolation 'deselected' seed_no_marker COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-no-filter tenant-isolation 'test_list_returns_only_own_rows' seed_iso_no_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
+  leg tenant-isolation-brand-ingest-no-tenant-filter tenant-isolation 'test_brand_chunk_search_ingested_isolation' seed_iso_no_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-no-guard tenant-isolation 'test_raw_select_raises_guard' seed_iso_no_guard COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-superuser tenant-isolation 'test_isolation_runs_as_app_rw' seed_iso_env COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation ISO_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_iso
   leg tenant-isolation-guard-all-mappers tenant-isolation 'test_raw_select_raises_guard\[[a-z_]+-(join|subquery|exists|cte|select_from|core_table)\]' seed_iso_all_mappers COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation

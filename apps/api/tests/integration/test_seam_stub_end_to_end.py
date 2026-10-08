@@ -181,7 +181,11 @@ async def test_seam_stub_end_to_end(seam: Seam) -> None:
     assert set(spy.calls) == set(PORTS)
     node = _scalar(seam.conn, "SELECT node FROM job_runs WHERE id = %s", [seam.job])
     assert node == "quality_check"
-    assert _counts(seam.conn) == before
+    # S16 CP12: each query embed of `retrieve_brand_chunks` writes its one `agent_runs` row
+    # (invariant 7); the run writes nothing else.
+    embeds = spy.calls.count("retrieve_brand_chunks")
+    assert embeds >= 1
+    assert _counts(seam.conn) == before | {"agent_runs": before["agent_runs"] + embeds}
     assert _job_hash(seam.conn) == jobs_before
 
 

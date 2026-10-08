@@ -36,6 +36,7 @@ from app.workers.policy import POLICIES
 MAX_PAYLOAD_BYTES: Final = 64 * 1024  # DATABASE.md:941
 RUNNING_TENANT: Final = ("trial", "active")
 TERMINAL: Final = frozenset({"succeeded", "partial", "failed", "cancelled", "dead_letter"})
+LIVE: Final = ("queued", "running")
 ENTITY_TYPES: Final = frozenset({"listing", "import", "image", "brand_document"})
 
 
@@ -252,6 +253,49 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         )
         set_committed_value(job, "queue_job_id", queue_job_id)
         return Enqueued(job, created=True)
+
+    # ---- S16 brand_embed helpers (T9; CP6) ----
+
+    async def count_live(self, kind: JobKind, *, source: str) -> int:
+        """Live (`queued`/`running`) jobs of `kind` whose payload `source` is `source`."""
+        stmt = (
+            self._select()
+            .where(
+                JobRun.kind == JobKind(kind).value,
+                JobRun.status.in_(LIVE),
+                JobRun.payload_json["source"].astext == source,
+            )
+            .with_only_columns(func.count())
+        )
+        return int((await self.db.execute(stmt)).scalar_one())
+
+    async def has_queued(self, kind: JobKind, *, entity_id: uuid.UUID, source: str) -> bool:
+        """A `queued` job of `kind` for `entity_id` and payload `source`, row-locked (FOR UPDATE)
+        so a worker's claim CAS on it waits for the caller's transaction (CP6)."""
+        stmt = (
+            self._select()
+            .where(
+                JobRun.kind == JobKind(kind).value,
+                JobRun.status == "queued",
+                JobRun.entity_id == entity_id,
+                JobRun.payload_json["source"].astext == source,
+            )
+            .with_only_columns(JobRun.id)
+            .limit(1)
+            .with_for_update()
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
+    async def lock_brand_upload(self) -> None:
+        """The tenant's brand-upload advisory lock (transaction scope; like S13 Q10)."""
+        self._own_session()
+        await self.db.execute(
+            select(
+                func.pg_advisory_xact_lock(
+                    func.hashtextextended(f"brand_upload:{self.tenant_id}", 0)
+                )
+            )
+        )
 
     # ---- the worker's claim and terminal writes (A5, A6) ----
 

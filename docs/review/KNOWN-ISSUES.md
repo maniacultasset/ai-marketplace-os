@@ -109,6 +109,14 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   `INTERNAL_ERROR`, not a retryable `TIMEOUT`, and `put()` maps nothing. DB backstop:
   `variant_matrix_complete` does not fire when a child's `parent_product_id` goes NOT NULL → NULL
   (the import runner checks it; a DB-level check needs its own migration).
+
+## S16 follow-ups
+
+| Where | Gap | Next |
+|---|---|---|
+| S18 planner | The brand profile lives on `tenants` (`tone`, `guidelines`, `glossary`); `brand_profiles` has no API (S16 PLAN D3). | S18 decides whether generation reads `brand_profiles` or only the profile chunks. |
+| Auth (DATABASE open decision 8) | No self-service password change or reset: staff set one with `python -m app.cli user set-password`, which revokes the user's refresh tokens (S16 PLAN D6). | Decide reset-by-email with the invite work (C6, 1.1). |
+
 - **Image approve gate hand-off to S19 (S17b T14b; blocks DW3 at the endpoint and AC17).** S17b
   ships the gate as the pure `app.services.image_gate.evaluate_image_gate(listing, stored,
   pipeline_reports)` and `ImageRepository.live_reports_for_images(image_ids)` (one SELECT per

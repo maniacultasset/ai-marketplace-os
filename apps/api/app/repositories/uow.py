@@ -16,8 +16,10 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.repositories.agent_runs import AgentRunRepository
 from app.repositories.attribute_definitions import AttributeDefinitionRepository
 from app.repositories.brand_chunks import BrandChunkRepository
+from app.repositories.brand_documents import BrandDocumentRepository
 from app.repositories.dictionary import DictionaryRevisionRepository
 from app.repositories.human_tasks import HumanTaskRepository
 from app.repositories.identity import AuditRepository
@@ -28,6 +30,7 @@ from app.repositories.oauth_states import OAuthStateRepository
 from app.repositories.products import ProductRepository
 from app.repositories.rules import RuleRepository
 from app.repositories.templates import CategoryTemplateRepository
+from app.repositories.tenants import TenantProfileRepository
 from app.repositories.transactions import unit_of_work
 
 __all__ = ["TenantUnitOfWork", "repositories_on", "tenant_uow"]
@@ -49,6 +52,10 @@ class TenantUnitOfWork:
     images: ImageRepository
     templates: CategoryTemplateRepository
     dictionary: DictionaryRevisionRepository
+    # S16: telemetry, brand documents and the brand profile.
+    agent_runs: AgentRunRepository
+    brand_documents: BrandDocumentRepository
+    tenants: TenantProfileRepository
 
 
 def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
@@ -68,6 +75,9 @@ def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
         images=ImageRepository(session, tenant_id),
         templates=CategoryTemplateRepository(session),
         dictionary=DictionaryRevisionRepository(session),
+        agent_runs=AgentRunRepository(session, tenant_id),
+        brand_documents=BrandDocumentRepository(session, tenant_id),
+        tenants=TenantProfileRepository(session, tenant_id),
     )
 
 

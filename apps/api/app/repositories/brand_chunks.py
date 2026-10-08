@@ -9,14 +9,18 @@ validated before any SQL runs.
 from __future__ import annotations
 
 import math
+import uuid
 from collections.abc import Sequence
-from typing import Final, get_args
+from dataclasses import dataclass
+from typing import Any, Final, get_args
 
 from mkos_schemas.jobs import BrandChunkDTO, BrandChunkType
-from sqlalchemy import select
+from sqlalchemy import func, select, text, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import aliased
 
 from app.core.config import EMBEDDING_DIMENSIONS, get_settings
+from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
 from app.db.models.audit_brand import BrandChunk
 from app.repositories.base import TenantScopedRepository
 
@@ -47,8 +51,166 @@ def _validate(
     return vector, sorted(set(types))
 
 
+@dataclass(frozen=True, slots=True)
+class NewChunk:
+    """One chunk to insert (S16 T10). `token_count` is None for OpenAI (usage is per call)."""
+
+    type: BrandChunkType
+    text: str
+    embedding: Sequence[float]
+    embedding_model: str
+    content_hash: str
+    source_type: str
+    source_id: uuid.UUID
+    chunk_index: int
+    token_count: int | None = None
+
+
 class BrandChunkRepository(TenantScopedRepository[BrandChunk]):
     model = BrandChunk
+
+    # ---- S16 writes (T10): every write names the tenant and the active-row index ----
+
+    def _own_session(self) -> None:
+        if self.db.info.get(TENANT_INFO_KEY) != self.tenant_id:
+            raise CrossTenantQueryError("brand_chunks write for another tenant's unit of work")
+
+    def _active(self, source_type: str, source_id: uuid.UUID) -> list[Any]:
+        return [
+            BrandChunk.source_type == source_type,
+            BrandChunk.source_id == source_id,
+            BrandChunk.is_active.is_(True),
+        ]
+
+    async def active_for_source(
+        self, source_type: str, source_id: uuid.UUID, model: str
+    ) -> dict[int, str]:
+        stmt = (
+            self._select()
+            .where(*self._active(source_type, source_id), BrandChunk.embedding_model == model)
+            .with_only_columns(BrandChunk.chunk_index, BrandChunk.content_hash)
+        )
+        return {int(i): str(h) for i, h in (await self.db.execute(stmt)).all()}
+
+    async def vectors_by_hash(
+        self, source_type: str, source_id: uuid.UUID, hashes: Sequence[str], model: str
+    ) -> dict[str, list[float]]:
+        """Stored vectors of this source (any active state) for `hashes`, model-scoped."""
+        if not hashes:
+            return {}
+        stmt = (
+            self._select()
+            .where(
+                BrandChunk.source_type == source_type,
+                BrandChunk.source_id == source_id,
+                BrandChunk.embedding_model == model,
+                BrandChunk.content_hash.in_(sorted(set(hashes))),
+            )
+            .with_only_columns(BrandChunk.content_hash, BrandChunk.embedding)
+        )
+        return {str(h): [float(v) for v in e] for h, e in (await self.db.execute(stmt)).all()}
+
+    async def insert_many(self, rows: Sequence[NewChunk]) -> None:
+        """One INSERT for all rows; a row whose active slot is taken is skipped (a replay)."""
+        if not rows:
+            return
+        self._own_session()
+        values = [
+            {
+                "tenant_id": self.tenant_id,
+                "type": r.type,
+                "text": r.text,
+                "embedding": list(r.embedding),
+                "embedding_model": r.embedding_model,
+                "content_hash": r.content_hash,
+                "source_type": r.source_type,
+                "source_id": r.source_id,
+                "chunk_index": r.chunk_index,
+                "token_count": r.token_count,
+            }
+            for r in rows
+        ]
+        stmt = (
+            pg_insert(BrandChunk)
+            .values(values)
+            .on_conflict_do_nothing(
+                index_elements=[
+                    BrandChunk.tenant_id,
+                    BrandChunk.source_type,
+                    BrandChunk.source_id,
+                    BrandChunk.chunk_index,
+                    BrandChunk.embedding_model,
+                ],
+                # the index predicate verbatim (`is_active IS true` does not prove it)
+                index_where=text("is_active"),
+            )
+        )
+        await self.db.execute(stmt)
+
+    async def _deactivate(self, where: list[Any]) -> int:
+        self._own_session()
+        stmt = self._scoped_write(
+            update(BrandChunk)
+            .where(*where, self._tenant_criterion(include_platform=False))
+            .values(is_active=False)
+        )
+        result = await self.db.execute(stmt)
+        return int(getattr(result, "rowcount", 0) or 0)
+
+    async def deactivate_source(
+        self, source_type: str, source_id: uuid.UUID, *, indexes: Sequence[int] | None = None
+    ) -> int:
+        where = self._active(source_type, source_id)
+        if indexes is not None:
+            if not indexes:
+                return 0
+            where.append(BrandChunk.chunk_index.in_(sorted(set(indexes))))
+        return await self._deactivate(where)
+
+    async def count_active(self, source_type: str, source_id: uuid.UUID, model: str) -> int:
+        stmt = (
+            self._select()
+            .where(*self._active(source_type, source_id), BrandChunk.embedding_model == model)
+            .with_only_columns(func.count())
+        )
+        return int((await self.db.execute(stmt)).scalar_one())
+
+    async def count_active_of_type(self, source_type: str) -> int:
+        stmt = (
+            self._select()
+            .where(BrandChunk.source_type == source_type, BrandChunk.is_active.is_(True))
+            .with_only_columns(func.count())
+        )
+        return int((await self.db.execute(stmt)).scalar_one())
+
+    async def active_profile_set(self, model: str) -> list[tuple[uuid.UUID, int, str]]:
+        """CP11: every active `brand_profile` row of the tenant, whatever its `source_id`
+        (the seed's rows included), `source_id = tenant_id` first, then by index."""
+        stmt = (
+            self._select()
+            .where(
+                BrandChunk.source_type == "brand_profile",
+                BrandChunk.is_active.is_(True),
+                BrandChunk.embedding_model == model,
+            )
+            .with_only_columns(
+                BrandChunk.source_id, BrandChunk.chunk_index, BrandChunk.content_hash
+            )
+            .order_by((BrandChunk.source_id != self.tenant_id), BrandChunk.chunk_index)
+        )
+        return [(sid, int(i), str(h)) for sid, i, h in (await self.db.execute(stmt)).all()]
+
+    async def lock_profile_embed(self) -> None:
+        """The tenant's profile-embed advisory lock (transaction scope; T13): two profile jobs
+        never swap the active set at the same time."""
+        self._own_session()
+        key = f"brand_embed:{self.tenant_id}"
+        await self.db.execute(select(func.pg_advisory_xact_lock(func.hashtextextended(key, 0))))
+
+    async def deactivate_profile_all(self) -> int:
+        return await self._deactivate(
+            [BrandChunk.source_type == "brand_profile", BrandChunk.is_active.is_(True)]
+        )
 
     async def search(
         self,

@@ -24,6 +24,8 @@ ACCOUNT: Final = "0b1c2d3e-0000-4000-8000-000000000601"
 RULE: Final = "0b1c2d3e-0000-4000-8000-000000000701"
 BATCH: Final = "0b1c2d3e-0000-4000-8000-000000000801"
 REQUEST_ID: Final = "req-example-0001"
+ETAG_EXAMPLE: Final = '"5f0c7c1e-8d2b-5a4e-9b6f-3c2d1e0f9a8b"'
+DOCUMENT: Final = "0b1c2d3e-0000-4000-8000-000000000901"
 CALLBACK_LOCATION: Final = "/marketplaces/connected?pending=pnd_8f3a2c1e9b7d4f60a1c2"
 
 _MEMBERSHIPS: Final = [{"tenant_id": TENANT, "tenant_name": "Fabrica", "role": "owner"}]
@@ -256,7 +258,29 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "glossary": {"kurta set": "kurta and palazzo"},
             "status": "active",
         },
+        "tenants_me_update": {
+            "id": TENANT,
+            "name": "Fabrica",
+            "slug": "fabrica",
+            "tone": "Warm, plain and factual.",
+            "guidelines": ["Never claim 'best'.", "Name the fabric first."],
+            "glossary": {"kurta outfit": "kurta set"},
+            "status": "active",
+        },
         "brand_documents_upload": _JOB_ACCEPTED,
+        "brand_documents_list": _page(
+            [
+                {
+                    "id": DOCUMENT,
+                    "filename": "brand-voice.md",
+                    "status": "ready",
+                    "chunk_count": 42,
+                    "error": None,
+                    "created_at": T0,
+                }
+            ]
+        ),
+        "brand_documents_delete": None,
         "products_create": _product(PRODUCT_1, "FAB-KURTA-001", "Organic Cotton Kurta Set"),
         "products_list": _page(
             [
