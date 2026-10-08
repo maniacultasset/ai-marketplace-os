@@ -163,3 +163,24 @@ def spapi_client(app: Any, *, transport: Any = None, tokens: Any = None, **over:
     )
     client.sleeps = sleeps  # type: ignore[attr-defined]
     return client
+
+
+def amazon_adapter(app: Any, *, rows: Any = (), **client_over: Any) -> Any:
+    from app.adapters.amazon.adapter import AmazonAdapter
+    from app.adapters.error_map import ErrorMapper
+
+    return AmazonAdapter(spapi_client(app, **client_over), ErrorMapper(rows))
+
+
+def attribute_names(path: str) -> list[str]:
+    """The Amazon attributes a canonical path feeds, under the kurta mapping."""
+    from app.adapters.amazon.mapping import reverse_index
+
+    return [name for name, feeds in reverse_index(template().template).items() if path in feeds]
+
+
+def reject(app: Any, fail: Any) -> None:
+    """Make the fake refuse every attribute the named paths feed, on every SKU."""
+    for path, (code, text) in fail.items():
+        for name in attribute_names(path):
+            app.state.fake.spapi_reject[name] = (code, text)

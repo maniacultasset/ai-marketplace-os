@@ -188,7 +188,7 @@ class SpApiClient:
     async def _read(self, response: httpx.Response) -> bytes:
         chunks: list[bytes] = []
         size = 0
-        async for chunk in response.aiter_raw():
+        async for chunk in response.aiter_bytes():  # decoded: the cap holds for gzip too
             size += len(chunk)
             if size > self._max_body:
                 raise _TooLarge
