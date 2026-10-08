@@ -74,7 +74,8 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 - The step that adds the S3 client must refuse `local_only_` S3 values outside `APP_ENV=local`
   (`apps/api/app/core/config.py` does this only for the JWT secret). Fixed in S13b: a deployed api
   or worker refuses committed or dev-prefixed `S3_ACCESS_KEY`/`S3_SECRET_KEY` and an http or loopback
-  `S3_ENDPOINT_URL`.
+  `S3_ENDPOINT_URL`. S17b adds the same refusal in the storage client itself (`get_storage()`,
+  any role): blank keys, `local_only_` values in any case or padding, and a non-https endpoint.
 - The commit-msg attribution hook is bypassed by `git commit --no-verify` and by GitHub-written
   squash messages and PR bodies; a later step can run the check in the `commit-lint` CI job.
 
@@ -116,3 +117,32 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 | S18 planner | The brand profile lives on `tenants` (`tone`, `guidelines`, `glossary`); `brand_profiles` has no API (S16 PLAN D3). | S18 decides whether generation reads `brand_profiles` or only the profile chunks. |
 | Auth (DATABASE open decision 8) | No self-service password change or reset: staff set one with `python -m app.cli user set-password`, which revokes the user's refresh tokens (S16 PLAN D6). | Decide reset-by-email with the invite work (C6, 1.1). |
 
+- **Image approve gate hand-off to S19 (S17b T14b; blocks DW3 at the endpoint and AC17).** S17b
+  ships the gate as the pure `app.services.image_gate.evaluate_image_gate(listing, stored,
+  pipeline_reports)` and `ImageRepository.live_reports_for_images(image_ids)` (one SELECT per
+  batch). S19's `approve_batch` must call it inside each item's savepoint, after
+  `BULK_APPROVE_REQUIRES_VALIDATED` and before pins and maker-checker: `stored` = each image's
+  report for `listing.marketplace`, `pipeline_reports` = the version's `image_reports_json`; any
+  `blocking` item → item 422 `IMAGE_NON_COMPLIANT` with an `ErrorReport` of blocking then warning
+  items, savepoint rolled back, no decision row. An unchecked (pending, deleted or foreign) image
+  blocks; vision failures only warn (C8). The T14b tests, the `api-tests-approve-image-gate`
+  prove leg and the e2e approve leg (`scripts/e2e/image_pipeline.sh`) move to S19.
+- **Publish re-hash of image objects (S21; S17b PLAN D9).** The signed PUT is create-only
+  (`If-None-Match: *` is signed) and the job stores `content_hash` = sha256 of the bytes it
+  checked. S21's publish must re-read each image, compare its sha256 with `content_hash` and fail
+  closed on a mismatch or a NULL hash, so a report never vouches for other bytes. GCS S3-interop
+  support for `If-None-Match: *` on a signed PUT is not verified (S4).
+- **Image check identity boundary (S4; S17b CP6).** The image check child gets an env allow-list
+  (no DSN, token, key or secret) but runs as the worker's uid on the same network: a decoder
+  code-execution bug could still read `/proc/<ppid>/environ` or ask the metadata server for the
+  worker service-account token. The v1 controls are S17a's JPEG/PNG/TIFF-only decoders and
+  pip-audit on Pillow. Fix at S4: a least-privilege worker service account, and the image check
+  under a separate unprivileged identity or service with no KMS or DB access. `RLIMIT_CPU`/`AS`
+  apply on Linux only.
+- **Image-pipeline follow-ups from the S17b build (LOW).** The reaper re-defers a reaped
+  `image_compliance` job without its `image_compliance` queue lock (`JobRunRepository.reap`), so a
+  reaped image job can run beside another (the per-process semaphore still holds one per worker);
+  fix: derive the lock from the kind on every defer. A dead-lettered or failed image job leaves
+  the row `pending` (the gate blocks it); only a new upload or a staff requeue recovers it, and a
+  re-registration of the same key replays the dead job. The text overlay, watermark and logo rules
+  are not seeded (T119: `ImageRequirementParams` needs a parameter they lack).

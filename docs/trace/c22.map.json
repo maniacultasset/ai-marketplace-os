@@ -1585,17 +1585,17 @@
   },
   {
    "id": "R13435",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "docs/canon/CANON.md:129; docs/architecture/BACKEND-ARCHITECTURE.md:1540; BUILD-SEQUENCE.md after S14; VISION Q25",
-   "note": "Backend owns Pillow checks; no S-step builds them"
+   "ref": "apps/api/app/services/image_checks.py; apps/api/app/services/image_compliance.py",
+   "note": "S17a checks, run by S17b as the image_compliance job in a killable child."
   },
   {
    "id": "R13435a",
-   "status": "gap",
+   "status": "other-team",
    "owner": "shared",
-   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:1540; BUILD-SEQUENCE.md after S14; VISION Q25",
-   "note": "Backend vision call (services/vision.py); no S-step"
+   "ref": "docs/review/TEAM-QUESTIONS.md T120; CANON.md:129",
+   "note": "S17b D3: no backend vision call in v1; vision results only warn (C8). Open as T120."
   },
   {
    "id": "R13435b",

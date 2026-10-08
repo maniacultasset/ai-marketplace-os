@@ -476,7 +476,7 @@ Std tenant + `updated_at`. URLs are signed at read time; the site's `s3_url` ([9
 
 | Column | Type | Tag | Notes |
 |---|---|---|---|
-| product_id / storage_key | uuid / text | Site [06] | → products; object key, never a URL |
+| product_id / storage_key | uuid / text | Site [06] | → products; object key, never a URL. Key shape (S17b D1, spec L10193, T109): `<tenant_id>/<product_id>/images/<image_id>` (lowercase canonical UUIDs, no extension), checked by exact parse before any read |
 | colourway_id | uuid? | Site (L663-667) | → product_colourways RESTRICT; [Proposed] `(colourway_id, product_id) → product_colourways (id, style_product_id)` MATCH SIMPLE, so `product_id` = the colourway's style is a key; guard: `slot='size_chart'` only on a style or standalone row |
 | slot | text | Site [99] + Canon + Proposed | `main\|secondary\|lifestyle\|size_chart\|packaging_label` (size_chart and packaging_label: T28), **no default**. `packaging_label` [Site L681-685 "use for compliance evidence"] is **never publishable**: it can back a Fact (`image:<id>`), `ImageRef` refuses it in `CanonicalListing.images`, and every adapter maps only the slots in its own publishable map and refuses any other slot (test). Detail, back and side shots are publishable additional images (L657-659, L675-679) and use `secondary` |
 | status | text | Site [06] + Fix | `pending\|uploaded\|failed` DEFAULT `'uploaded'` (rev 1 `stored`); `pending` = URL import not fetched yet |

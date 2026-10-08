@@ -48,9 +48,9 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | `STORAGE_BACKEND` | `minio` | local .env | required | minio locally, gcs in staging/prod. |
 | `GCS_BUCKET_IMAGES` | `marketplace-images` | local .env | required | Exactly the bucket the compose `mc mb` one-shot creates. staging: aimos-images-staging; prod: aimos-images-prod. |
 | `GCS_BUCKET_CSV` | `marketplace-csv` | local .env | required | Exactly the bucket the compose `mc mb` one-shot creates. staging: aimos-csv-staging; prod: aimos-csv-prod. |
-| `S3_ENDPOINT_URL` | `http://localhost:9000` | local .env | optional | MinIO only (9000 is the default host port; a second worktree sets its own). Unset in staging/prod. |
-| `S3_ACCESS_KEY` | `local_only_minio_root_user` | local .env | optional | Interpolated as MINIO_ROOT_USER (`:?` form; a missing `.env` fails). |
-| `S3_SECRET_KEY` | `local_only_minio_root_password_32_chars` | local .env | optional | Interpolated as MINIO_ROOT_PASSWORD (`:?` form; a missing `.env` fails). minioadmin_dev_password is forbidden. |
+| `S3_ENDPOINT_URL` | `http://localhost:9000` | local .env | optional | MinIO locally (9000 is the default host port; a second worktree sets its own). Outside `APP_ENV=local` it must be an https endpoint (the GCS S3-interop host, S4): the storage client refuses http, and a deployed api or worker refuses http or loopback at boot. |
+| `S3_ACCESS_KEY` | `local_only_minio_root_user` | local .env | optional | Interpolated as MINIO_ROOT_USER (`:?` form; a missing `.env` fails). Outside `APP_ENV=local` it must be set and must not start with `local_only_` (any case): the storage client refuses it (S17b). |
+| `S3_SECRET_KEY` | `local_only_minio_root_password_32_chars` | local .env | optional | Interpolated as MINIO_ROOT_PASSWORD (`:?` form; a missing `.env` fails). minioadmin_dev_password is forbidden. Outside `APP_ENV=local` it must be set and must not start with `local_only_` (any case): the storage client refuses it (S17b). |
 
 ## GCP
 

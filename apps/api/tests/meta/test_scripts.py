@@ -989,19 +989,6 @@ def test_prove_gates_has_s13a_legs(repo_root: Path) -> None:
         assert f"{seed}() {{" in text
 
 
-def test_prove_gates_has_s16_legs(repo_root: Path) -> None:
-    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
-    assert "leg lint-openai-outside-embeddings api-lint 'TID251'" in text
-    assert "leg lint-imports-chunker-db lint-imports 'brand chunking is pure BROKEN'" in text
-    docker = text.split('if [ "$with_docker" -eq 1 ]; then', 1)[1]
-    assert (
-        "leg tenant-isolation-brand-ingest-no-tenant-filter tenant-isolation "
-        "'test_brand_chunk_search_ingested_isolation' seed_iso_no_filter"
-    ) in docker
-    for seed in ("seed_openai_in_chunker", "seed_chunker_imports_db"):
-        assert f"{seed}() {{" in text
-
-
 # ---- S15 T19 (AC16): the marketplace connect e2e ----
 
 MARKETPLACE_STEPS = (
@@ -1677,6 +1664,158 @@ def test_prove_gates_has_s13b_legs(repo_root: Path) -> None:
     seed = text.split("seed_row_model_nan() {", 1)[1].split("\n}", 1)[0]
     old = seed.split("row_model.py '", 1)[1].split("'", 1)[0]
     assert old in row_model  # the seed still applies to today's file
+
+
+S17B_LEGS = {
+    "lint-imports-image-child-config": (
+        "lint-imports",
+        "the image check child imports no app layer, DB, storage or HTTP client BROKEN",
+        "seed_image_child_config",
+    ),
+    "tenant-isolation-images-no-tenant-filter": (
+        "tenant-isolation",
+        "test_iso_images_repository_reads",
+        "seed_images_no_tenant_filter",
+    ),
+    "api-tests-image-key-prefix": (
+        "api-tests",
+        "test_runner_rejects_foreign_key_prefix",
+        "seed_image_key_prefix",
+    ),
+}
+
+
+def test_prove_gates_has_s17b_legs(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    code = _code(text)
+    for name, (gate, regex, seed_name) in S17B_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+        assert leg.group(2) == seed_name, name
+        assert re.search(rf"(?m)^{seed_name}\(\) \{{", code), seed_name
+    docker = code[code.index('if [ "$with_docker" -eq 1 ]; then') :]
+    assert "leg tenant-isolation-images-no-tenant-filter" in docker
+    assert "leg api-tests-image-key-prefix" in docker
+
+
+# ---- S17b T18: the image pipeline e2e ----
+
+IMAGE_FLOW = "scripts/e2e/image_pipeline.sh"
+IMAGE_STEPS_SIGNED = (
+    "upload_url_200",
+    "put_signed_200",
+    "put_signed_again_412",
+    "put_wrong_length_403",
+    "register_202",
+    "job_succeeded",
+    "report_amazon_resolution_low",
+    "report_flipkart_pass_with_warning",
+    "replay_same_key_same_image",
+    "idem_key_other_body_409",
+)
+IMAGE_STEPS = (
+    "health",
+    "login_acme_operator",
+    "create_product_201",
+    "worker_start",
+    *IMAGE_STEPS_SIGNED,
+    "multipart_seed_main_202",
+    "multipart_main_1000_white_png_202",
+    "job_succeeded_2",
+    "old_main_report_404",
+    "product_lists_live_keys",
+    "login_acme_reviewer",
+    "reviewer_upload_url_403",
+    "no_token_401",
+    "login_bharat_operator",
+    "bharat_report_404",
+    "bharat_upload_foreign_key_404",
+    "worker_stop",
+)
+
+
+def _run_image_flow(
+    repo_root: Path, tmp_path: Path, base: str, *, hooks: bool = True
+) -> subprocess.CompletedProcess[str]:
+    import os
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    curl = bin_dir / "curl"
+    curl.write_text(
+        f'#!/bin/sh\necho called >> "{tmp_path}/curl.log"\necho 000\n', encoding="utf-8"
+    )
+    curl.chmod(0o755)
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
+    for name in ("WORKER_START", "WORKER_STOP"):
+        env.pop(name, None)
+    if hooks:
+        env["WORKER_START"] = "true"
+        env["WORKER_STOP"] = "true"
+    return subprocess.run(
+        [str(repo_root / IMAGE_FLOW), base],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=120,
+        check=False,
+    )
+
+
+def test_e2e_image_pipeline_steps(repo_root: Path) -> None:
+    code = _code((repo_root / IMAGE_FLOW).read_text(encoding="utf-8"))
+    assert "set -euo pipefail" in code
+    assert tuple(re.findall(r"(?m)^\s*step (\w+)$", code)) == IMAGE_STEPS
+    assert code.index("step worker_start") < code.index("step upload_url_200")
+    assert code.index("step worker_stop") > code.index("step bharat_upload_foreign_key_404")
+    assert "POLL_LIMIT_S=60" in code and "$(( $(date +%s) + POLL_LIMIT_S ))" in code
+    assert 'sku="E2E-IMG-$run"' in code and 'run="$(date +%s)-$RANDOM"' in code
+    assert "FAILED at step $current (HTTP status ${status:-none})" in code
+    assert 'cat "$body"' not in code
+    assert not re.search(r":\d{2,5}\b", code)  # no literal port
+    assert "--password" not in code and "-u " not in code  # never a password on argv
+    assert "uv run --frozen python scripts/e2e/make_image.py" in code
+
+
+def test_e2e_image_pipeline_refuses_non_local_url(repo_root: Path, tmp_path: Path) -> None:
+    result = _run_image_flow(repo_root, tmp_path, "http://api.example.com")
+    assert result.returncode == 2
+    assert not (tmp_path / "curl.log").exists()
+    code = _code((repo_root / IMAGE_FLOW).read_text(encoding="utf-8"))
+    signed = code.split("put_signed() {", 1)[1].split("\n}\n", 1)[0]
+    assert 'u.hostname in ("127.0.0.1", "localhost")' in signed and "exit 2" in signed
+
+
+def test_e2e_image_pipeline_without_hooks_exits_2(repo_root: Path, tmp_path: Path) -> None:
+    result = _run_image_flow(repo_root, tmp_path, "http://127.0.0.1:8123", hooks=False)
+    assert result.returncode == 2
+    assert result.stderr.startswith("usage: WORKER_START=<cmd> WORKER_STOP=<cmd>")
+    assert not (tmp_path / "curl.log").exists()
+
+
+def test_bootstrap_runs_image_pipeline_twice_multipart_only(repo_root: Path) -> None:
+    code = _bootstrap_code(repo_root)
+    call = 'E2E_SIGNED_LEG=0 scripts/e2e/image_pipeline.sh "http://127.0.0.1:${api_port}"'
+    assert code.count(call) == 2
+    assert code.index("export WORKER_START=") < code.index(call)
+    assert code.index('scripts/e2e/import_flow.sh "http://127.0.0.1:${api_port}"') < code.index(
+        call
+    )
+
+
+def test_prove_gates_has_s16_legs(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    assert "leg lint-openai-outside-embeddings api-lint 'TID251'" in text
+    assert "leg lint-imports-chunker-db lint-imports 'brand chunking is pure BROKEN'" in text
+    docker = text.split('if [ "$with_docker" -eq 1 ]; then', 1)[1]
+    assert (
+        "leg tenant-isolation-brand-ingest-no-tenant-filter tenant-isolation "
+        "'test_brand_chunk_search_ingested_isolation' seed_iso_no_filter"
+    ) in docker
+    for seed in ("seed_openai_in_chunker", "seed_chunker_imports_db"):
+        assert f"{seed}() {{" in text
 
 
 # ---- S16 T22 (AC10): the brand onboarding e2e ----

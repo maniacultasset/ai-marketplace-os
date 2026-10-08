@@ -341,3 +341,43 @@ def test_db_jobs_set_app_rw_password(workflows: dict[str, dict[str, Any]], job_i
     assert "-f scripts/db/0000_role_passwords.sql" in bootstrap
     assert bootstrap.index("0000_bootstrap.sql") < bootstrap.index("0000_role_passwords.sql")
     assert "ci_only_app_rw" not in bootstrap
+
+
+# ---- S17b T0a (CP10): the image suites' MinIO in the required api-tests job ----
+
+
+def test_api_tests_starts_compose_minio_before_pytest(workflows: dict[str, dict[str, Any]]) -> None:
+    """The compose MinIO and its buckets start before `make api-tests` (still the last step), so
+    an `M` suite (image upload flow, signed PUTs, the orphan sweep) runs in the required check.
+    No other job runs `docker compose`."""
+    jobs = {jid: job for _, jid, job in _jobs(workflows)}
+    runs = [str(step.get("run", "")) for step in jobs["api-tests"]["steps"]]
+    assert runs[-1].strip() == "make api-tests"
+    up = next(i for i, run in enumerate(runs) if "docker compose up -d --wait minio" in run)
+    init = next(i for i, run in enumerate(runs) if "docker compose run --rm minio-init" in run)
+    assert up <= init < len(runs) - 1
+    assert runs[up].index("up -d --wait minio") < runs[init].index("run --rm minio-init")
+    for _, job_id, job in _jobs(workflows):
+        if job_id in ("api-tests", "bootstrap"):
+            continue
+        assert not any("docker compose" in str(s.get("run", "")) for s in job["steps"]), job_id
+
+
+def test_compose_minio_init_creates_images_bucket(
+    repo_root: Path, load_yaml: Callable[[Path], Any]
+) -> None:
+    command = load_yaml(repo_root / "docker-compose.yml")["services"]["minio-init"]["command"]
+    assert "local/marketplace-images" in command
+    assert "local/marketplace-csv" in command
+
+
+def test_config_storage_defaults_match_env_example(repo_root: Path) -> None:
+    """The job needs no S3 env beyond the dev credentials: the settings' storage defaults are the
+    `.env.example` values (bucket and keys)."""
+    from app.core.config import Settings
+
+    lines = (repo_root / ".env.example").read_text(encoding="utf-8").splitlines()
+    example = dict(line.split("=", 1) for line in lines if "=" in line and not line.startswith("#"))
+    fields = Settings.model_fields
+    for name in ("GCS_BUCKET_IMAGES", "S3_ENDPOINT_URL", "S3_ACCESS_KEY", "S3_SECRET_KEY"):
+        assert fields[name.lower()].default == example[name], name
