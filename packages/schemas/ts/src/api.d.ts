@@ -487,7 +487,8 @@ export interface paths {
         /**
          * Preview the marketplace payload of the current version (sends nothing)
          * @description What the marketplace adapter would send for the current version, per SKU, with its
-         *     mapping errors. Sends nothing and needs no marketplace account.
+         *     mapping errors. Sends nothing and needs no marketplace account. 409 LISTING_BUSY while the
+         *     listing has no version or is generating; 501 for a marketplace with no adapter yet.
          */
         get: operations["listings_preview"];
         put?: never;

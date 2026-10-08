@@ -10250,7 +10250,7 @@
     },
     "/api/v1/listings/{listing_id}/preview": {
       "get": {
-        "description": "What the marketplace adapter would send for the current version, per SKU, with its\nmapping errors. Sends nothing and needs no marketplace account.",
+        "description": "What the marketplace adapter would send for the current version, per SKU, with its\nmapping errors. Sends nothing and needs no marketplace account. 409 LISTING_BUSY while the\nlisting has no version or is generating; 501 for a marketplace with no adapter yet.",
         "operationId": "listings_preview",
         "parameters": [
           {

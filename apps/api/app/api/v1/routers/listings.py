@@ -1,4 +1,4 @@
-"""Listing stubs (owner steps S18, S19, S21).
+"""Listing routes: S20's preview; the rest are stubs (owner steps S18, S19, S21).
 
 `GET /listings` is registered before `GET /listings/{listing_id}`; the batch ops
 (`generate|validate|approve|publish`) are POST-only, so they never shadow a listing id.
@@ -13,16 +13,20 @@ from fastapi import APIRouter, Body, Depends, Query
 from fastapi import Path as PathParam
 from mkos_schemas.enums import ListingStatus, Marketplace
 from mkos_schemas.jobs import GenerateListingRequest
+from mkos_schemas.publish import MarketplacePreview
 
 from app.api.errors import NotImplementedYet
 from app.api.pagination import PageParams
-from app.api.v1.deps import IdempotencyKey, IfMatch
+from app.api.v1.deps import IdempotencyKey, IfMatch, get_current_principal
 from app.api.v1.schemas.batches import ApproveRequest, PublishRequest
 from app.api.v1.schemas.listings import ListingContentPatch, RegenerateRequest, ValidateRequest
 from app.api.v1.surface import OPS, route, stub
+from app.core.rbac import Principal
+from app.services import listing_preview
 
 router = APIRouter()
 ListingId = Annotated[UUID, PathParam()]
+CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 
 
 @route(router, OPS["listings_generate"])
@@ -77,11 +81,16 @@ async def listings_get(listing_id: ListingId) -> NoReturn:
 
 
 @route(router, OPS["listings_preview"])
-@stub
-async def listings_preview(listing_id: ListingId) -> NoReturn:
+async def listings_preview(
+    listing_id: ListingId, principal: CurrentPrincipal
+) -> MarketplacePreview:
     """What the marketplace adapter would send for the current version, per SKU, with its
-    mapping errors. Sends nothing and needs no marketplace account."""
-    raise NotImplementedYet("listings_preview")
+    mapping errors. Sends nothing and needs no marketplace account. 409 LISTING_BUSY while the
+    listing has no version or is generating; 501 for a marketplace with no adapter yet."""
+    try:
+        return await listing_preview.preview_listing(principal, listing_id)
+    except listing_preview.MarketplaceNotSupported:
+        raise NotImplementedYet("listings_preview") from None
 
 
 @route(router, OPS["listings_status"])
