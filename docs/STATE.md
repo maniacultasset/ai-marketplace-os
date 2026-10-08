@@ -1,7 +1,7 @@
 # STATE — read first, update last
 
 _Last updated: 2026-10-04 (Sun). Any contributor, with any editor, can pick up from here: read "Start here" below. Front door: `docs/PRD.md`, `docs/ARCH.md`, `docs/RULES.md` (the engineering rulebook: it wins over the local agent rules file, and the sources it cites win over it, per its top paragraph), `docs/DESIGN.md`, `docs/PHASES.md`. Docs map: `docs/README.md`. Plan: `docs/EXECUTION-PLAN.md`._
-**Active:** cursor · feat/s18-generation · since 2026-10-08 18:58 · drive S18 (takeover from paused Claude Code; S20 rebase waits)
+**Active:** cursor · feat/s18-generation · since 2026-10-08 19:15 · drive S18 from /Users/yashbisht/PE/client/mkos-lanes/s18
 **Branch:** `main`. Merged 2026-10-06: PR #24 S10c auth API (`d454b87`), #23 S10b 0005_rls (`073808a`), #22 S10a 0004_integrity (`afb0c38`), #21 S11 observability (`5d16939`), #20 S14a rules engine (`e75c833`), #18 S9 tenant guard (`f783af9`). Open: draft PR #25 S12 walking skeleton (`ProductCreate.category` to become required, user decision 2026-10-06, T115).
 **Git repo:** yes. Private `maniacultasset/ai-marketplace-os` (https://github.com/maniacultasset/ai-marketplace-os); first commit `be02277` on 2026-09-29. From here on, every change goes branch → PR → squash merge, and the user approves each merge.
 **Hosting ADR:** accepted ADR-0001 (GCP asia-south1, bootstrapped profile; 2026-09-27)
