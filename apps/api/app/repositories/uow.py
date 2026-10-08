@@ -24,6 +24,7 @@ from app.repositories.human_tasks import HumanTaskRepository
 from app.repositories.identity import AuditRepository
 from app.repositories.images import ImageRepository
 from app.repositories.jobs import JobRunRepository
+from app.repositories.listings import ListingRepository
 from app.repositories.marketplace_accounts import MarketplaceAccountRepository
 from app.repositories.oauth_states import OAuthStateRepository
 from app.repositories.products import ProductRepository
@@ -52,6 +53,8 @@ class TenantUnitOfWork:
     dictionary: DictionaryRevisionRepository
     # S20 T4: the adapter's error map (platform-global, SELECT only).
     error_map: ErrorMapRepository
+    # S20 T18: the adapter input (SELECT only).
+    listings: ListingRepository
 
 
 @asynccontextmanager
@@ -74,4 +77,5 @@ async def tenant_uow(
             templates=CategoryTemplateRepository(session),
             dictionary=DictionaryRevisionRepository(session),
             error_map=ErrorMapRepository(session),
+            listings=ListingRepository(session, tenant_id),
         )
