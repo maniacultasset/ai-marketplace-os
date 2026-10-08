@@ -19,6 +19,11 @@ reach the decrypt path), and it holds no transaction across the marketplace call
    `marketplace.token_refresh_failed` with the tenant, account, marketplace and `AUTH_EXPIRED`,
    which the Sentry logging integration turns into the alert event (delivery is S24).
 
+`force=True` (S20 T14; D9, C3) is the adapter's "the marketplace refused this token" refresh: it
+skips only the due check (lock, snapshot and CAS unchanged). If another refresh holds the lock,
+it waits once for that lock to free (polling, at most `FORCE_WAIT`) and reports `skipped`, so
+the caller re-reads the token the other refresh wrote.
+
 A blob that will not unseal is recorded as `MARKETPLACE_UNKNOWN_ERROR` with one ERROR event
 `marketplace.credential_unseal_failed`. Plaintext tokens live only in this function's locals and
 never reach a logger.
@@ -26,6 +31,7 @@ never reach a logger.
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import timedelta
 from typing import Final, Literal
@@ -51,20 +57,43 @@ RefreshOutcome = Literal["refreshed", "rejected", "transient", "skipped", "stale
 REFRESH_MARGIN: Final = timedelta(minutes=15)
 """Refresh when the access token expires within this window (the periodic pass runs every 5)."""
 ENTITY: Final = "marketplace_account"
+FORCE_WAIT: Final = 10.0
+"""How long a forced refresh waits for another holder of the account's refresh lock."""
+FORCE_POLL: Final = 0.2
 
 
-async def refresh_account(tenant_id: uuid.UUID, account_id: uuid.UUID) -> RefreshOutcome:
-    """Refresh one account of `tenant_id` if it is active and due; the outcome."""
+async def refresh_account(
+    tenant_id: uuid.UUID, account_id: uuid.UUID, *, force: bool = False
+) -> RefreshOutcome:
+    """Refresh one account of `tenant_id` if it is active and due (or, with `force`, active);
+    the outcome."""
     async with refresh_lock(account_id) as held:
-        if not held:
-            return "skipped"
-        return await _refresh_locked(tenant_id, account_id)
+        if held:
+            return await _refresh_locked(tenant_id, account_id, force=force)
+    if force:
+        await _wait_for_lock(account_id)
+    return "skipped"
 
 
-async def _refresh_locked(tenant_id: uuid.UUID, account_id: uuid.UUID) -> RefreshOutcome:
+async def _wait_for_lock(account_id: uuid.UUID) -> None:
+    """Poll until the other refresh released the lock, at most `FORCE_WAIT` seconds."""
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + FORCE_WAIT
+    while loop.time() < deadline:
+        await asyncio.sleep(FORCE_POLL)
+        async with refresh_lock(account_id) as held:
+            if held:
+                return
+
+
+async def _refresh_locked(
+    tenant_id: uuid.UUID, account_id: uuid.UUID, *, force: bool = False
+) -> RefreshOutcome:
     async with tenant_uow(tenant_id) as uow:
         snap = await uow.marketplace_accounts.snapshot(account_id, margin=REFRESH_MARGIN)
-    if snap is None or not snap.due or snap.token_enc is None or snap.kms_key_version is None:
+    if snap is None or snap.token_enc is None or snap.kms_key_version is None:
+        return "skipped"
+    if snap.status != "active" or not (snap.due or force):
         return "skipped"
     client = get_oauth_client(snap.marketplace)
     if client is None:
