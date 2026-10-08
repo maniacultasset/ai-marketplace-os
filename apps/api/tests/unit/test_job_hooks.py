@@ -20,17 +20,20 @@ def test_hook_type_aliases_literal() -> None:
 
 
 def test_hook_maps_hold_only_the_owned_kinds() -> None:
-    """Only the kinds a merged step owns have hooks: S13b's `bulk_import` and S16's
-    `brand_embed` (later steps add theirs)."""
+    """Only the kinds a merged step owns have hooks: S13b's `bulk_import`, S16's
+    `brand_embed`, and S18's `listing_generate` (regenerate is that same kind). S21 adds publish."""
     from app.services.brand_embed import on_brand_embed_requeue, on_brand_embed_terminal
+    from app.services.generation_hooks import on_generate_requeue, on_generate_terminal
     from app.services.imports.hooks import import_requeue_hook, import_terminal_hook
     from mkos_schemas.enums import JobKind
 
     assert {
         JobKind.BULK_IMPORT: import_terminal_hook,
         JobKind.BRAND_EMBED: on_brand_embed_terminal,
+        JobKind.LISTING_GENERATE: on_generate_terminal,
     } == job_hooks.TERMINAL_HOOKS
     assert {
         JobKind.BULK_IMPORT: import_requeue_hook,
         JobKind.BRAND_EMBED: on_brand_embed_requeue,
+        JobKind.LISTING_GENERATE: on_generate_requeue,
     } == job_hooks.REQUEUE_HOOKS
