@@ -49,6 +49,7 @@ DENY_KEYS: Final[frozenset[str]] = frozenset(
         "token",
         "token_enc",
         "token_hash",
+        "x_amz_access_token",  # the SP-API access-token header (S20 T10)
         "state_hash",
         "code_verifier",
         "code_challenge",

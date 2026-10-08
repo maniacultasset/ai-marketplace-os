@@ -218,6 +218,11 @@ def _quiet_libraries(settings: Settings) -> None:
     instance.handlers.clear()
     instance.addHandler(logging.NullHandler())
     instance.propagate = True
+    # S20: httpx logs every request line (URL with seller id and SKU) at INFO; the marketplace
+    # client writes its own `marketplace.call` line instead, so the HTTP libraries say nothing
+    # below WARNING.
+    for name in ("httpx", "httpcore"):
+        logging.getLogger(name).setLevel(logging.WARNING)
 
 
 def configure_logging(settings: Settings, *, stream: TextIO | None = None) -> None:

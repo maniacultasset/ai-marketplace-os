@@ -407,7 +407,9 @@ async def _spapi(state: FakeState, request: Request) -> Response:
     shaped = state.spapi_body
     state.spapi_body = None
     if shaped == "redirect":
-        return RedirectResponse("https://elsewhere.example.test/", status_code=302)
+        # a same-host SP-API path, so a client that follows it shows up in `/__calls`
+        target = f"/listings/2021-08-01/items/{seller}/REDIRECTED?marketplaceIds=A21TJRUUN4KGV"
+        return RedirectResponse(target, status_code=302)
     if shaped == "html":
         return Response("<html>maintenance</html>", status_code=200, media_type="text/html")
     if shaped == "oversize":

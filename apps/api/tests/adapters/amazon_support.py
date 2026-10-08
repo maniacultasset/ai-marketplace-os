@@ -86,3 +86,80 @@ def prepare(sent: AdapterListing) -> AdapterListing:
     if "fabric_type" not in body.attributes:
         body = body.model_copy(update={"attributes": {**body.attributes, "fabric_type": "cotton"}})
     return dataclasses.replace(sent, listing=body, template=template(), image_refs=image_refs(body))
+
+
+# ---- the client's ports over the in-process fake (T10-T12) ----
+
+
+class FakeTokens:
+    """A `TokenSource` over the fake marketplace: tokens the fake accepts, a counted refresh."""
+
+    def __init__(self, app: Any, *, refuse_refresh: bool = False) -> None:
+        from tests.support.fake_marketplace import issue_token
+
+        self._app = app
+        self._issue = issue_token
+        self.token = issue_token(app)
+        self.refreshes = 0
+        self.refuse_refresh = refuse_refresh
+
+    async def get(self) -> Any:
+        from pydantic import SecretStr
+
+        return SecretStr(self.token)
+
+    async def refresh(self) -> Any:
+        from app.adapters.amazon.client import failure
+        from app.adapters.base import AuthExpired
+        from mkos_schemas.codes import ErrorCode
+        from pydantic import SecretStr
+
+        self.refreshes += 1
+        if self.refuse_refresh:
+            raise AuthExpired(failure(ErrorCode.AUTH_EXPIRED, "The refresh was refused."))
+        self.token = self._issue(self._app)
+        return SecretStr(self.token)
+
+
+class CountingLimiter:
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    async def acquire(self, operation: str) -> float:
+        self.calls.append(operation)
+        return float(len(self.calls))
+
+
+class FixedRng:
+    def __init__(self, jitter: float = 0.25) -> None:
+        self.jitter = jitter
+
+    def uniform(self, a: float, b: float) -> float:
+        return a + self.jitter
+
+
+SELLER = "A1FAKESELLER"
+
+
+def spapi_client(app: Any, *, transport: Any = None, tokens: Any = None, **over: Any) -> Any:
+    import httpx
+    from app.adapters.amazon.client import SpApiClient
+
+    sleeps: list[float] = []
+
+    async def sleep(delay: float) -> None:
+        sleeps.append(delay)
+
+    client = SpApiClient(
+        endpoint="http://fake.test",
+        marketplace_id="A21TJRUUN4KGV",
+        seller_id=over.pop("seller_id", SELLER),
+        tokens=tokens or FakeTokens(app),
+        limiter=over.pop("limiter", CountingLimiter()),
+        transport=transport or httpx.ASGITransport(app),
+        sleep=over.pop("sleep", sleep),
+        rng=over.pop("rng", FixedRng()),
+        **over,
+    )
+    client.sleeps = sleeps  # type: ignore[attr-defined]
+    return client
