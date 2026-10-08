@@ -26,21 +26,24 @@ reviewer may regenerate but not generate fresh (the route's action decides).
 
 from __future__ import annotations
 
+import json
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any, Final
 
 from mkos_schemas.base import find_seam_secret_key
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import JobKind, Marketplace
+from mkos_schemas.jobs import GenerateListingRequest
 
 from app.core.errors import ConflictError, DomainError, InputError, NotFoundError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.repositories.jobs import EnqueueSpec
 from app.repositories.listings import UserActor
-from app.repositories.uow import TenantUnitOfWork
+from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
 
 log = get_logger(__name__)
 
@@ -211,6 +214,70 @@ async def request_regeneration(
     if listing is None:
         raise NotFoundError("listing_id")
     return await _regenerate_locked(uow, principal, http_key, listing, instructions)
+
+
+async def accept_generate(
+    principal: Principal, key: str, path: str, body: GenerateListingRequest
+) -> dict[str, Any]:
+    """Idempotent 202. A stored replay skips the budget pre-check (CP6)."""
+    from app.services.budget import precheck
+    from app.services.idempotency import idempotent
+
+    payload = body.model_dump_json().encode()
+
+    async def handler(session: Any) -> tuple[int, dict[str, Any]]:
+        uow = repositories_on(session, principal.tenant_id)
+        await precheck(uow, datetime.now(UTC))
+        [result] = await request_generation(
+            uow,
+            principal,
+            key,
+            [
+                GenerateItem(
+                    product_id=body.product_id,
+                    marketplace=body.marketplace,
+                    category=body.category,
+                    user_instructions=body.user_instructions,
+                    force_regenerate=body.force_regenerate,
+                )
+            ],
+        )
+        if isinstance(result, ItemRefused):
+            raise result.error
+        return 202, accepted_body(result)
+
+    _status, stored = await idempotent(principal, key, "POST", path, payload, handler)
+    return stored
+
+
+async def accept_regenerate(
+    principal: Principal,
+    key: str,
+    path: str,
+    listing_id: uuid.UUID,
+    instructions: str | None,
+) -> dict[str, Any]:
+    from app.services.budget import precheck
+    from app.services.idempotency import idempotent
+
+    payload = json.dumps({"instructions": instructions}, sort_keys=True).encode()
+
+    async def handler(session: Any) -> tuple[int, dict[str, Any]]:
+        uow = repositories_on(session, principal.tenant_id)
+        await precheck(uow, datetime.now(UTC))
+        accepted = await request_regeneration(uow, principal, key, listing_id, instructions)
+        return 202, accepted_body(accepted)
+
+    _status, stored = await idempotent(principal, key, "POST", path, payload, handler)
+    return stored
+
+
+async def read_status(principal: Principal, listing_id: uuid.UUID) -> Any:
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        listing = await uow.listings.get(listing_id)
+    if listing is None:
+        raise NotFoundError("listing_id")
+    return listing
 
 
 def accepted_body(accepted: ItemAccepted) -> dict[str, Any]:

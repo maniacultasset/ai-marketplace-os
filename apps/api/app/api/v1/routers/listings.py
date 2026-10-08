@@ -9,29 +9,55 @@ from __future__ import annotations
 from typing import Annotated, NoReturn
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query, Request
 from fastapi import Path as PathParam
+from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ListingStatus, Marketplace
-from mkos_schemas.jobs import GenerateListingRequest
+from mkos_schemas.jobs import GenerateListingRequest, JobAccepted
 
-from app.api.errors import NotImplementedYet
+from app.api.errors import ApiError, NotImplementedYet
 from app.api.pagination import PageParams
-from app.api.v1.deps import IdempotencyKey, IfMatch
+from app.api.v1.deps import IdempotencyKey, IfMatch, get_current_principal
 from app.api.v1.schemas.batches import ApproveRequest, PublishRequest
-from app.api.v1.schemas.listings import ListingContentPatch, RegenerateRequest, ValidateRequest
+from app.api.v1.schemas.listings import (
+    ListingContentPatch,
+    ListingStatusOut,
+    RegenerateRequest,
+    ValidateRequest,
+)
 from app.api.v1.surface import OPS, route, stub
+from app.core.rbac import Principal
+from app.services import generation
+from app.services.budget import BudgetExceededError
 
 router = APIRouter()
 ListingId = Annotated[UUID, PathParam()]
+CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
+
+
+def _budget(exc: BudgetExceededError) -> ApiError:
+    return ApiError(
+        429,
+        ErrorCode.BUDGET_EXCEEDED,
+        headers={"Retry-After": str(exc.retry_after_s)},
+    )
 
 
 @route(router, OPS["listings_generate"])
-@stub
 async def listings_generate(
-    body: GenerateListingRequest, idempotency_key: IdempotencyKey
-) -> NoReturn:
+    body: GenerateListingRequest,
+    idempotency_key: IdempotencyKey,
+    principal: CurrentPrincipal,
+    request: Request,
+) -> JobAccepted:
     """Start AI generation for one product on one marketplace: 202 with the job."""
-    raise NotImplementedYet("listings_generate")
+    try:
+        stored = await generation.accept_generate(
+            principal, idempotency_key, request.url.path, body
+        )
+    except BudgetExceededError as exc:
+        raise _budget(exc) from None
+    return JobAccepted.model_validate(stored)
 
 
 @route(router, OPS["listings_validate"])
@@ -77,10 +103,16 @@ async def listings_get(listing_id: ListingId) -> NoReturn:
 
 
 @route(router, OPS["listings_status"])
-@stub
-async def listings_status(listing_id: ListingId) -> NoReturn:
+async def listings_status(listing_id: ListingId, principal: CurrentPrincipal) -> ListingStatusOut:
     """Status by listing id: a convenience alias; poll `/jobs/{job_id}` for progress."""
-    raise NotImplementedYet("listings_status")
+    listing = await generation.read_status(principal, listing_id)
+    return ListingStatusOut(
+        listing_id=listing.id,
+        status=listing.status,
+        status_reason=listing.status_reason,
+        marketplace_state=listing.marketplace_state,
+        status_changed_at=listing.status_changed_at,
+    )
 
 
 @route(router, OPS["listings_content_patch"])
@@ -94,14 +126,22 @@ async def listings_content_patch(
 
 
 @route(router, OPS["listings_regenerate"])
-@stub
 async def listings_regenerate(
     listing_id: ListingId,
     idempotency_key: IdempotencyKey,
+    principal: CurrentPrincipal,
+    request: Request,
     body: Annotated[RegenerateRequest | None, Body()] = None,
-) -> NoReturn:
+) -> JobAccepted:
     """Regenerate an existing listing; a reviewer may do this, but may not generate fresh."""
-    raise NotImplementedYet("listings_regenerate")
+    instructions = None if body is None else body.instructions
+    try:
+        stored = await generation.accept_regenerate(
+            principal, idempotency_key, request.url.path, listing_id, instructions
+        )
+    except BudgetExceededError as exc:
+        raise _budget(exc) from None
+    return JobAccepted.model_validate(stored)
 
 
 @route(router, OPS["listings_retry_fields"])

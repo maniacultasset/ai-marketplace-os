@@ -68,6 +68,9 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "images_upload_url",
         "images_upload",
         "images_report",
+        "listings_generate",
+        "listings_regenerate",
+        "listings_status",
     }
 )
 
