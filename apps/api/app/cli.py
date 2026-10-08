@@ -169,6 +169,14 @@ async def _seed(profile: str, *, reset: bool, admin_url: str) -> SeedCounts:
             await _seed_demo_listing()
     finally:
         await dispose_engine()
+    # S20 C12: the Amazon mappings are promoted after the demo listing, so KURTA-001 stays
+    # pinned to S9's version 1 on fresh and existing databases alike.
+    admin = create_async_engine(admin_url)
+    try:
+        async with admin.begin() as connection:
+            await seed_ops.seed_amazon_mappings(connection)
+    finally:
+        await admin.dispose()
     return SeedCounts(len(seed_ops.TENANTS), products, users)
 
 

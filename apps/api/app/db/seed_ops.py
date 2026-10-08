@@ -44,7 +44,14 @@ from app.db.models.platform import AttributeDefinition, CategoryTemplate
 from app.db.models.rules import Rule
 from app.db.models.runs import ValidationRun
 from app.db.models.tenancy import Tenant, TenantMembership, User
-from app.db.platform_loads import load_dictionary, sync_rows
+from app.db.platform_loads import (
+    TemplateCounts,
+    TemplateLoad,
+    load_dictionary,
+    load_template_rows,
+    sync_rows,
+)
+from app.db.seed_templates import seed_templates
 from app.repositories.base import TenantScopedRepository
 
 SEED_NAMESPACE: Final = uuid.UUID("5eed0000-9c1e-4d6a-8a51-0c5a1e5eed00")
@@ -248,6 +255,21 @@ async def seed_platform_rows(connection: AsyncConnection, rules_path: Path) -> N
     # The whole dictionary first (S13b): the 0007 facts guard reads it for every seeded fact.
     await sync_rows(connection, load_dictionary())
     await seed_attribute_definitions(connection)
+
+
+def amazon_template_loads() -> list[TemplateLoad]:
+    """S20 T5 (C12): Amazon kurta v2 and Amazon tshirts v1 as S13 loader entries."""
+    return [
+        TemplateLoad(version=t.version, product_type=t.product_type, template=t.template)
+        for t in seed_templates()
+    ]
+
+
+async def seed_amazon_mappings(connection: AsyncConnection) -> TemplateCounts:
+    """Insert the Amazon mappings and promote each over the current version (the two ordered
+    `is_current` UPDATEs, audited with a NULL tenant). S9's v1 rows are never edited; a rerun
+    finds the same content and writes nothing. Runs on the caller's migrator transaction."""
+    return await load_template_rows(connection, amazon_template_loads())
 
 
 async def _migrator_session(connection: AsyncConnection) -> None:

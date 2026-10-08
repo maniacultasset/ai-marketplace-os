@@ -217,6 +217,7 @@ async def test_seed_category_templates_present(superuser_conn: Conn) -> None:
     assert rows == [
         ("amazon", "ethnic_wear_kurta_sets"),
         ("amazon", "home_decor_lamps"),
+        ("amazon", "tshirts"),  # S20 T5: the Amazon tshirts mapping
         ("flipkart", "ethnic_wear_kurta_sets"),
         ("flipkart", "home_decor_lamps"),
     ]
@@ -521,6 +522,18 @@ async def test_seed_demo_listing_report_from_engine(superuser_conn: Conn) -> Non
         loaded = await load_rules(
             uow, tenant_id=acme, marketplace="amazon", category="ethnic_wear_kurta_sets"
         )
+    # S20 C12: the run pins S9's version 1, read when the listing was seeded; the Amazon kurta
+    # mapping (version 2) is promoted after it.
+    v1 = superuser_conn.execute(
+        "SELECT id, version, attributes FROM category_templates WHERE marketplace = 'amazon' "
+        "AND category = 'ethnic_wear_kurta_sets' AND version = 1"
+    ).fetchone()
+    assert v1 is not None
+    from mkos_schemas.jobs import CategoryTemplate
+
+    pinned = CategoryTemplate.model_validate(
+        {**v1[2], "marketplace": "amazon", "category": "ethnic_wear_kurta_sets"}
+    )
     product = _scalar(superuser_conn, "SELECT product_id FROM listings WHERE id = %s", [listing_id])
     listing = CanonicalListing.model_validate(
         {
@@ -532,14 +545,127 @@ async def test_seed_demo_listing_report_from_engine(superuser_conn: Conn) -> Non
             "attributes": dict(DEMO_ATTRIBUTES),
         }
     )
-    expected = evaluate(listing, loaded.ruleset, template=loaded.template)
+    expected = evaluate(listing, loaded.ruleset, template=pinned)
     assert ErrorReport.model_validate(row[2]) == expected
     assert [e.error_code.value for e in expected.errors] == ["FIELD_TOO_LONG"]
     assert (row[0], row[1], row[3]) == ("rules_engine", False, loaded.ruleset.rules_version)
-    assert (row[4], row[5]) == (loaded.template_id, loaded.template_version)
+    assert (row[4], row[5]) == (v1[0], 1)
     assert row[6] is not None and row[7] == version_id and row[8] == 1
 
 
 async def test_seed_demo_listing_absent_in_isolation_profile(superuser_conn: Conn) -> None:
     assert await _seed("isolation") == 0
     assert _demo_rows(superuser_conn) == (0, 0, 0)
+
+
+# ---- S20 T5 (C12): the Amazon mappings, as new template versions ----
+
+
+def _templates(conn: Conn, category: str) -> list[tuple[Any, ...]]:
+    return conn.execute(
+        "SELECT version, is_current, product_type, attributes FROM category_templates "
+        "WHERE marketplace = 'amazon' AND category = %s ORDER BY version",
+        [category],
+    ).fetchall()
+
+
+def _promotions(conn: Conn, category: str) -> int:
+    return int(
+        _scalar(
+            conn,
+            "SELECT count(*) FROM audit_log WHERE action = 'category_template.promoted' "
+            "AND tenant_id IS NULL AND after ->> 'category' = %s "
+            "AND after ->> 'marketplace' = 'amazon'",
+            [category],
+        )
+    )
+
+
+def _kurta_001_pin(conn: Conn) -> int:
+    from app.db.seed_ops import demo_listing_ids
+
+    _listing, version, run = demo_listing_ids()
+    pinned = conn.execute(
+        "SELECT t.version FROM listing_versions v JOIN category_templates t "
+        "ON t.id = v.category_template_id WHERE v.id = %s",
+        [version],
+    ).fetchone()
+    run_pin = _scalar(conn, "SELECT template_version FROM validation_runs WHERE id = %s", [run])
+    assert pinned is not None and pinned[0] == run_pin
+    return int(run_pin)
+
+
+async def test_seed_amazon_kurta_v2_promoted_once(superuser_conn: Conn) -> None:
+    from app.db.seed_ops import _template_rows
+
+    assert await _seed("demo") == 0
+    first = _templates(superuser_conn, "ethnic_wear_kurta_sets")
+    assert await _seed("demo") == 0
+    rows = _templates(superuser_conn, "ethnic_wear_kurta_sets")
+    assert rows == first
+    assert [(r[0], r[1], r[2]) for r in rows] == [(1, False, "KURTA"), (2, True, "KURTA")]
+    (v1_seed,) = [
+        t
+        for t in _template_rows()
+        if (t["marketplace"], t["category"]) == ("amazon", "ethnic_wear_kurta_sets")
+    ]
+    assert rows[0][3] == v1_seed["attributes"]  # S9's v1 content unchanged
+    assert rows[1][3]["specs"]["color"]["marketplace_field"] == "color"
+    assert _promotions(superuser_conn, "ethnic_wear_kurta_sets") == 1
+
+
+async def test_seed_amazon_tshirts_v1_current(superuser_conn: Conn) -> None:
+    assert await _seed("isolation") == 0
+    rows = _templates(superuser_conn, "tshirts")
+    assert [(r[0], r[1], r[2]) for r in rows] == [(1, True, "SHIRT")]
+    assert _promotions(superuser_conn, "tshirts") == 1
+
+
+async def test_seed_on_existing_v1_db_ok(
+    superuser_conn: Conn, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A database seeded before S20 (S9's v1 rows, KURTA-001 and its validation run) seeds
+    again without a guard error, and KURTA-001 keeps its v1 pin."""
+    from app.db import seed_ops
+
+    async def before_s20(connection: Any) -> None:
+        return None
+
+    with monkeypatch.context() as patch:
+        patch.setattr(seed_ops, "seed_amazon_mappings", before_s20)
+        assert await _seed("demo") == 0
+    assert [r[0] for r in _templates(superuser_conn, "ethnic_wear_kurta_sets")] == [1]
+    assert _kurta_001_pin(superuser_conn) == 1
+    assert await _seed("demo") == 0
+    assert [(r[0], r[1]) for r in _templates(superuser_conn, "ethnic_wear_kurta_sets")] == [
+        (1, False),
+        (2, True),
+    ]
+    assert _kurta_001_pin(superuser_conn) == 1
+
+
+async def test_promote_template_two_updates_one_tx(superuser_conn: Conn) -> None:
+    from app.cli import RULES_SEED_PATH
+    from app.db.seed_ops import seed_amazon_mappings, seed_platform_rows
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    engine = create_async_engine(os.environ["DATABASE_URL"])
+    try:
+        async with engine.begin() as connection:
+            await seed_platform_rows(connection, RULES_SEED_PATH)
+        with pytest.raises(RuntimeError, match="between"):
+            async with engine.begin() as connection:
+                await seed_amazon_mappings(connection)
+                raise RuntimeError("a failure between the promotion and the commit")
+    finally:
+        await engine.dispose()
+    assert [(r[0], r[1]) for r in _templates(superuser_conn, "ethnic_wear_kurta_sets")] == [
+        (1, True)
+    ]
+    assert _templates(superuser_conn, "tshirts") == []
+    currents = _scalar(
+        superuser_conn,
+        "SELECT max(n) FROM (SELECT count(*) AS n FROM category_templates WHERE is_current "
+        "GROUP BY marketplace, category) c",
+    )
+    assert currents == 1
