@@ -30,7 +30,7 @@ from mkos_schemas.rules import RuleSet
 from pydantic import TypeAdapter
 from sqlalchemy import Connection, delete, func, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession
 
 from app.core.config import get_settings
 from app.core.passwords import hash_password
@@ -45,9 +45,12 @@ from app.db.models.rules import Rule
 from app.db.models.runs import ValidationRun
 from app.db.models.tenancy import Tenant, TenantMembership, User
 from app.db.platform_loads import (
+    ErrorMapCounts,
+    ErrorMapIn,
     TemplateCounts,
     TemplateLoad,
     load_dictionary,
+    load_error_map_rows,
     load_template_rows,
     sync_rows,
 )
@@ -270,6 +273,29 @@ async def seed_amazon_mappings(connection: AsyncConnection) -> TemplateCounts:
     `is_current` UPDATEs, audited with a NULL tenant). S9's v1 rows are never edited; a rerun
     finds the same content and writes nothing. Runs on the caller's migrator transaction."""
     return await load_template_rows(connection, amazon_template_loads())
+
+
+@dataclass(frozen=True)
+class PlatformLoadCounts:
+    templates: TemplateCounts
+    error_map: ErrorMapCounts
+
+
+async def platform_load(
+    engine: AsyncEngine, *, rules_path: Path, error_map_rows: Sequence[ErrorMapIn]
+) -> PlatformLoadCounts:
+    """Every platform row a fresh database needs, and no tenant row (S20 T5b; C18): S9's
+    platform rows (templates v1, the NULL-tenant rules, the dictionary), then the Amazon
+    mappings, then the error map. One migrator transaction per part, each upserting on its
+    natural key, so a rerun writes and audits nothing. `seed` and `app.cli platform load` (the
+    tenant-less acceptance stack) share this one path."""
+    async with engine.begin() as connection:
+        await seed_platform_rows(connection, rules_path)
+    async with engine.begin() as connection:
+        templates = await seed_amazon_mappings(connection)
+    async with engine.begin() as connection:
+        error_map = await load_error_map_rows(connection, error_map_rows)
+    return PlatformLoadCounts(templates=templates, error_map=error_map)
 
 
 async def _migrator_session(connection: AsyncConnection) -> None:

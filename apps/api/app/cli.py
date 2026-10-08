@@ -102,6 +102,10 @@ SEED_PROFILES: Final = ("demo", "isolation")
 RULES_SEED_PATH: Final = (
     Path(__file__).resolve().parents[3] / "packages/schemas/fixtures/rules.seed.json"
 )
+# The local fake error map (S20 D7): `FAKE-` codes only; seed and `platform load` read it.
+ERROR_MAP_FAKE_PATH: Final = (
+    Path(__file__).resolve().parents[1] / "tests/fixtures/error_map.fake.json"
+)
 _SQLSTATE: Final = re.compile(r"[0-9A-Z]{5}")
 
 
@@ -169,15 +173,66 @@ async def _seed(profile: str, *, reset: bool, admin_url: str) -> SeedCounts:
             await _seed_demo_listing()
     finally:
         await dispose_engine()
-    # S20 C12: the Amazon mappings are promoted after the demo listing, so KURTA-001 stays
-    # pinned to S9's version 1 on fresh and existing databases alike.
+    # S20 C12, C18: the one platform-load path. The Amazon mappings are promoted after the demo
+    # listing, so KURTA-001 stays pinned to S9's version 1 on fresh and existing databases.
+    await _platform_load(admin_url, ERROR_MAP_FAKE_PATH)
+    return SeedCounts(len(seed_ops.TENANTS), products, users)
+
+
+async def _platform_load(admin_url: str, error_map: Path) -> tuple[int, int, int, int]:
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from app.db import seed_ops
+    from app.db.platform_loads import load_error_map_file
+
+    rows = load_error_map_file(error_map)
     admin = create_async_engine(admin_url)
     try:
-        async with admin.begin() as connection:
-            await seed_ops.seed_amazon_mappings(connection)
+        counts = await seed_ops.platform_load(
+            admin, rules_path=RULES_SEED_PATH, error_map_rows=rows
+        )
     finally:
         await admin.dispose()
-    return SeedCounts(len(seed_ops.TENANTS), products, users)
+    t, e = counts.templates, counts.error_map
+    return t.inserted, t.promoted, e.inserted, e.toggled
+
+
+async def run_platform_load(error_map: Path) -> int:
+    from pydantic import ValidationError
+
+    from app.core.config import get_settings
+    from app.db.platform_loads import ErrorMapConflict, TemplateConflict
+
+    settings = get_settings()
+    if settings.app_env != "local":  # it loads the local fake fixtures: local only, like seed
+        sys.stderr.write(
+            f"platform load: refused: APP_ENV={settings.app_env} (platform load runs only under "
+            "APP_ENV=local; use templates load and errors load)\n"
+        )
+        return EXIT_REFUSED
+    if settings.alembic_database_url is None:
+        sys.stderr.write("platform load: failed (ALEMBIC_DATABASE_URL is required)\n")
+        return EXIT_FAILED
+    try:
+        templates, promoted, errors, toggled = await _platform_load(
+            settings.alembic_database_url, error_map
+        )
+    except (ErrorMapConflict, TemplateConflict) as exc:
+        sys.stderr.write(
+            f"platform load: refused: {exc.key} already holds other content; bump version\n"
+        )
+        return EXIT_FAILED
+    except (ValidationError, ValueError) as exc:
+        sys.stderr.write(f"platform load: invalid file ({type(exc).__name__})\n")
+        return EXIT_FAILED
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"platform load: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    sys.stdout.write(
+        f"platform load: ok ({templates} templates inserted, {promoted} promoted, "
+        f"{errors} error-map rows inserted, {toggled} toggled)\n"
+    )
+    return EXIT_OK
 
 
 async def _seed_demo_listing() -> None:
@@ -521,7 +576,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     errors_commands = errors.add_subparsers(dest="command", required=True)
     errors_load = errors_commands.add_parser("load", help="load versioned error-map rows")
     errors_load.add_argument("--file", type=Path, required=True)
+    platform = groups.add_parser("platform", help="every platform row, no tenant (local only)")
+    platform_commands = platform.add_subparsers(dest="command", required=True)
+    platform_load = platform_commands.add_parser("load", help="templates, rules, error map")
+    platform_load.add_argument("--error-map", type=Path, default=ERROR_MAP_FAKE_PATH)
     args = parser.parse_args(argv)
+    if args.group == "platform":
+        if not args.error_map.is_file():
+            sys.stderr.write("platform load: no such file\n")
+            return EXIT_NO_FILE
+        return asyncio.run(run_platform_load(args.error_map))
     if args.group == "errors":
         if not args.file.is_file():
             sys.stderr.write("errors load: no such file\n")

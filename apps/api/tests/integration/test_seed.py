@@ -627,9 +627,10 @@ async def test_seed_on_existing_v1_db_ok(
     """A database seeded before S20 (S9's v1 rows, KURTA-001 and its validation run) seeds
     again without a guard error, and KURTA-001 keeps its v1 pin."""
     from app.db import seed_ops
+    from app.db.platform_loads import TemplateCounts
 
-    async def before_s20(connection: Any) -> None:
-        return None
+    async def before_s20(connection: Any) -> TemplateCounts:
+        return TemplateCounts(inserted=0, unchanged=0, promoted=0)
 
     with monkeypatch.context() as patch:
         patch.setattr(seed_ops, "seed_amazon_mappings", before_s20)
@@ -669,3 +670,25 @@ async def test_promote_template_two_updates_one_tx(superuser_conn: Conn) -> None
         "GROUP BY marketplace, category) c",
     )
     assert currents == 1
+
+
+async def test_seed_calls_platform_load_once(
+    superuser_conn: Conn, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """S20 T5b (C18): `seed` reaches the Amazon mappings and the error map through the one
+    `platform_load` path, once per run."""
+    from app.db import seed_ops
+
+    calls: list[int] = []
+    real = seed_ops.platform_load
+
+    async def spy(*args: Any, **kwargs: Any) -> Any:
+        calls.append(1)
+        return await real(*args, **kwargs)
+
+    monkeypatch.setattr(seed_ops, "platform_load", spy)
+    assert await _seed("demo") == 0
+    assert await _seed("demo") == 0
+    assert calls == [1, 1]
+    assert _promotions(superuser_conn, "ethnic_wear_kurta_sets") == 1
+    assert _scalar(superuser_conn, "SELECT count(*) FROM marketplace_error_map") == 4
