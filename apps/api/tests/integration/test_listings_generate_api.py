@@ -85,6 +85,24 @@ async def test_generate_wrong_tenant(api: httpx.AsyncClient, gen_world: GenWorld
     assert response.status_code == 404
 
 
+async def test_budget_kill_switch(api: httpx.AsyncClient, gen_world: GenWorld) -> None:
+    from datetime import UTC, datetime
+    from decimal import Decimal
+
+    from . import factories as f
+
+    acme = gen_world.tenant("acme")
+    listings = gen_world.count("listings", "tenant_id = %s", [acme])
+    jobs = gen_world.count("job_runs", "tenant_id = %s", [acme])
+    f.agent_run(gen_world.conn, acme, cost_usd=Decimal("2.500000"), started_at=datetime.now(UTC))
+    response = await _generate(api, gen_world)
+    assert response.status_code == 429, response.text
+    assert response.json()["error"]["type"] == "BUDGET_EXCEEDED"
+    assert response.headers["retry-after"]
+    assert gen_world.count("listings", "tenant_id = %s", [acme]) == listings
+    assert gen_world.count("job_runs", "tenant_id = %s", [acme]) == jobs
+
+
 @pytest.mark.endpoint("listings_generate", case="conflict")
 async def test_generate_conflict(api: httpx.AsyncClient, gen_world: GenWorld) -> None:
     assert (await _generate(api, gen_world)).status_code == 202
