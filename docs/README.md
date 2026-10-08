@@ -38,6 +38,9 @@ editor-specific detail.
 | `ARCH.md` | 12 KB | How the backend is built and where it runs | When joining; before structural changes |
 | `RULES.md` | 12 KB | The engineering rules every contributor follows, and how the docs stay current | Before any change |
 | `DESIGN.md` | 11 KB | Backend design conventions: layers, API, data, jobs, listing lifecycle, adapters, the AI seam, observability | Before designing an endpoint, table or job |
+| `HANDOFF-AI.md` | 6 KB | The generation seam the AI team implements: `run_listing_pipeline`, `PipelineDeps`, the context and result rules | When the AI team builds or changes the pipeline |
+| `HANDOFF-FE.md` | 5 KB | The v1 API for the FE team: installing `@mkos/schemas`, the mock, the conventions, the screens and their operations | When the FE team starts or a contract changes |
+| `EXTERNAL-SETUP.md` | 8 KB | What only the client can do: Amazon and Flipkart developer applications, the domain and website, GCP billing, keys | Before staging and before connecting real stores |
 | `PHASES.md` | 12 KB | Phases and build status, from setup to launch | When picking or planning work |
 | `PROCESS.md` | 15 KB | The team process: roles, the team loop, approvals, the session protocol, the git flow, local-only files, running the loop by hand | Every session; before planning or building a step |
 | `STATE.md` | 44 KB | Live status, decisions, pending user decisions, next actions, the handoff log | Every session |
