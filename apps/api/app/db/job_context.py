@@ -6,13 +6,18 @@ the job: one short transaction sets the transaction-local `app.job_id` GUC and r
 `id = app_job_id()`), the named invariant-5 exception. Nothing else is visible to it, and the
 GUC is gone at COMMIT. Every later statement of the job runs in `unit_of_work(tenant_id)`.
 
-Repo rule R8: this is the only module that names the GUC, and only `app/workers/wrapper.py`
-imports it.
+`bind_job_actor(session, job_id)` / `unbind_job_actor(session)` (S18 T5) set and clear the same
+transaction-local GUC around one listing move, so `listings_status_guard` sees the worker actor
+(`app_job_id()`) for that statement only.
+
+Repo rule R8: this is the only module that names the GUC, and only `app/workers/wrapper.py` and
+`app/repositories/listings.py` import it.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -44,3 +49,15 @@ async def resolve_job(job_run_id: UUID) -> JobHead | None:
     if row is None:
         return None
     return JobHead(tenant_id=row.tenant_id, kind=row.kind, request_id=row.request_id)
+
+
+async def bind_job_actor(session: Any, job_id: UUID) -> None:
+    """Name `job_id` as the actor of the next statements in `session`'s transaction."""
+    if not isinstance(job_id, UUID):
+        raise ValueError("job_id must be a UUID")
+    await session.execute(select(func.set_config("app.job_id", str(job_id), True)))
+
+
+async def unbind_job_actor(session: Any) -> None:
+    """Clear the worker actor again (the GUC reads as NULL, `app_job_id()`)."""
+    await session.execute(select(func.set_config("app.job_id", "", True)))

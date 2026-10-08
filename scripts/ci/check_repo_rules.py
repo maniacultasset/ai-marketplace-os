@@ -34,7 +34,8 @@
 
 - R8: the job GUC (the `jr_by_id` branch, DATABASE.md:950) stays in one place: the literal
   `app.job_id` appears in `apps/api/app/**` only in `apps/api/app/db/job_context.py`, and only
-  `apps/api/app/workers/wrapper.py` imports `app.db.job_context` (any import form, relative too).
+  `apps/api/app/workers/wrapper.py` and `apps/api/app/repositories/listings.py` (S18's worker-actor
+  listing moves) import `app.db.job_context` (any import form, relative too).
 
 `--rules R5,R6,R7,R8` limits the run to those rules (`lint-imports` runs R5-R8; `api-lint` all).
 
@@ -78,7 +79,11 @@ IDENTITY_SCOPE_FILES = ("apps/api/app/db/session.py", "apps/api/app/repositories
 JOB_GUC: Final = "app.job_id"
 JOB_CONTEXT_MODULE: Final = "app.db.job_context"
 JOB_CONTEXT_FILE: Final = "apps/api/app/db/job_context.py"
-JOB_CONTEXT_IMPORTER: Final = "apps/api/app/workers/wrapper.py"
+# the wrapper names the job (S13); S18's listing moves bind a worker actor (`bind_job_actor`)
+JOB_CONTEXT_IMPORTERS: Final = (
+    "apps/api/app/workers/wrapper.py",
+    "apps/api/app/repositories/listings.py",
+)
 SQLALCHEMY_TEXT_MODULES = frozenset({"sqlalchemy", "sqlalchemy.sql", "sqlalchemy.sql.expression"})
 RAW_SQL_NAMES = frozenset({"text", "TextClause", "literal_column", "table", "TableClause", "DDL"})
 RAW_SQL_CALLS = frozenset(
@@ -379,7 +384,7 @@ def _job_guc(relative: str, tree: ast.AST) -> Iterator[tuple[int, str]]:
             value = node.value if isinstance(node, ast.Constant) else None
             if isinstance(value, str) and JOB_GUC in value:
                 yield node.lineno, f"names `{JOB_GUC}` outside app/db/job_context.py"
-    if relative == JOB_CONTEXT_IMPORTER:
+    if relative in JOB_CONTEXT_IMPORTERS:
         return
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -433,7 +438,12 @@ def check_file(relative: str, path: Path) -> list[Violation]:
         ]
     if relative.startswith(APP + "/"):
         found += [
-            Violation(relative, n, "R8", f"{m}; only app/workers/wrapper.py imports it")
+            Violation(
+                relative,
+                n,
+                "R8",
+                f"{m}; only app/workers/wrapper.py and app/repositories/listings.py import it",
+            )
             for n, m in _job_guc(relative, tree)
         ]
     return found

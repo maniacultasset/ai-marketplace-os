@@ -26,14 +26,17 @@ from app.repositories.human_tasks import HumanTaskRepository
 from app.repositories.identity import AuditRepository
 from app.repositories.images import ImageRepository
 from app.repositories.jobs import JobRunRepository
+from app.repositories.listings import ListingRepository, ListingVersionRepository
 from app.repositories.marketplace_accounts import MarketplaceAccountRepository
 from app.repositories.oauth_states import OAuthStateRepository
 from app.repositories.product_facts import ProductFactsRepository
 from app.repositories.products import ProductRepository
+from app.repositories.review_decisions import ReviewDecisionRepository
 from app.repositories.rules import RuleRepository
 from app.repositories.templates import CategoryTemplateRepository
 from app.repositories.tenants import TenantProfileRepository
 from app.repositories.transactions import unit_of_work
+from app.repositories.validation_runs import ValidationRunRepository
 
 __all__ = ["TenantUnitOfWork", "repositories_on", "tenant_uow"]
 
@@ -61,6 +64,10 @@ class TenantUnitOfWork:
     # S18: generation reads and writes.
     product_facts: ProductFactsRepository
     brand_profile: BrandPromptRepository
+    listings: ListingRepository
+    listing_versions: ListingVersionRepository
+    validation_runs: ValidationRunRepository
+    review_decisions: ReviewDecisionRepository
 
 
 def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
@@ -85,6 +92,10 @@ def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
         tenants=TenantProfileRepository(session, tenant_id),
         product_facts=ProductFactsRepository(session, tenant_id),
         brand_profile=BrandPromptRepository(session, tenant_id),
+        listings=ListingRepository(session, tenant_id),
+        listing_versions=ListingVersionRepository(session, tenant_id),
+        validation_runs=ValidationRunRepository(session, tenant_id),
+        review_decisions=ReviewDecisionRepository(session, tenant_id),
     )
 
 
