@@ -37,7 +37,7 @@ from app.core.passwords import hash_password
 from app.core.vectors import hash_vector
 from app.db.base import metadata
 from app.db.models.audit_brand import BrandChunk
-from app.db.models.catalog import Product
+from app.db.models.catalog import Product, ProductColourway, VariantMatrixCell
 from app.db.models.facts import BrandProfile
 from app.db.models.listings import Listing, ListingVersion
 from app.db.models.platform import AttributeDefinition, CategoryTemplate
@@ -550,4 +550,166 @@ async def seed_demo_listing(
             warning_count=len(report.errors) - len(report.blocking),
         )
         .on_conflict_do_nothing()
+    )
+
+
+# ---- S20 T21 (C12): the demo kurta family, pinned to the Amazon kurta mapping (version 2) ----
+
+DEMO_FAMILY_SKU: Final = "KURTA-FAM-01"
+DEMO_FAMILY_THEME: Final = "size_color"
+DEMO_FAMILY_SIZES: Final = ("s", "m")
+DEMO_FAMILY_COLOURS: Final = ("navy blue", "maroon")
+DEMO_FAMILY_TEMPLATE_VERSION: Final = 2
+
+
+def demo_family_child_sku(size: str, colour: str) -> str:
+    return f"{DEMO_FAMILY_SKU}-{size.upper()}-{colour.replace(' ', '-').upper()}"
+
+
+def demo_family_ids() -> tuple[uuid.UUID, uuid.UUID, uuid.UUID]:
+    """(style product, listing, version 1): fixed `uuid5` ids, so a rerun inserts nothing."""
+    return (
+        uuid.uuid5(SEED_NAMESPACE, "acme:demo-family"),
+        uuid.uuid5(SEED_NAMESPACE, "acme:demo-family:listing"),
+        uuid.uuid5(SEED_NAMESPACE, "acme:demo-family:listing:v1"),
+    )
+
+
+def demo_family_content() -> dict[str, Any]:
+    """The family version's `content_json`: the whole canonical body (DATABASE.md:778). Colour
+    and size are the children's axes, so the parent carries only the shared facts."""
+    return {
+        "content": {
+            "title": "Cotton Kurta Set for Women with Straight Fit",
+            "bullets": [
+                "Soft cotton fabric that stays comfortable through the day",
+                "Straight fit with a round neck",
+            ],
+            "description": "A cotton kurta set with a straight fit, in navy blue and maroon.",
+        },
+        "keywords": {"search_terms": ["cotton kurta set"], "hidden_terms": ["straight kurta"]},
+        "attributes": {"fabric_type": "cotton"},
+    }
+
+
+def _family_fact(value: object, **extra: object) -> dict[str, object]:
+    return {**_seller_fact(value), **extra}
+
+
+async def seed_demo_family(session: AsyncSession) -> None:
+    """acme's kurta family (style + 4 children, a complete matrix) and its Amazon listing with
+    version 1 pinned to the current Amazon kurta template (version 2, promoted by
+    `platform_load` before this runs). One unit of work, so the deferred matrix check sees the
+    whole family; every row has a fixed id and is inserted `ON CONFLICT DO NOTHING`."""
+    tenant_id = seed_tenant_id("acme")
+    style_id, listing_id, version_id = demo_family_ids()
+    operator = await _user_id(session, seed_user_email("operator", "acme"))
+    if operator is None:
+        raise RuntimeError("the acme operator is missing: seed the tenants first")
+    template = (
+        await session.execute(
+            select(CategoryTemplate.id).where(
+                CategoryTemplate.marketplace == DEMO_LISTING_MARKETPLACE,
+                CategoryTemplate.category == DEMO_LISTING_CATEGORY,
+                CategoryTemplate.version == DEMO_FAMILY_TEMPLATE_VERSION,
+            )
+        )
+    ).scalar_one()
+    title = "Cotton Kurta Set (family)"
+    provenance = {
+        "title": _seller_fact(title),
+        "category": _seller_fact(DEMO_LISTING_CATEGORY),
+    }
+    await session.execute(
+        insert(Product)
+        .values(
+            id=style_id,
+            tenant_id=tenant_id,
+            sku=DEMO_FAMILY_SKU,
+            title=title,
+            category=DEMO_LISTING_CATEGORY,
+            variation_theme=DEMO_FAMILY_THEME,
+            size_run=list(DEMO_FAMILY_SIZES),
+            provenance=provenance,
+        )
+        .on_conflict_do_nothing()
+    )
+    for position, colour in enumerate(DEMO_FAMILY_COLOURS, start=1):
+        colourway_id = uuid.uuid5(SEED_NAMESPACE, f"acme:demo-family:colourway:{colour}")
+        await session.execute(
+            insert(ProductColourway)
+            .values(
+                id=colourway_id,
+                tenant_id=tenant_id,
+                style_product_id=style_id,
+                attributes={"color": _seller_fact(colour)},
+                position=position,
+            )
+            .on_conflict_do_nothing()
+        )
+        for size in DEMO_FAMILY_SIZES:
+            sku = demo_family_child_sku(size, colour)
+            child_id = uuid.uuid5(SEED_NAMESPACE, f"acme:demo-family:child:{sku}")
+            await session.execute(
+                insert(Product)
+                .values(
+                    id=child_id,
+                    tenant_id=tenant_id,
+                    sku=sku,
+                    title=f"{title} {size.upper()} {colour}",
+                    category=DEMO_LISTING_CATEGORY,
+                    parent_product_id=style_id,
+                    variant_attributes={"size": size, "color": colour},
+                    attributes={"size": _family_fact(size.upper(), normalized=size)},
+                    provenance=provenance,
+                )
+                .on_conflict_do_nothing()
+            )
+            await session.execute(
+                insert(VariantMatrixCell)
+                .values(
+                    id=uuid.uuid5(SEED_NAMESPACE, f"acme:demo-family:cell:{sku}"),
+                    tenant_id=tenant_id,
+                    style_product_id=style_id,
+                    colourway_id=colourway_id,
+                    size_key=size,
+                    availability="available",
+                    variant_product_id=child_id,
+                    source="seller",
+                )
+                .on_conflict_do_nothing()
+            )
+    await session.execute(
+        insert(Listing)
+        .values(
+            id=listing_id,
+            tenant_id=tenant_id,
+            product_id=style_id,
+            marketplace=DEMO_LISTING_MARKETPLACE,
+            category=DEMO_LISTING_CATEGORY,
+        )
+        .on_conflict_do_nothing()
+    )
+    await session.execute(
+        insert(ListingVersion)
+        .values(
+            id=version_id,
+            tenant_id=tenant_id,
+            listing_id=listing_id,
+            version=1,
+            content_json=demo_family_content(),
+            generated_by_user_id=operator,
+            origin="generation",
+            category_template_id=template,
+        )
+        .on_conflict_do_nothing()
+    )
+    listings = _Listings(session, tenant_id)
+    criterion = listings._tenant_criterion(include_platform=False)
+    await session.execute(
+        listings._scoped_write(
+            update(Listing)
+            .where(Listing.id == listing_id, Listing.current_version_id.is_(None), criterion)
+            .values(current_version_id=version_id)
+        )
     )

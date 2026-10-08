@@ -176,6 +176,13 @@ async def _seed(profile: str, *, reset: bool, admin_url: str) -> SeedCounts:
     # S20 C12, C18: the one platform-load path. The Amazon mappings are promoted after the demo
     # listing, so KURTA-001 stays pinned to S9's version 1 on fresh and existing databases.
     await _platform_load(admin_url, ERROR_MAP_FAKE_PATH)
+    if profile == "demo":
+        # S20 T21: the family pins the Amazon kurta mapping that `platform_load` just promoted.
+        try:
+            async with unit_of_work(seed_ops.seed_tenant_id("acme")) as session:
+                await seed_ops.seed_demo_family(session)
+        finally:
+            await dispose_engine()
     return SeedCounts(len(seed_ops.TENANTS), products, users)
 
 

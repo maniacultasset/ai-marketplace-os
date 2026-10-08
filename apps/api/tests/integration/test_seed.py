@@ -91,7 +91,8 @@ async def test_seed_profiles_demo_counts(superuser_conn: Conn) -> None:
     assert await _seed("demo") == 0
     ids = _ids()
     assert _scalar(superuser_conn, "SELECT count(*) FROM tenants") == 2
-    assert _per_tenant(superuser_conn, "products") == {ids["acme"]: 4, ids["bharat"]: 4}
+    # acme's demo kurta family (S20 T21) adds a style and its 4 children
+    assert _per_tenant(superuser_conn, "products") == {ids["acme"]: 9, ids["bharat"]: 4}
 
 
 async def test_seed_profiles_isolation_counts(superuser_conn: Conn) -> None:
@@ -632,8 +633,12 @@ async def test_seed_on_existing_v1_db_ok(
     async def before_s20(connection: Any) -> TemplateCounts:
         return TemplateCounts(inserted=0, unchanged=0, promoted=0)
 
+    async def no_family(session: Any) -> None:  # S20 T21's family came with the mappings
+        return None
+
     with monkeypatch.context() as patch:
         patch.setattr(seed_ops, "seed_amazon_mappings", before_s20)
+        patch.setattr(seed_ops, "seed_demo_family", no_family)
         assert await _seed("demo") == 0
     assert [r[0] for r in _templates(superuser_conn, "ethnic_wear_kurta_sets")] == [1]
     assert _kurta_001_pin(superuser_conn) == 1
@@ -692,3 +697,86 @@ async def test_seed_calls_platform_load_once(
     assert calls == [1, 1]
     assert _promotions(superuser_conn, "ethnic_wear_kurta_sets") == 1
     assert _scalar(superuser_conn, "SELECT count(*) FROM marketplace_error_map") == 4
+
+
+# ---- S20 T21 (AC17; C12): the demo kurta family ----
+
+
+async def _preview(listing_id: UUID) -> Any:
+    from app.core.rbac import Principal
+    from app.services.listing_preview import preview_listing
+
+    acme = _ids()["acme"]
+    principal = Principal(UUID(int=1), acme, "admin", "admin@acme.test", "seed-test")
+    return await preview_listing(principal, listing_id)
+
+
+async def test_seed_demo_family_once(superuser_conn: Conn) -> None:
+    from app.db.seed_ops import DEMO_FAMILY_SKU, demo_family_ids
+
+    assert await _seed("demo") == 0
+    assert await _seed("demo") == 0
+    style, listing, version = demo_family_ids()
+    rows = superuser_conn.execute(
+        "SELECT sku, variant_attributes, parent_product_id IS NULL FROM products "
+        "WHERE id = %s OR parent_product_id = %s ORDER BY sku",
+        [style, style],
+    ).fetchall()
+    assert [r[0] for r in rows] == [
+        DEMO_FAMILY_SKU,
+        f"{DEMO_FAMILY_SKU}-M-MAROON",
+        f"{DEMO_FAMILY_SKU}-M-NAVY-BLUE",
+        f"{DEMO_FAMILY_SKU}-S-MAROON",
+        f"{DEMO_FAMILY_SKU}-S-NAVY-BLUE",
+    ]
+    assert {r[1]["color"] for r in rows[1:]} == {"navy blue", "maroon"}
+    counts = (
+        _scalar(superuser_conn, "SELECT count(*) FROM listings WHERE id = %s", [listing]),
+        _scalar(superuser_conn, "SELECT count(*) FROM listing_versions WHERE id = %s", [version]),
+        _scalar(
+            superuser_conn,
+            "SELECT count(*) FROM variant_matrix_cells WHERE style_product_id = %s "
+            "AND availability = 'available'",
+            [style],
+        ),
+    )
+    assert counts == (1, 1, 4)
+    current = _scalar(
+        superuser_conn, "SELECT current_version_id FROM listings WHERE id = %s", [listing]
+    )
+    assert current == version
+
+
+async def test_seed_demo_family_pins_kurta_v2(superuser_conn: Conn) -> None:
+    from app.db.seed_ops import demo_family_ids
+
+    assert await _seed("demo") == 0
+    _style, _listing, version = demo_family_ids()
+    row = superuser_conn.execute(
+        "SELECT t.version, t.is_current, t.product_type FROM listing_versions v "
+        "JOIN category_templates t ON t.id = v.category_template_id WHERE v.id = %s",
+        [version],
+    ).fetchone()
+    assert row == (2, True, "KURTA")
+
+
+async def test_seed_demo_family_preview_has_no_errors(superuser_conn: Conn) -> None:
+    from app.db.seed_ops import DEMO_FAMILY_SKU, demo_family_ids
+
+    assert await _seed("demo") == 0
+    preview = await _preview(demo_family_ids()[1])
+    assert preview.product_type == "KURTA"
+    assert [i.item_role for i in preview.items] == ["parent"] + ["child"] * 4
+    assert preview.items[0].seller_sku == DEMO_FAMILY_SKU
+    assert preview.report.errors == []
+
+
+async def test_seed_demo_listing_stays_on_v1(superuser_conn: Conn) -> None:
+    from app.db.seed_ops import demo_listing_ids
+
+    assert await _seed("demo") == 0
+    assert await _seed("demo") == 0
+    assert _kurta_001_pin(superuser_conn) == 1
+    preview = await _preview(demo_listing_ids()[0])
+    assert preview.product_type is None and len(preview.items) == 1
+    assert [e.error_code.value for e in preview.report.errors] == ["CATEGORY_NOT_MAPPED"]
