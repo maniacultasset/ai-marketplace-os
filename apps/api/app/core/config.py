@@ -397,3 +397,15 @@ def get_settings() -> Settings:
     if errors:
         raise SystemExit("FATAL: refusing to boot. " + "; ".join(errors))
     return loaded
+
+
+# The process variables a child process may inherit (S17b: the image check child). Only these
+# names are ever read, so no DSN, token, key or secret reaches the child.
+CHILD_PROCESS_ENV: Final = ("PATH", "PYTHONPATH", "VIRTUAL_ENV")
+
+
+def child_process_env() -> dict[str, str]:
+    """The allow-listed process variables that are set (R1: env access stays in this module)."""
+    import os
+
+    return {name: os.environ[name] for name in CHILD_PROCESS_ENV if name in os.environ}

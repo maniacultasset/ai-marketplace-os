@@ -79,7 +79,7 @@ Every step runs locally on Docker PostgreSQL 17 + pgvector; Cloud SQL is for sta
 | S19 | Review + approval, `review_decisions`, `GET /issues` | S18 | — | — | not started |
 | S20 | Adapter framework + Amazon | S15, sandbox | fake marketplace server + FakeAdapter | Amazon credentials | not started |
 | S21 | Publish, per-field retry, status sync, DLQ requeue | S19; S20 before final gates | FakeAdapter first | — | not started |
-| S17b | Image pipeline (minimal) | S13, S17a | MinIO for GCS | — | not started |
+| S17b | Image pipeline (minimal) | S13, S17a | MinIO for GCS | — | done (local); staging bucket and lifecycle at S4; blocking vision 1.1 (C8); approve gate wired by S19 |
 | S23+S24 | Analytics (4 metrics) + observability completion | S21, S11 | — | — | not started |
 | S22 | Flipkart adapter, behind a flag at launch | S15, S21 | fixtures + FakeAdapter | Flipkart credentials (T78) | not started |
 | S26 | Launch hardening: failure injection, load test, audits, BRD walkthrough | everything above | — | pilot brand + 2 UAT people (D30; T8) | not started |

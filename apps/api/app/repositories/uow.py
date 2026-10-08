@@ -30,7 +30,7 @@ from app.repositories.rules import RuleRepository
 from app.repositories.templates import CategoryTemplateRepository
 from app.repositories.transactions import unit_of_work
 
-__all__ = ["TenantUnitOfWork", "tenant_uow"]
+__all__ = ["TenantUnitOfWork", "repositories_on", "tenant_uow"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,23 +51,29 @@ class TenantUnitOfWork:
     dictionary: DictionaryRevisionRepository
 
 
+def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
+    """The repositories on a session another helper opened for `tenant_id` (the
+    `idempotent` transaction, S17b): its unit of work already names the tenant."""
+    return TenantUnitOfWork(
+        session=session,
+        products=ProductRepository(session, tenant_id),
+        attribute_definitions=AttributeDefinitionRepository(session),
+        audit=AuditRepository(session),
+        marketplace_accounts=MarketplaceAccountRepository(session, tenant_id),
+        oauth_states=OAuthStateRepository(session, tenant_id),
+        human_tasks=HumanTaskRepository(session, tenant_id),
+        rules=RuleRepository(session, tenant_id),
+        brand_chunks=BrandChunkRepository(session, tenant_id),
+        job_runs=JobRunRepository(session, tenant_id),
+        images=ImageRepository(session, tenant_id),
+        templates=CategoryTemplateRepository(session),
+        dictionary=DictionaryRevisionRepository(session),
+    )
+
+
 @asynccontextmanager
 async def tenant_uow(
     tenant_id: UUID, *, user_id: UUID | None = None
 ) -> AsyncIterator[TenantUnitOfWork]:
     async with unit_of_work(tenant_id, user_id=user_id) as session:
-        yield TenantUnitOfWork(
-            session=session,
-            products=ProductRepository(session, tenant_id),
-            attribute_definitions=AttributeDefinitionRepository(session),
-            audit=AuditRepository(session),
-            marketplace_accounts=MarketplaceAccountRepository(session, tenant_id),
-            oauth_states=OAuthStateRepository(session, tenant_id),
-            human_tasks=HumanTaskRepository(session, tenant_id),
-            rules=RuleRepository(session, tenant_id),
-            brand_chunks=BrandChunkRepository(session, tenant_id),
-            job_runs=JobRunRepository(session, tenant_id),
-            images=ImageRepository(session, tenant_id),
-            templates=CategoryTemplateRepository(session),
-            dictionary=DictionaryRevisionRepository(session),
-        )
+        yield repositories_on(session, tenant_id)

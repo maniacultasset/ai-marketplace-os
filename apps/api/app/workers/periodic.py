@@ -15,7 +15,15 @@ queue entry carries only `{"timestamp"}`, never tenant data.
 - `expire_trials` (hourly): `expire_trials()` (trials past their end → `suspended`).
 - `retention_daily` (03:00): per tenant, in batches of 1,000, children first: `import_rows`,
   `imports`, then `job_runs` chains (`app.repositories.retention`); then the queue's own
-  finished entries (succeeded after 7 days, every other final state after 90).
+  finished entries (succeeded after 7 days, every other final state after 90); then the image
+  orphan sweep (S17b, below). A sweep failure is logged and never undoes the steps before it.
+- `sweep_image_orphans` (inside `retention_daily`, S17b PLAN D9, CP11): per tenant, every object
+  under `<tenant_id>/` older than 24 h whose key parses as that tenant's image key and has no
+  `images` row (deleted rows count: replaced versions are kept) is deleted, one `list_objects_v2`
+  page, one `registered_keys` query and one `delete_many` at a time, until the keys run out or the
+  run budget is spent. Each run starts every tenant at a date-derived key and wraps, and visits
+  tenants in a date-rotated order, so a run cut short reaches other ranges on later days. Logs
+  carry counts and ids only.
 - `refresh_marketplace_tokens` (every 5 min, S15): the `active` accounts whose token expires
   within 15 minutes, in `trial`/`active` tenants, oldest expiry first, at most 500 a pass, each
   through `refresh_account` (its own lock and short transactions), one after another. One
@@ -25,6 +33,8 @@ queue entry carries only `{"timestamp"}`, never tenant data.
 
 from __future__ import annotations
 
+import random
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -34,14 +44,17 @@ from uuid import UUID
 import procrastinate
 from mkos_schemas.codes import ErrorCode
 
+from app.adapters.storage import get_storage, images_bucket
 from app.core.logging import get_logger
 from app.core.request_context import new_request_id, request_context
 from app.db.session import platform_scope, unit_of_work
 from app.repositories import rate_limits, retention
 from app.repositories.idempotency import IdempotencyKeyRepository
+from app.repositories.images import ImageRepository
 from app.repositories.jobs import JobRunRepository, expired_running
 from app.repositories.marketplace_accounts import due_accounts
 from app.repositories.oauth_states import OAuthStateRepository, tenants_with_expired
+from app.services.image_keys import parse_image_key
 from app.services.job_hooks import run_terminal_hook
 from app.workers.errors import system_report
 from app.workers.settings import STALLED_WORKER_S
@@ -173,8 +186,92 @@ QUEUE_SUCCEEDED_HOURS: Final = 7 * 24
 QUEUE_OTHER_HOURS: Final = 90 * 24
 
 
+ORPHAN_AGE: Final = timedelta(hours=24)
+SWEEP_RUN_BUDGET_S: Final = 300
+
+
+@dataclass
+class _Sweep:
+    deadline: float
+    deleted: int = 0
+    pages: int = 0
+    stopped: bool = False
+
+
+def _sweep_start(tenant_id: UUID, run_date: Any) -> str:
+    """The date-derived key a tenant's listing starts after (CP11): no stored resume state."""
+    pick = random.Random(run_date.toordinal()).getrandbits(128)  # noqa: S311 - not a secret
+    return f"{tenant_id}/{UUID(int=pick)}"
+
+
+async def _sweep_range(
+    sweep: _Sweep,
+    tenant_id: UUID,
+    cutoff: datetime,
+    *,
+    start_after: str | None,
+    stop_after: str | None,
+) -> None:
+    storage = get_storage()
+    prefix = f"{tenant_id}/"
+    async for page in storage.iter_older_than(
+        images_bucket(), prefix, cutoff, start_after=start_after
+    ):
+        sweep.pages += 1
+        keys = []
+        past_stop = False
+        for info in page:
+            if stop_after is not None and info.key > stop_after:
+                past_stop = True
+                break
+            parsed = parse_image_key(info.key)
+            if parsed is not None and parsed.tenant_id == tenant_id:
+                keys.append(info.key)
+        if keys:
+            async with unit_of_work(tenant_id) as session:
+                registered = await ImageRepository(session, tenant_id).registered_keys(keys)
+            orphans = [k for k in keys if k not in registered]
+            if orphans:
+                await storage.delete_many(images_bucket(), orphans)
+                sweep.deleted += len(orphans)
+        if past_stop:
+            return
+        if time.monotonic() >= sweep.deadline:
+            sweep.stopped = True
+            last = parse_image_key(page[-1].key) if page else None
+            log.info(
+                "periodic.image_orphans_more_pending",
+                tenant_id=str(tenant_id),
+                product_id=None if last is None else str(last.product_id),
+                image_id=None if last is None else str(last.image_id),
+            )
+            return
+
+
+async def sweep_image_orphans(now: datetime | None = None) -> int:
+    """The orphan sweep over every tenant's image prefix; returns the objects deleted."""
+    now = now or datetime.now(UTC)
+    async with platform_scope() as session:
+        tenants = await retention.tenant_ids(session)
+    if tenants:
+        shift = now.date().toordinal() % len(tenants)
+        tenants = tenants[shift:] + tenants[:shift]
+    sweep = _Sweep(deadline=time.monotonic() + SWEEP_RUN_BUDGET_S)
+    cutoff = now - ORPHAN_AGE
+    for tenant_id in tenants:
+        start = _sweep_start(tenant_id, now.date())
+        await _sweep_range(sweep, tenant_id, cutoff, start_after=start, stop_after=None)
+        if not sweep.stopped:
+            await _sweep_range(sweep, tenant_id, cutoff, start_after=None, stop_after=start)
+        if sweep.stopped:
+            break
+    log.info("periodic.image_orphans", deleted=sweep.deleted, pages=sweep.pages, more=sweep.stopped)
+    return sweep.deleted
+
+
 async def retention_daily(job_manager: Any | None = None) -> dict[str, int]:
-    """The daily retention pass; returns the rows deleted per table across tenants."""
+    """The daily retention pass; returns the rows deleted per table across tenants (and the
+    image orphans deleted)."""
     async with platform_scope() as session:
         tenants = await retention.tenant_ids(session)
     totals: dict[str, int] = {"import_rows": 0, "imports": 0, "job_runs": 0}
@@ -191,6 +288,13 @@ async def retention_daily(job_manager: Any | None = None) -> dict[str, int]:
             include_cancelled=True,
             include_aborted=True,
         )
+    try:
+        totals["image_orphans"] = await sweep_image_orphans()
+    except Exception as exc:
+        # the object store is down or refused a delete: the row pruning above is committed and
+        # stays; the sweep runs again tomorrow from another start key
+        log.exception("periodic.image_orphans_failed", error_class=type(exc).__name__)
+        totals["image_orphans"] = 0
     log.info("periodic.retention", **totals)
     return totals
 

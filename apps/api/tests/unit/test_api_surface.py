@@ -340,7 +340,8 @@ def test_images_upload_needs_exactly_one_source(client: TestClient) -> None:
     key_only.files = None
     assert key_only.data is not None
     key_only.data = {**key_only.data, "storage_key": "t/x/img/1.jpg"}
-    _envelope(key_only.send(client), 501, ErrorCode.NOT_IMPLEMENTED)
+    # S17b: a key that is not `<tenant>/<product>/images/<image>` is refused before any DB call
+    _envelope(key_only.send(client), 422, ErrorCode.VALIDATION_FAILED)
     traversal = valid_request(op)
     traversal.files = None
     assert traversal.data is not None

@@ -192,6 +192,248 @@
           "attribute": "fabric_type",
           "allowed_values": null
         }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000701000001",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": null,
+        "field": "images",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "main image shorter side below the minimum",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Marketplace Image Rules (spec [51])",
+            "url": null,
+            "section": "min resolution",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "min_resolution",
+          "params": {
+            "min_px": 1000,
+            "max_px": null,
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000701000002",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": null,
+        "field": "images",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "main image is not 1:1",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Marketplace Image Rules (spec [51])",
+            "url": null,
+            "section": "main aspect",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "aspect_ratio",
+          "params": {
+            "min_px": null,
+            "max_px": null,
+            "ratio_w": 1,
+            "ratio_h": 1,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000701000003",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": null,
+        "field": "images",
+        "severity": "warning",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "main image background is not pure white",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Marketplace Image Rules (spec [51])",
+            "url": null,
+            "section": "main background",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "background",
+          "params": {
+            "min_px": null,
+            "max_px": null,
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000701000004",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": null,
+        "field": "images",
+        "severity": "warning",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "product fills too little of the main image",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Marketplace Image Rules (spec [51])",
+            "url": null,
+            "section": "main background",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "fill_ratio",
+          "params": {
+            "min_px": null,
+            "max_px": null,
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": 0.85,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000701000005",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": null,
+        "field": "images",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "image format not accepted",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Marketplace Image Rules (spec [51])",
+            "url": null,
+            "section": "formats",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "image_requirement",
+          "slot": "any",
+          "check": "format",
+          "params": {
+            "min_px": null,
+            "max_px": null,
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [
+              "jpeg",
+              "png",
+              "tiff"
+            ],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000701000006",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": null,
+        "field": "images",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "image file over the size limit",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Marketplace Image Rules (spec [51])",
+            "url": null,
+            "section": "file size",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "image_requirement",
+          "slot": "any",
+          "check": "max_bytes",
+          "params": {
+            "min_px": null,
+            "max_px": null,
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": 10485760,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
       }
     ],
     "rules_version": 0,
@@ -615,6 +857,287 @@
           "type": "max_length",
           "limit": 150,
           "unit": "chars"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000702000001",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": null,
+        "field": "images",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "main image shorter side below the minimum",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Marketplace Image Rules (spec [51])",
+            "url": null,
+            "section": "min resolution",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "min_resolution",
+          "params": {
+            "min_px": 500,
+            "max_px": null,
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000702000002",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": null,
+        "field": "images",
+        "severity": "warning",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "main image below the recommended resolution",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Marketplace Image Rules (spec [51])",
+            "url": null,
+            "section": "min resolution",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "recommended_resolution",
+          "params": {
+            "min_px": 1000,
+            "max_px": null,
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000702000003",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": null,
+        "field": "images",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "main image is not 1:1 or 3:4",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Marketplace Image Rules (spec [51])",
+            "url": null,
+            "section": "main aspect",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "aspect_ratio",
+          "params": {
+            "min_px": null,
+            "max_px": null,
+            "ratio_w": 1,
+            "ratio_h": 1,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000702000004",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": null,
+        "field": "images",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "main image is not 1:1 or 3:4",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "aspect_alt",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Marketplace Image Rules (spec [51])",
+            "url": null,
+            "section": "main aspect",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "aspect_ratio",
+          "params": {
+            "min_px": null,
+            "max_px": null,
+            "ratio_w": 3,
+            "ratio_h": 4,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000702000005",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": null,
+        "field": "images",
+        "severity": "warning",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "main image background is not white",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Marketplace Image Rules (spec [51])",
+            "url": null,
+            "section": "main background",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "background",
+          "params": {
+            "min_px": null,
+            "max_px": null,
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000702000006",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": null,
+        "field": "images",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "image format not accepted",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Marketplace Image Rules (spec [51])",
+            "url": null,
+            "section": "formats",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "image_requirement",
+          "slot": "any",
+          "check": "format",
+          "params": {
+            "min_px": null,
+            "max_px": null,
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [
+              "jpeg",
+              "png",
+              "tiff"
+            ],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000702000007",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": null,
+        "field": "images",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "image file over the size limit",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Marketplace Image Rules (spec [51])",
+            "url": null,
+            "section": "file size",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "image_requirement",
+          "slot": "any",
+          "check": "max_bytes",
+          "params": {
+            "min_px": null,
+            "max_px": null,
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": 10485760,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
         }
       }
     ],

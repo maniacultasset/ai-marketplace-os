@@ -57,6 +57,9 @@ class EnqueueSpec:
     batch_id: uuid.UUID | None = None
     parent_job_id: uuid.UUID | None = None
     max_attempts: int | None = None  # a requeue copies its parent's; else the kind's policy
+    # S17b (PLAN D15(b)): a procrastinate lock; jobs sharing one never run at the same time,
+    # and a waiting one stays unfetched (`todo`), holding no worker slot
+    lock: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -185,6 +188,18 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         ).scalar_one_or_none()
         return row
 
+    async def latest_for_entity(self, entity_type: str, entity_id: uuid.UUID) -> JobRun | None:
+        """The newest job (by `queued_at`, then id) on one entity of this tenant (S17b D8)."""
+        if not isinstance(entity_id, uuid.UUID):
+            raise ValueError("entity_id must be a UUID")
+        stmt = (
+            self._select()
+            .where(JobRun.entity_type == entity_type, JobRun.entity_id == entity_id)
+            .order_by(JobRun.queued_at.desc(), JobRun.id.desc())
+            .limit(1)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
     # ---- enqueue (DW1, AC1-2) ----
 
     async def enqueue(self, spec: EnqueueSpec) -> Enqueued:
@@ -228,7 +243,7 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             existing = await self.db.execute(self._select().where(JobRun.idempotency_key == key))
             return Enqueued(existing.scalar_one(), created=False)
         queue_job_id = await defer_on_session(
-            self.db, kind=kind.value, queue=job.queue, job_run_id=job.id
+            self.db, kind=kind.value, queue=job.queue, job_run_id=job.id, lock=spec.lock
         )
         await self.db.execute(
             self._scoped_write(

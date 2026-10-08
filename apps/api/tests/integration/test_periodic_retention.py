@@ -72,7 +72,7 @@ async def test_retention_children_first(jobs_db: JobWorld) -> None:
     job = _old_job(jobs_db, "acme", days=100)
     imp = _import(jobs_db, "acme", job, days=100)
     totals = await retention_daily()
-    assert totals == {"import_rows": 2, "imports": 1, "job_runs": 1}
+    assert totals == {"import_rows": 2, "imports": 1, "job_runs": 1, "image_orphans": 0}
     assert not _exists(jobs_db, "imports", imp) and not _exists(jobs_db, "job_runs", job)
 
 

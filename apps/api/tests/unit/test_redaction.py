@@ -312,3 +312,34 @@ def test_redact_idempotent_and_total(value: Any) -> None:
 def test_planted_secret_never_survives(key: str, secret: str, other: Any) -> None:
     payload = {"other": other, "nested": [{key: secret}], key.upper(): secret}
     assert secret not in json.dumps(redact(payload), ensure_ascii=False)
+
+
+# ---- S17b T8: a signed object URL never reaches a log line with its signature ----
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://localhost:9000/marketplace-images/t/p/images/i?X-Amz-Algorithm=AWS4-HMAC-SHA256"
+        "&X-Amz-Credential=AKIDEXAMPLE%2F20261007%2Fus-east-1%2Fs3%2Faws4_request"
+        "&X-Amz-Date=20261007T000000Z&X-Amz-Expires=900&X-Amz-SignedHeaders=host"
+        "&X-Amz-Security-Token=FQoGZXIvYXdzEXAMPLE&X-Amz-Signature=5c9ab8c5ec83dc78",
+        "https://storage.googleapis.com/marketplace-images/t/p/images/i?X-Goog-Algorithm="
+        "GOOG4-RSA-SHA256&X-Goog-Credential=svc%40proj.iam.gserviceaccount.com%2F20261007"
+        "&X-Goog-Signature=0a1b2c3d4e5f",
+    ],
+    ids=["minio_s3v4", "gcs_v4"],
+)
+def test_redacts_signed_query(url: str) -> None:
+    from app.core.redaction import redact
+
+    out = redact(f"PUT {url} 200")
+    for secret in (
+        "5c9ab8c5ec83dc78",
+        "AKIDEXAMPLE",
+        "FQoGZXIvYXdzEXAMPLE",
+        "0a1b2c3d4e5f",
+        "svc%40proj",
+    ):
+        assert secret not in out
+    assert "X-Amz-Algorithm=AWS4-HMAC-SHA256" in out or "X-Goog-Algorithm=GOOG4-RSA-SHA256" in out
