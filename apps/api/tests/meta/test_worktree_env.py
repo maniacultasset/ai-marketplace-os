@@ -424,3 +424,21 @@ def test_fake_marketplace_port_key(repo_root: Path, tmp_path: Path) -> None:
     assert "FAKE_MARKETPLACE_HOST_PORT := $(or $(FAKE_MARKETPLACE_HOST_PORT),4020)" in makefile
     keys = next(line for line in makefile.splitlines() if line.startswith("WORKTREE_KEYS :="))
     assert "FAKE_MARKETPLACE_HOST_PORT" in keys.split()
+
+
+def test_flag_off_api_port_key(repo_root: Path, tmp_path: Path) -> None:
+    """S22 C2: the flag-off e2e API port is a per-checkout key (default 8011), validated like the
+    others."""
+    (tmp_path / ".worktree.env").write_text("FLAG_OFF_API_HOST_PORT=8232\n", encoding="utf-8")
+    result = _run(repo_root, tmp_path, ["exports", ".worktree.env"])
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == ["export FLAG_OFF_API_HOST_PORT=8232"]
+    (tmp_path / ".worktree.env").write_text("FLAG_OFF_API_HOST_PORT=0\n", encoding="utf-8")
+    bad = _run(repo_root, tmp_path, ["exports", ".worktree.env"])
+    assert bad.returncode != 0 and "FLAG_OFF_API_HOST_PORT is not a valid port" in bad.stderr
+    script = (repo_root / "scripts/ci/worktree_env.sh").read_text(encoding="utf-8")
+    assert "FLAG_OFF_API_HOST_PORT) printf '%s' 8011 ;;" in script
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert "FLAG_OFF_API_HOST_PORT := $(or $(FLAG_OFF_API_HOST_PORT),8011)" in makefile
+    keys = next(line for line in makefile.splitlines() if line.startswith("WORKTREE_KEYS :="))
+    assert "FLAG_OFF_API_HOST_PORT" in keys.split()
