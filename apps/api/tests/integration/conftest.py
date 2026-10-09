@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import secrets
+import uuid
 from collections.abc import AsyncIterator, Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -306,6 +307,18 @@ def clean_tenant_db(superuser_conn: Conn) -> None:
 
 
 # ---- S10c: the app under test as app_rw, against a world the admin login builds ----
+
+
+@pytest.fixture
+def probe_key(superuser_conn: Conn) -> Iterator[str]:
+    """A fresh `s14b_*` dictionary key for a test to insert. Dictionary rows are never deleted
+    (0004 dictionary_guard), so teardown disables it: a later `dictionary sync` on the same
+    xdist worker database then finds nothing enabled outside the file to disable."""
+    key = f"s14b_{uuid.uuid4().hex[:12]}"
+    yield key
+    superuser_conn.execute(
+        "UPDATE attribute_definitions SET enabled = false WHERE key = %s AND enabled", [key]
+    )
 
 
 @pytest.fixture
