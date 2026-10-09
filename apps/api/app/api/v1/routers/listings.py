@@ -14,6 +14,7 @@ from fastapi import Path as PathParam
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ListingStatus, Marketplace
 from mkos_schemas.jobs import GenerateListingRequest, JobAccepted
+from mkos_schemas.validation import ValidationSummary
 
 from app.api.errors import ApiError, NotImplementedYet
 from app.api.pagination import PageParams
@@ -21,13 +22,14 @@ from app.api.v1.deps import IdempotencyKey, IfMatch, get_current_principal
 from app.api.v1.schemas.batches import ApproveRequest, PublishRequest
 from app.api.v1.schemas.listings import (
     ListingContentPatch,
+    ListingDetail,
     ListingStatusOut,
     RegenerateRequest,
     ValidateRequest,
 )
 from app.api.v1.surface import OPS, route, stub
 from app.core.rbac import Principal
-from app.services import generation
+from app.services import generation, listing_edit, listing_validate
 from app.services.budget import BudgetExceededError
 
 router = APIRouter()
@@ -61,11 +63,12 @@ async def listings_generate(
 
 
 @route(router, OPS["listings_validate"])
-@stub
-async def listings_validate(body: ValidateRequest) -> NoReturn:
+async def listings_validate(
+    body: ValidateRequest, principal: CurrentPrincipal
+) -> ValidationSummary:
     """Schema, rules and vision checks. A rules failure is 200 with `passed: false`, never 422;
     422 is only for a malformed request."""
-    raise NotImplementedYet("listings_validate")
+    return await listing_validate.validate(principal, body.listing_id, body.listing_version_id)
 
 
 @route(router, OPS["listings_approve"])
@@ -116,13 +119,23 @@ async def listings_status(listing_id: ListingId, principal: CurrentPrincipal) ->
 
 
 @route(router, OPS["listings_content_patch"])
-@stub
 async def listings_content_patch(
-    listing_id: ListingId, body: ListingContentPatch, if_match: IfMatch
-) -> NoReturn:
+    listing_id: ListingId,
+    body: ListingContentPatch,
+    if_match: IfMatch,
+    principal: CurrentPrincipal,
+) -> ListingDetail:
     """A human edit: creates a new version, and the editor can no longer approve it. `If-Match`
     names the version the edit is based on (409 STALE_VERSION when it is not current)."""
-    raise NotImplementedYet("listings_content_patch")
+    detail = await listing_edit.edit(
+        principal,
+        listing_id,
+        UUID(if_match.strip('"')),
+        content=body.content,
+        keywords=body.keywords,
+        attributes=body.attributes,
+    )
+    return ListingDetail.model_validate(detail)
 
 
 @route(router, OPS["listings_regenerate"])
