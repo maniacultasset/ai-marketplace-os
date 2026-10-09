@@ -128,7 +128,11 @@ async def reap_once(job_manager: Any | None = None) -> ReapResult:
 
 
 async def prune_rate_limits(now: datetime | None = None) -> int:
-    pruned = await rate_limits.prune((now or datetime.now(UTC)) - RATE_LIMIT_KEEP)
+    current = now or datetime.now(UTC)
+    # S23 C3: alert dedupe/cap rows stay 25 h (a day-long dedupe window holds all day)
+    pruned = await rate_limits.prune(
+        current - RATE_LIMIT_KEEP, alert_before=current - rate_limits.ALERT_KEEP
+    )
     log.info("periodic.rate_limits_pruned", rows=pruned)
     return pruned
 
