@@ -62,6 +62,23 @@ def listing_fields(listing: Any) -> dict[str, Any]:
     }
 
 
+async def current_pins(uow: TenantUnitOfWork, listing: Any) -> Pins:
+    """The pins a run must carry to count now (DATABASE.md:823, G9): the currently resolved
+    rules version and template, and the digest of the product's current facts. No engine run."""
+    rules = await load_rules(
+        uow, tenant_id=listing.tenant_id, marketplace=listing.marketplace, category=listing.category
+    )
+    facts = await uow.product_facts.resolve(listing.product_id)
+    if facts is None:
+        raise NotFoundError("product_id")
+    return Pins(
+        rules_version=rules.ruleset.rules_version,
+        template_id=rules.template_id,
+        template_version=rules.template_version,
+        facts_digest=facts_digest(facts),
+    )
+
+
 async def rules_check(uow: TenantUnitOfWork, listing: Any, canonical: CanonicalListing) -> Check:
     # a RuleLoadError is a server fault (a stored rule broke): it surfaces as 500, never a pass
     rules = await load_rules(

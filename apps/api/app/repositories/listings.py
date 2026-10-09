@@ -272,14 +272,19 @@ class ListingRepository(TenantScopedRepository[Listing]):
         reason: str | None = None,
         current_version_id: uuid.UUID | None = None,
         clear_approval: bool = False,
+        approved_version_id: uuid.UUID | None = None,
     ) -> Listing:
         """The one status writer (module docstring). Returns the updated row."""
         self._own_session()
+        if clear_approval and approved_version_id is not None:
+            raise ValueError("a move either clears the approval or sets it")
         values: dict[str, Any] = {"status": to, "status_reason": reason, "last_event": event}
         if current_version_id is not None:
             values["current_version_id"] = current_version_id
         if clear_approval:
             values["approved_version_id"] = None
+        if approved_version_id is not None:
+            values["approved_version_id"] = approved_version_id
         if isinstance(actor, UserActor):
             if self.db.info.get(USER_INFO_KEY) != actor.user_id:
                 raise ValueError("a user move needs that user's unit of work")
@@ -447,6 +452,61 @@ class ListingVersionRepository(TenantScopedRepository[ListingVersion]):
         if listing.current_version_id is None:
             return None
         return await self.get(listing.id, listing.current_version_id)
+
+    async def get_many(self, ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, ListingVersion]:
+        """The versions among `ids` of this tenant, in one SELECT (S19: a batch's current
+        versions)."""
+        wanted = sorted({_uuid(i) for i in ids})
+        if not wanted:
+            return {}
+        stmt = self._select().where(ListingVersion.id.in_(wanted))
+        return {row.id: row for row in (await self.db.execute(stmt)).scalars()}
+
+    async def chain_links(self, listing_id: uuid.UUID) -> builtins.list[Any]:
+        """Every version of a listing with the columns the contributor chain walks (S19 T4)."""
+        v = ListingVersion
+        stmt = (
+            self._select()
+            .where(v.listing_id == listing_id)
+            .with_only_columns(
+                v.id,
+                v.origin,
+                v.parent_version_id,
+                v.changed_paths,
+                v.generated_by_user_id,
+                v.edited_by_user_id,
+            )
+        )
+        return builtins.list((await self.db.execute(stmt)).all())
+
+    async def approve(
+        self, listing_id: uuid.UUID, version_id: uuid.UUID, approver: uuid.UUID
+    ) -> bool:
+        """`UPDATE ... SET approved_by_user_id WHERE approved_by_user_id IS NULL` (DATABASE.md
+        §7.1). `lv_guard` stamps `approved_at` and refuses a maker, an editor, an inactive or
+        non-approving member or a stale version with MKC01 (→ `ConflictError`
+        MAKER_CHECKER_VIOLATION). False when the version was already approved."""
+        if self.db.info.get(TENANT_INFO_KEY) != self.tenant_id:
+            raise CrossTenantQueryError("listing_versions write for another tenant's unit of work")
+        criterion = self._tenant_criterion(include_platform=False)
+        stmt = self._scoped_write(
+            update(ListingVersion)
+            .where(
+                ListingVersion.id == version_id,
+                ListingVersion.listing_id == listing_id,
+                ListingVersion.approved_by_user_id.is_(None),
+                criterion,
+            )
+            .values(approved_by_user_id=approver)
+        ).returning(ListingVersion.id)
+        try:
+            row = (await self.db.execute(stmt)).scalar_one_or_none()
+        except DBAPIError as exc:
+            mapped = map_db_error(exc)
+            if mapped is not None:
+                raise mapped from exc
+            raise
+        return row is not None
 
 
 def _uuid(value: object) -> uuid.UUID:

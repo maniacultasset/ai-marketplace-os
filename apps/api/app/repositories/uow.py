@@ -32,6 +32,7 @@ from app.repositories.images import ImageRepository
 from app.repositories.jobs import JobRunRepository
 from app.repositories.listings import ListingRepository, ListingVersionRepository
 from app.repositories.marketplace_accounts import MarketplaceAccountRepository
+from app.repositories.members import MembersRepository
 from app.repositories.oauth_states import OAuthStateRepository
 from app.repositories.product_facts import ProductFactsRepository
 from app.repositories.products import ProductRepository
@@ -78,6 +79,7 @@ class TenantUnitOfWork:
     # S19: approve/reject batches and the listing history read.
     batches: BatchRepository
     audit_log: AuditLogRepository
+    members: MembersRepository
 
 
 def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
@@ -110,6 +112,7 @@ def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
         budget=BudgetRepository(session, tenant_id),
         batches=BatchRepository(session, tenant_id),
         audit_log=AuditLogRepository(session, tenant_id),
+        members=MembersRepository(session, tenant_id),
     )
 
 

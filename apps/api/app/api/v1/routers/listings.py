@@ -28,7 +28,7 @@ from app.api.pagination import (
     encode_tagged_cursor,
 )
 from app.api.v1.deps import IdempotencyKey, IfMatch, get_current_principal
-from app.api.v1.schemas.batches import ApproveRequest, PublishRequest
+from app.api.v1.schemas.batches import ApproveRequest, BatchResult, PublishRequest
 from app.api.v1.schemas.listings import (
     AuditEventOut,
     ListingContentPatch,
@@ -48,6 +48,7 @@ from app.services import (
     listing_preview,
     listing_reads,
     listing_validate,
+    review,
 )
 from app.services.budget import BudgetExceededError
 
@@ -91,11 +92,30 @@ async def listings_validate(
 
 
 @route(router, OPS["listings_approve"])
-@stub
-async def listings_approve(body: ApproveRequest, idempotency_key: IdempotencyKey) -> NoReturn:
+async def listings_approve(
+    body: ApproveRequest,
+    idempotency_key: IdempotencyKey,
+    principal: CurrentPrincipal,
+    request: Request,
+) -> BatchResult:
     """Approve or reject up to 200 listings. The approver is the JWT subject; whoever generated
-    or edited a version cannot approve it (403 MAKER_CHECKER_VIOLATION per item)."""
-    raise NotImplementedYet("listings_approve")
+    or edited a version cannot approve it (403 MAKER_CHECKER_VIOLATION per item). The request is
+    200 with each item's own `http_status` and `error`."""
+    items = [
+        review.ReviewItem(
+            listing_id=i.listing_id,
+            version_id=i.listing_version_id,
+            decision=i.decision,
+            reason_code=i.reason_code,
+            feedback=i.feedback,
+            regenerate=i.regenerate,
+        )
+        for i in body.items
+    ]
+    stored = await review.accept_review(
+        principal, idempotency_key, request.url.path, body.model_dump_json().encode(), items
+    )
+    return BatchResult.model_validate(stored)
 
 
 @route(router, OPS["listings_publish"])

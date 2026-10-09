@@ -93,7 +93,7 @@ def _status_gate(listing: Any) -> None:
         raise ConflictError(ErrorCode.LISTING_BUSY, "listings")
 
 
-async def _enqueue(
+async def enqueue_generate(
     uow: TenantUnitOfWork,
     principal: Principal,
     http_key: str,
@@ -126,7 +126,7 @@ async def _regenerate_locked(
     _status_gate(listing)
     if listing.status == CREATED:
         raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "listings")
-    job_id = await _enqueue(uow, principal, http_key, listing.id, instructions)
+    job_id = await enqueue_generate(uow, principal, http_key, listing.id, instructions)
     await uow.review_decisions.insert_regenerate_requested(
         listing.id, listing.current_version_id, instructions, job_id
     )
@@ -180,7 +180,7 @@ async def _generate_one(
         if not item.force_regenerate:
             raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "listings")
         return await _regenerate_locked(uow, principal, http_key, listing, item.user_instructions)
-    job_id = await _enqueue(uow, principal, http_key, listing.id, item.user_instructions)
+    job_id = await enqueue_generate(uow, principal, http_key, listing.id, item.user_instructions)
     await uow.listings.move(
         listing, to=GENERATING, event="generate", actor=UserActor(principal.user_id)
     )

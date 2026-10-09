@@ -77,6 +77,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "listings_list",
         "listings_get",
         "listings_history",
+        "listings_approve",
     }
 )
 

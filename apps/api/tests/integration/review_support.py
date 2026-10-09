@@ -81,3 +81,55 @@ def item(made: Made, decision: str = "approve", **extra: Any) -> dict[str, Any]:
 
 def rows(world: GenWorld, query: str, params: list[Any] | None = None) -> list[tuple[Any, ...]]:
     return world.conn.execute(query, params or []).fetchall()
+
+
+async def post_approve(
+    api: Any,
+    world: GenWorld,
+    email: str,
+    items: list[dict[str, Any]],
+    *,
+    key: str | None = None,
+) -> Any:
+    """`POST /api/v1/listings/approve` as `email` with a fresh (or the given) key."""
+    from .products_support import bearer_for
+
+    headers = {**bearer_for(world, email), "Idempotency-Key": key or str(uuid.uuid4())}
+    return await api.post("/api/v1/listings/approve", headers=headers, json={"items": items})
+
+
+def only_item(response: Any) -> dict[str, Any]:
+    assert response.status_code == 200, response.text
+    items = response.json()["items"]
+    assert len(items) == 1
+    return items[0]  # type: ignore[no-any-return]
+
+
+def audits(world: GenWorld, listing_id: uuid.UUID, action: str) -> int:
+    return world.count("audit_log", "entity_id = %s AND action = %s", [listing_id, action])
+
+
+def decisions(world: GenWorld, listing_id: uuid.UUID, decision: str = "approve") -> int:
+    return world.count(
+        "review_decisions", "listing_id = %s AND decision = %s", [listing_id, decision]
+    )
+
+
+async def edited(api: Any, world: GenWorld, made: Made, email: str = OWNER) -> Made:
+    """A PATCH of the content by `email` (S18's route): the new version's editor is `email`."""
+    from .products_support import bearer_for
+
+    headers = {**bearer_for(world, email), "If-Match": f'"{made.version_id}"'}
+    response = await api.patch(
+        f"/api/v1/listings/{made.listing_id}/content",
+        headers=headers,
+        json={
+            "content": {
+                "title": f"Cotton Kurta Set {uuid.uuid4().hex[:6]}",
+                "bullets": ["Soft cotton fabric"],
+                "description": "A cotton kurta set with a straight fit.",
+            }
+        },
+    )
+    assert response.status_code == 200, response.text
+    return Made(made.listing_id, uuid.UUID(response.json()["current_version_id"]), made.job_id)
