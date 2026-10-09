@@ -71,6 +71,7 @@ async def pub(auth_db: Any, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[Pu
     from app.adapters.fake import FakeAdapter
     from app.db.queue import get_queue_app
     from app.workers import publish as publish_worker
+    from app.workers import readers
 
     get_queue_app.cache_clear()
     world = await build_gen_world(auth_db, monkeypatch)
@@ -83,11 +84,16 @@ async def pub(auth_db: Any, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[Pu
         pw.sinks.append(sink)
         return pw.fake
 
+    async def reader(tenant_id: uuid.UUID, account_id: uuid.UUID) -> Any:
+        return pw.fake
+
     publish_worker.set_adapter_factory(factory)
+    readers.set_reader_factory(reader)
     try:
         yield pw
     finally:
         publish_worker.set_adapter_factory(None)
+        readers.set_reader_factory(None)
         get_queue_app.cache_clear()
 
 

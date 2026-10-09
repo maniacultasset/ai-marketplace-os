@@ -231,6 +231,24 @@ forbidden_modules =
     app.adapters.amazon.adapter
     app.workers.adapters
 
+# The status sync only reads (S21 T19; DATABASE.md:890; invariant 1): its job and service never
+# import a mutating adapter or `open_adapter` themselves; they get the read-only `ReaderView` from
+# `app.workers.readers`, which exposes `get_listing` alone (test_sync_uses_reader_only).
+[importlinter:contract:status-sync-reader-only]
+name = the status sync reaches the marketplace only through the reader view
+type = forbidden
+source_modules =
+    app.workers.status_sync
+    app.services.status_sync
+forbidden_modules =
+    app.workers.adapters
+    app.workers.publish
+    app.adapters.base
+    app.adapters.amazon.adapter
+    app.adapters.amazon.client
+    app.adapters.fake
+allow_indirect_imports = True
+
 # The preview path and the error mapper are pure (S20 T20): no HTTP client, socket or database,
 # directly or indirectly, so a preview can never send anything.
 [importlinter:contract:pure-mapping-no-io]

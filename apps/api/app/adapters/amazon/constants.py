@@ -59,3 +59,4 @@ RATES: Final[Mapping[str, int]] = MappingProxyType({"put": 1, "patch": 1, "get":
 ACCEPTED: Final = "ACCEPTED"
 INVALID: Final = "INVALID"
 BUYABLE: Final = "BUYABLE"
+DISCOVERABLE: Final = "DISCOVERABLE"

@@ -28,14 +28,15 @@ from __future__ import annotations
 
 import builtins
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import AsyncIterator, Mapping, Sequence
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import JobKind
-from sqlalchemy import func, literal, tuple_, update
+from sqlalchemy import exists, func, literal, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
@@ -101,6 +102,19 @@ class ListingFilter:
         return self.status in QUEUE_STATUSES
 
 
+@asynccontextmanager
+async def job_actor(db: Any, job_id: uuid.UUID | None) -> AsyncIterator[None]:
+    """Name `job_id` as the actor of the statements inside (S21: `li_guard` lets only a publish or
+    sync job write an item `live`); None binds nothing. A refused statement aborts the
+    transaction, so the GUC dies with it."""
+    if job_id is None:
+        yield
+        return
+    await bind_job_actor(db, job_id)
+    yield
+    await unbind_job_actor(db)
+
+
 @dataclass(frozen=True, slots=True)
 class DbNow:
     """A column value the database stamps: `now() + offset` (S21: publish and sync times)."""
@@ -108,7 +122,8 @@ class DbNow:
     offset: timedelta = timedelta(0)
 
 
-def _db_values(values: Mapping[str, Any]) -> dict[str, Any]:
+def db_values(values: Mapping[str, Any]) -> dict[str, Any]:
+    """`DbNow` values as `now() + offset` expressions; anything else as given."""
     return {
         k: (func.now() + v.offset if v.offset else func.now()) if isinstance(v, DbNow) else v
         for k, v in values.items()
@@ -316,7 +331,7 @@ class ListingRepository(TenantScopedRepository[Listing]):
         self._own_session()
         if clear_approval and approved_version_id is not None:
             raise ValueError("a move either clears the approval or sets it")
-        extra = _db_values(columns or {})
+        extra = db_values(columns or {})
         if set(extra) - PUBLISH_COLUMNS:
             raise ValueError("only the publish and sync columns ride on a move")
         values: dict[str, Any] = {
@@ -374,7 +389,7 @@ class ListingRepository(TenantScopedRepository[Listing]):
         self._own_session()
         if not values or set(values) - PUBLISH_COLUMNS:
             raise ValueError("only the publish and sync columns are written here")
-        values = _db_values(values)
+        values = db_values(values)
         if event is not None:
             values = {**values, "last_event": event, "last_event_at": func.now()}
         criterion = self._tenant_criterion(include_platform=False)
@@ -393,6 +408,24 @@ class ListingRepository(TenantScopedRepository[Listing]):
                 raise mapped from exc
             raise
         return row is not None
+
+    async def lock_due_for_sync(self, listing_id: uuid.UUID) -> Listing | None:
+        """The listing, locked `FOR UPDATE SKIP LOCKED`, if its sync is still due (S21 T22: a
+        second scheduler pass skips a row another holds; the enqueue sets `next_sync_at` NULL)."""
+        stmt = (
+            self._select()
+            .where(
+                Listing.id == listing_id,
+                Listing.next_sync_at.is_not(None),
+                Listing.next_sync_at <= func.now(),
+                Listing.paused_at.is_(None),
+                Listing.archived_at.is_(None),
+                Listing.status != "publishing",
+            )
+            .with_for_update(skip_locked=True)
+            .execution_options(populate_existing=True)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
 
     async def latest_job_id(self, listing_id: uuid.UUID, kind: JobKind) -> uuid.UUID | None:
         """The listing's newest job of `kind` (S21 CP3: a retry job's parent)."""
@@ -647,3 +680,35 @@ async def _children(repo: _Products, parent_id: uuid.UUID) -> tuple[SourceProduc
     rows = (await repo.db.execute(stmt)).all()
     # code-point order, independent of the database collation
     return tuple(sorted((_source(r) for r in rows), key=lambda p: (p.sku, str(p.id))))
+
+
+SYNC_TENANTS: Final = ("trial", "active")
+
+
+async def due_for_sync(
+    session: Any, *, limit: int = 500
+) -> builtins.list[tuple[uuid.UUID, uuid.UUID]]:
+    """`(tenant_id, listing_id)` of every listing whose status sync is due (S21 T22;
+    `ix_listings_sync_due`): `next_sync_at <= now()`, not paused, archived or publishing, in a
+    `trial`/`active` tenant, oldest slot first. Cross-tenant: run it only in `platform_scope()`
+    (the periodic scheduler); it reads ids only."""
+    from app.db.models.tenancy import Tenant
+
+    stmt = (
+        select(Listing.tenant_id, Listing.id)
+        .where(
+            Listing.next_sync_at.is_not(None),
+            Listing.next_sync_at <= func.now(),
+            Listing.paused_at.is_(None),
+            Listing.archived_at.is_(None),
+            Listing.status != "publishing",
+            exists(
+                select(Tenant.id).where(
+                    Tenant.id == Listing.tenant_id, Tenant.status.in_(SYNC_TENANTS)
+                )
+            ),
+        )
+        .order_by(Listing.next_sync_at, Listing.id)
+        .limit(limit)
+    )
+    return [(row.tenant_id, row.id) for row in (await session.execute(stmt)).all()]

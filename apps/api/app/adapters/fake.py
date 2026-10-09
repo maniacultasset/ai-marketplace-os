@@ -20,8 +20,8 @@ S21 (CP15) adds, for the publish job's tests: a `fail_fields` value may name the
 the failure as a third element (e.g. `RATE_LIMITED` for a retryable field failure; the default
 stays `MARKETPLACE_UNKNOWN_ERROR`); `raise_next` (errors raised by the next mutating calls, in
 order, before anything is applied); `raise_after_write` (one error raised after the next
-mutating call was applied: an ambiguous answer); and `calls` (every mutating call: operation and
-{seller_sku: paths}).
+mutating call was applied: an ambiguous answer); `calls` (every mutating call: operation and
+{seller_sku: paths}); and `read_states` (what `get_listing` reads per SKU, or `gone`).
 """
 
 from __future__ import annotations
@@ -96,6 +96,8 @@ class FakeAdapter(MarketplaceAdapter):
         self.raise_next: list[Exception] = []
         self.raise_after_write: Exception | None = None
         self.calls: list[tuple[str, dict[str, list[str]]]] = []
+        # S21: what `get_listing` reads per SKU (a MarketplaceState value, or "gone")
+        self.read_states: dict[str, str] = {}
         self._results: dict[str, ListingResult] = {}
         self._store: dict[str, _Stored] = {}
         self._lock = asyncio.Lock()
@@ -255,7 +257,8 @@ class FakeAdapter(MarketplaceAdapter):
     async def get_listing(
         self, seller_sku: str, *, listing_id: UUID | None = None
     ) -> ListingResult:
-        if seller_sku not in self._store:
+        forced = self.read_states.get(seller_sku)
+        if seller_sku not in self._store or forced == "gone":
             raise ListingNotFound(seller_sku)
         stored = self._store[seller_sku]
         return ListingResult.model_validate(
@@ -266,7 +269,7 @@ class FakeAdapter(MarketplaceAdapter):
                 "status": stored.status,
                 "idempotency_key": f"get:{seller_sku}",
                 "fields": [FieldResult(field=f, status="succeeded") for f in sorted(stored.values)],
-                "marketplace_state": stored.state,
+                "marketplace_state": stored.state if forced is None else MarketplaceState(forced),
             }
         )
 

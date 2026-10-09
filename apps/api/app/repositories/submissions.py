@@ -32,6 +32,7 @@ from app.db.integrity import map_db_error, to_conflict
 from app.db.models.listings import ListingItem
 from app.db.models.ops import ListingSubmission, PublishFieldResult
 from app.repositories.base import TenantScopedRepository
+from app.repositories.listings import db_values, job_actor
 
 PAGE_LIMIT_MAX: Final = 200
 TERMINAL_OUTCOMES: Final = frozenset(
@@ -413,7 +414,9 @@ class ListingItemRepository(TenantScopedRepository[ListingItem]):
         )
         return builtins.list((await self.db.execute(stmt)).scalars())
 
-    async def write_state(self, item_id: uuid.UUID, **values: Any) -> None:
+    async def write_state(
+        self, item_id: uuid.UUID, *, job_id: uuid.UUID | None = None, **values: Any
+    ) -> None:
         """One item's state columns (`marketplace_state`, `external_id`, `live_*`,
         `last_synced_at`); `state_changed_at` follows a state change. `live` needs the job GUC
         (`li_guard`): the caller binds it."""
@@ -428,10 +431,11 @@ class ListingItemRepository(TenantScopedRepository[ListingItem]):
         if not values or set(values) - allowed:
             raise ValueError("only the item state columns are written here")
         criterion = self._tenant_criterion(include_platform=False)
-        values = dict(values)
+        values = db_values(values)
         if "marketplace_state" in values:
             values["state_changed_at"] = func.now()
         stmt = self._scoped_write(
             update(ListingItem).where(criterion, ListingItem.id == item_id).values(**values)
         )
-        await _run(self.db, stmt)
+        async with job_actor(self.db, job_id):  # `li_guard`: `live` only from a job
+            await _run(self.db, stmt)
