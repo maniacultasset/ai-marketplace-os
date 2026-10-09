@@ -524,6 +524,14 @@ seed_publish_case_matrix() {
 }
 leg lint-imports-sync-imports-adapter lint-imports 'the status sync reaches the marketplace only through the reader view BROKEN' \
   seed_sync_imports_adapter make lint-imports
+# S22 T17 (AC11): the same two contracts hold for Flipkart: no service reaches the Flipkart adapter,
+# and the Flipkart mapping stays pure.
+seed_flipkart_adapter_from_service() { append apps/api/app/services/listing_preview.py 'import app.adapters.flipkart.adapter  # noqa: F401'; }
+seed_flipkart_mapping_httpx() { append apps/api/app/adapters/flipkart/mapping.py 'import httpx  # noqa: F401'; }
+leg lint-imports-flipkart-adapter-from-service lint-imports 'only app.adapters and app.workers reach the marketplace adapter and client BROKEN' \
+  seed_flipkart_adapter_from_service make lint-imports
+leg lint-imports-flipkart-mapping-httpx lint-imports 'adapter mapping, endpoint check, error map and registry do no I/O BROKEN' \
+  seed_flipkart_mapping_httpx make lint-imports
 
 # S17b T17: the image check child stays pure, the image repository keeps its tenant filter, and
 # the job refuses an image key outside its tenant's prefix before any read.

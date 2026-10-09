@@ -1180,6 +1180,31 @@ def test_prove_gates_s21_legs(repo_root: Path) -> None:
     assert code.index("leg api-tests-publish-case-matrix") > docker
 
 
+S22_LEGS = {
+    "lint-imports-flipkart-adapter-from-service": (
+        "lint-imports",
+        "only app.adapters and app.workers reach the marketplace adapter and client BROKEN",
+    ),
+    "lint-imports-flipkart-mapping-httpx": (
+        "lint-imports",
+        "adapter mapping, endpoint check, error map and registry do no I/O BROKEN",
+    ),
+}
+
+
+def test_prove_gates_s22_legs(repo_root: Path) -> None:
+    code = _code((repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8"))
+    for name, (gate, regex) in S22_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+    assert "import app.adapters.flipkart.adapter" in code
+    assert "app/adapters/flipkart/mapping.py" in code
+    docker = code.index('if [ "$with_docker" -eq 1 ]; then')
+    for name in S22_LEGS:
+        assert code.index(f"leg {name}") < docker, name
+
+
 def test_bootstrap_imports_pipeline(repo_root: Path) -> None:
     # S14b T14 (ADR-0013 §4): the image ships the pipeline module the generation worker imports.
     text = (repo_root / "scripts" / "ci" / "bootstrap.sh").read_text(encoding="utf-8")

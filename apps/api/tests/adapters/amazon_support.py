@@ -101,6 +101,7 @@ class FakeTokens:
         self._issue = issue_token
         self.token = issue_token(app)
         self.refreshes = 0
+        self._issued = {self.token}
         self.refuse_refresh = refuse_refresh
 
     async def get(self) -> Any:
@@ -118,7 +119,12 @@ class FakeTokens:
         if self.refuse_refresh:
             raise AuthExpired(failure(ErrorCode.AUTH_EXPIRED, "The refresh was refused."))
         self.token = self._issue(self._app)
+        self._issued.add(self.token)
         return SecretStr(self.token)
+
+    def app_tokens(self) -> set[str]:
+        """Every token this source handed out (S22 no-leak test)."""
+        return set(self._issued)
 
 
 class CountingLimiter:
