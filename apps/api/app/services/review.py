@@ -184,6 +184,13 @@ def _gate(listing: Any | None, item: ReviewItem) -> Any:
     return listing
 
 
+def bulk_check(multi: bool, status: str) -> None:
+    """T42: a multi-item approve accepts only `validated` (the database's REV01 backstop
+    checks the same)."""
+    if multi and status != "validated":
+        raise Refused(ErrorCode.BULK_APPROVE_REQUIRES_VALIDATED)
+
+
 def _version_images(listing: Any, version: Any) -> list[uuid.UUID]:
     canonical = previous_listing(listing, version)
     return [] if canonical is None else [ref.image_id for ref in canonical.images]
@@ -283,8 +290,7 @@ async def _approve_one(ctx: _Ctx, listing: Any, item: ReviewItem) -> ItemOutcome
         raise Refused(ErrorCode.STALE_VERSION)
     if version.approved_by_user_id is not None:
         raise Refused(ErrorCode.INVALID_STATUS_TRANSITION)  # CP-D4: ALREADY_APPROVED
-    if ctx.multi and listing.status != "validated":
-        raise Refused(ErrorCode.BULK_APPROVE_REQUIRES_VALIDATED)
+    bulk_check(ctx.multi, listing.status)
     _image_gate(ctx, listing, version)
     digest = await _pins_digest(ctx, listing, version)
     if not await _maker_checker(ctx, listing, version):
