@@ -6,14 +6,19 @@
   router). A future `to` is allowed.
 - `DateRange.bounds()`: the half-open UTC instants `[start 00:00Z, end+1 00:00Z)`.
 - `rate(num, den)`: `num / den` as a `Decimal` rounded half-even to 4 places, None when `den` is 0.
+- `summarize(repo, period)`: the `AnalyticsSummary` body (formulas: `app/repositories/analytics.py`).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, astuple, dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import ROUND_HALF_EVEN, Decimal
-from typing import Final
+from typing import Any, Final
+
+from mkos_schemas.enums import Marketplace
+
+from app.repositories.analytics import AnalyticsRepository
 
 DEFAULT_DAYS: Final = 30
 MAX_DAYS: Final = 366
@@ -58,3 +63,86 @@ def rate(num: int, den: int) -> Decimal | None:
     if den == 0:
         return None
     return (Decimal(num) / Decimal(den)).quantize(RATE_QUANTUM, rounding=ROUND_HALF_EVEN)
+
+
+# ---- the summary (T5) ----
+
+MARKETPLACE_ORDER: Final[tuple[str, ...]] = tuple(m.value for m in Marketplace)
+
+
+@dataclass(frozen=True, slots=True)
+class Counts:
+    listings_generated: int = 0
+    approvals: int = 0
+    rejections: int = 0
+    validation_first_pass_passed: int = 0
+    validation_first_pass_total: int = 0
+    publish_succeeded: int = 0
+    publish_failed: int = 0
+
+    def __add__(self, other: Counts) -> Counts:
+        return Counts(*(a + b for a, b in zip(astuple(self), astuple(other), strict=True)))
+
+    def any(self) -> bool:
+        return any(astuple(self))
+
+    def rates(self) -> dict[str, float | None]:
+        return {
+            "approval_rate": _wire(rate(self.approvals, self.approvals + self.rejections)),
+            "validation_pass_rate": _wire(
+                rate(self.validation_first_pass_passed, self.validation_first_pass_total)
+            ),
+            "publish_success_rate": _wire(
+                rate(self.publish_succeeded, self.publish_succeeded + self.publish_failed)
+            ),
+        }
+
+
+def _wire(value: Decimal | None) -> float | None:
+    """A 4-place rate as the JSON number it serialises to."""
+    return None if value is None else float(value)
+
+
+def _block(counts: Counts) -> dict[str, Any]:
+    return {"listings_generated": counts.listings_generated, **counts.rates()}
+
+
+async def summarize(repo: AnalyticsRepository, period: DateRange) -> dict[str, Any]:
+    """The `AnalyticsSummary` body for `period`: totals are the sums of the per-marketplace
+    counts, and `by_marketplace` lists only marketplaces with any count, in enum order."""
+    lo, hi = period.bounds()
+    volume = await repo.volume(lo, hi)
+    decisions = await repo.decisions(lo, hi)
+    validation = await repo.validation(lo, hi)
+    publish = await repo.publish(lo, hi)
+    per: dict[str, Counts] = {}
+    for marketplace in MARKETPLACE_ORDER:
+        approvals, rejections = decisions.get(marketplace, (0, 0))
+        passed, total = validation.get(marketplace, (0, 0))
+        succeeded, failed = publish.get(marketplace, (0, 0))
+        counts = Counts(
+            volume.get(marketplace, 0),
+            approvals,
+            rejections,
+            passed,
+            total,
+            succeeded,
+            failed,
+        )
+        if counts.any():
+            per[marketplace] = counts
+    unknown = (set(volume) | set(decisions) | set(validation) | set(publish)) - set(
+        MARKETPLACE_ORDER
+    )
+    if unknown:
+        raise ValueError(f"analytics rows on unknown marketplace(s) {sorted(unknown)}")
+    totals = sum(per.values(), Counts())
+    return {
+        "from": period.start,
+        "to": period.end,
+        **_block(totals),
+        "counts": asdict(totals),
+        "by_marketplace": [
+            {"marketplace": m, **_block(c), "counts": asdict(c)} for m, c in per.items()
+        ],
+    }
