@@ -1,6 +1,6 @@
 """S22 fix round 2 (F1): a Flipkart reply whose `errors` is not a list (a bool, a number, a
-string) gives a typed outcome, never a raw TypeError. Moved from the tester's
-docs/plans/s22/repro/test_s22_reply_shape_repro.py, with real assertions."""
+string) gives a typed outcome, never a raw TypeError. These are the tester's repros, with real
+assertions, plus the reply-shape property that found them."""
 
 from __future__ import annotations
 
