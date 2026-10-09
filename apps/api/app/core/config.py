@@ -175,6 +175,7 @@ class Settings(BaseSettings):
     flipkart_token_url: str = "https://api.flipkart.net/oauth-service/oauth/token"  # noqa: S105
     flipkart_api_base: str = "https://api.flipkart.net/sellers"
     flipkart_oauth_redirect_uri: str = "http://localhost:8000/api/v1/marketplaces/flipkart/callback"
+    flipkart_enabled: bool = False  # S22 D1: Flipkart connect, refresh and adapter stay off
 
     # ---- observability ----
     sentry_dsn: str | None = Field(default=None, repr=False)

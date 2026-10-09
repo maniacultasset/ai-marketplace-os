@@ -110,12 +110,13 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 
 | Variable | Local value | Source | Required | Notes |
 |---|---|---|---|---|
-| `FLIPKART_CLIENT_ID` | `REPLACE_ME` | both | required | From the Flipkart Seller API application. |
-| `FLIPKART_CLIENT_SECRET` | `REPLACE_ME` | Secret Manager | required | Never in a committed .env; in the redaction deny-list. |
-| `FLIPKART_AUTHORIZE_URL` | `http://127.0.0.1:4020/flipkart/authorize` | local .env | optional | The Flipkart seller consent page (S15). Locally the fake marketplace; staging/prod: the real https URL (T78). Unset: connect answers 501. http or loopback values are refused outside local. |
-| `FLIPKART_TOKEN_URL` | `https://api.flipkart.net/oauth-service/oauth/token` | local .env | required | Same in all environments. |
-| `FLIPKART_API_BASE` | `https://api.flipkart.net/sellers` | local .env | required | India-only API. |
-| `FLIPKART_OAUTH_REDIRECT_URI` | `http://localhost:8000/api/v1/marketplaces/flipkart/callback` | local .env | required | Exact string for the application; FLIPKART_REDIRECT_URI is forbidden. |
+| `FLIPKART_CLIENT_ID` | `REPLACE_ME` | both | required when `FLIPKART_ENABLED=true` | From the Flipkart Seller API application. **[S22]** With the flag on outside local, `REPLACE_ME` or empty is a boot error. |
+| `FLIPKART_CLIENT_SECRET` | `REPLACE_ME` | Secret Manager | required when `FLIPKART_ENABLED=true` | Never in a committed .env; in the redaction deny-list. **[S22]** With the flag on outside local, `REPLACE_ME` or empty is a boot error. |
+| `FLIPKART_AUTHORIZE_URL` | `http://127.0.0.1:4020/flipkart/authorize` | local .env | required when `FLIPKART_ENABLED=true` | The Flipkart seller consent page (S15). Locally the fake marketplace; staging/prod: the real https URL (T78). Unset: connect answers 501. http or loopback values are refused outside local. **[S22]** With the flag on outside local it must be https on a host in the pinned set (`api.flipkart.net`, believed until DW1) with no port, userinfo or fragment; `REPLACE_ME` or empty is a boot error. |
+| `FLIPKART_TOKEN_URL` | `https://api.flipkart.net/oauth-service/oauth/token` | local .env | required when `FLIPKART_ENABLED=true` | Same in all environments. **[S22]** With the flag on outside local it must equal the value shown (else the api and worker refuse to boot); only local may use a loopback http(s) URL (the fake). The token refresh and the adapter repeat the check in every environment. |
+| `FLIPKART_API_BASE` | `https://api.flipkart.net/sellers` | local .env | required when `FLIPKART_ENABLED=true` | India-only API. **[S22]** With the flag on outside local it must be exactly the value shown (no port, userinfo, query or fragment), else the api and worker refuse to boot; only local may use a loopback http(s) base (the fake). The adapter repeats the check before any call in every environment. |
+| `FLIPKART_OAUTH_REDIRECT_URI` | `http://localhost:8000/api/v1/marketplaces/flipkart/callback` | local .env | required when `FLIPKART_ENABLED=true` | Exact string for the application; FLIPKART_REDIRECT_URI is forbidden. |
+| `FLIPKART_ENABLED` | `false` | local .env | optional | **[S22]** The Flipkart switch (off at launch, C7). Off: Flipkart connect, callback and confirm answer 501, the token refresh skips Flipkart accounts and no Flipkart adapter opens; preview, revoke and the accounts list still work. Restart the api and the worker after a change. `true` outside local needs the `FLIPKART_*` rows above set. `make dev` turns it on locally against the fake marketplace. |
 
 ## Observability
 
