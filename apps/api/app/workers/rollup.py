@@ -11,7 +11,9 @@ covers (an IST offset never moves a row).
 Cost (spec L12705; BACKEND-ARCHITECTURE.md:2761):
 - `daily_spend(s, now, days=7)` and `cost_per_published_listing(s, now)`: the staff cost page's
   numbers (moved from `app/admin/ops.py`, same goldens).
-- `spend_today(s, now)`: today's spend, global and per tenant (the budget alerts).
+- `spend_today(s, now)`: today's spend and live `listing_generate` reservations, global and per
+  tenant, with each tenant's cap (`tenants.llm_daily_budget_usd`, else the default): the same
+  numbers the kill switch refuses on (`app/repositories/budget.py`), for the budget alerts.
 - `cost_per_listing(s, now, days=30, limit=50)`: the top listings by 30-day cost (cost desc, id asc).
 - `listing_cost(s, listing_id)`: one listing's all-time cost, or None for an unknown listing.
 - `cost_by_model(s, day)`, `cost_by_trigger(s, day)`: one UTC day's spend per model and trigger.
@@ -33,10 +35,12 @@ from decimal import Decimal
 from typing import Final
 from uuid import UUID
 
+from mkos_schemas.enums import JobKind
 from sqlalchemy import Date, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
+from app.core.config import get_settings
 from app.db.models.listings import Listing
 from app.db.models.ops import JobRun
 from app.db.models.runs import AgentRun
@@ -96,9 +100,26 @@ class CostPerListing:
 
 
 @dataclass(frozen=True)
+class TenantBudget:
+    spent: Decimal
+    reserved: Decimal
+    cap: Decimal
+
+    @property
+    def used(self) -> Decimal:
+        return self.spent + self.reserved
+
+
+@dataclass(frozen=True)
 class SpendToday:
     global_usd: Decimal
     per_tenant: dict[UUID, Decimal]
+    global_reserved: Decimal = ZERO
+    budgets: dict[UUID, TenantBudget] = field(default_factory=dict)
+
+    @property
+    def global_used(self) -> Decimal:
+        return self.global_usd + self.global_reserved
 
 
 @dataclass(frozen=True)
@@ -153,15 +174,54 @@ async def cost_per_published_listing(session: AsyncSession, now: datetime) -> Co
     return CostPerListing(spend, published, per)
 
 
-async def spend_today(session: AsyncSession, now: datetime) -> SpendToday:
+async def spend_today(
+    session: AsyncSession, now: datetime, *, default_cap: Decimal | None = None
+) -> SpendToday:
+    """Today's (UTC day of `started_at`) spend and `listing_generate` reservations per tenant, and
+    each such tenant's cap: its `llm_daily_budget_usd`, else `default_cap` (default: the
+    `LLM_TENANT_DAILY_BUDGET_USD` setting). The kill switch's sums (`tenant_state`, `global_state`).
+    """
+    if default_cap is None:
+        default_cap = Decimal(str(get_settings().llm_tenant_daily_budget_usd))
     start, end = _day_bounds(aware_utc(now).date())
-    stmt = (
+    spent_stmt = (
         select(AgentRun.tenant_id, func.sum(AgentRun.cost_usd))
         .where(AgentRun.started_at >= start, AgentRun.started_at < end)
         .group_by(AgentRun.tenant_id)
     )
-    per = {tenant: _money(total) for tenant, total in (await session.execute(stmt)).all()}
-    return SpendToday(sum(per.values(), ZERO).quantize(MONEY), per)
+    reserved_stmt = (
+        select(JobRun.tenant_id, func.sum(JobRun.cost_reserved_usd))
+        .where(
+            JobRun.kind == JobKind.LISTING_GENERATE.value,
+            JobRun.started_at >= start,
+            JobRun.started_at < end,
+        )
+        .group_by(JobRun.tenant_id)
+    )
+    per = {tenant: _money(total) for tenant, total in (await session.execute(spent_stmt)).all()}
+    reserved = {
+        tenant: _money(total) for tenant, total in (await session.execute(reserved_stmt)).all()
+    }
+    active = set(per) | set(reserved)
+    caps: dict[UUID, Decimal] = {}
+    if active:
+        cap_stmt = select(Tenant.id, Tenant.llm_daily_budget_usd).where(Tenant.id.in_(active))
+        caps = {
+            tenant: default_cap if own is None else Decimal(own)
+            for tenant, own in (await session.execute(cap_stmt)).all()
+        }
+    budgets = {
+        tenant: TenantBudget(
+            per.get(tenant, ZERO), reserved.get(tenant, ZERO), caps.get(tenant, default_cap)
+        )
+        for tenant in active
+    }
+    return SpendToday(
+        sum(per.values(), ZERO).quantize(MONEY),
+        per,
+        sum(reserved.values(), ZERO).quantize(MONEY),
+        budgets,
+    )
 
 
 def _listing_costs(since: datetime | None) -> ColumnElement[bool] | None:

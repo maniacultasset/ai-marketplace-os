@@ -381,10 +381,11 @@ CAP_PREFIX: Final = "alert:job_dead_lettered:cap:"
 async def check_alerts(now: datetime | None = None) -> dict[str, int]:
     """Every 5 minutes (one slot across workers): the job error rate per kind (at least 20
     terminal jobs in 15 min and a failed share of 25 % or more), the LLM spend of today per tenant
-    and in total against 80 % and 100 % of its daily budget, the oldest queued job per queue (10
-    minutes or more), and one summary per closed over-cap dead-letter window. Each condition
-    is deduped by its window; one failing emit never stops the others. Returns the events sent
-    per kind."""
+    and in total (spend plus live reservations, as the kill switch counts) against 80 % and 100 %
+    of its daily budget (a tenant's own `llm_daily_budget_usd`, else the default), the oldest
+    queued job per queue (10 minutes or more), and one summary per closed over-cap dead-letter
+    window. Each condition is deduped by its window; one failing emit never stops the others.
+    Returns the events sent per kind."""
     current = now or datetime.now(UTC)
     async with rollup.rollup_session() as session:
         outcomes = await rollup.job_outcomes(session, current)
@@ -416,15 +417,16 @@ async def check_alerts(now: datetime | None = None) -> dict[str, int]:
                 total=row.terminal,
                 rate=share.quantize(Decimal("0.0001")),
             )
-    tenant_limit = Decimal(str(settings.llm_tenant_daily_budget_usd))
+    # what the kill switch enforces (app/workers/budget.py::reserve): spend plus live
+    # reservations against the tenant's own cap (else the default) and the platform cap
     global_limit = Decimal(str(settings.llm_daily_budget_usd))
-    budgets: list[tuple[str, UUID | None, Decimal, Decimal]] = [
-        ("tenant", tenant, usd, tenant_limit) for tenant, usd in sorted(spend.per_tenant.items())
+    budgets: list[tuple[str, UUID | None, Decimal, Decimal, Decimal]] = [
+        ("tenant", tenant, b.spent, b.used, b.cap) for tenant, b in sorted(spend.budgets.items())
     ]
-    budgets.append(("global", None, spend.global_usd, global_limit))
-    for scope, tenant, usd, limit in budgets:
+    budgets.append(("global", None, spend.global_usd, spend.global_used, global_limit))
+    for scope, tenant, usd, used, limit in budgets:
         for pct in BUDGET_THRESHOLDS:
-            if limit <= 0 or usd < limit * pct / 100:
+            if limit <= 0 or used < limit * pct / 100:
                 continue
             ids: dict[str, Any] = {} if tenant is None else {"tenant_id": tenant}
             await emit(

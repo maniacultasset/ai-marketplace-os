@@ -14,7 +14,7 @@ import pytest
 
 from . import factories as f
 from .conftest import LOCAL_HOSTS
-from .jobs_support import JobWorld, jobs_db
+from .jobs_support import JobWorld, insert_job, jobs_db
 from .test_rollup_jobs import job
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
@@ -120,6 +120,98 @@ async def test_alert_llm_budget_once_per_threshold_per_day(jobs_db: JobWorld) ->
     tomorrow = NOW + timedelta(days=1)
     _spend(jobs_db.conn, acme, "2.0", at=tomorrow)
     assert (await _check(tomorrow))["llm_budget"] == 1
+
+
+def _cap(conn: Conn, tenant: uuid.UUID, usd: str) -> None:
+    conn.execute("UPDATE tenants SET llm_daily_budget_usd = %s WHERE id = %s", [usd, tenant])
+
+
+def _reserve(conn: Conn, tenant: uuid.UUID, usd: str = "0.10", at: datetime = NOW) -> None:
+    """A claimed `listing_generate` attempt holding a reservation (what the kill switch counts)."""
+    listing = f.listing(conn, tenant)
+    insert_job(
+        conn,
+        tenant,
+        kind="listing_generate",
+        entity_type="listing",
+        entity_id=listing,
+        listing_id=listing,
+        status="running",
+        started_at=at,
+        lease_expires_at=at + timedelta(hours=1),
+        cost_reserved_usd=Decimal(usd),
+    )
+
+
+def _tenant_lines(capture: Any) -> list[tuple[str, str, str]]:
+    return sorted(
+        (x["threshold_pct"], x["spend_usd"], x["limit_usd"])
+        for x in _lines(capture, "llm_budget")
+        if x["scope"] == "tenant"
+    )
+
+
+async def test_alert_llm_budget_tenant_override_low(jobs_db: JobWorld, log_lines: Any) -> None:
+    """R1-2: a tenant capped at 1.00 alerts at 0.80 and 1.00, the cap the kill switch enforces."""
+    acme = jobs_db.tenant("acme")
+    _cap(jobs_db.conn, acme, "1.00")
+    capture = log_lines()
+    _spend(jobs_db.conn, acme, "0.8")
+    assert (await _check())["llm_budget"] == 1
+    _spend(jobs_db.conn, acme, "0.2")
+    assert (await _check(NOW + timedelta(minutes=5)))["llm_budget"] == 1
+    assert _tenant_lines(capture) == [
+        ("100", "1.000000", "1.00"),
+        ("80", "0.800000", "1.00"),
+    ]
+    assert {x["tenant_id"] for x in _lines(capture, "llm_budget")} == {str(acme)}
+
+
+async def test_alert_llm_budget_tenant_override_high_no_false_alert(jobs_db: JobWorld) -> None:
+    """R1-2: a tenant capped at 20.00 spending the 2.50 default is at 12.5 %: no alert."""
+    acme = jobs_db.tenant("acme")
+    _cap(jobs_db.conn, acme, "20.00")
+    _spend(jobs_db.conn, acme, "2.5")
+    assert "llm_budget" not in await _check()
+
+
+async def test_alert_llm_budget_counts_reservations(jobs_db: JobWorld, log_lines: Any) -> None:
+    """R1-2: spend 2.30 plus two live 0.10 reservations is the 2.50 the kill switch refuses at,
+    so both thresholds fire; the event states the spend alone."""
+    from app.workers.budget import BudgetRefused, reserve
+
+    conn, acme = jobs_db.conn, jobs_db.tenant("acme")
+    capture = log_lines()
+    _spend(conn, acme, "2.3")
+    _reserve(conn, acme)
+    _reserve(conn, acme)
+    with pytest.raises(BudgetRefused):  # the kill switch already refuses the next claim
+        await reserve(acme, uuid.uuid4(), 1, now=NOW)
+    assert (await _check())["llm_budget"] == 2
+    assert _tenant_lines(capture) == [("100", "2.300000", "2.5"), ("80", "2.300000", "2.5")]
+
+
+async def test_alert_llm_budget_reservations_only_tenant(jobs_db: JobWorld) -> None:
+    """R1-2: a tenant with reservations and no spend yet is still checked."""
+    acme = jobs_db.tenant("acme")
+    _cap(jobs_db.conn, acme, "0.20")
+    _reserve(jobs_db.conn, acme, "0.20")
+    assert (await _check())["llm_budget"] == 2
+
+
+async def test_alert_llm_budget_global_counts_reservations(
+    jobs_db: JobWorld, log_lines: Any
+) -> None:
+    conn = jobs_db.conn
+    for name in ("acme", "bharat"):
+        tenant = jobs_db.tenant(name)
+        _cap(conn, tenant, "100")
+        _spend(conn, tenant, "4.7")
+        _reserve(conn, tenant, "0.10")  # 9.4 spent + 0.2 reserved = 9.6 = 80 % of 12
+    capture = log_lines()
+    await _check()
+    [line] = [x for x in _lines(capture, "llm_budget") if x["scope"] == "global"]
+    assert (line["threshold_pct"], line["spend_usd"]) == ("80", "9.400000")
 
 
 async def test_alert_events_queue_latency(jobs_db: JobWorld, log_lines: Any) -> None:
