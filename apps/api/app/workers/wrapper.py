@@ -35,6 +35,7 @@ from __future__ import annotations
 import asyncio
 import secrets
 from collections.abc import Mapping
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -43,6 +44,7 @@ from mkos_schemas.enums import ErrorSource, JobKind
 from mkos_schemas.errors import ErrorItem, ErrorReport
 from opentelemetry.trace import SpanKind, Status, StatusCode
 
+from app.core.alerts import day_window, dead_letter_cap
 from app.core.logging import get_logger
 from app.core.request_context import bind_tenant, new_request_id, request_context
 from app.core.traceparent import parse_traceparent
@@ -53,6 +55,7 @@ from app.repositories.jobs import Claimed, JobRunRepository
 from app.repositories.uow import repositories_on
 from app.services.job_hooks import run_terminal_hook
 from app.workers import registry
+from app.workers.alerting import alert
 from app.workers.errors import JobFailed, RetryableJobError, RetryLater, system_report
 from app.workers.policy import POLICIES, JobPolicy, backoff_s, lease_s
 from app.workers.registry import JobContext, Outcome, Persist
@@ -230,6 +233,26 @@ async def _execute(
     return outcome.status, None
 
 
+async def alert_dead_letter(
+    tenant_id: UUID, job_id: UUID, job_kind: str, error_code: str | None
+) -> None:
+    """The `job_dead_lettered` alert for a committed dead letter: deduped per job id per UTC day
+    (the wrapper and the reaper never count one job twice), at most 20 per job kind per 15
+    minutes (the storm cap; the periodic check sends the summary)."""
+    now = datetime.now(UTC)
+    await alert(
+        "job_dead_lettered",
+        key=str(job_id),
+        window_start=day_window(now),
+        now=now,
+        cap=dead_letter_cap(job_kind),
+        tenant_id=tenant_id,
+        job_id=job_id,
+        job_kind=job_kind,
+        error_code=error_code or ErrorCode.INTERNAL_ERROR.value,
+    )
+
+
 class _BodyTimeoutError(Exception):
     """A `TimeoutError` the body raised itself (not our deadline): an ordinary failure."""
 
@@ -249,13 +272,13 @@ async def _finish(
     report_json: dict[str, Any] | None = None if report is None else report.model_dump(mode="json")
     tenant = head.tenant_id
 
-    async def write() -> None:
+    async def write() -> bool:
         async with unit_of_work(tenant) as session:
             repo = JobRunRepository(session, tenant)
             if persist is not None:
                 if await repo.lock_running(job_id, attempt) is None:
                     log.warning("job.stale_write_dropped", job_run_id=str(job_id), attempt=attempt)
-                    return
+                    return False
                 await persist(repositories_on(session, tenant))
             job = await repo.finish(
                 job_id,
@@ -270,13 +293,17 @@ async def _finish(
             )
             if job is None:
                 log.warning("job.stale_write_dropped", job_run_id=str(job_id), attempt=attempt)
-                return
+                return False
             await run_terminal_hook(session, job, outcome)
         log.info("job.finished", job_run_id=str(job_id), status=status, attempt=attempt)
+        return True
 
     # a shutdown arriving during the terminal write never leaves it half done
     try:
-        await asyncio.shield(write())
+        written = await asyncio.shield(write())
+        if written and status == "dead_letter":  # after the commit only (S23 T23)
+            code = None if report is None or report.error_code is None else report.error_code.value
+            await alert_dead_letter(head.tenant_id, job_id, head.kind, code)
     except Exception as exc:  # the terminal transaction rolled back whole
         log.error(
             "job.persist_error",

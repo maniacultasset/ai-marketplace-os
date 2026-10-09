@@ -64,6 +64,7 @@ from app.services.job_hooks import run_terminal_hook
 from app.workers.errors import system_report
 from app.workers.settings import STALLED_WORKER_S
 from app.workers.token_refresh import REFRESH_MARGIN, refresh_account
+from app.workers.wrapper import alert_dead_letter
 
 log = get_logger(__name__)
 REAPER_ID: Final = "reaper"
@@ -115,6 +116,9 @@ async def reap_once(job_manager: Any | None = None) -> ReapResult:
                 )
                 result.skipped.append(job_id)
                 continue
+            if reaped.action == "dead_letter" and reaped.job is not None:
+                # S23 T23: after the commit; JOB_TIMEOUT, deduped against the wrapper by job id
+                await alert_dead_letter(tenant_id, job_id, reaped.job.kind, reaped.job.error_code)
             bucket = {
                 "requeued": result.requeued,
                 "dead_letter": result.dead_lettered,

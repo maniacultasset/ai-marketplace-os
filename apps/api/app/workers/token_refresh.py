@@ -15,9 +15,9 @@ reach the decrypt path), and it holds no transaction across the marketplace call
    active and is retried next pass). Whatever the CAS returns, that transaction writes exactly
    one `credential_used` audit row (actor `system`), since the credential was used. A CAS miss
    (a revoke or reconnect landed meanwhile) is `stale` and changes nothing else.
-5. After the commit, only when the account went `needs_reconnect`: one ERROR log event
-   `marketplace.token_refresh_failed` with the tenant, account, marketplace and `AUTH_EXPIRED`,
-   which the Sentry logging integration turns into the alert event (delivery is S24).
+5. After the commit, only when the account went `needs_reconnect`: the `token_refresh_failed`
+   alert (S23: a WARNING `alert.token_refresh_failed` log event, one Sentry message and the Slack
+   post) with the tenant, account, marketplace and `AUTH_EXPIRED`, once per account per UTC day.
 
 `force=True` (S20 T14; D9, C3) is the adapter's "the marketplace refused this token" refresh: it
 skips only the due check (lock, snapshot and CAS unchanged). If another refresh holds the lock,
@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Final, Literal
 
 from mkos_schemas.codes import ErrorCode
@@ -46,10 +46,12 @@ from app.adapters.oauth import (
     TokenGrant,
     get_oauth_client,
 )
+from app.core.alerts import day_window
 from app.core.crypto import SealedTokens, get_key_wrapper, seal
 from app.core.logging import get_logger
 from app.repositories.marketplace_accounts import refresh_lock
 from app.repositories.uow import tenant_uow
+from app.workers.alerting import alert
 
 log = get_logger(__name__)
 
@@ -177,10 +179,15 @@ async def _refresh_locked(
     if not hit:
         return "stale"
     if outcome == "rejected":
-        log.error(
-            "marketplace.token_refresh_failed",
-            tenant_id=str(tenant_id),
-            account_id=str(account_id),
+        # S23: the alert event (WARNING log, Sentry message, Slack), once per account per UTC day
+        now = datetime.now(UTC)
+        await alert(
+            "token_refresh_failed",
+            key=str(account_id),
+            window_start=day_window(now),
+            now=now,
+            tenant_id=tenant_id,
+            account_id=account_id,
             marketplace=snap.marketplace,
             error_code=ErrorCode.AUTH_EXPIRED.value,
         )
