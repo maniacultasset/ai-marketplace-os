@@ -8,18 +8,18 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 - **Every line of the client spec is traced.** All 13,711 lines of the snapshot are in the register:
   11,167 entries, of which 8,916 are checkable statements. `scripts/trace/check_coverage.py` proves 100% line coverage.
 - **Every statement has a verdict**, with a reference, adversarially verified per chunk (`scripts/trace/check_mapping.py`).
-- **7,041 of 8,916 (79%) are covered by our plan**: 6,087 as written and
+- **7,043 of 8,916 (79%) are covered by our plan**: 6,089 as written and
   954 deliberately changed by an ADR, Canon row or recorded decision.
-- **502 are gaps** (backend/DB 249, shared seams 129, ops 104, AI team 4, FE team 0, client 16).
+- **500 are gaps** (backend/DB 248, shared seams 128, ops 104, AI team 4, FE team 0, client 16).
 - **319 need the team or client** (54 conflicts, 265 questions);
   each points to a row in `TEAM-QUESTIONS.md`.
 - 512 belong to the AI or FE team, and 542 are marked Phase 2/3 by the site itself.
 
 | Status | Statements | Share |
 |---|---:|---:|
-| ✅ covered | 6,087 | 68.3% |
+| ✅ covered | 6,089 | 68.3% |
 | 🔁 covered-changed | 954 | 10.7% |
-| ⚠️ gap | 502 | 5.6% |
+| ⚠️ gap | 500 | 5.6% |
 | ❌ conflict | 54 | 0.6% |
 | ❓ needs-client | 265 | 3.0% |
 | 🧩 other-team | 512 | 5.7% |
@@ -224,13 +224,13 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [167] Marketplace Credential Security | 8 | 0 | 1 | 0 | 0 | 0 | 0 | 1 |
 | [168] Logging | 12 | 0 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [169] Metrics | 6 | 0 | 8 | 0 | 0 | 0 | 0 | 8 |
-| [170] Tracing | 6 | 0 | 1 | 0 | 0 | 0 | 0 | 1 |
+| [170] Tracing | 7 | 0 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [171] Agent Observability | 16 | 2 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [172] AI Cost Observability | 9 | 0 | 2 | 0 | 0 | 0 | 0 | 2 |
 | [173] Marketplace API Observability | 13 | 0 | 1 | 0 | 0 | 0 | 0 | 1 |
 | [174] Error Monitoring | 10 | 0 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [175] Sentry | 5 | 1 | 0 | 0 | 0 | 2 | 0 | ✔ |
-| [176] OpenTelemetry | 4 | 1 | 3 | 0 | 0 | 0 | 0 | 3 |
+| [176] OpenTelemetry | 5 | 1 | 2 | 0 | 0 | 0 | 0 | 2 |
 | [177] AgentRun Telemetry | 7 | 3 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [178] Recommended Tech Stack | 31 | 12 | 1 | 0 | 0 | 8 | 0 | 1 |
 | [179] Frontend Architecture | 3 | 0 | 0 | 0 | 1 | 4 | 0 | 1 |
@@ -1029,7 +1029,7 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 | R13665 | L13665 | Production launch checklist: All Phase 1 features implemented. | T16; VISION Q25 | Phase-1 set per plan scope lock (T16); steps after S14 unsequenced |
 | R13668 | L13668 | Production launch checklist: Marketplace OAuth flows verified with production accounts. | T77 | Prod filings/app approval status unknown (STATE open decision 5); verify step itself unplanned |
 
-## ⚠️ Gaps we own: backend + DB (249)
+## ⚠️ Gaps we own: backend + DB (248)
 
 Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITECTURE.md and the build steps.
 
@@ -1570,7 +1570,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
 | R12756a | L12756 | OpenTelemetry for metrics. | docs/architecture/BACKEND-ARCHITECTURE.md:2778; docs/review/SPEC-TRACEABILITY.md:289 | OTel used for traces only; no metrics pipeline planned |
-| R12761b | L12761 | OpenTelemetry: database query tracing. | docs/architecture/BACKEND-ARCHITECTURE.md:2748; docs/drafts/CHECKLISTS.md:370 | No SQLAlchemy/psycopg span instrumentation in plan; only pre-Canon CHECKLISTS (names asyncpg) |
 
 ### [186] S3
 
@@ -1663,7 +1662,7 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R13647 | L13647 | Security checklist: TLS on all connections. | docs/architecture/BACKEND-ARCHITECTURE.md:2263 | DB and storage connection encryption stated nowhere; doc gap for ADR-0001/S4 |
 | R13650 | L13650 | Security checklist: SQL injection prevention verified. | docs/architecture/BACKEND-ARCHITECTURE.md:2204 | SQL injection prevention is verified with the repository layer (S9) and the API routes (S10): parameterised queries and tests; ruff S608 (S1) is only the lint half |
 
-## ⚠️ Gaps on a shared seam (backend + AI or FE team) (129)
+## ⚠️ Gaps on a shared seam (backend + AI or FE team) (128)
 
 
 ### [★] Complete Founder BRD (End-to-End)
@@ -1960,12 +1959,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 |---|---|---|---|---|
 | R12425 | L12425 | Application Tier contains "Next.js Frontend" (FE). | docs/architecture/BACKEND-ARCHITECTURE.md:2304 | Next.js hosting, sizing and ingress not specified in our ADRs |
 | R12437a | L12437 | Edge: LB --> FE. | docs/architecture/BACKEND-ARCHITECTURE.md:2304 | LB does not front the web app; web ingress unspecified |
-
-### [170] Tracing
-
-| R-id | Lines | The site says | Ref | What is missing / differs |
-|---|---|---|---|---|
-| R12677 | L12677 | OpenTelemetry traces span the full request lifecycle: user request → API → job queue → agent execution → model call → validation → marketplace API. | docs/architecture/BACKEND-ARCHITECTURE.md:2738; docs/architecture/BACKEND-ARCHITECTURE.md:2753 | Only request_id enters jobs; traceparent Proposed (S11); no agent spans |
 
 ### [176] OpenTelemetry
 

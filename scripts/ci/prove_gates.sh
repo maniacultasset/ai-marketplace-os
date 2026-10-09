@@ -261,6 +261,16 @@ seed_iso_analytics_no_filter() {
 }
 seed_rollup_not_allowlisted() { replace scripts/ci/check_repo_rules.py $'    "apps/api/app/workers/rollup.py",\n' ''; }
 seed_platform_scope_in_analytics_service() { append apps/api/app/services/analytics.py 'from app.db.session import platform_scope  # noqa: F401'; }
+# S23b: job_runs.traceparent without its stamping default, and DB spans without the
+# recording-parent check (an untraced request would start root spans).
+seed_traceparent_no_default() {
+  cp "$root/.env" .env
+  replace apps/api/app/db/base.py '    return mapped_column(Text, nullable=True, default=current_traceparent)' '    return mapped_column(Text, nullable=True)'
+}
+seed_db_span_no_recording_check() {
+  cp "$root/.env" .env
+  replace apps/api/app/db/tracing.py '    if context is None or not trace.get_current_span().is_recording():' '    if context is None:'
+}
 
 # S15: the decrypt path from a router (import contract), the hash branch without its
 # `token_enc IS NULL` (the public callback could read and delete a pending row), and a revoke that
@@ -569,6 +579,8 @@ if [ "$with_docker" -eq 1 ]; then
   leg api-tests-route-without-role api-tests 'test_every_route_declares_role' seed_route_without_role COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-limiter-off api-tests 'test_rate_limit_sixth_login_429' seed_limiter_off COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-cas-without-status api-tests 'test_claim_cas_drops_duplicate' seed_cas_without_status COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-traceparent-no-default api-tests 'test_job_traceparent_stamped_inside_span' seed_traceparent_no_default COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-db-span-no-recording-check api-tests 'test_db_spans_none_without_recording_parent' seed_db_span_no_recording_check COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-row-model-nan api-tests 'test_row_model_nan_infinity_row_error' seed_row_model_nan COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg contracts-response-field-removed contracts 'response-required-property-removed' seed_response_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
   leg contracts-response-optional-property-removed contracts 'response-optional-property-removed' seed_optional_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
