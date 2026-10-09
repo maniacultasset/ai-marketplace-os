@@ -30,7 +30,7 @@ import builtins
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
@@ -52,6 +52,7 @@ from app.repositories.templates import CategoryTemplateRepository, PinnedTemplat
 
 __all__ = [
     "QUEUE_STATUSES",
+    "DbNow",
     "JobActor",
     "ListingFilter",
     "ListingRepository",
@@ -65,6 +66,26 @@ __all__ = [
 
 
 QUEUE_STATUSES: Final = frozenset({"validated", "needs_review"})
+# S21: the columns a publish or a status sync writes (with or without a status change)
+PUBLISH_COLUMNS: Final = frozenset(
+    {
+        "published_version_id",
+        "live_version_id",
+        "first_published_at",
+        "last_published_at",
+        "external_id",
+        "marketplace_sku",
+        "marketplace_state",
+        "marketplace_state_changed_at",
+        "live_url",
+        "live_confirmed_at",
+        "last_synced_at",
+        "next_sync_at",
+        "sync_poll_count",
+        "marketplace_account_id",
+        "last_event_at",
+    }
+)
 PAGE_LIMIT_MAX: Final = 200
 
 
@@ -78,6 +99,20 @@ class ListingFilter:
     def queue(self) -> bool:
         """The review queue: oldest first by `status_changed_at` (BACKEND-ARCHITECTURE §3.5)."""
         return self.status in QUEUE_STATUSES
+
+
+@dataclass(frozen=True, slots=True)
+class DbNow:
+    """A column value the database stamps: `now() + offset` (S21: publish and sync times)."""
+
+    offset: timedelta = timedelta(0)
+
+
+def _db_values(values: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        k: (func.now() + v.offset if v.offset else func.now()) if isinstance(v, DbNow) else v
+        for k, v in values.items()
+    }
 
 
 @dataclass(frozen=True, slots=True)
@@ -273,12 +308,23 @@ class ListingRepository(TenantScopedRepository[Listing]):
         current_version_id: uuid.UUID | None = None,
         clear_approval: bool = False,
         approved_version_id: uuid.UUID | None = None,
+        columns: Mapping[str, Any] | None = None,
     ) -> Listing:
-        """The one status writer (module docstring). Returns the updated row."""
+        """The one status writer (module docstring). Returns the updated row. `columns` (S21)
+        are publish and sync columns written in the same UPDATE, so `ck_published` and the
+        event rules see them with the new status."""
         self._own_session()
         if clear_approval and approved_version_id is not None:
             raise ValueError("a move either clears the approval or sets it")
-        values: dict[str, Any] = {"status": to, "status_reason": reason, "last_event": event}
+        extra = _db_values(columns or {})
+        if set(extra) - PUBLISH_COLUMNS:
+            raise ValueError("only the publish and sync columns ride on a move")
+        values: dict[str, Any] = {
+            **extra,
+            "status": to,
+            "status_reason": reason,
+            "last_event": event,
+        }
         if current_version_id is not None:
             values["current_version_id"] = current_version_id
         if clear_approval:
@@ -312,6 +358,54 @@ class ListingRepository(TenantScopedRepository[Listing]):
         if row is None:
             raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "listings")
         return row
+
+    async def set_columns(
+        self,
+        listing_id: uuid.UUID,
+        *,
+        event: str | None = None,
+        job_id: uuid.UUID | None = None,
+        **values: Any,
+    ) -> bool:
+        """Publish and sync columns with no status change (S21): the account at the first
+        submission, the sync schedule, a marketplace state the sync read. `event` (`sync` or
+        `refresh_requested`) stamps `last_event`/`last_event_at` (DATABASE.md:770: only when a
+        state changed); `job_id` binds the job GUC for `external_id`/`marketplace_sku`."""
+        self._own_session()
+        if not values or set(values) - PUBLISH_COLUMNS:
+            raise ValueError("only the publish and sync columns are written here")
+        values = _db_values(values)
+        if event is not None:
+            values = {**values, "last_event": event, "last_event_at": func.now()}
+        criterion = self._tenant_criterion(include_platform=False)
+        stmt = self._scoped_write(
+            update(Listing).where(Listing.id == listing_id, criterion).values(**values)
+        ).returning(Listing.id)
+        try:
+            if job_id is not None:
+                await bind_job_actor(self.db, job_id)
+            row = (await self.db.execute(stmt)).scalar_one_or_none()
+            if job_id is not None:
+                await unbind_job_actor(self.db)
+        except DBAPIError as exc:
+            mapped = map_db_error(exc)
+            if mapped is not None:
+                raise mapped from exc
+            raise
+        return row is not None
+
+    async def latest_job_id(self, listing_id: uuid.UUID, kind: JobKind) -> uuid.UUID | None:
+        """The listing's newest job of `kind` (S21 CP3: a retry job's parent)."""
+        jobs = _Jobs(self.db, self.tenant_id)
+        stmt = (
+            jobs._select()
+            .where(JobRun.listing_id == listing_id, JobRun.kind == JobKind(kind).value)
+            .order_by(JobRun.queued_at.desc(), JobRun.id.desc())
+            .limit(1)
+            .with_only_columns(JobRun.id)
+        )
+        found: uuid.UUID | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        return found
 
     async def preview_source(self, listing_id: uuid.UUID) -> PreviewSource | None:
         lst = Listing

@@ -15,6 +15,13 @@ No network and no clock. It behaves as the adapter contract demands:
   listing's own SKU); an unknown SKU raises `ListingNotFound`;
 - `preview()` echoes, per item, the values a create would send; no I/O;
 - `get_performance` refuses a range with `to_date < from_date`.
+
+S21 (CP15) adds, for the publish job's tests: a `fail_fields` value may name the `ErrorCode` of
+the failure as a third element (e.g. `RATE_LIMITED` for a retryable field failure; the default
+stays `MARKETPLACE_UNKNOWN_ERROR`); `raise_next` (errors raised by the next mutating calls, in
+order, before anything is applied); `raise_after_write` (one error raised after the next
+mutating call was applied: an ambiguous answer); and `calls` (every mutating call: operation and
+{seller_sku: paths}).
 """
 
 from __future__ import annotations
@@ -79,10 +86,16 @@ class _Stored:
 
 class FakeAdapter(MarketplaceAdapter):
     def __init__(
-        self, marketplace: Marketplace | str, *, fail_fields: Mapping[str, tuple[str, str]] = {}
+        self,
+        marketplace: Marketplace | str,
+        *,
+        fail_fields: Mapping[str, tuple[str, str] | tuple[str, str, ErrorCode]] = {},
     ) -> None:
         self.marketplace = Marketplace(marketplace)
-        self._fail = dict(fail_fields)
+        self._fail: dict[str, tuple[str, ...]] = {k: tuple(v) for k, v in fail_fields.items()}
+        self.raise_next: list[Exception] = []
+        self.raise_after_write: Exception | None = None
+        self.calls: list[tuple[str, dict[str, list[str]]]] = []
         self._results: dict[str, ListingResult] = {}
         self._store: dict[str, _Stored] = {}
         self._lock = asyncio.Lock()
@@ -97,9 +110,16 @@ class FakeAdapter(MarketplaceAdapter):
 
     # ---- results ----
 
+    def set_fail_fields(
+        self, fail_fields: Mapping[str, tuple[str, str] | tuple[str, str, ErrorCode]]
+    ) -> None:
+        """Replace the failing fields (tests: a later attempt that succeeds)."""
+        self._fail = {k: tuple(v) for k, v in fail_fields.items()}
+
     def _item(self, field: str) -> ErrorItem:
-        raw_code, raw_text = self._fail[field]
-        code = ErrorCode.MARKETPLACE_UNKNOWN_ERROR
+        spec = self._fail[field]
+        raw_code, raw_text = spec[0], spec[1]
+        code = ErrorCode(spec[2]) if len(spec) > 2 else ErrorCode.MARKETPLACE_UNKNOWN_ERROR
         return ErrorItem(
             field=field,
             error_code=code,
@@ -189,6 +209,20 @@ class FakeAdapter(MarketplaceAdapter):
         return out
 
     async def _once(
+        self, item: AdapterListing, per_sku: Mapping[str, Sequence[str]], *, create: bool
+    ) -> ListingResult:
+        self.calls.append(
+            ("create" if create else "update", {k: list(v) for k, v in per_sku.items()})
+        )
+        if self.raise_next:
+            raise self.raise_next.pop(0)
+        result = await self._apply(item, per_sku, create=create)
+        if self.raise_after_write is not None:
+            error, self.raise_after_write = self.raise_after_write, None
+            raise error
+        return result
+
+    async def _apply(
         self, item: AdapterListing, per_sku: Mapping[str, Sequence[str]], *, create: bool
     ) -> ListingResult:
         async with self._lock:

@@ -80,6 +80,66 @@ class HumanTaskRepository(TenantScopedRepository[HumanTask]):
         await self.db.execute(_ANSWER, {**params, "answer": json.dumps(RECONNECT_ANSWER)})
         return _rowcount(await self.db.execute(_APPLY, params))
 
+    async def any_applied_after(self, task_ids: builtins.list[uuid.UUID], at: datetime) -> bool:
+        """S21 `human_resolution`: one of `task_ids` reached `applied` after `at`."""
+        if not task_ids:
+            return False
+        stmt = (
+            self._select()
+            .where(
+                HumanTask.id.in_(task_ids),
+                HumanTask.status == "applied",
+                HumanTask.applied_at > at,
+            )
+            .with_only_columns(HumanTask.id)
+            .limit(1)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
+    async def live_account_task(
+        self, account_id: uuid.UUID, kind: str, target_path: str
+    ) -> uuid.UUID | None:
+        stmt = (
+            self._select()
+            .where(
+                HumanTask.marketplace_account_id == account_id,
+                HumanTask.kind == kind,
+                HumanTask.target_path == target_path,
+                HumanTask.status.in_(("open", "answered")),
+            )
+            .with_only_columns(HumanTask.id)
+        )
+        found: uuid.UUID | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        return found
+
+    async def open_account_task(
+        self,
+        kind: str,
+        account_id: uuid.UUID,
+        target_path: str,
+        question: str,
+        reason: str,
+        expected_answer: dict[str, Any],
+    ) -> uuid.UUID | None:
+        """S21 CP8: one live account task per (account, kind, target), `resume_from='publish'`
+        (`ht_one_live_account`, ON CONFLICT DO NOTHING); returns the live task's id."""
+        stmt = (
+            insert(HumanTask)
+            .values(
+                tenant_id=self.tenant_id,
+                kind=kind,
+                target_path=target_path,
+                marketplace_account_id=account_id,
+                question=question,
+                reason=reason,
+                expected_answer=expected_answer,
+                resume_from="publish",
+            )
+            .on_conflict_do_nothing()
+        )
+        await self.db.execute(stmt)
+        return await self.live_account_task(account_id, kind, target_path)
+
     async def cancel_reconnect(self, account_id: uuid.UUID) -> int:
         return _rowcount(await self.db.execute(_CANCEL, {"t": self.tenant_id, "a": account_id}))
 

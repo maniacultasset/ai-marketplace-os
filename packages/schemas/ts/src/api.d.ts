@@ -475,7 +475,10 @@ export interface paths {
         put?: never;
         /**
          * Publish approved listings
-         * @description Publish approved listings (owner or operator): 202 with per-item results.
+         * @description Publish approved listings (owner or operator): 202 with per-item results. Each item is
+         *     one `listing_publish` job; nothing is sent to the marketplace in the request. An item's own
+         *     `http_status` and `error` say why it was refused (409 for a status, cap or account refusal,
+         *     404 for an unknown or another tenant's listing).
          */
         post: operations["listings_publish"];
         delete?: never;
@@ -600,7 +603,8 @@ export interface paths {
         put?: never;
         /**
          * Retry only the fields that failed to publish
-         * @description Retry only the fields that failed to publish (invariant 10).
+         * @description Retry only the fields that failed to publish (invariant 10): a new attempt that resends
+         *     the fields whose latest result failed, as a `patch`. 409 when nothing may be retried.
          */
         post: operations["listings_retry_fields"];
         delete?: never;

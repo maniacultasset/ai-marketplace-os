@@ -351,3 +351,7 @@ def csv_bucket() -> str:
 
 def images_bucket() -> str:
     return get_settings().gcs_bucket_images
+
+
+def submissions_bucket() -> str:
+    return get_settings().gcs_bucket_submissions

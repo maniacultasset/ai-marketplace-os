@@ -1,5 +1,6 @@
 """Listing routes: S18's generate, regenerate, status, content patch and validate; S20's preview;
-S19's list, detail, history and approve; the rest are stubs (owner step S21).
+S19's list, detail, history and approve; S21's publish, field retry, submissions and
+refresh-status.
 
 `GET /listings` is registered before `GET /listings/{listing_id}`; the batch ops
 (`generate|validate|approve|publish`) are POST-only, so they never shadow a listing id.
@@ -28,7 +29,12 @@ from app.api.pagination import (
     encode_tagged_cursor,
 )
 from app.api.v1.deps import IdempotencyKey, IfMatch, get_current_principal
-from app.api.v1.schemas.batches import ApproveRequest, BatchResult, PublishRequest
+from app.api.v1.schemas.batches import (
+    ApproveRequest,
+    BatchAccepted,
+    BatchResult,
+    PublishRequest,
+)
 from app.api.v1.schemas.listings import (
     AuditEventOut,
     ListingContentPatch,
@@ -48,6 +54,7 @@ from app.services import (
     listing_preview,
     listing_reads,
     listing_validate,
+    publish,
     review,
 )
 from app.services.budget import BudgetExceededError
@@ -123,10 +130,24 @@ async def listings_approve(
 
 
 @route(router, OPS["listings_publish"])
-@stub
-async def listings_publish(body: PublishRequest, idempotency_key: IdempotencyKey) -> NoReturn:
-    """Publish approved listings (owner or operator): 202 with per-item results."""
-    raise NotImplementedYet("listings_publish")
+async def listings_publish(
+    body: PublishRequest,
+    idempotency_key: IdempotencyKey,
+    principal: CurrentPrincipal,
+    request: Request,
+) -> BatchAccepted:
+    """Publish approved listings (owner or operator): 202 with per-item results. Each item is
+    one `listing_publish` job; nothing is sent to the marketplace in the request. An item's own
+    `http_status` and `error` say why it was refused (409 for a status, cap or account refusal,
+    404 for an unknown or another tenant's listing)."""
+    items = [
+        publish.PublishItemIn(listing_id=i.listing_id, listing_version_id=i.listing_version_id)
+        for i in body.items
+    ]
+    stored = await publish.accept_publish(
+        principal, idempotency_key, request.url.path, body.model_dump_json().encode(), items
+    )
+    return BatchAccepted.model_validate(stored)
 
 
 @route(router, OPS["listings_list"])
@@ -264,10 +285,18 @@ async def listings_regenerate(
 
 
 @route(router, OPS["listings_retry_fields"])
-@stub
-async def listings_retry_fields(listing_id: ListingId, idempotency_key: IdempotencyKey) -> NoReturn:
-    """Retry only the fields that failed to publish (invariant 10)."""
-    raise NotImplementedYet("listings_retry_fields")
+async def listings_retry_fields(
+    listing_id: ListingId,
+    idempotency_key: IdempotencyKey,
+    principal: CurrentPrincipal,
+    request: Request,
+) -> JobAccepted:
+    """Retry only the fields that failed to publish (invariant 10): a new attempt that resends
+    the fields whose latest result failed, as a `patch`. 409 when nothing may be retried."""
+    stored = await publish.accept_retry_fields(
+        principal, idempotency_key, request.url.path, listing_id
+    )
+    return JobAccepted.model_validate(stored)
 
 
 @route(router, OPS["listings_submissions"])

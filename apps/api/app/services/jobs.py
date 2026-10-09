@@ -41,7 +41,13 @@ def _progress(job: JobRun, status: JobState) -> int:
     return 100 if status in DONE else 0
 
 
+PUBLISH_KINDS = frozenset({JobKind.LISTING_PUBLISH.value, JobKind.LISTING_STATUS_SYNC.value})
+
+
 def _result_url(job: JobRun) -> str | None:
+    if job.kind in PUBLISH_KINDS and job.listing_id is not None:
+        # S21: a publish or sync job's per-field results are the listing's submissions
+        return f"{API_V1}/listings/{job.listing_id}/submissions"
     import_id = (job.result_json or {}).get("import_id")
     if isinstance(import_id, str):
         try:

@@ -240,6 +240,22 @@ class MarketplaceAccountRepository(TenantScopedRepository[MarketplaceAccount]):
             if isinstance(obj, MarketplaceAccount) and obj.id == account_id:
                 self.db.expire(obj)
 
+    async def active_for_publish(
+        self, marketplace: str, account_id: uuid.UUID | None = None
+    ) -> uuid.UUID | None:
+        """The `active` account a publish uses (S21 D6; the 0004 publish gate's rule): the
+        listing's own account once set, else the tenant's active one for the marketplace."""
+        m = MarketplaceAccount
+        stmt = (
+            self._select()
+            .where(m.marketplace == marketplace, m.status == "active")
+            .with_only_columns(m.id)
+        )
+        if account_id is not None:
+            stmt = stmt.where(m.id == account_id)
+        found: uuid.UUID | None = (await self.db.execute(stmt.limit(1))).scalar_one_or_none()
+        return found
+
     async def active_by_id(self, account_id: uuid.UUID) -> AccountState | None:
         """The tenant's account `account_id` in any status (the caller refuses one that is not
         active), or None, also for another tenant's id. Never selects `token_enc`."""

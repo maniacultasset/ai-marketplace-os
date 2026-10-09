@@ -74,7 +74,7 @@ if [ "$finished" -ne 1 ]; then
   exit 1
 fi
 
-buckets=(marketplace-images marketplace-csv)
+buckets=(marketplace-images marketplace-csv marketplace-submissions)
 for bucket in "${buckets[@]}"; do
   docker compose run --rm --no-deps minio-init ls "local/$bucket" >/dev/null \
     || { echo "bootstrap: bucket $bucket missing" >&2; exit 1; }

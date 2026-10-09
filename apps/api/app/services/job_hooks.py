@@ -40,12 +40,16 @@ def _register_owned_hooks() -> None:
     the reaper need them as much as the worker does)."""
     from app.services.brand_embed import on_brand_embed_requeue, on_brand_embed_terminal
     from app.services.generation_hooks import on_generate_requeue, on_generate_terminal
+    from app.services.publish_outcome import on_publish_requeue, on_publish_terminal
 
     TERMINAL_HOOKS.setdefault(JobKind.BRAND_EMBED, on_brand_embed_terminal)
     REQUEUE_HOOKS.setdefault(JobKind.BRAND_EMBED, on_brand_embed_requeue)
     # S18 T17: a generation that ends without a version leaves `generating`; no requeue (CP5)
     TERMINAL_HOOKS.setdefault(JobKind.LISTING_GENERATE, on_generate_terminal)
     REQUEUE_HOOKS.setdefault(JobKind.LISTING_GENERATE, on_generate_requeue)
+    # S21 T15: a publish job that ends without a verdict leaves `publishing`; no staff requeue
+    TERMINAL_HOOKS.setdefault(JobKind.LISTING_PUBLISH, on_publish_terminal)
+    REQUEUE_HOOKS.setdefault(JobKind.LISTING_PUBLISH, on_publish_requeue)
 
 
 async def run_terminal_hook(

@@ -25,15 +25,18 @@ def test_hook_maps_hold_only_the_owned_kinds() -> None:
     from app.services.brand_embed import on_brand_embed_requeue, on_brand_embed_terminal
     from app.services.generation_hooks import on_generate_requeue, on_generate_terminal
     from app.services.imports.hooks import import_requeue_hook, import_terminal_hook
+    from app.services.publish_outcome import on_publish_requeue, on_publish_terminal
     from mkos_schemas.enums import JobKind
 
     assert {
         JobKind.BULK_IMPORT: import_terminal_hook,
         JobKind.BRAND_EMBED: on_brand_embed_terminal,
         JobKind.LISTING_GENERATE: on_generate_terminal,
+        JobKind.LISTING_PUBLISH: on_publish_terminal,
     } == job_hooks.TERMINAL_HOOKS
     assert {
         JobKind.BULK_IMPORT: import_requeue_hook,
         JobKind.BRAND_EMBED: on_brand_embed_requeue,
         JobKind.LISTING_GENERATE: on_generate_requeue,
+        JobKind.LISTING_PUBLISH: on_publish_requeue,
     } == job_hooks.REQUEUE_HOOKS

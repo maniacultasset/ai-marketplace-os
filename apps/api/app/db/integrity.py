@@ -22,7 +22,11 @@ from app.core.errors import ConflictError, DomainError, InputError
 logger = logging.getLogger(__name__)
 
 CONSTRAINT_CODES: Final[Mapping[str, ErrorCode]] = MappingProxyType(
-    {"products_tenant_sku_idx": ErrorCode.SKU_CONFLICT}  # DATABASE.md:407
+    {
+        "products_tenant_sku_idx": ErrorCode.SKU_CONFLICT,  # DATABASE.md:407
+        "ux_ls_open": ErrorCode.SUBMISSION_IN_FLIGHT,  # one open submission per listing (:872)
+        "ux_job_runs_live": ErrorCode.LISTING_BUSY,  # one live job per (listing, kind) (:949)
+    }
 )
 GUARD_SQLSTATES: Final[Mapping[str, ErrorCode]] = MappingProxyType(
     {

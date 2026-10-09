@@ -11012,7 +11012,7 @@
     },
     "/api/v1/listings/publish": {
       "post": {
-        "description": "Publish approved listings (owner or operator): 202 with per-item results.",
+        "description": "Publish approved listings (owner or operator): 202 with per-item results. Each item is\none `listing_publish` job; nothing is sent to the marketplace in the request. An item's own\n`http_status` and `error` say why it was refused (409 for a status, cap or account refusal,\n404 for an unknown or another tenant's listing).",
         "operationId": "listings_publish",
         "parameters": [
           {
@@ -13188,7 +13188,7 @@
     },
     "/api/v1/listings/{listing_id}/publish/retry-fields": {
       "post": {
-        "description": "Retry only the fields that failed to publish (invariant 10).",
+        "description": "Retry only the fields that failed to publish (invariant 10): a new attempt that resends\nthe fields whose latest result failed, as a `patch`. 409 when nothing may be retried.",
         "operationId": "listings_retry_fields",
         "parameters": [
           {
