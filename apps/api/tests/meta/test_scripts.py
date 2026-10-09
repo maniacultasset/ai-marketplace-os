@@ -2185,7 +2185,26 @@ REGENERATE_STEPS = (
     "db_maker_is_reviewer",
     "worker_stop",
 )
-S18_FLOWS = {GENERATE_FLOW: GENERATE_STEPS, REGENERATE_FLOW: REGENERATE_STEPS}
+LISTING_EDIT_FLOW = "scripts/e2e/listing_edit.sh"
+LISTING_EDIT_STEPS = (
+    "health",
+    "login_acme_operator",
+    "create_product_201",
+    "worker_start",
+    "generate_202",
+    "poll_validated",
+    "patch_content_200",
+    "patch_stale_409",
+    "patch_long_title_blocked",
+    "validate_passed_false",
+    "validate_again_same_run",
+    "worker_stop",
+)
+S18_FLOWS = {
+    GENERATE_FLOW: GENERATE_STEPS,
+    REGENERATE_FLOW: REGENERATE_STEPS,
+    LISTING_EDIT_FLOW: LISTING_EDIT_STEPS,
+}
 
 
 def _steps(code: str) -> tuple[str, ...]:
@@ -2263,7 +2282,7 @@ def test_e2e_generate_failed_leg_after_worker_start(repo_root: Path) -> None:
     assert not any(step.startswith("login_") for step in leg)
 
 
-@pytest.mark.parametrize("flow", sorted(S18_FLOWS))
+@pytest.mark.parametrize("flow", [GENERATE_FLOW, REGENERATE_FLOW])
 def test_e2e_s18_psql_only_in_db_steps(repo_root: Path, flow: str) -> None:
     current = "setup"
     hits: list[tuple[str, str]] = []
@@ -2294,3 +2313,8 @@ def test_e2e_generate_without_hooks_exits_2(repo_root: Path, tmp_path: Path, flo
     assert result.returncode == 2
     assert result.stderr.startswith("usage: WORKER_START=<cmd> WORKER_STOP=<cmd>")
     assert not (tmp_path / "curl.log").exists()
+
+
+def test_e2e_listing_edit_http_only(repo_root: Path) -> None:
+    code = _code((repo_root / LISTING_EDIT_FLOW).read_text(encoding="utf-8"))
+    assert "psql" not in code and "docker compose" not in code
