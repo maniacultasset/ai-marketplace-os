@@ -350,5 +350,7 @@ def test_make_dev_points_marketplace_urls_at_fake(repo_root: Path) -> None:
         ("FLIPKART_TOKEN_URL", "flipkart/token"),
     ):
         assert f"{name}=$(FAKE_MARKETPLACE_URL)/{path}" in joined
+    # S21: the publish and status-sync jobs of the e2e worker talk SP-API to the fake only
+    assert "AMAZON_SPAPI_ENDPOINT=$(FAKE_MARKETPLACE_URL)" in joined
     dev = _target(makefile, "dev")
     assert "$(FAKE_MARKETPLACE_ENV) uv run --frozen uvicorn app.main:app" in dev

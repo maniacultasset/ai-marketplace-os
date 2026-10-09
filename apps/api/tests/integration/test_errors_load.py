@@ -84,12 +84,12 @@ def test_errors_load_idempotent(
     cli_env: Path, superuser_conn: Conn, capsys: pytest.CaptureFixture[str]
 ) -> None:
     before = len(audits(superuser_conn))
-    assert run(FIXTURE, capsys) == (0, "errors load: ok (4 inserted, 0 unchanged, 0 toggled)\n", "")
+    assert run(FIXTURE, capsys) == (0, "errors load: ok (5 inserted, 0 unchanged, 0 toggled)\n", "")
     first = rows(superuser_conn)
-    assert len(first) == 4
+    assert len(first) == 5
     after_first = len(audits(superuser_conn))
-    assert after_first == before + 4
-    assert run(FIXTURE, capsys) == (0, "errors load: ok (0 inserted, 4 unchanged, 0 toggled)\n", "")
+    assert after_first == before + 5
+    assert run(FIXTURE, capsys) == (0, "errors load: ok (0 inserted, 5 unchanged, 0 toggled)\n", "")
     assert rows(superuser_conn) == first
     assert len(audits(superuser_conn)) == after_first
 

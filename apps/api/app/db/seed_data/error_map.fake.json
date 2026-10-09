@@ -62,5 +62,21 @@
     "plain_text": "{field} has a value {marketplace} does not accept.",
     "seller_action": "Correct the value, then retry the failed fields.",
     "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "FAKE-QUOTA",
+    "version": 1,
+    "error_code": "RATE_LIMITED",
+    "error_class": "marketplace_technical",
+    "retry_class": "auto_retry",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "{marketplace} throttled the update of {field}; it can be retried.",
+    "seller_action": "Retry the failed fields.",
+    "enabled": true
   }
 ]

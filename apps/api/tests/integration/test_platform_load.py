@@ -50,11 +50,11 @@ def test_platform_load_idempotent_no_tenants(
     code, out, err = run(capsys)
     assert (code, err) == (0, "")
     assert out == (
-        "platform load: ok (2 templates inserted, 2 promoted, 4 error-map rows inserted, "
+        "platform load: ok (2 templates inserted, 2 promoted, 5 error-map rows inserted, "
         "0 toggled)\n"
     )
     first = counts(superuser_conn)
-    assert first["tenants"] == 0 and first["marketplace_error_map"] == 4
+    assert first["tenants"] == 0 and first["marketplace_error_map"] == 5
     code, out, _ = run(capsys)
     assert code == 0 and "0 templates inserted, 0 promoted, 0 error-map rows inserted" in out
     assert counts(superuser_conn) == first  # no row and no audit from the rerun
