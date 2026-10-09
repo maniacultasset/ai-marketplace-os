@@ -30,6 +30,7 @@ from app.repositories.human_tasks import HumanTaskRepository
 from app.repositories.identity import AuditRepository
 from app.repositories.images import ImageRepository
 from app.repositories.jobs import JobRunRepository
+from app.repositories.listing_issues import ListingIssueRepository
 from app.repositories.listings import ListingRepository, ListingVersionRepository
 from app.repositories.marketplace_accounts import MarketplaceAccountRepository
 from app.repositories.members import MembersRepository
@@ -80,6 +81,7 @@ class TenantUnitOfWork:
     batches: BatchRepository
     audit_log: AuditLogRepository
     members: MembersRepository
+    listing_issues: ListingIssueRepository
 
 
 def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
@@ -113,6 +115,7 @@ def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
         batches=BatchRepository(session, tenant_id),
         audit_log=AuditLogRepository(session, tenant_id),
         members=MembersRepository(session, tenant_id),
+        listing_issues=ListingIssueRepository(session, tenant_id),
     )
 
 
