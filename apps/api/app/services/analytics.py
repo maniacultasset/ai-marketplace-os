@@ -7,22 +7,50 @@
 - `DateRange.bounds()`: the half-open UTC instants `[start 00:00Z, end+1 00:00Z)`.
 - `rate(num, den)`: `num / den` as a `Decimal` rounded half-even to 4 places, None when `den` is 0.
 - `summarize(repo, period)`: the `AnalyticsSummary` body (formulas: `app/repositories/analytics.py`).
+- `inflight(tenant_id)`: at most `INFLIGHT_CAP` analytics requests per tenant at once (bucket
+  `an:<tenant_id>` on `rate_limit_counters`); a third raises `AnalyticsBusyError` (429 at the
+  router). The slot is given back whatever the request did.
+- `get_summary(...)`: the endpoint's work: the range, the slot, one READ ONLY transaction under one
+  5 s budget (`AnalyticsBudgetError` when it runs out), the summary.
 """
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import asdict, astuple, dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import ROUND_HALF_EVEN, Decimal
 from typing import Any, Final
+from uuid import UUID
 
 from mkos_schemas.enums import Marketplace
 
-from app.repositories.analytics import AnalyticsRepository
+from app.repositories import rate_limits
+from app.repositories.analytics import AnalyticsBudgetError, AnalyticsRepository
+from app.repositories.transactions import unit_of_work
 
 DEFAULT_DAYS: Final = 30
 MAX_DAYS: Final = 366
 RATE_QUANTUM: Final = Decimal("0.0001")
+INFLIGHT_CAP: Final = 2
+
+__all__ = [
+    "AnalyticsBudgetError",
+    "AnalyticsBusyError",
+    "AnalyticsRangeError",
+    "Counts",
+    "DateRange",
+    "get_summary",
+    "inflight",
+    "rate",
+    "resolve_range",
+    "summarize",
+]
+
+
+class AnalyticsBusyError(Exception):
+    """The tenant already has `INFLIGHT_CAP` analytics requests in flight."""
 
 
 class AnalyticsRangeError(ValueError):
@@ -146,3 +174,29 @@ async def summarize(repo: AnalyticsRepository, period: DateRange) -> dict[str, A
             {"marketplace": m, **_block(c), "counts": asdict(c)} for m, c in per.items()
         ],
     }
+
+
+def utc_now() -> datetime:
+    return datetime.now(UTC)
+
+
+@asynccontextmanager
+async def inflight(tenant_id: UUID) -> AsyncIterator[None]:
+    bucket = f"an:{tenant_id}"
+    window = await rate_limits.inflight_acquire(bucket, INFLIGHT_CAP, utc_now())
+    if window is None:
+        raise AnalyticsBusyError(bucket)
+    try:
+        yield
+    finally:
+        await rate_limits.inflight_release(bucket, window)
+
+
+async def get_summary(
+    tenant_id: UUID, user_id: UUID | None, from_: date | None, to: date | None
+) -> dict[str, Any]:
+    period = resolve_range(from_, to, today=utc_now().date())
+    async with inflight(tenant_id), unit_of_work(tenant_id, user_id=user_id) as session:
+        repo = AnalyticsRepository(session, tenant_id)
+        await repo.bounded()
+        return await summarize(repo, period)

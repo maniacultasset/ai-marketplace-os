@@ -27,6 +27,7 @@ from datetime import datetime
 from typing import Any, Final
 
 from sqlalchemy import Select, and_, false, func, literal_column, not_, select, text
+from sqlalchemy.exc import DBAPIError
 
 from app.db.models.listings import Listing, ListingVersion, ReviewDecision
 from app.db.models.ops import ListingSubmission
@@ -37,6 +38,20 @@ GENERATED_ORIGINS: Final = ("generation", "regeneration")
 SUCCEEDED: Final = frozenset({"accepted", "live", "superseded"})
 FAILED: Final = frozenset({"partially_accepted", "rejected", "error"})
 REQUEST_BUDGET: Final = "5s"
+# statement_timeout cancels (57014); transaction_timeout ends the session (25P04, PostgreSQL 17)
+BUDGET_SQLSTATES: Final = frozenset({"57014", "25P04"})
+
+
+class AnalyticsBudgetError(Exception):
+    """The request's read budget ran out (a statement or the transaction hit its 5 s cap, or the
+    server closed the session for it). Carries no driver text: SQL and parameters stay out."""
+
+
+def _budget_error(exc: DBAPIError) -> AnalyticsBudgetError | None:
+    sqlstate = getattr(exc.orig, "sqlstate", None)
+    if sqlstate in BUDGET_SQLSTATES or exc.connection_invalidated:
+        return AnalyticsBudgetError("analytics read budget exceeded")
+    return None
 
 
 def _lit(value: str | int) -> Any:
@@ -107,8 +122,12 @@ class AnalyticsRepository(TenantScopedRepository[ListingVersion]):
         return self._scoped_read(stmt)
 
     def publish_stmt(self, lo: datetime, hi: datetime) -> Select[Any]:
+        # containment, never a cast: a malformed report reads as not retryable instead of failing
         retryable = func.coalesce(
-            ListingSubmission.error_report_json["retryable"].as_boolean(), false()
+            ListingSubmission.error_report_json.op("@>")(
+                literal_column("""'{"retryable": true}'::jsonb""")
+            ),
+            false(),
         )
         stmt = (
             select(ListingSubmission.marketplace, ListingSubmission.outcome, func.count())
@@ -124,21 +143,30 @@ class AnalyticsRepository(TenantScopedRepository[ListingVersion]):
         )
         return self._scoped_read(stmt)
 
+    async def _rows(self, stmt: Select[Any]) -> list[Any]:
+        try:
+            return list(await self.db.execute(stmt))
+        except DBAPIError as exc:
+            budget = _budget_error(exc)
+            if budget is None:
+                raise
+            raise budget from None
+
     async def volume(self, lo: datetime, hi: datetime) -> dict[str, int]:
-        rows = await self.db.execute(self.volume_stmt(lo, hi))
+        rows = await self._rows(self.volume_stmt(lo, hi))
         return {str(m): int(n) for m, n in rows}
 
     async def decisions(self, lo: datetime, hi: datetime) -> dict[str, tuple[int, int]]:
         """marketplace → (approvals, rejections)."""
         out: dict[str, list[int]] = defaultdict(lambda: [0, 0])
-        for marketplace, decision, n in await self.db.execute(self.decisions_stmt(lo, hi)):
+        for marketplace, decision, n in await self._rows(self.decisions_stmt(lo, hi)):
             out[str(marketplace)][0 if decision == "approve" else 1] += int(n)
         return {m: (a, r) for m, (a, r) in out.items()}
 
     async def validation(self, lo: datetime, hi: datetime) -> dict[str, tuple[int, int]]:
         """marketplace → (passed, total)."""
         out: dict[str, list[int]] = defaultdict(lambda: [0, 0])
-        for marketplace, passed, n in await self.db.execute(self.validation_stmt(lo, hi)):
+        for marketplace, passed, n in await self._rows(self.validation_stmt(lo, hi)):
             out[str(marketplace)][1] += int(n)
             if passed:
                 out[str(marketplace)][0] += int(n)
@@ -147,6 +175,6 @@ class AnalyticsRepository(TenantScopedRepository[ListingVersion]):
     async def publish(self, lo: datetime, hi: datetime) -> dict[str, tuple[int, int]]:
         """marketplace → (succeeded, failed)."""
         out: dict[str, list[int]] = defaultdict(lambda: [0, 0])
-        for marketplace, outcome, n in await self.db.execute(self.publish_stmt(lo, hi)):
+        for marketplace, outcome, n in await self._rows(self.publish_stmt(lo, hi)):
             out[str(marketplace)][0 if outcome in SUCCEEDED else 1] += int(n)
         return {m: (s, f) for m, (s, f) in out.items()}

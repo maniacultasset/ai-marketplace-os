@@ -41,3 +41,38 @@ async def prune(before: datetime) -> int:
         autocommit = await connection.execution_options(isolation_level="AUTOCOMMIT")
         result = await autocommit.execute(_PRUNE, {"before": before})
     return int(getattr(result, "rowcount", 0) or 0)
+
+
+# ---- S23: an in-flight cap on the same table (D11, C13) ----
+
+_DECREMENT: Final = text(
+    "UPDATE rate_limit_counters SET n = greatest(n - 1, 0) "
+    "WHERE bucket_key = :bucket AND window_start = :window"
+)
+
+
+def minute_floor(now: datetime) -> datetime:
+    return now.replace(second=0, microsecond=0)
+
+
+async def _decrement(bucket_key: str, window_start: datetime) -> None:
+    async with get_engine().connect() as connection:
+        autocommit = await connection.execution_options(isolation_level="AUTOCOMMIT")
+        await autocommit.execute(_DECREMENT, {"bucket": bucket_key, "window": window_start})
+
+
+async def inflight_acquire(bucket_key: str, cap: int, now: datetime) -> datetime | None:
+    """Take one of `cap` in-flight slots of `bucket_key`: the minute window's row is counted up,
+    and a count above `cap` is counted back down and refused (None). Returns the window to pass
+    to `inflight_release`. A request that straddles a minute boundary releases its own row; the
+    new window starts at 0 (a brief over-admit, bounded by the request budget)."""
+    window = minute_floor(now)
+    if await increment(bucket_key, window) > cap:
+        await _decrement(bucket_key, window)
+        return None
+    return window
+
+
+async def inflight_release(bucket_key: str, window_start: datetime) -> None:
+    """Give back the slot `inflight_acquire` took in `window_start` (never below 0)."""
+    await _decrement(bucket_key, window_start)
