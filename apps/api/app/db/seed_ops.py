@@ -436,6 +436,46 @@ async def seed_brand_data(session: AsyncSession, tenant: SeedTenant) -> None:
         )
 
 
+# S19 T22 (CP-D5): acme's one brand rule, local demo only: `stubwarn` in a title is a warning, so
+# the stub's `warnings` scenario reaches `needs_review` through the backend's own engine re-check.
+WARNING_RULE_TERM: Final = "stubwarn"
+
+
+def warning_rule_id() -> uuid.UUID:
+    return uuid.uuid5(SEED_NAMESPACE, "acme:rule:stubwarn")
+
+
+async def seed_warning_rule(connection: AsyncConnection) -> None:
+    """acme's tenant `banned_terms` warning on `content.title`, by its fixed id (a rerun inserts
+    nothing). The admin connection writes it: `app_rw` holds no INSERT on `rules`."""
+    rule_def = {
+        "type": "banned_terms",
+        "terms": [WARNING_RULE_TERM],
+        "pack": "brand",
+        "error_code": "VALUE_NOT_ALLOWED",
+        "message": "The title uses a word the brand avoids.",
+        "suggestion": "Remove the word from the title.",
+    }
+    await connection.execute(
+        insert(Rule)
+        .values(
+            id=warning_rule_id(),
+            tenant_id=seed_tenant_id("acme"),
+            marketplace="amazon",
+            category=None,
+            field="content.title",
+            rule_type="banned_terms",
+            subject="",
+            pack="brand",
+            severity="warning",
+            version=1,
+            enabled=True,
+            rule_def=rule_def,
+        )
+        .on_conflict_do_nothing()
+    )
+
+
 def _content_hash(body: str) -> str:
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
 

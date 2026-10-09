@@ -189,6 +189,13 @@ async def _seed(profile: str, *, reset: bool, admin_url: str) -> SeedCounts:
                 if profile == "demo":
                     await seed_ops.seed_brand_data(session, tenant)
         if profile == "demo":
+            # S19 T22: acme's warning rule; rules are written by the admin login only
+            admin = create_async_engine(admin_url)
+            try:
+                async with admin.begin() as connection:
+                    await seed_ops.seed_warning_rule(connection)
+            finally:
+                await admin.dispose()
             await _seed_demo_listing()
     finally:
         await dispose_engine()
