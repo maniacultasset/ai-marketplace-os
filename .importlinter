@@ -256,3 +256,57 @@ source_modules =
     app.adapters
 forbidden_modules =
     mkos_pipeline
+
+[importlinter:contract:brand-chunking-is-pure]
+name = brand chunking is pure
+type = forbidden
+source_modules =
+    app.services.brand_chunking
+forbidden_modules =
+    sqlalchemy
+    app.db
+    app.repositories
+    app.adapters
+    httpx
+    httpx2
+    openai
+    fastapi
+# The image check child (S17b CP6) decodes untrusted images in its own process: it imports the
+# pure S17a checks, mkos_schemas, Pillow and the stdlib only, so no settings, DSN, storage client
+# or HTTP client is ever loaded next to the decoder.
+[importlinter:contract:image-check-child-is-pure]
+name = the image check child imports no app layer, DB, storage or HTTP client
+type = forbidden
+source_modules =
+    app.services.image_check_child
+forbidden_modules =
+    app.core
+    app.db
+    app.repositories
+    app.adapters
+    app.api
+    app.workers
+    sqlalchemy
+    psycopg
+    boto3
+    httpx
+
+# The approval image gate (S17b T14) is a pure function over wire models: deterministic, with no
+# decoder, no I/O and no app layer (invariant 2; vision only warns, C8).
+[importlinter:contract:image-gate-is-pure]
+name = the image gate is pure
+type = forbidden
+source_modules =
+    app.services.image_gate
+forbidden_modules =
+    app.core
+    app.db
+    app.repositories
+    app.adapters
+    app.api
+    app.workers
+    sqlalchemy
+    psycopg
+    boto3
+    httpx
+    PIL

@@ -284,11 +284,14 @@ E2E_WORKER_STOP = pid="$$(cat "$(E2E_WORKER_PIDFILE)")"; kill -TERM "$$pid"; \
 E2E_TEMPLATES_LOAD = uv run --frozen python -m app.cli templates load --file "$$1"
 # The marketplace preview e2e's hook (S20 T21): the migrator's `errors load`.
 E2E_ERRORS_LOAD = uv run --frozen python -m app.cli errors load --file "$$1"
+# S16: the staff CLI as migrator (ALEMBIC_DATABASE_URL from .env or the caller); the brand
+# onboarding flow appends its arguments and gives a new user's password on stdin.
+E2E_MKOS_CLI = uv run --frozen python -m app.cli
 
 .PHONY: e2e
 e2e:
 	export WORKER_START='$(E2E_WORKER_START)' WORKER_STOP='$(E2E_WORKER_STOP)' \
-	  TEMPLATES_LOAD='$(E2E_TEMPLATES_LOAD)' ERRORS_LOAD='$(E2E_ERRORS_LOAD)'; \
+	  TEMPLATES_LOAD='$(E2E_TEMPLATES_LOAD)' ERRORS_LOAD='$(E2E_ERRORS_LOAD)' MKOS_CLI='$(E2E_MKOS_CLI)'; \
 	base="http://127.0.0.1:$(or $(E2E_ENV_API_PORT),$(API_HOST_PORT))"; \
 	$(FAKE_CTL) start $(FAKE_MARKETPLACE_HOST_PORT) || exit $$?; \
 	trap '$(FAKE_CTL) stop $(FAKE_MARKETPLACE_HOST_PORT)' EXIT; \

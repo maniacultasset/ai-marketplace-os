@@ -16,8 +16,10 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.repositories.agent_runs import AgentRunRepository
 from app.repositories.attribute_definitions import AttributeDefinitionRepository
 from app.repositories.brand_chunks import BrandChunkRepository
+from app.repositories.brand_documents import BrandDocumentRepository
 from app.repositories.dictionary import DictionaryRevisionRepository
 from app.repositories.error_map import ErrorMapRepository
 from app.repositories.human_tasks import HumanTaskRepository
@@ -30,9 +32,10 @@ from app.repositories.oauth_states import OAuthStateRepository
 from app.repositories.products import ProductRepository
 from app.repositories.rules import RuleRepository
 from app.repositories.templates import CategoryTemplateRepository
+from app.repositories.tenants import TenantProfileRepository
 from app.repositories.transactions import unit_of_work
 
-__all__ = ["TenantUnitOfWork", "tenant_uow"]
+__all__ = ["TenantUnitOfWork", "repositories_on", "tenant_uow"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +58,35 @@ class TenantUnitOfWork:
     error_map: ErrorMapRepository
     # S20 T18: the adapter input (SELECT only).
     listings: ListingRepository
+    # S16: telemetry, brand documents and the brand profile.
+    agent_runs: AgentRunRepository
+    brand_documents: BrandDocumentRepository
+    tenants: TenantProfileRepository
+
+
+def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
+    """The repositories on a session another helper opened for `tenant_id` (the
+    `idempotent` transaction, S17b): its unit of work already names the tenant."""
+    return TenantUnitOfWork(
+        session=session,
+        products=ProductRepository(session, tenant_id),
+        attribute_definitions=AttributeDefinitionRepository(session),
+        audit=AuditRepository(session),
+        marketplace_accounts=MarketplaceAccountRepository(session, tenant_id),
+        oauth_states=OAuthStateRepository(session, tenant_id),
+        human_tasks=HumanTaskRepository(session, tenant_id),
+        rules=RuleRepository(session, tenant_id),
+        brand_chunks=BrandChunkRepository(session, tenant_id),
+        job_runs=JobRunRepository(session, tenant_id),
+        images=ImageRepository(session, tenant_id),
+        templates=CategoryTemplateRepository(session),
+        dictionary=DictionaryRevisionRepository(session),
+        agent_runs=AgentRunRepository(session, tenant_id),
+        brand_documents=BrandDocumentRepository(session, tenant_id),
+        tenants=TenantProfileRepository(session, tenant_id),
+        error_map=ErrorMapRepository(session),
+        listings=ListingRepository(session, tenant_id),
+    )
 
 
 @asynccontextmanager
@@ -62,20 +94,4 @@ async def tenant_uow(
     tenant_id: UUID, *, user_id: UUID | None = None
 ) -> AsyncIterator[TenantUnitOfWork]:
     async with unit_of_work(tenant_id, user_id=user_id) as session:
-        yield TenantUnitOfWork(
-            session=session,
-            products=ProductRepository(session, tenant_id),
-            attribute_definitions=AttributeDefinitionRepository(session),
-            audit=AuditRepository(session),
-            marketplace_accounts=MarketplaceAccountRepository(session, tenant_id),
-            oauth_states=OAuthStateRepository(session, tenant_id),
-            human_tasks=HumanTaskRepository(session, tenant_id),
-            rules=RuleRepository(session, tenant_id),
-            brand_chunks=BrandChunkRepository(session, tenant_id),
-            job_runs=JobRunRepository(session, tenant_id),
-            images=ImageRepository(session, tenant_id),
-            templates=CategoryTemplateRepository(session),
-            dictionary=DictionaryRevisionRepository(session),
-            error_map=ErrorMapRepository(session),
-            listings=ListingRepository(session, tenant_id),
-        )
+        yield repositories_on(session, tenant_id)

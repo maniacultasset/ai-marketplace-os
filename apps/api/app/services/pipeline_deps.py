@@ -11,8 +11,9 @@ The generation worker builds one per job with `build_pipeline_deps` and hands it
 
 Ports:
 - `retrieve_brand_chunks`: validates every input before any SQL (a foreign tenant is an internal
-  error, `SeamPortError`), embeds the query, then `BrandChunkRepository.search` in one short unit
-  of work.
+  error, `SeamPortError`), embeds the query through `embed_query` (S16 CP12: one `agent_runs` row
+  per query embed, with the job's attempt and the request id), then
+  `BrandChunkRepository.search` in one short unit of work.
 - `validate_rules`: the Rules Engine on the preloaded RuleSet. A RuleSet holding a foreign rule, a
   listing of another scope or any engine exception gives an `INTERNAL_ERROR` report: never a
   pass (invariant 2; S14a hand-off).
@@ -42,8 +43,15 @@ from pydantic import SecretStr
 from app.core.config import Settings
 from app.core.logging import get_logger
 from app.core.redaction import redact
+from app.core.request_context import current_request_id, new_request_id
 from app.repositories.uow import tenant_uow
-from app.services.embeddings import Embedder, EmbedderUnavailable, get_embedder
+from app.services.embeddings import (
+    Embedder,
+    EmbedderUnavailable,
+    EmbeddingFailed,
+    embed_query,
+    get_embedder,
+)
 from app.services.rules_engine import evaluate
 from app.services.rules_loader import LoadedRules
 
@@ -132,6 +140,7 @@ class BackendPipelineDeps:
     """Implements `mkos_schemas.pipeline.PipelineDeps` (see the module docstring)."""
 
     __slots__ = (
+        "_attempt",
         "_embedder",
         "_image_reports",
         "_job_id",
@@ -155,6 +164,7 @@ class BackendPipelineDeps:
         image_reports: Mapping[UUID, ImageReport],
         embedder: Embedder | None,
         models: _ModelConfig,
+        attempt: int = 1,
     ) -> None:
         self._tenant_id = tenant_id
         self._job_id = job_id
@@ -165,6 +175,7 @@ class BackendPipelineDeps:
         self._image_reports = dict(image_reports)
         self._embedder = embedder
         self._models = models
+        self._attempt = attempt
 
     def __repr__(self) -> str:
         return f"BackendPipelineDeps(tenant_id={self._tenant_id}, job_id={self._job_id})"
@@ -212,10 +223,20 @@ class BackendPipelineDeps:
         embedder = self._embedder
         if embedder is None:  # _check_search refused it already; this narrows the type
             raise SeamPortError(ErrorCode.MODEL_UNAVAILABLE, "embedding")
-        batch = await embedder.embed([query])
+        try:
+            vector = await embed_query(
+                embedder,
+                query,
+                tenant_id=self._tenant_id,
+                job_id=self._job_id,
+                attempt=self._attempt,
+                request_id=current_request_id() or new_request_id(),
+            )
+        except EmbeddingFailed as exc:
+            raise SeamPortError(exc.code, "embedding") from None
         wanted = None if types is None else cast(list[BrandChunkType], list(types))
         async with tenant_uow(self._tenant_id, user_id=self._user_id) as uow:
-            return await uow.brand_chunks.search(batch.vectors[0], k, wanted)
+            return await uow.brand_chunks.search(vector, k, wanted)
 
     # ---- validate_rules (D7) ----
 
@@ -315,6 +336,8 @@ async def build_pipeline_deps(
     market = Marketplace(marketplace)
     async with tenant_uow(tenant_id, user_id=user_id) as uow:
         reports = await uow.images.reports_for_product(product_id, market.value)
+        job = await uow.job_runs.get_by_id(job_id)
+    attempt = job.attempt if job is not None and 1 <= job.attempt <= 3 else 1
     try:
         embedder: Embedder | None = get_embedder(settings)
     except EmbedderUnavailable:
@@ -329,4 +352,5 @@ async def build_pipeline_deps(
         image_reports=reports,
         embedder=embedder,
         models=_ModelConfig.from_settings(settings),
+        attempt=attempt,
     )

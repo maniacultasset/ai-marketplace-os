@@ -20,7 +20,10 @@ Q7: dict[str, str] = {
     "auth_me": "tenant:read",
     "auth_switch_tenant": "tenant:read",
     "tenants_me": "tenant:read",
+    "tenants_me_update": "settings:manage",
     "brand_documents_upload": "settings:manage",
+    "brand_documents_list": "tenant:read",
+    "brand_documents_delete": "settings:manage",
     "products_create": "product:import",
     "products_list": "tenant:read",
     "products_get": "tenant:read",
@@ -79,7 +82,7 @@ def _operation(spec: dict[str, Any], op_id: str) -> dict[str, Any]:
 
 
 def test_ops_are_the_q7_list() -> None:
-    assert len(OPS) == 41  # S10 38 + S15 confirm and revoke + S20 preview
+    assert len(OPS) == 44  # S10 38 + S15 confirm and revoke + S16 three + S20 preview
     assert set(OPS) == set(Q7)
 
 

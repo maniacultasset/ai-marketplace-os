@@ -8,6 +8,7 @@ import time
 
 import pytest
 from app.services.rules_engine.text import UnsafeRuleRegexError, compile_rule_regex
+from tests.timing import budget
 
 
 def _elapsed(regex: str, *, ignore_case: bool = False) -> tuple[bool, float]:
@@ -33,7 +34,7 @@ def _elapsed(regex: str, *, ignore_case: bool = False) -> tuple[bool, float]:
 def test_nested_optional_variants_fast(regex: str, ignore_case: bool) -> None:
     assert len(regex) <= 256
     _, elapsed = _elapsed(regex, ignore_case=ignore_case)
-    assert elapsed < 0.05
+    assert elapsed < budget(0.05)  # machine-scaled (tests/timing.py)
 
 
 @pytest.mark.parametrize(
@@ -49,7 +50,7 @@ def test_nested_optional_variants_fast(regex: str, ignore_case: bool) -> None:
 def test_ordinary_regexes_still_accepted(regex: str) -> None:
     accepted, elapsed = _elapsed(regex)
     assert accepted
-    assert elapsed < 0.05
+    assert elapsed < budget(0.05)  # machine-scaled (tests/timing.py)
 
 
 def test_nested_optional_with_overlap_still_refused() -> None:

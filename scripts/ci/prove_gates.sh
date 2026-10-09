@@ -445,6 +445,11 @@ path.write_text(path.read_text(encoding="utf-8") + f"\n\ndef _seeded(x: int) -> 
 PY
 }
 leg api-lint-engine-openai api-lint 'TID251' seed_engine_openai make api-lint
+# S16 T21: openai stays in embeddings.py; the chunker stays pure
+seed_openai_in_chunker() { append apps/api/app/services/brand_chunking.py $'\nimport openai  # noqa: F401'; }
+seed_chunker_imports_db() { append apps/api/app/services/brand_chunking.py $'\nimport app.db.session  # noqa: F401'; }
+leg lint-openai-outside-embeddings api-lint 'TID251' seed_openai_in_chunker make api-lint
+leg lint-imports-chunker-db lint-imports 'brand chunking is pure BROKEN' seed_chunker_imports_db make lint-imports
 leg lint-imports-engine-sqla lint-imports 'app.services.rules_engine is pure .*BROKEN' seed_engine_sqla make lint-imports
 leg lint-imports-engine-repositories lint-imports 'app.services.rules_engine is pure .*BROKEN' \
   seed_engine_repositories make lint-imports
@@ -480,6 +485,18 @@ leg lint-imports-adapter-from-service lint-imports 'only app.adapters and app.wo
   seed_adapter_from_service make lint-imports
 leg lint-imports-mapping-httpx lint-imports 'adapter mapping, endpoint check, error map and registry do no I/O BROKEN' \
   seed_mapping_httpx make lint-imports
+
+# S17b T17: the image check child stays pure, the image repository keeps its tenant filter, and
+# the job refuses an image key outside its tenant's prefix before any read.
+seed_image_child_config() { append apps/api/app/services/image_check_child.py 'import app.core.config'; }
+seed_images_no_tenant_filter() {
+  cp "$root/.env" .env
+  replace apps/api/app/repositories/images.py $'        stmt = self._select().where(\n            Image.id == _uuid("image_id", image_id), Image.deleted_at.is_(None)' $'        stmt = select(Image).where(\n            Image.id == _uuid("image_id", image_id), Image.deleted_at.is_(None)'
+}
+seed_image_key_prefix() {
+  replace apps/api/app/services/image_compliance.py $'    if parsed is None or parsed.tenant_id != ctx.tenant_id:\n        raise _failed("image key outside the tenant prefix", ctx)\n' ''
+}
+leg lint-imports-image-child-config lint-imports 'the image check child imports no app layer, DB, storage or HTTP client BROKEN' seed_image_child_config make lint-imports
 
 if [ "$with_docker" -eq 1 ]; then
   self_project="$(docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"
@@ -519,11 +536,14 @@ if [ "$with_docker" -eq 1 ]; then
   docker compose exec -T postgres dropdb -U postgres --force mos_prove
   leg tenant-isolation-no-marker tenant-isolation 'deselected' seed_no_marker COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-no-filter tenant-isolation 'test_list_returns_only_own_rows' seed_iso_no_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
+  leg tenant-isolation-brand-ingest-no-tenant-filter tenant-isolation 'test_brand_chunk_search_ingested_isolation' seed_iso_no_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-no-guard tenant-isolation 'test_raw_select_raises_guard' seed_iso_no_guard COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-superuser tenant-isolation 'test_isolation_runs_as_app_rw' seed_iso_env COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation ISO_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_iso
   leg tenant-isolation-guard-all-mappers tenant-isolation 'test_raw_select_raises_guard\[[a-z_]+-(join|subquery|exists|cte|select_from|core_table)\]' seed_iso_all_mappers COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-guard-table-only tenant-isolation 'test_raw_select_raises_guard\[[a-z_]+-table_clause\]' seed_iso_table_only COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-no-before-flush tenant-isolation 'test_flush_rejects_other_tenant' seed_iso_no_before_flush COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
+  leg tenant-isolation-images-no-tenant-filter tenant-isolation 'test_iso_images_repository_reads' seed_images_no_tenant_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
+  leg api-tests-image-key-prefix api-tests 'test_runner_rejects_foreign_key_prefix' seed_image_key_prefix COMPOSE_PROJECT_NAME="$self_project" make api-tests
   # mos_iso is migrated already: the leg downgrades it below 0007 so the seeded revision applies,
   # and remigrate_iso puts this checkout's revisions back afterwards.
   leg tenant-isolation-hash-branch-pending tenant-isolation 'hides_pending_row' seed_hash_branch_pending COMPOSE_PROJECT_NAME="$self_project" sh -c 'APP_ENV=local APP_ROLE=migrate ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_iso uv run --frozen alembic -c apps/api/alembic.ini downgrade 0005_rls && make tenant-isolation'

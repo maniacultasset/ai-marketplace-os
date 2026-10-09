@@ -8,7 +8,7 @@ import json
 import sys
 from pathlib import Path
 
-from mkos_schemas.rules import BannedTerms, RequiredAttribute, RuleSet
+from mkos_schemas.rules import BannedTerms, ImageRequirement, RequiredAttribute, Rule, RuleSet
 from pydantic import TypeAdapter
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
@@ -51,7 +51,9 @@ def test_rules_seed_validates_as_list_of_ruleset() -> None:
     for rule_set in sets:
         assert rule_set.rules
         assert {r.marketplace for r in rule_set.rules} == {rule_set.marketplace}
-        assert {r.category for r in rule_set.rules} == {rule_set.category}
+        # S17b T5: the image rows are category-NULL platform defaults (every category)
+        assert {r.category for r in rule_set.rules if r.field != "images"} == {rule_set.category}
+        assert {r.category for r in rule_set.rules if r.field == "images"} <= {None}
     ids = [r.id for s in sets for r in s.rules]
     assert len(ids) == len(set(ids))
 
@@ -149,7 +151,7 @@ def test_rules_seed_ids_unique() -> None:
         (r.marketplace, r.category, r.field, r.rule_def.type, r.rule_def.pack, r.version)
         for s in _load()
         for r in s.rules
-        if not isinstance(r.rule_def, RequiredAttribute)
+        if not isinstance(r.rule_def, RequiredAttribute | ImageRequirement)
     ]
     assert len(keys) == len(set(keys))  # rules_scope_key (subject is '' for these types)
 
@@ -200,3 +202,49 @@ def test_seed_stems_are_not_orphans_but_other_names_are(tmp_path: Path) -> None:
     assert module.is_seed_fixture(Path("rules.seed.json"))  # type: ignore[attr-defined]
     assert not module.is_seed_fixture(Path("Stray.json"))  # type: ignore[attr-defined]
     assert not module.is_seed_fixture(Path("seed.json"))  # type: ignore[attr-defined]
+
+
+# ---- S17b T5 (PLAN D12): the image rows ----
+
+
+def _image_rules() -> list[tuple[RuleSet, Rule]]:
+    return [(s, r) for s in _load() for r in s.rules if r.field == "images"]
+
+
+def test_rules_seed_images_validate() -> None:
+    rows = _image_rules()
+    assert {r.marketplace.value for _, r in rows} == {"amazon", "flipkart"}
+    for _, rule in rows:
+        assert isinstance(rule.rule_def, ImageRequirement)
+        assert rule.rule_def.policy_ref is not None
+        assert rule.category is None and rule.tenant_id is None
+
+
+def test_rules_seed_images_once_per_marketplace() -> None:
+    """Each marketplace's image rows sit in exactly one RuleSet, so the seed inserts them once."""
+    holders: dict[str, set[str]] = {}
+    for rule_set, rule in _image_rules():
+        holders.setdefault(rule.marketplace.value, set()).add(rule_set.category)
+    assert all(len(cats) == 1 for cats in holders.values()), holders
+
+
+def test_rules_seed_images_no_scope_key_repeats() -> None:
+    """The `rules_scope_key` tuple (0002_listing_pipeline.py: marketplace, category, field,
+    rule_type, subject, pack, version, tenant)."""
+    keys = [
+        (
+            r.marketplace.value,
+            r.category or "",
+            r.field,
+            r.rule_def.type,
+            (
+                f"{r.rule_def.slot}:{r.rule_def.check}"
+                if isinstance(r.rule_def, ImageRequirement)
+                else ""
+            ),
+            r.rule_def.pack,
+            r.version,
+        )
+        for _, r in _image_rules()
+    ]
+    assert len(keys) == len(set(keys))

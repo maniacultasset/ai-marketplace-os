@@ -73,6 +73,16 @@ def _limited_app(gate: Gate) -> FastAPI:
     return app
 
 
+@pytest.fixture(autouse=True)
+def mid_window_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The limiter's windows are fixed minutes: a burst that straddles a boundary (CI ran 121
+    calls from 09:32:59 into 09:33:00) resets the count mid-test. Every test here counts inside
+    one window, so the clock is pinned mid-minute; the rollover test sets its own."""
+    from app.services import rate_limit
+
+    monkeypatch.setattr(rate_limit, "now", lambda: datetime(2026, 10, 6, 12, 0, 30, tzinfo=UTC))
+
+
 @pytest.fixture
 def gate() -> Gate:
     return Gate()

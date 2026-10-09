@@ -10,6 +10,7 @@ from collections.abc import Awaitable, Callable
 import procrastinate
 from mkos_schemas.enums import JobKind
 
+from app.services.image_compliance import run_image_compliance
 from app.services.imports.runner import run_import
 from app.workers import registry
 from app.workers.policy import POLICIES
@@ -25,10 +26,16 @@ def _task_body() -> Callable[[str], Awaitable[None]]:
 
 
 def register_bodies() -> None:
-    """The job bodies the steps own (S13b `bulk_import`); a body already set is kept (tests
-    install fakes first)."""
+    """The job bodies the steps own (S13b `bulk_import`, S16 `brand_embed`, S17b
+    `image_compliance`); a body already set is kept (tests install fakes first)."""
+    from app.services.brand_embed import run_brand_embed
+
     if registry.body_for(JobKind.BULK_IMPORT) is None:
         registry.register(JobKind.BULK_IMPORT, run_import)
+    if registry.body_for(JobKind.BRAND_EMBED) is None:
+        registry.register(JobKind.BRAND_EMBED, run_brand_embed)
+    if registry.body_for(JobKind.IMAGE_COMPLIANCE) is None:
+        registry.register(JobKind.IMAGE_COMPLIANCE, run_image_compliance)
 
 
 def register_tasks(app: procrastinate.App) -> None:

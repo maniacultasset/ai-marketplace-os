@@ -26,6 +26,8 @@ from urllib.parse import urlsplit
 from pydantic import Field, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.core.model_prices import EMBEDDING_PRICE_USD_PER_MTOK, is_usable_openai_key
+
 EMBEDDING_DIMENSIONS: Final[int] = 1536
 
 # Every JWT literal committed to the repo or the Canon: ENV.md's JWT_SECRET row (.env.example),
@@ -344,7 +346,22 @@ def _boot_errors(s: Settings) -> list[str]:
     errors += _kms_errors(s)
     errors += _url_errors(s)
     errors += _storage_errors(s)
+    errors += _embedding_errors(s)
     errors += _spapi_errors(s)
+    return errors
+
+
+def _embedding_errors(s: Settings) -> list[str]:
+    """S16 PLAN D4/D5 (ADR-0013 §1: OpenAI at S16): a worker embeds, so outside local it needs a
+    real key (never hash vectors under the real model name), and every worker needs a price for
+    its embedding model. Names only, never the key or the model value."""
+    if s.app_role != "worker":
+        return []
+    errors: list[str] = []
+    if s.app_env != "local" and not is_usable_openai_key(s.openai_api_key):
+        errors.append("APP_ROLE=worker requires OPENAI_API_KEY outside APP_ENV=local")
+    if s.embedding_model not in EMBEDDING_PRICE_USD_PER_MTOK:
+        errors.append("EMBEDDING_MODEL has no price entry")
     return errors
 
 
@@ -413,3 +430,15 @@ def get_settings() -> Settings:
     if errors:
         raise SystemExit("FATAL: refusing to boot. " + "; ".join(errors))
     return loaded
+
+
+# The process variables a child process may inherit (S17b: the image check child). Only these
+# names are ever read, so no DSN, token, key or secret reaches the child.
+CHILD_PROCESS_ENV: Final = ("PATH", "PYTHONPATH", "VIRTUAL_ENV")
+
+
+def child_process_env() -> dict[str, str]:
+    """The allow-listed process variables that are set (R1: env access stays in this module)."""
+    import os
+
+    return {name: os.environ[name] for name in CHILD_PROCESS_ENV if name in os.environ}
