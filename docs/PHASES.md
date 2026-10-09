@@ -72,7 +72,7 @@ Every step runs locally on Docker PostgreSQL 17 + pgvector; Cloud SQL is for sta
 | S14b | AI seam (5 ports + fakes), `/rules/dry-run`, `/internal/admin` | S13, S3, S9, S10 | stub pipeline, FakeAdapter | — | merged 2026-10-07 (#31): stub pipeline, five ports, FakeAdapter, rules API, read-only admin |
 | S15 | Marketplace accounts + OAuth, `KeyWrapper`, token refresh | S10, S13, S4, Amazon app | fake marketplace server + FakeAdapter; `LocalKmsStub` | credentials, domain | merged 2026-10-07 (#30): OAuth connect, sealed tokens, refresh job, `0006_oauth_pending`; real OAuth and Cloud KMS deferred (S4) |
 | S16 | Brand onboarding, invites, chunking + embeddings | S10, S13, model API key | none named (Open: STATE dec. 5) | model API key (D27), email (D24) | built (local, hash embedder; documents in the S13b S3-API store; `brand_onboarding.sh` e2e in `make e2e` and bootstrap); invites 1.1 (C6) |
-| S18 | Generation: job → `run_listing_pipeline`; `blocked` after 3 | S14b, AI drop; S16 before final gates | stub pipeline | AI drop (T104, due D29) | S18a done (local) |
+| S18 | Generation: job → `run_listing_pipeline`; `blocked` after 3 | S14b, AI drop; S16 before final gates | stub pipeline | AI drop (T104, due D29) | done (local) |
 | S19 | Review + approval, `review_decisions`, `GET /issues` | S18 | — | — | not started |
 | S20 | Adapter framework + Amazon | S15, sandbox | fake marketplace server + FakeAdapter | Amazon credentials | not started |
 | S21 | Publish, per-field retry, status sync, DLQ requeue | S19; S20 before final gates | FakeAdapter first | — | not started |

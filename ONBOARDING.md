@@ -110,8 +110,15 @@ make gitleaks       # needs the pinned gitleaks binary
   spend plus reservations reach its cap (`tenants.llm_daily_budget_usd`, else
   `LLM_TENANT_DAILY_BUDGET_USD`); the platform cap (`LLM_DAILY_BUDGET_USD`) is checked when the job
   is claimed, which reserves 0.10 USD per run until real spend replaces it.
+- A human edit is `PATCH /api/v1/listings/{id}/content` with `If-Match: "<current_version_id>"`
+  (operator, owner): a new `edit` version that keeps the generator as maker and records the
+  editor, re-checked at once (`validated`, `needs_review` or `blocked/validation_errors`); a stale
+  If-Match is 409 `STALE_VERSION`. `POST /api/v1/listings/validate` re-runs the rules on a
+  version and always answers 200 (`passed: false` on findings); equal pins reuse the stored run,
+  and a human rejection is never undone by it.
 - The flows end to end: `make dev`, `make seed`, then `make e2e` (`scripts/e2e/generate.sh`,
-  `regenerate.sh`; the scripts start their own worker through the `WORKER_START` hook).
+  `regenerate.sh`, `listing_edit.sh`; the scripts start their own worker through the
+  `WORKER_START` hook).
 
 ## How work flows
 
