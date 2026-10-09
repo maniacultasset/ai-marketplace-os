@@ -350,6 +350,7 @@ def _boot_errors(s: Settings) -> list[str]:
     errors += _storage_errors(s)
     errors += _embedding_errors(s)
     errors += _spapi_errors(s)
+    errors += _flipkart_errors(s)
     return errors
 
 
@@ -379,6 +380,39 @@ def _spapi_errors(s: Settings) -> list[str]:
         errors += spapi_endpoint_errors(
             s.amazon_spapi_endpoint, use_sandbox=s.amazon_use_sandbox, app_env=s.app_env
         )
+    return errors
+
+
+PLACEHOLDER_VALUES: Final = frozenset({"", "replace_me"})
+
+
+def _unset(value: str | None) -> bool:
+    """S22 C11: unset, blank or the `.env.example` placeholder."""
+    return value is None or value.strip().casefold() in PLACEHOLDER_VALUES
+
+
+def _flipkart_errors(s: Settings) -> list[str]:
+    """S22 D1, D8 (C10, C11): with `FLIPKART_ENABLED=true` off local, the api and the worker need
+    real Flipkart credentials and the pinned API base and OAuth URLs. The flag off adds nothing.
+    Names only, never a value."""
+    if not s.flipkart_enabled or s.app_env == "local" or s.app_role not in ("api", "worker"):
+        return []
+    from app.adapters.flipkart.endpoint import (
+        flipkart_endpoint_errors,
+        flipkart_oauth_endpoint_errors,
+    )
+
+    errors: list[str] = []
+    for name, value in (
+        ("FLIPKART_CLIENT_ID", s.flipkart_client_id),
+        ("FLIPKART_CLIENT_SECRET", s.flipkart_client_secret),
+        ("FLIPKART_AUTHORIZE_URL", s.flipkart_authorize_url),
+    ):
+        if _unset(value):
+            errors.append(f"FLIPKART_ENABLED=true requires {name}")
+    errors += flipkart_endpoint_errors(s.flipkart_api_base, app_env=s.app_env)
+    authorize = None if _unset(s.flipkart_authorize_url) else s.flipkart_authorize_url
+    errors += flipkart_oauth_endpoint_errors(s.flipkart_token_url, authorize, app_env=s.app_env)
     return errors
 
 
