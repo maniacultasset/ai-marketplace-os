@@ -1180,31 +1180,6 @@ def test_prove_gates_s21_legs(repo_root: Path) -> None:
     assert code.index("leg api-tests-publish-case-matrix") > docker
 
 
-S22_LEGS = {
-    "lint-imports-flipkart-adapter-from-service": (
-        "lint-imports",
-        "only app.adapters and app.workers reach the marketplace adapter and client BROKEN",
-    ),
-    "lint-imports-flipkart-mapping-httpx": (
-        "lint-imports",
-        "adapter mapping, endpoint check, error map and registry do no I/O BROKEN",
-    ),
-}
-
-
-def test_prove_gates_s22_legs(repo_root: Path) -> None:
-    code = _code((repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8"))
-    for name, (gate, regex) in S22_LEGS.items():
-        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
-        assert leg is not None, name
-        assert leg.group(1) == regex, name
-    assert "import app.adapters.flipkart.adapter" in code
-    assert "app/adapters/flipkart/mapping.py" in code
-    docker = code.index('if [ "$with_docker" -eq 1 ]; then')
-    for name in S22_LEGS:
-        assert code.index(f"leg {name}") < docker, name
-
-
 def test_bootstrap_imports_pipeline(repo_root: Path) -> None:
     # S14b T14 (ADR-0013 §4): the image ships the pipeline module the generation worker imports.
     text = (repo_root / "scripts" / "ci" / "bootstrap.sh").read_text(encoding="utf-8")
@@ -2755,42 +2730,6 @@ def test_e2e_publish_scripts_steps(repo_root: Path, script: str) -> None:
     assert tuple(re.findall(r"(?m)^step (\w+)$", code)) == PUBLISH_E2E[script]
     logins = re.findall(r"\$\(login (\S+)\)", code)
     assert len(logins) == len(set(logins)), logins  # one login per seeded email (the limiter)
-
-
-# ---- S22 T18 (AC16; C2): the Flipkart connect and preview e2e ----
-
-FLIPKART_E2E = "scripts/e2e/flipkart_connect_preview.sh"
-FLIPKART_E2E_STEPS = (
-    "health",
-    "fake_health",
-    "off_health",
-    "login_acme_owner",
-    "fake_reset_calls",
-    "off_connect_501",
-    "fake_calls_0",
-    "cleanup_live_flipkart",
-    "connect_200",
-    "consent",
-    "callback_303",
-    "confirm_200",
-    "list_active",
-    "preview_family_200",
-    "login_bharat_owner",
-    "bharat_preview_404",
-    "no_token_401",
-    "revoke_200",
-)
-
-
-def test_e2e_flipkart_connect_preview_steps(repo_root: Path) -> None:
-    from app.db.seed_ops import SEED_NAMESPACE
-
-    code = _code((repo_root / FLIPKART_E2E).read_text(encoding="utf-8"))
-    assert "set -euo pipefail" in code
-    assert tuple(re.findall(r"(?m)^step (\w+)$", code)) == FLIPKART_E2E_STEPS
-    logins = re.findall(r"\$\(login (\S+)\)", code)
-    assert logins == ["owner@acme.test", "owner@bharat.test"]
-    assert len(set(logins)) == len(logins)  # one login per email
     assert not re.search(r":\d{2,5}\b", code)
     assert "scripts/ci/worktree_env.sh exports .worktree.env" in code
     assert "FAILED at step $current (HTTP status ${status:-none})" in code
@@ -2843,6 +2782,72 @@ def test_e2e_publish_scripts_without_hooks_exit_2(
     )
     assert result.returncode == 2
     assert result.stderr.startswith("usage: FAKE_URL=<fake>")
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""
+
+
+S22_LEGS = {
+    "lint-imports-flipkart-adapter-from-service": (
+        "lint-imports",
+        "only app.adapters and app.workers reach the marketplace adapter and client BROKEN",
+    ),
+    "lint-imports-flipkart-mapping-httpx": (
+        "lint-imports",
+        "adapter mapping, endpoint check, error map and registry do no I/O BROKEN",
+    ),
+}
+
+
+def test_prove_gates_s22_legs(repo_root: Path) -> None:
+    code = _code((repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8"))
+    for name, (gate, regex) in S22_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+    assert "import app.adapters.flipkart.adapter" in code
+    assert "app/adapters/flipkart/mapping.py" in code
+    docker = code.index('if [ "$with_docker" -eq 1 ]; then')
+    for name in S22_LEGS:
+        assert code.index(f"leg {name}") < docker, name
+
+
+FLIPKART_E2E = "scripts/e2e/flipkart_connect_preview.sh"
+
+
+FLIPKART_E2E_STEPS = (
+    "health",
+    "fake_health",
+    "off_health",
+    "login_acme_owner",
+    "fake_reset_calls",
+    "off_connect_501",
+    "fake_calls_0",
+    "cleanup_live_flipkart",
+    "connect_200",
+    "consent",
+    "callback_303",
+    "confirm_200",
+    "list_active",
+    "preview_family_200",
+    "login_bharat_owner",
+    "bharat_preview_404",
+    "no_token_401",
+    "revoke_200",
+)
+
+
+def test_e2e_flipkart_connect_preview_steps(repo_root: Path) -> None:
+    from app.db.seed_ops import SEED_NAMESPACE
+
+    code = _code((repo_root / FLIPKART_E2E).read_text(encoding="utf-8"))
+    assert "set -euo pipefail" in code
+    assert tuple(re.findall(r"(?m)^step (\w+)$", code)) == FLIPKART_E2E_STEPS
+    logins = re.findall(r"\$\(login (\S+)\)", code)
+    assert logins == ["owner@acme.test", "owner@bharat.test"]
+    assert len(set(logins)) == len(logins)  # one login per email
+    assert not re.search(r":\d{2,5}\b", code)
+    assert "scripts/ci/worktree_env.sh exports .worktree.env" in code
+    assert "FAILED at step $current (HTTP status ${status:-none})" in code
+    assert 'cat "$body"' not in code and "psql" not in code
     assert f'seed_namespace="{SEED_NAMESPACE}"' in code
     bodies = _step_bodies(code)
     assert "$off_api/marketplaces/connect" in bodies["off_connect_501"]
