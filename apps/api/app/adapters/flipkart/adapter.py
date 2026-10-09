@@ -73,6 +73,7 @@ from app.adapters.flipkart.mapping import (
     is_mapped,
     preview,
     reverse_index,
+    unsafe_sku,
 )
 
 NO_LISTING_ID: Final = UUID(int=0)
@@ -392,7 +393,8 @@ class FlipkartAdapter(MarketplaceAdapter):
         for sku, paths in per_sku.items():
             if [p for p in paths if p not in by_sku[sku].paths]:
                 raise ValueError("a field path this item does not carry")
-        if not is_mapped(item.template):
+        if not is_mapped(item.template) or any(unsafe_sku(s) for s in per_sku):
+            # an unsafe seller SKU is refused as VALUE_NOT_ALLOWED, as create does (invariant 8)
             return self._blocked(item, [by_sku[s] for s in per_sku], errors)
         plans: list[tuple[MappedItem, list[str], dict[str, ErrorItem], list[str], list[str]]] = []
         results: list[ItemResult] = []
