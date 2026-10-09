@@ -2528,3 +2528,28 @@ def test_review_e2e_proves_maker_checker_over_http(repo_root: Path) -> None:
     edit = _code((repo_root / REVIEW_EDIT_REJECT_FLOW).read_text(encoding="utf-8"))
     assert approve.count('"MAKER_CHECKER_VIOLATION"') == 1
     assert edit.count('"MAKER_CHECKER_VIOLATION"') == 2
+
+
+S19A_LEGS = {
+    "api-tests-no-api-maker-checker": ("api-tests", "test_api_maker_checker_refuses_before_sql"),
+    "api-tests-no-if-match": ("api-tests", "test_patch_stale_409"),
+    "api-tests-approve-image-gate": ("api-tests", "test_approve_blocked_unchecked_image"),
+}
+
+
+def test_prove_gates_s19a_legs(repo_root: Path) -> None:
+    code = _code((repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8"))
+    for name, (gate, regex) in S19A_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+        assert code.index(f"leg {name}") > code.index('if [ "$with_docker" -eq 1 ]; then')
+    review = (repo_root / "apps/api/app/services/review.py").read_text(encoding="utf-8")
+    edit = (repo_root / "apps/api/app/services/listing_edit.py").read_text(encoding="utf-8")
+    # every seed's <old> text is still in the source, so the seed applies
+    assert (
+        "if approver_refusal(approver, await _chain(ctx, listing.id, version.id)) is not None:"
+        in review
+    )
+    assert "    _image_gate(ctx, listing, version)" in review
+    assert "    if if_match != listing.current_version_id:" in edit

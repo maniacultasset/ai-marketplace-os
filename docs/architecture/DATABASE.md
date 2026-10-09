@@ -1933,6 +1933,7 @@ Rows marked **→ Tn** moved to TEAM-QUESTIONS and are built on its Default.
 | 28 | Measure `facts_guard` per-row cost on a 1k-row import (S13) | Tech Lead |
 | 29 | `google-re2` as a pinned dependency under ADR-0005 | Tech Lead |
 | 30 | How a fact-only change (e.g. a new MRP) reaches a `published` listing: no text change means no new version, and no edge re-publishes the same version with new facts (rev 3, found by the facts-digest design) | user + client |
+| 31 | Re-approving a version whose approval a `revalidate` voided: `approved_by_user_id` is set once and `review_decisions` allows one `approve` per version, so S19 answers 409 `INVALID_STATUS_TRANSITION` ("edit or regenerate to approve again"); an approval history per version needs a migration (**T124**) | user |
 
 ### 11.2 Changes vs the Canon
 

@@ -17,7 +17,8 @@
 ## Decision
 
 1. **v1 publishes only after a human approves a specific `listing_version`.**
-   - The approver is a different active member with the `reviewer`, `owner` or `admin` role.
+   - The approver is a different active member with the `reviewer` or `owner` role (T88's default
+     drops `admin`, which holds no `listing:approve` in the role matrix; S19 builds it).
    - This is enforced in the API **and** by a DB trigger (the backstop).
 2. **`tenants.auto_publish boolean NOT NULL DEFAULT false`** is added now, with
    `CHECK (auto_publish = false)` in v1.

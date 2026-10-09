@@ -481,6 +481,23 @@ seed_preview_case_matrix() {
   cp "$root/.env" .env
   replace apps/api/tests/integration/test_listings_preview.py $'@pytest.mark.endpoint("listings_preview", case="conflict")\n' ''
 }
+# S19 T16: the API refuses a maker before any SQL (the database's MKC01 is only the backstop),
+# a stale If-Match is refused, and S17b's image gate stays wired into the approve.
+seed_no_api_maker_checker() {
+  cp "$root/.env" .env
+  replace apps/api/app/services/review.py \
+    'if approver_refusal(approver, await _chain(ctx, listing.id, version.id)) is not None:' \
+    'if False:'
+}
+seed_no_if_match() {
+  cp "$root/.env" .env
+  replace apps/api/app/services/listing_edit.py \
+    '    if if_match != listing.current_version_id:' '    if False:'
+}
+seed_no_image_gate() {
+  cp "$root/.env" .env
+  replace apps/api/app/services/review.py '    _image_gate(ctx, listing, version)' '    pass'
+}
 leg lint-imports-adapter-from-service lint-imports 'only app.adapters and app.workers reach the marketplace adapter and client BROKEN' \
   seed_adapter_from_service make lint-imports
 leg lint-imports-mapping-httpx lint-imports 'adapter mapping, endpoint check, error map and registry do no I/O BROKEN' \
@@ -529,6 +546,9 @@ if [ "$with_docker" -eq 1 ]; then
   leg api-tests-engine-coverage api-tests 'rules_engine branch coverage' seed_engine_coverage COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-revoke-no-shred api-tests 'ck_ma_revoked_shredded|test_revoke_crypto_shreds' seed_revoke_no_shred COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-preview-case-matrix api-tests 'listings_preview: missing endpoint cases' seed_preview_case_matrix COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-no-api-maker-checker api-tests 'test_api_maker_checker_refuses_before_sql' seed_no_api_maker_checker COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-no-if-match api-tests 'test_patch_stale_409' seed_no_if_match COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-approve-image-gate api-tests 'test_approve_blocked_unchecked_image' seed_no_image_gate COMPOSE_PROJECT_NAME="$self_project" make api-tests
   # A throwaway database with 0000, so the seeded revision legs never stamp mos_test. The broken
   # downgrade leaves its revision stamped there, so that leg runs last.
   docker compose exec -T postgres dropdb -U postgres --if-exists --force mos_prove

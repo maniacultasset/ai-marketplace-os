@@ -564,6 +564,7 @@ start before billing. S14b gains S14a as a dependency because `/rules/dry-run` c
      `test_context_has_no_credentials`.
   5. `PATCH .../content` makes a new version, keeps `generated_by_user_id`, sets `edited_by_user_id`.
      Proof: `test_patch_content_versioning`.
+     Proved on S18's routes; S19 adds the review-side tests (`test_review_on_s18_routes.py`).
   6. `/listings/validate` returns 200 with `passed: false` on a rules failure. Proof: `test_validate_200_failed`.
   7. A crashed generation job leaves the listing out of `generating` via the reaper. Proof: `test_generation_reaper`.
   8. At the tenant budget cap, generate is refused with an ErrorReport and nothing is enqueued. Proof:
