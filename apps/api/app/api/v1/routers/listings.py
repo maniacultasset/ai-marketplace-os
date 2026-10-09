@@ -127,10 +127,14 @@ async def listings_content_patch(
 ) -> ListingDetail:
     """A human edit: creates a new version, and the editor can no longer approve it. `If-Match`
     names the version the edit is based on (409 STALE_VERSION when it is not current)."""
+    try:
+        based_on = UUID(if_match.strip('"'))
+    except ValueError:  # the header pattern admits 36 hex-or-dash characters that are no UUID
+        raise ApiError(422, ErrorCode.VALIDATION_FAILED, "If-Match is not a version id.") from None
     detail = await listing_edit.edit(
         principal,
         listing_id,
-        UUID(if_match.strip('"')),
+        based_on,
         content=body.content,
         keywords=body.keywords,
         attributes=body.attributes,

@@ -241,7 +241,16 @@ async def test_patch_nested_unknown_key_not_stored(
 
 @pytest.mark.endpoint("listings_content_patch", case="validation")
 @pytest.mark.parametrize(
-    "case", ["blank_title", "501_char_title", "51_terms", "if_match_missing", "unquoted", "weak"]
+    "case",
+    [
+        "blank_title",
+        "501_char_title",
+        "51_terms",
+        "if_match_missing",
+        "unquoted",
+        "weak",
+        "not_uuid",
+    ],
 )
 async def test_patch_invalid_422(api: httpx.AsyncClient, gen_world: GenWorld, case: str) -> None:
     listing_id, parent = _seeded(gen_world)
@@ -255,6 +264,8 @@ async def test_patch_invalid_422(api: httpx.AsyncClient, gen_world: GenWorld, ca
         body = {"content": CLEAN, "keywords": {"search_terms": [f"t{i}" for i in range(51)]}}
     elif case == "if_match_missing":
         headers.pop("If-Match")
+    elif case == "not_uuid":
+        headers["If-Match"] = '"' + "-" * 36 + '"'
     elif case == "unquoted":
         headers["If-Match"] = str(parent)
     else:
