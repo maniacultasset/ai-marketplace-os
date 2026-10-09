@@ -36,6 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.db.models.listings import Listing
+from app.db.models.ops import JobRun
 from app.db.models.runs import AgentRun
 from app.db.models.tenancy import Tenant
 from app.db.session import platform_scope
@@ -229,3 +230,90 @@ async def cost_by_model(session: AsyncSession, day: date) -> list[GroupCost]:
 
 async def cost_by_trigger(session: AsyncSession, day: date) -> list[GroupCost]:
     return await _by(session, AgentRun.trigger, day)  # type: ignore[arg-type]
+
+
+# ---- jobs ----
+
+
+@dataclass(frozen=True)
+class KindOutcomes:
+    kind: str
+    terminal: int
+    failed: int
+
+
+@dataclass(frozen=True)
+class QueueAge:
+    queue: str
+    oldest_s: int | None
+
+
+@dataclass(frozen=True)
+class KindTiming:
+    kind: str
+    n: int
+    avg_s: float
+    max_s: float
+
+
+async def job_outcomes(
+    session: AsyncSession, now: datetime, window: timedelta = JOB_WINDOW
+) -> list[KindOutcomes]:
+    """Per job kind, the jobs that reached a terminal status in `[now - window, now]`."""
+    current = aware_utc(now)
+    stmt = (
+        select(
+            JobRun.kind,
+            func.count(),
+            func.count().filter(JobRun.status.in_(FAILED)),
+        )
+        .where(
+            JobRun.status.in_(TERMINAL),
+            JobRun.finished_at >= current - window,
+            JobRun.finished_at <= current,
+        )
+        .group_by(JobRun.kind)
+        .order_by(JobRun.kind)
+    )
+    return [KindOutcomes(k, int(t), int(f)) for k, t, f in (await session.execute(stmt)).all()]
+
+
+async def oldest_queued(session: AsyncSession, now: datetime) -> list[QueueAge]:
+    """Per queue (every known queue listed), the age of its oldest `queued` job."""
+    current = aware_utc(now)
+    stmt = (
+        select(JobRun.queue, func.min(JobRun.queued_at))
+        .where(JobRun.status == "queued")
+        .group_by(JobRun.queue)
+    )
+    oldest: dict[str, datetime] = {str(q): at for q, at in (await session.execute(stmt)).all()}
+    out: list[QueueAge] = []
+    for queue in sorted(set(QUEUES) | set(oldest)):
+        at = oldest.get(queue)
+        out.append(
+            QueueAge(queue, None if at is None else max(0, int((current - at).total_seconds())))
+        )
+    return out
+
+
+async def processing_time(
+    session: AsyncSession, now: datetime, window: timedelta = JOB_WINDOW
+) -> list[KindTiming]:
+    """Per job kind, `finished_at - started_at` of the jobs finished in the window that started
+    (a job cancelled while queued never ran and is left out)."""
+    current = aware_utc(now)
+    seconds = func.extract("epoch", JobRun.finished_at - JobRun.started_at)
+    stmt = (
+        select(JobRun.kind, func.count(), func.avg(seconds), func.max(seconds))
+        .where(
+            JobRun.started_at.is_not(None),
+            JobRun.finished_at >= current - window,
+            JobRun.finished_at <= current,
+        )
+        .group_by(JobRun.kind)
+        .order_by(JobRun.kind)
+    )
+    return [
+        KindTiming(k, int(n), round(float(avg), 3), round(float(mx), 3))
+        for k, n, avg, mx in (await session.execute(stmt)).all()
+    ]
