@@ -2,9 +2,11 @@
 
 `contributor_chain(current, versions)` walks `parent_version_id` back from the current version,
 collecting every `generated_by_user_id` and `edited_by_user_id`, and stops after the first
-`generation`, `import` or full `regeneration` (`changed_paths` NULL): a partial regeneration
-carries the human edits before it forward, a full one starts a new chain whose maker is the user
-who asked for it. A cycle or a missing parent raises `ChainError` (a broken chain is never read
+`generation` or full `regeneration` (`changed_paths` NULL), exactly as `lv_guard` walks it
+(DATABASE.md:785 "since the last generation or full regeneration"): a partial regeneration, an
+edit and an `import` that names a parent carry the contributors before them forward; a full
+regeneration starts a new chain whose maker is the user who asked for it. A version with no
+parent ends the walk. A cycle or a missing parent raises `ChainError` (a broken chain is never read
 as "nobody contributed").
 
 `approver_refusal(approver, chain)` is `MAKER_CHECKER_VIOLATION` when the approver is in the
@@ -20,7 +22,7 @@ from typing import Final
 
 from mkos_schemas.codes import ErrorCode
 
-CHAIN_ROOTS: Final = frozenset({"generation", "import"})
+CHAIN_ROOTS: Final = frozenset({"generation"})
 
 
 class ChainError(ValueError):

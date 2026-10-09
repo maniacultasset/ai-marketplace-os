@@ -68,10 +68,15 @@ def test_chain_partial_regeneration_carries_editors() -> None:
     assert _chain(gen, edit, partial) == {A, B, C}
 
 
-def test_chain_import_stops() -> None:
+def test_chain_import_carries_its_parent() -> None:
+    """As `lv_guard` walks it: only a generation or a full regeneration ends the chain."""
     gen = _v("generation", A)
     imported = _v("import", D, gen)
-    assert _chain(gen, imported) == {D}
+    assert _chain(gen, imported) == {A, D}
+
+
+def test_chain_import_without_parent_alone() -> None:
+    assert _chain(_v("import", D)) == {D}
 
 
 def test_chain_cycle_raises() -> None:
