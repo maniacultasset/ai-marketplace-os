@@ -133,6 +133,15 @@ async def listings_status(listing_id: ListingId, principal: CurrentPrincipal) ->
     )
 
 
+@route(router, OPS["listings_history"])
+@stub
+async def listings_history(
+    listing_id: ListingId, page: Annotated[PageParams, Depends()]
+) -> NoReturn:
+    """The listing's audit history (approvals, denials, rejections, edits), newest first."""
+    raise NotImplementedYet("listings_history")
+
+
 @route(router, OPS["listings_content_patch"])
 async def listings_content_patch(
     listing_id: ListingId,

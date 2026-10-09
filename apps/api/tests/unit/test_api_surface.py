@@ -249,6 +249,10 @@ def test_list_ops_are_the_page_models() -> None:
         "rules_list",
         "members_list",
         "brand_documents_list",
+        # S19: the listing history and the two inboxes
+        "listings_history",
+        "issues_list",
+        "tasks_list",
     }
 
 

@@ -2,7 +2,8 @@
 
 `OPS` is the frozen list (35 operations at S3, 38 with S10's switch and members, 40 with S15's
 connect confirm and account revoke, 43 with S16's profile update and document list and delete,
-44 with S20's listing preview; no dead-letter path,
+44 with S20's listing preview, 48 with S19's listing history, issues, issue dismiss and tasks; no
+dead-letter path,
 which is staff tooling per T82). It
 drives the routers (`route()`), the declared OpenAPI responses (`declared_responses()`), the
 parametrized surface tests and the case-matrix guard (`cases()`), so a route, its contract and its
@@ -40,7 +41,13 @@ from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.brand import BrandDocumentPage
 from app.api.v1.schemas.images import ImageAccepted, ImageReportOut, UploadUrlOut
 from app.api.v1.schemas.imports import ImportAccepted, ImportRowPage
-from app.api.v1.schemas.listings import ListingDetail, ListingPage, ListingStatusOut
+from app.api.v1.schemas.issues import IssueOut, IssuePage
+from app.api.v1.schemas.listings import (
+    ListingDetail,
+    ListingHistoryPage,
+    ListingPage,
+    ListingStatusOut,
+)
 from app.api.v1.schemas.marketplaces import (
     ConnectOut,
     MarketplaceAccountOut,
@@ -48,6 +55,7 @@ from app.api.v1.schemas.marketplaces import (
 )
 from app.api.v1.schemas.products import ProductOut, ProductPage
 from app.api.v1.schemas.rules import RulePage
+from app.api.v1.schemas.tasks import TaskPage
 from app.api.v1.schemas.tenants import TenantOut
 from app.core.rbac import PUBLIC, Action, roles_for
 
@@ -261,8 +269,8 @@ def success_response(op: Operation) -> dict[int | str, dict[str, Any]]:
         entry["headers"] = {
             "ETag": {
                 "description": (
-                    "The profile's current version, a quoted UUID. Send it back as `If-Match` "
-                    "on the next PATCH."
+                    "The current version (of the profile or the listing), a quoted UUID. Send "
+                    "it back as `If-Match` on the next PATCH."
                 ),
                 "schema": {"type": "string"},
                 "example": ETAG_EXAMPLE,
@@ -396,7 +404,8 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "List listings (the review queue)", "S19",
               query=("status", "marketplace", "product_id", "limit", "cursor"), action=A.TENANT_READ),
     Operation("listings_get", "GET", "/listings/{listing_id}", 200, ListingDetail, "listings",
-              "Read one listing with its content and validation", "S19", path_id="listing_id", action=A.TENANT_READ),
+              "Read one listing with its content and validation", "S19", path_id="listing_id",
+              etag=True, action=A.TENANT_READ),
     Operation("listings_preview", "GET", "/listings/{listing_id}/preview", 200,
               MarketplacePreview, "listings", "Preview the marketplace payload of the current "
               "version (sends nothing)", "S20", path_id="listing_id", conflict_code=E.LISTING_BUSY,
@@ -404,10 +413,13 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("listings_status", "GET", "/listings/{listing_id}/status", 200, ListingStatusOut,
               "listings", "Listing status (a convenience alias; poll jobs instead)", "S18",
               path_id="listing_id", action=A.TENANT_READ),
+    Operation("listings_history", "GET", "/listings/{listing_id}/history", 200,
+              ListingHistoryPage, "listings", "The listing's audit history, newest first", "S19",
+              path_id="listing_id", query=("limit", "cursor"), action=A.TENANT_READ),
     Operation("listings_content_patch", "PATCH", "/listings/{listing_id}/content", 200,
               ListingDetail, "listings", "Edit content (creates a new version)", "S18",
               path_id="listing_id", has_body=True, if_match=True,
-              conflict_code=E.STALE_VERSION, action=A.LISTING_EDIT),
+              conflict_code=E.STALE_VERSION, etag=True, action=A.LISTING_EDIT),
     Operation("listings_regenerate", "POST", "/listings/{listing_id}/regenerate", 202,
               JobAccepted, "listings", "Regenerate an existing listing", "S18",
               path_id="listing_id", has_body=True, idempotency=True, action=A.LISTING_REGENERATE),
@@ -453,6 +465,18 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("jobs_cancel", "POST", "/jobs/{job_id}/cancel", 200, JobEnvelope, "jobs",
               "Cancel a queued job", "S13", path_id="job_id", idempotency=True,
               conflict_code=E.INVALID_STATUS_TRANSITION, action=A.LISTING_GENERATE),
+    # ---- issues and tasks (S19) ----
+    Operation("issues_list", "GET", "/issues", 200, IssuePage, "issues",
+              "The issue inbox (open issues by default)", "S19",
+              query=("status", "listing_id", "source", "error_code", "marketplace", "limit",
+                     "cursor"), action=A.TENANT_READ),
+    Operation("issues_dismiss", "POST", "/issues/{issue_id}/dismiss", 200, IssueOut, "issues",
+              "Dismiss an open warning (errors cannot be dismissed)", "S19", path_id="issue_id",
+              idempotency=True, conflict_code=E.INVALID_STATUS_TRANSITION,
+              action=A.LISTING_APPROVE),
+    Operation("tasks_list", "GET", "/tasks", 200, TaskPage, "tasks",
+              "The human task inbox (open tasks by default)", "S19",
+              query=("status", "limit", "cursor"), action=A.TENANT_READ),
     # ---- analytics (S23) ----
     Operation("analytics_get", "GET", "/analytics", 200, AnalyticsSummary, "analytics",
               "Operational metrics (alias of /analytics/summary)", "S23", query=("from", "to"), action=A.ANALYTICS_READ),

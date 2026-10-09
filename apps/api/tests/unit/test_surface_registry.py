@@ -49,6 +49,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("listings_get", "GET", "/listings/{listing_id}"),
     ("listings_preview", "GET", "/listings/{listing_id}/preview"),
     ("listings_status", "GET", "/listings/{listing_id}/status"),
+    # S19: the audit history (44 + 1)
+    ("listings_history", "GET", "/listings/{listing_id}/history"),
     ("listings_content_patch", "PATCH", "/listings/{listing_id}/content"),
     ("listings_regenerate", "POST", "/listings/{listing_id}/regenerate"),
     ("listings_retry_fields", "POST", "/listings/{listing_id}/publish/retry-fields"),
@@ -65,6 +67,10 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("rules_dry_run", "POST", "/rules/dry-run"),
     ("jobs_get", "GET", "/jobs/{job_id}"),
     ("jobs_cancel", "POST", "/jobs/{job_id}/cancel"),
+    # S19: the issue and task inboxes (45 + 3)
+    ("issues_list", "GET", "/issues"),
+    ("issues_dismiss", "POST", "/issues/{issue_id}/dismiss"),
+    ("tasks_list", "GET", "/tasks"),
     ("analytics_get", "GET", "/analytics"),
     ("analytics_summary", "GET", "/analytics/summary"),
 )
@@ -73,7 +79,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 44
+    assert len(FROZEN) == 48
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -198,6 +204,7 @@ D9_IDEMPOTENT = {
     "jobs_cancel",
     "brand_documents_upload",
     "images_upload",
+    "issues_dismiss",  # S19
 }
 
 
@@ -240,6 +247,7 @@ def test_error_codes_per_d2() -> None:
         "marketplaces_connect_confirm": (E.MARKETPLACE_ACCOUNT_CONFLICT, E.OAUTH_STATE_INVALID),
         "members_patch": (E.LAST_OWNER_REQUIRED,),
         "listings_preview": (E.LISTING_BUSY,),
+        "issues_dismiss": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
     }
     for op in OPS.values():
         codes = op.error_codes

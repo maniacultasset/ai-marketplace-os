@@ -19,7 +19,7 @@ from pydantic_core import PydanticCustomError
 from app.core.text import reject_control_chars
 
 MAX_BATCH_ITEMS: Final = 200
-Feedback = Annotated[NonBlankStr, Field(max_length=2000)]
+Feedback = Annotated[NonBlankStr, Field(max_length=2000), AfterValidator(reject_control_chars)]
 Instructions = Annotated[NonBlankStr, Field(max_length=2000), AfterValidator(reject_control_chars)]
 
 

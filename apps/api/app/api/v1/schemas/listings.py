@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from mkos_schemas.base import AttrKey, Slug, StrictModel, WireModel
@@ -39,6 +39,28 @@ class ListingDetail(ListingOut):
 
 
 class ListingPage(Page[ListingOut]):
+    pass
+
+
+class AuditEventOut(WireModel):
+    """One `audit_log` row of a listing. No `actor_email` and no `ip`: the history is a seller
+    read, and both are personal data (DATABASE.md §5.2)."""
+
+    id: UUID
+    action: str
+    actor_type: Literal["user", "system", "staff"]
+    actor_user_id: UUID | None = None
+    entity_type: str
+    entity_id: UUID
+    before: dict[str, Any] | None = None
+    after: dict[str, Any] | None = None
+    reason: str | None = None
+    request_id: str | None = None
+    job_id: UUID | None = None
+    occurred_at: AwareDatetime
+
+
+class ListingHistoryPage(Page[AuditEventOut]):
     pass
 
 
