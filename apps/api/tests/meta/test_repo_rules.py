@@ -437,3 +437,26 @@ def test_r5_allows_budget(rules: ModuleType, tmp_path: Path, body: str) -> None:
 def test_r5_flags_other_worker(rules: ModuleType, tmp_path: Path, body: str) -> None:
     root = _tree(tmp_path, {"apps/api/app/workers/other.py": body})
     assert "R5" in {rule for _, _, rule in _found(rules, root)}
+
+
+# ---- S23 (KNOWN-ISSUES.md:31): R5 allows app/workers/rollup.py; services stay out ----
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "from app.db.session import platform_scope\n",
+        "import app.db.session\nx = app.db.session.platform_scope\n",
+    ],
+)
+def test_r5_allows_rollup(rules: ModuleType, tmp_path: Path, body: str) -> None:
+    root = _tree(tmp_path, {"apps/api/app/workers/rollup.py": body})
+    assert "R5" not in {rule for _, _, rule in _found(rules, root)}
+
+
+@pytest.mark.parametrize(
+    "path", ["apps/api/app/services/x.py", "apps/api/app/services/analytics.py"]
+)
+def test_r5_flags_services(rules: ModuleType, tmp_path: Path, path: str) -> None:
+    root = _tree(tmp_path, {path: "from app.db.session import platform_scope\n"})
+    assert "R5" in {rule for _, _, rule in _found(rules, root)}
