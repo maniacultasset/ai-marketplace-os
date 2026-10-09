@@ -10,6 +10,12 @@
 - `ListingVersionRepository`: the next version number (call it under the listing lock), the
   INSERT of an immutable version, and reads scoped to one listing.
 
+S19 adds `ListingRepository.lock_many(ids)` (every target listing `FOR UPDATE` in one statement,
+in id order, so two overlapping approve batches cannot deadlock, DATABASE.md §7.1) and
+`page(filters, after=, limit=)`: the review queue (`validated` or `needs_review`, not paused or
+archived) oldest first by `(status_changed_at, id)`, any other filter newest first by
+`(last_event_at, id)`.
+
 `ListingRepository.preview_source` (S20 T18) reads what a marketplace adapter needs to know about
 one listing, SELECT only and under the tenant's RLS session: the listing, its current version,
 its product, the product's live children (sorted by SKU, a family's send order) and the template
@@ -20,14 +26,16 @@ listing id is `None`, exactly as an unknown one.
 
 from __future__ import annotations
 
+import builtins
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from datetime import datetime
+from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import JobKind
-from sqlalchemy import func, update
+from sqlalchemy import func, literal, tuple_, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
@@ -43,7 +51,9 @@ from app.repositories.base import TenantScopedRepository
 from app.repositories.templates import CategoryTemplateRepository, PinnedTemplate
 
 __all__ = [
+    "QUEUE_STATUSES",
     "JobActor",
+    "ListingFilter",
     "ListingRepository",
     "ListingVersionRepository",
     "NewVersion",
@@ -52,6 +62,22 @@ __all__ = [
     "SourceVersion",
     "UserActor",
 ]
+
+
+QUEUE_STATUSES: Final = frozenset({"validated", "needs_review"})
+PAGE_LIMIT_MAX: Final = 200
+
+
+@dataclass(frozen=True, slots=True)
+class ListingFilter:
+    status: str | None = None
+    marketplace: str | None = None
+    product_id: uuid.UUID | None = None
+
+    @property
+    def queue(self) -> bool:
+        """The review queue: oldest first by `status_changed_at` (BACKEND-ARCHITECTURE §3.5)."""
+        return self.status in QUEUE_STATUSES
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,6 +157,53 @@ class ListingRepository(TenantScopedRepository[Listing]):
             .execution_options(populate_existing=True)
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def lock_many(self, ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, Listing]:
+        """Every listing of this tenant among `ids`, locked `FOR UPDATE` in id order in one
+        statement; unknown and other tenants' ids are absent."""
+        wanted = sorted({_uuid(i) for i in ids})
+        if not wanted:
+            return {}
+        stmt = (
+            self._select()
+            .where(Listing.id.in_(wanted))
+            .order_by(Listing.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        return {row.id: row for row in (await self.db.execute(stmt)).scalars()}
+
+    async def page(
+        self,
+        filters: ListingFilter,
+        *,
+        after: tuple[datetime, uuid.UUID] | None,
+        limit: int,
+    ) -> tuple[builtins.list[Listing], bool]:
+        """One keyset page (module docstring) and whether more rows follow."""
+        if isinstance(limit, bool) or not 1 <= limit <= PAGE_LIMIT_MAX:
+            raise ValueError(f"limit must be in 1..{PAGE_LIMIT_MAX}")
+        stmt = self._select()
+        if filters.status is not None:
+            stmt = stmt.where(Listing.status == filters.status)
+        if filters.marketplace is not None:
+            stmt = stmt.where(Listing.marketplace == filters.marketplace)
+        if filters.product_id is not None:
+            stmt = stmt.where(Listing.product_id == filters.product_id)
+        if filters.queue:
+            stmt = stmt.where(Listing.paused_at.is_(None), Listing.archived_at.is_(None))
+            key = (Listing.status_changed_at, Listing.id)
+        else:
+            key = (Listing.last_event_at, Listing.id)
+        if after is not None:
+            at, row_id = after
+            bound = tuple_(literal(at, key[0].type), literal(row_id, Listing.id.type))
+            stmt = stmt.where(tuple_(*key) > bound if filters.queue else tuple_(*key) < bound)
+        order = (key[0].asc(), key[1].asc()) if filters.queue else (key[0].desc(), key[1].desc())
+        rows = builtins.list(
+            (await self.db.execute(stmt.order_by(*order).limit(limit + 1))).scalars()
+        )
+        return rows[:limit], len(rows) > limit
 
     async def get_by_pair_for_update(
         self, product_id: uuid.UUID, marketplace: str
@@ -374,6 +447,12 @@ class ListingVersionRepository(TenantScopedRepository[ListingVersion]):
         if listing.current_version_id is None:
             return None
         return await self.get(listing.id, listing.current_version_id)
+
+
+def _uuid(value: object) -> uuid.UUID:
+    if not isinstance(value, uuid.UUID):
+        raise ValueError("listing ids must be UUIDs")
+    return value
 
 
 _PRODUCT_COLUMNS = (
