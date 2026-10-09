@@ -1913,7 +1913,7 @@ Rows marked **→ Tn** moved to TEAM-QUESTIONS and are built on its Default.
 | 8 | Who can invite or promote an owner; ownership transfer; password reset in v1 | user |
 | 9 | Run the local app as `app_rw` (new env names) | Tech Lead |
 | 10 | Per-request membership check; regenerating makes you the maker; contributor chain; the answerer is the maker (**T51**) | user |
-| 11 | Does "max 3" count corrections (attempt 1..4) or all attempts (1..3)? | AI team |
+| 11 | Does "max 3" count corrections (attempt 1..4) or all attempts (1..3)? (S18 default, D8: at most 3 `validate_rules` port calls; a 4th gets `INTERNAL_ERROR`; the backend re-check is attempt n+1 ≤ 4) | AI team |
 | 12 | The merged `codes.py` additions and `request`/`listing` paths (§5.7) | Tech Lead |
 | 13 | Rename `gcs_uri` → `storage_key`; `ImportReport.batch_id` → `import_id` (a site departure too: **T67**) | Tech Lead + FE |
 | 14 | UUIDv7 generated in the app, or v4 until PG18 | Tech Lead |

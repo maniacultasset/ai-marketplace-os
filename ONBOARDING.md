@@ -97,6 +97,22 @@ make commit-lint    # needs PR_TITLE and HEAD_REF from the pull request
 make gitleaks       # needs the pinned gitleaks binary
 ```
 
+## Generation (S18)
+
+- `POST /api/v1/listings/generate` (operator, owner) and `POST /api/v1/listings/{id}/regenerate`
+  (also reviewer) answer 202 with a job; the `listing_generate` worker builds the
+  `GenerationContext` when the job starts, runs the pipeline with no transaction open, re-checks the
+  result with the Rules Engine and stores the version, its validation runs and its `agent_runs`.
+- Local runs use the pipeline stub (`packages/pipeline-stub`). Its scenario comes from the
+  instructions prefix: `stub:blocked` (3 attempts, then `blocked`), `stub:failed`
+  (`failed/generation_failed`), `stub:vision_warn`; anything else is a clean run.
+- The daily AI budget: the API refuses a new request with 429 `BUDGET_EXCEEDED` when the tenant's
+  spend plus reservations reach its cap (`tenants.llm_daily_budget_usd`, else
+  `LLM_TENANT_DAILY_BUDGET_USD`); the platform cap (`LLM_DAILY_BUDGET_USD`) is checked when the job
+  is claimed, which reserves 0.10 USD per run until real spend replaces it.
+- The flows end to end: `make dev`, `make seed`, then `make e2e` (`scripts/e2e/generate.sh`,
+  `regenerate.sh`; the scripts start their own worker through the `WORKER_START` hook).
+
 ## How work flows
 
 - Every step goes through the team loop in [docs/PROCESS.md](docs/PROCESS.md) §4: a plan, a code

@@ -1459,10 +1459,10 @@
   },
   {
    "id": "R00285",
-   "status": "gap",
+   "status": "covered",
    "owner": "shared",
    "ref": "docs/architecture/DATABASE.md:231",
-   "note": "brand_description not in GenerationContext.brand_profile"
+   "note": "S18: brand_description (≤ 2000 chars) is in GenerationContext.brand_profile (BrandPromptRepository.for_prompt)."
   },
   {
    "id": "R00287",
