@@ -1,5 +1,5 @@
 """Listing routes: S18's generate, regenerate, status, content patch and validate; S20's preview;
-the rest are stubs (owner steps S19, S21).
+S19's list, detail, history and approve; the rest are stubs (owner step S21).
 
 `GET /listings` is registered before `GET /listings/{listing_id}`; the batch ops
 (`generate|validate|approve|publish`) are POST-only, so they never shadow a listing id.
@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Annotated, NoReturn
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, Query, Request
+from fastapi import APIRouter, Body, Depends, Query, Request, Response
 from fastapi import Path as PathParam
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ListingStatus, Marketplace
@@ -19,19 +19,36 @@ from mkos_schemas.publish import MarketplacePreview
 from mkos_schemas.validation import ValidationSummary
 
 from app.api.errors import ApiError, NotImplementedYet
-from app.api.pagination import PageParams
+from app.api.pagination import (
+    PageInfo,
+    PageParams,
+    TaggedPageParams,
+    decode_tagged_cursor,
+    encode_cursor,
+    encode_tagged_cursor,
+)
 from app.api.v1.deps import IdempotencyKey, IfMatch, get_current_principal
 from app.api.v1.schemas.batches import ApproveRequest, PublishRequest
 from app.api.v1.schemas.listings import (
+    AuditEventOut,
     ListingContentPatch,
     ListingDetail,
+    ListingHistoryPage,
+    ListingOut,
+    ListingPage,
     ListingStatusOut,
     RegenerateRequest,
     ValidateRequest,
 )
 from app.api.v1.surface import OPS, route, stub
 from app.core.rbac import Principal
-from app.services import generation, listing_edit, listing_preview, listing_validate
+from app.services import (
+    generation,
+    listing_edit,
+    listing_preview,
+    listing_reads,
+    listing_validate,
+)
 from app.services.budget import BudgetExceededError
 
 router = APIRouter()
@@ -89,22 +106,47 @@ async def listings_publish(body: PublishRequest, idempotency_key: IdempotencyKey
 
 
 @route(router, OPS["listings_list"])
-@stub
 async def listings_list(
-    page: Annotated[PageParams, Depends()],
+    page: Annotated[TaggedPageParams, Depends()],
+    principal: CurrentPrincipal,
     status: Annotated[ListingStatus | None, Query()] = None,
     marketplace: Annotated[Marketplace | None, Query()] = None,
     product_id: Annotated[UUID | None, Query()] = None,
-) -> NoReturn:
-    """List the brand's listings (the review queue), filtered by status, marketplace or product."""
-    raise NotImplementedYet("listings_list")
+) -> ListingPage:
+    """List the brand's listings, filtered by status, marketplace or product. `status=validated`
+    or `needs_review` is the review queue, oldest first; any other filter is newest first."""
+    wanted = None if status is None else ListingStatus(status).value
+    tag = listing_reads.order_tag(wanted)
+    after = None if page.cursor is None else decode_tagged_cursor(page.cursor, tag)
+    found = await listing_reads.list_listings(
+        principal,
+        status=wanted,
+        marketplace=None if marketplace is None else Marketplace(marketplace).value,
+        product_id=product_id,
+        after=after,
+        limit=page.limit,
+    )
+    key = found.next_key
+    return ListingPage(
+        data=[ListingOut.model_validate(item) for item in found.items],
+        page=PageInfo(
+            next_cursor=None if key is None else encode_tagged_cursor(found.tag, *key),
+            has_more=found.has_more,
+            limit=page.limit,
+        ),
+    )
 
 
 @route(router, OPS["listings_get"])
-@stub
-async def listings_get(listing_id: ListingId) -> NoReturn:
-    """One listing with its current content and latest validation."""
-    raise NotImplementedYet("listings_get")
+async def listings_get(
+    listing_id: ListingId, principal: CurrentPrincipal, response: Response
+) -> ListingDetail:
+    """One listing with its current content and latest validation. `ETag` is the current
+    version id: send it as `If-Match` on the content PATCH."""
+    body, etag = await listing_reads.detail(principal, listing_id)
+    if etag is not None:
+        response.headers["ETag"] = etag
+    return ListingDetail.model_validate(body)
 
 
 @route(router, OPS["listings_preview"])
@@ -134,12 +176,20 @@ async def listings_status(listing_id: ListingId, principal: CurrentPrincipal) ->
 
 
 @route(router, OPS["listings_history"])
-@stub
 async def listings_history(
-    listing_id: ListingId, page: Annotated[PageParams, Depends()]
-) -> NoReturn:
+    listing_id: ListingId, page: Annotated[PageParams, Depends()], principal: CurrentPrincipal
+) -> ListingHistoryPage:
     """The listing's audit history (approvals, denials, rejections, edits), newest first."""
-    raise NotImplementedYet("listings_history")
+    found = await listing_reads.history(principal, listing_id, after=page.after, limit=page.limit)
+    key = found.next_key
+    return ListingHistoryPage(
+        data=[AuditEventOut.model_validate(item) for item in found.items],
+        page=PageInfo(
+            next_cursor=None if key is None else encode_cursor(*key),
+            has_more=found.has_more,
+            limit=page.limit,
+        ),
+    )
 
 
 @route(router, OPS["listings_content_patch"])
@@ -148,6 +198,7 @@ async def listings_content_patch(
     body: ListingContentPatch,
     if_match: IfMatch,
     principal: CurrentPrincipal,
+    response: Response,
 ) -> ListingDetail:
     """A human edit: creates a new version, and the editor can no longer approve it. `If-Match`
     names the version the edit is based on (409 STALE_VERSION when it is not current)."""
@@ -163,6 +214,9 @@ async def listings_content_patch(
         keywords=body.keywords,
         attributes=body.attributes,
     )
+    etag = listing_reads.etag_of(detail.get("current_version_id"))
+    if etag is not None:
+        response.headers["ETag"] = etag
     return ListingDetail.model_validate(detail)
 
 

@@ -40,6 +40,11 @@ def to_detail(
     listing: Any, content: CanonicalListing | None, summary: ValidationSummary | None
 ) -> dict[str, Any]:
     """The `ListingDetail` fields (the router validates them into the response model)."""
+    return {**listing_fields(listing), "content": content, "validation": summary}
+
+
+def listing_fields(listing: Any) -> dict[str, Any]:
+    """The `ListingOut` fields of a `listings` row (S19's list reuses them)."""
     return {
         "id": listing.id,
         "product_id": listing.product_id,
@@ -54,8 +59,6 @@ def to_detail(
         "status_changed_at": listing.status_changed_at,
         "created_at": listing.created_at,
         "updated_at": listing.updated_at,
-        "content": content,
-        "validation": summary,
     }
 
 
