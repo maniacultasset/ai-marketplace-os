@@ -135,6 +135,8 @@ class JobRun(TenantScoped, Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # 0009 (S23): the enqueuing request's W3C trace context (CHECK ck_job_runs_traceparent_format)
+    traceparent: Mapped[str | None] = mapped_column(Text)
 
 
 @event.listens_for(JobRun, "before_insert")
@@ -377,6 +379,14 @@ class ListingSubmission(TenantScoped, Base):
             text("id DESC"),
         ),
         Index(conv("ix_listing_submissions_job_id"), "job_id"),
+        # 0009 (S23): publish success rate for analytics
+        Index(
+            conv("ix_listing_submissions_tenant_id_responded_at"),
+            "tenant_id",
+            "responded_at",
+            postgresql_include=["outcome", "marketplace"],
+            postgresql_where=text("responded_at IS NOT NULL"),
+        ),
         Index(
             conv("ix_listing_submissions_submission_ref"),
             "tenant_id",
