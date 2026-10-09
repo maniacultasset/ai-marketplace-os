@@ -710,17 +710,17 @@
   },
   {
    "id": "R12661a",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2778; docs/architecture/DATABASE.md:929",
-   "note": "job_runs timestamps exist; processing-time metric not defined"
+   "ref": "apps/api/app/workers/rollup.py",
+   "note": "S23: processing_time per job kind (finished_at - started_at)."
   },
   {
    "id": "R12662",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2778",
-   "note": "ErrorSource recorded; per-source error-rate metric not defined"
+   "ref": "apps/api/app/workers/rollup.py",
+   "note": "S23: job_outcomes per job kind (terminal, failed) over 15 min; feeds the error-rate alert."
   },
   {
    "id": "R12663",
@@ -976,10 +976,10 @@
   },
   {
    "id": "R12705f",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "docs/drafts/BUILD-SEQUENCE.md:235; docs/architecture/BACKEND-ARCHITECTURE.md:1353",
-   "note": "Cost per listing named; over-time view unspecified"
+   "ref": "apps/api/app/workers/rollup.py; apps/api/app/admin/ops_views.py",
+   "note": "S23: per-listing cost (all time and top 50 over 30 days) and per-day model/trigger views on the staff cost page."
   },
   {
    "id": "R12712",

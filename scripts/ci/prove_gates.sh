@@ -253,6 +253,14 @@ seed_iso_no_before_flush() {
   replace apps/api/app/db/session.py $'event.listen(AppSession, "before_flush", check_flush)\n' ''
 }
 seed_iso_env() { cp "$root/.env" .env; }
+# S23: analytics without its listings tenant criterion (the read is refused, so the isolation
+# test goes red), the rollup module off the R5 allowlist, and platform_scope seeded in a service.
+seed_iso_analytics_no_filter() {
+  cp "$root/.env" .env
+  replace apps/api/app/repositories/analytics.py $'                self._criterion_for(Listing),\n' ''
+}
+seed_rollup_not_allowlisted() { replace scripts/ci/check_repo_rules.py $'    "apps/api/app/workers/rollup.py",\n' ''; }
+seed_platform_scope_in_analytics_service() { append apps/api/app/services/analytics.py 'from app.db.session import platform_scope  # noqa: F401'; }
 
 # S15: the decrypt path from a router (import contract), the hash branch without its
 # `token_enc IS NULL` (the public callback could read and delete a pending row), and a revoke that
@@ -423,6 +431,8 @@ leg contracts-schemas-tagged-unbumped contracts 'already tagged; bump per CHANGE
 
 leg lint-imports-platform-scope-worker lint-imports ': R5 ' seed_platform_scope_worker make lint-imports
 leg lint-imports-platform-scope-in-wrapper lint-imports ': R5 ' seed_platform_scope_in_wrapper make lint-imports
+leg lint-imports-rollup-not-allowlisted lint-imports ': R5 ' seed_rollup_not_allowlisted make lint-imports
+leg lint-imports-platform-scope-in-services lint-imports 'app.services is not allowed to import app.db.session' seed_platform_scope_in_analytics_service make lint-imports
 leg lint-imports-job-guc-outside-context lint-imports ': R8 ' seed_job_guc_outside_context make lint-imports
 leg lint-imports-scope-ok-service lint-imports ': R6 ' seed_scope_ok_service make lint-imports
 leg api-lint-text-in-service api-lint ': R4 ' seed_text_in_service make api-lint
@@ -598,6 +608,7 @@ if [ "$with_docker" -eq 1 ]; then
   leg tenant-isolation-guard-table-only tenant-isolation 'test_raw_select_raises_guard\[[a-z_]+-table_clause\]' seed_iso_table_only COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-no-before-flush tenant-isolation 'test_flush_rejects_other_tenant' seed_iso_no_before_flush COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-images-no-tenant-filter tenant-isolation 'test_iso_images_repository_reads' seed_images_no_tenant_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
+  leg tenant-isolation-analytics-no-filter tenant-isolation 'test_analytics_repo_sees_only_own_tenant' seed_iso_analytics_no_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-issues-unscoped tenant-isolation 'test_iso_issue_and_task_reads_other_tenant_empty' seed_issues_unscoped COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg api-tests-image-key-prefix api-tests 'test_runner_rejects_foreign_key_prefix' seed_image_key_prefix COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg tenant-isolation-listings-no-tenant-filter tenant-isolation 'test_iso_generation_repositories_other_tenant_empty' seed_listings_no_tenant_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation

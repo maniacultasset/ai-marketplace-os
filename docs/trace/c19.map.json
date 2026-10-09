@@ -241,17 +241,17 @@
   },
   {
    "id": "R11447b",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "BUILD-SEQUENCE.md:48",
-   "note": "Analytics sub-routes named (timeseries); date-range parameters not specified."
+   "ref": "apps/api/app/services/analytics.py; TEAM-QUESTIONS T125",
+   "note": "S23: optional from/to (inclusive UTC days, default last 30, max 366) on /analytics; no timeseries sub-route."
   },
   {
    "id": "R11447c",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "BUILD-SEQUENCE.md:48",
-   "note": "marketplace-breakdown route only; marketplace filter parameter not specified."
+   "ref": "apps/api/app/api/v1/schemas/analytics.py; TEAM-QUESTIONS T125",
+   "note": "S23: by_marketplace breakdown in the summary instead of a filter parameter or sub-route."
   },
   {
    "id": "R11447d",
