@@ -207,6 +207,9 @@ async def _seed(profile: str, *, reset: bool, admin_url: str) -> SeedCounts:
         try:
             async with unit_of_work(seed_ops.seed_tenant_id("acme")) as session:
                 await seed_ops.seed_demo_family(session)
+            # S22 T15: acme's Flipkart listings, pinned to the Flipkart kurta mapping
+            async with unit_of_work(seed_ops.seed_tenant_id("acme")) as session:
+                await seed_ops.seed_demo_flipkart(session)
         finally:
             await dispose_engine()
     return SeedCounts(len(seed_ops.TENANTS), products, users)
