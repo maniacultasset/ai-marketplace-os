@@ -1,0 +1,47 @@
+{
+  "provenance": "believed",
+  "note": "Believed from the public Flipkart Seller API listing v3 docs; not recorded against Flipkart (no sandbox or credentials yet, T78). DW1 replaces it with a recorded pair and sets recorded_at.",
+  "operation": "create",
+  "request": {
+    "method": "POST",
+    "path": "/listings/v3",
+    "body": {
+      "listings": [
+        {
+          "sku": "FK-FIX-1",
+          "vertical": "kurta",
+          "attributes": {
+            "title": [
+              {
+                "value": "Cotton kurta set"
+              }
+            ],
+            "Colour": [
+              {
+                "value": "Navy Blue"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "request_id": "fk-fixture-0001",
+      "results": [
+        {
+          "sku": "FK-FIX-1",
+          "status": "SUCCESS",
+          "listing_id": "LSTFIXTURE0001",
+          "errors": []
+        }
+      ]
+    }
+  },
+  "expect": {
+    "status": "published",
+    "failed": []
+  }
+}
