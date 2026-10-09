@@ -46,8 +46,9 @@ def _listing(
     content: dict[str, Any] | None = None,
     template_id: uuid.UUID | None = None,
     version: int = 1,
+    marketplace: str = "amazon",
 ) -> uuid.UUID:
-    listing_id = f.listing(conn, tenant_id, product_id, category=CATEGORY)
+    listing_id = f.listing(conn, tenant_id, product_id, category=CATEGORY, marketplace=marketplace)
     version_id = f.version(
         conn,
         tenant_id,
@@ -200,3 +201,136 @@ async def test_adapter_input_content_only_version_reads_product_facts(
     body = _build(await _source(products_world, listing_id)).listing
     assert body.content.title == CONTENT["title"]
     assert body.attributes == {"fabric_type": "cotton", "color": "indigo"}
+
+
+# ---- S22 T7 (AC4; C1, C9; R7): Flipkart families, children only, with their colours ----
+
+
+def _colourways(conn: Conn, style: uuid.UUID) -> dict[str, uuid.UUID]:
+    rows = conn.execute(
+        "SELECT colour_key, id FROM product_colourways WHERE style_product_id = %s", [style]
+    ).fetchall()
+    return {str(k): v for k, v in rows}
+
+
+def _fk_listing(conn: Conn, tenant: uuid.UUID, style: uuid.UUID) -> uuid.UUID:
+    template_id = add_template(conn, marketplace="flipkart")
+    return _listing(conn, tenant, style, template_id=template_id, marketplace="flipkart")
+
+
+async def test_adapter_input_flipkart_family_children_only(
+    products_world: World, auth_db: Conn
+) -> None:
+    acme = products_world.tenant("acme")
+    style, _ = family(auth_db, acme, "FK-1", category=CATEGORY)
+    built = _build(await _source(products_world, _fk_listing(auth_db, acme, style)))
+    assert not built.is_family and built.is_parentless_family
+    assert [(i.seller_sku, i.item_role) for i in built.items] == [
+        ("FK-1-M-1", "child"),
+        ("FK-1-M-2", "child"),
+        ("FK-1-S-1", "child"),
+        ("FK-1-S-2", "child"),
+    ]
+    assert built.seller_sku == "FK-1"
+
+
+async def test_adapter_input_colour_key_and_sku_per_child(
+    products_world: World, auth_db: Conn
+) -> None:
+    acme = products_world.tenant("acme")
+    style, _ = family(auth_db, acme, "FK-2", category=CATEGORY)
+    auth_db.execute(
+        "UPDATE product_colourways SET colour_sku = 'FK-2-NVY' WHERE style_product_id = %s "
+        "AND colour_key = 'navy blue'",
+        [style],
+    )
+    built = _build(await _source(products_world, _fk_listing(auth_db, acme, style)))
+    got = {i.seller_sku: (i.colour_key, i.colour_sku) for i in built.items}
+    assert got == {
+        "FK-2-M-1": ("navy blue", "FK-2-NVY"),
+        "FK-2-M-2": ("maroon", None),
+        "FK-2-S-1": ("navy blue", "FK-2-NVY"),
+        "FK-2-S-2": ("maroon", None),
+    }
+
+
+async def test_adapter_input_colour_image_refs_grouped(
+    products_world: World, auth_db: Conn
+) -> None:
+    from app.services.adapter_input import build_adapter_listing, colour_image_ids
+
+    acme = products_world.tenant("acme")
+    style, _ = family(auth_db, acme, "FK-3", category=CATEGORY)
+    cw = _colourways(auth_db, style)
+    second = f.image(auth_db, acme, style, colourway_id=cw["navy blue"], position=2)
+    main = f.image(auth_db, acme, style, colourway_id=cw["navy blue"], slot="main", position=5)
+    maroon = f.image(auth_db, acme, style, colourway_id=cw["maroon"], position=1)
+    f.image(auth_db, acme, style)  # a style image with no colourway: not a colour image
+    source = await _source(products_world, _fk_listing(auth_db, acme, style))
+    assert dict(source.colour_images) == {"maroon": (maroon,), "navy blue": (main, second)}
+    ids = colour_image_ids(source)
+    refs = {i: f"image:{i}" for i in ids}
+    built = build_adapter_listing(source, image_refs=refs, idempotency_key="k")
+    assert dict(built.colour_image_refs) == {
+        "maroon": (f"image:{maroon}",),
+        "navy blue": (f"image:{main}", f"image:{second}"),
+    }
+
+
+async def test_adapter_input_deleted_image_excluded(products_world: World, auth_db: Conn) -> None:
+    acme = products_world.tenant("acme")
+    style, _ = family(auth_db, acme, "FK-4", category=CATEGORY)
+    cw = _colourways(auth_db, style)
+    gone = f.image(auth_db, acme, style, colourway_id=cw["maroon"])
+    auth_db.execute("UPDATE images SET deleted_at = now() WHERE id = %s", [gone])
+    source = await _source(products_world, _fk_listing(auth_db, acme, style))
+    assert dict(source.colour_images) == {}
+
+
+async def test_adapter_input_size_only_theme_colour_none(
+    products_world: World, auth_db: Conn
+) -> None:
+    """A size-only style's cells name no colourway (the 0004 matrix guard), so its children
+    carry no colour and the adapter invents no colour group."""
+    from .family_support import INSERT_CELL
+
+    acme = products_world.tenant("acme")
+    with auth_db.transaction():
+        style = f.product(
+            auth_db, acme, "style", sku="FK-5", variation_theme="size", size_run=["s", "m"],
+            category=CATEGORY,
+        )  # fmt: skip
+        for size in ("s", "m"):
+            child = f.product(
+                auth_db, acme, "child", parent=style, sku=f"FK-5-{size.upper()}",
+                category=CATEGORY, variant_attributes={"size": size},
+                attributes={"size": f.fact(value=size.upper(), normalized=size)},
+            )  # fmt: skip
+            auth_db.execute(INSERT_CELL, (acme, style, None, size, child))
+    built = _build(await _source(products_world, _fk_listing(auth_db, acme, style)))
+    assert built.variation_theme == "size"
+    assert {(i.colour_key, i.colour_sku) for i in built.items} == {(None, None)}
+
+
+async def test_adapter_input_amazon_family_still_has_parent(
+    products_world: World, auth_db: Conn
+) -> None:
+    acme = products_world.tenant("acme")
+    style, _ = family(auth_db, acme, "AMZ-1", category=CATEGORY)
+    listing_id = _listing(auth_db, acme, style, template_id=add_template(auth_db))
+    built = _build(await _source(products_world, listing_id))
+    assert built.items[0].item_role == "parent" and built.items[0].seller_sku == "AMZ-1"
+    assert {i.colour_key for i in built.items[1:]} == {"navy blue", "maroon"}
+
+
+async def test_adapter_input_other_tenant_colourway_invisible(
+    products_world: World, auth_db: Conn
+) -> None:
+    """bharat's colourway images on acme's style id never reach acme's input, and bharat reads
+    acme's listing as missing."""
+    acme = products_world.tenant("acme")
+    style, _ = family(auth_db, acme, "FK-6", category=CATEGORY)
+    listing_id = _fk_listing(auth_db, acme, style)
+    assert await _source(products_world, listing_id, slug="bharat") is None
+    source = await _source(products_world, listing_id)
+    assert {c.colour_key for c in source.children} == {"navy blue", "maroon"}
