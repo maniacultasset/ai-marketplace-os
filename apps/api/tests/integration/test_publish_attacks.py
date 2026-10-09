@@ -312,8 +312,7 @@ async def _approve(pw: PubWorld, made: Made) -> None:
 
 async def test_new_version_after_partial_attempt_1(api: httpx.AsyncClient, pub: PubWorld) -> None:
     """A partial applied part of the listing at the marketplace; an edited, re-approved version
-    starts at attempt 1 (the `create` vs `update` choice is a tester finding: see
-    docs/plans/s21/repro/test_repro_partial_then_new_version.py)."""
+    starts at attempt 1, sent as an `update` (test_publish_version_resolution.py)."""
     from .review_support import edited
 
     made = await approved(pub)
@@ -325,9 +324,11 @@ async def test_new_version_after_partial_attempt_1(api: httpx.AsyncClient, pub: 
     await _approve(pub, v2)
     await publish_and_run(api, pub, v2)
     subs = pub.submissions(made.listing_id)
-    assert [(s["listing_version_id"], s["attempt"], s["outcome"]) for s in subs] == [
-        (made.version_id, 1, "partially_accepted"),
-        (v2.version_id, 1, "accepted"),
+    assert [
+        (s["listing_version_id"], s["attempt"], s["outcome"], s["operation"]) for s in subs
+    ] == [
+        (made.version_id, 1, "partially_accepted", "create"),
+        (v2.version_id, 1, "accepted", "update"),
     ]
 
 
