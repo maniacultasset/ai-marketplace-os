@@ -268,3 +268,21 @@ async def listings_regenerate(
 async def listings_retry_fields(listing_id: ListingId, idempotency_key: IdempotencyKey) -> NoReturn:
     """Retry only the fields that failed to publish (invariant 10)."""
     raise NotImplementedYet("listings_retry_fields")
+
+
+@route(router, OPS["listings_submissions"])
+@stub
+async def listings_submissions(
+    listing_id: ListingId, page: Annotated[PageParams, Depends()]
+) -> NoReturn:
+    """The listing's publish attempts, newest first, with per-field results."""
+    raise NotImplementedYet("listings_submissions")
+
+
+@route(router, OPS["listings_refresh_status"])
+@stub
+async def listings_refresh_status(
+    listing_id: ListingId, idempotency_key: IdempotencyKey
+) -> NoReturn:
+    """Check the marketplace status now (at most once per 5 minutes per listing)."""
+    raise NotImplementedYet("listings_refresh_status")

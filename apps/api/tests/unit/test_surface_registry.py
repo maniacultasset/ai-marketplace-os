@@ -54,6 +54,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("listings_content_patch", "PATCH", "/listings/{listing_id}/content"),
     ("listings_regenerate", "POST", "/listings/{listing_id}/regenerate"),
     ("listings_retry_fields", "POST", "/listings/{listing_id}/publish/retry-fields"),
+    ("listings_submissions", "GET", "/listings/{listing_id}/submissions"),
+    ("listings_refresh_status", "POST", "/listings/{listing_id}/refresh-status"),
     ("marketplaces_connect", "POST", "/marketplaces/connect"),
     ("marketplaces_callback", "GET", "/marketplaces/{marketplace}/callback"),
     ("marketplaces_accounts", "GET", "/marketplaces/accounts"),
@@ -79,7 +81,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 48
+    assert len(FROZEN) == 50
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -205,6 +207,7 @@ D9_IDEMPOTENT = {
     "brand_documents_upload",
     "images_upload",
     "issues_dismiss",  # S19
+    "listings_refresh_status",  # S21
 }
 
 
@@ -248,6 +251,20 @@ def test_error_codes_per_d2() -> None:
         "members_patch": (E.LAST_OWNER_REQUIRED,),
         "listings_preview": (E.LISTING_BUSY,),
         "issues_dismiss": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
+        # S21: the request-level refusals of a single-listing publish op (no job is enqueued)
+        "listings_retry_fields": (
+            E.IDEMPOTENCY_KEY_REUSED,
+            E.DUPLICATE_SUBMISSION_BLOCKED,
+            E.INVALID_STATUS_TRANSITION,
+            E.LISTING_BUSY,
+            E.SUBMISSION_ATTEMPTS_EXHAUSTED,
+            E.AUTH_EXPIRED,
+        ),
+        "listings_refresh_status": (
+            E.IDEMPOTENCY_KEY_REUSED,
+            E.INVALID_STATUS_TRANSITION,
+            E.LISTING_BUSY,
+        ),
     }
     for op in OPS.values():
         codes = op.error_codes

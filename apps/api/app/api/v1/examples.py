@@ -30,6 +30,8 @@ CALLBACK_LOCATION: Final = "/marketplaces/connected?pending=pnd_8f3a2c1e9b7d4f60
 ISSUE: Final = "0b1c2d3e-0000-4000-8000-000000001001"
 TASK: Final = "0b1c2d3e-0000-4000-8000-000000001101"
 AUDIT_EVENT: Final = "0b1c2d3e-0000-4000-8000-000000001201"
+SUBMISSION: Final = "0b1c2d3e-0000-4000-8000-000000001301"
+LISTING_ITEM: Final = "0b1c2d3e-0000-4000-8000-000000001401"
 
 _MEMBERSHIPS: Final = [{"tenant_id": TENANT, "tenant_name": "Fabrica", "role": "owner"}]
 _TOKENS: Final = {
@@ -131,6 +133,33 @@ _AUDIT_EVENT: Final = {
     "request_id": REQUEST_ID,
     "job_id": None,
     "occurred_at": T1,
+}
+_SUBMISSION: Final = {
+    "id": SUBMISSION,
+    "listing_version_id": VERSION,
+    "attempt": 1,
+    "operation": "create",
+    "field_paths": None,
+    "outcome": "accepted",
+    "error_code": None,
+    "retry_justification": None,
+    "requested_by_user_id": USER,
+    "items": [
+        {
+            "listing_item_id": LISTING_ITEM,
+            "seller_sku": "KURTA-001",
+            "marketplace_state": "processing",
+            "fields": [
+                {"field": "content.description", "status": "succeeded", "error": None},
+                {"field": "content.title", "status": "succeeded", "error": None},
+            ],
+        }
+    ],
+    "error": None,
+    "sent_at": T0,
+    "responded_at": T1,
+    "resolved_at": None,
+    "created_at": T0,
 }
 _ISSUE: Final = {
     "id": ISSUE,
@@ -458,6 +487,8 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
         "listings_content_patch": {**_LISTING, "content": _CONTENT, "validation": None},
         "listings_regenerate": {**_JOB_ACCEPTED, "listing_id": LISTING},
         "listings_retry_fields": {**_JOB_ACCEPTED, "listing_id": LISTING},
+        "listings_submissions": _page([_SUBMISSION]),
+        "listings_refresh_status": {**_JOB_ACCEPTED, "listing_id": LISTING},
         "marketplaces_connect": {
             "authorize_url": "https://sellercentral.amazon.in/apps/authorize/consent?state=st_ex"
         },

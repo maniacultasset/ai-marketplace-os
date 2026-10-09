@@ -27,7 +27,7 @@ from .jobs import (
     ModelCredentials,
 )
 from .listing import CanonicalListing
-from .publish import ListingResult, MarketplacePreview
+from .publish import ListingResult, MarketplacePreview, SubmissionOut
 from .rules import RuleSet
 from .validation import ValidationResult, ValidationSummary
 
@@ -50,6 +50,7 @@ MODELS: Final[tuple[type[BaseModel], ...]] = (
     ModelCredentials,
     ListingResult,
     MarketplacePreview,
+    SubmissionOut,
     ImportReport,
     JWTClaims,
     RuleSet,

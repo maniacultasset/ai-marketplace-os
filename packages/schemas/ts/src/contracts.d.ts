@@ -1189,3 +1189,44 @@ export interface ModelCredentials {
   timeout_seconds?: number;
   [k: string]: unknown;
 }
+/**
+ * One marketplace SKU of a submission: its latest state and the field results this attempt
+ * recorded for it (empty while the attempt is `pending`).
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "SubmissionItemOut".
+ */
+export interface SubmissionItemOut {
+  fields?: FieldResult[];
+  listing_item_id: string;
+  marketplace_state: ItemMarketplaceState;
+  seller_sku: string;
+  [k: string]: unknown;
+}
+/**
+ * `GET /api/v1/listings/{listing_id}/submissions`: one publish attempt (at most 3 per
+ * approved version). `field_paths` is set only for a `patch` (the failed paths being resent);
+ * `error` is the attempt's one ErrorReport. Storage keys, digests and raw bodies stay internal.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "SubmissionOut".
+ */
+export interface SubmissionOut {
+  attempt: number;
+  created_at: string;
+  error?: ErrorReport | null;
+  error_code?: ErrorCode | null;
+  field_paths?: string[] | null;
+  id: string;
+  items?: SubmissionItemOut[];
+  listing_version_id: string;
+  operation: "create" | "update" | "patch";
+  outcome: "pending" | "accepted" | "partially_accepted" | "rejected" | "error" | "live" | "superseded";
+  requested_by_user_id: string;
+  resolved_at?: string | null;
+  responded_at?: string | null;
+  retry_justification?:
+    ("changed_input" | "retryable_condition" | "marketplace_transition" | "human_resolution") | null;
+  sent_at?: string | null;
+  [k: string]: unknown;
+}
