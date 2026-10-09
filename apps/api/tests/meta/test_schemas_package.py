@@ -18,7 +18,7 @@ def test_distribution_and_import_names(repo_root: Path) -> None:
     project = manifest["project"]
     assert isinstance(project, dict)
     assert project["name"] == "mkos-schemas"
-    assert project["version"] == "1.0.0"
+    assert project["version"] == "1.1.0"
     wheel = manifest["tool"]["hatch"]["build"]["targets"]["wheel"]  # type: ignore[index]
     assert wheel["packages"] == ["src/mkos_schemas"]
     assert (repo_root / "packages/schemas/src/mkos_schemas/__init__.py").is_file()

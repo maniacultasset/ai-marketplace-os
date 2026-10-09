@@ -1,8 +1,8 @@
 """The frozen `/api/v1` surface: one row per operation (S3; BACKEND-ARCHITECTURE.md §5.2).
 
 `OPS` is the frozen list (35 operations at S3, 38 with S10's switch and members, 40 with S15's
-connect confirm and account revoke, 43 with S16's profile update and document list and delete;
-no dead-letter path,
+connect confirm and account revoke, 43 with S16's profile update and document list and delete,
+44 with S20's listing preview; no dead-letter path,
 which is staff tooling per T82). It
 drives the routers (`route()`), the declared OpenAPI responses (`declared_responses()`), the
 parametrized surface tests and the case-matrix guard (`cases()`), so a route, its contract and its
@@ -27,6 +27,7 @@ from mkos_schemas.auth import Role
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.imports import ImportReport
 from mkos_schemas.jobs import JobAccepted, JobEnvelope
+from mkos_schemas.publish import MarketplacePreview
 from mkos_schemas.validation import ValidationResult, ValidationSummary
 from pydantic import BaseModel
 
@@ -104,7 +105,8 @@ class Operation:
     extra_codes: Mapping[int, tuple[ErrorCode, ...]] = field(
         default_factory=lambda: MappingProxyType({})
     )
-    """Codes beyond the D2 default for a status (login's 401, products_create's UNKNOWN_FACT_KEY)."""
+    """Codes beyond the D2 default for a status (login's 401, products_create's UNKNOWN_FACT_KEY),
+    or a status of the op's own (listings_preview's 501 for a marketplace with no adapter)."""
 
     def __post_init__(self) -> None:
         if (self.action is None) is not self.public:
@@ -175,6 +177,8 @@ def _error_codes(op: Operation) -> Mapping[int, tuple[ErrorCode, ...]]:
     if op.has_body:
         out[413] = (E.PAYLOAD_TOO_LARGE,)
     out[429] = (E.RATE_LIMITED,)
+    for status, codes in extra.items():
+        out.setdefault(status, codes)
     return MappingProxyType(dict(sorted(out.items())))
 
 
@@ -393,6 +397,10 @@ _ROWS: Final[tuple[Operation, ...]] = (
               query=("status", "marketplace", "product_id", "limit", "cursor"), action=A.TENANT_READ),
     Operation("listings_get", "GET", "/listings/{listing_id}", 200, ListingDetail, "listings",
               "Read one listing with its content and validation", "S19", path_id="listing_id", action=A.TENANT_READ),
+    Operation("listings_preview", "GET", "/listings/{listing_id}/preview", 200,
+              MarketplacePreview, "listings", "Preview the marketplace payload of the current "
+              "version (sends nothing)", "S20", path_id="listing_id", conflict_code=E.LISTING_BUSY,
+              extra_codes=MappingProxyType({501: (E.NOT_IMPLEMENTED,)}), action=A.TENANT_READ),
     Operation("listings_status", "GET", "/listings/{listing_id}/status", 200, ListingStatusOut,
               "listings", "Listing status (a convenience alias; poll jobs instead)", "S18",
               path_id="listing_id", action=A.TENANT_READ),

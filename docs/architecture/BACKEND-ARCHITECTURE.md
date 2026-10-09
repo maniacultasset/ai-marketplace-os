@@ -833,7 +833,8 @@ begins a transaction, sets the brand, claims the idempotency key and locks the l
   deterministic checks re-run in the same request. [Proposed] Nobody who generated or edited any
   version since the last full generation may approve it.
 - **Gaps:** the site wants the reviewer to see exactly what each marketplace will receive (L8091);
-  an adapter preview is gap G11 [Proposed]. One-person brands can't publish alone (T15).
+  an adapter preview is gap G11, built in S20 (`GET /api/v1/listings/{listing_id}/preview`, per-SKU
+  payloads and the adapter's mapping errors). One-person brands can't publish alone (T15).
 
 ### 3.6 Publish
 
@@ -934,7 +935,7 @@ Per-field verdicts are written when the response gives them, or later by the sta
 - **Status after a partial publish** [Proposed, DATABASE.md §6.1]: the listing goes to `failed` with
   the reason `publish_partial`; "partially live" is a derived display, not a stored status. When the
   3 submissions are used up, the listing goes to `blocked`. A per-account outbound rate limiter is
-  gap G17 [Proposed].
+  gap G17, built in S20 (`mkt:<marketplace>:<account_id>:<operation>` buckets, 1 s windows).
 
 ### 3.7 A job failing to the dead-letter queue, and the requeue
 
@@ -1202,7 +1203,7 @@ flowchart TB
 | AI seam ports | Backend implementation of the five `PipelineDeps` ports the AI pipeline may call (§6.3). | [Decided] Canon "The AI seam" |
 | Backend model services | `app/services/embeddings.py` and `app/services/vision.py`: the only backend modules allowed to call a model. `app/services/telemetry.py` records an `agent_runs` row for each of these calls. | [Decided] Canon "The AI seam" |
 | Workers | procrastinate workers on queues `default` and `publish`, in one Cloud Run worker-pool process with separate concurrency per queue. | [Decided] ADR-0001, ADR-0004 (spike-gated; deviates from the site's Redis + ARQ, T3). See §8 |
-| Marketplace adapters | The only code that talks to Amazon or Flipkart. Maps the canonical listing to marketplace fields, owns auth refresh, rate limiting, idempotency and error mapping; returns a per-field `ListingResult`, never a boolean. A `FakeAdapter` lets everything run without marketplace access. | [Site] adapter ABC and responsibilities (L10519-10533). [Decided] invariant 4; FakeAdapter (Canon "The AI seam"). ABC frozen with a network-free `preview()`, and an outbound Postgres token bucket per (marketplace, account, operation): [Proposed] `VISION-ALIGNMENT.md` G11, G17 |
+| Marketplace adapters | The only code that talks to Amazon or Flipkart. Maps the canonical listing to marketplace fields, owns auth refresh, rate limiting, idempotency and error mapping; returns a per-field `ListingResult`, never a boolean. A `FakeAdapter` lets everything run without marketplace access. | [Site] adapter ABC and responsibilities (L10519-10533). [Decided] invariant 4; FakeAdapter (Canon "The AI seam"). ABC frozen with a network-free `preview()`, and an outbound Postgres token bucket per (marketplace, account, operation): `VISION-ALIGNMENT.md` G11, G17, **built in S20** (`app/adapters/registry.py` preview, `GET /api/v1/listings/{listing_id}/preview`; `app/workers/outbound_limiter.py`, `mkt:` buckets in `rate_limit_counters`, DATABASE.md §5.4) |
 | Cloud adapters | `StorageAdapter` (S3 API, same code path as local MinIO), a KMS `KeyWrapper`, secrets as environment variables. Domain code never imports a cloud SDK. | [Decided] ADR-0001, `docs/DESIGN.md` §1. [Site] "No Cloud Leaks into Domain Code" (L5853) |
 | Configuration | Only `app/core/config.py` reads the environment; the variable is `APP_ENV`. | [Decided] `docs/RULES.md` §5 |
 | Internal admin | Read-only SQLAdmin at `/internal/admin` for platform staff. It reads across tenants only through `platform_scope()`. In production it returns 404, and turning it on there stops the app from starting. | [Decided] Canon naming register; Addendum §6, §14. Excluding `token_enc` and `hashed_password` from admin views: [Proposed] (`DATABASE.md` §5.4; `BUILD-SEQUENCE.md` S14) |

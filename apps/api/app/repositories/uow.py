@@ -21,10 +21,12 @@ from app.repositories.attribute_definitions import AttributeDefinitionRepository
 from app.repositories.brand_chunks import BrandChunkRepository
 from app.repositories.brand_documents import BrandDocumentRepository
 from app.repositories.dictionary import DictionaryRevisionRepository
+from app.repositories.error_map import ErrorMapRepository
 from app.repositories.human_tasks import HumanTaskRepository
 from app.repositories.identity import AuditRepository
 from app.repositories.images import ImageRepository
 from app.repositories.jobs import JobRunRepository
+from app.repositories.listings import ListingRepository
 from app.repositories.marketplace_accounts import MarketplaceAccountRepository
 from app.repositories.oauth_states import OAuthStateRepository
 from app.repositories.products import ProductRepository
@@ -52,6 +54,10 @@ class TenantUnitOfWork:
     images: ImageRepository
     templates: CategoryTemplateRepository
     dictionary: DictionaryRevisionRepository
+    # S20 T4: the adapter's error map (platform-global, SELECT only).
+    error_map: ErrorMapRepository
+    # S20 T18: the adapter input (SELECT only).
+    listings: ListingRepository
     # S16: telemetry, brand documents and the brand profile.
     agent_runs: AgentRunRepository
     brand_documents: BrandDocumentRepository
@@ -78,6 +84,8 @@ def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
         agent_runs=AgentRunRepository(session, tenant_id),
         brand_documents=BrandDocumentRepository(session, tenant_id),
         tenants=TenantProfileRepository(session, tenant_id),
+        error_map=ErrorMapRepository(session),
+        listings=ListingRepository(session, tenant_id),
     )
 
 

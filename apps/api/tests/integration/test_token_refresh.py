@@ -287,3 +287,89 @@ async def test_token_refresh_tampered_blob_unseal_failed(
     assert mkt.control.refreshes == 0 and _used(mkt) == []
     errors = [line["message"] for line in capture.lines() if line["severity"] == "ERROR"]
     assert errors == ["marketplace.credential_unseal_failed"]
+
+
+# ---- S20 T14 (AC10; D9): the adapter's forced refresh ----
+
+
+async def _force(mw: MktWorld, account_id: str, slug: str = "acme") -> str:
+    from app.workers.token_refresh import refresh_account
+
+    return await refresh_account(mw.tenant(slug), uuid.UUID(account_id), force=True)
+
+
+async def test_token_refresh_force_not_due_refreshes(
+    mkt: MktWorld, mapi: httpx.AsyncClient
+) -> None:
+    account = await connected_account(mapi, mkt)  # an hour left: not due
+    before = _row(mkt, account["id"])
+    assert await _force(mkt, account["id"]) == "refreshed"
+    assert bytes(_row(mkt, account["id"])["token_enc"]) != bytes(before["token_enc"])
+    assert mkt.control.refreshes == 1 and len(_used(mkt)) == 1
+
+
+async def test_token_refresh_force_lock_held_waits_once(
+    mkt: MktWorld, due_account: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import asyncio
+
+    from app.repositories.marketplace_accounts import refresh_lock
+    from app.workers import token_refresh
+
+    monkeypatch.setattr(token_refresh, "FORCE_POLL", 0.01)
+    released = asyncio.Event()
+
+    async def holder() -> None:
+        async with refresh_lock(uuid.UUID(due_account["id"])) as held:
+            assert held
+            released.set()
+            await asyncio.sleep(0.3)
+
+    task = asyncio.create_task(holder())
+    await released.wait()
+    loop = asyncio.get_running_loop()
+    started = loop.time()
+    assert await _force(mkt, due_account["id"]) == "skipped"
+    waited = loop.time() - started
+    await task
+    assert 0.2 <= waited < token_refresh.FORCE_WAIT
+    assert mkt.control.refreshes == 0 and _used(mkt) == []
+
+
+async def test_token_refresh_force_lock_never_freed_bounded(
+    mkt: MktWorld, due_account: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import asyncio
+
+    from app.repositories.marketplace_accounts import refresh_lock
+    from app.workers import token_refresh
+
+    monkeypatch.setattr(token_refresh, "FORCE_WAIT", 0.2)
+    monkeypatch.setattr(token_refresh, "FORCE_POLL", 0.02)
+    async with refresh_lock(uuid.UUID(due_account["id"])) as held:
+        assert held
+        loop = asyncio.get_running_loop()
+        started = loop.time()
+        assert await _force(mkt, due_account["id"]) == "skipped"
+        assert loop.time() - started < 1.0
+
+
+async def test_token_refresh_force_rejected_needs_reconnect(
+    mkt: MktWorld, mapi: httpx.AsyncClient
+) -> None:
+    account = await connected_account(mapi, mkt)
+    mkt.control.next_refresh = "invalid_grant"
+    assert await _force(mkt, account["id"]) == "rejected"
+    assert _row(mkt, account["id"])["status"] == "needs_reconnect"
+    assert len(_tasks(mkt, account["id"])) == 1
+
+
+async def test_token_refresh_force_revoked_skipped(mkt: MktWorld, mapi: httpx.AsyncClient) -> None:
+    account = await connected_account(mapi, mkt)
+    mkt.conn.execute(
+        "UPDATE marketplace_accounts SET status = 'needs_reconnect', needs_reconnect_since = now() "
+        "WHERE id = %s",
+        [account["id"]],
+    )
+    assert await _force(mkt, account["id"]) == "skipped"
+    assert mkt.control.refreshes == 0

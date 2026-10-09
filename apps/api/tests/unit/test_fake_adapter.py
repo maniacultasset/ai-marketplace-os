@@ -157,3 +157,56 @@ async def test_submitted_fields_all_legal_paths() -> None:
     assert {"images[0]", "images[1]", "images[2]", "keywords.search_terms"} <= set(fields)
     result = await _fake().create_listing(item(listing))
     assert [f.field for f in result.fields] == fields
+
+
+# ---- S20 T2: per-SKU updates, families and preview ----
+
+
+async def test_fake_adapter_update_per_sku() -> None:
+    from tests.adapters.contract import family
+
+    adapter = _fake()
+    sent = family()
+    await adapter.create_listing(sent)
+    child = sent.units()[1]
+    changed = sample_listing(content=sent.listing.content.model_copy(update={"title": "New"}))
+    update = item(changed, sku=sent.seller_sku)
+    update = type(update)(
+        listing_id=sent.listing_id,
+        seller_sku=sent.seller_sku,
+        idempotency_key="upd-sku",
+        listing=changed,
+        items=sent.items,
+        variation_theme=sent.variation_theme,
+    )
+    result = await adapter.update_listing(update, fields={child.seller_sku: ["content.title"]})
+    assert [i.seller_sku for i in result.items] == [child.seller_sku]
+    assert adapter.stored(child.seller_sku)["content.title"] == "New"
+    assert adapter.stored(sent.seller_sku)["content.title"] == sent.listing.content.title
+    with pytest.raises(ValueError, match="unknown seller_sku"):
+        await adapter.update_listing(update, fields={"NOT-IN-FAMILY": ["content.title"]})
+
+
+async def test_fake_adapter_family_items() -> None:
+    from tests.adapters.contract import family
+
+    sent = family()
+    result = await _fake(content__title=("8541", "bad")).create_listing(sent)
+    assert result.status == "partially_published"
+    assert [i.seller_sku for i in result.items] == [u.seller_sku for u in sent.units()]
+    for one in result.items:
+        (failed,) = [f for f in one.fields if f.status == "failed"]
+        assert failed.field == "content.title"
+    assert len({f.field for f in result.fields}) == len(result.fields)
+
+
+def test_fake_adapter_preview_no_io() -> None:
+    from tests.adapters.contract import family, no_sockets
+
+    adapter = _fake()
+    sent = family()
+    with no_sockets():
+        preview = adapter.preview(sent)
+    assert [p.item_role for p in preview.items] == ["parent", "child", "child"]
+    assert preview.items[0].payload["content.title"] == sent.listing.content.title
+    assert preview.report.passed

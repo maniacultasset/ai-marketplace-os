@@ -243,8 +243,10 @@ async def test_dictionary_revisions_include_disabled(products_world: World, auth
     assert definitions == top
 
 
-async def test_dictionary_revisions_category_scoped(products_world: World, auth_db: Conn) -> None:
-    key = attribute_definition(auth_db, key=f"s14b_{uuid.uuid4().hex[:12]}")
+async def test_dictionary_revisions_category_scoped(
+    products_world: World, auth_db: Conn, probe_key: str
+) -> None:
+    key = attribute_definition(auth_db, key=probe_key)
     category_attribute(auth_db, key, category=CATEGORY, enabled=False)
     mine = auth_db.execute(
         "SELECT max(revision) FROM category_attributes WHERE category = %s", [CATEGORY]

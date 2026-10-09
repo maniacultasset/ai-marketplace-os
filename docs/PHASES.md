@@ -74,7 +74,7 @@ Every step runs locally on Docker PostgreSQL 17 + pgvector; Cloud SQL is for sta
 | S16 | Brand onboarding, invites, chunking + embeddings | S10, S13, model API key | none named (Open: STATE dec. 5) | model API key (D27), email (D24) | built (local, hash embedder; documents in the S13b S3-API store; `brand_onboarding.sh` e2e in `make e2e` and bootstrap); invites 1.1 (C6) |
 | S18 | Generation: job → `run_listing_pipeline`; `blocked` after 3 | S14b, AI drop; S16 before final gates | stub pipeline | AI drop (T104, due D29) | not started |
 | S19 | Review + approval, `review_decisions`, `GET /issues` | S18 | — | — | not started |
-| S20 | Adapter framework + Amazon | S15, sandbox | fake marketplace server + FakeAdapter | Amazon credentials | not started |
+| S20 | Adapter framework + Amazon | S15, sandbox | fake marketplace server + FakeAdapter | Amazon credentials | built (local) on `feat/s20-amazon-adapter`, review and merge pending: adapter framework (preview, per-SKU updates, outcomes), the Amazon SP-API Listings adapter against the fake (mappings for kurta sets and t-shirts, families, error map, `mkt:` limiter, forced refresh, sandbox host pin), `GET /listings/{listing_id}/preview`, `errors load` and `platform load`; DW1 sandbox, DW2 PTD templates, DW3 fetchable image URLs deferred |
 | S21 | Publish, per-field retry, status sync, DLQ requeue | S19; S20 before final gates | FakeAdapter first | — | not started |
 | S17b | Image pipeline (minimal) | S13, S17a | MinIO for GCS | — | done (local); staging bucket and lifecycle at S4; blocking vision 1.1 (C8); approve gate wired by S19 |
 | S23+S24 | Analytics (4 metrics) + observability completion | S21, S11 | — | — | not started |

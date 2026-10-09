@@ -1125,6 +1125,36 @@ def test_prove_gates_s15_legs(repo_root: Path) -> None:
     assert code.index("leg lint-imports-unseal-from-router") < docker
 
 
+# ---- S20 T20 (AC5): the adapter import contracts and the preview case matrix are proven ----
+
+S20_LEGS = {
+    "lint-imports-adapter-from-service": (
+        "lint-imports",
+        "only app.adapters and app.workers reach the marketplace adapter and client BROKEN",
+    ),
+    "lint-imports-mapping-httpx": (
+        "lint-imports",
+        "adapter mapping, endpoint check, error map and registry do no I/O BROKEN",
+    ),
+    "api-tests-preview-case-matrix": ("api-tests", "listings_preview: missing endpoint cases"),
+}
+
+
+def test_prove_gates_s20_legs(repo_root: Path) -> None:
+    code = _code((repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8"))
+    for name, (gate, regex) in S20_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+    assert "import app.adapters.amazon.adapter" in code
+    assert "app/adapters/amazon/mapping.py" in code and "import httpx" in code
+    assert 'case="conflict"' in code and "test_listings_preview.py" in code
+    docker = code.index('if [ "$with_docker" -eq 1 ]; then')
+    assert code.index("leg lint-imports-adapter-from-service") < docker
+    assert code.index("leg lint-imports-mapping-httpx") < docker
+    assert code.index("leg api-tests-preview-case-matrix") > docker
+
+
 def test_bootstrap_imports_pipeline(repo_root: Path) -> None:
     # S14b T14 (ADR-0013 §4): the image ships the pipeline module the generation worker imports.
     text = (repo_root / "scripts" / "ci" / "bootstrap.sh").read_text(encoding="utf-8")
@@ -1664,6 +1694,91 @@ def test_prove_gates_has_s13b_legs(repo_root: Path) -> None:
     seed = text.split("seed_row_model_nan() {", 1)[1].split("\n}", 1)[0]
     old = seed.split("row_model.py '", 1)[1].split("'", 1)[0]
     assert old in row_model  # the seed still applies to today's file
+
+
+# ---- S20 T21 (AC17): the marketplace preview e2e ----
+
+PREVIEW_E2E = "scripts/e2e/marketplace_preview.sh"
+PREVIEW_E2E_STEPS = (
+    "health",
+    "errors_load",
+    "errors_load_again",
+    "db_error_map_count_same",
+    "login_acme_admin",
+    "preview_demo_200",
+    "preview_family_200",
+    "no_token_401",
+    "login_bharat_admin",
+    "bharat_preview_404",
+)
+
+
+def _step_bodies(code: str) -> dict[str, str]:
+    parts = re.split(r"(?m)^step (\w+)$", code)
+    return dict(zip(parts[1::2], parts[2::2], strict=True))
+
+
+def test_e2e_marketplace_preview_steps(repo_root: Path) -> None:
+    from app.db.seed_ops import SEED_NAMESPACE
+
+    code = _code((repo_root / PREVIEW_E2E).read_text(encoding="utf-8"))
+    assert "set -euo pipefail" in code
+    assert tuple(re.findall(r"(?m)^step (\w+)$", code)) == PREVIEW_E2E_STEPS
+    assert re.findall(r"\$\(login (\S+)\)", code) == ["admin@acme.test", "admin@bharat.test"]
+    assert not re.search(r":\d{2,5}\b", code)
+    assert "scripts/ci/worktree_env.sh exports .worktree.env" in code
+    assert "FAILED at step $current (HTTP status ${status:-none})" in code
+    assert 'cat "$body"' not in code
+    assert f'seed_namespace="{SEED_NAMESPACE}"' in code
+    # psql only in db_error_map_count_same, and only the read-only count
+    bodies = _step_bodies(code)
+    assert [name for name, body in bodies.items() if "psql" in body] == ["db_error_map_count_same"]
+    assert "psql" not in code.split("\nstep ", 1)[0]
+    count = bodies["db_error_map_count_same"]
+    assert count.count("docker compose exec -T postgres psql") == 2
+    assert "count_sql='SELECT count(*) FROM marketplace_error_map'" in count
+    assert not re.search(r"(?i)\b(insert|update|delete|truncate|alter|drop)\b", count)
+    assert "ERRORS_LOAD" in bodies["errors_load"] and "ERRORS_LOAD" in bodies["errors_load_again"]
+
+
+def test_e2e_marketplace_preview_in_make_e2e(repo_root: Path) -> None:
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert "E2E_ERRORS_LOAD = uv run --frozen python -m app.cli errors load --file" in makefile
+    assert "ERRORS_LOAD='$(E2E_ERRORS_LOAD)'" in makefile
+
+
+@pytest.mark.parametrize("url", NON_LOCAL_URLS)
+def test_e2e_marketplace_preview_refuses_non_local_url(
+    repo_root: Path, tmp_path: Path, url: str
+) -> None:
+    env, log = _stub_path(tmp_path)
+    env["ERRORS_LOAD"] = "true"
+    result = subprocess.run(
+        [str(repo_root / PREVIEW_E2E), url],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 2, result.stderr
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""
+
+
+def test_e2e_marketplace_preview_without_hooks_exits_2(repo_root: Path, tmp_path: Path) -> None:
+    env, log = _stub_path(tmp_path)
+    env.pop("ERRORS_LOAD", None)
+    result = subprocess.run(
+        [str(repo_root / PREVIEW_E2E), "http://127.0.0.1:8123"],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 2
+    assert result.stderr.startswith("usage: ERRORS_LOAD=<cmd>")
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""
 
 
 S17B_LEGS = {

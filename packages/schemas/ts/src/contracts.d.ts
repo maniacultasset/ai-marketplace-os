@@ -1116,6 +1116,13 @@ export interface JobEnvelope {
 }
 /**
  * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "JsonValue".
+ */
+export interface JsonValue {
+  [k: string]: unknown;
+}
+/**
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
  * via the `definition` "ListingResult".
  */
 export interface ListingResult {
@@ -1132,6 +1139,40 @@ export interface ListingResult {
   schema_version?: string;
   status: "published" | "partially_published" | "failed";
   submission_ref?: string | null;
+  [k: string]: unknown;
+}
+/**
+ * `GET /api/v1/listings/{listing_id}/preview`: the per-SKU payloads for the listing's current
+ * version and the adapter's mapping errors. It carries no verdict: the Rules Engine decides,
+ * the adapter only adds errors (`report`).
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "MarketplacePreview".
+ */
+export interface MarketplacePreview {
+  items?: PreviewItem[];
+  listing_id: string;
+  marketplace: Marketplace;
+  product_type?: string | null;
+  report: ErrorReport;
+  schema_version?: string;
+  version: number;
+  [k: string]: unknown;
+}
+/**
+ * One item the adapter would send: the listing's own SKU (standalone or parent) or a child.
+ * `payload` is the marketplace body; images are opaque `image:<id>` references, never URLs.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "PreviewItem".
+ */
+export interface PreviewItem {
+  item_role: "standalone" | "parent" | "child";
+  payload?: {
+    [k: string]: JsonValue;
+  };
+  product_id: string;
+  seller_sku: string;
   [k: string]: unknown;
 }
 /**

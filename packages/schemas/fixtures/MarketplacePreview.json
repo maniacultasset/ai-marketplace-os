@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.1.0",
+  "listing_id": "9c1d2f6a-3b84-4f21-9a55-0c6f8b2e77d1",
+  "version": 1,
+  "marketplace": "amazon",
+  "product_type": "SHIRT",
+  "items": [
+    {
+      "product_id": "4a7e1c2b-8d3f-4e6a-9b10-2c3d4e5f6a7b",
+      "seller_sku": "TEE-001",
+      "item_role": "standalone",
+      "payload": {
+        "productType": "SHIRT",
+        "requirements": "LISTING_PRODUCT_ONLY",
+        "attributes": {
+          "item_name": [
+            {
+              "value": "Organic Cotton Crew Tee",
+              "language_tag": "en_IN",
+              "marketplace_id": "A21TJRUUN4KGV"
+            }
+          ],
+          "main_product_image_locator": [
+            {
+              "media_location": "image:5d6e7f80-1a2b-4c3d-8e9f-0a1b2c3d4e5f",
+              "marketplace_id": "A21TJRUUN4KGV"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "report": {
+    "schema_version": "1.1.0",
+    "status": "passed",
+    "error_code": null,
+    "retryable": false,
+    "attempts_used": 1,
+    "max_attempts": 3,
+    "errors": [],
+    "request_id": null,
+    "listing_id": "9c1d2f6a-3b84-4f21-9a55-0c6f8b2e77d1"
+  }
+}

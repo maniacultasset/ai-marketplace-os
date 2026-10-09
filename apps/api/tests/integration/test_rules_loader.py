@@ -151,12 +151,10 @@ def _bump_definition(conn: Conn, key: str) -> None:
 
 
 async def test_rules_loader_dictionary_revision_moves_version(
-    products_world: World, auth_db: Conn
+    products_world: World, auth_db: Conn, probe_key: str
 ) -> None:
     add_rule(auth_db, max_length())
-    key = attribute_definition(
-        auth_db, key=f"s14b_{uuid.uuid4().hex[:12]}", allowed_sources=["seller"]
-    )
+    key = attribute_definition(auth_db, key=probe_key, allowed_sources=["seller"])
     category_attribute(auth_db, key, category=CATEGORY)
     other = f"s14b_other_{uuid.uuid4().hex[:8]}"
     category_attribute(auth_db, key, category=other)
