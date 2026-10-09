@@ -75,6 +75,7 @@ async def run_listing_status_sync(ctx: JobContext) -> Outcome:
 
 
 def _state(value: object) -> str:
-    """A listing-level read state as an item state (`partially_live` never reads for one SKU)."""
+    """A listing-level read state as an item state: an item with failing attributes
+    (`partially_live`) is not confirmed live and stays `processing`."""
     text = str(getattr(value, "value", value) or "processing")
-    return "live" if text == "partially_live" else text
+    return "processing" if text == "partially_live" else text

@@ -19,8 +19,9 @@ invariants 1, 4, 8, 9, 10; S20 T11, T12).
   the attributes those paths feed; a path that shares its attribute (`generic_keyword`) expands
   to every path feeding it, so the full value is sent and each path is reported (C6).
 - `publish_listing` is `create_listing`: Listings Items PUT is create-or-replace (C11, DW1).
-- `get_listing` (S21 CP6): BUYABLE -> live; an ERROR issue and no BUYABLE -> rejected; neither
-  BUYABLE nor DISCOVERABLE -> inactive; else processing; 404 -> `ListingNotFound`.
+- `get_listing` (S21 CP6): BUYABLE -> live; an item-level ERROR issue and no BUYABLE -> rejected;
+  attribute ERROR issues -> partially live (S20); neither BUYABLE nor DISCOVERABLE -> inactive; else
+  processing; 404 -> `ListingNotFound`.
 - The adapter never checks approval (invariant 1: S21 calls it only after approval), never runs
   a `fix_action`, and passes `attempt` through unchanged (invariant 9).
 """
@@ -462,11 +463,16 @@ class AmazonAdapter(MarketplaceAdapter):
         ]
         # S21 CP6: BUYABLE -> live; an ERROR issue and no BUYABLE -> rejected; neither BUYABLE nor
         # DISCOVERABLE -> inactive (e.g. search suppression); else processing ("Submitted")
+        # an ERROR issue naming attributes is a partial item (S20 contract: a partial create reads
+        # back partially live); one naming none refuses the item as a whole
+        item_errors = [i for i in open_errors if not i.get("attributeNames")]
         status = "published"
         if c.BUYABLE in states:
             state = MarketplaceState.LIVE
-        elif open_errors:
+        elif item_errors:
             status, state = "failed", MarketplaceState.REJECTED
+        elif open_errors:
+            status, state = "partially_published", MarketplaceState.PARTIALLY_LIVE
         elif summaries and c.DISCOVERABLE not in states:
             state = MarketplaceState.INACTIVE
         else:
