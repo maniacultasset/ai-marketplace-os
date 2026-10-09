@@ -47,6 +47,8 @@ from app.core.logging import set_trace_fields_hook
 from app.core.middleware import PROBE_PATHS
 from app.core.redaction import redact
 from app.core.request_context import current_request_id
+from app.core.traceparent import current_traceparent as current_traceparent
+from app.core.traceparent import parse_traceparent as parse_traceparent
 
 TRACER_NAME: Final = "app"
 TRACE_FIELD: Final = "logging.googleapis.com/trace"

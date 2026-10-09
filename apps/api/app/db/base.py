@@ -14,6 +14,7 @@ from sqlalchemy import MetaData, Text
 from sqlalchemy.orm import DeclarativeBase, MappedColumn, mapped_column
 
 from app.core.request_context import current_request_id
+from app.core.traceparent import current_traceparent
 
 NAMING_CONVENTION: Final[dict[str, str]] = {
     "ix": "ix_%(column_0_label)s",
@@ -37,3 +38,10 @@ def request_id_column() -> MappedColumn[Any]:
     nullability follows the `Mapped[...]` annotation. A raw SQL INSERT never sees this default,
     so these tables are written through the ORM or a Core `Table` only."""
     return mapped_column(Text, default=current_request_id)
+
+
+def traceparent_column() -> MappedColumn[Any]:
+    """`job_runs.traceparent` stamped with the current span's W3C trace context on INSERT when the
+    caller gives none (S23 AC8): Python-side like `request_id_column`, so the DDL is unchanged
+    and a job enqueued outside any span (periodic slot, CLI requeue) stays NULL."""
+    return mapped_column(Text, nullable=True, default=current_traceparent)

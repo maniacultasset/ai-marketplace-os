@@ -34,7 +34,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, INET, JSONB
 from sqlalchemy.orm import Mapped, Mapper, mapped_column
 from sqlalchemy.sql.elements import conv
 
-from app.db.base import Base, request_id_column
+from app.db.base import Base, request_id_column, traceparent_column
 from app.db.models._tenant import TenantScoped
 from app.db.models.listings import to_listing_marketplace, to_version
 from app.db.models.tenancy import (
@@ -136,7 +136,7 @@ class JobRun(TenantScoped, Base):
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # 0009 (S23): the enqueuing request's W3C trace context (CHECK ck_job_runs_traceparent_format)
-    traceparent: Mapped[str | None] = mapped_column(Text)
+    traceparent: Mapped[str | None] = traceparent_column()
 
 
 @event.listens_for(JobRun, "before_insert")
