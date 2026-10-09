@@ -41,6 +41,20 @@ confirmed at DW1): `PUT|PATCH|GET /listings/2021-08-01/items/{sellerId}/{sku}?ma
   SKU reads until changed (gone = 404); `POST /__control/reset {"prefix": "<sku prefix>"}` forgets
   the items, issues, GET states and calls of SKUs with that prefix (an e2e run cleans up after
   itself without touching another run's SKUs).
+
+Flipkart Seller API listings v3 (S22 T9; believed, DW1) under `/flipkart/sellers`:
+`POST /listings/v3` (create, a batch), `POST /listings/v3/update` (named attributes only) and
+`GET /listings/v3/{sku,sku,...}`. The `Authorization: Bearer` token must be one this fake issued
+(an OAuth grant or `issue_token`), else 401. Items are stored per (seller, sku); an attribute with
+an ERROR is not stored, and a SKU whose every attribute is refused, or that is marked rejected,
+is `FAILURE` and stores nothing. Answers `{request_id, results: [{sku, status, errors}]}`; an
+update of an unknown SKU is `FAILURE` with `LISTING_NOT_FOUND`. GET lists the stored SKUs only.
+- `/__control` also takes: `fk_errors {sku: {attribute: code}}` (once per SKU),
+  `fk_warnings {sku: {attribute: code}}` (once), `fk_reject_attribute {attribute: [code, text]}`
+  (every SKU), `fk_reject [sku]`, `fk_429 n`, `fk_after_write status` (apply, then answer that
+  status, once), `fk_auth {mode: expired|denied, times}`, `fk_state {sku: ACTIVE|INACTIVE}`,
+  `fk_body redirect|oversize|html` (once), `reset_calls`.
+- `GET /__calls?marketplace=flipkart|amazon`: `{count, calls}` of that marketplace only.
 """
 
 from __future__ import annotations
@@ -140,6 +154,20 @@ class FakeState:
     spapi_get: dict[str, str] = field(default_factory=dict)
     calls: list[dict[str, Any]] = field(default_factory=list)
     submissions: int = 0
+    # ---- Flipkart listings v3 (S22 T9) ----
+    access_sellers: dict[str, str] = field(default_factory=dict)
+    fk_items: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
+    fk_errors: dict[str, dict[str, str]] = field(default_factory=dict)
+    fk_warnings: dict[str, dict[str, str]] = field(default_factory=dict)
+    fk_reject_attribute: dict[str, tuple[str, str]] = field(default_factory=dict)
+    fk_reject: set[str] = field(default_factory=set)
+    fk_429: int = 0
+    fk_after_write: int | None = None
+    fk_auth_mode: str | None = None
+    fk_auth_times: int = 0
+    fk_state: dict[str, str] = field(default_factory=dict)
+    fk_body: str | None = None
+    fk_requests: int = 0
 
 
 def canary_token() -> str:
@@ -209,6 +237,7 @@ def build_fake(config: FakeConfig | None = None) -> Starlette:
         state.refresh_tokens[refresh_token] = (mkt, seller)
         access = canary_token()
         state.access_tokens.add(access)
+        state.access_sellers[access] = seller
         body: dict[str, Any] = {
             "access_token": access,
             "refresh_token": refresh_token,
@@ -292,6 +321,7 @@ def build_fake(config: FakeConfig | None = None) -> Starlette:
         if "expires_in" in body:
             state.expires_in = body["expires_in"]
         _spapi_control(state, body)
+        _flipkart_control(state, body)
         return JSONResponse({"ok": True})
 
     async def reset(request: Request) -> Response:
@@ -307,7 +337,14 @@ def build_fake(config: FakeConfig | None = None) -> Starlette:
         return await _spapi(state, request)
 
     async def calls(request: Request) -> Response:
-        return JSONResponse(state.calls)
+        marketplace = request.query_params.get("marketplace")
+        if marketplace is None:
+            return JSONResponse(state.calls)
+        picked = [c for c in state.calls if c.get("marketplace", "amazon") == marketplace]
+        return JSONResponse({"count": len(picked), "calls": picked})
+
+    async def flipkart(request: Request) -> Response:
+        return await _flipkart(state, request)
 
     app = Starlette(
         routes=[
@@ -316,6 +353,9 @@ def build_fake(config: FakeConfig | None = None) -> Starlette:
             Route("/__control/reset", reset, methods=["POST"]),
             Route("/__calls", calls, methods=["GET"]),
             Route(SPAPI_ROUTE, spapi, methods=["GET", "PUT", "PATCH"]),
+            Route(FK_CREATE_ROUTE, flipkart, methods=["POST"]),
+            Route(FK_UPDATE_ROUTE, flipkart, methods=["POST"]),
+            Route(FK_GET_ROUTE, flipkart, methods=["GET"]),
             Route("/{mkt}/authorize", authorize, methods=["GET"]),
             Route("/{mkt}/token", token, methods=["POST"]),
         ]
@@ -411,6 +451,7 @@ async def _spapi(state: FakeState, request: Request) -> Response:
     seller, sku = request.path_params["seller"], request.path_params["sku"]
     state.calls.append(
         {
+            "marketplace": "amazon",
             "method": request.method,
             "path": request.url.path,
             "raw_path": request.scope.get("raw_path", b"").decode("latin-1"),
@@ -548,6 +589,219 @@ def _spapi_get(state: FakeState, key: tuple[str, str]) -> Response:
             "issues": issues,
         }
     )
+
+
+# ---- Flipkart listings v3 (S22 T9; believed, DW1) ----
+
+FK_BASE: Final = "/flipkart/sellers"
+FK_CREATE_ROUTE: Final = f"{FK_BASE}/listings/v3"
+FK_UPDATE_ROUTE: Final = f"{FK_BASE}/listings/v3/update"
+FK_GET_ROUTE: Final = f"{FK_BASE}/listings/v3/{{sku_ids}}"
+
+
+def _flipkart_control(state: FakeState, body: dict[str, Any]) -> None:
+    for name in ("fk_errors", "fk_warnings"):
+        value = body.get(name)
+        if isinstance(value, dict):
+            getattr(state, name).update({k: dict(v) for k, v in value.items()})
+    if isinstance(body.get("fk_reject_attribute"), dict):
+        state.fk_reject_attribute.update(
+            {k: (v[0], v[1]) for k, v in body["fk_reject_attribute"].items()}
+        )
+    if isinstance(body.get("fk_reject"), list):
+        state.fk_reject |= set(body["fk_reject"])
+    if isinstance(body.get("fk_429"), int):
+        state.fk_429 = body["fk_429"]
+    if isinstance(body.get("fk_after_write"), int):
+        state.fk_after_write = body["fk_after_write"]
+    auth = body.get("fk_auth")
+    if isinstance(auth, dict) and auth.get("mode") in ("expired", "denied"):
+        state.fk_auth_mode, state.fk_auth_times = auth["mode"], int(auth.get("times", 1))
+    if isinstance(body.get("fk_state"), dict):
+        state.fk_state.update(body["fk_state"])
+    if body.get("fk_body") in ("redirect", "oversize", "html"):
+        state.fk_body = body["fk_body"]
+    if body.get("reset_calls") is True:
+        state.calls.clear()
+
+
+def _fk_error(code: str, description: str, status: int) -> JSONResponse:
+    return JSONResponse(
+        {"errors": [{"code": code, "description": description, "severity": "ERROR"}]},
+        status_code=status,
+    )
+
+
+def _fk_shaped(state: FakeState) -> Response | None:
+    shaped, state.fk_body = state.fk_body, None
+    if shaped == "redirect":
+        return RedirectResponse(f"{FK_BASE}/listings/v3/REDIRECTED", status_code=302)
+    if shaped == "html":
+        return Response("<html>maintenance</html>", status_code=200, media_type="text/html")
+    if shaped == "oversize":
+        return JSONResponse({"request_id": "x", "results": [], "pad": "x" * OVERSIZE_BYTES})
+    return None
+
+
+def _fk_auth(state: FakeState, request: Request) -> Response | str:
+    """The seller of a token this fake issued, or the 401/403 answer."""
+    if state.fk_auth_mode is not None and state.fk_auth_times > 0:
+        state.fk_auth_times -= 1
+        mode = state.fk_auth_mode
+        if state.fk_auth_times == 0:
+            state.fk_auth_mode = None
+        if mode == "expired":
+            return _fk_error("UNAUTHORIZED", "The access token has expired.", 401)
+        return _fk_error("FORBIDDEN", "The seller did not grant this application.", 403)
+    header = request.headers.get("authorization", "")
+    scheme, _, token = header.partition(" ")
+    if scheme.lower() != "bearer" or token not in state.access_tokens:
+        return _fk_error("UNAUTHORIZED", "Invalid access token.", 401)
+    return state.access_sellers.get(token, "FKDEFAULT")
+
+
+def _fk_issues(state: FakeState, sku: str, attributes: Mapping[str, Any]) -> list[dict[str, Any]]:
+    issues: list[dict[str, Any]] = []
+    for name, code in sorted(state.fk_errors.pop(sku, {}).items()):
+        issues.append(
+            {
+                "code": code,
+                "description": f"{name} is invalid.",
+                "severity": "ERROR",
+                "attribute": name,
+            }
+        )
+    for name, code in sorted(state.fk_warnings.pop(sku, {}).items()):
+        issues.append(
+            {
+                "code": code,
+                "description": f"{name} looks odd.",
+                "severity": "WARNING",
+                "attribute": name,
+            }
+        )
+    for name in sorted(attributes):
+        if name in state.fk_reject_attribute:
+            code, text = state.fk_reject_attribute[name]
+            issues.append(
+                {"code": code, "description": text, "severity": "ERROR", "attribute": name}
+            )
+    return issues
+
+
+def _fk_write(state: FakeState, seller: str, entry: Any, *, update: bool) -> dict[str, Any]:
+    if not isinstance(entry, dict) or not isinstance(entry.get("sku"), str):
+        return {
+            "sku": None,
+            "status": "FAILURE",
+            "errors": [
+                {"code": "INVALID_REQUEST", "description": "sku is required", "severity": "ERROR"}
+            ],
+        }
+    sku = entry["sku"]
+    attributes = entry.get("attributes")
+    key = (seller, sku)
+    if not isinstance(attributes, dict) or (not update and not entry.get("vertical")):
+        return {
+            "sku": sku,
+            "status": "FAILURE",
+            "errors": [
+                {
+                    "code": "INVALID_REQUEST",
+                    "description": "vertical and attributes are required",
+                    "severity": "ERROR",
+                }
+            ],
+        }
+    if update and key not in state.fk_items:
+        return {
+            "sku": sku,
+            "status": "FAILURE",
+            "errors": [
+                {
+                    "code": "LISTING_NOT_FOUND",
+                    "description": "No listing for this SKU.",
+                    "severity": "ERROR",
+                }
+            ],
+        }
+    issues = _fk_issues(state, sku, attributes)
+    refused = {i["attribute"] for i in issues if i["severity"] == "ERROR" and i.get("attribute")}
+    if sku in state.fk_reject:
+        issues.append(
+            {"code": "FK-REJECTED", "description": "The listing was rejected.", "severity": "ERROR"}
+        )
+        return {"sku": sku, "status": "FAILURE", "errors": issues}
+    if attributes and set(attributes) <= refused:
+        return {"sku": sku, "status": "FAILURE", "errors": issues}
+    kept = {k: v for k, v in attributes.items() if k not in refused}
+    if update:
+        state.fk_items[key]["attributes"].update(kept)
+        state.fk_items[key]["errors"] = [i for i in issues if i["severity"] == "ERROR"]
+    else:
+        state.fk_items[key] = {
+            "vertical": entry["vertical"],
+            "attributes": kept,
+            "errors": [i for i in issues if i["severity"] == "ERROR"],
+            "listing_id": "LST" + hashlib.sha256("/".join(key).encode()).hexdigest()[:12].upper(),
+            "fsn": "FSN" + hashlib.sha256(sku.encode()).hexdigest()[:13].upper(),
+        }
+    return {"sku": sku, "status": "SUCCESS", "errors": issues}
+
+
+async def _flipkart(state: FakeState, request: Request) -> Response:
+    raw = await request.body()
+    state.calls.append(
+        {
+            "marketplace": "flipkart",
+            "method": request.method,
+            "path": request.url.path,
+            "raw_path": request.scope.get("raw_path", b"").decode("latin-1"),
+            "time": time.monotonic(),
+            "body_sha256": hashlib.sha256(raw).hexdigest(),
+            "body": raw.decode("utf-8", "replace"),
+        }
+    )
+    seller = _fk_auth(state, request)
+    if isinstance(seller, Response):
+        return seller
+    if state.fk_429 > 0:
+        state.fk_429 -= 1
+        return _fk_error("RATE_LIMITED", "Too many requests.", 429)
+    shaped = _fk_shaped(state)
+    if shaped is not None:
+        return shaped
+    if request.method == "GET":
+        skus = request.path_params["sku_ids"].split(",")
+        found = []
+        for sku in skus:
+            stored = state.fk_items.get((seller, sku))
+            if stored is not None:
+                found.append(
+                    {
+                        "sku": sku,
+                        "status": state.fk_state.get(sku, "INACTIVE"),
+                        "fsn": stored["fsn"],
+                        "listing_id": stored["listing_id"],
+                        "attributes": stored["attributes"],
+                        "errors": stored["errors"],
+                    }
+                )
+        return JSONResponse({"listings": found})
+    try:
+        body = json.loads(raw or b"{}")
+    except ValueError:
+        return _fk_error("INVALID_REQUEST", "body is not JSON", 400)
+    entries = body.get("listings") if isinstance(body, dict) else None
+    if not isinstance(entries, list) or not entries:
+        return _fk_error("INVALID_REQUEST", "listings are required", 400)
+    update = request.url.path.endswith("/update")
+    results = [_fk_write(state, seller, entry, update=update) for entry in entries]
+    state.fk_requests += 1
+    after, state.fk_after_write = state.fk_after_write, None
+    if after is not None:
+        return _fk_error("INTERNAL_ERROR", "Something went wrong.", after)
+    return JSONResponse({"request_id": f"fk-req-{state.fk_requests:06d}", "results": results})
 
 
 CONFIG_KEYS: Final = (
