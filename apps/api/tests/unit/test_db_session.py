@@ -64,6 +64,7 @@ def test_engine_settings_match_env_register(
         return object()
 
     monkeypatch.setattr(session, "create_async_engine", fake_create)
+    monkeypatch.setattr(session, "instrument_engine", lambda engine: None)  # S23 DB spans
     session.get_engine.cache_clear()
     try:
         session.get_engine()
@@ -97,6 +98,7 @@ def test_engine_hides_parameters_and_never_echoes(
         return object()
 
     monkeypatch.setattr(session, "create_async_engine", fake_create)
+    monkeypatch.setattr(session, "instrument_engine", lambda engine: None)  # S23 DB spans
     session.get_engine.cache_clear()
     try:
         assert get_settings().database_echo is True
