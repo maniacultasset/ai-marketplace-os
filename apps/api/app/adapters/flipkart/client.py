@@ -90,6 +90,22 @@ class _TooLarge(Exception):  # noqa: N818 - private signal
     pass
 
 
+def error_rows(row: Mapping[str, Any]) -> list[Any]:
+    """A reply row's `errors`, or [] when it drifted from a list (bool, number, string)."""
+    errors = row.get("errors")
+    return errors if isinstance(errors, list) else []
+
+
+def _log_code(body: Any) -> str | None:
+    """The log line's error code. Best-effort: a helper bug on a drifted reply is logged and
+    never replaces the call's typed outcome (a write may already have been sent)."""
+    try:
+        return _first_code(body)
+    except Exception:
+        log.warning("marketplace.log_code_failed", marketplace="flipkart", exc_info=True)
+        return None
+
+
 def _first_code(body: Any) -> str | None:
     if not isinstance(body, dict):
         return None
@@ -97,7 +113,7 @@ def _first_code(body: Any) -> str | None:
     if not (isinstance(rows, list) and rows):
         results = body.get("results")
         if isinstance(results, list):
-            rows = [e for r in results if isinstance(r, dict) for e in r.get("errors") or []]
+            rows = [e for r in results if isinstance(r, dict) for e in error_rows(r)]
     if isinstance(rows, list) and rows and isinstance(rows[0], dict):
         code = rows[0].get("code")
         return str(code)[:64] if code is not None else None
@@ -284,7 +300,7 @@ class FlipkartClient:
                 started,
                 status,
                 attempt=attempt,
-                error_code=_first_code(parsed) if parsed_ok else None,
+                error_code=_log_code(parsed) if parsed_ok else None,
             )
             if status == 429:
                 if retries >= MAX_RETRIES_429:

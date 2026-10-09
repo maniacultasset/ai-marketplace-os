@@ -65,7 +65,7 @@ from app.adapters.base import (
 )
 from app.adapters.error_map import ErrorMapper
 from app.adapters.flipkart import constants as c
-from app.adapters.flipkart.client import FlipkartClient, FlipkartResponse
+from app.adapters.flipkart.client import FlipkartClient, FlipkartResponse, error_rows
 from app.adapters.flipkart.mapping import (
     MappedItem,
     build,
@@ -505,7 +505,7 @@ class FlipkartAdapter(MarketplaceAdapter):
                 paths |= {p for p in index.get(name, ()) if p != "variants"}
         open_errors = [
             e
-            for e in entry.get("errors") or []
+            for e in error_rows(entry)
             if isinstance(e, dict) and str(e.get("severity", "")).upper() == "ERROR"
         ]
         if open_errors:
@@ -545,7 +545,7 @@ def _answers(response: FlipkartResponse) -> Callable[[str], Mapping[str, Any] | 
     body = response.json if isinstance(response.json, dict) else {}
     results = body.get("results")
     if response.status >= 300 or not isinstance(results, list):
-        whole: Mapping[str, Any] = {"status": c.FAILURE, "errors": body.get("errors") or []}
+        whole: Mapping[str, Any] = {"status": c.FAILURE, "errors": error_rows(body)}
         return lambda sku: whole
     out: dict[str, Mapping[str, Any]] = {}
     for one in results:
@@ -557,8 +557,7 @@ def _answers(response: FlipkartResponse) -> Callable[[str], Mapping[str, Any] | 
 def _not_found(answer: Mapping[str, Any] | None) -> bool:
     if answer is None or str(answer.get("status", "")).upper() == c.SUCCESS:
         return False
-    errors = answer.get("errors") or []
-    return any(isinstance(e, dict) and e.get("code") == NOT_FOUND_CODE for e in errors)
+    return any(isinstance(e, dict) and e.get("code") == NOT_FOUND_CODE for e in error_rows(answer))
 
 
 def _dedupe(results: Iterable[FieldResult]) -> list[FieldResult]:
