@@ -978,8 +978,8 @@
    "id": "R05373",
    "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "apps/api/app/repositories/analytics.py; TEAM-QUESTIONS T125",
-   "note": "S23: formulas and source tables defined (T125 default) and built; GET /api/v1/analytics."
+   "ref": "apps/api/app/repositories/analytics.py; TEAM-QUESTIONS T126",
+   "note": "S23: formulas and source tables defined (T126 default) and built; GET /api/v1/analytics."
   },
   {
    "id": "R05373a",
