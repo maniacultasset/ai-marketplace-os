@@ -9,10 +9,12 @@ from mkos_schemas.base import AttrKey, Slug, StrictModel, WireModel
 from mkos_schemas.enums import ListingStatus, Marketplace, MarketplaceState
 from mkos_schemas.listing import AttributeValue, CanonicalListing, ListingContent, ListingKeywords
 from mkos_schemas.validation import ValidationSummary
-from pydantic import AwareDatetime, Field
+from pydantic import AwareDatetime, Field, model_validator
+from pydantic_core import PydanticCustomError
 
 from app.api.pagination import Page
 from app.api.v1.schemas.batches import Instructions
+from app.core.text import CONTROL_CHAR_MESSAGE, has_control_char
 
 
 class ListingOut(WireModel):
@@ -59,6 +61,13 @@ class ListingContentPatch(StrictModel):
     content: ListingContent
     keywords: ListingKeywords | None = None
     attributes: Annotated[dict[AttrKey, AttributeValue] | None, Field(max_length=200)] = None
+
+    @model_validator(mode="after")
+    def _no_control_chars(self) -> ListingContentPatch:
+        # NUL breaks jsonb (a 500); other C0 controls are refused as well (\n and \t pass).
+        if has_control_char(self.model_dump(mode="python")):
+            raise PydanticCustomError("mkos_invalid", CONTROL_CHAR_MESSAGE)
+        return self
 
 
 class RegenerateRequest(StrictModel):

@@ -41,6 +41,7 @@ from mkos_schemas.jobs import GenerateListingRequest
 from app.core.errors import ConflictError, DomainError, InputError, NotFoundError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
+from app.core.text import has_control_char
 from app.repositories.jobs import EnqueueSpec
 from app.repositories.listings import UserActor
 from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
@@ -79,7 +80,7 @@ ItemResult = ItemAccepted | ItemRefused
 def check_instructions(text: str | None, field: str) -> None:
     """CP12: instructions are data, but JSON in them with a secret-shaped key is refused at the
     API (before any write) instead of being stored for good and refused at claim."""
-    if text is not None and find_seam_secret_key(text) is not None:
+    if text is not None and (find_seam_secret_key(text) is not None or has_control_char(text)):
         raise InputError(ErrorCode.VALIDATION_FAILED, field)
 
 
@@ -129,12 +130,24 @@ async def _regenerate_locked(
     await uow.review_decisions.insert_regenerate_requested(
         listing.id, listing.current_version_id, instructions, job_id
     )
+    from_status = listing.status
     await uow.listings.move(
         listing,
         to=GENERATING,
         event="regenerate",
         actor=UserActor(principal.user_id),
         clear_approval=True,
+    )
+    await uow.audit.write(
+        tenant_id=principal.tenant_id,
+        actor_type="user",
+        actor_user_id=principal.user_id,
+        action="listing.regenerate_requested",
+        entity_type="listing",
+        entity_id=listing.id,
+        # `audit()` keeps the listing's allow-listed keys only (0004); the job is in job_runs.
+        before=json.dumps({"status": from_status}),
+        after=json.dumps({"status": GENERATING}),
     )
     log.info(
         "generation.requested",

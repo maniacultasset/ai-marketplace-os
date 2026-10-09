@@ -250,6 +250,9 @@ async def test_patch_nested_unknown_key_not_stored(
         "unquoted",
         "weak",
         "not_uuid",
+        "attr_257_chars",
+        "attr_129_keys",
+        "attr_list_item_257",
     ],
 )
 async def test_patch_invalid_422(api: httpx.AsyncClient, gen_world: GenWorld, case: str) -> None:
@@ -262,6 +265,12 @@ async def test_patch_invalid_422(api: httpx.AsyncClient, gen_world: GenWorld, ca
         body = {"content": {**CLEAN, "title": "x" * 501}}
     elif case == "51_terms":
         body = {"content": CLEAN, "keywords": {"search_terms": [f"t{i}" for i in range(51)]}}
+    elif case == "attr_257_chars":
+        body = {"content": CLEAN, "attributes": {**ATTRS, "color": "x" * 257}}
+    elif case == "attr_129_keys":
+        body = {"content": CLEAN, "attributes": {**ATTRS, **{f"k{i}": "v" for i in range(127)}}}
+    elif case == "attr_list_item_257":
+        body = {"content": CLEAN, "attributes": {**ATTRS, "sizes": ["s", "y" * 257]}}
     elif case == "if_match_missing":
         headers.pop("If-Match")
     elif case == "not_uuid":

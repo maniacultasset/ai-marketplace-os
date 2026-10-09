@@ -16,14 +16,16 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from typing import Any
 
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ListingStatus
 from mkos_schemas.listing import CanonicalListing, ListingContent, ListingKeywords
+from pydantic import ValidationError
 
-from app.core.errors import ConflictError, NotFoundError
+from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.repositories.listings import NewVersion, UserActor
@@ -79,12 +81,19 @@ async def edit_content(
         update["keywords"] = keywords
     if attributes is not None:
         update["attributes"] = attributes
-    new = CanonicalListing.model_validate({**old.model_dump(), **update})
+    try:
+        new = CanonicalListing.model_validate({**old.model_dump(), **update})
+    except ValidationError as exc:
+        # The patch schema is looser than the canonical caps (128 attributes, 256-char values):
+        # a 422 on the first failing path, the value never echoed.
+        loc = exc.errors(include_input=False)[0]["loc"]
+        raise InputError(ErrorCode.VALIDATION_FAILED, ".".join(str(p) for p in loc)) from None
     changed = _changed(old, new)
     if not changed:
         summary = await uow.validation_runs.summary_for(parent.id)
         return to_detail(listing, old, summary)
 
+    from_status = listing.status
     number = await uow.listing_versions.next_version(listing.id)
     check = await rules_check(uow, listing, new)
     to, reason = human_move(check.report)
@@ -116,6 +125,18 @@ async def edit_content(
         actor=UserActor(principal.user_id),
         current_version_id=version.id,
         clear_approval=True,
+    )
+    # `audit()` keeps only the listing's allow-listed keys (0004: status, status_reason, ...);
+    # the version link is in listing_versions (origin=edit, parent_version_id).
+    await uow.audit.write(
+        tenant_id=principal.tenant_id,
+        actor_type="user",
+        actor_user_id=principal.user_id,
+        action="listing.edited",
+        entity_type="listing",
+        entity_id=listing.id,
+        before=json.dumps({"status": from_status}),
+        after=json.dumps({"status": to, "status_reason": reason}),
     )
     log.info(
         "listing.edited",
