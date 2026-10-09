@@ -19,10 +19,10 @@ class DateRange:
 
     def __init__(
         self,
-        from_: Annotated[date, Query(alias="from")],
-        to: Annotated[date, Query()],
+        from_: Annotated[date | None, Query(alias="from")] = None,
+        to: Annotated[date | None, Query()] = None,
     ) -> None:
-        if from_ > to:
+        if from_ is not None and to is not None and from_ > to:
             raise ApiError(
                 422,
                 ErrorCode.VALIDATION_FAILED,

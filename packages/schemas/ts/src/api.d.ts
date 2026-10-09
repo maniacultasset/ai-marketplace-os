@@ -1050,10 +1050,33 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AnalyticsCounts
+         * @description The counts each rate is computed from, for the range.
+         */
+        AnalyticsCounts: {
+            /** Approvals */
+            approvals: number;
+            /** Listings Generated */
+            listings_generated: number;
+            /** Publish Failed */
+            publish_failed: number;
+            /** Publish Succeeded */
+            publish_succeeded: number;
+            /** Rejections */
+            rejections: number;
+            /** Validation First Pass Passed */
+            validation_first_pass_passed: number;
+            /** Validation First Pass Total */
+            validation_first_pass_total: number;
+        };
         /** AnalyticsSummary */
         AnalyticsSummary: {
             /** Approval Rate */
             approval_rate?: number | null;
+            /** By Marketplace */
+            by_marketplace?: components["schemas"]["MarketplaceBreakdown"][] | null;
+            counts?: components["schemas"]["AnalyticsCounts"] | null;
             /**
              * From
              * Format: date
@@ -2018,6 +2041,22 @@ export interface components {
             page: components["schemas"]["PageInfo"];
         };
         /**
+         * MarketplaceBreakdown
+         * @description The same metrics for one marketplace.
+         */
+        MarketplaceBreakdown: {
+            /** Approval Rate */
+            approval_rate?: number | null;
+            counts: components["schemas"]["AnalyticsCounts"];
+            /** Listings Generated */
+            listings_generated: number;
+            marketplace: components["schemas"]["Marketplace"];
+            /** Publish Success Rate */
+            publish_success_rate?: number | null;
+            /** Validation Pass Rate */
+            validation_pass_rate?: number | null;
+        };
+        /**
          * MarketplacePreview
          * @description `GET /api/v1/listings/{listing_id}/preview`: the per-SKU payloads for the listing's current
          *     version and the adapter's mapping errors. It carries no verdict: the Rules Engine decides,
@@ -2652,9 +2691,9 @@ export type $defs = Record<string, never>;
 export interface operations {
     analytics_get: {
         parameters: {
-            query: {
-                from: string;
-                to: string;
+            query?: {
+                from?: string | null;
+                to?: string | null;
             };
             header?: never;
             path?: never;
@@ -2671,9 +2710,36 @@ export interface operations {
                     /**
                      * @example {
                      *       "approval_rate": 0.82,
+                     *       "by_marketplace": [
+                     *         {
+                     *           "approval_rate": 0.82,
+                     *           "counts": {
+                     *             "approvals": 82,
+                     *             "listings_generated": 120,
+                     *             "publish_failed": 3,
+                     *             "publish_succeeded": 77,
+                     *             "rejections": 18,
+                     *             "validation_first_pass_passed": 108,
+                     *             "validation_first_pass_total": 120
+                     *           },
+                     *           "listings_generated": 120,
+                     *           "marketplace": "amazon",
+                     *           "publish_success_rate": 0.9625,
+                     *           "validation_pass_rate": 0.9
+                     *         }
+                     *       ],
+                     *       "counts": {
+                     *         "approvals": 82,
+                     *         "listings_generated": 120,
+                     *         "publish_failed": 3,
+                     *         "publish_succeeded": 77,
+                     *         "rejections": 18,
+                     *         "validation_first_pass_passed": 108,
+                     *         "validation_first_pass_total": 120
+                     *       },
                      *       "from": "2026-09-01",
                      *       "listings_generated": 120,
-                     *       "publish_success_rate": 0.97,
+                     *       "publish_success_rate": 0.9625,
                      *       "to": "2026-09-30",
                      *       "validation_pass_rate": 0.9
                      *     }
@@ -2850,9 +2916,9 @@ export interface operations {
     };
     analytics_summary: {
         parameters: {
-            query: {
-                from: string;
-                to: string;
+            query?: {
+                from?: string | null;
+                to?: string | null;
             };
             header?: never;
             path?: never;
@@ -2869,9 +2935,36 @@ export interface operations {
                     /**
                      * @example {
                      *       "approval_rate": 0.82,
+                     *       "by_marketplace": [
+                     *         {
+                     *           "approval_rate": 0.82,
+                     *           "counts": {
+                     *             "approvals": 82,
+                     *             "listings_generated": 120,
+                     *             "publish_failed": 3,
+                     *             "publish_succeeded": 77,
+                     *             "rejections": 18,
+                     *             "validation_first_pass_passed": 108,
+                     *             "validation_first_pass_total": 120
+                     *           },
+                     *           "listings_generated": 120,
+                     *           "marketplace": "amazon",
+                     *           "publish_success_rate": 0.9625,
+                     *           "validation_pass_rate": 0.9
+                     *         }
+                     *       ],
+                     *       "counts": {
+                     *         "approvals": 82,
+                     *         "listings_generated": 120,
+                     *         "publish_failed": 3,
+                     *         "publish_succeeded": 77,
+                     *         "rejections": 18,
+                     *         "validation_first_pass_passed": 108,
+                     *         "validation_first_pass_total": 120
+                     *       },
                      *       "from": "2026-09-01",
                      *       "listings_generated": 120,
-                     *       "publish_success_rate": 0.97,
+                     *       "publish_success_rate": 0.9625,
                      *       "to": "2026-09-30",
                      *       "validation_pass_rate": 0.9
                      *     }
