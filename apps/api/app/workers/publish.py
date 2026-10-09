@@ -13,6 +13,7 @@ listing is locked only in the short write-ahead transaction.
    is found is `accepted`; otherwise this job's own row is resent on the same row and key
    (uncounted), and an ended job's row becomes `error SUBMISSION_NOT_APPLIED` and the next attempt
    follows (its 3rd unresolved attempt sends nothing: `blocked/publish_attempts_exhausted`).
+   Once any version reached the marketplace, the next send is an `update`, never a `create`.
 3. **Pins, outside any transaction** (D9, C:48): the product's facts digest must equal the approve
    row's, and each sent image must be `passed`, carry a `content_hash` (NULL = never checked:
    refused) and re-hash to it (read capped at 10 MiB). A mismatch sends nothing, revalidates the
@@ -92,6 +93,8 @@ log = get_logger(__name__)
 IMAGE_MAX_BYTES: Final = 10 * 1024 * 1024
 IMAGE_URL_TTL_S: Final = 24 * 3600
 MAX_SUBMISSIONS: Final = 3
+# outcomes after which (part of) the listing is on the marketplace
+APPLIED_OUTCOMES: Final = ("partially_accepted", "accepted", "live", "superseded")
 TERMINAL_JOB: Final = frozenset({"succeeded", "partial", "failed", "cancelled", "dead_letter"})
 
 AdapterFactory = Callable[[uuid.UUID, uuid.UUID, RawResponseSink], Awaitable[MarketplaceAdapter]]
@@ -143,6 +146,7 @@ class Prepared:
     retry_paths: dict[str, tuple[str, ...]] = field(default_factory=dict)
     justification: str | None = None
     applied_before: bool = False
+    listing_applied: bool = False
 
 
 def _fail(
@@ -209,6 +213,10 @@ async def _read(ctx: JobContext, payload: PublishJobPayload) -> Prepared:
         prep.retry_paths = await uow.field_results.retry_payload(listing.id, version)
         prep.applied_before = await uow.submissions.has_outcome(
             listing.id, version, ("partially_accepted",)
+        )
+        # any version's attempt that reached the marketplace: the next send is never a create
+        prep.listing_applied = await uow.submissions.listing_has_outcome(
+            listing.id, APPLIED_OUTCOMES
         )
         if prep.prev is not None and prep.prev.outcome != "pending":
             prep.justification = await _justify(uow, listing, prep.prev)
@@ -454,7 +462,9 @@ def _plan_new(ctx: JobContext, prep: Prepared, payload: PublishJobPayload) -> At
         if (payload.mode == "retry_fields" or keep_patch) and prep.retry_paths
         else None
     )
-    previously = prep.listing.published_version_id is not None or prep.applied_before
+    previously = (
+        prep.listing.published_version_id is not None or prep.applied_before or prep.listing_applied
+    )
     operation = choose_operation(
         previously_accepted=previously,
         retry_paths=[p for paths in (per_sku or {}).values() for p in paths],

@@ -156,6 +156,20 @@ class ListingSubmissionRepository(TenantScopedRepository[ListingSubmission]):
         )
         return (await self.db.execute(stmt)).scalar_one_or_none() is not None
 
+    async def listing_has_outcome(self, listing_id: uuid.UUID, outcomes: Sequence[str]) -> bool:
+        """`has_outcome` over every version of the listing: whether any attempt of it ever
+        reached the marketplace (an older version's partial makes the next version an update)."""
+        stmt = (
+            self._select()
+            .where(
+                ListingSubmission.listing_id == listing_id,
+                ListingSubmission.outcome.in_(list(outcomes)),
+            )
+            .with_only_columns(ListingSubmission.id)
+            .limit(1)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
     async def last_for_version(
         self, listing_id: uuid.UUID, version_id: uuid.UUID
     ) -> ListingSubmission | None:
