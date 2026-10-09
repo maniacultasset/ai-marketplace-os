@@ -239,6 +239,11 @@ class MarketplaceUnavailable(AdapterError):  # noqa: N818 - the plan's name (S20
     """Definitive: nothing was sent or nothing was applied (connect error, a failed GET)."""
 
 
+class MarketplaceDisabled(AdapterError):  # noqa: N818 - the plan's name (S22 C4)
+    """The marketplace is switched off here (`FLIPKART_ENABLED=false`): nothing was unsealed or
+    sent. The report is the 501 NOT_IMPLEMENTED refusal (source `system`)."""
+
+
 class MarketplaceAmbiguous(AdapterError):  # noqa: N818 - the plan's name (S20 C2)
     """A write was sent and its outcome is unknown (5xx, timeout, a body we cannot read):
     read the listing before any retry (DATABASE.md:871)."""
