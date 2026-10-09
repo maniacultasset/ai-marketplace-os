@@ -50,6 +50,8 @@ import procrastinate
 from mkos_schemas.codes import ErrorCode
 
 from app.adapters.storage import get_storage, images_bucket
+from app.core.config import get_settings
+from app.core.flags import enabled_marketplaces
 from app.core.logging import get_logger
 from app.core.request_context import new_request_id, request_context
 from app.db.session import platform_scope, unit_of_work
@@ -156,7 +158,12 @@ REFRESH_BATCH: Final = 500
 async def refresh_marketplace_tokens() -> dict[str, int]:
     """One refresh pass over the due accounts; the count per outcome."""
     async with platform_scope() as session:
-        due = await due_accounts(session, margin=REFRESH_MARGIN, limit=REFRESH_BATCH)
+        due = await due_accounts(
+            session,
+            margin=REFRESH_MARGIN,
+            limit=REFRESH_BATCH,
+            marketplaces=enabled_marketplaces(get_settings()),
+        )
     counts: dict[str, int] = {}
     for tenant_id, account_id in due:
         try:

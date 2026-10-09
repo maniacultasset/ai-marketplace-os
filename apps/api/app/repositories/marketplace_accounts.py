@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import builtins
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -342,16 +342,23 @@ async def refresh_lock(account_id: uuid.UUID) -> AsyncIterator[bool]:
 
 
 async def due_accounts(
-    session: Any, *, margin: timedelta, limit: int = 500
+    session: Any,
+    *,
+    margin: timedelta,
+    limit: int = 500,
+    marketplaces: Sequence[str] | None = None,
 ) -> builtins.list[tuple[uuid.UUID, uuid.UUID]]:
     """`(tenant_id, id)` of every `active` account whose token expires within `margin`, in a
-    `trial`/`active` tenant, soonest first, at most `limit`. Cross-tenant: run it only in
+    `trial`/`active` tenant, soonest first, at most `limit`; with `marketplaces`, only accounts of
+    those (S22 D5: a switched-off marketplace is not refreshed). Cross-tenant: run it only in
     `platform_scope()` (the periodic refresh). Reads no credential column."""
     model = MarketplaceAccount
+    wanted = list(marketplaces) if marketplaces is not None else ["amazon", "flipkart"]
     stmt = (
         select(model.tenant_id, model.id)
         .where(
             model.status == "active",
+            model.marketplace.in_(wanted),
             model.expires_at < func.now() + margin,
             exists(
                 select(Tenant.id).where(
