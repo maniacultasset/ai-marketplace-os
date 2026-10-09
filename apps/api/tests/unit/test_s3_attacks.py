@@ -17,8 +17,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 BEARER = {"Authorization": "Bearer t"}
-# a GET route that is still S3's 501 stub (S19 implemented GET /listings)
-STUB_GET = "/api/v1/analytics?from=2026-10-01&to=2026-10-02"
+# a GET whose error envelope the request id rides on, with no database behind the app: no
+# /api/v1 GET is still a 501 stub since S23 implemented analytics, so an unrouted path's 404
+ERROR_GET = "/api/v1/analytics/no-such-subroute"
 IDEM = {"Idempotency-Key": "tester-key-1"}
 ID = "0b1c2d3e-0000-4000-8000-00000000abcd"
 VERSION_ID = "0b1c2d3e-0000-4000-8000-00000000abce"
@@ -50,14 +51,14 @@ def _envelope(response: Any, status: int, code: str) -> dict[str, Any]:
 def test_invalid_request_id_gets_fresh_uuid(client: TestClient, value: str | bytes) -> None:
     # bytes header values on purpose; the TestClient's stub types only `str` (httpx2 since S16)
     headers: Any = {**BEARER, "X-Request-ID": value}
-    r = client.get(STUB_GET, headers=headers)
-    body = _envelope(r, 501, "NOT_IMPLEMENTED")
+    r = client.get(ERROR_GET, headers=headers)
+    body = _envelope(r, 404, "NOT_FOUND")
     uuid.UUID(body["error"]["correlation_id"])
 
 
 def test_valid_request_id_is_kept(client: TestClient) -> None:
-    r = client.get(STUB_GET, headers={**BEARER, "X-Request-ID": "fe:trace.01-x"})
-    assert _envelope(r, 501, "NOT_IMPLEMENTED")["error"]["correlation_id"] == "fe:trace.01-x"
+    r = client.get(ERROR_GET, headers={**BEARER, "X-Request-ID": "fe:trace.01-x"})
+    assert _envelope(r, 404, "NOT_FOUND")["error"]["correlation_id"] == "fe:trace.01-x"
 
 
 # ---- routing edges (AC4) ----

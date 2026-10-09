@@ -80,8 +80,16 @@ def _side(conn: Conn, tenant_id: UUID) -> Side:
     owner = f.member(conn, tenant_id)
     side = Side(tenant_id, owner, f.member(conn, tenant_id, role="reviewer"))
     for marketplace in ("amazon", "flipkart"):
-        side.accounts[marketplace] = f.marketplace_account(
-            conn, tenant_id, marketplace=marketplace, connected_by_user_id=owner
+        found = conn.execute(
+            "SELECT id FROM marketplace_accounts WHERE tenant_id = %s AND marketplace = %s",
+            [tenant_id, marketplace],
+        ).fetchone()
+        side.accounts[marketplace] = (
+            found[0]
+            if found
+            else f.marketplace_account(
+                conn, tenant_id, marketplace=marketplace, connected_by_user_id=owner
+            )
         )
     return side
 
@@ -289,6 +297,16 @@ def _bharat(conn: Conn, side: Side) -> None:
 class AnalyticsWorld:
     conn: Conn
     tenants: dict[str, UUID]
+
+
+def more_rows(conn: Conn, tenant_id: UUID) -> None:
+    """Another batch of bharat-shaped rows for `tenant_id` (amazon +3 generated, +1 approval,
+    +1 first-pass run, +1 failed publish)."""
+    conn.execute("SET session_replication_role = replica")
+    try:
+        _bharat(conn, _side(conn, tenant_id))
+    finally:
+        conn.execute("RESET session_replication_role")
 
 
 def build_analytics_world(conn: Conn, tenants: dict[str, UUID] | None = None) -> AnalyticsWorld:

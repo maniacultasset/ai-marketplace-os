@@ -633,7 +633,7 @@ def test_bootstrap_has_auth_leg(repo_root: Path) -> None:
     steps = _auth_steps(repo_root)
     for step in (
         ("me", 200),
-        ("a verified token reaches a stub", 501),
+        ("a verified token reaches a tenant read", 200),
         ("reviewer generate", 403),
         ("refresh reuse", 401),
         ("refresh after reuse", 401),
@@ -915,23 +915,23 @@ def test_bootstrap_resets_before_each_e2e_run(repo_root: Path) -> None:
     assert "rate_limit_counters" not in code
 
 
-def test_auth_leg_stub_probe_is_still_a_stub(repo_root: Path) -> None:
-    # S12 implemented GET /products: the auth leg's "verified token reaches a stub" probe moved
-    # to a GET route that is still S3's 501 stub.
+def test_auth_leg_probe_reads_an_implemented_route(repo_root: Path) -> None:
+    # S12 moved the auth leg's probe off GET /products; S23 implemented analytics, the last GET
+    # stub, so the probe now wants 200 from that tenant read (a verified token past the role check).
     import importlib
 
     from app.api.v1.surface import OPS, is_stub
 
     script = (repo_root / "scripts" / "ci" / "auth_e2e.py").read_text(encoding="utf-8")
     probe = re.search(
-        r'"a verified token reaches a stub",\s*501,\s*leg\.call\("GET", "([^"]+)"', script
+        r'"a verified token reaches a tenant read",\s*200,\s*leg\.call\("GET", "([^"]+)"', script
     )
     assert probe is not None
     path = probe.group(1).split("?", 1)[0]
     ops = [o for o in OPS.values() if o.method == "GET" and o.path == path]
     assert len(ops) == 1
     module = importlib.import_module(f"app.api.v1.routers.{ops[0].group}")
-    assert is_stub(getattr(module, ops[0].op_id))
+    assert not is_stub(getattr(module, ops[0].op_id))
 
 
 # ---- S13 A8: a local worker beside `make dev` ----
