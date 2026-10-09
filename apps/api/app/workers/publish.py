@@ -456,12 +456,16 @@ def _plan_new(ctx: JobContext, prep: Prepared, payload: PublishJobPayload) -> At
         if prep.prev is None or prep.justification is None:
             raise _fail(ErrorCode.DUPLICATE_SUBMISSION_BLOCKED, "The retry is not justified.")
         justification, previous = prep.justification, prep.prev.id
-    # a field retry, or the next attempt after an unapplied patch, resends only the failed
-    # fields (invariant 10); with nothing failed left it is a full update
+    # a field retry, the next attempt after an unapplied patch, and any attempt (`resume`, or
+    # `publish` after `publish_failed`) once this version is partly applied resend only the
+    # failed fields (invariant 10, L12033); with nothing failed left it is a full update
     keep_patch = prep.prev is not None and prep.prev.operation == "patch"
+    partly_applied = prep.applied_before or (
+        prep.prev is not None and prep.prev.outcome == "partially_accepted"
+    )
     per_sku = (
         dict(prep.retry_paths)
-        if (payload.mode == "retry_fields" or keep_patch) and prep.retry_paths
+        if (payload.mode == "retry_fields" or keep_patch or partly_applied) and prep.retry_paths
         else None
     )
     previously = (

@@ -186,3 +186,85 @@ async def test_foreign_pending_not_found_is_not_applied_and_v2_created(
     ]
     assert [c[0] for c in pub.fake.calls[calls:]] == ["create"]
     assert pub.listing(made.listing_id)["published_version_id"] == v2.version_id
+
+
+# ---- finding 3: only the failed fields after a partial, whatever the mode ----
+
+
+def _apply_tasks(pub: PubWorld, job_id: Any) -> None:
+    tasks = [
+        r[0]
+        for r in pub.rows(
+            "SELECT human_task_id FROM listing_issues WHERE job_id = %s "
+            "AND human_task_id IS NOT NULL",
+            [job_id],
+        )
+    ]
+    assert tasks
+    owner = pub.world.user(OWNER)
+    pub.conn.execute(
+        "UPDATE human_tasks SET status = 'answered', answer = '{}'::jsonb, "
+        "answered_by_user_id = %s, answered_at = now() WHERE id = ANY(%s)",
+        [owner, tasks],
+    )
+    pub.conn.execute(
+        "UPDATE human_tasks SET status = 'applied', applied_at = now() WHERE id = ANY(%s)",
+        [tasks],
+    )
+
+
+async def test_resume_after_action_partial_sends_only_failed_fields(
+    api: httpx.AsyncClient, pub: PubWorld
+) -> None:
+    made = await approved(pub)
+    pub.fake.set_fail_fields({"content.title": ("WEIRD_1", "Something odd")})
+    first = await publish_and_run(api, pub, made)
+    row = pub.listing(made.listing_id)
+    assert (row["status"], row["status_reason"]) == ("blocked", "marketplace_action_required")
+    assert pub.submissions(made.listing_id)[0]["outcome"] == "partially_accepted"
+    pub.fake.set_fail_fields({})
+    _apply_tasks(pub, first["job_id"])
+    calls = len(pub.fake.calls)
+    await publish_and_run(api, pub, made)
+    sub = pub.submissions(made.listing_id)[-1]
+    assert (sub["operation"], sub["field_paths"]) == ("patch", ["content.title"])
+    sku = _sku(pub, made.listing_id)
+    assert pub.fake.calls[calls:] == [("update", {sku: ["content.title"]})]
+
+
+async def test_publish_failed_after_partial_sends_only_failed_fields(
+    api: httpx.AsyncClient, pub: PubWorld
+) -> None:
+    """A field retry's job dies before its write-ahead (the adapter never opens): the listing
+    ends `failed/publish_failed`; the next publish still resends only the failed field."""
+    from app.workers import publish as publish_worker
+
+    made = await approved(pub)
+    pub.fake.set_fail_fields({"content.title": RL})
+    await publish_and_run(api, pub, made)
+    assert pub.listing(made.listing_id)["status_reason"] == "publish_partial"
+    pub.fake.set_fail_fields({})
+
+    async def down(*a: Any, **k: Any) -> Any:
+        raise MarketplaceUnavailable(_report())
+
+    publish_worker.set_adapter_factory(down)
+    try:
+        item = await publish_one(api, pub, made)  # mode retry_fields
+        for _ in range(3):
+            await _run_tolerant(item["job_id"])
+    finally:
+
+        async def factory(tenant_id: uuid.UUID, account_id: uuid.UUID, sink: Any) -> Any:
+            return pub.fake
+
+        publish_worker.set_adapter_factory(factory)
+    row = pub.listing(made.listing_id)
+    assert (row["status"], row["status_reason"]) == ("failed", "publish_failed")
+    assert len(pub.submissions(made.listing_id)) == 1
+    calls = len(pub.fake.calls)
+    await publish_and_run(api, pub, made)  # mode publish
+    sub = pub.submissions(made.listing_id)[-1]
+    assert (sub["operation"], sub["field_paths"]) == ("patch", ["content.title"])
+    sku = _sku(pub, made.listing_id)
+    assert pub.fake.calls[calls:] == [("update", {sku: ["content.title"]})]
