@@ -4,7 +4,9 @@ besides the periodic slots and the budget claim, allowed `platform_scope()` (R5)
 Every function takes a session from `rollup_session()` (`platform_scope()`: READ ONLY as
 `app_platform_ro`, never commits) and runs Core SELECTs (no raw SQL), returning frozen
 dataclasses. Money stays `Decimal` from `agent_runs.cost_usd` (`numeric(12,6)`, summed exactly);
-days are UTC days of `agent_runs.created_at` (an IST offset never moves a row).
+days are UTC days of `agent_runs.started_at`, the column the kill switch sums
+(`app/repositories/budget.py`) and the 0002 `(tenant_id, started_at) INCLUDE (cost_usd)` index
+covers (an IST offset never moves a row).
 
 Cost (spec L12705; BACKEND-ARCHITECTURE.md:2761):
 - `daily_spend(s, now, days=7)` and `cost_per_published_listing(s, now)`: the staff cost page's
@@ -121,11 +123,11 @@ async def daily_spend(session: AsyncSession, now: datetime, days: int = 7) -> li
     today = aware_utc(now).date()
     first = today - timedelta(days=days - 1)
     start, _ = _day_bounds(first)
-    day = _utc_day(AgentRun.created_at)  # type: ignore[arg-type]
+    day = _utc_day(AgentRun.started_at)  # type: ignore[arg-type]
     stmt = (
         select(day, Tenant.slug, func.sum(AgentRun.cost_usd))
         .join(Tenant, Tenant.id == AgentRun.tenant_id)
-        .where(AgentRun.created_at >= start)
+        .where(AgentRun.started_at >= start)
         .group_by(day, Tenant.slug)
         .order_by(day, Tenant.slug)
     )
@@ -142,7 +144,7 @@ async def daily_spend(session: AsyncSession, now: datetime, days: int = 7) -> li
 async def cost_per_published_listing(session: AsyncSession, now: datetime) -> CostPerListing:
     since = aware_utc(now) - COST_WINDOW
     spend_stmt = select(func.coalesce(func.sum(AgentRun.cost_usd), 0)).where(
-        AgentRun.created_at >= since
+        AgentRun.started_at >= since
     )
     published_stmt = select(func.count()).where(Listing.first_published_at >= since)
     spend = _money((await session.execute(spend_stmt)).scalar_one())
@@ -155,7 +157,7 @@ async def spend_today(session: AsyncSession, now: datetime) -> SpendToday:
     start, end = _day_bounds(aware_utc(now).date())
     stmt = (
         select(AgentRun.tenant_id, func.sum(AgentRun.cost_usd))
-        .where(AgentRun.created_at >= start, AgentRun.created_at < end)
+        .where(AgentRun.started_at >= start, AgentRun.started_at < end)
         .group_by(AgentRun.tenant_id)
     )
     per = {tenant: _money(total) for tenant, total in (await session.execute(stmt)).all()}
@@ -163,7 +165,7 @@ async def spend_today(session: AsyncSession, now: datetime) -> SpendToday:
 
 
 def _listing_costs(since: datetime | None) -> ColumnElement[bool] | None:
-    return None if since is None else AgentRun.created_at >= since
+    return None if since is None else AgentRun.started_at >= since
 
 
 async def cost_per_listing(
@@ -176,7 +178,7 @@ async def cost_per_listing(
     stmt = (
         select(AgentRun.listing_id, AgentRun.tenant_id, Tenant.name, cost, func.count())
         .join(Tenant, Tenant.id == AgentRun.tenant_id)
-        .where(AgentRun.listing_id.is_not(None), AgentRun.created_at >= since)
+        .where(AgentRun.listing_id.is_not(None), AgentRun.started_at >= since)
         .group_by(AgentRun.listing_id, AgentRun.tenant_id, Tenant.name)
         .order_by(cost.desc(), AgentRun.listing_id)
         .limit(limit)
@@ -217,7 +219,7 @@ async def _by(
     key = func.coalesce(column, "unknown")
     stmt = (
         select(key, cost, func.count())
-        .where(AgentRun.created_at >= start, AgentRun.created_at < end)
+        .where(AgentRun.started_at >= start, AgentRun.started_at < end)
         .group_by(key)
         .order_by(cost.desc(), key)
     )

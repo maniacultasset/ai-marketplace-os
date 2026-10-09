@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -34,7 +34,9 @@ class CostWorld:
 
 
 def _run(conn: Conn, tenant: UUID, cost: str, at: datetime, **extra: Any) -> None:
-    f.agent_run(conn, tenant, cost_usd=Decimal(cost), created_at=at, started_at=at, **extra)
+    """A call started at `at` and written 5 s later: the rollups read `started_at` (R1-1)."""
+    written = at + timedelta(seconds=5)
+    f.agent_run(conn, tenant, cost_usd=Decimal(cost), started_at=at, created_at=written, **extra)
 
 
 @pytest.fixture
