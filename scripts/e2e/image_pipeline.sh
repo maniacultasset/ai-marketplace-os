@@ -11,7 +11,8 @@
 # Usage: WORKER_START=<cmd> WORKER_STOP=<cmd> scripts/e2e/image_pipeline.sh [base_url]
 # E2E_SIGNED_LEG=0 skips the signed-PUT leg (the bootstrap image signs for the compose network's
 # `minio` host, which this script cannot reach); a multipart main stands in for the replaced one. The approve leg
-# (AC17) waits on S19's approve endpoint and is skipped by name. Local only: the base URL and
+# (AC17) is skipped by name: no v1 HTTP path puts an image on a stub-generated version (the stub
+# copies only the previous version's images), so S19's test_approve_image_gate.py proves the gate. Local only: the base URL and
 # every signed URL must be on 127.0.0.1 or localhost, else exit 2 before the request. Every poll
 # gives up after 60 s. On failure it prints the step name and the HTTP status, never a body.
 set -euo pipefail
@@ -265,7 +266,7 @@ foreign="${acme_key%%/*}/$bharat_product/images/$(python3 -c 'import uuid; print
 upload "$bharat" "e2e-img-bharat-$run" "$bharat_product" main "storage_key=$foreign"
 expect 404
 
-echo "e2e: approve leg skipped (S19's approve endpoint is not built; AC17 moves to S19)"
+echo "e2e: approve leg skipped (no v1 HTTP path puts an image on a stub-generated version; S19's test_approve_image_gate.py proves the gate)"
 
 step worker_stop
 bash -c "$WORKER_STOP" || fail "the WORKER_STOP hook failed"
