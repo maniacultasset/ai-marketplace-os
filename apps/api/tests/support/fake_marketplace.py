@@ -746,7 +746,13 @@ def _fk_write(state: FakeState, seller: str, entry: Any, *, update: bool) -> dic
             "listing_id": "LST" + hashlib.sha256("/".join(key).encode()).hexdigest()[:12].upper(),
             "fsn": "FSN" + hashlib.sha256(sku.encode()).hexdigest()[:13].upper(),
         }
-    return {"sku": sku, "status": "SUCCESS", "errors": issues}
+    stored = state.fk_items[key]
+    return {
+        "sku": sku,
+        "status": "SUCCESS",
+        "listing_id": stored["listing_id"],
+        "errors": issues,
+    }
 
 
 async def _flipkart(state: FakeState, request: Request) -> Response:

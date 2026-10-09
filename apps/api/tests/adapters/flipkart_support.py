@@ -150,6 +150,13 @@ def flipkart_client(app: Any, *, transport: Any = None, tokens: Any = None, **ov
     return client
 
 
+def flipkart_adapter(app: Any, *, rows: Any = (), **client_over: Any) -> Any:
+    from app.adapters.error_map import ErrorMapper
+    from app.adapters.flipkart.adapter import FlipkartAdapter
+
+    return FlipkartAdapter(flipkart_client(app, **client_over), ErrorMapper(rows))
+
+
 def attribute_names(path: str) -> list[str]:
     """The Flipkart attributes a canonical path feeds, under the kurta mapping."""
     from app.adapters.flipkart.mapping import reverse_index

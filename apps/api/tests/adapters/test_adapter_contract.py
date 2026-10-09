@@ -43,3 +43,18 @@ async def test_adapter_contract_amazon() -> None:
         return amazon_adapter(app)
 
     assert await run_contract_suite(factory, prepare=prepare) == []  # type: ignore[arg-type]
+
+
+async def test_adapter_contract_flipkart() -> None:
+    """S22 T14 (Done-when 1): the Flipkart adapter passes the same suite, against the fake
+    Flipkart listings API over ASGI (no network). `prepare` is what the shared input builder
+    gives Flipkart: no parent row, each child's colourway key."""
+    from tests.adapters.flipkart_support import flipkart_adapter, prepare, reject
+    from tests.support.fake_marketplace import build_fake
+
+    def factory(fail: Mapping[str, tuple[str, str]]) -> object:
+        app = build_fake()
+        reject(app, fail)
+        return flipkart_adapter(app)
+
+    assert await run_contract_suite(factory, prepare=prepare) == []  # type: ignore[arg-type]

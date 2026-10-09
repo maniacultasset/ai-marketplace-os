@@ -37,6 +37,7 @@ import httpx
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import Marketplace
 from mkos_schemas.errors import ErrorReport
+from pydantic import SecretStr
 
 from app.adapters.base import (
     AdapterError,
@@ -133,6 +134,7 @@ class FlipkartClient:
         self._clock = clock
         self._max_body = max_body
         self._refreshed = False
+        self._used: list[SecretStr] = []
         self._http = httpx.AsyncClient(
             transport=transport, timeout=TIMEOUT, follow_redirects=False, trust_env=False
         )
@@ -146,6 +148,11 @@ class FlipkartClient:
     @property
     def refreshed(self) -> bool:
         return self._refreshed
+
+    def used_secrets(self) -> list[str]:
+        """The token values this session sent, so the adapter can scrub them from any raw
+        marketplace text it keeps (an error that echoes the token). Never logged."""
+        return [s.get_secret_value() for s in self._used]
 
     # ---- the three calls ----
 
@@ -228,6 +235,8 @@ class FlipkartClient:
             attempt += 1
             await self._limiter.acquire(operation)
             secret = await self._tokens.get()
+            if all(secret is not seen for seen in self._used):
+                self._used.append(secret)
             request = self._request(operation, method, skus, content, secret.get_secret_value())
             del secret
             started = self._clock()
