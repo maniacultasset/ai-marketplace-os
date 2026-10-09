@@ -13,7 +13,9 @@ listing is locked only in the short write-ahead transaction.
    is found is `accepted`; otherwise this job's own row is resent on the same row and key
    (uncounted), and an ended job's row becomes `error SUBMISSION_NOT_APPLIED` and the next attempt
    follows (its 3rd unresolved attempt sends nothing: `blocked/publish_attempts_exhausted`).
-   Once any version reached the marketplace, the next send is an `update`, never a `create`.
+   An older version's row is never resent: found → `accepted` (attempt 1 supersedes it), else
+   `error SUBMISSION_NOT_APPLIED`; this version's attempt 1 follows. Once any version reached
+   the marketplace, the next send is an `update`, never a `create`.
 3. **Pins, outside any transaction** (D9, C:48): the product's facts digest must equal the approve
    row's, and each sent image must be `passed`, carry a `content_hash` (NULL = never checked:
    refused) and re-hash to it (read capped at 10 MiB). A mismatch sends nothing, revalidates the
@@ -726,6 +728,9 @@ async def _resolve_open(
     row = prep.open_row
     if row is None:  # the caller checked: nothing to resolve
         return None
+    if row.listing_version_id != prep.version_id:
+        await _resolve_foreign(ctx, prep, adapter, urls, row)
+        return None
     per_sku: dict[str, tuple[str, ...]] | None = None
     if row.operation == "patch":
         async with tenant_uow(ctx.tenant_id) as uow:
@@ -792,6 +797,48 @@ async def _resolve_open(
         )
         return _exhausted(attempt_ctx, decision)
     return None
+
+
+async def _resolve_foreign(
+    ctx: JobContext,
+    prep: Prepared,
+    adapter: MarketplaceAdapter,
+    urls: Mapping[uuid.UUID, str],
+    row: Any,
+) -> None:
+    """An older version's `pending` row (its job ended) while this job publishes a newer one:
+    never resent with this version's content, and never resolved into this version's ledger.
+    A sent `create` whose every SKU is found becomes `accepted` without moving the listing (the
+    next attempt 1's write-ahead supersedes it); anything else becomes `error
+    SUBMISSION_NOT_APPLIED`. The 3-attempt count is per version, so no exhaustion here."""
+    outcome = "error"
+    if row.sent_at is not None and row.operation == "create":
+        item = build_adapter_listing(
+            prep.source, image_refs=urls, idempotency_key=row.idempotency_key, attempt=row.attempt
+        )
+        try:
+            found = await _read_all_found(adapter, item)
+        except AdapterError as exc:
+            log.info("publish.read_failed", job_run_id=str(ctx.job_run_id), kind=_kind_of(exc))
+            raise RetryableJobError(ErrorCode.MARKETPLACE_UNAVAILABLE) from None
+        if found:
+            outcome = "accepted"
+    report = None
+    if outcome == "error":
+        report = refusal_report(
+            ErrorCode.SUBMISSION_NOT_APPLIED,
+            "listing",
+            "An earlier version's attempt was not applied by the marketplace.",
+            attempt=row.attempt,
+        ).model_copy(update={"retryable": True})
+    async with tenant_uow(ctx.tenant_id, user_id=prep.created_by) as uow:
+        await uow.submissions.resolve(
+            row.id,
+            outcome=outcome,
+            error_code=None if report is None else ErrorCode.SUBMISSION_NOT_APPLIED.value,
+            report=None if report is None else report.model_dump(mode="json"),
+        )
+    log.info("publish.foreign_row_resolved", job_run_id=str(ctx.job_run_id), outcome=outcome)
 
 
 def _exhausted(attempt_ctx: AttemptCtx, decision: Decision) -> Outcome:

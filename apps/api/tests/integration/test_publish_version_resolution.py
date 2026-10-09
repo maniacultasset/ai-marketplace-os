@@ -17,7 +17,7 @@ from typing import Any
 
 import httpx
 import pytest
-from app.adapters.base import MarketplaceAmbiguous
+from app.adapters.base import MarketplaceAmbiguous, MarketplaceUnavailable
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.errors import ErrorReport
 
@@ -107,3 +107,82 @@ async def test_ambiguous_v2_after_partial_is_resent_not_read_as_applied(
     assert (sub["operation"], sub["outcome"]) == ("update", "accepted")
     assert pub.fake.stored(sku) != before  # v2 was really applied
     assert pub.fake.calls[-1][0] == "update"
+
+
+# ---- finding 2: an older version's open pending row ----
+
+
+async def _v1_pending_dead_letter(api: httpx.AsyncClient, pub: PubWorld, *, applied: bool) -> Made:
+    """v1's create is applied (or not) but the answer is lost; the job dead-letters with the
+    row `pending` and the listing `failed/publish_failed`."""
+    made = await approved(pub)
+    reads = pub.fake.get_listing
+
+    async def unreadable(*a: Any, **k: Any) -> Any:
+        raise MarketplaceUnavailable(_report())
+
+    if applied:
+        pub.fake.raise_after_write = MarketplaceAmbiguous(_report())
+    else:
+        pub.fake.raise_next = [MarketplaceAmbiguous(_report())]
+    pub.fake.get_listing = unreadable
+    item = await publish_one(api, pub, made)
+    for _ in range(3):
+        await _run_tolerant(item["job_id"])
+    assert pub.job(item["job_id"])["status"] == "dead_letter"
+    pub.fake.get_listing = reads
+    pub.fake.raise_next = []
+    row = pub.listing(made.listing_id)
+    assert (row["status"], row["status_reason"]) == ("failed", "publish_failed")
+    (sub,) = pub.submissions(made.listing_id)
+    assert (sub["outcome"], sub["operation"]) == ("pending", "create")
+    return made
+
+
+async def test_foreign_pending_found_is_superseded_and_v2_sent(
+    api: httpx.AsyncClient, pub: PubWorld
+) -> None:
+    made = await _v1_pending_dead_letter(api, pub, applied=True)
+    v2 = await _new_version(api, pub, made)
+    calls = len(pub.fake.calls)
+    again = await publish_one(api, pub, v2)
+    assert again["http_status"] == 202, again
+    assert await _run_tolerant(again["job_id"]) is None
+    subs = pub.submissions(made.listing_id)
+    assert [
+        (s["listing_version_id"], s["attempt"], s["outcome"], s["operation"]) for s in subs
+    ] == [
+        (made.version_id, 1, "superseded", "create"),
+        (v2.version_id, 1, "accepted", "update"),
+    ]
+    # v2 really went out (one update), and no field result of v2 sits on v1's row
+    assert [c[0] for c in pub.fake.calls[calls:]] == ["update"]
+    assert (
+        pub.scalar(
+            "SELECT count(*) FROM publish_field_results WHERE submission_id = %s",
+            [subs[0]["id"]],
+        )
+        == 0
+    )
+    row = pub.listing(made.listing_id)
+    assert (row["status"], row["published_version_id"]) == ("published", v2.version_id)
+
+
+async def test_foreign_pending_not_found_is_not_applied_and_v2_created(
+    api: httpx.AsyncClient, pub: PubWorld
+) -> None:
+    made = await _v1_pending_dead_letter(api, pub, applied=False)
+    v2 = await _new_version(api, pub, made)
+    calls = len(pub.fake.calls)
+    again = await publish_one(api, pub, v2)
+    assert await _run_tolerant(again["job_id"]) is None
+    subs = pub.submissions(made.listing_id)
+    assert [
+        (s["listing_version_id"], s["attempt"], s["outcome"], s["error_code"], s["operation"])
+        for s in subs
+    ] == [
+        (made.version_id, 1, "error", "SUBMISSION_NOT_APPLIED", "create"),
+        (v2.version_id, 1, "accepted", None, "create"),
+    ]
+    assert [c[0] for c in pub.fake.calls[calls:]] == ["create"]
+    assert pub.listing(made.listing_id)["published_version_id"] == v2.version_id
