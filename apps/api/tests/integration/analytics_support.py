@@ -226,7 +226,7 @@ def submission(
     if outcome in ("partially_accepted", "rejected", "error"):
         columns["error_report_json"] = _report(retryable)
     if outcome == "error":
-        columns["error_code"] = "RATE_LIMITED" if retryable else "MARKETPLACE_REJECTED"
+        columns["error_code"] = "RATE_LIMITED" if retryable else "MARKETPLACE_UNKNOWN_ERROR"
     return f.insert(conn, "listing_submissions", **columns)  # type: ignore[no-any-return]
 
 
