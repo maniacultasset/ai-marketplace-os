@@ -18,6 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.agent_runs import AgentRunRepository
 from app.repositories.attribute_definitions import AttributeDefinitionRepository
+from app.repositories.audit_log import AuditLogRepository
+from app.repositories.batches import BatchRepository
 from app.repositories.brand_chunks import BrandChunkRepository
 from app.repositories.brand_documents import BrandDocumentRepository
 from app.repositories.brand_profile import BrandPromptRepository
@@ -73,6 +75,9 @@ class TenantUnitOfWork:
     validation_runs: ValidationRunRepository
     review_decisions: ReviewDecisionRepository
     budget: BudgetRepository
+    # S19: approve/reject batches and the listing history read.
+    batches: BatchRepository
+    audit_log: AuditLogRepository
 
 
 def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
@@ -103,6 +108,8 @@ def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
         validation_runs=ValidationRunRepository(session, tenant_id),
         review_decisions=ReviewDecisionRepository(session, tenant_id),
         budget=BudgetRepository(session, tenant_id),
+        batches=BatchRepository(session, tenant_id),
+        audit_log=AuditLogRepository(session, tenant_id),
     )
 
 
