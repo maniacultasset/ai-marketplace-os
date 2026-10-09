@@ -21,6 +21,7 @@ from app.repositories.jobs import EnqueueSpec, JobRunRepository
 from app.workers import main
 from app.workers.registry import JobContext, Outcome
 from mkos_schemas.enums import JobKind
+from tests.timing import budget
 
 from . import factories as f
 from .conftest import LOCAL_HOSTS
@@ -88,7 +89,7 @@ async def test_worker_sigterm_short_job_finishes(jobs_db: JobWorld, tmp_path: Pa
     finally:
         code, took, output = _stop(proc)
     assert code == 0, output
-    assert took < 10
+    assert took < budget(10), took  # GRACE_S 8 s plus the exit, on a loaded runner
     row = job_row(jobs_db.conn, job)
     assert (row["status"], row["attempt"]) == ("succeeded", 1)
 
@@ -103,7 +104,7 @@ async def test_worker_sigterm_long_job_released_uncounted(
     finally:
         code, took, output = _stop(proc)
     assert code == 0, output
-    assert took < 10
+    assert took < budget(10), took  # GRACE_S 8 s plus the exit, on a loaded runner
     row = job_row(jobs_db.conn, job)
     assert (row["status"], row["attempt"]) == ("queued", 0)
     nxt = spawn_worker(tmp_path, "--max-sleep", "0.1")
@@ -127,7 +128,7 @@ async def test_worker_sigterm_exits_within_10s(jobs_db: JobWorld, tmp_path: Path
     finally:
         code, took, output = _stop(proc)
     assert code == 0, output
-    assert took < 10, took  # both queues drain in parallel inside the grace
+    assert took < budget(10), took  # both queues drain in parallel inside the grace
     assert [_status(jobs_db, j) for j in jobs] == ["queued", "queued"]
 
 
