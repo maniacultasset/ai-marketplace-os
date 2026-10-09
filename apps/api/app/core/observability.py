@@ -221,6 +221,17 @@ def _valid_dsn(dsn: str) -> bool:
     return True
 
 
+def current_trace_id() -> str | None:
+    """The current span's 32-hex trace id, or None without a valid span."""
+    context = trace.get_current_span().get_span_context()
+    return trace.format_trace_id(context.trace_id) if context.is_valid else None
+
+
 def tag_request(request_id: str) -> None:
-    """The request middleware's hook: tag the request's Sentry isolation scope."""
-    sentry_sdk.get_isolation_scope().set_tag("request_id", request_id)
+    """The request middleware's hook: tag the request's Sentry isolation scope with its
+    `request_id` and (S23) the SERVER span's `trace_id`, so an event leads to its trace."""
+    scope = sentry_sdk.get_isolation_scope()
+    scope.set_tag("request_id", request_id)
+    trace_id = current_trace_id()
+    if trace_id is not None:
+        scope.set_tag("trace_id", trace_id)

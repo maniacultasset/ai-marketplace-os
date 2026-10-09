@@ -39,6 +39,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+import sentry_sdk
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorSource, JobKind
 from mkos_schemas.errors import ErrorItem, ErrorReport
@@ -46,6 +47,7 @@ from opentelemetry.trace import SpanKind, Status, StatusCode
 
 from app.core.alerts import day_window, dead_letter_cap
 from app.core.logging import get_logger
+from app.core.observability import current_trace_id
 from app.core.request_context import bind_tenant, new_request_id, request_context
 from app.core.traceparent import parse_traceparent
 from app.core.tracer import get_tracer
@@ -85,18 +87,28 @@ async def run_job(job_run_id: str) -> None:
         bind_tenant(head.tenant_id)
         kind = JobKind(head.kind)
         policy = policy_for(kind)
-        with get_tracer().start_as_current_span(
-            f"job {kind.value}",
-            context=parse_traceparent(head.traceparent),
-            kind=SpanKind.CONSUMER,
-            attributes={
-                "job.id": str(job_id),
-                "job.kind": kind.value,
-                "tenant_id": str(head.tenant_id),
-            },
-            record_exception=False,
-            set_status_on_exception=False,
-        ) as span:
+        with (
+            get_tracer().start_as_current_span(
+                f"job {kind.value}",
+                context=parse_traceparent(head.traceparent),
+                kind=SpanKind.CONSUMER,
+                attributes={
+                    "job.id": str(job_id),
+                    "job.kind": kind.value,
+                    "tenant_id": str(head.tenant_id),
+                },
+                record_exception=False,
+                set_status_on_exception=False,
+            ) as span,
+            sentry_sdk.isolation_scope() as sentry_scope,
+        ):
+            # S23 (D9): this job's Sentry events carry its request, trace and kind, and the
+            # scope ends with the job, so the next job starts clean
+            sentry_scope.set_tag("request_id", ctx.request_id)
+            sentry_scope.set_tag("job_kind", kind.value)
+            trace_id = current_trace_id()
+            if trace_id is not None:
+                sentry_scope.set_tag("trace_id", trace_id)
             claimed = await _claim(job_id, head, policy, ctx.request_id)
             if claimed is None:
                 return

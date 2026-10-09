@@ -339,6 +339,15 @@ def _boot_errors(s: Settings) -> list[str]:
         errors.append(f"APP_ENV={s.app_env} refuses a committed or dev-prefixed JWT_SECRET")
     if s.app_env != "local" and s.app_role in ("api", "worker") and s.sentry_dsn is None:
         errors.append(f"APP_ENV={s.app_env} requires SENTRY_DSN for APP_ROLE={s.app_role}")
+    # S23 (D9; ENV.md GIT_SHA): a deployed api or worker reports a real Sentry release
+    if (
+        s.app_env != "local"
+        and s.app_role in ("api", "worker")
+        and s.git_sha.strip() in ("", "dev")
+    ):
+        errors.append(
+            f'APP_ENV={s.app_env} requires GIT_SHA (not empty, not "dev") for APP_ROLE={s.app_role}'
+        )
     errors += _admin_errors(s)
     if s.app_env == "production" and s.app_role == "worker" and _pipeline_stub_installed():
         errors.append("APP_ENV=production APP_ROLE=worker refuses mkos-pipeline-stub")
