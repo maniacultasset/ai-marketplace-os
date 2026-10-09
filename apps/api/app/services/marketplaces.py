@@ -41,6 +41,7 @@ from app.adapters.oauth import (
 from app.core.config import get_settings
 from app.core.crypto import SealedTokens, get_key_wrapper, seal
 from app.core.errors import ConflictError, NotFoundError
+from app.core.flags import MarketplaceNotEnabled, marketplace_enabled
 from app.core.rbac import Principal
 from app.repositories.identity import consume_oauth_state
 from app.repositories.transactions import identity_session
@@ -94,6 +95,13 @@ def s256_challenge(verifier: str) -> str:
     return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
 
 
+def _require_enabled(marketplace: str) -> None:
+    """S22 D2, C5: a switched-off marketplace (Flipkart while `FLIPKART_ENABLED=false`) is refused
+    with 501 before any client lookup, state write, state consume or token exchange."""
+    if not marketplace_enabled(marketplace, get_settings()):
+        raise MarketplaceNotEnabled(marketplace)
+
+
 def _client(marketplace: str) -> OAuthClient:
     client = get_oauth_client(marketplace)
     if client is None:
@@ -107,6 +115,7 @@ def _client(marketplace: str) -> OAuthClient:
 
 async def start_connect(principal: Principal, marketplace: str) -> str:
     """The consent URL for `marketplace`; the state row is written in the caller's tenant."""
+    _require_enabled(marketplace)
     client = _client(marketplace)
     state = secrets.token_urlsafe(STATE_BYTES)
     verifier = secrets.token_urlsafe(VERIFIER_BYTES) if client.uses_pkce else None
@@ -128,6 +137,7 @@ async def complete_callback(
     """The OAuth return: consume the state once, exchange the code with no transaction open,
     seal the tokens for the state's tenant and store them under a fresh opaque handle (returned).
     The tenant and user come only from the consumed state row."""
+    _require_enabled(marketplace)
     client = _client(marketplace)
     async with identity_session() as session:
         row = await consume_oauth_state(session, state_hash=sha256(state), marketplace=marketplace)
@@ -205,6 +215,8 @@ async def confirm(principal: Principal, pending: str) -> AccountView:
         )
         if row is None:
             raise bad_state()
+        # S22 C5: raised inside the transaction, so the consume rolls back and the handle survives
+        _require_enabled(row.marketplace)
         sealed = SealedTokens(blob=row.token_enc, key_version=row.kms_key_version)
         accounts = uow.marketplace_accounts
         live = await accounts.live_for_update(row.marketplace)
