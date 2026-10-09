@@ -329,7 +329,7 @@ def test_reviewer_id_rejected() -> None:
 
 @pytest.mark.parametrize(
     "extra",
-    [{}, {"reason_code": "off_brand"}, {"feedback": "too long title"}],
+    [{}, {"reason_code": "off_brand_voice"}, {"feedback": "too long title"}],
 )
 def test_reject_needs_reason_and_feedback(extra: dict[str, Any]) -> None:
     body = _approve(1, **extra)
@@ -339,7 +339,7 @@ def test_reject_needs_reason_and_feedback(extra: dict[str, Any]) -> None:
 
 
 def test_reject_with_reason_and_feedback_ok() -> None:
-    body = _approve(1, reason_code="off_brand", feedback="Tone is off.", regenerate=True)
+    body = _approve(1, reason_code="off_brand_voice", feedback="Tone is off.", regenerate=True)
     body["items"][0]["decision"] = "reject"
     assert ApproveRequest.model_validate(body).items[0].regenerate is True
 

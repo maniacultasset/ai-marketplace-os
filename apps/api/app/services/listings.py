@@ -40,6 +40,11 @@ def to_detail(
     listing: Any, content: CanonicalListing | None, summary: ValidationSummary | None
 ) -> dict[str, Any]:
     """The `ListingDetail` fields (the router validates them into the response model)."""
+    return {**listing_fields(listing), "content": content, "validation": summary}
+
+
+def listing_fields(listing: Any) -> dict[str, Any]:
+    """The `ListingOut` fields of a `listings` row (S19's list reuses them)."""
     return {
         "id": listing.id,
         "product_id": listing.product_id,
@@ -54,9 +59,24 @@ def to_detail(
         "status_changed_at": listing.status_changed_at,
         "created_at": listing.created_at,
         "updated_at": listing.updated_at,
-        "content": content,
-        "validation": summary,
     }
+
+
+async def current_pins(uow: TenantUnitOfWork, listing: Any) -> Pins:
+    """The pins a run must carry to count now (DATABASE.md:823, G9): the currently resolved
+    rules version and template, and the digest of the product's current facts. No engine run."""
+    rules = await load_rules(
+        uow, tenant_id=listing.tenant_id, marketplace=listing.marketplace, category=listing.category
+    )
+    facts = await uow.product_facts.resolve(listing.product_id)
+    if facts is None:
+        raise NotFoundError("product_id")
+    return Pins(
+        rules_version=rules.ruleset.rules_version,
+        template_id=rules.template_id,
+        template_version=rules.template_version,
+        facts_digest=facts_digest(facts),
+    )
 
 
 async def rules_check(uow: TenantUnitOfWork, listing: Any, canonical: CanonicalListing) -> Check:
@@ -95,8 +115,11 @@ async def insert_run(
     *,
     attempt: int = 1,
     request_id: str | None = None,
+    cause: str | None = None,
 ) -> Any:
-    return await uow.validation_runs.insert(
+    """One `rules_engine` run linked to `version_id`; with a `cause`, the listing's issues are
+    synced from it in the same transaction (S19 T18, CP-D2)."""
+    run = await uow.validation_runs.insert(
         ValidationResult(
             tenant_id=listing.tenant_id,
             listing_id=listing.id,
@@ -115,3 +138,16 @@ async def insert_run(
         facts_digest=check.pins.facts_digest,
         request_id=request_id,
     )
+    if cause is not None:
+        from app.services.issues import sync_issues
+
+        await sync_issues(
+            uow,
+            listing,
+            "rules_engine",
+            check.report,
+            run_id=run.id,
+            cause=cause,
+            version_id=version_id,
+        )
+    return run

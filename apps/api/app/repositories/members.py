@@ -75,6 +75,19 @@ class MembersRepository(TenantScopedRepository[TenantMembership]):
         found = (await self.db.execute(stmt)).one_or_none()
         return None if found is None else _row(found)
 
+    async def role_for_share(self, user_id: uuid.UUID) -> tuple[str, bool] | None:
+        """The member's `(role, is_active)`, its membership row read `FOR SHARE` (S19: the
+        approver's membership, DATABASE.md §7.1), so a concurrent demotion or deactivation waits
+        for this transaction or is seen by it; None for a non-member."""
+        stmt = (
+            self._select()
+            .where(TenantMembership.user_id == user_id)
+            .with_only_columns(TenantMembership.role, TenantMembership.is_active)
+            .with_for_update(read=True)
+        )
+        found = (await self.db.execute(stmt)).one_or_none()
+        return None if found is None else (found.role, found.is_active)
+
     async def check_owners_at_each_statement(self) -> None:
         """Run the deferred last-owner trigger at the statement (OWN01 there, not at COMMIT)."""
         await self.db.execute(_OWNER_GUARD_NOW)

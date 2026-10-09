@@ -6,10 +6,12 @@ applying is two steps. Inserts go through Core (the `request_id` column default 
 
 from __future__ import annotations
 
+import builtins
 import uuid
+from datetime import datetime
 from typing import Any, Final
 
-from sqlalchemy import text
+from sqlalchemy import literal, text, tuple_
 from sqlalchemy.dialects.postgresql import insert
 
 from app.db.models.issues import HumanTask
@@ -39,6 +41,9 @@ _CANCEL: Final = text(
     "WHERE tenant_id = :t AND marketplace_account_id = :a AND kind = 'reconnect_account' "
     "AND status IN ('open', 'answered')"
 )
+
+
+TASK_PAGE_MAX: Final = 200
 
 
 def _rowcount(result: Any) -> int:
@@ -77,3 +82,25 @@ class HumanTaskRepository(TenantScopedRepository[HumanTask]):
 
     async def cancel_reconnect(self, account_id: uuid.UUID) -> int:
         return _rowcount(await self.db.execute(_CANCEL, {"t": self.tenant_id, "a": account_id}))
+
+    async def page(
+        self,
+        status: str,
+        *,
+        after: tuple[datetime, uuid.UUID] | None,
+        limit: int,
+    ) -> tuple[builtins.list[HumanTask], bool]:
+        """S19 T21: the task inbox, newest first by `(created_at, id)` (the inbox index
+        `(tenant_id, status, created_at DESC, id DESC)`), and whether more rows follow."""
+        if isinstance(limit, bool) or not 1 <= limit <= TASK_PAGE_MAX:
+            raise ValueError(f"limit must be in 1..{TASK_PAGE_MAX}")
+        stmt = self._select().where(HumanTask.status == status)
+        if after is not None:
+            at, row_id = after
+            bound = tuple_(
+                literal(at, HumanTask.created_at.type), literal(row_id, HumanTask.id.type)
+            )
+            stmt = stmt.where(tuple_(HumanTask.created_at, HumanTask.id) < bound)
+        stmt = stmt.order_by(HumanTask.created_at.desc(), HumanTask.id.desc()).limit(limit + 1)
+        rows = builtins.list((await self.db.execute(stmt)).scalars())
+        return rows[:limit], len(rows) > limit

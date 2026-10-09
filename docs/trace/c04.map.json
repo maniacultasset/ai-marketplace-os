@@ -1480,9 +1480,9 @@
   },
   {
    "id": "R02452",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "docs/architecture/DATABASE.md:285-304; docs/architecture/BACKEND-ARCHITECTURE.md:1318",
+   "ref": "S19: GET /api/v1/listings/{listing_id}/history (ListingHistoryPage of AuditEventOut), apps/api/app/services/listing_reads.py; openapi.json listings_history",
    "note": "audit_log stores actor, before/after, reason; no audit-history read endpoint for the dashboard."
   },
   {

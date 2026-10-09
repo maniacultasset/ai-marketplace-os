@@ -927,7 +927,8 @@ def test_auth_leg_stub_probe_is_still_a_stub(repo_root: Path) -> None:
         r'"a verified token reaches a stub",\s*501,\s*leg\.call\("GET", "([^"]+)"', script
     )
     assert probe is not None
-    ops = [o for o in OPS.values() if o.method == "GET" and o.path == probe.group(1)]
+    path = probe.group(1).split("?", 1)[0]
+    ops = [o for o in OPS.values() if o.method == "GET" and o.path == path]
     assert len(ops) == 1
     module = importlib.import_module(f"app.api.v1.routers.{ops[0].group}")
     assert is_stub(getattr(module, ops[0].op_id))
@@ -2433,3 +2434,197 @@ def test_e2e_generate_without_hooks_exits_2(repo_root: Path, tmp_path: Path, flo
 def test_e2e_listing_edit_http_only(repo_root: Path) -> None:
     code = _code((repo_root / LISTING_EDIT_FLOW).read_text(encoding="utf-8"))
     assert "psql" not in code and "docker compose" not in code
+
+
+# ---- S19 T15 (AC 16): review_approve.sh and review_edit_reject.sh ----
+
+REVIEW_APPROVE_FLOW = "scripts/e2e/review_approve.sh"
+REVIEW_EDIT_REJECT_FLOW = "scripts/e2e/review_edit_reject.sh"
+REVIEW_APPROVE_STEPS = (
+    "health",
+    "login_acme_owner",
+    "create_product_201",
+    "worker_start",
+    "owner_generate_202",
+    "poll_validated",
+    "owner_approve_maker_checker_403",
+    "login_acme_operator",
+    "operator_approve_permission_403",
+    "login_acme_reviewer",
+    "reviewer_approve_200",
+    "replay_same_key_identical",
+    "not_submitted",
+    "history_denied_and_approved",
+    "review_queue_lists_validated",
+    "login_bharat_reviewer",
+    "bharat_get_404",
+    "worker_stop",
+)
+REVIEW_EDIT_REJECT_STEPS = (
+    "health",
+    "login_acme_operator",
+    "create_product_201",
+    "worker_start",
+    "operator_generate_202",
+    "poll_validated",
+    "get_etag",
+    "patch_with_etag_200",
+    "patch_old_etag_409",
+    "login_acme_owner",
+    "owner_edit_200",
+    "owner_approve_editor_403",
+    "login_acme_reviewer",
+    "reject_without_feedback_422",
+    "reject_regenerate_200",
+    "poll_regenerated_validated",
+    "reviewer_approve_regenerator_403",
+    "owner_approve_200",
+    "worker_stop",
+)
+S19_FLOWS = {
+    REVIEW_APPROVE_FLOW: REVIEW_APPROVE_STEPS,
+    REVIEW_EDIT_REJECT_FLOW: REVIEW_EDIT_REJECT_STEPS,
+}
+
+
+@pytest.mark.parametrize("flow", sorted(S19_FLOWS))
+def test_review_e2e_steps(repo_root: Path, flow: str) -> None:
+    code = _code((repo_root / flow).read_text(encoding="utf-8"))
+    assert "set -euo pipefail" in code
+    assert _steps(code) == S19_FLOWS[flow]
+    assert "POLL_LIMIT_S=60" in code and "$(( $(date +%s) + POLL_LIMIT_S ))" in code
+    assert '"E2E-GEN-$(date +%s)-$RANDOM"' in code  # a fresh SKU per run
+    assert "FAILED at step $current (HTTP status ${status:-none})" in code
+    assert 'cat "$body"' not in code
+    assert not re.search(r":\d{2,5}\b", code)  # no literal port
+    assert "--password" not in code and "-u " not in code
+
+
+@pytest.mark.parametrize("flow", sorted(S19_FLOWS))
+def test_review_e2e_refuses_non_local_url(repo_root: Path, tmp_path: Path, flow: str) -> None:
+    result = _run_flow(repo_root, tmp_path, flow, "http://api.example.com")
+    assert result.returncode == 2
+    assert not (tmp_path / "curl.log").exists()
+
+
+@pytest.mark.parametrize("flow", sorted(S19_FLOWS))
+def test_review_e2e_logins_le_5_per_email(repo_root: Path, flow: str) -> None:
+    code = _code((repo_root / flow).read_text(encoding="utf-8"))
+    emails = re.findall(r"login ([a-z]+@[a-z]+\.test)\)", code)
+    assert emails
+    assert max(emails.count(e) for e in set(emails)) <= 5
+
+
+@pytest.mark.parametrize("flow", sorted(S19_FLOWS))
+def test_review_e2e_no_db_access(repo_root: Path, flow: str) -> None:
+    code = _code((repo_root / flow).read_text(encoding="utf-8"))
+    assert "psql" not in code and "docker compose" not in code
+    assert "TRUNCATE" not in code.upper()
+
+
+def test_review_e2e_proves_maker_checker_over_http(repo_root: Path) -> None:
+    """A second user approves, the generating and the editing user are refused."""
+    approve = _code((repo_root / REVIEW_APPROVE_FLOW).read_text(encoding="utf-8"))
+    edit = _code((repo_root / REVIEW_EDIT_REJECT_FLOW).read_text(encoding="utf-8"))
+    assert approve.count('"MAKER_CHECKER_VIOLATION"') == 1
+    assert edit.count('"MAKER_CHECKER_VIOLATION"') == 2
+
+
+S19A_LEGS = {
+    "api-tests-no-api-maker-checker": ("api-tests", "test_api_maker_checker_refuses_before_sql"),
+    "api-tests-no-if-match": ("api-tests", "test_patch_stale_409"),
+    "api-tests-approve-image-gate": ("api-tests", "test_approve_blocked_unchecked_image"),
+}
+
+
+def test_prove_gates_s19a_legs(repo_root: Path) -> None:
+    code = _code((repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8"))
+    for name, (gate, regex) in S19A_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+        assert code.index(f"leg {name}") > code.index('if [ "$with_docker" -eq 1 ]; then')
+    review = (repo_root / "apps/api/app/services/review.py").read_text(encoding="utf-8")
+    edit = (repo_root / "apps/api/app/services/listing_edit.py").read_text(encoding="utf-8")
+    # every seed's <old> text is still in the source, so the seed applies
+    assert (
+        "if approver_refusal(approver, await _chain(ctx, listing.id, version.id)) is not None:"
+        in review
+    )
+    assert "    _image_gate(ctx, listing, version)" in review
+    assert "    if if_match != listing.current_version_id:" in edit
+
+
+# ---- S19 T23 (AC 16): issues.sh ----
+
+ISSUES_FLOW = "scripts/e2e/issues.sh"
+ISSUES_STEPS = (
+    "health",
+    "login_acme_operator",
+    "create_products_201",
+    "worker_start",
+    "generate_stub_warnings_202",
+    "poll_needs_review",
+    "issues_one_open_warning",
+    "login_acme_reviewer",
+    "reviewer_dismiss_200",
+    "replay_identical",
+    "generate_stub_blocked_202",
+    "poll_blocked",
+    "error_issue_open",
+    "operator_dismiss_403",
+    "reviewer_dismiss_error_409",
+    "tasks_200",
+    "login_bharat_reviewer",
+    "bharat_issues_lack_acme",
+    "worker_stop",
+)
+
+
+def test_issues_e2e_steps(repo_root: Path) -> None:
+    code = _code((repo_root / ISSUES_FLOW).read_text(encoding="utf-8"))
+    assert "set -euo pipefail" in code
+    assert _steps(code) == ISSUES_STEPS
+    assert "stub:$2" in code and "warnings" in code and "blocked" in code
+    assert '"E2E-GEN-$(date +%s)-$RANDOM"' in code
+    assert 'cat "$body"' not in code
+    assert not re.search(r":\d{2,5}\b", code)
+
+
+def test_issues_e2e_refuses_non_local_url(repo_root: Path, tmp_path: Path) -> None:
+    result = _run_flow(repo_root, tmp_path, ISSUES_FLOW, "http://api.example.com")
+    assert result.returncode == 2
+    assert not (tmp_path / "curl.log").exists()
+
+
+def test_issues_e2e_logins_le_5_per_email(repo_root: Path) -> None:
+    code = _code((repo_root / ISSUES_FLOW).read_text(encoding="utf-8"))
+    emails = re.findall(r"login ([a-z]+@[a-z]+\.test)\)", code)
+    assert emails and max(emails.count(e) for e in set(emails)) <= 5
+
+
+def test_issues_e2e_no_db_access(repo_root: Path) -> None:
+    code = _code((repo_root / ISSUES_FLOW).read_text(encoding="utf-8"))
+    assert "psql" not in code and "docker compose" not in code
+    assert "TRUNCATE" not in code.upper()
+
+
+S19B_LEGS = {
+    "api-tests-dismiss-error-precheck": ("api-tests", "test_issue_dismiss_error_409"),
+    "tenant-isolation-issues-unscoped": (
+        "tenant-isolation",
+        "test_iso_issue_and_task_reads_other_tenant_empty",
+    ),
+}
+
+
+def test_prove_gates_s19b_legs(repo_root: Path) -> None:
+    code = _code((repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8"))
+    for name, (gate, regex) in S19B_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+    issues = (repo_root / "apps/api/app/services/issues.py").read_text(encoding="utf-8")
+    repo = (repo_root / "apps/api/app/repositories/listing_issues.py").read_text(encoding="utf-8")
+    assert 'if issue.status != "open" or issue.severity != "warning":' in issues
+    assert "stmt = self._select().where(ListingIssue.status == filters.status)" in repo

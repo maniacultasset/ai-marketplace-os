@@ -12,6 +12,9 @@ Scenarios, chosen by a `user_instructions` prefix `stub:<name>` (anything else i
 - `vision_warn`: the `ok` listing carrying `ctx.previous_version.images`, with one vision warning
   report per image (`pass=true`, one failed `text_overlay` vision check). It never changes the
   terminal state.
+- `warnings`: the `ok` listing with the word `stubwarn` in its title (S19). The stub decides
+  nothing: a tenant rule that flags the word as a warning (the local `demo` seed has one for
+  acme) makes it `needs_review` with one open warning issue; without such a rule it is `generated`.
 
 Ids are `uuid5(ctx.job_id, "<agent>:<attempt>")` and every timestamp is `STUB_EPOCH`, so two runs
 over the same context return byte-identical results.
@@ -43,8 +46,9 @@ from mkos_schemas.pipeline import PipelineDeps
 from mkos_schemas.rules import RequiredAttribute
 from mkos_schemas.validation import ValidationResult, ValidationSummary
 
-Scenario = Literal["ok", "blocked", "failed", "vision_warn"]
-SCENARIOS: Final[frozenset[str]] = frozenset({"ok", "blocked", "failed", "vision_warn"})
+Scenario = Literal["ok", "blocked", "failed", "vision_warn", "warnings"]
+SCENARIOS: Final[frozenset[str]] = frozenset({"ok", "blocked", "failed", "vision_warn", "warnings"})
+WARN_WORD: Final = "stubwarn"
 STUB_EPOCH: Final = datetime(2026, 1, 1, tzinfo=UTC)
 STUB_MODEL: Final = "stub"
 LONG_TITLE_LENGTH: Final = 221
@@ -131,10 +135,14 @@ def _required_attributes(ctx: GenerationContext) -> dict[str, AttributeValue]:
 
 
 def build_listing(
-    ctx: GenerationContext, *, long_title: bool, images: list[ImageRef] | None = None
+    ctx: GenerationContext,
+    *,
+    long_title: bool,
+    images: list[ImageRef] | None = None,
+    warn: bool = False,
 ) -> CanonicalListing:
     fixture = _fixture()
-    title = fixture.title
+    title = f"{fixture.title} {WARN_WORD}" if warn else fixture.title
     if long_title:
         repeated = fixture.long_title_unit * (LONG_TITLE_LENGTH // len(fixture.long_title_unit) + 1)
         title = repeated[: LONG_TITLE_LENGTH - 1] + "."
@@ -324,7 +332,9 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
             await _step(deps, S.CORRECT)
             records.append(_record(ctx, "correction", "correct", attempt))
         await deps.emit_node_event(S.VALIDATE_SCHEMA, "started")
-        built = build_listing(ctx, long_title=chosen == "blocked", images=images)
+        built = build_listing(
+            ctx, long_title=chosen == "blocked", images=images, warn=chosen == "warnings"
+        )
         listing = CanonicalListing.model_validate(built.model_dump(mode="json"))
         await deps.emit_node_event(S.VALIDATE_SCHEMA, "ok")
         await deps.emit_node_event(S.VALIDATE_RULES, "started")

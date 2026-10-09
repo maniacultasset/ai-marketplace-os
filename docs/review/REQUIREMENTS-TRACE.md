@@ -8,18 +8,18 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 - **Every line of the client spec is traced.** All 13,711 lines of the snapshot are in the register:
   11,167 entries, of which 8,916 are checkable statements. `scripts/trace/check_coverage.py` proves 100% line coverage.
 - **Every statement has a verdict**, with a reference, adversarially verified per chunk (`scripts/trace/check_mapping.py`).
-- **7,033 of 8,916 (79%) are covered by our plan**: 6,082 as written and
+- **7,035 of 8,916 (79%) are covered by our plan**: 6,084 as written and
   951 deliberately changed by an ADR, Canon row or recorded decision.
-- **510 are gaps** (backend/DB 257, shared seams 129, ops 104, AI team 4, FE team 0, client 16).
+- **508 are gaps** (backend/DB 255, shared seams 129, ops 104, AI team 4, FE team 0, client 16).
 - **319 need the team or client** (54 conflicts, 265 questions);
   each points to a row in `TEAM-QUESTIONS.md`.
 - 512 belong to the AI or FE team, and 542 are marked Phase 2/3 by the site itself.
 
 | Status | Statements | Share |
 |---|---:|---:|
-| ✅ covered | 6,082 | 68.2% |
+| ✅ covered | 6,084 | 68.2% |
 | 🔁 covered-changed | 951 | 10.7% |
-| ⚠️ gap | 510 | 5.7% |
+| ⚠️ gap | 508 | 5.7% |
 | ❌ conflict | 54 | 0.6% |
 | ❓ needs-client | 265 | 3.0% |
 | 🧩 other-team | 512 | 5.7% |
@@ -33,7 +33,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | AI Marketplace OS — Architecture & Engineering Knowledge Base | 7 | 0 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [★] Complete Founder BRD (End-to-End) | 1171 | 86 | 56 | 1 | 40 | 6 | 55 | 97 |
-| [01] Product Vision, 19-Step Flow & Scope (§1–4) | 133 | 22 | 2 | 0 | 1 | 2 | 1 | 3 |
+| [01] Product Vision, 19-Step Flow & Scope (§1–4) | 134 | 22 | 1 | 0 | 1 | 2 | 1 | 2 |
 | [02] Brand Onboarding & Catalog Intake (§5) | 39 | 2 | 2 | 0 | 3 | 0 | 1 | 5 |
 | [03] Master Apparel Data & Variants (§6–7) | 192 | 2 | 4 | 0 | 0 | 0 | 0 | 4 |
 | [04] Media, Content & Canonical Record (§8–10) | 131 | 13 | 2 | 0 | 1 | 4 | 0 | 3 |
@@ -168,7 +168,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [111] Analytics APIs | 0 | 2 | 3 | 0 | 2 | 0 | 0 | 5 |
 | [112] Image APIs | 7 | 3 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [113] Agent APIs | 7 | 0 | 1 | 0 | 0 | 0 | 0 | 1 |
-| [114] Error APIs | 5 | 0 | 4 | 0 | 0 | 0 | 0 | 4 |
+| [114] Error APIs | 6 | 0 | 3 | 0 | 0 | 0 | 0 | 3 |
 | [115] Webhook Architecture | 0 | 0 | 0 | 0 | 0 | 0 | 10 | ✔ |
 | [116] API Authentication | 2 | 4 | 0 | 1 | 0 | 1 | 0 | 1 |
 | [117] API Authorization | 6 | 2 | 0 | 1 | 0 | 0 | 0 | 1 |
@@ -1029,7 +1029,7 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 | R13665 | L13665 | Production launch checklist: All Phase 1 features implemented. | T16; VISION Q25 | Phase-1 set per plan scope lock (T16); steps after S14 unsequenced |
 | R13668 | L13668 | Production launch checklist: Marketplace OAuth flows verified with production accounts. | T77 | Prod filings/app approval status unknown (STATE open decision 5); verify step itself unplanned |
 
-## ⚠️ Gaps we own: backend + DB (257)
+## ⚠️ Gaps we own: backend + DB (255)
 
 Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITECTURE.md and the build steps.
 
@@ -1080,7 +1080,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
-| R02452 | L2452 | Stage 19 Dashboard status + audit history: show audit trail. | docs/architecture/DATABASE.md:285-304; docs/architecture/BACKEND-ARCHITECTURE.md:1318 | audit_log stores actor, before/after, reason; no audit-history read endpoint for the dashboard. |
 | R02458d | L2458 | Success also requires the dashboard can show the latest validation state. | docs/architecture/DATABASE.md:1500; docs/architecture/DATABASE.md:822 | listing_status_display omits the latest validation_runs result; only status_reason validation_errors exposed. |
 
 ### [02] Brand Onboarding & Catalog Intake (§5)
@@ -1440,7 +1439,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
-| R11482 | L11482 | Page [114] Error APIs scope: MVP. | DATABASE.md:1327; BACKEND-ARCHITECTURE.md:1354 | GET /api/v1/issues planned; error analytics (GET /api/v1/errors) deferred after S14. |
 | R11484a | L11484 | Error APIs provide error analytics. | BACKEND-ARCHITECTURE.md:1354 | Error analytics endpoint deferred after S14. |
 | R11489a | L11489 | Error APIs support querying error patterns. | BACKEND-ARCHITECTURE.md:1354 | No error-pattern query in v1. |
 | R11489b | L11489 | Error APIs support analyzing error rates. | BACKEND-ARCHITECTURE.md:1354 | No error-rate endpoint in v1; only an (tenant_id, error_code, created_at) index. |

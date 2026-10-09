@@ -70,7 +70,9 @@ async def validate_listing(
     )
     if same is not None:
         return summary_of([same])
-    run = await insert_run(uow, listing, version.id, check)
+    current = version.id == listing.current_version_id
+    # only the current version's issues are the listing's inbox (a past version's run is history)
+    run = await insert_run(uow, listing, version.id, check, cause="revalidate" if current else None)
     to, reason = human_move(check.report)
     target = _target(listing, to) if version.id == listing.current_version_id else None
     if target is not None:

@@ -13,12 +13,14 @@ from app.api.v1.routers import (
     brand,
     images,
     imports,
+    issues,
     jobs,
     listings,
     marketplaces,
     members,
     products,
     rules,
+    tasks,
     tenants,
 )
 
@@ -35,6 +37,8 @@ for module in (
     images,
     rules,
     jobs,
+    issues,
+    tasks,
     analytics,
 ):
     router.include_router(module.router)

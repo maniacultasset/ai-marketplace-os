@@ -27,6 +27,9 @@ REQUEST_ID: Final = "req-example-0001"
 ETAG_EXAMPLE: Final = '"5f0c7c1e-8d2b-5a4e-9b6f-3c2d1e0f9a8b"'
 DOCUMENT: Final = "0b1c2d3e-0000-4000-8000-000000000901"
 CALLBACK_LOCATION: Final = "/marketplaces/connected?pending=pnd_8f3a2c1e9b7d4f60a1c2"
+ISSUE: Final = "0b1c2d3e-0000-4000-8000-000000001001"
+TASK: Final = "0b1c2d3e-0000-4000-8000-000000001101"
+AUDIT_EVENT: Final = "0b1c2d3e-0000-4000-8000-000000001201"
 
 _MEMBERSHIPS: Final = [{"tenant_id": TENANT, "tenant_name": "Fabrica", "role": "owner"}]
 _TOKENS: Final = {
@@ -114,6 +117,75 @@ _LISTING: Final = {
     "status_changed_at": T1,
     "created_at": T0,
     "updated_at": T1,
+}
+_AUDIT_EVENT: Final = {
+    "id": AUDIT_EVENT,
+    "action": "listing.approved",
+    "actor_type": "user",
+    "actor_user_id": USER_2,
+    "entity_type": "listing",
+    "entity_id": LISTING,
+    "before": {"status": "needs_review"},
+    "after": {"status": "approved"},
+    "reason": None,
+    "request_id": REQUEST_ID,
+    "job_id": None,
+    "occurred_at": T1,
+}
+_ISSUE: Final = {
+    "id": ISSUE,
+    "listing_id": LISTING,
+    "marketplace": "amazon",
+    "listing_item_id": None,
+    "listing_version_id": VERSION,
+    "source": "rules_engine",
+    "field_path": "content.title",
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "content_error",
+    "retry_class": "user_action",
+    "severity": "warning",
+    "auto_fixable": False,
+    "fix_action": None,
+    "marketplace_code": None,
+    "raw_message": None,
+    "message": "The title uses a word the brand avoids.",
+    "plain_message": None,
+    "suggestion": "Remove the word.",
+    "value_submitted": None,
+    "occurrences": 1,
+    "first_seen_at": T0,
+    "last_seen_at": T0,
+    "status": "open",
+    "resolution": None,
+    "action_taken": None,
+    "resolved_at": None,
+    "resolved_by_user_id": None,
+    "human_task_id": None,
+    "recurrence_of_id": None,
+    "created_at": T0,
+    "updated_at": T0,
+}
+_TASK: Final[dict[str, Any]] = {
+    "id": TASK,
+    "kind": "reconnect_account",
+    "product_id": None,
+    "colourway_id": None,
+    "target_path": "account.oauth",
+    "marketplace_account_id": ACCOUNT,
+    "image_id": None,
+    "question": "Reconnect the Amazon account.",
+    "reason": "The marketplace refused the stored token.",
+    "expected_answer": {"kind": "reconnect"},
+    "suggestions": [],
+    "status": "open",
+    "answered_by_user_id": None,
+    "answered_at": None,
+    "resume_from": "publish",
+    "applied_at": None,
+    "resume_batch_id": None,
+    "cancelled_reason": None,
+    "created_at": T0,
+    "updated_at": T0,
 }
 _CONTENT: Final = {
     "schema_version": "1.1.0",
@@ -448,6 +520,17 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
         "rules_dry_run": _validation_result(False),
         "jobs_get": _JOB_ENVELOPE,
         "jobs_cancel": {**_JOB_ENVELOPE, "status": "cancelled", "stage": None, "finished_at": T1},
+        "listings_history": _page([_AUDIT_EVENT]),
+        "issues_list": _page([_ISSUE]),
+        "issues_dismiss": {
+            **_ISSUE,
+            "status": "dismissed",
+            "resolution": "accepted_warning",
+            "resolved_at": T1,
+            "resolved_by_user_id": USER_2,
+            "updated_at": T1,
+        },
+        "tasks_list": _page([_TASK]),
         "analytics_get": _SUMMARY,
         "analytics_summary": _SUMMARY,
     }

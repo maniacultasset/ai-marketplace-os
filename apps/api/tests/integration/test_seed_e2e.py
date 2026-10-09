@@ -72,8 +72,16 @@ async def test_seed_demo_end_to_end() -> None:
         rules = await RuleRepository(session, acme).list_effective(
             "amazon", "ethnic_wear_kurta_sets"
         )
-        banned = [r for r in rules if r.rule_type == "banned_terms"]
-        assert banned and all(r.tenant_id is None for r in banned)
+        everything = [r for r in rules if r.rule_type == "banned_terms"]
+        # S19 T22: acme's one brand rule, a `stubwarn` warning on the title (local demo only)
+        (brand,) = [r for r in everything if r.tenant_id is not None]
+        assert (brand.tenant_id, brand.severity, brand.rule_def["terms"]) == (
+            acme,
+            "warning",
+            ["stubwarn"],
+        )
+        banned = [r for r in everything if r.tenant_id is None]
+        assert banned
         # S14a T12 adds a `*` banned row, which sorts before `content.title`.
         assert {r.field for r in banned} == {"*", "content.title"}
         (title_banned,) = [r for r in banned if r.field == "content.title"]

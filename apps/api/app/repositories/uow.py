@@ -18,6 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.agent_runs import AgentRunRepository
 from app.repositories.attribute_definitions import AttributeDefinitionRepository
+from app.repositories.audit_log import AuditLogRepository
+from app.repositories.batches import BatchRepository
 from app.repositories.brand_chunks import BrandChunkRepository
 from app.repositories.brand_documents import BrandDocumentRepository
 from app.repositories.brand_profile import BrandPromptRepository
@@ -28,8 +30,10 @@ from app.repositories.human_tasks import HumanTaskRepository
 from app.repositories.identity import AuditRepository
 from app.repositories.images import ImageRepository
 from app.repositories.jobs import JobRunRepository
+from app.repositories.listing_issues import ListingIssueRepository
 from app.repositories.listings import ListingRepository, ListingVersionRepository
 from app.repositories.marketplace_accounts import MarketplaceAccountRepository
+from app.repositories.members import MembersRepository
 from app.repositories.oauth_states import OAuthStateRepository
 from app.repositories.product_facts import ProductFactsRepository
 from app.repositories.products import ProductRepository
@@ -73,6 +77,11 @@ class TenantUnitOfWork:
     validation_runs: ValidationRunRepository
     review_decisions: ReviewDecisionRepository
     budget: BudgetRepository
+    # S19: approve/reject batches and the listing history read.
+    batches: BatchRepository
+    audit_log: AuditLogRepository
+    members: MembersRepository
+    listing_issues: ListingIssueRepository
 
 
 def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
@@ -103,6 +112,10 @@ def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
         validation_runs=ValidationRunRepository(session, tenant_id),
         review_decisions=ReviewDecisionRepository(session, tenant_id),
         budget=BudgetRepository(session, tenant_id),
+        batches=BatchRepository(session, tenant_id),
+        audit_log=AuditLogRepository(session, tenant_id),
+        members=MembersRepository(session, tenant_id),
+        listing_issues=ListingIssueRepository(session, tenant_id),
     )
 
 

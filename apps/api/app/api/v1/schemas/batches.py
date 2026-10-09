@@ -19,7 +19,20 @@ from pydantic_core import PydanticCustomError
 from app.core.text import reject_control_chars
 
 MAX_BATCH_ITEMS: Final = 200
-Feedback = Annotated[NonBlankStr, Field(max_length=2000)]
+# `ck_review_decisions_reason_code` (DATABASE.md:799); checked here so a bad reason is a 422, not a
+# refused INSERT. Python-only: the declared contract keeps `reason_code` a slug.
+REASON_CODES: Final = frozenset(
+    {
+        "inaccurate_fact",
+        "off_brand_voice",
+        "policy_violation",
+        "poor_quality",
+        "wrong_category",
+        "image_issue",
+        "other",
+    }
+)
+Feedback = Annotated[NonBlankStr, Field(max_length=2000), AfterValidator(reject_control_chars)]
 Instructions = Annotated[NonBlankStr, Field(max_length=2000), AfterValidator(reject_control_chars)]
 
 
@@ -42,6 +55,8 @@ class ApproveItem(StrictModel):
             raise PydanticCustomError("mkos_invalid", "A reject needs reason_code and feedback.")
         if self.decision == "approve" and self.regenerate:
             raise PydanticCustomError("mkos_invalid", "regenerate applies to a reject only.")
+        if self.reason_code is not None and self.reason_code not in REASON_CODES:
+            raise PydanticCustomError("mkos_invalid", "Unknown reason_code.")
         return self
 
 

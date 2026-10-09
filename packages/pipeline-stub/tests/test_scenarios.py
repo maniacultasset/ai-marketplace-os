@@ -318,3 +318,18 @@ async def test_stub_fills_required_attribute_rules() -> None:
         "pieces": 1,
         "size": "m",
     }
+
+
+async def test_stub_scenario_warnings_generated() -> None:
+    """S19 T22: the stub only puts the word in the title; the engine decides the warning."""
+    ctx = _ctx(user_instructions="stub:warnings")
+    assert scenario(ctx) == "warnings"
+    result = await _run(ctx)
+    assert result.terminal_state == "generated"
+    assert result.listing is not None and "stubwarn" in result.listing.content.title
+    assert result.image_reports == []
+
+
+async def test_stub_byte_identical_across_runs_warnings() -> None:
+    ctx = _ctx(user_instructions="stub:warnings")
+    assert (await _run(ctx)).model_dump_json() == (await _run(ctx)).model_dump_json()

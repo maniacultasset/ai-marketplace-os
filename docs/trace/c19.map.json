@@ -395,9 +395,9 @@
   },
   {
    "id": "R11482",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "DATABASE.md:1327; BACKEND-ARCHITECTURE.md:1354",
+   "ref": "S19: GET /api/v1/issues (IssuePage) and POST /api/v1/issues/{issue_id}/dismiss, apps/api/app/services/issues.py; openapi.json issues_list, issues_dismiss",
    "note": "GET /api/v1/issues planned; error analytics (GET /api/v1/errors) deferred after S14."
   },
   {

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from mkos_schemas.base import AttrKey, Slug, StrictModel, WireModel
@@ -42,6 +42,28 @@ class ListingPage(Page[ListingOut]):
     pass
 
 
+class AuditEventOut(WireModel):
+    """One `audit_log` row of a listing. No `actor_email` and no `ip`: the history is a seller
+    read, and both are personal data (DATABASE.md §5.2)."""
+
+    id: UUID
+    action: str
+    actor_type: Literal["user", "system", "staff"]
+    actor_user_id: UUID | None = None
+    entity_type: str
+    entity_id: UUID
+    before: dict[str, Any] | None = None
+    after: dict[str, Any] | None = None
+    reason: str | None = None
+    request_id: str | None = None
+    job_id: UUID | None = None
+    occurred_at: AwareDatetime
+
+
+class ListingHistoryPage(Page[AuditEventOut]):
+    pass
+
+
 class ListingStatusOut(WireModel):
     listing_id: UUID
     status: ListingStatus
@@ -61,6 +83,20 @@ class ListingContentPatch(StrictModel):
     content: ListingContent
     keywords: ListingKeywords | None = None
     attributes: Annotated[dict[AttrKey, AttributeValue] | None, Field(max_length=200)] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_unknown_nested_keys(cls, data: Any) -> Any:
+        # Invariant 4: `ListingContent`/`ListingKeywords` are shared WireModels that drop unknown
+        # keys; on a human edit a marketplace-only or unknown key is a 422, never a silent drop.
+        if isinstance(data, dict):
+            for name, model in (("content", ListingContent), ("keywords", ListingKeywords)):
+                value = data.get(name)
+                if isinstance(value, dict) and not set(value) <= set(model.model_fields):
+                    raise PydanticCustomError(
+                        "mkos_invalid", "Unknown key in {name}.", {"name": name}
+                    )
+        return data
 
     @model_validator(mode="after")
     def _no_control_chars(self) -> ListingContentPatch:
