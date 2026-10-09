@@ -146,3 +146,6 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   the row `pending` (the gate blocks it); only a new upload or a staff requeue recovers it, and a
   re-registration of the same key replays the dead job. The text overlay, watermark and logo rules
   are not seeded (T119: `ImageRequirementParams` needs a parameter they lack).
+- **CI api-tests duration (S26).** The job grew from 15 to 39 minutes (S13b to S19) even under
+  pytest-xdist on the runner's 4 vCPUs; its limit is 60 minutes. Fix in S26: split it into two required
+  jobs (unit + meta, and integration) with coverage combined, or a larger runner.

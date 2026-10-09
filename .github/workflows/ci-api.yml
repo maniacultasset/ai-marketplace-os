@@ -46,8 +46,9 @@ jobs:
       contents: read
     # the full suite with coverage passed 15 min on the runner at S13b (~12 min locally); since then
     # `make api-tests` spreads it over pytest-xdist workers (auto, at most 4), one mos_test copy each;
-    # at S18 it took 26.6 min on the runner, so 45 leaves room for S19-S26
-    timeout-minutes: 45
+    # at S18 it took 26.6 min on the runner and at S19 39.1 min; 60 covers S21-S23 until S26
+    # splits the job (KNOWN-ISSUES §E)
+    timeout-minutes: 60
     env:
       APP_ENV: local
       DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/mos_test

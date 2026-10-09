@@ -31,7 +31,7 @@ ALL_FILES = [*PR_FILES, PUSH_FILE, PUBLISH_FILE]
 TEN_CHECKS = {job for jobs in PR_FILES.values() for job in jobs}
 TIMEOUTS = {"ci-api.yml": 15, "contracts.yml": 10, "ci-meta.yml": 5, PUSH_FILE: 5, PUBLISH_FILE: 10}
 # Per-job exceptions: the full api suite with coverage outgrew 15 min on the runner (S13b).
-JOB_TIMEOUTS = {("ci-api.yml", "api-tests"): 45}
+JOB_TIMEOUTS = {("ci-api.yml", "api-tests"): 60}
 ENV_JOBS = {
     "api-lint": "mos_test",
     "api-typecheck": "mos_test",
