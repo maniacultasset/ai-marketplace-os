@@ -486,6 +486,17 @@ seed_image_key_prefix() {
 }
 leg lint-imports-image-child-config lint-imports 'the image check child imports no app layer, DB, storage or HTTP client BROKEN' seed_image_child_config make lint-imports
 
+# S18 T20: generation never publishes, the validate_rules port call cap holds, the listings
+# repository keeps its tenant filter, and app/workers/budget.py is the R5 allowlist entry it needs.
+seed_generation_publishes() { append apps/api/app/services/generation_persist.py $'\nfrom mkos_schemas.enums import JobKind as _SeededKind\n\nSEEDED_PUBLISH = _SeededKind.LISTING_PUBLISH'; }
+seed_validate_rules_uncapped() { replace apps/api/app/services/pipeline_deps.py $'        if self._validate_calls > MAX_RULES_CALLS:\n' $'        if False:\n'; }
+seed_listings_no_tenant_filter() {
+  cp "$root/.env" .env
+  replace apps/api/app/repositories/listings.py $'        stmt = (\n            self._select()\n            .where(Listing.id == listing_id)' $'        stmt = (\n            __import__("sqlalchemy").select(Listing)\n            .where(Listing.id == listing_id)'
+}
+seed_budget_not_allowlisted() { replace scripts/ci/check_repo_rules.py $'    "apps/api/app/workers/budget.py",\n' ''; }
+leg lint-imports-budget-not-allowlisted lint-imports ': R5 ' seed_budget_not_allowlisted make lint-imports
+
 if [ "$with_docker" -eq 1 ]; then
   self_project="$(docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"
   leg api-tests-failing-test api-tests 'test_seeded' seed_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests
@@ -531,6 +542,9 @@ if [ "$with_docker" -eq 1 ]; then
   leg tenant-isolation-no-before-flush tenant-isolation 'test_flush_rejects_other_tenant' seed_iso_no_before_flush COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-images-no-tenant-filter tenant-isolation 'test_iso_images_repository_reads' seed_images_no_tenant_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg api-tests-image-key-prefix api-tests 'test_runner_rejects_foreign_key_prefix' seed_image_key_prefix COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg tenant-isolation-listings-no-tenant-filter tenant-isolation 'test_iso_generation_repositories_other_tenant_empty' seed_listings_no_tenant_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
+  leg api-tests-generation-publishes api-tests 'test_generation_never_publishes' seed_generation_publishes COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-validate-rules-cap api-tests 'test_validate_rules_port_call_cap' seed_validate_rules_uncapped COMPOSE_PROJECT_NAME="$self_project" make api-tests
   # mos_iso is migrated already: the leg downgrades it below 0007 so the seeded revision applies,
   # and remigrate_iso puts this checkout's revisions back afterwards.
   leg tenant-isolation-hash-branch-pending tenant-isolation 'hides_pending_row' seed_hash_branch_pending COMPOSE_PROJECT_NAME="$self_project" sh -c 'APP_ENV=local APP_ROLE=migrate ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_iso uv run --frozen alembic -c apps/api/alembic.ini downgrade 0005_rls && make tenant-isolation'

@@ -131,7 +131,7 @@ async def make_generating(
     sku: str = "KURTA-002",
     instructions: str | None = None,
 ) -> Any:
-    """`request_generation` for one acme product; returns the `ItemAccepted`."""
+    """`request_generation` for one product of the caller's tenant; returns the `ItemAccepted`."""
     from app.repositories.uow import tenant_uow
     from app.services.generation import GenerateItem, ItemAccepted, request_generation
     from mkos_schemas.enums import Marketplace
@@ -144,7 +144,7 @@ async def make_generating(
             str(uuid.uuid4()),
             [
                 GenerateItem(
-                    product_id=world.product("acme", sku),
+                    product_id=world.product(email.split("@", 1)[1].split(".", 1)[0], sku),
                     marketplace=Marketplace.AMAZON,
                     user_instructions=instructions,
                 )

@@ -2111,3 +2111,34 @@ def test_make_e2e_sets_mkos_cli_hook(repo_root: Path) -> None:
     out = _make_e2e_dry_run(repo_root)
     cli = out.split("MKOS_CLI='", 1)[1].split("'", 1)[0]
     assert cli == "uv run --frozen python -m app.cli"
+
+
+S18_LEGS = {
+    "lint-imports-budget-not-allowlisted": ("lint-imports", ": R5 ", "seed_budget_not_allowlisted"),
+    "tenant-isolation-listings-no-tenant-filter": (
+        "tenant-isolation",
+        "test_iso_generation_repositories_other_tenant_empty",
+        "seed_listings_no_tenant_filter",
+    ),
+    "api-tests-generation-publishes": (
+        "api-tests",
+        "test_generation_never_publishes",
+        "seed_generation_publishes",
+    ),
+    "api-tests-validate-rules-cap": (
+        "api-tests",
+        "test_validate_rules_port_call_cap",
+        "seed_validate_rules_uncapped",
+    ),
+}
+
+
+def test_prove_gates_has_s18_legs(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    code = _code(text)
+    for name, (gate, regex, seed_name) in S18_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+        assert leg.group(2) == seed_name, name
+        assert re.search(rf"(?m)^{seed_name}\(\) \{{", code), seed_name

@@ -22,7 +22,7 @@ def _sources() -> list[Path]:
 
 
 def test_generation_never_publishes() -> None:
-    banned_names = {"listing_publish", "approved_by_user_id", "approved_at"}
+    banned_names = {"listing_publish", "approved_by_user_id", "approved_at", "LISTING_PUBLISH"}
     banned_targets = {"approved", "publishing"}
     for path in _sources():
         tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -31,6 +31,8 @@ def test_generation_never_publishes() -> None:
                 assert node.id not in banned_names, f"{path}:{node.lineno} {node.id}"
             if isinstance(node, ast.Attribute):
                 assert node.attr not in banned_names, f"{path}:{node.lineno} {node.attr}"
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                assert node.value not in banned_names, f"{path}:{node.lineno} {node.value!r}"
             if isinstance(node, ast.Call):
                 for keyword in node.keywords:
                     if keyword.arg == "to" and isinstance(keyword.value, ast.Constant):
