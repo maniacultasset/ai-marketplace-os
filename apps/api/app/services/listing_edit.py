@@ -116,7 +116,7 @@ async def edit_content(
             category_template_id=parent.category_template_id,
         )
     )
-    run = await insert_run(uow, listing, version.id, check)
+    run = await insert_run(uow, listing, version.id, check, cause="edit")
     listing = await uow.listings.move(
         listing,
         to=to,

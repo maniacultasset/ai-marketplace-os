@@ -115,8 +115,11 @@ async def insert_run(
     *,
     attempt: int = 1,
     request_id: str | None = None,
+    cause: str | None = None,
 ) -> Any:
-    return await uow.validation_runs.insert(
+    """One `rules_engine` run linked to `version_id`; with a `cause`, the listing's issues are
+    synced from it in the same transaction (S19 T18, CP-D2)."""
+    run = await uow.validation_runs.insert(
         ValidationResult(
             tenant_id=listing.tenant_id,
             listing_id=listing.id,
@@ -135,3 +138,16 @@ async def insert_run(
         facts_digest=check.pins.facts_digest,
         request_id=request_id,
     )
+    if cause is not None:
+        from app.services.issues import sync_issues
+
+        await sync_issues(
+            uow,
+            listing,
+            "rules_engine",
+            check.report,
+            run_id=run.id,
+            cause=cause,
+            version_id=version_id,
+        )
+    return run

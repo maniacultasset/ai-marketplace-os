@@ -41,6 +41,7 @@ from app.core.logging import get_logger
 from app.repositories.listings import JobActor, NewVersion
 from app.repositories.uow import TenantUnitOfWork
 from app.services.generation_result import Move
+from app.services.issues import sync_issues
 from app.services.pipeline_deps import RulesCall
 
 log = get_logger(__name__)
@@ -100,7 +101,9 @@ def _run(
 
 async def _insert_runs(
     uow: TenantUnitOfWork, plan: PersistPlan, version_id: uuid.UUID | None
-) -> None:
+) -> Any:
+    """The per-attempt runs (no version) and, with a version, the linked re-check, which it
+    returns (None otherwise)."""
     pins = plan.pins
     for call in plan.rules_calls:
         await uow.validation_runs.insert(
@@ -110,14 +113,15 @@ async def _insert_runs(
             facts_digest=pins.facts_digest,
             request_id=plan.request_id,
         )
-    if version_id is not None and plan.recheck is not None:
-        await uow.validation_runs.insert(
-            _run(plan, plan.recheck, min(4, len(plan.rules_calls) + 1), version_id),
-            template_id=pins.template_id,
-            template_version=pins.template_version,
-            facts_digest=pins.facts_digest,
-            request_id=plan.request_id,
-        )
+    if version_id is None or plan.recheck is None:
+        return None
+    return await uow.validation_runs.insert(
+        _run(plan, plan.recheck, min(4, len(plan.rules_calls) + 1), version_id),
+        template_id=pins.template_id,
+        template_version=pins.template_version,
+        facts_digest=pins.facts_digest,
+        request_id=plan.request_id,
+    )
 
 
 async def _insert_records(
@@ -188,7 +192,19 @@ def make_persist(plan: PersistPlan) -> Any:
                 attempts_used=plan.attempts_used,
             )
         )
-        await _insert_runs(uow, plan, version.id)
+        recheck = await _insert_runs(uow, plan, version.id)
+        if recheck is not None and plan.recheck is not None:
+            # S19 T18 (CP-D2): only the version-linked re-check feeds the issue inbox
+            await sync_issues(
+                uow,
+                listing,
+                "rules_engine",
+                plan.recheck,
+                run_id=recheck.id,
+                cause="regenerate" if regeneration else "generate",
+                version_id=version.id,
+                job_id=plan.job_id,
+            )
         await _insert_records(uow, plan, version.id)
         await uow.listings.move(
             listing,
