@@ -93,3 +93,132 @@ def test_boot_stub_check_without_import(clean_env: Path) -> None:
     assert "IMPORTED False" in result.stdout
     assert REFUSAL in result.stdout
     assert json.dumps(REFUSAL)  # the message names variables only
+
+
+# ---- S20 T16 (AC16; D10; C17): the SP-API host pinned to the sandbox flag ----
+
+SANDBOX = "https://sandbox.sellingpartnerapi-eu.amazon.com"
+PROD = "https://sellingpartnerapi-eu.amazon.com"
+
+
+def _spapi(app_env: str, role: str = "api", **over: str) -> dict[str, str]:
+    env = _env(app_env, role)
+    env.update(over)
+    return env
+
+
+def _refused(monkeypatch: pytest.MonkeyPatch, env: dict[str, str]) -> str:
+    with pytest.raises(SystemExit) as info:
+        _boot(monkeypatch, **env)
+    assert isinstance(info.value.code, str)
+    return info.value.code
+
+
+@pytest.mark.parametrize("app_env", ["staging", "production"])
+def test_boot_spapi_https_off_local(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, app_env: str
+) -> None:
+    code = _refused(
+        monkeypatch,
+        _spapi(app_env, AMAZON_SPAPI_ENDPOINT="http://sandbox.sellingpartnerapi-eu.amazon.com"),
+    )
+    assert "AMAZON_SPAPI_ENDPOINT must be a bare https origin" in code
+
+
+def test_boot_spapi_sandbox_requires_sandbox_host(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = _spapi("staging", AMAZON_SPAPI_ENDPOINT=SANDBOX, AMAZON_USE_SANDBOX="true")
+    assert _boot(monkeypatch, **env) is not None
+
+
+def test_boot_spapi_prod_requires_prod_host(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = _spapi("production", AMAZON_SPAPI_ENDPOINT=PROD, AMAZON_USE_SANDBOX="false")
+    assert _boot(monkeypatch, **env) is not None
+
+
+@pytest.mark.parametrize("role", ["api", "worker"])
+def test_boot_spapi_prod_host_with_sandbox_true_refused(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, role: str
+) -> None:
+    env = _spapi("staging", role, AMAZON_SPAPI_ENDPOINT=PROD, AMAZON_USE_SANDBOX="true")
+    code = _refused(monkeypatch, env)
+    assert "must be the SP-API sandbox host while AMAZON_USE_SANDBOX=true" in code
+
+
+def test_boot_spapi_sandbox_host_with_flag_false_refused(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = _spapi("production", AMAZON_SPAPI_ENDPOINT=SANDBOX, AMAZON_USE_SANDBOX="false")
+    assert "production host while AMAZON_USE_SANDBOX=false" in _refused(monkeypatch, env)
+
+
+@pytest.mark.parametrize("app_env", ["staging", "production"])
+def test_boot_spapi_unknown_https_host_refused(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, app_env: str
+) -> None:
+    env = _spapi(app_env, AMAZON_SPAPI_ENDPOINT="https://sellingpartnerapi.evil.test")
+    assert "AMAZON_SPAPI_ENDPOINT" in _refused(monkeypatch, env)
+
+
+def test_boot_spapi_path_port_userinfo_query_refused(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for bad in (SANDBOX + ":444", SANDBOX + "/v0", "https://u:p@sandbox.sellingpartnerapi-eu.amazon.com", SANDBOX + "?a=b"):  # fmt: skip
+        assert "bare https origin" in _refused(
+            monkeypatch, _spapi("staging", AMAZON_SPAPI_ENDPOINT=bad)
+        )
+
+
+def test_boot_spapi_loopback_http_ok_on_local(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = {"APP_ENV": "local", "APP_ROLE": "worker", "DATABASE_URL": LOCAL_URL}
+    assert _boot(monkeypatch, **env, AMAZON_SPAPI_ENDPOINT="http://127.0.0.1:4020") is not None
+
+
+def test_boot_spapi_local_keeps_the_committed_defaults(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The `.env.example` pair (prod host, sandbox true) still boots on local; `open_adapter`
+    refuses it there before any call (T15)."""
+    env = {"APP_ENV": "local", "APP_ROLE": "api", "DATABASE_URL": LOCAL_URL, "JWT_SECRET": PRIVATE_JWT}  # fmt: skip
+    assert _boot(monkeypatch, **env, AMAZON_SPAPI_ENDPOINT=PROD, AMAZON_USE_SANDBOX="true")
+
+
+def test_boot_spapi_loopback_refused_off_local(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = _spapi("staging", AMAZON_SPAPI_ENDPOINT="http://127.0.0.1:4020")
+    assert "AMAZON_SPAPI_ENDPOINT" in _refused(monkeypatch, env)
+
+
+@pytest.mark.parametrize("app_env", ["local", "staging"])
+def test_boot_spapi_sandbox_false_only_in_production(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, app_env: str
+) -> None:
+    env = (
+        {"APP_ENV": "local", "APP_ROLE": "shell"}
+        if app_env == "local"
+        else _spapi(app_env, AMAZON_SPAPI_ENDPOINT=PROD)
+    )
+    code = _refused(monkeypatch, {**env, "AMAZON_USE_SANDBOX": "false"})
+    assert f"APP_ENV={app_env} refuses AMAZON_USE_SANDBOX=false" in code
+
+
+def test_boot_spapi_message_names_env_vars_only(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = _spapi("staging", AMAZON_SPAPI_ENDPOINT="https://leaky-host-zq9.evil.test")
+    code = _refused(monkeypatch, env)
+    assert "leaky-host-zq9" not in code and "evil" not in code
+
+
+def test_boot_spapi_migrate_role_not_checked(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Only the roles that reach SP-API (api, worker) are pinned; a migrate job is not."""
+    env = _spapi("staging", "migrate", AMAZON_SPAPI_ENDPOINT=PROD, ALEMBIC_DATABASE_URL=LOCAL_URL)
+    assert _boot(monkeypatch, **env) is not None

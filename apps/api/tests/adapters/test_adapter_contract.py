@@ -29,3 +29,17 @@ async def test_adapter_contract_catches_a_bool() -> None:
 
     failures = await run_contract_suite(lambda fail: Lying("amazon", fail_fields=fail))
     assert any(f.startswith("returns_listing_result") for f in failures), failures
+
+
+async def test_adapter_contract_amazon() -> None:
+    """S20 T12 (Done-when 1): the Amazon adapter passes the same suite, against the fake SP-API
+    over ASGI (no network)."""
+    from tests.adapters.amazon_support import amazon_adapter, prepare, reject
+    from tests.support.fake_marketplace import build_fake
+
+    def factory(fail: Mapping[str, tuple[str, str]]) -> object:
+        app = build_fake()
+        reject(app, fail)
+        return amazon_adapter(app)
+
+    assert await run_contract_suite(factory, prepare=prepare) == []  # type: ignore[arg-type]

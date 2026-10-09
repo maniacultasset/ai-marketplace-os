@@ -100,10 +100,10 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | `AMAZON_CLIENT_SECRET` | `REPLACE_ME` | Secret Manager | required | Never in a committed .env. Sentry/log redaction deny-list includes it. |
 | `AMAZON_AUTHORIZE_URL` | `http://127.0.0.1:4020/amazon/authorize` | local .env | optional | The Seller Central consent page the connect step sends the brand to (S15). Locally the fake marketplace (`make fake-marketplace`); staging/prod: the real https URL, confirmed with the SP-API application (T77). Unset: connect answers 501. http or loopback values are refused outside local. |
 | `AMAZON_LWA_TOKEN_URL` | `https://api.amazon.com/auth/o2/token` | local .env | required | Same in all environments. |
-| `AMAZON_SPAPI_ENDPOINT` | `https://sellingpartnerapi-eu.amazon.com` | local .env | required | India sits in the EU region group. AMAZON_SP_API_ENDPOINT (with underscore split) is forbidden. |
+| `AMAZON_SPAPI_ENDPOINT` | `https://sellingpartnerapi-eu.amazon.com` | local .env | required | India sits in the EU region group. AMAZON_SP_API_ENDPOINT (with underscore split) is forbidden. **[S20]** Pinned to `AMAZON_USE_SANDBOX`: off local it must be exactly `https://sandbox.sellingpartnerapi-eu.amazon.com` when the flag is true and `https://sellingpartnerapi-eu.amazon.com` when false (no path, port, userinfo, query or fragment), else the api and worker refuse to boot; only local may use a loopback host (the fake). The adapter repeats the check before any call in every environment, so the default pair above (production host, flag true) is refused there too. Hosts believed until DW1. |
 | `AMAZON_MARKETPLACE_ID` | `A21TJRUUN4KGV` | local .env | required | amazon.in. |
 | `AMAZON_OAUTH_REDIRECT_URI` | `http://localhost:8000/api/v1/marketplaces/amazon/callback` | local .env | required | THIS EXACT STRING goes into the Amazon developer application, along with the staging and prod forms. Changing it later means re-review. AMAZON_LWA_REDIRECT_URI is forbidden. |
-| `AMAZON_USE_SANDBOX` | `true` | local .env | required | false only in prod, after the application clears. |
+| `AMAZON_USE_SANDBOX` | `true` | local .env | required | false only in prod, after the application clears. **[S20]** `false` outside production is a boot error, and the flag picks the one allowed `AMAZON_SPAPI_ENDPOINT` host (see that row). |
 
 ## Flipkart
 

@@ -54,6 +54,12 @@ async def test_seed_demo_end_to_end() -> None:
             "DECOR-001",
             "KURTA-001",
             "KURTA-002",
+            # S20 T21: the demo kurta family (style and its 4 children)
+            "KURTA-FAM-01",
+            "KURTA-FAM-01-M-MAROON",
+            "KURTA-FAM-01-M-NAVY-BLUE",
+            "KURTA-FAM-01-S-MAROON",
+            "KURTA-FAM-01-S-NAVY-BLUE",
         ]
         assert not {p.id for p in products} & bharat_ids
         for other in bharat_ids:

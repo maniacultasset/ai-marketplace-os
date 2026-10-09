@@ -24,6 +24,6 @@
   "max_attempts": 3,
   "request_id": null,
   "retryable": true,
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "status": "failed"
 }

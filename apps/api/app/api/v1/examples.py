@@ -73,7 +73,7 @@ _JOB_ACCEPTED: Final = {
     "poll_url": f"/api/v1/jobs/{JOB}",
 }
 _JOB_ENVELOPE: Final = {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "job_id": JOB,
     "kind": "listing_generate",
     "status": "running",
@@ -116,7 +116,7 @@ _LISTING: Final = {
     "updated_at": T1,
 }
 _CONTENT: Final = {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "listing_id": LISTING,
     "product_id": PRODUCT_1,
     "marketplace": "amazon",
@@ -158,7 +158,7 @@ def _report(passed: bool) -> dict[str, Any]:
         ]
     )
     return {
-        "schema_version": "1.0.0",
+        "schema_version": "1.1.0",
         "status": "passed" if passed else "failed",
         "error_code": None if passed else "VALIDATION_FAILED",
         "retryable": not passed,
@@ -172,7 +172,7 @@ def _report(passed: bool) -> dict[str, Any]:
 
 def _validation_result(passed: bool) -> dict[str, Any]:
     return {
-        "schema_version": "1.0.0",
+        "schema_version": "1.1.0",
         "validation_run_id": None,
         "tenant_id": TENANT,
         "listing_id": LISTING,
@@ -189,7 +189,7 @@ def _validation_result(passed: bool) -> dict[str, Any]:
 
 
 _VALIDATION_FAILED_SUMMARY: Final = {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "listing_id": LISTING,
     "listing_version_id": VERSION,
     "passed": False,
@@ -296,7 +296,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "poll_url": f"/api/v1/imports/{IMPORT}",
         },
         "imports_get": {
-            "schema_version": "1.0.0",
+            "schema_version": "1.1.0",
             "import_id": IMPORT,
             "total_rows": 3,
             "imported": 2,
@@ -342,6 +342,40 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
         },
         "listings_list": _page([_LISTING]),
         "listings_get": {**_LISTING, "content": _CONTENT, "validation": _VALIDATION_FAILED_SUMMARY},
+        "listings_preview": {
+            "schema_version": "1.1.0",
+            "listing_id": LISTING,
+            "version": 1,
+            "marketplace": "amazon",
+            "product_type": "SHIRT",
+            "items": [
+                {
+                    "product_id": PRODUCT_1,
+                    "seller_sku": "KURTA-001",
+                    "item_role": "standalone",
+                    "payload": {
+                        "productType": "SHIRT",
+                        "requirements": "LISTING_PRODUCT_ONLY",
+                        "attributes": {
+                            "item_name": [
+                                {
+                                    "value": "Indigo Organic Cotton Kurta",
+                                    "language_tag": "en_IN",
+                                    "marketplace_id": "A21TJRUUN4KGV",
+                                }
+                            ],
+                            "main_product_image_locator": [
+                                {
+                                    "media_location": f"image:{IMAGE}",
+                                    "marketplace_id": "A21TJRUUN4KGV",
+                                }
+                            ],
+                        },
+                    },
+                }
+            ],
+            "report": {**_report(True), "request_id": None},
+        },
         "listings_status": {
             "listing_id": LISTING,
             "status": "needs_review",
@@ -381,7 +415,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "compliance_status": "passed",
             "reports": {
                 "amazon": {
-                    "schema_version": "1.0.0",
+                    "schema_version": "1.1.0",
                     "image_id": IMAGE,
                     "marketplace": "amazon",
                     "slot": "main",

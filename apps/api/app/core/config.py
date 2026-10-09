@@ -347,6 +347,7 @@ def _boot_errors(s: Settings) -> list[str]:
     errors += _url_errors(s)
     errors += _storage_errors(s)
     errors += _embedding_errors(s)
+    errors += _spapi_errors(s)
     return errors
 
 
@@ -361,6 +362,21 @@ def _embedding_errors(s: Settings) -> list[str]:
         errors.append("APP_ROLE=worker requires OPENAI_API_KEY outside APP_ENV=local")
     if s.embedding_model not in EMBEDDING_PRICE_USD_PER_MTOK:
         errors.append("EMBEDDING_MODEL has no price entry")
+    return errors
+
+
+def _spapi_errors(s: Settings) -> list[str]:
+    """S20 C17 (ENV.md:101-104): the sandbox flag is false only in production, and off local the
+    SP-API host is pinned to the flag (the api and the worker, the roles that reach it)."""
+    from app.adapters.amazon.endpoint import spapi_endpoint_errors
+
+    errors: list[str] = []
+    if not s.amazon_use_sandbox and s.app_env != "production":
+        errors.append(f"APP_ENV={s.app_env} refuses AMAZON_USE_SANDBOX=false")
+    if s.app_env != "local" and s.app_role in ("api", "worker"):
+        errors += spapi_endpoint_errors(
+            s.amazon_spapi_endpoint, use_sandbox=s.amazon_use_sandbox, app_env=s.app_env
+        )
     return errors
 
 

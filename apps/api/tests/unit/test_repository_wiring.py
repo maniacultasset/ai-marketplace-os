@@ -34,8 +34,14 @@ def test_repository_subclass_requires_model() -> None:
 
 # CODE-PLAN S12 T3: readers of platform-global tables (no `tenant_id`, DATABASE.md:158).
 # S14b T5 (CD4, C6): the current category template and the dictionary revisions.
+# S20 T4: the marketplace error map (platform-global table).
 PLATFORM_READERS = frozenset(
-    {"AttributeDefinitionRepository", "CategoryTemplateRepository", "DictionaryRevisionRepository"}
+    {
+        "AttributeDefinitionRepository",
+        "CategoryTemplateRepository",
+        "DictionaryRevisionRepository",
+        "ErrorMapRepository",
+    }
 )
 
 

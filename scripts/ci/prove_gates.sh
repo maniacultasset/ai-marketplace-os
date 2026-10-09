@@ -473,6 +473,18 @@ leg api-lint-pipeline-environ api-lint ': R1 ' seed_pipeline_environ make api-li
 # S14b T17: only app.main may import the staff admin.
 seed_admin_imported() { append apps/api/app/api/health.py 'import app.admin'; }
 leg lint-imports-admin-imported lint-imports 'only app.main imports app.admin BROKEN' seed_admin_imported make lint-imports
+# S20 T20 (AC5): a service reaching the mutating adapter, I/O in the pure preview mapping, and an
+# implemented preview route that drops one of its marked cases.
+seed_adapter_from_service() { append apps/api/app/services/listing_preview.py 'import app.adapters.amazon.adapter  # noqa: F401'; }
+seed_mapping_httpx() { append apps/api/app/adapters/amazon/mapping.py 'import httpx  # noqa: F401'; }
+seed_preview_case_matrix() {
+  cp "$root/.env" .env
+  replace apps/api/tests/integration/test_listings_preview.py $'@pytest.mark.endpoint("listings_preview", case="conflict")\n' ''
+}
+leg lint-imports-adapter-from-service lint-imports 'only app.adapters and app.workers reach the marketplace adapter and client BROKEN' \
+  seed_adapter_from_service make lint-imports
+leg lint-imports-mapping-httpx lint-imports 'adapter mapping, endpoint check, error map and registry do no I/O BROKEN' \
+  seed_mapping_httpx make lint-imports
 
 # S17b T17: the image check child stays pure, the image repository keeps its tenant filter, and
 # the job refuses an image key outside its tenant's prefix before any read.
@@ -516,6 +528,7 @@ if [ "$with_docker" -eq 1 ]; then
   leg api-tests-engine-impure api-tests 'test_rules_engine_import_allowlist' seed_engine_impure COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-engine-coverage api-tests 'rules_engine branch coverage' seed_engine_coverage COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-revoke-no-shred api-tests 'ck_ma_revoked_shredded|test_revoke_crypto_shreds' seed_revoke_no_shred COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-preview-case-matrix api-tests 'listings_preview: missing endpoint cases' seed_preview_case_matrix COMPOSE_PROJECT_NAME="$self_project" make api-tests
   # A throwaway database with 0000, so the seeded revision legs never stamp mos_test. The broken
   # downgrade leaves its revision stamped there, so that leg runs last.
   docker compose exec -T postgres dropdb -U postgres --if-exists --force mos_prove

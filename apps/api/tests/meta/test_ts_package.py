@@ -24,7 +24,7 @@ def _package(repo_root: Path) -> dict[str, Any]:
 def test_ts_package_identity(repo_root: Path) -> None:
     pkg = _package(repo_root)
     assert pkg["name"] == "@maniacultasset/schemas"
-    assert pkg["version"] == metadata.version("mkos-schemas") == "1.0.0"
+    assert pkg["version"] == metadata.version("mkos-schemas") == "1.1.0"
     assert pkg["types"] == "src/index.ts"
     assert pkg["exports"] == {".": {"types": "./src/index.ts"}}
     assert pkg["files"] == ["src/api.d.ts", "src/contracts.d.ts", "src/index.ts"]

@@ -9,7 +9,11 @@ No network and no clock. It behaves as the adapter contract demands:
 - `get_listing` derives the status from the fields the marketplace never accepted: any such field
   → `partially_published`/`PARTIALLY_LIVE`, none → `published`/`LIVE`. A failed update of a field
   that is already live keeps the old value live; an all-failed update leaves the listing as it was;
-- `update_listing` writes only the given fields; an unknown SKU raises `ListingNotFound`;
+- every result holds one `ItemResult` per item (a family is one call: the parent and each
+  child), and the top-level `fields` hold one result per path;
+- `update_listing` writes only the given fields of the given seller SKUs (a plain list names the
+  listing's own SKU); an unknown SKU raises `ListingNotFound`;
+- `preview()` echoes, per item, the values a create would send; no I/O;
 - `get_performance` refuses a range with `to_date < from_date`.
 """
 
@@ -24,16 +28,26 @@ from typing import Final
 from uuid import UUID
 
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
-from mkos_schemas.enums import ErrorSource, Marketplace, MarketplaceState, RetryClass
+from mkos_schemas.enums import (
+    ErrorSource,
+    ItemMarketplaceState,
+    Marketplace,
+    MarketplaceState,
+    RetryClass,
+)
 from mkos_schemas.errors import ErrorItem, ErrorReport
-from mkos_schemas.paths import is_valid_field_path, resolve
-from mkos_schemas.publish import FieldResult, ListingResult
+from mkos_schemas.paths import resolve
+from mkos_schemas.publish import FieldResult, ItemResult, ListingResult
 
 from app.adapters.base import (
     AdapterListing,
+    AdapterPreview,
     ListingNotFound,
     MarketplaceAdapter,
     PerformanceDay,
+    PreviewItem,
+    UpdateFields,
+    fields_by_sku,
     submitted_fields,
 )
 
@@ -97,16 +111,38 @@ class FakeAdapter(MarketplaceAdapter):
             raw_code=raw_code,
         )
 
-    def _result(self, item: AdapterListing, fields: Sequence[str]) -> ListingResult:
+    def _field_results(self, fields: Sequence[str]) -> list[FieldResult]:
         results: list[FieldResult] = []
-        failed: list[ErrorItem] = []
         for field in fields:
             if field in self._fail:
-                error = self._item(field)
-                failed.append(error)
-                results.append(FieldResult(field=field, status="failed", error=error))
+                results.append(FieldResult(field=field, status="failed", error=self._item(field)))
             else:
                 results.append(FieldResult(field=field, status="succeeded"))
+        return results
+
+    def _result(self, item: AdapterListing, per_sku: Mapping[str, Sequence[str]]) -> ListingResult:
+        by_path: dict[str, FieldResult] = {}
+        items: list[ItemResult] = []
+        for unit in item.units():
+            if unit.seller_sku not in per_sku:
+                continue
+            unit_results = self._field_results(per_sku[unit.seller_sku])
+            for one in unit_results:
+                by_path.setdefault(one.field, one)
+            all_failed = all(r.status == "failed" for r in unit_results)
+            items.append(
+                ItemResult(
+                    product_id=unit.product_id,
+                    seller_sku=unit.seller_sku,
+                    external_id=f"fake-{unit.seller_sku}",
+                    marketplace_state=(
+                        ItemMarketplaceState.REJECTED if all_failed else ItemMarketplaceState.LIVE
+                    ),
+                    fields=unit_results,
+                )
+            )
+        results = [by_path[path] for path in sorted(by_path)]
+        failed = [r.error for r in results if r.error is not None]
         report: ErrorReport | None = None
         if failed and len(failed) == len(results):
             status, state = "failed", MarketplaceState.REJECTED
@@ -124,8 +160,10 @@ class FakeAdapter(MarketplaceAdapter):
                 "status": status,
                 "idempotency_key": item.idempotency_key,
                 "fields": results,
+                "items": items,
                 "marketplace_state": state,
                 "error": report,
+                "attempt": item.attempt,
             }
         )
 
@@ -151,32 +189,38 @@ class FakeAdapter(MarketplaceAdapter):
         return out
 
     async def _once(
-        self, item: AdapterListing, fields: Sequence[str], *, create: bool
+        self, item: AdapterListing, per_sku: Mapping[str, Sequence[str]], *, create: bool
     ) -> ListingResult:
         async with self._lock:
             replay = self._results.get(item.idempotency_key)
             if replay is not None:
                 return replay
-            sku = item.seller_sku
-            if not create and sku not in self._store:
-                raise ListingNotFound(sku)
-            result = self._result(item, fields)
+            if not create:
+                for sku in per_sku:
+                    if sku not in self._store:
+                        raise ListingNotFound(sku)
+            result = self._result(item, per_sku)
             self._results[item.idempotency_key] = result
             if result.status == "failed":
                 return result  # nothing was accepted: no new listing, an existing one unchanged
-            written = {f: v for f, v in self._values(item, fields).items() if f not in self._fail}
-            stored = self._store.get(sku)
-            if stored is None:
-                stored = self._store[sku] = _Stored(item.listing_id)
+            if item.seller_sku not in self._store:
                 self.creates += 1
-            stored.values.update(written)
-            stored.rejected -= written.keys()
-            stored.rejected |= {f for f in fields if f in self._fail and f not in stored.values}
+            for sku, fields in per_sku.items():
+                values = self._values(item, fields)
+                written = {f: v for f, v in values.items() if f not in self._fail}
+                stored = self._store.get(sku)
+                if stored is None:
+                    stored = self._store[sku] = _Stored(item.listing_id)
+                stored.values.update(written)
+                stored.rejected -= written.keys()
+                stored.rejected |= {f for f in fields if f in self._fail and f not in stored.values}
             return result
 
     # ---- the interface ----
 
-    async def get_listing(self, seller_sku: str) -> ListingResult:
+    async def get_listing(
+        self, seller_sku: str, *, listing_id: UUID | None = None
+    ) -> ListingResult:
         if seller_sku not in self._store:
             raise ListingNotFound(seller_sku)
         stored = self._store[seller_sku]
@@ -192,17 +236,29 @@ class FakeAdapter(MarketplaceAdapter):
             }
         )
 
-    async def create_listing(self, item: AdapterListing) -> ListingResult:
-        return await self._once(item, submitted_fields(item.listing), create=True)
+    def _all(self, item: AdapterListing) -> dict[str, list[str]]:
+        fields = submitted_fields(item.listing)
+        return {unit.seller_sku: fields for unit in item.units()}
 
-    async def update_listing(self, item: AdapterListing, *, fields: Sequence[str]) -> ListingResult:
-        wanted = sorted(set(fields))
-        if not wanted or not all(is_valid_field_path(f) for f in wanted):
-            raise ValueError("fields must be a non-empty list of legal field paths")
-        return await self._once(item, wanted, create=False)
+    async def create_listing(self, item: AdapterListing) -> ListingResult:
+        return await self._once(item, self._all(item), create=True)
+
+    async def update_listing(self, item: AdapterListing, *, fields: UpdateFields) -> ListingResult:
+        return await self._once(item, fields_by_sku(item, fields), create=False)
+
+    def preview(self, item: AdapterListing) -> AdapterPreview:
+        payload = self._values(item, submitted_fields(item.listing))
+        units = item.units()
+        return AdapterPreview(
+            product_type=None,
+            items=tuple(
+                PreviewItem(u.product_id, u.seller_sku, u.item_role, dict(payload)) for u in units
+            ),
+            report=ErrorReport(status="passed", listing_id=item.listing_id),
+        )
 
     async def publish_listing(self, item: AdapterListing) -> ListingResult:
-        return await self._once(item, submitted_fields(item.listing), create=True)
+        return await self._once(item, self._all(item), create=True)
 
     async def get_performance(
         self, listing_id: UUID, from_date: date, to_date: date

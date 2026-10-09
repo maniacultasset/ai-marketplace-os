@@ -23,6 +23,7 @@ from app.repositories.brand_documents import BrandDocumentRepository
 from app.repositories.brand_profile import BrandPromptRepository
 from app.repositories.budget import BudgetRepository
 from app.repositories.dictionary import DictionaryRevisionRepository
+from app.repositories.error_map import ErrorMapRepository
 from app.repositories.human_tasks import HumanTaskRepository
 from app.repositories.identity import AuditRepository
 from app.repositories.images import ImageRepository
@@ -58,11 +59,13 @@ class TenantUnitOfWork:
     images: ImageRepository
     templates: CategoryTemplateRepository
     dictionary: DictionaryRevisionRepository
+    # S20 T4: the adapter's error map (platform-global, SELECT only).
+    error_map: ErrorMapRepository
     # S16: telemetry, brand documents and the brand profile.
     agent_runs: AgentRunRepository
     brand_documents: BrandDocumentRepository
     tenants: TenantProfileRepository
-    # S18: generation reads and writes.
+    # S18: generation reads and writes; S20 T18: the adapter input (`listings.preview_source`).
     product_facts: ProductFactsRepository
     brand_profile: BrandPromptRepository
     listings: ListingRepository
@@ -92,6 +95,7 @@ def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
         agent_runs=AgentRunRepository(session, tenant_id),
         brand_documents=BrandDocumentRepository(session, tenant_id),
         tenants=TenantProfileRepository(session, tenant_id),
+        error_map=ErrorMapRepository(session),
         product_facts=ProductFactsRepository(session, tenant_id),
         brand_profile=BrandPromptRepository(session, tenant_id),
         listings=ListingRepository(session, tenant_id),

@@ -14,6 +14,7 @@ from typing import Any
 
 import httpx
 import pytest
+from tests.timing import budget
 
 from .auth_support import World
 from .conftest import LOCAL_HOSTS
@@ -269,8 +270,8 @@ async def test_rules_dry_run_does_not_block_event_loop(
     answered = time.monotonic()
     assert health.status_code == 200
     # on the loop, the 0.5 s `evaluate` would hold both the sleep and /healthz behind it
-    assert answered - started < 0.1, answered - started
-    assert answered - launched < 0.4, answered - launched
+    assert answered - started < budget(0.1), answered - started  # machine-scaled
+    assert answered - launched < budget(0.4), answered - launched  # machine-scaled
     assert not task.done()
     assert (await task).status_code == 200
 

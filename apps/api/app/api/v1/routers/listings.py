@@ -1,4 +1,5 @@
-"""Listing stubs (owner steps S18, S19, S21).
+"""Listing routes: S18's generate, regenerate, status, content patch and validate; S20's preview;
+the rest are stubs (owner steps S19, S21).
 
 `GET /listings` is registered before `GET /listings/{listing_id}`; the batch ops
 (`generate|validate|approve|publish`) are POST-only, so they never shadow a listing id.
@@ -14,6 +15,7 @@ from fastapi import Path as PathParam
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ListingStatus, Marketplace
 from mkos_schemas.jobs import GenerateListingRequest, JobAccepted
+from mkos_schemas.publish import MarketplacePreview
 from mkos_schemas.validation import ValidationSummary
 
 from app.api.errors import ApiError, NotImplementedYet
@@ -29,7 +31,7 @@ from app.api.v1.schemas.listings import (
 )
 from app.api.v1.surface import OPS, route, stub
 from app.core.rbac import Principal
-from app.services import generation, listing_edit, listing_validate
+from app.services import generation, listing_edit, listing_preview, listing_validate
 from app.services.budget import BudgetExceededError
 
 router = APIRouter()
@@ -103,6 +105,19 @@ async def listings_list(
 async def listings_get(listing_id: ListingId) -> NoReturn:
     """One listing with its current content and latest validation."""
     raise NotImplementedYet("listings_get")
+
+
+@route(router, OPS["listings_preview"])
+async def listings_preview(
+    listing_id: ListingId, principal: CurrentPrincipal
+) -> MarketplacePreview:
+    """What the marketplace adapter would send for the current version, per SKU, with its
+    mapping errors. Sends nothing and needs no marketplace account. 409 LISTING_BUSY while the
+    listing has no version or is generating; 501 for a marketplace with no adapter yet."""
+    try:
+        return await listing_preview.preview_listing(principal, listing_id)
+    except listing_preview.MarketplaceNotSupported:
+        raise NotImplementedYet("listings_preview") from None
 
 
 @route(router, OPS["listings_status"])

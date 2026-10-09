@@ -18,6 +18,10 @@ as `"@mkos/schemas": "npm:@maniacultasset/schemas@<version>"`) share one version
   whose heading is still `(unreleased)`, and `make contracts` refuses contract changes at an
   already tagged version (`scripts/ci/schemas_version_check.sh`).
 
+## 1.1.0 (unreleased)
+
+- Marketplace preview (S20, additive MINOR after `schemas-v1.0.0`): `GET /api/v1/listings/{listing_id}/preview` answers `MarketplacePreview {schema_version, listing_id, version, marketplace, product_type, items, report}`, so 44 operations (43 on main after S16, plus this one). Each `PreviewItem {product_id, seller_sku, item_role, payload}` is what the marketplace adapter would send for one SKU (`item_role` is `standalone`, `parent` or `child`; a family lists the parent first, then the children by SKU); images appear as `image:<id>` references, never URLs. `product_type` is null when the listing's pinned template is not mapped for the marketplace, and `report` (an `ErrorReport`) lists the adapter's mapping errors (CATEGORY_NOT_MAPPED, REQUIRED_FIELD_MISSING, VALUE_NOT_ALLOWED, VARIATION_INVALID). The preview carries no verdict and sends nothing; it needs no marketplace account. Errors: 404 `NOT_FOUND` (unknown or another tenant's listing), 409 `LISTING_BUSY` (no version yet, or generating), 501 `NOT_IMPLEMENTED` (a marketplace with no adapter yet: Flipkart until S22). **FE:** show it as the "what will be sent" panel before approval; read errors from `report.errors`.
+
 ## 1.0.0
 
 First contract release. It ships outside the 4 Oct window as a one-time exception: nothing is pinned to 0.0.0. Later breaking changes wait for 18 Oct or 1 Nov.

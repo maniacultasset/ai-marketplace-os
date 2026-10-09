@@ -8,7 +8,7 @@ from typing import Annotated, Final
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError
 
-SCHEMA_VERSION: Final = "1.0.0"
+SCHEMA_VERSION: Final = "1.1.0"
 
 SEAM_SECRET_DENY_NAMES: Final[frozenset[str]] = frozenset(
     {

@@ -53,6 +53,16 @@ class SellerLiveElsewhere(ConflictError):  # noqa: N818 - the plan's name for th
 
 
 @dataclass(frozen=True, slots=True)
+class AccountState:
+    """What the adapter wiring needs (S20 T15): no token material."""
+
+    id: uuid.UUID
+    marketplace: str
+    seller_id: str
+    status: str
+
+
+@dataclass(frozen=True, slots=True)
 class RefreshSnapshot:
     id: uuid.UUID
     marketplace: str
@@ -229,6 +239,20 @@ class MarketplaceAccountRepository(TenantScopedRepository[MarketplaceAccount]):
         for obj in builtins.list(self.db.identity_map.values()):
             if isinstance(obj, MarketplaceAccount) and obj.id == account_id:
                 self.db.expire(obj)
+
+    async def active_by_id(self, account_id: uuid.UUID) -> AccountState | None:
+        """The tenant's account `account_id` in any status (the caller refuses one that is not
+        active), or None, also for another tenant's id. Never selects `token_enc`."""
+        m = MarketplaceAccount
+        stmt = (
+            self._select()
+            .where(m.id == account_id)
+            .with_only_columns(m.id, m.marketplace, m.seller_id, m.status)
+        )
+        row = (await self.db.execute(stmt)).one_or_none()
+        if row is None:
+            return None
+        return AccountState(row.id, row.marketplace, row.seller_id, row.status)
 
     async def snapshot(self, account_id: uuid.UUID, *, margin: timedelta) -> RefreshSnapshot | None:
         row = (

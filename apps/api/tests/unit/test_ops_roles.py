@@ -37,6 +37,7 @@ Q7: dict[str, str] = {
     "listings_publish": "listing:publish",
     "listings_list": "tenant:read",
     "listings_get": "tenant:read",
+    "listings_preview": "tenant:read",
     "listings_status": "tenant:read",
     "listings_content_patch": "listing:edit",
     "listings_regenerate": "listing:regenerate",
@@ -81,7 +82,7 @@ def _operation(spec: dict[str, Any], op_id: str) -> dict[str, Any]:
 
 
 def test_ops_are_the_q7_list() -> None:
-    assert len(OPS) == 43  # S10 38 + S15 confirm and revoke + S16 three
+    assert len(OPS) == 44  # S10 38 + S15 confirm and revoke + S16 three + S20 preview
     assert set(OPS) == set(Q7)
 
 

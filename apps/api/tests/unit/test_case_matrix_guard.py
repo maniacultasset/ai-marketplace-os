@@ -73,6 +73,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "listings_status",
         "listings_content_patch",
         "listings_validate",
+        "listings_preview",
     }
 )
 
