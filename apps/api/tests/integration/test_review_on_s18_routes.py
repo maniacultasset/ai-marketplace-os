@@ -101,20 +101,25 @@ async def test_review_on_s18_patch_paused_archived_409(
     assert response.json()["error"]["type"] == code
 
 
-async def test_review_on_s18_patch_marketplace_key_never_stored(
-    api: httpx.AsyncClient, gen_world: GenWorld
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"content": {**CONTENT, "bullet_points": ["x"], "item_name": "y"}},
+        {"content": CONTENT, "keywords": {"search_terms": ["kurta"], "browse_node": "123"}},
+    ],
+    ids=["content", "keywords"],
+)
+async def test_review_on_s18_patch_marketplace_key_422(
+    api: httpx.AsyncClient, gen_world: GenWorld, body: dict[str, Any]
 ) -> None:
-    """Invariant 4: a marketplace field inside `content` never reaches the canonical listing
-    (S18 drops nested unknown keys; `test_patch_nested_unknown_key_not_stored`)."""
+    """Invariant 4 (AC 8): a marketplace-only or unknown key inside `content` or `keywords` is a
+    422, never silently dropped with a 200; no version is written."""
     made = await generated(gen_world)
-    body = {"content": {**CONTENT, "bullet_points": ["x"], "item_name": "y"}}
     response = await _patch(api, gen_world, made, body)
-    assert response.status_code == 200, response.text
-    stored = gen_world.scalar(
-        "SELECT content_json FROM listing_versions WHERE id = %s",
-        [response.json()["current_version_id"]],
-    )
-    assert "bullet_points" not in str(stored) and "item_name" not in str(stored)
+    assert response.status_code == 422, response.text
+    assert response.json()["error"]["type"] == "VALIDATION_FAILED"
+    assert gen_world.listing(made.listing_id)["current_version_id"] == made.version_id
+    assert gen_world.count("listing_versions", "listing_id = %s", [made.listing_id]) == 1
 
 
 @pytest.mark.parametrize(

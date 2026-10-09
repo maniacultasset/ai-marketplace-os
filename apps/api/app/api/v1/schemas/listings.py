@@ -84,6 +84,20 @@ class ListingContentPatch(StrictModel):
     keywords: ListingKeywords | None = None
     attributes: Annotated[dict[AttrKey, AttributeValue] | None, Field(max_length=200)] = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def _no_unknown_nested_keys(cls, data: Any) -> Any:
+        # Invariant 4: `ListingContent`/`ListingKeywords` are shared WireModels that drop unknown
+        # keys; on a human edit a marketplace-only or unknown key is a 422, never a silent drop.
+        if isinstance(data, dict):
+            for name, model in (("content", ListingContent), ("keywords", ListingKeywords)):
+                value = data.get(name)
+                if isinstance(value, dict) and not set(value) <= set(model.model_fields):
+                    raise PydanticCustomError(
+                        "mkos_invalid", "Unknown key in {name}.", {"name": name}
+                    )
+        return data
+
     @model_validator(mode="after")
     def _no_control_chars(self) -> ListingContentPatch:
         # NUL breaks jsonb (a 500); other C0 controls are refused as well (\n and \t pass).

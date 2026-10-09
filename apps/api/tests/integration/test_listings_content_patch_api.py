@@ -227,16 +227,15 @@ async def test_patch_unicode_content(api: httpx.AsyncClient, gen_world: GenWorld
     assert response.json()["content"]["content"]["title"] == title
 
 
-async def test_patch_nested_unknown_key_not_stored(
-    api: httpx.AsyncClient, gen_world: GenWorld
-) -> None:
+async def test_patch_nested_unknown_key_422(api: httpx.AsyncClient, gen_world: GenWorld) -> None:
+    """Invariant 4 (S19 AC 8): an unknown key inside `content` is refused, never dropped with a
+    200 that tells the editor the whole edit was kept."""
     listing_id, parent = _seeded(gen_world)
     response = await _patch(
         api, gen_world, listing_id, parent, {"content": {**CLEAN, "seeded_extra": "x"}}
     )
-    assert response.status_code == 200, response.text
-    new = _version(gen_world, uuid.UUID(response.json()["current_version_id"]))
-    assert "seeded_extra" not in str(new["content_json"])
+    assert response.status_code == 422, response.text
+    assert gen_world.listing(listing_id)["current_version_id"] == parent
 
 
 @pytest.mark.endpoint("listings_content_patch", case="validation")
