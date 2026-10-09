@@ -10,7 +10,10 @@ with S21's publish job). Pure: it reads only the `PreviewSource` the repository 
   A marketplace whose families have no parent row (`registry.family_has_parent`: Flipkart, S22
   C9) gets the children only, so preview, publish and the item ledger see no parent item.
 - Each child carries its colourway key and colour SKU, and `colour_image_refs` maps each colour
-  key to the locators of that colourway's images (`image_refs` must hold them; S22 C1).
+  key to the locators of that colourway's images (`image_refs` must hold them; S22 C1). Only
+  colourway images the approved version's `images` holds count (S22 fix round 2, F2): the
+  image gate and the reviewer judged those, so a colourway image uploaded later, or never in
+  the version, is never sent; a colourway left with none falls back to the listing's images.
 - The seller SKU is the product's `sku`; the template is the one the version pinned.
 """
 
@@ -78,9 +81,19 @@ def _items(source: PreviewSource) -> tuple[AdapterItem, ...]:
     return (AdapterItem(product.id, product.sku, "parent"), *children)
 
 
+def approved_colour_images(source: PreviewSource) -> dict[str, tuple[uuid.UUID, ...]]:
+    """Each colour key's images, kept only where the approved version holds them (F2)."""
+    approved = {image.image_id for image in canonical_listing(source).images}
+    return {
+        key: kept
+        for key, ids in source.colour_images.items()
+        if (kept := tuple(i for i in ids if i in approved))
+    }
+
+
 def colour_image_ids(source: PreviewSource) -> set[uuid.UUID]:
     """Every colourway image id the listing's children may send (the caller makes their refs)."""
-    return {image_id for ids in source.colour_images.values() for image_id in ids}
+    return {image_id for ids in approved_colour_images(source).values() for image_id in ids}
 
 
 def build_adapter_listing(
@@ -108,7 +121,7 @@ def build_adapter_listing(
         image_refs=image_refs,
         colour_image_refs={
             key: refs
-            for key, ids in source.colour_images.items()
+            for key, ids in approved_colour_images(source).items()
             if (refs := tuple(image_refs[i] for i in ids if i in image_refs))
         },
     )

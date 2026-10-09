@@ -23,8 +23,12 @@ CONTENT: dict[str, Any] = {
 }
 
 
-def _full_body(image_id: uuid.UUID) -> dict[str, Any]:
+def _full_body(image_id: uuid.UUID, *more: uuid.UUID) -> dict[str, Any]:
     """A version that stores the whole canonical listing (with stale ids the rows override)."""
+    images = [
+        {"image_id": str(i), "slot": "main" if n == 0 else "secondary", "position": n}
+        for n, i in enumerate((image_id, *more))
+    ]
     return {
         "listing_id": str(uuid.uuid4()),
         "product_id": str(uuid.uuid4()),
@@ -34,7 +38,7 @@ def _full_body(image_id: uuid.UUID) -> dict[str, Any]:
         "content": CONTENT,
         "keywords": {"search_terms": ["kurta set"], "hidden_terms": []},
         "attributes": {"fabric_type": "cotton", "color": "navy blue"},
-        "images": [{"image_id": str(image_id), "slot": "main", "position": 0}],
+        "images": images,
     }
 
 
@@ -213,9 +217,13 @@ def _colourways(conn: Conn, style: uuid.UUID) -> dict[str, uuid.UUID]:
     return {str(k): v for k, v in rows}
 
 
-def _fk_listing(conn: Conn, tenant: uuid.UUID, style: uuid.UUID) -> uuid.UUID:
+def _fk_listing(
+    conn: Conn, tenant: uuid.UUID, style: uuid.UUID, content: dict[str, Any] | None = None
+) -> uuid.UUID:
     template_id = add_template(conn, marketplace="flipkart")
-    return _listing(conn, tenant, style, template_id=template_id, marketplace="flipkart")
+    return _listing(
+        conn, tenant, style, content=content, template_id=template_id, marketplace="flipkart"
+    )
 
 
 async def test_adapter_input_flipkart_family_children_only(
@@ -265,8 +273,9 @@ async def test_adapter_input_colour_image_refs_grouped(
     second = f.image(auth_db, acme, style, colourway_id=cw["navy blue"], position=2)
     main = f.image(auth_db, acme, style, colourway_id=cw["navy blue"], slot="main", position=5)
     maroon = f.image(auth_db, acme, style, colourway_id=cw["maroon"], position=1)
-    f.image(auth_db, acme, style)  # a style image with no colourway: not a colour image
-    source = await _source(products_world, _fk_listing(auth_db, acme, style))
+    style_image = f.image(auth_db, acme, style)  # no colourway: not a colour image
+    approved = _full_body(style_image, maroon, main, second)
+    source = await _source(products_world, _fk_listing(auth_db, acme, style, approved))
     assert dict(source.colour_images) == {"maroon": (maroon,), "navy blue": (main, second)}
     ids = colour_image_ids(source)
     refs = {i: f"image:{i}" for i in ids}
@@ -275,6 +284,34 @@ async def test_adapter_input_colour_image_refs_grouped(
         "maroon": (f"image:{maroon}",),
         "navy blue": (f"image:{main}", f"image:{second}"),
     }
+
+
+async def test_adapter_input_colour_images_only_from_approved_version(
+    products_world: World, auth_db: Conn
+) -> None:
+    """Fix round 2 (F2): a colourway image the approved version does not hold (uploaded after
+    approval, or never passed the image gate at approval) is never sent; a colourway left
+    with none falls back to the listing's own images."""
+    from app.adapters.flipkart.mapping import unit_images
+    from app.services.adapter_input import build_adapter_listing, colour_image_ids
+
+    acme = products_world.tenant("acme")
+    style, _ = family(auth_db, acme, "FK-3B", category=CATEGORY)
+    cw = _colourways(auth_db, style)
+    style_image = f.image(auth_db, acme, style)
+    navy = f.image(auth_db, acme, style, colourway_id=cw["navy blue"], slot="main")
+    late = f.image(auth_db, acme, style, colourway_id=cw["navy blue"], position=3)
+    unapproved = f.image(auth_db, acme, style, colourway_id=cw["maroon"], slot="main")
+    auth_db.execute("UPDATE images SET compliance_status = 'failed' WHERE id = %s", [unapproved])
+    approved = _full_body(style_image, navy)
+    source = await _source(products_world, _fk_listing(auth_db, acme, style, approved))
+    assert colour_image_ids(source) == {navy}
+    refs = {i: f"image:{i}" for i in {style_image, navy, late, unapproved}}
+    built = build_adapter_listing(source, image_refs=refs, idempotency_key="k")
+    assert dict(built.colour_image_refs) == {"navy blue": (f"image:{navy}",)}
+    sent = {i.colour_key: unit_images(built, i) for i in built.items}
+    assert sent["navy blue"] == [f"image:{navy}"]
+    assert sent["maroon"] == [f"image:{style_image}", f"image:{navy}"]
 
 
 async def test_adapter_input_deleted_image_excluded(products_world: World, auth_db: Conn) -> None:
