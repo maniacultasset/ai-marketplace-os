@@ -17,6 +17,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 BEARER = {"Authorization": "Bearer t"}
+# a GET route that is still S3's 501 stub (S19 implemented GET /listings)
+STUB_GET = "/api/v1/analytics?from=2026-10-01&to=2026-10-02"
 IDEM = {"Idempotency-Key": "tester-key-1"}
 ID = "0b1c2d3e-0000-4000-8000-00000000abcd"
 VERSION_ID = "0b1c2d3e-0000-4000-8000-00000000abce"
@@ -48,13 +50,13 @@ def _envelope(response: Any, status: int, code: str) -> dict[str, Any]:
 def test_invalid_request_id_gets_fresh_uuid(client: TestClient, value: str | bytes) -> None:
     # bytes header values on purpose; the TestClient's stub types only `str` (httpx2 since S16)
     headers: Any = {**BEARER, "X-Request-ID": value}
-    r = client.get("/api/v1/listings", headers=headers)
+    r = client.get(STUB_GET, headers=headers)
     body = _envelope(r, 501, "NOT_IMPLEMENTED")
     uuid.UUID(body["error"]["correlation_id"])
 
 
 def test_valid_request_id_is_kept(client: TestClient) -> None:
-    r = client.get("/api/v1/listings", headers={**BEARER, "X-Request-ID": "fe:trace.01-x"})
+    r = client.get(STUB_GET, headers={**BEARER, "X-Request-ID": "fe:trace.01-x"})
     assert _envelope(r, 501, "NOT_IMPLEMENTED")["error"]["correlation_id"] == "fe:trace.01-x"
 
 
@@ -187,10 +189,12 @@ def test_bad_approve_batches_are_422(client: TestClient, items: list[dict[str, A
     _envelope(r, 422, "VALIDATION_FAILED")
 
 
-def test_two_hundred_items_is_accepted_by_the_stub(client: TestClient) -> None:
+def test_two_hundred_items_is_accepted() -> None:
+    """The bound is 1..200 (S19 runs the route; its integration tests cover the behaviour)."""
+    from app.api.v1.schemas.batches import ApproveRequest
+
     items = [_approve_item(f"0b1c2d3e-0000-4000-8000-{i:012d}") for i in range(200)]
-    r = client.post("/api/v1/listings/approve", headers={**BEARER, **IDEM}, json={"items": items})
-    _envelope(r, 501, "NOT_IMPLEMENTED")
+    assert len(ApproveRequest.model_validate({"items": items}).items) == 200
 
 
 @pytest.mark.parametrize(

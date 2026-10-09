@@ -410,7 +410,8 @@ export interface paths {
         };
         /**
          * List listings (the review queue)
-         * @description List the brand's listings (the review queue), filtered by status, marketplace or product.
+         * @description List the brand's listings, filtered by status, marketplace or product. `status=validated`
+         *     or `needs_review` is the review queue, oldest first; any other filter is newest first.
          */
         get: operations["listings_list"];
         put?: never;
@@ -433,7 +434,8 @@ export interface paths {
         /**
          * Approve or reject a batch (maker-checker enforced)
          * @description Approve or reject up to 200 listings. The approver is the JWT subject; whoever generated
-         *     or edited a version cannot approve it (403 MAKER_CHECKER_VIOLATION per item).
+         *     or edited a version cannot approve it (403 MAKER_CHECKER_VIOLATION per item). The request is
+         *     200 with each item's own `http_status` and `error`.
          */
         post: operations["listings_approve"];
         delete?: never;
@@ -512,7 +514,8 @@ export interface paths {
         };
         /**
          * Read one listing with its content and validation
-         * @description One listing with its current content and latest validation.
+         * @description One listing with its current content and latest validation. `ETag` is the current
+         *     version id: send it as `If-Match` on the content PATCH.
          */
         get: operations["listings_get"];
         put?: never;
