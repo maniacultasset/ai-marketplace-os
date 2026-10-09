@@ -33,7 +33,7 @@ from dataclasses import dataclass
 from typing import Final, Literal
 
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
-from mkos_schemas.enums import ErrorClass, ItemMarketplaceState
+from mkos_schemas.enums import ErrorClass, ErrorSource, ItemMarketplaceState
 from mkos_schemas.errors import ErrorItem, ErrorReport
 from mkos_schemas.publish import ListingResult
 
@@ -175,6 +175,28 @@ def route_result(result: ListingResult, *, attempt: int) -> Decision:
     )
 
 
+_MESSAGES: Final[Mapping[ErrorCode, str]] = {
+    ErrorCode.RATE_LIMITED: "The marketplace throttled the request; it is retried.",
+    ErrorCode.AUTH_EXPIRED: "The marketplace refused the connection; reconnect the account.",
+    ErrorCode.ACCOUNT_PERMISSION_DENIED: "The seller account lacks a permission this needs.",
+}
+
+
+def _listing_item(code: ErrorCode, retryable: bool) -> ErrorItem:
+    """The one item of a whole-call failure whose report named none (every failure lands as an
+    ErrorReport with at least one item, so it also opens its issue)."""
+    meta = ERROR_CODE_META[code]
+    return ErrorItem(
+        field="listing",
+        error_code=code,
+        message=_MESSAGES[code],
+        source=ErrorSource.AMAZON_ADAPTER,
+        retryable=retryable,
+        retry_class=meta.retry_class,
+        error_class=meta.error_class,
+    )
+
+
 _ERROR_CODES: Final[Mapping[str, ErrorCode]] = {
     "rate_limited": ErrorCode.RATE_LIMITED,
     "auth_expired": ErrorCode.AUTH_EXPIRED,
@@ -187,7 +209,10 @@ def route_error(kind: ErrorKind, report: ErrorReport, *, attempt: int) -> Decisi
         return Decision(outcome="pending", job_status="retry", report=report)
     code = _ERROR_CODES[kind]
     retryable = kind == "rate_limited"
-    stored = report.model_copy(update={"error_code": code, "retryable": retryable})
+    errors = list(report.errors) or [_listing_item(code, retryable)]
+    stored = report.model_copy(
+        update={"error_code": code, "retryable": retryable, "errors": errors}
+    )
     if attempt >= MAX_ATTEMPTS:
         event, to, reason = EXHAUSTED
         return Decision(

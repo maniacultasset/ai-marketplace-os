@@ -166,6 +166,13 @@ async def _open_task(
         await uow.listing_issues.link_task(ctx.listing_id, ctx.job_id, task_id)
 
 
+def _scope(ctx: AttemptCtx, decision: Decision) -> list[str]:
+    """The fields this attempt answered for: the sent paths, the listing-level answer, and any
+    field the report names (a whole-call failure is reported on `listing`)."""
+    named = {e.field for e in (decision.report.errors if decision.report else [])}
+    return sorted({*ctx.sent_paths, "listing", *named})
+
+
 def _issue_report(decision: Decision) -> ErrorReport:
     if decision.report is not None:
         return decision.report
@@ -201,7 +208,7 @@ async def apply_decision(uow: TenantUnitOfWork, ctx: AttemptCtx, decision: Decis
         _issue_report(decision),
         run_id=None,
         cause="publish",
-        scope_fields=list(ctx.sent_paths),
+        scope_fields=_scope(ctx, decision),
         version_id=ctx.version_id,
         job_id=ctx.job_id,
     )
