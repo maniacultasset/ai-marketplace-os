@@ -67,10 +67,10 @@ def test_nested_span_same_id(exporter: InMemorySpanExporter) -> None:
 
 
 def test_get_tracer_noop_before_init(monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.core import observability
+    from app.core import tracer as holder
 
-    monkeypatch.setattr(observability, "_provider", None)
-    tracer = observability.get_tracer()
+    monkeypatch.setattr(holder, "_provider", None)
+    tracer = holder.get_tracer()
     with tracer.start_as_current_span("x") as span:
         assert not span.is_recording()
 

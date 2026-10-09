@@ -44,9 +44,9 @@ from mkos_schemas.errors import ErrorItem, ErrorReport
 from opentelemetry.trace import SpanKind, Status, StatusCode
 
 from app.core.logging import get_logger
-from app.core.observability import get_tracer
 from app.core.request_context import bind_tenant, new_request_id, request_context
 from app.core.traceparent import parse_traceparent
+from app.core.tracer import get_tracer
 from app.db.job_context import JobHead, resolve_job
 from app.db.session import unit_of_work
 from app.repositories.jobs import Claimed, JobRunRepository

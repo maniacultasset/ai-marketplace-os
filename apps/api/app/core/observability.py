@@ -49,6 +49,8 @@ from app.core.redaction import redact
 from app.core.request_context import current_request_id
 from app.core.traceparent import current_traceparent as current_traceparent
 from app.core.traceparent import parse_traceparent as parse_traceparent
+from app.core.tracer import get_tracer as get_tracer
+from app.core.tracer import set_provider
 
 TRACER_NAME: Final = "app"
 TRACE_FIELD: Final = "logging.googleapis.com/trace"
@@ -106,11 +108,7 @@ class RequestIdSpanProcessor(SpanProcessor):
         return True
 
 
-_provider: TracerProvider | None = None
-
-
 def init_tracing(settings: Settings, *, exporter: SpanExporter | None = None) -> TracerProvider:
-    global _provider
     provider = TracerProvider(
         resource=Resource({"service.name": settings.otel_service_name}),
         sampler=sampler_for(settings.otel_traces_sampler, settings.otel_traces_sampler_arg),
@@ -121,15 +119,8 @@ def init_tracing(settings: Settings, *, exporter: SpanExporter | None = None) ->
         provider.add_span_processor(SimpleSpanProcessor(exporter))
     project_id = settings.gcp_project_id
     set_trace_fields_hook(lambda: trace_log_fields(project_id))
-    _provider = provider
+    set_provider(provider)
     return provider
-
-
-def get_tracer(name: str = TRACER_NAME) -> trace.Tracer:
-    """A tracer from the provider the last `init_tracing` built; a no-op tracer before any."""
-    if _provider is None:
-        return trace.NoOpTracer()
-    return _provider.get_tracer(name)
 
 
 def tracer_from(provider: TracerProvider) -> trace.Tracer:
