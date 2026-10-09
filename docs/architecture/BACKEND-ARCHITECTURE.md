@@ -2418,7 +2418,7 @@ flowchart TB
 | Deploy method | zero-traffic revision, smoke test, traffic shift, watch, auto-rollback | same flow | ADR-0001, ADR-0009 |
 | Budget alert start | $250/mo | $60/mo | ADR-0001 |
 | Log retention | 30 days | 7 days | ADR-0001 |
-| Marketplace accounts | production seller accounts | test accounts where they exist: `AMAZON_USE_SANDBOX`; no Flipkart switch yet | [Site] L13049, L13083; VISION Q16 |
+| Marketplace accounts | production seller accounts | test accounts where they exist: `AMAZON_USE_SANDBOX`; Flipkart switch: `FLIPKART_ENABLED` (off by default; S22) | [Site] L13049, L13083; VISION Q16 |
 
 **The domain is not chosen yet.** `<APEX>` is a placeholder. The six OAuth redirect URIs are frozen except for the apex label (Addendum §26), and choosing the apex is the user's call (STATE open decision 5).
 
