@@ -135,7 +135,7 @@ async def test_reviewer_403_on_listings_generate(api: httpx.AsyncClient, auth_db
     operator = await _call(
         api, OPS["listings_generate"], tokens_for(world, "operator@acme.test", "acme")
     )
-    assert operator.status_code == 501
+    assert operator.status_code == 404
 
 
 async def test_admin_403_on_listings_approve(api: httpx.AsyncClient, auth_db: Conn) -> None:

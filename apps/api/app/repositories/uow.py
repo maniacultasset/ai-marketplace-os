@@ -20,20 +20,25 @@ from app.repositories.agent_runs import AgentRunRepository
 from app.repositories.attribute_definitions import AttributeDefinitionRepository
 from app.repositories.brand_chunks import BrandChunkRepository
 from app.repositories.brand_documents import BrandDocumentRepository
+from app.repositories.brand_profile import BrandPromptRepository
+from app.repositories.budget import BudgetRepository
 from app.repositories.dictionary import DictionaryRevisionRepository
 from app.repositories.error_map import ErrorMapRepository
 from app.repositories.human_tasks import HumanTaskRepository
 from app.repositories.identity import AuditRepository
 from app.repositories.images import ImageRepository
 from app.repositories.jobs import JobRunRepository
-from app.repositories.listings import ListingRepository
+from app.repositories.listings import ListingRepository, ListingVersionRepository
 from app.repositories.marketplace_accounts import MarketplaceAccountRepository
 from app.repositories.oauth_states import OAuthStateRepository
+from app.repositories.product_facts import ProductFactsRepository
 from app.repositories.products import ProductRepository
+from app.repositories.review_decisions import ReviewDecisionRepository
 from app.repositories.rules import RuleRepository
 from app.repositories.templates import CategoryTemplateRepository
 from app.repositories.tenants import TenantProfileRepository
 from app.repositories.transactions import unit_of_work
+from app.repositories.validation_runs import ValidationRunRepository
 
 __all__ = ["TenantUnitOfWork", "repositories_on", "tenant_uow"]
 
@@ -56,12 +61,18 @@ class TenantUnitOfWork:
     dictionary: DictionaryRevisionRepository
     # S20 T4: the adapter's error map (platform-global, SELECT only).
     error_map: ErrorMapRepository
-    # S20 T18: the adapter input (SELECT only).
-    listings: ListingRepository
     # S16: telemetry, brand documents and the brand profile.
     agent_runs: AgentRunRepository
     brand_documents: BrandDocumentRepository
     tenants: TenantProfileRepository
+    # S18: generation reads and writes; S20 T18: the adapter input (`listings.preview_source`).
+    product_facts: ProductFactsRepository
+    brand_profile: BrandPromptRepository
+    listings: ListingRepository
+    listing_versions: ListingVersionRepository
+    validation_runs: ValidationRunRepository
+    review_decisions: ReviewDecisionRepository
+    budget: BudgetRepository
 
 
 def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
@@ -85,7 +96,13 @@ def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
         brand_documents=BrandDocumentRepository(session, tenant_id),
         tenants=TenantProfileRepository(session, tenant_id),
         error_map=ErrorMapRepository(session),
+        product_facts=ProductFactsRepository(session, tenant_id),
+        brand_profile=BrandPromptRepository(session, tenant_id),
         listings=ListingRepository(session, tenant_id),
+        listing_versions=ListingVersionRepository(session, tenant_id),
+        validation_runs=ValidationRunRepository(session, tenant_id),
+        review_decisions=ReviewDecisionRepository(session, tenant_id),
+        budget=BudgetRepository(session, tenant_id),
     )
 
 

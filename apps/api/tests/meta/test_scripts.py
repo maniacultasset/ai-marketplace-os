@@ -2226,3 +2226,210 @@ def test_make_e2e_sets_mkos_cli_hook(repo_root: Path) -> None:
     out = _make_e2e_dry_run(repo_root)
     cli = out.split("MKOS_CLI='", 1)[1].split("'", 1)[0]
     assert cli == "uv run --frozen python -m app.cli"
+
+
+S18_LEGS = {
+    "lint-imports-budget-not-allowlisted": ("lint-imports", ": R5 ", "seed_budget_not_allowlisted"),
+    "tenant-isolation-listings-no-tenant-filter": (
+        "tenant-isolation",
+        "test_iso_generation_repositories_other_tenant_empty",
+        "seed_listings_no_tenant_filter",
+    ),
+    "api-tests-generation-publishes": (
+        "api-tests",
+        "test_generation_never_publishes",
+        "seed_generation_publishes",
+    ),
+    "api-tests-validate-rules-cap": (
+        "api-tests",
+        "test_validate_rules_port_call_cap",
+        "seed_validate_rules_uncapped",
+    ),
+}
+
+
+def test_prove_gates_has_s18_legs(repo_root: Path) -> None:
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    code = _code(text)
+    for name, (gate, regex, seed_name) in S18_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+        assert leg.group(2) == seed_name, name
+        assert re.search(rf"(?m)^{seed_name}\(\) \{{", code), seed_name
+
+
+# ---- S18 T21 (AC 17): generate.sh and regenerate.sh ----
+
+GENERATE_FLOW = "scripts/e2e/generate.sh"
+REGENERATE_FLOW = "scripts/e2e/regenerate.sh"
+GENERATE_STEPS = (
+    "health",
+    "login_acme_operator",
+    "create_product_201",
+    "generate_202",
+    "replay_same_202",
+    "new_key_busy_409",
+    "worker_start",
+    "poll_job_succeeded",
+    "status_validated",
+    "login_acme_reviewer",
+    "reviewer_generate_403",
+    "login_bharat_operator",
+    "bharat_status_404",
+    "db_version_and_runs",
+    "create_product_failed_201",
+    "generate_stub_failed_202",
+    "poll_job_failed",
+    "status_failed_generation_failed",
+    "job_result_no_version",
+    "db_failed_runs",
+    "worker_stop",
+)
+REGENERATE_STEPS = (
+    "health",
+    "login_acme_operator",
+    "create_product_201",
+    "worker_start",
+    "generate_stub_blocked_202",
+    "poll_blocked",
+    "job_error_present",
+    "login_acme_reviewer",
+    "reviewer_regenerate_202",
+    "poll_validated",
+    "db_maker_is_reviewer",
+    "worker_stop",
+)
+LISTING_EDIT_FLOW = "scripts/e2e/listing_edit.sh"
+LISTING_EDIT_STEPS = (
+    "health",
+    "login_acme_operator",
+    "create_product_201",
+    "worker_start",
+    "generate_202",
+    "poll_validated",
+    "patch_content_200",
+    "patch_stale_409",
+    "patch_long_title_blocked",
+    "validate_passed_false",
+    "validate_again_same_run",
+    "worker_stop",
+)
+S18_FLOWS = {
+    GENERATE_FLOW: GENERATE_STEPS,
+    REGENERATE_FLOW: REGENERATE_STEPS,
+    LISTING_EDIT_FLOW: LISTING_EDIT_STEPS,
+}
+
+
+def _steps(code: str) -> tuple[str, ...]:
+    return tuple(re.findall(r"(?m)^\s*step (\w+)$", code))
+
+
+def _run_flow(
+    repo_root: Path, tmp_path: Path, flow: str, base: str, *, hooks: bool = True
+) -> subprocess.CompletedProcess[str]:
+    import os
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    curl = bin_dir / "curl"
+    curl.write_text(
+        f'#!/bin/sh\necho called >> "{tmp_path}/curl.log"\necho 000\n', encoding="utf-8"
+    )
+    curl.chmod(0o755)
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
+    for name in ("WORKER_START", "WORKER_STOP"):
+        env.pop(name, None)
+    if hooks:
+        env["WORKER_START"] = "true"
+        env["WORKER_STOP"] = "true"
+    return subprocess.run(
+        [str(repo_root / flow), base],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=120,
+        check=False,
+    )
+
+
+@pytest.mark.parametrize("flow", sorted(S18_FLOWS))
+def test_e2e_generate_steps(repo_root: Path, flow: str) -> None:
+    code = _code((repo_root / flow).read_text(encoding="utf-8"))
+    assert "set -euo pipefail" in code
+    assert _steps(code) == S18_FLOWS[flow]
+    assert "POLL_LIMIT_S=60" in code and "$(( $(date +%s) + POLL_LIMIT_S ))" in code
+    assert '"E2E-GEN-$(date +%s)-$RANDOM"' in code  # a fresh SKU per product, per run
+    assert "FAILED at step $current (HTTP status ${status:-none})" in code
+    assert 'cat "$body"' not in code
+    assert not re.search(r":\d{2,5}\b", code)  # no literal port
+    assert "--password" not in code and "-u " not in code  # never a password on argv
+    assert len(re.findall(r"(?m)^\s*step login_", code)) <= 3
+
+
+def test_e2e_regenerate_steps(repo_root: Path) -> None:
+    code = _code((repo_root / REGENERATE_FLOW).read_text(encoding="utf-8"))
+    assert _steps(code) == REGENERATE_STEPS
+    assert "stub:blocked" in code
+
+
+def test_e2e_generate_worker_starts_after_busy_check(repo_root: Path) -> None:
+    steps = _steps(_code((repo_root / GENERATE_FLOW).read_text(encoding="utf-8")))
+    start = steps.index("worker_start")
+    for name in ("generate_202", "replay_same_202", "new_key_busy_409"):
+        assert steps.index(name) < start, name
+
+
+def test_e2e_generate_failed_leg_after_worker_start(repo_root: Path) -> None:
+    steps = _steps(_code((repo_root / GENERATE_FLOW).read_text(encoding="utf-8")))
+    leg = steps[steps.index("create_product_failed_201") : steps.index("worker_stop")]
+    assert leg == (
+        "create_product_failed_201",
+        "generate_stub_failed_202",
+        "poll_job_failed",
+        "status_failed_generation_failed",
+        "job_result_no_version",
+        "db_failed_runs",
+    )
+    assert steps.index("worker_start") < steps.index("db_version_and_runs") < steps.index(leg[0])
+    assert not any(step.startswith("login_") for step in leg)
+
+
+@pytest.mark.parametrize("flow", [GENERATE_FLOW, REGENERATE_FLOW])
+def test_e2e_s18_psql_only_in_db_steps(repo_root: Path, flow: str) -> None:
+    current = "setup"
+    hits: list[tuple[str, str]] = []
+    for line in _code((repo_root / flow).read_text(encoding="utf-8")).splitlines():
+        match = re.match(r"^step (\w+)$", line)
+        if match:
+            current = match.group(1)
+        if "psql" in line or "docker compose exec" in line or re.search(r"\bsql \"", line):
+            hits.append((current, line.strip()))
+    assert hits
+    # the `sql` helper is defined in setup and called from db_* steps only; it reads read-only
+    assert all(step == "setup" or step.startswith("db_") for step, _ in hits), hits
+    assert "default_transaction_read_only = on" in _code(
+        (repo_root / flow).read_text(encoding="utf-8")
+    )
+
+
+@pytest.mark.parametrize("flow", sorted(S18_FLOWS))
+def test_e2e_generate_refuses_non_local_url(repo_root: Path, tmp_path: Path, flow: str) -> None:
+    result = _run_flow(repo_root, tmp_path, flow, "http://api.example.com")
+    assert result.returncode == 2
+    assert not (tmp_path / "curl.log").exists()
+
+
+@pytest.mark.parametrize("flow", sorted(S18_FLOWS))
+def test_e2e_generate_without_hooks_exits_2(repo_root: Path, tmp_path: Path, flow: str) -> None:
+    result = _run_flow(repo_root, tmp_path, flow, "http://127.0.0.1:8123", hooks=False)
+    assert result.returncode == 2
+    assert result.stderr.startswith("usage: WORKER_START=<cmd> WORKER_STOP=<cmd>")
+    assert not (tmp_path / "curl.log").exists()
+
+
+def test_e2e_listing_edit_http_only(repo_root: Path) -> None:
+    code = _code((repo_root / LISTING_EDIT_FLOW).read_text(encoding="utf-8"))
+    assert "psql" not in code and "docker compose" not in code

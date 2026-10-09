@@ -84,6 +84,10 @@ def test_storage_deployed_values_accepted() -> None:
 def test_storage_local_accepts_defaults(fresh: pytest.MonkeyPatch) -> None:
     """The committed defaults (`config.py`) under `APP_ENV=local` build a client."""
     fresh.setenv("APP_ENV", "local")
+    # the api role's boot needs these; `fresh` chdirs away from `.env`, so set them here instead
+    # of relying on the shell (CI exports them, a plain local run does not)
+    fresh.setenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/mos_test")
+    fresh.setenv("JWT_SECRET", "ci_only_not_a_real_secret_at_least_32_chars")
     for name in ("S3_ENDPOINT_URL", "S3_ACCESS_KEY", "S3_SECRET_KEY"):
         fresh.delenv(name, raising=False)
     from app.core.config import get_settings

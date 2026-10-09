@@ -344,23 +344,43 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         result_json: dict[str, Any] | None = None,
         error_report_json: dict[str, Any] | None = None,
         error_code: str | None = None,
+        zero_reservation: bool = False,
     ) -> JobRun | None:
-        """The terminal write of the claimed attempt; None when the fence drops it."""
+        """The terminal write of the claimed attempt; None when the fence drops it. A terminal
+        row is immutable, so the budget reservation is zeroed here or never (S18 K2, CP10)."""
         if status not in TERMINAL:
             raise ValueError(f"{status!r} is not a terminal status")
-        return await self._update_returning(
-            job_id,
-            self._fence(job_id, attempt),
-            {
-                "status": status,
-                # SQL NULL, not JSON `null`: the JSONB columns would store 'null' for None
-                "result_json": null() if result_json is None else result_json,
-                "error_report_json": null() if error_report_json is None else error_report_json,
-                "error_code": error_code,
-                "lease_expires_at": None,
-                "finished_at": func.now(),
-            },
+        values: dict[str, Any] = {
+            "status": status,
+            # SQL NULL, not JSON `null`: the JSONB columns would store 'null' for None
+            "result_json": null() if result_json is None else result_json,
+            "error_report_json": null() if error_report_json is None else error_report_json,
+            "error_code": error_code,
+            "lease_expires_at": None,
+            "finished_at": func.now(),
+        }
+        if zero_reservation:
+            values["cost_reserved_usd"] = 0
+        return await self._update_returning(job_id, self._fence(job_id, attempt), values)
+
+    async def lock_running(self, job_id: uuid.UUID, attempt: int) -> JobRun | None:
+        """The claimed attempt's row `FOR UPDATE`, or None when the fence no longer holds (the
+        lease was reaped and a newer attempt owns the row): S18's terminal persist runs only
+        after this check."""
+        stmt = (
+            self._select()
+            .where(*self._fence(job_id, attempt))
+            .with_for_update()
+            .execution_options(populate_existing=True)
         )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def reserve_cost(self, job_id: uuid.UUID, attempt: int, amount: Any) -> bool:
+        """Set the claimed attempt's budget reservation (S18 D10); False when fenced out."""
+        row = await self._update_returning(
+            job_id, self._fence(job_id, attempt), {"cost_reserved_usd": amount}
+        )
+        return row is not None
 
     async def release_retry(self, job_id: uuid.UUID, attempt: int) -> bool:
         """A retryable failure with attempts left: back to `queued`, the attempt kept."""

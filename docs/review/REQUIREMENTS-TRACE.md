@@ -8,18 +8,18 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 - **Every line of the client spec is traced.** All 13,711 lines of the snapshot are in the register:
   11,167 entries, of which 8,916 are checkable statements. `scripts/trace/check_coverage.py` proves 100% line coverage.
 - **Every statement has a verdict**, with a reference, adversarially verified per chunk (`scripts/trace/check_mapping.py`).
-- **7,030 of 8,916 (79%) are covered by our plan**: 6,079 as written and
+- **7,033 of 8,916 (79%) are covered by our plan**: 6,082 as written and
   951 deliberately changed by an ADR, Canon row or recorded decision.
-- **513 are gaps** (backend/DB 257, shared seams 131, ops 105, AI team 4, FE team 0, client 16).
+- **510 are gaps** (backend/DB 257, shared seams 129, ops 104, AI team 4, FE team 0, client 16).
 - **319 need the team or client** (54 conflicts, 265 questions);
   each points to a row in `TEAM-QUESTIONS.md`.
 - 512 belong to the AI or FE team, and 542 are marked Phase 2/3 by the site itself.
 
 | Status | Statements | Share |
 |---|---:|---:|
-| ✅ covered | 6,079 | 68.2% |
+| ✅ covered | 6,082 | 68.2% |
 | 🔁 covered-changed | 951 | 10.7% |
-| ⚠️ gap | 513 | 5.8% |
+| ⚠️ gap | 510 | 5.7% |
 | ❌ conflict | 54 | 0.6% |
 | ❓ needs-client | 265 | 3.0% |
 | 🧩 other-team | 512 | 5.7% |
@@ -32,9 +32,9 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | Page | ✅ | 🔁 | ⚠️ | ❌ | ❓ | 🧩 | ⏭ | Act on |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | AI Marketplace OS — Architecture & Engineering Knowledge Base | 7 | 0 | 0 | 0 | 0 | 0 | 0 | ✔ |
-| [★] Complete Founder BRD (End-to-End) | 1170 | 86 | 57 | 1 | 40 | 6 | 55 | 98 |
+| [★] Complete Founder BRD (End-to-End) | 1171 | 86 | 56 | 1 | 40 | 6 | 55 | 97 |
 | [01] Product Vision, 19-Step Flow & Scope (§1–4) | 133 | 22 | 2 | 0 | 1 | 2 | 1 | 3 |
-| [02] Brand Onboarding & Catalog Intake (§5) | 38 | 2 | 3 | 0 | 3 | 0 | 1 | 6 |
+| [02] Brand Onboarding & Catalog Intake (§5) | 39 | 2 | 2 | 0 | 3 | 0 | 1 | 5 |
 | [03] Master Apparel Data & Variants (§6–7) | 192 | 2 | 4 | 0 | 0 | 0 | 0 | 4 |
 | [04] Media, Content & Canonical Record (§8–10) | 131 | 13 | 2 | 0 | 1 | 4 | 0 | 3 |
 | [05] Business Data Model & 14-Step Engine (§11–12) | 290 | 57 | 6 | 0 | 3 | 1 | 3 | 9 |
@@ -45,7 +45,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [10] Acceptance Criteria, Metrics & Lead Handoff (§22–26) | 86 | 4 | 11 | 0 | 4 | 0 | 2 | 15 |
 | [01] 45-Day Plan & Definition of Done | 85 | 3 | 1 | 0 | 2 | 0 | 0 | 3 |
 | [02] Phase-1 Scope Lock & Non-Goals | 49 | 1 | 1 | 0 | 4 | 6 | 36 | 5 |
-| [03] Day-by-Day Execution Plan (45 Days) | 440 | 74 | 108 | 1 | 76 | 49 | 0 | 185 |
+| [03] Day-by-Day Execution Plan (45 Days) | 441 | 74 | 107 | 1 | 76 | 49 | 0 | 184 |
 | [04] Team Structure & Solo Sprint | 57 | 7 | 3 | 0 | 13 | 16 | 0 | 16 |
 | [05] GCP Tech Stack & Architecture | 85 | 19 | 6 | 0 | 0 | 11 | 0 | 6 |
 | [06] Consolidated Data Model & Schema | 162 | 34 | 0 | 3 | 3 | 0 | 0 | 6 |
@@ -1671,7 +1671,7 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R13647 | L13647 | Security checklist: TLS on all connections. | docs/architecture/BACKEND-ARCHITECTURE.md:2263 | DB and storage connection encryption stated nowhere; doc gap for ADR-0001/S4 |
 | R13650 | L13650 | Security checklist: SQL injection prevention verified. | docs/architecture/BACKEND-ARCHITECTURE.md:2204 | SQL injection prevention is verified with the repository layer (S9) and the API routes (S10): parameterised queries and tests; ruff S608 (S1) is only the lint half |
 
-## ⚠️ Gaps on a shared seam (backend + AI or FE team) (131)
+## ⚠️ Gaps on a shared seam (backend + AI or FE team) (129)
 
 
 ### [★] Complete Founder BRD (End-to-End)
@@ -1680,7 +1680,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 |---|---|---|---|---|
 | R00091 | L91–93 | End-to-end flow stage 5 of 19: Category & sub-category classification. | docs/review/VISION-ALIGNMENT.md:132; docs/architecture/DATABASE.md:529; T68 | No classify node; category seller-given; marketplace type = f(internal category) |
 | R00199a | L199 | In V1 Scope: category understanding. | docs/review/VISION-ALIGNMENT.md:132; docs/architecture/DATABASE.md:529; T68 | No classify node; seller category + template map only; per-product mapping open T68 |
-| R00285 | L285 | Brand description matters for: Content context. | docs/architecture/DATABASE.md:231 | brand_description not in GenerationContext.brand_profile |
 | R00733 | L733–735 | Content object 'Size/fit information': purpose 'Reduce size uncertainty'. | DATABASE.md:2131 (CanonicalListing) | No size/fit copy field in CanonicalListing; only size facts and size_chart slot |
 | R00945 | L945–947 | Workflow STEP 1: UNDERSTAND PRODUCT. | VISION-ALIGNMENT.md:132; CANON.md:54 | No understand node among the 12 PipelineStages; backend only stores sourced facts |
 | R00949 | L949 | Step 1 goal: build a complete understanding of the product before generating a marketplace listing. | VISION-ALIGNMENT.md:132; DATABASE.md:1193 | Facts resolved, but no understanding/completeness step before generation; missing facts flagged only after |
@@ -1694,12 +1693,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R01432b | L1432 | The product should avoid assuming legal compliance merely because fields are populated. | DATABASE.md:1343 | No stated rule or UI copy that populated declarations do not imply legal compliance. |
 | R01562a | L1562 | The column set can be presented to sellers as a simple template. | DATABASE.md:970; DATABASE.md:2183 | Headers = BRD names, but no downloadable seller template (endpoint or static file) specified. |
 | R01562b | L1562 | The dashboard can hide fields that are not relevant to the selected category. | DATABASE.md:1176; BACKEND-ARCHITECTURE.md:1319 | category_attributes relevance stored; no API or contract exposes it to the FE. |
-
-### [02] Brand Onboarding & Catalog Intake (§5)
-
-| R-id | Lines | The site says | Ref | What is missing / differs |
-|---|---|---|---|---|
-| R02563 | L2563–2567 | Brand profile field "Brand description": short factual brand description; used as content context. | docs/architecture/DATABASE.md:1125; docs/architecture/DATABASE.md:231 | brand_description stored but not among GenerationContext.brand_profile prompt fields. |
 
 ### [04] Media, Content & Canonical Record (§8–10)
 
@@ -2070,7 +2063,7 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R13622a | L13622 | QA checklist: Image compliance test case: wrong background. | docs/architecture/BACKEND-ARCHITECTURE.md:2690; docs/architecture/DATABASE.md:525 | White-background seed exists; only background_off contract fixture, no test |
 | R13627a | L13627 | QA checklist: Failure injection test: model timeout. | docs/architecture/BACKEND-ARCHITECTURE.md:2789 | Model-timeout injection not in ADR-0010; model calls in AI graph, JOB_TIMEOUT 300 s ours |
 
-## ⚠️ Gaps in delivery and operations (105)
+## ⚠️ Gaps in delivery and operations (104)
 
 
 ### [01] 45-Day Plan & Definition of Done
@@ -2112,7 +2105,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R05131 | L5131 | Day 20 owner tags: AI, BE, FE, TL. | DATABASE.md:1758 | no staffing or step plan beyond S14; re-baseline (Q25) |
 | R05144 | L5144 | Day 21 owner tags: TL, AI, BE, FE, OPS. | DATABASE.md:1758 | no staffing or step plan beyond S14; re-baseline (Q25) |
 | R05146 | L5146 | Day 21 deliverable theme: Week 3 Milestone Demo: First Full AI Vertical Slice. | DATABASE.md:1758 | milestone demo unscheduled; generation journey designed (BACKEND-ARCHITECTURE.md:627); no steps after S14 (Q25) |
-| R05148 | L5148 | Day 21 demo: product → brand retrieval → 3 parallel agents → canonical JSON → schema validation → AgentRun telemetry. | DATABASE.md:1758 | milestone demo unscheduled; generation journey designed (BACKEND-ARCHITECTURE.md:627); no steps after S14 (Q25) |
 | R05149 | L5149 | Day 21: staging demo. |  | milestone demo unscheduled (Q25) |
 | R05149a | L5149 | Day 21: freeze Week 3 scope. |  | scope-freeze ritual not in our process |
 | R05149b | L5149 | Day 21: retro. |  | no retro in our process |

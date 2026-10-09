@@ -2,7 +2,10 @@
 
 A body gets a `JobContext` (ids and the payload only; the tenant is already bound) and returns an
 `Outcome` (`succeeded` or `partial`, with an optional `result_json`); any failure is an exception
-(`app.workers.errors`). Bodies are registered by the step that owns the kind (S13b `bulk_import`,
+(`app.workers.errors`). S18 (T8): an `Outcome` (or a `JobFailed`) may carry `persist`, the body's
+writes that must land in the one fenced terminal transaction, `zero_reservation` (the terminal
+write zeroes the budget reservation) and, on an `Outcome`, `error` (an `ErrorReport` stored on a
+`succeeded` row, e.g. a `blocked` listing's findings). Bodies are registered by the step that owns the kind (S13b `bulk_import`,
 S18 generation, S21 publish); a kind with no body ends `failed` + `INTERNAL_ERROR`.
 """
 
@@ -10,10 +13,14 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID
 
 from mkos_schemas.enums import JobKind
+from mkos_schemas.errors import ErrorReport
+
+if TYPE_CHECKING:
+    from app.repositories.uow import TenantUnitOfWork
 
 OutcomeStatus = Literal["succeeded", "partial"]
 
@@ -28,10 +35,16 @@ class JobContext:
     attempt: int = 1
 
 
+Persist = Callable[["TenantUnitOfWork"], Awaitable[None]]
+
+
 @dataclass(frozen=True, slots=True)
 class Outcome:
     status: OutcomeStatus
     result: dict[str, Any] | None = None
+    persist: Persist | None = None
+    zero_reservation: bool = False
+    error: ErrorReport | None = None
 
     def __post_init__(self) -> None:
         if self.status not in ("succeeded", "partial"):

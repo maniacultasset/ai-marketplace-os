@@ -4756,10 +4756,10 @@
   },
   {
    "id": "R05148",
-   "status": "gap",
+   "status": "covered",
    "owner": "ops",
    "ref": "DATABASE.md:1758",
-   "note": "milestone demo unscheduled; generation journey designed (BACKEND-ARCHITECTURE.md:627); no steps after S14 (Q25)"
+   "note": "S18 (local): product → brand retrieval → stub pipeline → canonical JSON → rules re-check → agent_runs, proven by scripts/e2e/generate.sh."
   },
   {
    "id": "R05149",

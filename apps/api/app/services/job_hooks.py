@@ -10,8 +10,8 @@ cancel path (S13 PLAN §2; BACKEND-ARCHITECTURE:1718).
 
 A hook that writes an entity row fences on the job (`... WHERE job_id = :this_job`), so an old
 job's hook never overwrites a newer job's state. The steps that own a kind add to the maps:
-S13b's `bulk_import` hooks (`app.services.imports.hooks`) are the first; S18 and S21 add the
-listing moves.
+S13b's `bulk_import` hooks (`app.services.imports.hooks`) are the first; S18 adds the
+`listing_generate` move (`app.services.generation_hooks`); S21 adds the publish moves.
 
 `session` is the terminal transaction's `AsyncSession`, typed `Any` here: repo rule R3 keeps
 `sqlalchemy.ext.asyncio` out of `app/services`; hooks hand it to repositories only.
@@ -39,9 +39,13 @@ def _register_owned_hooks() -> None:
     """Hooks of the kinds a merged step owns, present from import time (the API cancel path and
     the reaper need them as much as the worker does)."""
     from app.services.brand_embed import on_brand_embed_requeue, on_brand_embed_terminal
+    from app.services.generation_hooks import on_generate_requeue, on_generate_terminal
 
     TERMINAL_HOOKS.setdefault(JobKind.BRAND_EMBED, on_brand_embed_terminal)
     REQUEUE_HOOKS.setdefault(JobKind.BRAND_EMBED, on_brand_embed_requeue)
+    # S18 T17: a generation that ends without a version leaves `generating`; no requeue (CP5)
+    TERMINAL_HOOKS.setdefault(JobKind.LISTING_GENERATE, on_generate_terminal)
+    REQUEUE_HOOKS.setdefault(JobKind.LISTING_GENERATE, on_generate_requeue)
 
 
 async def run_terminal_hook(

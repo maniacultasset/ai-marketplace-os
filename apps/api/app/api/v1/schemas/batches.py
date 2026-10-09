@@ -13,12 +13,14 @@ from uuid import UUID
 from mkos_schemas.base import NonBlankStr, Slug, StrictModel, WireModel
 from mkos_schemas.enums import ListingStatus
 from mkos_schemas.errors import ErrorReport
-from pydantic import Field, model_validator
+from pydantic import AfterValidator, Field, model_validator
 from pydantic_core import PydanticCustomError
+
+from app.core.text import reject_control_chars
 
 MAX_BATCH_ITEMS: Final = 200
 Feedback = Annotated[NonBlankStr, Field(max_length=2000)]
-Instructions = Annotated[NonBlankStr, Field(max_length=2000)]
+Instructions = Annotated[NonBlankStr, Field(max_length=2000), AfterValidator(reject_control_chars)]
 
 
 def _unique_listings(ids: list[UUID]) -> None:

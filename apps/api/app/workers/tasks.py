@@ -27,8 +27,10 @@ def _task_body() -> Callable[[str], Awaitable[None]]:
 
 def register_bodies() -> None:
     """The job bodies the steps own (S13b `bulk_import`, S16 `brand_embed`, S17b
-    `image_compliance`); a body already set is kept (tests install fakes first)."""
+    `image_compliance`, S18 `listing_generate`); a body already set is kept (tests install fakes
+    first)."""
     from app.services.brand_embed import run_brand_embed
+    from app.workers.generation import run_listing_generate
 
     if registry.body_for(JobKind.BULK_IMPORT) is None:
         registry.register(JobKind.BULK_IMPORT, run_import)
@@ -36,6 +38,8 @@ def register_bodies() -> None:
         registry.register(JobKind.BRAND_EMBED, run_brand_embed)
     if registry.body_for(JobKind.IMAGE_COMPLIANCE) is None:
         registry.register(JobKind.IMAGE_COMPLIANCE, run_image_compliance)
+    if registry.body_for(JobKind.LISTING_GENERATE) is None:
+        registry.register(JobKind.LISTING_GENERATE, run_listing_generate)
 
 
 def register_tasks(app: procrastinate.App) -> None:

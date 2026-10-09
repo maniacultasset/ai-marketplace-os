@@ -18,7 +18,7 @@ import sys
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
-from app.core.observability import init_sentry
+from app.core.observability import init_sentry, init_tracing, tracer_from
 from app.db.queue import get_queue_app
 from app.db.session import dispose_engine
 from app.workers.periodic import register_periodic
@@ -40,6 +40,10 @@ async def run(stop: asyncio.Event | None = None) -> int:
     settings = get_settings()
     configure_logging(settings)
     init_sentry(settings)
+    # S18 T12: the pipeline's node spans use the worker's own provider (no global provider)
+    from app.services.pipeline_deps import use_tracer
+
+    use_tracer(tracer_from(init_tracing(settings)))
     stop = stop if stop is not None else asyncio.Event()
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):

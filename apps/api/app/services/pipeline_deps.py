@@ -16,17 +16,23 @@ Ports:
   `BrandChunkRepository.search` in one short unit of work.
 - `validate_rules`: the Rules Engine on the preloaded RuleSet. A RuleSet holding a foreign rule, a
   listing of another scope or any engine exception gives an `INTERNAL_ERROR` report: never a
-  pass (invariant 2; S14a hand-off).
+  pass (invariant 2; S14a hand-off). S18 (D8): calls 1..3 run the engine on the precomputed
+  `for_rules` product mapping (CP13: never the full facts) and are recorded (`rules_calls`); a
+  4th call gets an `INTERNAL_ERROR` report without evaluating (the cap lives in the graph,
+  this is the backstop).
 - `validate_images`: the stored reports of the listing's images, no I/O, no model.
 - `get_model_credentials`: `generation`/`vision` → the `LLM_PROVIDER` key; `embedding` → always
   the OpenAI key (ENV.md:86, BA:1538). Never a marketplace credential.
 - `emit_node_event`: `started` writes `job_runs.node` on the running job (never
-  `listings.status`); `detail` is only logged, redacted and cut to 2 KiB.
+  `listings.status`) and opens span `pipeline.<node>` (attributes `job_id`, `tenant_id`, `node`
+  only); `ok`/`failed` ends it with that status. `close_spans()` ends any left open. `detail` is
+  only logged, redacted and cut to 2 KiB, never a span attribute.
 """
 
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Final, Literal, cast, get_args
@@ -38,6 +44,8 @@ from mkos_schemas.errors import ErrorItem, ErrorReport
 from mkos_schemas.images import ImageReport
 from mkos_schemas.jobs import BrandChunkDTO, BrandChunkType, ModelCredentials
 from mkos_schemas.listing import CanonicalListing
+from opentelemetry import trace
+from opentelemetry.trace import Span, Status, StatusCode
 from pydantic import SecretStr
 
 from app.core.config import Settings
@@ -66,6 +74,24 @@ CHUNK_TYPES: Final[frozenset[str]] = frozenset(get_args(BrandChunkType))
 PURPOSES: Final = ("generation", "vision", "embedding")
 NODE_STATUSES: Final = frozenset({"started", "ok", "failed"})
 Purpose = Literal["generation", "vision", "embedding"]
+MAX_RULES_CALLS: Final = 3
+TRACER_NAME: Final = "app"
+_tracer: trace.Tracer = trace.get_tracer(TRACER_NAME)
+
+
+def use_tracer(tracer: trace.Tracer) -> None:
+    """Install the tracer the node spans use (the worker's provider; an in-memory one in tests)."""
+    global _tracer
+    _tracer = tracer
+
+
+@dataclass(frozen=True, slots=True)
+class RulesCall:
+    """One recorded `validate_rules` port call (D7: one `rules_engine` run each)."""
+
+    attempt: int
+    report: ErrorReport
+    duration_ms: int
 
 
 class SeamPortError(Exception):
@@ -148,8 +174,11 @@ class BackendPipelineDeps:
         "_models",
         "_product",
         "_rules",
+        "_rules_calls",
+        "_spans",
         "_tenant_id",
         "_user_id",
+        "_validate_calls",
     )
 
     def __init__(
@@ -176,6 +205,9 @@ class BackendPipelineDeps:
         self._embedder = embedder
         self._models = models
         self._attempt = attempt
+        self._validate_calls = 0
+        self._rules_calls: list[RulesCall] = []
+        self._spans: dict[str, Span] = {}
 
     def __repr__(self) -> str:
         return f"BackendPipelineDeps(tenant_id={self._tenant_id}, job_id={self._job_id})"
@@ -191,6 +223,16 @@ class BackendPipelineDeps:
     @property
     def marketplace(self) -> Marketplace:
         return self._marketplace
+
+    @property
+    def rules_calls(self) -> tuple[RulesCall, ...]:
+        """The engine runs of calls 1..3, in order (read-only)."""
+        return tuple(self._rules_calls)
+
+    @property
+    def validate_calls(self) -> int:
+        """Every `validate_rules` call, the refused ones past the cap included."""
+        return self._validate_calls
 
     # ---- retrieve_brand_chunks (D4) ----
 
@@ -241,6 +283,22 @@ class BackendPipelineDeps:
     # ---- validate_rules (D7) ----
 
     async def validate_rules(self, listing: CanonicalListing) -> ErrorReport:
+        self._validate_calls += 1
+        if self._validate_calls > MAX_RULES_CALLS:
+            log.warning("seam.validate_rules_cap", job_id=str(self._job_id))
+            return _internal_report(listing)
+        started = time.monotonic()
+        report = self._evaluate(listing)
+        self._rules_calls.append(
+            RulesCall(
+                attempt=self._validate_calls,
+                report=report,
+                duration_ms=max(0, int((time.monotonic() - started) * 1000)),
+            )
+        )
+        return report
+
+    def _evaluate(self, listing: CanonicalListing) -> ErrorReport:
         ruleset = self._rules.ruleset
         try:
             if any(r.tenant_id not in (None, self._tenant_id) for r in ruleset.rules):
@@ -313,12 +371,40 @@ class BackendPipelineDeps:
             status=status,
             detail=shown,
         )
+        self._span_event(stage.value, status)
         if status != "started":
             return
         async with tenant_uow(self._tenant_id, user_id=self._user_id) as uow:
             moved = await uow.job_runs.set_node(self._job_id, stage.value)
         if not moved:
             log.warning("seam.node_event_dropped", job_id=str(self._job_id), node=stage.value)
+
+    def _span_event(self, node: str, status: str) -> None:
+        if status == "started":
+            old = self._spans.pop(node, None)
+            if old is not None:
+                old.end()
+            self._spans[node] = _tracer.start_span(
+                f"pipeline.{node}",
+                attributes={
+                    "job_id": str(self._job_id),
+                    "tenant_id": str(self._tenant_id),
+                    "node": node,
+                },
+            )
+            return
+        span = self._spans.pop(node, None)
+        if span is None:
+            return
+        span.set_status(Status(StatusCode.OK if status == "ok" else StatusCode.ERROR))
+        span.end()
+
+    def close_spans(self) -> None:
+        """End every span a node left open (a pipeline that raised mid-node)."""
+        for span in self._spans.values():
+            span.set_status(Status(StatusCode.ERROR))
+            span.end()
+        self._spans.clear()
 
 
 async def build_pipeline_deps(

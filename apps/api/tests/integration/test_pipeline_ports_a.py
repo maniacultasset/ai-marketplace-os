@@ -321,10 +321,30 @@ async def test_pipeline_deps_object_graph_holds_no_secret(
     acme = products_world.tenant("acme")
     token = b"sentinel_token_enc_bytes_0123456789"
     f.marketplace_account(auth_db, acme, token_enc=token)
+    from app.core.resolved_facts import Compliance, PartyFacts, ProductFacts, for_rules
+
     cfg, sentinels = sentinel_settings(provider)
-    deps = await build(products_world, auth_db, cfg)
+    # S18 T12 (CP13): the deps hold the `for_rules` facts only, never party contacts or GSTIN
+    party = PartyFacts(
+        legal_name="Sentinel Maker Pvt Ltd",
+        address="sentinel_party_address_line",
+        email="sentinel_party@email.example",
+        phone="+91-sentinel-phone",
+        gstin="29SENTINEL1Z9",
+    )
+    facts = ProductFacts(
+        product_id=uuid.uuid4(),
+        sku="SENTINEL-1",
+        level="standalone",
+        compliance=Compliance(manufacturer=party, consumer_care=party),
+    )
+    deps = await build(products_world, auth_db, cfg, product=for_rules(facts))
     texts, objects = walk(deps)
     blob = "\n".join(texts)
+    for contact in ("sentinel_party_address_line", "sentinel_party@email.example"):
+        assert contact not in blob
+    assert "+91-sentinel-phone" not in blob and "29SENTINEL1Z9" not in blob
+    assert "Sentinel Maker Pvt Ltd" in blob
     allowed = {"openai_api_key"} | ({"deepseek_api_key"} if provider == "deepseek" else set())
     reached = {k for k, v in sentinels.items() if v in blob}
     assert reached == allowed  # exactly the D5 model keys (C8)

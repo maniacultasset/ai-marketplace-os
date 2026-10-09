@@ -395,3 +395,45 @@ def test_r8_ignores_alembic_and_scripts(rules: ModuleType, tmp_path: Path) -> No
     body = "X = 'app.job_id'\nimport app.db.job_context\n"
     root = _tree(tmp_path, {"apps/api/alembic/versions/x.py": body, "scripts/x.py": body})
     assert "R8" not in {rule for _, _, rule in _found(rules, root)}
+
+
+# ---- S18 T5: R8 also allows the listing repository (worker-actor moves) ----
+
+
+@pytest.mark.parametrize(
+    "body", [*JOB_CONTEXT_IMPORTS[:2], "from app.db.job_context import bind_job_actor\n"]
+)
+def test_r8_allows_listings_repository_only(rules: ModuleType, tmp_path: Path, body: str) -> None:
+    allowed = _tree(tmp_path / "a", {"apps/api/app/repositories/listings.py": body})
+    assert _found(rules, allowed) == []
+    other = _tree(tmp_path / "b", {"apps/api/app/repositories/listing_versions.py": body})
+    assert {rule for _, _, rule in _found(rules, other)} == {"R8"}
+
+
+def test_r8_listings_repository_may_not_name_the_guc(rules: ModuleType, tmp_path: Path) -> None:
+    root = _tree(tmp_path, {"apps/api/app/repositories/listings.py": "X = 'app.job_id'\n"})
+    assert {rule for _, _, rule in _found(rules, root)} == {"R8"}
+
+
+# ---- S18 T7 (CP9): R5 allows app/workers/budget.py and no other worker ----
+
+
+@pytest.mark.parametrize(
+    "body", ["from app.db.session import platform_scope\n", "import app.db.session\n"]
+)
+def test_r5_allows_budget(rules: ModuleType, tmp_path: Path, body: str) -> None:
+    text = body if "platform_scope" in body else body + "x = app.db.session.platform_scope\n"
+    root = _tree(tmp_path, {"apps/api/app/workers/budget.py": text})
+    assert "R5" not in {rule for _, _, rule in _found(rules, root)}
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "from app.db.session import platform_scope\n",
+        "import app.db.session\nx = app.db.session.platform_scope\n",
+    ],
+)
+def test_r5_flags_other_worker(rules: ModuleType, tmp_path: Path, body: str) -> None:
+    root = _tree(tmp_path, {"apps/api/app/workers/other.py": body})
+    assert "R5" in {rule for _, _, rule in _found(rules, root)}

@@ -1963,10 +1963,10 @@
   },
   {
    "id": "R02563",
-   "status": "gap",
+   "status": "covered",
    "owner": "shared",
    "ref": "docs/architecture/DATABASE.md:1125; docs/architecture/DATABASE.md:231",
-   "note": "brand_description stored but not among GenerationContext.brand_profile prompt fields."
+   "note": "S18: brand_description is passed to generation as content context (GenerationContext.brand_profile)."
   },
   {
    "id": "R02569",
