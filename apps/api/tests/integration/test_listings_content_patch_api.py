@@ -253,6 +253,7 @@ async def test_patch_nested_unknown_key_not_stored(
         "attr_257_chars",
         "attr_129_keys",
         "attr_list_item_257",
+        "attr_key_bad_shape",
     ],
 )
 async def test_patch_invalid_422(api: httpx.AsyncClient, gen_world: GenWorld, case: str) -> None:
@@ -271,6 +272,10 @@ async def test_patch_invalid_422(api: httpx.AsyncClient, gen_world: GenWorld, ca
         body = {"content": CLEAN, "attributes": {**ATTRS, **{f"k{i}": "v" for i in range(127)}}}
     elif case == "attr_list_item_257":
         body = {"content": CLEAN, "attributes": {**ATTRS, "sizes": ["s", "y" * 257]}}
+    elif case == "attr_key_bad_shape":
+        # outside `^[a-z0-9_]{1,64}$`. A well-formed key the template lacks is not refused: it is
+        # stored and judged by the rules re-check, as generation may store it.
+        body = {"content": CLEAN, "attributes": {**ATTRS, "Bad-Key": "x"}}
     elif case == "if_match_missing":
         headers.pop("If-Match")
     elif case == "not_uuid":
