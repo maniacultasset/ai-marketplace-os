@@ -47,6 +47,7 @@ from app.adapters.base import (
     RateLimited,
     TokenSource,
 )
+from app.adapters.telemetry import adapter_call_span
 from app.core.logging import get_logger
 
 log = get_logger(__name__)
@@ -226,87 +227,91 @@ class SpApiClient:
         attempt = 0
         while True:
             attempt += 1
-            await self._limiter.acquire(operation)
-            secret = await self._tokens.get()
-            request = self._request(method, sku, content, secret.get_secret_value())
-            del secret
-            started = self._clock()
-            try:
-                response = await self._http.send(request, stream=True)
-            except _BEFORE_SEND as exc:
-                self._log(
-                    operation, method, started, None, attempt=attempt, error=type(exc).__name__
-                )
-                raise MarketplaceUnavailable(
-                    failure(ErrorCode.MARKETPLACE_UNAVAILABLE, "Amazon could not be reached.")
-                ) from None
-            except httpx.HTTPError as exc:
-                self._log(
-                    operation, method, started, None, attempt=attempt, error=type(exc).__name__
-                )
-                raise self._unknown(write, "Amazon did not answer the request in time.") from None
-            try:
-                raw = await self._read(response)
-            except _TooLarge:
-                self._log(operation, method, started, response.status_code, attempt=attempt)
-                raise self._unknown(write, "Amazon answered with an oversized reply.") from None
-            except httpx.HTTPError as exc:
+            with adapter_call_span("amazon", operation, method, PATH_TEMPLATE) as span:
+                await self._limiter.acquire(operation)
+                secret = await self._tokens.get()
+                request = self._request(method, sku, content, secret.get_secret_value())
+                del secret
+                started = self._clock()
+                try:
+                    response = await self._http.send(request, stream=True)
+                except _BEFORE_SEND as exc:
+                    self._log(
+                        operation, method, started, None, attempt=attempt, error=type(exc).__name__
+                    )
+                    raise MarketplaceUnavailable(
+                        failure(ErrorCode.MARKETPLACE_UNAVAILABLE, "Amazon could not be reached.")
+                    ) from None
+                except httpx.HTTPError as exc:
+                    self._log(
+                        operation, method, started, None, attempt=attempt, error=type(exc).__name__
+                    )
+                    raise self._unknown(
+                        write, "Amazon did not answer the request in time."
+                    ) from None
+                try:
+                    raw = await self._read(response)
+                except _TooLarge:
+                    self._log(operation, method, started, response.status_code, attempt=attempt)
+                    raise self._unknown(write, "Amazon answered with an oversized reply.") from None
+                except httpx.HTTPError as exc:
+                    self._log(
+                        operation,
+                        method,
+                        started,
+                        response.status_code,
+                        attempt=attempt,
+                        error=type(exc).__name__,
+                    )
+                    raise self._unknown(write, "Amazon's reply was cut off.") from None
+                finally:
+                    await response.aclose()
+                status = response.status_code
+                span.status(status)
+                parsed: Any = None
+                parsed_ok = True
+                try:
+                    parsed = json.loads(raw) if raw else {}
+                except ValueError:
+                    parsed_ok = False
                 self._log(
                     operation,
                     method,
                     started,
-                    response.status_code,
+                    status,
                     attempt=attempt,
-                    error=type(exc).__name__,
+                    rate_limit=response.headers.get("x-amzn-RateLimit-Limit"),
+                    issue_code=_first_code(parsed) if parsed_ok else None,
                 )
-                raise self._unknown(write, "Amazon's reply was cut off.") from None
-            finally:
-                await response.aclose()
-            status = response.status_code
-            parsed: Any = None
-            parsed_ok = True
-            try:
-                parsed = json.loads(raw) if raw else {}
-            except ValueError:
-                parsed_ok = False
-            self._log(
-                operation,
-                method,
-                started,
-                status,
-                attempt=attempt,
-                rate_limit=response.headers.get("x-amzn-RateLimit-Limit"),
-                issue_code=_first_code(parsed) if parsed_ok else None,
-            )
-            if status == 429:
-                if retries >= MAX_RETRIES_429:
-                    raise RateLimited(
-                        failure(ErrorCode.RATE_LIMITED, "Amazon throttled the request.")
-                    )
-                await self._sleep(backoff_delay(retries, self._rng))
-                retries += 1
-                continue
-            if status in (401, 403):
-                if not self._refreshed:
-                    self._refreshed = True
-                    await self._tokens.refresh()
+                if status == 429:
+                    if retries >= MAX_RETRIES_429:
+                        raise RateLimited(
+                            failure(ErrorCode.RATE_LIMITED, "Amazon throttled the request.")
+                        )
+                    await self._sleep(backoff_delay(retries, self._rng))
+                    retries += 1
                     continue
-                if status == 401:
-                    raise AuthExpired(
-                        failure(ErrorCode.AUTH_EXPIRED, "Amazon refused the account's token.")
+                if status in (401, 403):
+                    if not self._refreshed:
+                        self._refreshed = True
+                        await self._tokens.refresh()
+                        continue
+                    if status == 401:
+                        raise AuthExpired(
+                            failure(ErrorCode.AUTH_EXPIRED, "Amazon refused the account's token.")
+                        )
+                    raise PermissionDenied(
+                        failure(
+                            ErrorCode.ACCOUNT_PERMISSION_DENIED,
+                            "The Amazon account did not grant the Listings role to this app.",
+                        )
                     )
-                raise PermissionDenied(
-                    failure(
-                        ErrorCode.ACCOUNT_PERMISSION_DENIED,
-                        "The Amazon account did not grant the Listings role to this app.",
-                    )
+                if 300 <= status < 400:
+                    raise self._unknown(write, "Amazon answered with a redirect.")
+                if status >= 500:
+                    raise self._unknown(write, "Amazon answered with a server error.")
+                if not parsed_ok:
+                    raise self._unknown(write, "Amazon answered with a body that is not JSON.")
+                return SpApiResponse(
+                    status=status, json=parsed, headers=dict(response.headers), raw=raw
                 )
-            if 300 <= status < 400:
-                raise self._unknown(write, "Amazon answered with a redirect.")
-            if status >= 500:
-                raise self._unknown(write, "Amazon answered with a server error.")
-            if not parsed_ok:
-                raise self._unknown(write, "Amazon answered with a body that is not JSON.")
-            return SpApiResponse(
-                status=status, json=parsed, headers=dict(response.headers), raw=raw
-            )
