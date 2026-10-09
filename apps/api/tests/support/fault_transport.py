@@ -38,7 +38,11 @@ class FaultTransport(httpx.AsyncBaseTransport):
             self.sent += 1
         finally:
             self.in_flight -= 1
-        if self.after_write is not None and self.times > 0 and request.method in ("PUT", "PATCH"):
+        if (
+            self.after_write is not None
+            and self.times > 0
+            and request.method in ("PUT", "PATCH", "POST")
+        ):
             self.times -= 1
             await response.aclose()
             raise self.after_write

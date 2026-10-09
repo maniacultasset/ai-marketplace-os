@@ -126,3 +126,39 @@ def prepare(sent: AdapterListing) -> AdapterListing:
     return dataclasses.replace(
         sent, listing=body, items=items, template=template(), image_refs=image_refs(body)
     )
+
+
+def flipkart_client(app: Any, *, transport: Any = None, tokens: Any = None, **over: Any) -> Any:
+    import httpx
+    from app.adapters.flipkart.client import FlipkartClient
+
+    sleeps: list[float] = []
+
+    async def sleep(delay: float) -> None:
+        sleeps.append(delay)
+
+    client = FlipkartClient(
+        api_base=over.pop("api_base", FK_API),
+        tokens=tokens or FakeTokens(app),
+        limiter=over.pop("limiter", CountingLimiter()),
+        transport=transport or httpx.ASGITransport(app),
+        sleep=over.pop("sleep", sleep),
+        rng=over.pop("rng", FixedRng()),
+        **over,
+    )
+    client.sleeps = sleeps  # type: ignore[attr-defined]
+    return client
+
+
+def attribute_names(path: str) -> list[str]:
+    """The Flipkart attributes a canonical path feeds, under the kurta mapping."""
+    from app.adapters.flipkart.mapping import reverse_index
+
+    return [name for name, feeds in reverse_index(template().template).items() if path in feeds]
+
+
+def reject(app: Any, fail: Any) -> None:
+    """Make the fake refuse every attribute the named paths feed, on every SKU."""
+    for path, (code, text) in fail.items():
+        for name in attribute_names(path):
+            app.state.fake.fk_reject_attribute[name] = (code, text)

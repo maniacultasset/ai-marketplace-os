@@ -33,7 +33,9 @@ from types import MappingProxyType
 from typing import Any, Final, Literal, Protocol, get_args
 from uuid import UUID
 
-from mkos_schemas.errors import ErrorReport
+from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
+from mkos_schemas.enums import ErrorSource, Marketplace, RetryClass
+from mkos_schemas.errors import ErrorItem, ErrorReport
 from mkos_schemas.jobs import CategoryTemplate
 from mkos_schemas.listing import CanonicalListing
 from mkos_schemas.paths import is_valid_field_path
@@ -243,6 +245,28 @@ class MarketplaceAmbiguous(AdapterError):  # noqa: N818 - the plan's name (S20 C
 
 
 # ---- helpers ----
+
+
+def marketplace_failure(
+    marketplace: Marketplace | str, code: ErrorCode, message: str
+) -> ErrorReport:
+    """A whole-call failure as the one ErrorReport, from `<marketplace>_adapter` (invariant 8):
+    one `listing` item with the code's class and retry class (S22: the limiter and the Flipkart
+    client; the Amazon client keeps its own identical `failure`)."""
+    market = Marketplace(marketplace)
+    meta = ERROR_CODE_META[code]
+    retryable = meta.retry_class in (RetryClass.AUTO_RETRY, RetryClass.AI_CORRECT)
+    item = ErrorItem(
+        field="listing",
+        error_code=code,
+        message=message,
+        source=ErrorSource(f"{market.value}_adapter"),
+        retryable=retryable,
+        marketplace=market,
+        error_class=meta.error_class,
+        retry_class=meta.retry_class,
+    )
+    return ErrorReport(status="failed", error_code=code, retryable=retryable, errors=[item])
 
 
 def submitted_fields(listing: CanonicalListing) -> list[str]:
