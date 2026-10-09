@@ -432,3 +432,75 @@ async def accept_retry_fields(
     payload = json.dumps({"listing_id": str(listing_id)}).encode()
     _status, stored = await idempotent(principal, key, "POST", path, payload, handler)
     return stored
+
+
+# ---- refresh-status (T23; D3, CP4, CP7) ----
+
+REFRESH_WINDOW_S: Final = 300
+
+
+async def refresh_status(
+    uow: TenantUnitOfWork, principal: Principal, listing_id: uuid.UUID, *, http_key: str
+) -> uuid.UUID:
+    """Check the marketplace now: a `listing_status_sync` job with the poll count reset.
+    Allowed on `published` (any marketplace state) and on `failed/publish_partial` after a
+    partial accept (D7); `publishing` → 409 LISTING_BUSY; anything else → 409
+    INVALID_STATUS_TRANSITION (the sync has no edge there; recovery is a publish). One request
+    per listing per 5 minutes (429 RATE_LIMITED); a live sync job is returned as is."""
+    from app.core.errors import LimitError
+    from app.workers.payloads import StatusSyncPayload
+
+    listing = await uow.listings.get_for_update(listing_id)
+    if listing is None:
+        raise NotFoundError("listing_id")
+    if listing.paused_at is not None:
+        raise ConflictError(ErrorCode.LISTING_PAUSED, "listings")
+    if listing.archived_at is not None:
+        raise ConflictError(ErrorCode.LISTING_ARCHIVED, "listings")
+    if listing.status == "publishing":
+        raise ConflictError(ErrorCode.LISTING_BUSY, "listings")
+    allowed = listing.status == "published"
+    if listing.status == "failed" and listing.status_reason == "publish_partial":
+        latest = await uow.submissions.latest(listing.id)
+        allowed = latest is not None and latest.outcome == "partially_accepted"
+    if not allowed:
+        raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "listings")
+    live = await uow.job_runs.live_for_listing(listing.id, JobKind.LISTING_STATUS_SYNC)
+    if live is not None:
+        return live.id
+    if await uow.job_runs.user_requested_since(
+        listing.id, JobKind.LISTING_STATUS_SYNC, REFRESH_WINDOW_S
+    ):
+        raise LimitError("refresh-status 1 per 5 min per listing")
+    enqueued = await uow.job_runs.enqueue(
+        EnqueueSpec(
+            kind=JobKind.LISTING_STATUS_SYNC,
+            entity_type="listing",
+            entity_id=listing.id,
+            listing_id=listing.id,
+            created_by=principal.user_id,
+            http_key=http_key,
+            payload=dump(StatusSyncPayload(listing_id=listing.id, reason="refresh")),
+        )
+    )
+    await uow.listings.set_columns(
+        listing.id, event="refresh_requested", sync_poll_count=0, next_sync_at=None
+    )
+    log.info("sync.refresh_requested", listing_id=str(listing.id), job_id=str(enqueued.job.id))
+    return enqueued.job.id
+
+
+async def accept_refresh_status(
+    principal: Principal, key: str, path: str, listing_id: uuid.UUID
+) -> dict[str, Any]:
+    from app.services.generation import ItemAccepted, accepted_body
+    from app.services.idempotency import idempotent
+
+    async def handler(session: Any) -> tuple[int, dict[str, Any]]:
+        uow = repositories_on(session, principal.tenant_id)
+        job_id = await refresh_status(uow, principal, listing_id, http_key=key)
+        return 202, accepted_body(ItemAccepted(job_id=job_id, listing_id=listing_id))
+
+    payload = json.dumps({"listing_id": str(listing_id), "op": "refresh"}).encode()
+    _status, stored = await idempotent(principal, key, "POST", path, payload, handler)
+    return stored

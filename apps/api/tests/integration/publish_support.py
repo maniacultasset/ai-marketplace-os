@@ -103,7 +103,8 @@ async def approved(pw: PubWorld, *, sku: str | None = None, maker: str = OPERATO
     from app.services.review import ReviewItem, approve_batch
 
     made = await generated(pw.world, maker, sku=sku)
-    principal = pw.world.principal(REVIEWER)
+    slug = maker.split("@", 1)[1]
+    principal = pw.world.principal(REVIEWER if slug == "acme.test" else f"reviewer@{slug}")
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
         outcome = await approve_batch(
             uow,

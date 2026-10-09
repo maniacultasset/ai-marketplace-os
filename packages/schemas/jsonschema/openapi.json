@@ -13522,7 +13522,7 @@
     },
     "/api/v1/listings/{listing_id}/refresh-status": {
       "post": {
-        "description": "Check the marketplace status now (at most once per 5 minutes per listing).",
+        "description": "Check the marketplace status now: 202 with the sync job (a live one is returned as is).\nAllowed on a `published` listing, or a `failed/publish_partial` one after a partial accept;\n409 otherwise, 429 for a second request within 5 minutes.",
         "operationId": "listings_refresh_status",
         "parameters": [
           {
@@ -14490,7 +14490,7 @@
     },
     "/api/v1/listings/{listing_id}/submissions": {
       "get": {
-        "description": "The listing's publish attempts, newest first, with per-field results.",
+        "description": "The listing's publish attempts, newest first: per attempt the operation, the paths a\nfield retry resent, the outcome, the justification of a retry, each SKU's field results and\nthe one ErrorReport. Storage keys, digests and raw marketplace bodies are never returned.",
         "operationId": "listings_submissions",
         "parameters": [
           {

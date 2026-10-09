@@ -624,7 +624,9 @@ export interface paths {
         put?: never;
         /**
          * Check the marketplace status now (at most once per 5 minutes per listing)
-         * @description Check the marketplace status now (at most once per 5 minutes per listing).
+         * @description Check the marketplace status now: 202 with the sync job (a live one is returned as is).
+         *     Allowed on a `published` listing, or a `failed/publish_partial` one after a partial accept;
+         *     409 otherwise, 429 for a second request within 5 minutes.
          */
         post: operations["listings_refresh_status"];
         delete?: never;
@@ -682,7 +684,9 @@ export interface paths {
         };
         /**
          * The listing's publish attempts with their per-field results, newest first
-         * @description The listing's publish attempts, newest first, with per-field results.
+         * @description The listing's publish attempts, newest first: per attempt the operation, the paths a
+         *     field retry resent, the outcome, the justification of a retry, each SKU's field results and
+         *     the one ErrorReport. Storage keys, digests and raw marketplace bodies are never returned.
          */
         get: operations["listings_submissions"];
         put?: never;

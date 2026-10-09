@@ -264,6 +264,34 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         set_committed_value(job, "queue_job_id", queue_job_id)
         return Enqueued(job, created=True)
 
+    # ---- S21 status-sync helpers (CP4) ----
+
+    async def live_for_listing(self, listing_id: uuid.UUID, kind: JobKind) -> JobRun | None:
+        """The listing's live (`queued`/`running`) job of `kind`, if any."""
+        stmt = self._select().where(
+            JobRun.listing_id == listing_id,
+            JobRun.kind == JobKind(kind).value,
+            JobRun.status.in_(LIVE),
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def user_requested_since(
+        self, listing_id: uuid.UUID, kind: JobKind, seconds: int
+    ) -> bool:
+        """A job of `kind` a member requested (`created_by` set) in the last `seconds`."""
+        stmt = (
+            self._select()
+            .where(
+                JobRun.listing_id == listing_id,
+                JobRun.kind == JobKind(kind).value,
+                JobRun.created_by.is_not(None),
+                JobRun.queued_at > func.now() - timedelta(seconds=seconds),
+            )
+            .with_only_columns(JobRun.id)
+            .limit(1)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
     # ---- S16 brand_embed helpers (T9; CP6) ----
 
     async def count_live(self, kind: JobKind, *, source: str) -> int:

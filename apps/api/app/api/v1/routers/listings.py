@@ -8,7 +8,7 @@ refresh-status.
 
 from __future__ import annotations
 
-from typing import Annotated, NoReturn
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, Query, Request, Response
@@ -16,7 +16,7 @@ from fastapi import Path as PathParam
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ListingStatus, Marketplace
 from mkos_schemas.jobs import GenerateListingRequest, JobAccepted
-from mkos_schemas.publish import MarketplacePreview
+from mkos_schemas.publish import MarketplacePreview, SubmissionOut
 from mkos_schemas.validation import ValidationSummary
 
 from app.api.errors import ApiError, NotImplementedYet
@@ -46,7 +46,8 @@ from app.api.v1.schemas.listings import (
     RegenerateRequest,
     ValidateRequest,
 )
-from app.api.v1.surface import OPS, route, stub
+from app.api.v1.schemas.submissions import SubmissionPage
+from app.api.v1.surface import OPS, route
 from app.core.rbac import Principal
 from app.services import (
     generation,
@@ -56,6 +57,7 @@ from app.services import (
     listing_validate,
     publish,
     review,
+    submission_reads,
 )
 from app.services.budget import BudgetExceededError
 
@@ -300,18 +302,36 @@ async def listings_retry_fields(
 
 
 @route(router, OPS["listings_submissions"])
-@stub
 async def listings_submissions(
-    listing_id: ListingId, page: Annotated[PageParams, Depends()]
-) -> NoReturn:
-    """The listing's publish attempts, newest first, with per-field results."""
-    raise NotImplementedYet("listings_submissions")
+    listing_id: ListingId, page: Annotated[PageParams, Depends()], principal: CurrentPrincipal
+) -> SubmissionPage:
+    """The listing's publish attempts, newest first: per attempt the operation, the paths a
+    field retry resent, the outcome, the justification of a retry, each SKU's field results and
+    the one ErrorReport. Storage keys, digests and raw marketplace bodies are never returned."""
+    data, key, more = await submission_reads.page(
+        principal, listing_id, after=page.after, limit=page.limit
+    )
+    return SubmissionPage(
+        data=[SubmissionOut.model_validate(item) for item in data],
+        page=PageInfo(
+            next_cursor=None if key is None else encode_cursor(*key),
+            has_more=more,
+            limit=page.limit,
+        ),
+    )
 
 
 @route(router, OPS["listings_refresh_status"])
-@stub
 async def listings_refresh_status(
-    listing_id: ListingId, idempotency_key: IdempotencyKey
-) -> NoReturn:
-    """Check the marketplace status now (at most once per 5 minutes per listing)."""
-    raise NotImplementedYet("listings_refresh_status")
+    listing_id: ListingId,
+    idempotency_key: IdempotencyKey,
+    principal: CurrentPrincipal,
+    request: Request,
+) -> JobAccepted:
+    """Check the marketplace status now: 202 with the sync job (a live one is returned as is).
+    Allowed on a `published` listing, or a `failed/publish_partial` one after a partial accept;
+    409 otherwise, 429 for a second request within 5 minutes."""
+    stored = await publish.accept_refresh_status(
+        principal, idempotency_key, request.url.path, listing_id
+    )
+    return JobAccepted.model_validate(stored)

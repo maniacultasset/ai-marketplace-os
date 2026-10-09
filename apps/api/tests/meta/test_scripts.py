@@ -1156,6 +1156,30 @@ def test_prove_gates_s20_legs(repo_root: Path) -> None:
     assert code.index("leg api-tests-preview-case-matrix") > docker
 
 
+# ---- S21 T24 (AC11, AC13): the reader-only sync contract and the publish case matrix ----
+
+S21_LEGS = {
+    "lint-imports-sync-imports-adapter": (
+        "lint-imports",
+        "the status sync reaches the marketplace only through the reader view BROKEN",
+    ),
+    "api-tests-publish-case-matrix": ("api-tests", "listings_publish: missing endpoint cases"),
+}
+
+
+def test_prove_gates_s21_legs(repo_root: Path) -> None:
+    code = _code((repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8"))
+    for name, (gate, regex) in S21_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+    assert "apps/api/app/workers/status_sync.py" in code and "import app.workers.adapters" in code
+    assert "test_listings_publish_api.py" in code
+    docker = code.index('if [ "$with_docker" -eq 1 ]; then')
+    assert code.index("leg lint-imports-sync-imports-adapter") < docker
+    assert code.index("leg api-tests-publish-case-matrix") > docker
+
+
 def test_bootstrap_imports_pipeline(repo_root: Path) -> None:
     # S14b T14 (ADR-0013 §4): the image ships the pipeline module the generation worker imports.
     text = (repo_root / "scripts" / "ci" / "bootstrap.sh").read_text(encoding="utf-8")
