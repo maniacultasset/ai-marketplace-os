@@ -498,6 +498,19 @@ seed_no_image_gate() {
   cp "$root/.env" .env
   replace apps/api/app/services/review.py '    _image_gate(ctx, listing, version)' '    pass'
 }
+# S19 T24: an error is refused before the dismissal's UPDATE, and the issue inbox keeps its tenant
+# filter (an unscoped select is the guard's CrossTenantQueryError).
+seed_dismiss_error_precheck() {
+  cp "$root/.env" .env
+  replace apps/api/app/services/issues.py \
+    'if issue.status != "open" or issue.severity != "warning":' 'if issue.status != "open":'
+}
+seed_issues_unscoped() {
+  cp "$root/.env" .env
+  replace apps/api/app/repositories/listing_issues.py \
+    'stmt = self._select().where(ListingIssue.status == filters.status)' \
+    'stmt = __import__("sqlalchemy").select(ListingIssue).where(ListingIssue.status == filters.status)'
+}
 leg lint-imports-adapter-from-service lint-imports 'only app.adapters and app.workers reach the marketplace adapter and client BROKEN' \
   seed_adapter_from_service make lint-imports
 leg lint-imports-mapping-httpx lint-imports 'adapter mapping, endpoint check, error map and registry do no I/O BROKEN' \
@@ -549,6 +562,7 @@ if [ "$with_docker" -eq 1 ]; then
   leg api-tests-no-api-maker-checker api-tests 'test_api_maker_checker_refuses_before_sql' seed_no_api_maker_checker COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-no-if-match api-tests 'test_patch_stale_409' seed_no_if_match COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-approve-image-gate api-tests 'test_approve_blocked_unchecked_image' seed_no_image_gate COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-dismiss-error-precheck api-tests 'test_issue_dismiss_error_409' seed_dismiss_error_precheck COMPOSE_PROJECT_NAME="$self_project" make api-tests
   # A throwaway database with 0000, so the seeded revision legs never stamp mos_test. The broken
   # downgrade leaves its revision stamped there, so that leg runs last.
   docker compose exec -T postgres dropdb -U postgres --if-exists --force mos_prove
@@ -574,6 +588,7 @@ if [ "$with_docker" -eq 1 ]; then
   leg tenant-isolation-guard-table-only tenant-isolation 'test_raw_select_raises_guard\[[a-z_]+-table_clause\]' seed_iso_table_only COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-no-before-flush tenant-isolation 'test_flush_rejects_other_tenant' seed_iso_no_before_flush COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-images-no-tenant-filter tenant-isolation 'test_iso_images_repository_reads' seed_images_no_tenant_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
+  leg tenant-isolation-issues-unscoped tenant-isolation 'test_iso_issue_and_task_reads_other_tenant_empty' seed_issues_unscoped COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg api-tests-image-key-prefix api-tests 'test_runner_rejects_foreign_key_prefix' seed_image_key_prefix COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg tenant-isolation-listings-no-tenant-filter tenant-isolation 'test_iso_generation_repositories_other_tenant_empty' seed_listings_no_tenant_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg api-tests-generation-publishes api-tests 'test_generation_never_publishes' seed_generation_publishes COMPOSE_PROJECT_NAME="$self_project" make api-tests
