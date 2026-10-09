@@ -133,3 +133,30 @@ async def edited(api: Any, world: GenWorld, made: Made, email: str = OWNER) -> M
     )
     assert response.status_code == 200, response.text
     return Made(made.listing_id, uuid.UUID(response.json()["current_version_id"]), made.job_id)
+
+
+async def open_issue(world: GenWorld, made: Made, **over: Any) -> uuid.UUID:
+    """An open issue on the listing (the repository, as `app_rw`); a warning by default."""
+    from app.repositories.listing_issues import NewIssue
+    from app.repositories.uow import tenant_uow
+
+    field = over.pop("field_path", "content.title")
+    code = over.pop("error_code", "VALUE_NOT_ALLOWED")
+    source = over.pop("source", "rules_engine")
+    values: dict[str, Any] = {
+        "listing_id": made.listing_id,
+        "marketplace": "amazon",
+        "source": source,
+        "field_path": field,
+        "error_code": code,
+        "error_class": "content_error",
+        "retry_class": "user_action",
+        "severity": "warning",
+        "message": "The title uses a word the brand avoids.",
+        "dedupe_key": f"{source}|{field}|{code}|",
+        "listing_version_id": made.version_id,
+    }
+    tenant = world.scalar("SELECT tenant_id FROM listings WHERE id = %s", [made.listing_id])
+    async with tenant_uow(tenant) as uow:
+        row, _ = await uow.listing_issues.upsert_open(NewIssue(**{**values, **over}))
+        return row.id
