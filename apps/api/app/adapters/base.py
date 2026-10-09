@@ -7,9 +7,11 @@ raw marketplace code and text (`ErrorItem.raw_code`, `message`).
 
 - `AdapterListing`: what a listing call carries: the canonical listing, its seller SKU, the
   idempotency key and attempt (1-3, passed in, never incremented here), the items it publishes
-  (one standalone, or a parent then its children: a family is one unit, ADR-0007 §3), the
+  (one standalone, or a parent then its children: a family is one unit, ADR-0007 §3; or the
+  children only for a marketplace with no parent row, S22 C9), the
   neutral variation theme, the pinned category template and the image locators.
-- `AdapterItem`: one marketplace item of a listing (`standalone|parent|child`).
+- `AdapterItem`: one marketplace item of a listing (`standalone|parent|child`); a child may
+  carry its colourway key and colour SKU (S22 C1).
 - `AdapterTemplate`: the pinned template with its adapter-only columns (`product_type`).
 - `AdapterPreview`: what `preview()` would send, per item, plus the mapping report; network-free.
 - Ports the adapter is built with: `TokenSource`, `OutboundLimiter`, `RawResponseSink`.
@@ -50,6 +52,10 @@ class AdapterItem:
     seller_sku: str
     item_role: ItemRole
     variant_attributes: Mapping[str, str] = field(default_factory=lambda: _EMPTY)
+    colour_key: str | None = None
+    """The child's colourway key (`product_colourways.colour_key`, S22 C1); None otherwise."""
+    colour_sku: str | None = None
+    """The colourway's seller colour SKU, when the seller gave one (S22 C1)."""
 
     def __post_init__(self) -> None:
         if self.item_role not in ITEM_ROLES:
@@ -99,6 +105,9 @@ class AdapterListing:
     template: AdapterTemplate | None = None
     attempt: int = 1
     image_refs: Mapping[UUID, str] = field(default_factory=lambda: _EMPTY)
+    colour_image_refs: Mapping[str, tuple[str, ...]] = field(default_factory=lambda: _EMPTY)
+    """colour_key -> the image locators of that colourway (S22 C1), in slot order; a family
+    whose colourways carry images fans them out to each child of the colour."""
 
     def __post_init__(self) -> None:
         attempt = self.attempt
@@ -108,6 +117,11 @@ class AdapterListing:
             raise ValueError("attempt must be an int from 1 to 3")
         object.__setattr__(self, "items", tuple(self.items))
         object.__setattr__(self, "image_refs", MappingProxyType(dict(self.image_refs)))
+        object.__setattr__(
+            self,
+            "colour_image_refs",
+            MappingProxyType({k: tuple(v) for k, v in self.colour_image_refs.items()}),
+        )
         _check_items(self.seller_sku, self.items)
 
     def units(self) -> tuple[AdapterItem, ...]:
@@ -119,6 +133,12 @@ class AdapterListing:
     @property
     def is_family(self) -> bool:
         return any(i.item_role == "parent" for i in self.items)
+
+    @property
+    def is_parentless_family(self) -> bool:
+        """Children only, no parent row: a marketplace whose families have no parent item
+        (Flipkart, S22 C9; `registry.family_has_parent`)."""
+        return bool(self.items) and all(i.item_role == "child" for i in self.items)
 
 
 def _check_items(seller_sku: str, items: tuple[AdapterItem, ...]) -> None:
@@ -132,6 +152,8 @@ def _check_items(seller_sku: str, items: tuple[AdapterItem, ...]) -> None:
         if len(items) != 1 or items[0].seller_sku != seller_sku:
             raise ValueError("a standalone listing has exactly one item, its own seller_sku")
         return
+    if all(role == "child" for role in roles):
+        return  # a parentless family (S22 C9): the children only, the style SKU stays the key
     if roles[0] != "parent" or items[0].seller_sku != seller_sku:
         raise ValueError("a family's first item is the parent, with the listing's seller_sku")
     if roles.count("parent") != 1:
