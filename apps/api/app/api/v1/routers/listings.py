@@ -101,9 +101,10 @@ async def listings_approve(
     """Approve or reject up to 200 listings. The approver is the JWT subject; whoever generated
     or edited a version cannot approve it (403 MAKER_CHECKER_VIOLATION per item). The request is
     200 with each item's own `http_status` and `error`."""
+    # CP12 on every item's feedback, not only `regenerate`: a stored reject's feedback joins every
+    # later generation context of the listing, which would refuse a secret-shaped key at claim.
     for index, i in enumerate(body.items):
-        if i.regenerate:  # the feedback becomes the regeneration's instructions (CP12 check)
-            generation.check_instructions(i.feedback, f"items[{index}].feedback")
+        generation.check_instructions(i.feedback, f"items[{index}].feedback")
     items = [
         review.ReviewItem(
             listing_id=i.listing_id,
