@@ -417,9 +417,11 @@ leg lint-imports-image-checks-sqla lint-imports 'image checks are pure BROKEN' s
 leg lint-imports-image-checks-repo lint-imports 'image checks are pure BROKEN' seed_image_checks_repo make lint-imports
 leg lint-imports-app-imports-mock lint-imports 'app never imports app_mock BROKEN' seed_app_imports_mock make lint-imports
 # S3 T22: a contract edit at an already tagged version. The tag is made only inside a throwaway
-# clone (a worktree shares this repo's tags), so no schemas-v* tag ever lands here.
+# clone (a worktree shares this repo's tags), so no schemas-v* tag ever lands here. The clone tags
+# the tree's current contract version and forces it, because the clone inherits this repo's real
+# schemas-v* tags (schemas-v1.0.0 exists since S16; the tree is at 1.1.0).
 leg contracts-schemas-tagged-unbumped contracts 'already tagged; bump per CHANGELOG rule' seed_none \
-  sh -c 'd="$(mktemp -d)"; trap "rm -rf \"\$d\"" EXIT; git clone -q --no-checkout "$PWD" "$d/r" && cd "$d/r" && git checkout -q "$(git -C "$OLDPWD" rev-parse HEAD)" && git tag schemas-v1.0.0 && printf "\n" >>packages/schemas/jsonschema/openapi.json && git add packages/schemas/jsonschema/openapi.json && git -c core.hooksPath=/dev/null -c user.name=prove-gates -c user.email=prove-gates@example.invalid commit -q -m "test: seeded post-tag edit" && make contracts'
+  sh -c 'd="$(mktemp -d)"; trap "rm -rf \"\$d\"" EXIT; git clone -q --no-checkout "$PWD" "$d/r" && cd "$d/r" && git checkout -q "$(git -C "$OLDPWD" rev-parse HEAD)" && v="$(python3 -c "import json; print(json.load(open(\"packages/schemas/ts/package.json\"))[\"version\"])")" && git tag -f "schemas-v$v" >/dev/null && printf "\n" >>packages/schemas/jsonschema/openapi.json && git add packages/schemas/jsonschema/openapi.json && git -c core.hooksPath=/dev/null -c user.name=prove-gates -c user.email=prove-gates@example.invalid commit -q -m "test: seeded post-tag edit" && make contracts'
 
 leg lint-imports-platform-scope-worker lint-imports ': R5 ' seed_platform_scope_worker make lint-imports
 leg lint-imports-platform-scope-in-wrapper lint-imports ': R5 ' seed_platform_scope_in_wrapper make lint-imports
