@@ -222,6 +222,17 @@ async def test_import_header_missing_422_nothing_stored(
     )
 
 
+async def test_import_wide_header_422_nothing_stored(
+    imports_db: JobWorld, api: httpx.AsyncClient
+) -> None:
+    """Audit FILES-1: a ~10 MiB one-line header is one file-level refusal, not 5 M items."""
+    tenant = imports_db.tenant("acme")
+    data = b"a," * 5_199_900 + b"a\nx\n"
+    report = assert_import_failed(await upload(api, headers(imports_db), data), "file.header")
+    assert [e.message for e in report.errors] == ["the header row is longer than 32768 characters"]
+    assert stored(imports_db, tenant) == (0, 0) and objects(tenant) == []
+
+
 async def test_import_limits_10mib_plus_1_413(imports_db: JobWorld, api: httpx.AsyncClient) -> None:
     data = b"seller_sku,product_name,category\n" + b"A" * (10 * 1024 * 1024 + 1)
     response = await upload(api, headers(imports_db), data)

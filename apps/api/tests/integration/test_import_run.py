@@ -135,6 +135,19 @@ async def test_import_duplicate_sku_in_file(imports_db: JobWorld, api: httpx.Asy
     assert title == "Cotton Kurta 1"
 
 
+async def test_import_trailing_empty_column_imports_every_row(
+    imports_db: JobWorld, api: httpx.AsyncClient
+) -> None:
+    """Audit FILES-2: a spreadsheet export's empty last column (no name, no cells) is ignored."""
+    plain = csv_bytes([row(1), row(2)])
+    data = b"".join(line + b",\n" for line in plain.splitlines())
+    import_id, job_id = await import_fixture(imports_db, api, data)
+    await run_job(job_id)
+    assert job_row(imports_db.conn, job_id)["status"] == "succeeded"
+    imp = import_row(imports_db.conn, import_id)
+    assert (imp["imported_rows"], imp["failed_rows"]) == (2, 0)
+
+
 async def test_import_totals_from_rows(imports_db: JobWorld, api: httpx.AsyncClient) -> None:
     import_id, job_id = await import_fixture(imports_db, api, fixture_bytes(FIXTURE))
     await run_job(job_id)

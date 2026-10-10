@@ -35,7 +35,7 @@ from typing import Any, Final
 
 from mkos_schemas.base import find_seam_secret_key
 from mkos_schemas.codes import ErrorCode
-from mkos_schemas.enums import JobKind, Marketplace
+from mkos_schemas.enums import JobKind, JobState, Marketplace
 from mkos_schemas.jobs import GenerateListingRequest
 
 from app.core.errors import ConflictError, DomainError, InputError, NotFoundError
@@ -67,6 +67,7 @@ class GenerateItem:
 class ItemAccepted:
     job_id: uuid.UUID
     listing_id: uuid.UUID
+    status: JobState = JobState.QUEUED
 
 
 @dataclass(frozen=True, slots=True)
@@ -300,5 +301,6 @@ def accepted_body(accepted: ItemAccepted) -> dict[str, Any]:
     return JobAccepted(
         job_id=accepted.job_id,
         listing_id=accepted.listing_id,
+        status=accepted.status,
         poll_url=f"/api/v1/jobs/{accepted.job_id}",
     ).model_dump(mode="json")
