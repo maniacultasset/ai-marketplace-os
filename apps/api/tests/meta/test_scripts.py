@@ -2940,3 +2940,192 @@ def test_prove_gates_has_s23b_legs(repo_root: Path) -> None:
     assert "    if context is None or not trace.get_current_span().is_recording():" in (
         repo_root / "apps/api/app/db/tracing.py"
     ).read_text(encoding="utf-8")
+
+
+# ---- S26 T17: the fresh-stack harness (scripts/e2e/lib/fresh_stack.sh) ----
+
+FRESH = "scripts/e2e/lib/fresh_stack.sh"
+
+
+def _fresh(repo_root: Path) -> str:
+    return _code((repo_root / FRESH).read_text(encoding="utf-8"))
+
+
+def test_fresh_stack_own_project_and_ports(repo_root: Path) -> None:
+    text = _fresh(repo_root)
+    assert "mkos-fresh-$$-$RANDOM" in text
+    assert 's.bind(("127.0.0.1", 0))' in text
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    keys = re.search(r"^WORKTREE_KEYS := (.+)$", makefile, re.MULTILINE)
+    assert keys is not None
+    ports = re.search(r'^PORT_KEYS="([^"]+)"', text, re.MULTILINE)
+    assert ports is not None
+    wanted = {
+        k for k in keys.group(1).split() if k not in ("COMPOSE_PROJECT_NAME", "MOCK_HOST_PORT")
+    }
+    assert wanted | {"FLAG_OFF_API_HOST_PORT"} <= set(ports.group(1).split())
+
+
+def test_fresh_stack_trap_kills_and_downs(repo_root: Path) -> None:
+    text = _fresh(repo_root)
+    assert "trap " in text and "down '$STACK_DIR'\" EXIT" in text
+    assert 'kill -TERM -- "-$pid"' in text and 'kill -KILL -- "-$pid"' in text
+    assert "down -v --remove-orphans" in text
+    assert 'rm -rf "$dir"' in text
+    assert "os.setsid()" in text  # every process in its own group, so its children die too
+
+
+def test_fresh_stack_binds_loopback_only(repo_root: Path) -> None:
+    text = _fresh(repo_root)
+    assert "0.0.0.0" not in text and "--host" not in text  # noqa: S104 - the check itself
+    for url in re.findall(r"https?://[^\s\"'$]+", text):
+        assert url.startswith(("http://127.0.0.1", "http://localhost")), url
+
+
+def test_fresh_stack_bounded_waits(repo_root: Path) -> None:
+    text = _fresh(repo_root)
+    assert 'WAIT_CAP="${FRESH_STACK_WAIT_SECONDS:-60}"' in text
+    waits = re.search(r"wait_http\(\) \{(.*?)\n\}", text, re.DOTALL)
+    assert waits is not None
+    assert "sleep 1" in waits.group(1) and '-lt "$WAIT_CAP"' in waits.group(1)
+    assert 'wait_http "$base/healthz"' in text and 'wait_http "$base/readyz"' in text
+
+
+def test_fresh_stack_overrides_worktree_env(repo_root: Path) -> None:
+    """Every `make` call carries the stack's project and ports as command-line overrides (they
+    beat the included `.worktree.env`), every compose call gets them in its env, and callers get
+    `base_url` from the stack's env file."""
+    text = _fresh(repo_root)
+    make = re.search(r"stack_make\(\) \{(.*?)\n\}", text, re.DOTALL)
+    assert make is not None
+    assert 'make --no-print-directory "${overrides[@]}" "$@"' in make.group(1)
+    for key in ("COMPOSE_PROJECT_NAME", "PG_HOST_PORT", "MINIO_API_HOST_PORT", "API_HOST_PORT"):
+        assert key in text
+    calls = [line for line in text.splitlines() if re.search(r"(^|\s)make\s", line)]
+    assert all("stack_make" in line or "--no-print-directory" in line for line in calls), calls
+    compose = [line for line in text.splitlines() if "docker compose" in line]
+    assert compose and all(
+        "stack_compose" in line or "env COMPOSE" in line or "    docker compose" in line
+        for line in compose
+    )
+    assert 'echo "base_url=$base"' in text
+    assert "worktree_env.sh exports .worktree.env" in text  # read only to refuse a clash
+
+
+@pytest.mark.parametrize(
+    ("env", "message"),
+    [
+        ({"FRESH_PROJECT_NAME": "marketplace-os"}, "not a fresh-stack name"),
+        ({"FRESH_FORCE_PORTS": "PG_HOST_PORT=5432"}, "PG_HOST_PORT 5432 is a Makefile default"),
+        ({"FRESH_FORCE_PORTS": "API_HOST_PORT=8000"}, "API_HOST_PORT 8000 is a Makefile default"),
+    ],
+)
+def test_fresh_stack_refuses_checkout_project(
+    repo_root: Path, env: dict[str, str], message: str
+) -> None:
+    result = subprocess.run(
+        [str(repo_root / FRESH), "up", "--profile", "acceptance"],
+        capture_output=True,
+        text=True,
+        env={**os.environ, **env},
+        check=False,
+        timeout=60,
+    )
+    assert result.returncode == 2, result.stderr
+    assert message in result.stderr
+
+
+def test_fresh_stack_profile_acceptance_env(repo_root: Path) -> None:
+    text = _fresh(repo_root)
+    assert "flipkart=false" in text and 'echo "FLIPKART_ENABLED=$flipkart"' in text
+    acceptance = text[text.index('if [ "$profile" = acceptance ]; then\n    (load_env') :]
+    assert "app.cli platform load" in acceptance.split("else", 1)[0]
+    assert "fake_marketplace.py" in acceptance.split("else", 1)[0]
+    assert "seed" not in acceptance.split("else", 1)[0]
+    for key in ("AMAZON_AUTHORIZE_URL", "AMAZON_LWA_TOKEN_URL", "FLIPKART_AUTHORIZE_URL",
+                "FLIPKART_TOKEN_URL", "AMAZON_SPAPI_ENDPOINT"):  # fmt: skip
+        assert f'echo "{key}=$fake' in text, key
+    worker = text[text.rindex('if [ "$profile" = acceptance ]; then') :]
+    assert "app.workers.main" in worker.split("\n  fi", 1)[0]
+
+
+def test_fresh_stack_profile_e2e_env(repo_root: Path) -> None:
+    text = _fresh(repo_root)
+    assert '[ "$profile" = e2e ] && flipkart=true' in text
+    assert "stack_make seed" in text
+    assert 'echo "$key=${!key}"' in text and "FLAG_OFF_API_HOST_PORT" in text
+
+
+def test_fresh_stack_profile_e2e_starts_no_worker(repo_root: Path) -> None:
+    text = _fresh(repo_root)
+    assert set(re.findall(r"&& start (\w+) ", text)) == {"api", "worker"}
+    worker_block = text[text.rindex('if [ "$profile" = acceptance ]; then') :].split("\n  fi", 1)[0]
+    assert "start worker" in worker_block  # the only worker start, and only under acceptance
+    assert text.count("start worker") == 1
+
+
+def test_fresh_stack_e2e_hooks_carry_overrides(repo_root: Path) -> None:
+    text = _fresh(repo_root)
+    for hook in ("WORKER_START", "WORKER_STOP", "TEMPLATES_LOAD", "ERRORS_LOAD", "MKOS_CLI"):
+        line = next(line for line in text.splitlines() if f'echo "{hook}=' in line)
+        if hook in ("WORKER_START", "TEMPLATES_LOAD", "ERRORS_LOAD", "MKOS_CLI"):
+            assert "$migrator_dsn" in line or "$app_dsn" in line, hook
+        assert "$STACK_DIR" in line or "ALEMBIC_DATABASE_URL=$migrator_dsn" in line, hook
+    start = next(line for line in text.splitlines() if 'echo "WORKER_START=' in line)
+    assert "env $overrides " in start
+    overrides = next(line for line in text.splitlines() if 'local overrides="' in line)
+    for key in ("COMPOSE_PROJECT_NAME", "PG_HOST_PORT", "API_HOST_PORT"):
+        assert f"{key}=${key}" in overrides, key
+
+
+def test_e2e_target_skips_lib_and_fresh_scripts(repo_root: Path) -> None:
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert "for script in $(E2E_DIR)/*.sh; do" in makefile
+    assert (repo_root / "scripts/e2e/lib/fresh_stack.sh").is_file()
+    assert not list((repo_root / "scripts/e2e").glob("fresh_stack*.sh"))
+
+
+# ---- S26 T16 (AC 14): the security and failure-injection guards go red when removed ----
+
+S26_LEGS = {
+    "api-tests-security-tenant-filter": (
+        "seed_no_tenant_filter",
+        r"test_api1_foreign_id_404\[products_get\]",
+    ),
+    "api-tests-security-extra-fields": (
+        "seed_extra_fields_ignored",
+        r"test_api3_unknown_fields_422\[products_create\]",
+    ),
+    "api-tests-security-cors-wildcard": (
+        "seed_cors_wildcard",
+        "test_api8_disallowed_origin_no_acao",
+    ),
+    "api-tests-failure-write-counter": (
+        "seed_no_read_before_retry",
+        "test_failure_injection_drop_after_write_pending_read_before_retry",
+    ),
+    "api-tests-security-maker-checker-api": (
+        "seed_no_api_maker_checker",
+        "test_api6_generator_approve_403_maker_checker",
+    ),
+}
+
+
+def test_prove_gates_has_s26_legs(repo_root: Path) -> None:
+    code = _code((repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8"))
+    docker = code.index('if [ "$with_docker" -eq 1 ]; then')
+    for name, (seed, regex) in S26_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} api-tests '([^']*)' (\S+) (.*)$", code)
+        assert leg is not None, name
+        assert (leg.group(1), leg.group(2)) == (regex, seed), name
+        # a full one-pass run: the leg's test may sit in either CI shard
+        assert leg.group(3).rstrip().endswith("make api-tests API_TESTS_SHARD="), name
+        assert code.index(f"leg {name} ") > docker
+        assert re.search(rf"(?m)^{seed}\(\) \{{", code), seed
+    for path in (
+        "apps/api/app/repositories/products.py",
+        "apps/api/app/api/v1/schemas/products.py",
+        "apps/api/app/api/cors.py",
+        "apps/api/app/workers/publish.py",
+    ):
+        assert path in code, path
