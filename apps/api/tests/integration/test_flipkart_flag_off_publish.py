@@ -283,7 +283,8 @@ async def test_flipkart_sync_skipped(
     api: httpx.AsyncClient, fkp: FkWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A published Flipkart listing: with the flag off the sync job reads nothing and changes
-    nothing, and the scheduler does not pick it up (it resumes once the flag is on)."""
+    nothing but the sync slot the refresh cleared, which it puts back (S22b F5), and the
+    scheduler does not pick it up (it resumes once the flag is on)."""
     from app.workers.periodic import schedule_status_sync
 
     made = await _fk(fkp)
@@ -314,5 +315,34 @@ async def test_flipkart_sync_skipped(
     after = fkp.pub.listing(made.listing_id)
     assert fkp.pub.job(sync)["status"] == "succeeded"
     assert len(fkp.calls()) == calls and len(fkp.opened) == 1
-    for column in ("status", "marketplace_state", "sync_poll_count", "live_url", "next_sync_at"):
+    for column in ("status", "marketplace_state", "sync_poll_count", "live_url"):
         assert after[column] == before[column], column
+    assert before["next_sync_at"] is None  # the refresh cleared it
+    assert after["next_sync_at"] is not None  # the skip put the slot back (S22b F5)
+
+
+async def test_flipkart_refresh_flag_off_keeps_the_listing_due(
+    api: httpx.AsyncClient, fkp: FkWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """S22b F5 (moved from the tester's repro): a refresh-status accepted while the flag is off
+    must not drop the listing's sync schedule; once the flag is on the scheduler enqueues it."""
+    from app.workers.periodic import schedule_status_sync
+
+    made = await _fk(fkp)
+    response = await post_publish(api, fkp.pub, OPERATOR, [{"listing_id": str(made.listing_id)}])
+    (item,) = response.json()["items"]
+    await run_job(uuid.UUID(item["job_id"]))
+    assert fkp.pub.listing(made.listing_id)["status"] == "published"
+    flag(monkeypatch, False)
+    refresh = await api.post(
+        f"/api/v1/listings/{made.listing_id}/refresh-status",
+        headers=fkp.world.headers(OPERATOR),
+    )
+    assert refresh.status_code == 202, refresh.text
+    await run_job(uuid.UUID(refresh.json()["job_id"]))
+    assert fkp.pub.listing(made.listing_id)["next_sync_at"] is not None
+    await schedule_status_sync()
+    assert fkp.jobs(made.listing_id, "listing_status_sync") == 1  # still off: nothing new
+    flag(monkeypatch, True)
+    await schedule_status_sync()
+    assert fkp.jobs(made.listing_id, "listing_status_sync") == 2
