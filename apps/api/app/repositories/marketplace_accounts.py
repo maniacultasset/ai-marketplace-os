@@ -256,6 +256,17 @@ class MarketplaceAccountRepository(TenantScopedRepository[MarketplaceAccount]):
         found: uuid.UUID | None = (await self.db.execute(stmt.limit(1))).scalar_one_or_none()
         return found
 
+    async def revoked_ids(self, marketplace: str) -> builtins.list[uuid.UUID]:
+        """The tenant's revoked accounts for `marketplace` (a connect adopts their listings)."""
+        m = MarketplaceAccount
+        stmt = (
+            self._select()
+            .where(m.marketplace == marketplace, m.status == "revoked")
+            .with_only_columns(m.id)
+            .order_by(m.id)
+        )
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
     async def active_by_id(self, account_id: uuid.UUID) -> AccountState | None:
         """The tenant's account `account_id` in any status (the caller refuses one that is not
         active), or None, also for another tenant's id. Never selects `token_enc`."""

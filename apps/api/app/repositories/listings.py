@@ -427,6 +427,27 @@ class ListingRepository(TenantScopedRepository[Listing]):
             raise
         return row is not None
 
+    async def repoint_account(
+        self, marketplace: str, from_ids: Sequence[uuid.UUID], to_id: uuid.UUID
+    ) -> builtins.list[uuid.UUID]:
+        """Re-point every listing of `marketplace` pinned to one of `from_ids` (the tenant's
+        revoked accounts) to `to_id`, its new active account (DATABASE.md:760); the ids moved.
+        No status changes, so a paused or archived listing moves too."""
+        self._own_session()
+        if not from_ids:
+            return []
+        criterion = self._tenant_criterion(include_platform=False)
+        stmt = self._scoped_write(
+            update(Listing)
+            .where(
+                criterion,
+                Listing.marketplace == marketplace,
+                Listing.marketplace_account_id.in_(tuple(from_ids)),
+            )
+            .values(marketplace_account_id=to_id)
+        ).returning(Listing.id)
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
     async def lock_due_for_sync(self, listing_id: uuid.UUID) -> Listing | None:
         """The listing, locked `FOR UPDATE SKIP LOCKED`, if its sync is still due (S21 T22: a
         second scheduler pass skips a row another holds; the enqueue sets `next_sync_at` NULL)."""
