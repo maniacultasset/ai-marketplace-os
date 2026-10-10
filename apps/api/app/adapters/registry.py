@@ -36,3 +36,12 @@ def previewer(marketplace: Marketplace | str) -> Previewer:
 
 def family_has_parent(marketplace: Marketplace | str) -> bool:
     return Marketplace(marketplace) is not Marketplace.FLIPKART
+
+
+def live_url(marketplace: Marketplace | str, external_id: str | None) -> str | None:
+    """The public product page of a live item, built by its adapter (DATABASE.md:757); None when
+    the adapter cannot build one. Flipkart: a product page needs a slug and the FSN, which the
+    listings API does not return (believed, DW1), so no URL is guessed."""
+    if Marketplace(marketplace) is Marketplace.AMAZON:
+        return amazon_mapping.live_url(external_id)
+    return None

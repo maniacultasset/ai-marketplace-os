@@ -12,7 +12,9 @@ from functools import cache
 from pathlib import Path
 from urllib.parse import quote
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
+from tests.support.paths import repo_root as find_repo_root
+
+REPO_ROOT = find_repo_root(Path(__file__))
 _MAKEFILE_LINE = re.compile(r"^CI_APP_RW_PASSWORD := (?P<value>\S+)$", re.M)
 _CREDENTIALS = re.compile(r"^(?P<scheme>[a-z+]+://)[^@/]*@")
 

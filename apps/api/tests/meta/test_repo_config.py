@@ -152,21 +152,62 @@ def test_mypy_excludes_alembic_versions(repo_root: Path) -> None:
     import tomllib
 
     mypy = tomllib.loads((repo_root / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mypy"]
-    assert mypy["exclude"] == ["^apps/api/alembic/versions/"]
+    # S26 T23: and mutmut's git-ignored working copy (`make mutation`)
+    assert mypy["exclude"] == ["^apps/api/alembic/versions/", "^apps/api/mutants/"]
 
 
-def test_mutmut_scoped_to_rules_engine(repo_root: Path) -> None:
+def test_mutmut_scoped_to_core_modules(repo_root: Path) -> None:
+    """S26 T23 (PLAN D9): the core modules and their own tests; every path exists."""
     import tomllib
 
     config = tomllib.loads((repo_root / "apps/api/pyproject.toml").read_text(encoding="utf-8"))
     mutmut = config["tool"]["mutmut"]
     assert mutmut["source_paths"] == ["app"]
-    assert mutmut["only_mutate"] == ["app/services/rules_engine/*"]
-    assert mutmut["pytest_add_cli_args_test_selection"] == ["tests/unit/rules_engine"]
-    assert mutmut["pytest_add_cli_args"] == ["--no-cov", "-p", "no:randomly"]
-    assert mutmut["also_copy"] == ["tests"]
+    assert mutmut["only_mutate"] == [
+        "app/services/rules_engine/*",
+        "app/db/guard.py",
+        "app/repositories/base.py",
+        "app/services/maker_checker.py",
+        "app/services/idempotency.py",
+        "app/repositories/idempotency.py",
+        "app/services/publish_rules.py",
+        "app/services/publish_ledger.py",
+        "app/services/publish.py",
+    ]
+    api = repo_root / "apps/api"
+    for entry in mutmut["only_mutate"]:
+        matches = list(api.glob(entry))
+        assert matches and all(p.suffix == ".py" or p.is_dir() for p in matches), entry
+    selection = mutmut["pytest_add_cli_args_test_selection"]
+    assert selection[0] == "tests/unit/rules_engine"
+    for path in selection:
+        assert (api / path).exists(), path
+        assert path.startswith(("tests/unit", "tests/integration")), path
+    assert mutmut["pytest_add_cli_args"] == [
+        "-c",
+        "pyproject.toml",
+        "--rootdir",
+        ".",
+        "--import-mode=importlib",
+        "--no-cov",
+        "-p",
+        "no:randomly",
+        "-o",
+        "asyncio_mode=auto",
+    ]
+    assert mutmut["also_copy"] == ["tests", "alembic", "alembic.ini"]
     root = tomllib.loads((repo_root / "pyproject.toml").read_text(encoding="utf-8"))
     assert "mutmut" not in root["tool"]
     makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
-    assert "mutation-rules:\n\tcd apps/api && uv run --frozen mutmut run\n" in makefile
+    assert "uv run --frozen mutmut run --max-children $(MUTATION_MAX_CHILDREN)" in makefile
+    # Parallel children, each on its own slot copy of mos_test, on a fresh mutants copy.
+    assert "MUTATION_MAX_CHILDREN ?= 6" in makefile
+    assert "\trm -rf apps/api/mutants\n" in makefile
+    assert makefile.count("tests/support/xdist_db.py drop-mutant-databases") == 2
+    assert (
+        "uv run --frozen python scripts/ci/mutation_report.py --root apps/api "
+        "--waivers docs/review/MUTATION-WAIVERS.md" in makefile
+    )
+    assert "\nmutation-rules: mutation\n" in makefile
+    assert (repo_root / "docs/review/MUTATION-WAIVERS.md").is_file()
     assert "mutants/" in (repo_root / ".gitignore").read_text(encoding="utf-8")

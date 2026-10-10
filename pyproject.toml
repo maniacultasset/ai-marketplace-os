@@ -54,6 +54,8 @@ ignore = ["E501"]
 "packages/schemas/tests/**" = ["S101", "S105", "S106", "S603", "S607"]
 "packages/pipeline-stub/tests/**" = ["S101", "S105", "S106", "S603", "S607"]
 "scripts/ci/**" = ["T201", "S603", "S607"]
+"scripts/load/**" = ["T201"]
+"scripts/drill/**" = ["T201", "S603", "S607"]
 "scripts/schemas/**" = ["T201"]
 "apps/api/app_mock/__main__.py" = ["T201"]
 "apps/api/app/services/embeddings.py" = ["TID251"]
@@ -83,11 +85,15 @@ files = [
   "packages/schemas/tests",
   "packages/pipeline-stub/src",
   "packages/pipeline-stub/tests",
+  "scripts/load",
+  "scripts/drill",
+  "scripts/ci/mutation_report.py",
+  "scripts/ci/nightly_skip.py",
 ]
 explicit_package_bases = true
 mypy_path = ["apps/api", "packages/schemas/src", "packages/pipeline-stub/src"]
-# Generated revision files (CANON.md:135).
-exclude = ["^apps/api/alembic/versions/"]
+# Generated revision files (CANON.md:135); mutmut's working copy (`make mutation`, git-ignored).
+exclude = ["^apps/api/alembic/versions/", "^apps/api/mutants/"]
 
 [tool.pytest.ini_options]
 testpaths = ["apps/api/tests", "packages/schemas/tests", "packages/pipeline-stub/tests"]

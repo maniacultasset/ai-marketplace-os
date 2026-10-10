@@ -51,7 +51,7 @@ def test_deployed_env_helper_boots(clean_env: Path, monkeypatch: pytest.MonkeyPa
 
 
 # ---- PROD-1: a weak JWT_SECRET or ADMIN_SESSION_SECRET ----
-# A character-variety floor ('a' * 32) waits on TEAM-QUESTIONS T130: CANON-ADDENDUM A§14 pins
+# A character-variety floor ('a' * 32) waits on TEAM-QUESTIONS T132: CANON-ADDENDUM A§14 pins
 # `"x" * 32` as the production fixture.
 
 WEAK_SECRETS = {

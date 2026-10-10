@@ -9,6 +9,7 @@ import importlib.util
 import io
 import json
 import logging
+import os
 import re
 import sys
 from collections.abc import Callable, Iterator
@@ -18,11 +19,19 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 import yaml
+from hypothesis import settings as hypothesis_settings
+from tests.support.paths import repo_root as find_repo_root
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = find_repo_root(Path(__file__))
+
+# S26 T24 (AC 12): the nightly `hypothesis-deep` leg sets HYPOTHESIS_PROFILE=nightly (1000
+# examples per property, no deadline); unset, every property keeps its own settings.
+hypothesis_settings.register_profile("nightly", max_examples=1000, deadline=None)
+if os.environ.get("HYPOTHESIS_PROFILE"):
+    hypothesis_settings.load_profile(os.environ["HYPOTHESIS_PROFILE"])
 
 CI_JWT_SECRET = "ci_only_not_a_real_secret_at_least_32_chars"  # A§11:290
 CI_DATABASE_URL = "postgresql+psycopg://postgres:postgres@localhost:5432/mos_test"
@@ -36,24 +45,37 @@ def _xdist_controller(config: pytest.Config) -> bool:
 
 def pytest_configure(config: pytest.Config) -> None:
     """Under pytest-xdist each worker runs on its own copy of mos_test (tests/support/xdist_db.py),
-    set up here, before any test, settings object or engine exists."""
+    set up here, before any test, settings object or engine exists; so does each mutmut child."""
     import os
 
-    from tests.support.xdist_db import drop_worker_databases, use_worker_database
+    from tests.support.xdist_db import (
+        drop_worker_databases,
+        use_mutant_database,
+        use_worker_database,
+    )
 
     workerinput = getattr(config, "workerinput", None)
     if workerinput is not None:
         use_worker_database(str(workerinput["workerid"]))
     elif _xdist_controller(config):
         drop_worker_databases(os.environ.get("DATABASE_URL"))
+    elif "MUTANT_UNDER_TEST" in os.environ:
+        # A mutmut child (`make mutation`, several at once): its own slot copy of mos_test.
+        use_mutant_database(Path.cwd() / ".mutation-db-slots")
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    """`API_TEST_SHARD=1|2` keeps only that CI shard's test files (tests/support/shard.py)."""
+    """`API_TEST_SHARD=1|2` keeps only that CI shard's test files (tests/support/shard.py); a
+    mutmut child runs its tests cheapest file first."""
     import os
 
     from tests.support.shard import parse, shard_of
 
+    if "MUTANT_UNDER_TEST" in os.environ:
+        # a mutmut child (`make mutation`): the cheap files first (tests/support/mutation_order.py)
+        from tests.support.mutation_order import mutation_order
+
+        items[:] = mutation_order(items, Path.cwd() / "mutmut-stats.json")
     shard = parse(os.environ.get("API_TEST_SHARD"))
     if shard is None:
         return

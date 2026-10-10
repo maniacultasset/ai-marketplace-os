@@ -1,0 +1,164 @@
+# Nightly (S26 T24; AC 12; PLAN D8). NOT a required check and never run on a pull request: a
+# 02:00 IST schedule on main plus a manual dispatch. One job per leg, each `scripts/ci/nightly.sh
+# <leg>` on the runner's own Docker: the stub pipeline, the fake marketplace, no cloud, nothing
+# released, no secret but GITHUB_TOKEN (and that only in the reporting job). The heavy legs skip
+# with `SKIP main unchanged in 24 h` when main has not moved in 24 h, unless dispatched with
+# force. A red leg opens (or comments on) the one open `nightly-red` issue: the run URL and the
+# failed leg names only, never a log line.
+name: nightly
+on:
+  schedule:
+    - cron: "30 20 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Run the heavy legs even when main is unchanged in 24 h"
+        type: boolean
+        default: false
+permissions: {}
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+jobs:
+  pip-audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/py-setup
+      - run: scripts/ci/nightly.sh pip-audit
+        env:
+          NIGHTLY_FORCE: ${{ inputs.force }}
+  gitleaks-history:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: ./.github/actions/py-setup
+      - run: scripts/ci/nightly.sh gitleaks-history
+        env:
+          NIGHTLY_FORCE: ${{ inputs.force }}
+  mutation:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/py-setup
+      - run: scripts/ci/nightly.sh mutation
+        env:
+          NIGHTLY_FORCE: ${{ inputs.force }}
+  fuzz:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/py-setup
+      - run: scripts/ci/nightly.sh fuzz
+        env:
+          NIGHTLY_FORCE: ${{ inputs.force }}
+  hypothesis-deep:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/py-setup
+      - run: scripts/ci/nightly.sh hypothesis-deep
+        env:
+          NIGHTLY_FORCE: ${{ inputs.force }}
+  random-order:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/py-setup
+      - run: scripts/ci/nightly.sh random-order
+        env:
+          NIGHTLY_FORCE: ${{ inputs.force }}
+  migration-replay:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/py-setup
+      - run: scripts/ci/nightly.sh migration-replay
+        env:
+          NIGHTLY_FORCE: ${{ inputs.force }}
+  acceptance:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/py-setup
+      - run: scripts/ci/nightly.sh acceptance
+        env:
+          NIGHTLY_FORCE: ${{ inputs.force }}
+  drill:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/py-setup
+      - run: scripts/ci/nightly.sh drill
+        env:
+          NIGHTLY_FORCE: ${{ inputs.force }}
+  report:
+    needs: [pip-audit, gitleaks-history, mutation, fuzz, hypothesis-deep, random-order, migration-replay, acceptance, drill]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    timeout-minutes: 5
+    steps:
+      - name: open or update the nightly-red issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          failed="$(python3 -c 'import json, os; print(", ".join(sorted(k for k, v in json.loads(os.environ["NEEDS"]).items() if v.get("result") == "failure")))')"
+          body="Nightly run $RUN_URL failed: $failed"
+          gh label create nightly-red --color B60205 --description "a nightly leg is red" --force
+          number="$(gh issue list --state open --label nightly-red --json number,title --jq '[.[] | select(.title == "nightly-red")][0].number // empty')"
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --title nightly-red --label nightly-red --body "$body"
+          fi

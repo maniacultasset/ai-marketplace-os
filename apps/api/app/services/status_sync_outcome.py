@@ -20,6 +20,7 @@ from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorSource, JobKind
 from mkos_schemas.errors import ErrorItem, ErrorReport
 
+from app.adapters.registry import live_url
 from app.core.logging import get_logger
 from app.db.models.ops import JobRun
 from app.repositories.listings import DbNow, JobActor, ListingRepository
@@ -100,6 +101,8 @@ async def apply_sync(
     if decision.marketplace_state is None:
         return decision
     version = listing.published_version_id or listing.approved_version_id
+    root_url: str | None = None
+    root_external: str | None = None
     for read in reads:
         row = rows.get(read.seller_sku)
         if row is None:
@@ -108,11 +111,19 @@ async def apply_sync(
         values: dict[str, Any] = {"last_synced_at": DbNow()}
         if state != row.marketplace_state:
             values["marketplace_state"] = state
+        external = row.external_id or (read.external_id[:128] if read.external_id else None)
         if read.external_id and row.external_id is None:
-            values["external_id"] = read.external_id[:128]
+            values["external_id"] = external
         if state == "live" and row.marketplace_state != "live":
             values["live_version_id"] = version
             values["live_confirmed_at"] = DbNow()
+        url = row.live_url
+        if state == "live" and url is None:  # the adapter builds it (DATABASE.md:757)
+            url = live_url(listing.marketplace, external)
+            if url is not None:
+                values["live_url"] = url
+        if row.item_role in ("standalone", "parent") and state == "live":
+            root_url, root_external = url, external
         await uow.listing_items.write_state(row.id, job_id=job_id, **values)
     await _settle(uow, listing, decision)
     columns: dict[str, Any] = {
@@ -126,6 +137,10 @@ async def apply_sync(
         columns["marketplace_state_changed_at"] = DbNow()
     if decision.stamp_live:
         columns["live_version_id"] = version
+        if root_url is not None and listing.live_url is None:
+            columns["live_url"] = root_url
+        if root_external is not None and listing.external_id is None:
+            columns["external_id"] = root_external
         if listing.live_confirmed_at is None or listing.live_version_id != version:
             columns["live_confirmed_at"] = DbNow()
     if decision.listing_to is not None and decision.event is not None:

@@ -17,6 +17,7 @@ from psycopg import sql
 
 # The allowed databases: mos_test, mos_iso, or an xdist worker's copy of mos_test
 # (`mos_test_gw<digits>`), exact names only (tests/support/xdist_db.py).
+from tests.support.paths import repo_root as find_repo_root
 from tests.support.xdist_db import is_test_database, role_catalog_lock
 
 # S14b T17-T22: the admin suites' shared fixture, re-exported for every integration module.
@@ -71,7 +72,7 @@ def superuser_conn() -> Iterator[psycopg.Connection[tuple[object, ...]]]:
 
 # ---- Alembic: a scratch database per test, so mos_test never holds a table or alembic_version ----
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
+REPO_ROOT = find_repo_root(Path(__file__))
 SCRATCH_PREFIX = "mos_scratch_"
 
 

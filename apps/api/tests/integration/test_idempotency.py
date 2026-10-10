@@ -125,11 +125,12 @@ async def test_idempotency_stores_422(jobs_db: JobWorld) -> None:
     assert calls == [1]
 
 
-async def test_idempotency_refuses_unstorable_status(jobs_db: JobWorld) -> None:
+@pytest.mark.parametrize("status", [409, 300, 199])
+async def test_idempotency_refuses_unstorable_status(jobs_db: JobWorld, status: int) -> None:
     p = _principal(jobs_db)
 
     async def wrong(session: Any) -> tuple[int, dict[str, Any]]:
-        return 409, {}
+        return status, {}
 
     with pytest.raises(ValueError, match="raise errors instead"):
         await idempotent(p, "k9", "POST", PATH, b"x", wrong)
@@ -170,3 +171,24 @@ async def test_idempotency_peek_replay_mismatch_none(jobs_db: JobWorld) -> None:
         assert isinstance(await keys.peek("kp", f"POST {PATH}", digest, p.user_id), Replay)
         assert isinstance(await keys.peek("kp", f"POST {PATH}", other, p.user_id), Mismatch)
         assert await keys.peek("absent", f"POST {PATH}", digest, p.user_id) is None
+
+
+async def test_idempotency_prune_expired_boundary_and_count(jobs_db: JobWorld) -> None:
+    """S26 T23 gate-fix (AC 11): a key expiring at this very instant is still live (strictly
+    `expires_at < now()`), nothing to prune counts 0, and only this tenant's expired key goes."""
+    from sqlalchemy import text
+
+    a, b = _principal(jobs_db), _principal(jobs_db, "bharat")
+    await idempotent(a, "ka", "POST", PATH, b"{}", _enqueue_handler(a, []))
+    await idempotent(b, "kb", "POST", PATH, b"{}", _enqueue_handler(b, []))
+    async with unit_of_work(a.tenant_id) as session:
+        keys = IdempotencyKeyRepository(session, a.tenant_id)
+        assert await keys.prune_expired() == 0
+        # now() is the transaction's start, so this row expires exactly "now"
+        await session.execute(text("UPDATE idempotency_keys SET expires_at = now()"))
+        assert await keys.prune_expired() == 0
+    jobs_db.conn.execute("UPDATE idempotency_keys SET expires_at = now() - interval '1 second'")
+    async with unit_of_work(a.tenant_id) as session:
+        assert await IdempotencyKeyRepository(session, a.tenant_id).prune_expired() == 1
+    left = jobs_db.conn.execute("SELECT key FROM idempotency_keys").fetchall()
+    assert left == [("kb",)]

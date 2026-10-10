@@ -182,3 +182,44 @@ def test_partial_publish_is_retry_fields() -> None:
     assert mode_for("failed", "publish_failed") == "publish"
     assert mode_for("blocked", "marketplace_action_required") == "resume"
     assert mode_for("approved", None) == "publish"
+
+
+# ---- S26 T23 gate-fix (AC 11): the exact refusals and edges ----
+
+
+def test_submission_key_refusal_messages() -> None:
+    ids = (uuid.UUID(int=1), uuid.UUID(int=2), uuid.UUID(int=3), "amazon")
+    with pytest.raises(ValueError) as refused:
+        submission_key(*ids, 4, b"\x00" * 32)
+    assert str(refused.value) == "attempt must be 1..3"
+    with pytest.raises(ValueError) as refused:
+        submission_key(*ids, 1, b"\x00" * 31)
+    assert str(refused.value) == "payload_sha256 must be a 32-byte digest"
+
+
+def test_report_retryable_item_without_severity_is_blocking() -> None:
+    assert not report_retryable({"retryable": True, "errors": [{"retryable": False}]})
+    assert report_retryable(
+        {"retryable": True, "errors": [{"retryable": False, "severity": "warning"}]}
+    )
+
+
+def test_choose_justification_error_without_report() -> None:
+    prev = PreviousAttempt("error", None, datetime(2026, 10, 1, tzinfo=UTC))
+    assert (
+        choose_justification(prev, applied_task_after=False, marketplace_changed_after=False)
+        is None
+    )
+    assert (
+        choose_justification(prev, applied_task_after=False, marketplace_changed_after=True)
+        == "marketplace_transition"
+    )
+
+
+@pytest.mark.parametrize(
+    ("status", "reason"),
+    [("failed", "marketplace_action_required"), ("blocked", "publish_attempts_exhausted")],
+)
+def test_mode_for_resume_needs_blocked_and_the_action_reason(status: str, reason: str) -> None:
+    assert mode_for(status, reason) == "publish"
+    assert mode_for("blocked", "marketplace_action_required") == "resume"

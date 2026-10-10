@@ -515,3 +515,20 @@ def preview(
         ),
         report=report_for(errors, listing),
     )
+
+
+# ---- S26 (DATABASE.md:757, :842): the product page of a live item, built here, never user input
+# Amazon.in's detail page for an ASIN (believed: the public URL shape, not an SP-API answer; DW1).
+DETAIL_PAGE_BASE: Final = "https://www.amazon.in/dp/"
+MAX_LIVE_URL_CHARS: Final = 2048
+
+
+def live_url(external_id: str | None) -> str | None:
+    """The detail page URL for `external_id` (the ASIN), percent-quoted; None when it is blank
+    or the URL would pass the 2048-character `live_url` limit."""
+    from urllib.parse import quote
+
+    if not isinstance(external_id, str) or not external_id.strip():
+        return None
+    url = DETAIL_PAGE_BASE + quote(external_id.strip(), safe="")
+    return url if len(url) <= MAX_LIVE_URL_CHARS else None

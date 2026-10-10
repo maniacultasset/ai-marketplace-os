@@ -125,8 +125,15 @@ has_setting() {
 }
 
 down() {
-  local dir="$1" pid
+  local dir="$1" pid project
   [ -n "$dir" ] && [ -d "$dir" ] || { log "nothing to stop"; return 0; }
+  # only a directory `up` made (mkos-fresh.XXXXXX) whose project is a fresh one: never rm -rf or
+  # `down -v` anything else (S26b)
+  case "$(basename "$dir")" in mkos-fresh.*) ;; *) die "refusing to remove $dir (not a fresh stack dir)" 2 ;; esac
+  if [ -f "$dir/env" ]; then
+    project="$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' "$dir/env")"
+    case "$project" in mkos-fresh-*) ;; *) die "refusing to stop project '$project' (not a fresh stack)" 2 ;; esac
+  fi
   if [ -f "$dir/pids" ]; then
     while read -r pid; do
       [ -n "$pid" ] || continue
@@ -205,7 +212,7 @@ up() {
     echo "FLIPKART_AUTHORIZE_URL=$fake/flipkart/authorize"
     echo "FLIPKART_TOKEN_URL=$fake/flipkart/token"
     echo "AMAZON_SPAPI_ENDPOINT=$fake"
-    if has_setting flipkart_api_base; then echo "FLIPKART_API_BASE=$fake/flipkart"; fi
+    if has_setting flipkart_api_base; then echo "FLIPKART_API_BASE=$fake/flipkart/sellers"; fi  # the fake's FK_BASE, as `make dev`
     if [ "$profile" = e2e ]; then
       local overrides="COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME PG_HOST_PORT=$PG_HOST_PORT API_HOST_PORT=$API_HOST_PORT"
       echo "WORKER_START='mkdir -p $STACK_DIR/e2e; env $overrides DATABASE_URL=$app_dsn ALEMBIC_DATABASE_URL=$migrator_dsn S3_ENDPOINT_URL=$s3 APP_ROLE=worker APP_NAME=marketplace-os-worker OTEL_SERVICE_NAME=marketplace-os-worker nohup uv run --frozen python -m app.workers.main >$STACK_DIR/logs/worker.log 2>&1 & echo \$! >$STACK_DIR/e2e/worker.pid'"

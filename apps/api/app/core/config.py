@@ -11,7 +11,7 @@
   (CANON.md:70), refuse KMS_LOCAL_DEV_KEY (any role), and refuse an http or loopback marketplace
   authorize/token URL or DASHBOARD_BASE_URL (S15). Off local, a JWT_SECRET (and, with the admin
   on, an ADMIN_SESSION_SECRET) must carry no whitespace and 32+ characters measured unstripped
-  (audit PROD-1; a character-variety floor waits on TEAM-QUESTIONS T130). The api also needs
+  (audit PROD-1; a character-variety floor waits on TEAM-QUESTIONS T132). The api also needs
   https non-loopback ALLOWED_ORIGINS (exact origins, never `*`) and JWT_ISSUER (PROD-2).
   Numeric settings carry lower bounds in every env (PROD-3).
 - There is no module-level `settings`: call `get_settings()` where the value is needed.
@@ -73,7 +73,7 @@ DEPLOYED_HTTPS_URLS: Final[tuple[tuple[str, str], ...]] = (
 API_HTTPS_URLS: Final[tuple[tuple[str, str], ...]] = (("jwt_issuer", "JWT_ISSUER"),)
 # A deployed secret (PROD-1): no whitespace anywhere and at least this many characters, measured
 # on the raw value. A character-variety floor would also refuse CANON-ADDENDUM A§14's production
-# fixture (`"x" * 32`), so it waits on TEAM-QUESTIONS T130.
+# fixture (`"x" * 32`), so it waits on TEAM-QUESTIONS T132.
 SECRET_MIN_LENGTH: Final = 32
 
 OtelSampler = Literal[

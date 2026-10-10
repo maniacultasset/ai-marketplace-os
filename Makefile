@@ -82,12 +82,13 @@ api-lint:
 	uv run --frozen python scripts/ci/run_pip_audit.py
 
 # import-linter, repo rules R5-R8 (platform_scope, SCOPE_OK, identity_scope, the job GUC), then the tenant_scope_checked grep (CANON-ADDENDUM.md §6): the literal may appear
-# only in apps/api/app/db/{guard,session}.py. Zero hits pass until S9 adds them.
+# only in apps/api/app/db/{guard,session}.py. Zero hits pass until S9 adds them. mutmut's git-ignored
+# working copy (apps/api/mutants, `make mutation`) is not scanned.
 .PHONY: lint-imports
 lint-imports:
 	PYTHONPATH=apps/api uv run --frozen lint-imports --config .importlinter
 	uv run --frozen python scripts/ci/check_repo_rules.py --rules R5,R6,R7,R8
-	@hits="$$(grep -rl --include='*.py' tenant_scope_checked apps packages scripts)" || [ $$? -eq 1 ]; \
+	@hits="$$(grep -rl --include='*.py' --exclude-dir=mutants tenant_scope_checked apps packages scripts)" || [ $$? -eq 1 ]; \
 	bad=0; \
 	for hit in $$hits; do \
 	  case "$$hit" in \
@@ -201,10 +202,28 @@ api-tests-integration:
 	$(MIGRATE_ENV) uv run --frozen python -m app.cli dictionary sync
 	API_TEST_SHARD=$(API_TESTS_INTEGRATION_SHARD) $(API_TEST_PYTEST)
 
-# Mutation run over the Rules Engine (ADR-0010 §2): report-only, not a required check (S14a T16).
-.PHONY: mutation-rules
-mutation-rules:
-	cd apps/api && uv run --frozen mutmut run
+# The mutation run over the core modules (ADR-0010 §2; S14a T16; S26 T23, PLAN D9): mutmut over
+# `[tool.mutmut]` in apps/api/pyproject.toml with the test env, then the per-module report (>= 80%
+# or a waiver row in docs/review/MUTATION-WAIVERS.md). Not a required check: the nightly
+# `mutation` leg runs it. Every run starts fresh (mutmut keeps a mutant's old verdict even after
+# its tests change, so a kept apps/api/mutants would score stale results). The children run in
+# parallel: each takes a slot copy of the migrated mos_test, `mos_test_mut<n>`
+# (tests/support/xdist_db.py), dropped before and after the run.
+# `mutation-rules` is the S14a name, kept as an alias.
+MUTATION_MAX_CHILDREN ?= 6
+MUTATION_ENV = APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) \
+  S3_ENDPOINT_URL=$(TEST_S3_ENDPOINT_URL)
+.PHONY: mutation mutation-rules
+mutation:
+	$(MIGRATE_ENV) $(ALEMBIC) upgrade head
+	$(MIGRATE_ENV) uv run --frozen python -m app.cli dictionary sync
+	rm -rf apps/api/mutants
+	cd apps/api && $(MUTATION_ENV) uv run --frozen python tests/support/xdist_db.py drop-mutant-databases
+	cd apps/api && $(MUTATION_ENV) uv run --frozen mutmut run --max-children $(MUTATION_MAX_CHILDREN)
+	cd apps/api && $(MUTATION_ENV) uv run --frozen python tests/support/xdist_db.py drop-mutant-databases
+	uv run --frozen python scripts/ci/mutation_report.py --root apps/api --waivers docs/review/MUTATION-WAIVERS.md
+
+mutation-rules: mutation
 
 .PHONY: tenant-isolation
 tenant-isolation:
@@ -337,6 +356,7 @@ e2e:
 	for script in $(E2E_DIR)/*.sh; do \
 	  [ -e "$$script" ] || { echo "make e2e: no scripts in $(E2E_DIR)" >&2; exit 1; }; \
 	  [ "$$(basename "$$script")" != onboarding.sh ] || continue; \
+	  [ "$$(basename "$$script")" != acceptance.sh ] || continue; \
 	  $(RESET_LIMITS) "$$base" || exit $$?; \
 	  "$$script" "$$base" || exit $$?; \
 	done
@@ -347,6 +367,31 @@ FUZZ_MAX_EXAMPLES ?= 50
 .PHONY: fuzz
 fuzz:
 	scripts/fuzz/run.sh --max-examples $(FUZZ_MAX_EXAMPLES) $(if $(FUZZ_SEED),--seed $(FUZZ_SEED))
+
+# The v1 load smoke on a fresh stack with the production limits (S26 T18; AC 7): a 1,000-row
+# import, 20 concurrent generations, bharat probes; JSON report. Not a required check.
+LOAD_SMOKE_OUT ?= .e2e/load-smoke.json
+.PHONY: load-smoke
+load-smoke:
+	scripts/load/run.sh --out $(LOAD_SMOKE_OUT)
+
+# Every e2e script, twice, on a fresh stack (S26 T22; AC 10): profile e2e, `make e2e` with the
+# stack's ports, project and hooks as overrides, then the stack removed. Not a required check.
+.PHONY: e2e-fresh
+e2e-fresh:
+	scripts/e2e/lib/e2e_fresh.sh
+
+# The v1 acceptance run on a fresh stack (S26 T20-T21; AC 9): setup by the staff CLI, then every
+# leg over HTTP against the stack's own fake marketplace and worker; `make e2e` skips the script.
+.PHONY: acceptance
+acceptance:
+	scripts/e2e/lib/acceptance_run.sh
+
+# The restore drill (S26 T19; AC 8): the acceptance run on a fresh stack, pg_dump -Fc, a
+# throwaway container (0000 + the password file, then pg_restore), then every check; <= 900 s.
+.PHONY: drill-restore
+drill-restore:
+	scripts/drill/restore.sh --seed-run
 
 # ONBOARDING.md on a clean clone of this branch (S14b T25): its own compose project and free ports,
 # every documented command, then the clone, its stack and its processes removed. Not a CI check.

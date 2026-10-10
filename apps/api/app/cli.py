@@ -119,9 +119,20 @@ EXIT_NOT_ELIGIBLE: Final = 4
 DEAD_LETTER_LIMIT_MAX: Final = 500
 _EMAIL: Final = re.compile(r"[^@\s]{1,64}@[^@\s]{1,189}")
 SEED_PROFILES: Final = ("demo", "isolation")
-RULES_SEED_PATH: Final = (
-    Path(__file__).resolve().parents[3] / "packages/schemas/fixtures/rules.seed.json"
-)
+_RULES_SEED: Final = "packages/schemas/fixtures/rules.seed.json"
+
+
+def _rules_seed_path(here: Path) -> Path:
+    """The repo's platform RuleSets file: the nearest parent that holds it (S26 T23: a copy of
+    apps/api one level deeper, mutmut's `mutants/`, still finds it), else `parents[3]` as
+    before."""
+    for parent in here.parents:
+        if (parent / _RULES_SEED).is_file():
+            return parent / _RULES_SEED
+    return here.parents[3] / _RULES_SEED
+
+
+RULES_SEED_PATH: Final = _rules_seed_path(Path(__file__).resolve())
 # The local fake error map (S20 D7): `FAKE-` codes only; seed and `platform load` read it. It ships
 # in the image (app/db/seed_data), so the image's local-only `seed` role can load it too.
 ERROR_MAP_FAKE_PATH: Final = Path(__file__).resolve().parent / "db/seed_data/error_map.fake.json"
