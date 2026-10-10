@@ -1,7 +1,8 @@
 """`human_tasks` for marketplace accounts (DATABASE.md:1338-1355; S15): the one live
 `reconnect_account` task per account (`ht_one_live_account`), opened when a refresh is rejected,
 applied when the same seller reconnects, cancelled (`superseded`) when the account is revoked.
-The 0004 guard allows only `open -> answered|cancelled` and `answered -> applied|cancelled`, so
+A new account that replaces a revoked one gets one already applied when a publish attempt was
+stranded by the revoke (`applied_by_connect`). The 0004 guard allows only `open -> answered|cancelled` and `answered -> applied|cancelled`, so
 applying is two steps. Inserts go through Core (the `request_id` column default stamps them)."""
 
 from __future__ import annotations
@@ -23,6 +24,11 @@ RECONNECT_ANSWER: Final = {"kind": "reconnect"}
 RECONNECT_QUESTION: Final = "Reconnect this marketplace account."
 RECONNECT_REASON: Final = (
     "The marketplace refused to refresh the connection; publishing to it waits for a reconnect."
+)
+
+CONNECTED_QUESTION: Final = "Connect the marketplace account again."
+CONNECTED_REASON: Final = (
+    "The account was revoked while a publish was running; connecting a new account resolves it."
 )
 
 _ANSWER: Final = text(
@@ -79,6 +85,34 @@ class HumanTaskRepository(TenantScopedRepository[HumanTask]):
         params = {"t": self.tenant_id, "a": account_id, "user": user_id}
         await self.db.execute(_ANSWER, {**params, "answer": json.dumps(RECONNECT_ANSWER)})
         return _rowcount(await self.db.execute(_APPLY, params))
+
+    async def applied_by_connect(
+        self, account_id: uuid.UUID, user_id: uuid.UUID
+    ) -> uuid.UUID | None:
+        """A `reconnect_account` task on a newly connected account, answered by `user_id` and
+        applied at once (the connect is the resolution): what a publish attempt stranded by a
+        revoke links its AUTH_EXPIRED issue to, so the publish gate and `human_resolution`
+        accept the next attempt. None when the account already has a live reconnect task."""
+        stmt = (
+            insert(HumanTask)
+            .values(
+                tenant_id=self.tenant_id,
+                kind=RECONNECT_KIND,
+                target_path=RECONNECT_TARGET,
+                marketplace_account_id=account_id,
+                question=CONNECTED_QUESTION,
+                reason=CONNECTED_REASON,
+                expected_answer=dict(RECONNECT_ANSWER),
+                resume_from="publish",
+            )
+            .on_conflict_do_nothing()
+            .returning(HumanTask.id)
+        )
+        task_id: uuid.UUID | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        if task_id is None:
+            return None
+        await self.apply_reconnect(account_id, user_id)
+        return task_id
 
     async def any_applied_after(self, task_ids: builtins.list[uuid.UUID], at: datetime) -> bool:
         """S21 `human_resolution`: one of `task_ids` reached `applied` after `at`."""

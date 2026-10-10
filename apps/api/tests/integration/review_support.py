@@ -60,10 +60,13 @@ async def generated(
     *,
     scenario: str | None = None,
     sku: str | None = None,
+    marketplace: str = "amazon",
 ) -> Made:
     """A generated listing (status per the stub scenario: `validated` for none)."""
     sku = sku or await new_product(world, email)
-    accepted = await make_generating(world, email=email, sku=sku, instructions=scenario)
+    accepted = await make_generating(
+        world, email=email, sku=sku, instructions=scenario, marketplace=marketplace
+    )
     await run_job(accepted.job_id)
     row = world.listing(accepted.listing_id)
     assert row["current_version_id"] is not None, row["status"]

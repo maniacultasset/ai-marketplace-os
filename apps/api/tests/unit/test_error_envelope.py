@@ -50,6 +50,10 @@ def _app() -> FastAPI:
     async def api_error_401() -> None:
         raise ApiError(401, ErrorCode.UNAUTHENTICATED, "Authentication required.")
 
+    @app.get("/api-error-429")
+    async def api_error_429() -> None:
+        raise ApiError(429, ErrorCode.RATE_LIMITED, headers={"Retry-After": "7"})
+
     @app.get("/http/{status}")
     async def http_error(status: int) -> None:
         raise HTTPException(status_code=status, detail=f"detail {CANARY}")
@@ -175,6 +179,27 @@ def test_429_is_retryable(client: TestClient) -> None:
     assert rate["errors"][0]["retryable"] is True
     other = client.get("/http/404").json()["error"]["error_report"]
     assert other["retryable"] is False
+
+
+def test_every_429_carries_retry_after(client: TestClient) -> None:
+    """audit VALIDATION-2: openapi.json declares Retry-After on every 429. A raiser that names no
+    window gets the cap hint; one that names it keeps its own value."""
+    from app.core.errors import CAP_RETRY_AFTER_S
+
+    assert client.get("/http/429").headers["retry-after"] == str(CAP_RETRY_AFTER_S)
+    assert client.get("/api-error-429").headers["retry-after"] == "7"
+    assert "retry-after" not in client.get("/http/404").headers
+
+
+def test_domain_limit_error_maps_its_retry_after() -> None:
+    from app.api.errors import domain_api_error
+    from app.core.errors import CAP_RETRY_AFTER_S, LimitError
+
+    assert domain_api_error(LimitError("cap")).headers == {"Retry-After": str(CAP_RETRY_AFTER_S)}
+    assert domain_api_error(LimitError("window", retry_after_s=120)).headers == {
+        "Retry-After": "120"
+    }
+    assert domain_api_error(LimitError("window", retry_after_s=0)).headers == {"Retry-After": "1"}
 
 
 def test_422_details_are_loc_msg_only(client: TestClient) -> None:

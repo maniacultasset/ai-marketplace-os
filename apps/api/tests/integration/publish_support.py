@@ -54,13 +54,21 @@ class PubWorld:
         return dict(zip(names, row, strict=True))
 
 
-def insert_account(world: GenWorld, slug: str, seller: str | None = None) -> uuid.UUID:
+def insert_account(
+    world: GenWorld, slug: str, seller: str | None = None, *, marketplace: str = "amazon"
+) -> uuid.UUID:
     owner = world.user(f"owner@{slug}.test")
     row = world.conn.execute(
         "INSERT INTO marketplace_accounts (tenant_id, marketplace, seller_id, token_enc, "
-        "kms_key_version, expires_at, connected_by_user_id) VALUES (%s, 'amazon', %s, %s, 'v1', "
+        "kms_key_version, expires_at, connected_by_user_id) VALUES (%s, %s, %s, %s, 'v1', "
         "now() + interval '1 hour', %s) RETURNING id",
-        [world.tenant(slug), seller or f"S21{uuid.uuid4().hex[:8].upper()}", b"sealed", owner],
+        [
+            world.tenant(slug),
+            marketplace,
+            seller or f"S21{uuid.uuid4().hex[:8].upper()}",
+            b"sealed",
+            owner,
+        ],
     ).fetchone()
     assert row is not None
     return row[0]  # type: ignore[no-any-return]
@@ -97,12 +105,14 @@ async def pub(auth_db: Any, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[Pu
         get_queue_app.cache_clear()
 
 
-async def approved(pw: PubWorld, *, sku: str | None = None, maker: str = OPERATOR) -> Made:
+async def approved(
+    pw: PubWorld, *, sku: str | None = None, maker: str = OPERATOR, marketplace: str = "amazon"
+) -> Made:
     """A generated listing approved by the reviewer (maker-checker: a second member)."""
     from app.repositories.uow import tenant_uow
     from app.services.review import ReviewItem, approve_batch
 
-    made = await generated(pw.world, maker, sku=sku)
+    made = await generated(pw.world, maker, sku=sku, marketplace=marketplace)
     slug = maker.split("@", 1)[1]
     principal = pw.world.principal(REVIEWER if slug == "acme.test" else f"reviewer@{slug}")
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:

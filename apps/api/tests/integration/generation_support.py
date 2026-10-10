@@ -130,6 +130,7 @@ async def make_generating(
     email: str = "operator@acme.test",
     sku: str = "KURTA-002",
     instructions: str | None = None,
+    marketplace: str = "amazon",
 ) -> Any:
     """`request_generation` for one product of the caller's tenant; returns the `ItemAccepted`."""
     from app.repositories.uow import tenant_uow
@@ -145,7 +146,7 @@ async def make_generating(
             [
                 GenerateItem(
                     product_id=world.product(email.split("@", 1)[1].split(".", 1)[0], sku),
-                    marketplace=Marketplace.AMAZON,
+                    marketplace=Marketplace(marketplace),
                     user_instructions=instructions,
                 )
             ],

@@ -22,6 +22,11 @@ invariants 1, 4, 8, 9, 10; S20 T11, T12).
 - `get_listing` (S21 CP6): BUYABLE -> live; an item-level ERROR issue and no BUYABLE -> rejected;
   attribute ERROR issues -> partially live (S20); neither BUYABLE nor DISCOVERABLE -> inactive; else
   processing; 404 -> `ListingNotFound`.
+- Reply shape (audit JOBS-3): a 200 reply whose structure cannot be read (not an object, `status`
+  not a string, `issues`/`summaries`/`summaries[].status` not lists, a summary not an object,
+  `attributes` not an object) is `MarketplaceAmbiguous` after a write (read before any resend)
+  and `MarketplaceUnavailable` on a GET, never a raw TypeError/KeyError. An issue whose
+  `attributeNames` or `categories` is not a list names no attribute.
 - The adapter never checks approval (invariant 1: S21 calls it only after approval), never runs
   a `fix_action`, and passes `attempt` through unchanged (invariant 9).
 """
@@ -40,7 +45,7 @@ from mkos_schemas.errors import ErrorItem, ErrorReport
 from mkos_schemas.publish import FieldResult, ItemResult, ListingResult
 
 from app.adapters.amazon import constants as c
-from app.adapters.amazon.client import SpApiClient, SpApiResponse
+from app.adapters.amazon.client import SpApiClient, SpApiResponse, failure
 from app.adapters.amazon.mapping import (
     DEFAULT_MARKETPLACE_ID,
     MappedItem,
@@ -70,6 +75,41 @@ from app.adapters.error_map import ErrorMapper
 NO_LISTING_ID: Final = UUID(int=0)
 MAX_PERFORMANCE_DAYS: Final = 366
 _ORDER: Final = {"failed": 0, "succeeded": 1, "skipped": 2}
+
+
+class _UnreadableReplyError(Exception):
+    """A 200 reply whose structure the adapter cannot read (audit JOBS-3)."""
+
+
+def _names(value: Any) -> list[str]:
+    """An issue's `attributeNames`/`categories`: a list of names, or none at all."""
+    return [str(n) for n in value] if isinstance(value, list) else []
+
+
+def _write_reply(response: SpApiResponse) -> dict[str, Any]:
+    """The body of a PUT/PATCH reply; a 200 whose structure cannot be read is `_UnreadableReplyError`."""
+    body = response.json
+    if not isinstance(body, dict):
+        if response.status == 200:
+            raise _UnreadableReplyError
+        return {}
+    if response.status == 200:
+        status = body.get("status")
+        if status is not None and not isinstance(status, str):
+            raise _UnreadableReplyError
+        for key in ("issues", "errors"):
+            if body.get(key) is not None and not isinstance(body[key], list):
+                raise _UnreadableReplyError
+    return body
+
+
+def _unconfirmed(results: Sequence[ItemResult]) -> MarketplaceAmbiguous:
+    return MarketplaceAmbiguous(
+        failure(
+            ErrorCode.MARKETPLACE_UNCONFIRMED, "Amazon answered with a reply it could not read."
+        ),
+        completed=results,
+    )
 
 
 class _Outcome:
@@ -119,7 +159,7 @@ class AmazonAdapter(MarketplaceAdapter):
         values: Mapping[str, str | None],
     ) -> tuple[dict[str, ErrorItem], dict[str, ErrorItem], list[ErrorItem]]:
         """(failed path -> error, warned path -> warning, item-level errors)."""
-        body = response.json if isinstance(response.json, dict) else {}
+        body = _write_reply(response)
         issues = body.get("issues") or body.get("errors") or []
         in_scope = set(scope)
         failed: dict[str, ErrorItem] = {}
@@ -131,8 +171,8 @@ class AmazonAdapter(MarketplaceAdapter):
             severity = str(issue.get("severity", "ERROR")).upper()
             if severity == "INFO":
                 continue
-            names = [str(n) for n in issue.get("attributeNames") or []]
-            categories = [str(x) for x in issue.get("categories") or []]
+            names = _names(issue.get("attributeNames"))
+            categories = _names(issue.get("categories"))
             found: Sequence[str | None] = sorted(
                 {p for n in names for p in index.get(n, ()) if p in in_scope}
             )
@@ -167,7 +207,7 @@ class AmazonAdapter(MarketplaceAdapter):
         unit = mapped.unit
         values: dict[str, str | None] = dict.fromkeys(scope)
         failed, warned, loose = self._issue_items(response, mapped, index, scope, values)
-        body = response.json if isinstance(response.json, dict) else {}
+        body = _write_reply(response)
         status = str(body.get("status", "")).upper()
         invalid = response.status != 200 or status != c.ACCEPTED
         results: list[FieldResult] = []
@@ -345,7 +385,10 @@ class AmazonAdapter(MarketplaceAdapter):
                 )
             bodies.append(response.raw)
             self._sink.put(one.unit.seller_sku, "put", response.raw)
-            outcome = self._outcome(response, one, index, one.paths, one.submitted)
+            try:
+                outcome = self._outcome(response, one, index, one.paths, one.submitted)
+            except _UnreadableReplyError:
+                raise _unconfirmed(results) from None
             results.append(outcome.item)
             if position == 0:
                 ref = outcome.ref
@@ -415,7 +458,10 @@ class AmazonAdapter(MarketplaceAdapter):
                 raise ListingNotFound(one.unit.seller_sku)
             bodies.append(response.raw)
             self._sink.put(one.unit.seller_sku, "patch", response.raw)
-            outcome = self._outcome(response, one, index, scope, sent)
+            try:
+                outcome = self._outcome(response, one, index, scope, sent)
+            except _UnreadableReplyError:
+                raise _unconfirmed(results) from None
             merged = {f.field: f for f in outcome.item.fields}
             for path, problem in blocked.items():
                 merged[path] = FieldResult(field=path, status="failed", error=problem)
@@ -434,38 +480,24 @@ class AmazonAdapter(MarketplaceAdapter):
         response = await self._client.get(seller_sku)
         if response.status == 404:
             raise ListingNotFound(seller_sku)
-        body = response.json if isinstance(response.json, dict) else {}
         if response.status != 200:
-            raise MarketplaceUnavailable(
-                _report(
-                    "failed",
-                    ErrorCode.MARKETPLACE_UNAVAILABLE,
-                    [
-                        error(
-                            "listing",
-                            ErrorCode.MARKETPLACE_UNAVAILABLE,
-                            "Amazon did not return the listing.",
-                        )
-                    ],
-                    None,
-                )
-            )
-        summaries = body.get("summaries") or []
-        summary = summaries[0] if summaries and isinstance(summaries[0], dict) else {}
-        states = [str(s).upper() for s in summary.get("status") or []]
+            raise _unavailable("Amazon did not return the listing.")
+        try:
+            summaries, summary, states, attributes, issues = _read_listing(response.json)
+        except _UnreadableReplyError:
+            raise _unavailable("Amazon returned a listing it could not read.") from None
         index = reverse_index(None)
-        attributes = body.get("attributes") or {}
         paths = sorted({p for name in attributes for p in index.get(name, ()) if p != "variants"})
         open_errors = [
             i
-            for i in body.get("issues") or []
+            for i in issues
             if isinstance(i, dict) and str(i.get("severity", "")).upper() == "ERROR"
         ]
         # S21 CP6: BUYABLE -> live; an ERROR issue and no BUYABLE -> rejected; neither BUYABLE nor
         # DISCOVERABLE -> inactive (e.g. search suppression); else processing ("Submitted")
         # an ERROR issue naming attributes is a partial item (S20 contract: a partial create reads
         # back partially live); one naming none refuses the item as a whole
-        item_errors = [i for i in open_errors if not i.get("attributeNames")]
+        item_errors = [i for i in open_errors if not _names(i.get("attributeNames"))]
         status = "published"
         if c.BUYABLE in states:
             state = MarketplaceState.LIVE
@@ -500,6 +532,46 @@ class AmazonAdapter(MarketplaceAdapter):
 
 
 # ---- helpers ----
+
+
+def _unavailable(message: str) -> MarketplaceUnavailable:
+    return MarketplaceUnavailable(
+        _report(
+            "failed",
+            ErrorCode.MARKETPLACE_UNAVAILABLE,
+            [error("listing", ErrorCode.MARKETPLACE_UNAVAILABLE, message)],
+            None,
+        )
+    )
+
+
+def _read_listing(
+    raw: Any,
+) -> tuple[list[Any], dict[str, Any], list[str], dict[str, Any], list[Any]]:
+    """(summaries, first summary, its states, attributes, issues) of a 200 GET reply;
+    `_UnreadableReplyError` when its structure is not the one SP-API documents (audit JOBS-3)."""
+    if not isinstance(raw, dict):
+        raise _UnreadableReplyError
+    summaries = raw.get("summaries")
+    if summaries is None:
+        summaries = []
+    if not isinstance(summaries, list) or not all(isinstance(s, dict) for s in summaries):
+        raise _UnreadableReplyError
+    summary: dict[str, Any] = summaries[0] if summaries else {}
+    status = summary.get("status")
+    if status is None:
+        status = []
+    if not isinstance(status, list) or not all(isinstance(s, str) for s in status):
+        raise _UnreadableReplyError
+    attributes = raw.get("attributes")
+    if attributes is None:
+        attributes = {}
+    issues = raw.get("issues")
+    if issues is None:
+        issues = []
+    if not isinstance(attributes, dict) or not isinstance(issues, list):
+        raise _UnreadableReplyError
+    return summaries, summary, [s.upper() for s in status], attributes, issues
 
 
 def _dedupe(results: Iterable[FieldResult]) -> list[FieldResult]:

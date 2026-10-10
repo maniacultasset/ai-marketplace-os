@@ -12,6 +12,7 @@ from typing import Any
 import httpx
 import pytest
 from app.adapters.storage import ObjectStorage, csv_bucket, get_storage
+from app.core.errors import CAP_RETRY_AFTER_S
 from app.services.imports import upload as upload_service
 from mkos_schemas.errors import ErrorReport
 
@@ -221,6 +222,17 @@ async def test_import_header_missing_422_nothing_stored(
     )
 
 
+async def test_import_wide_header_422_nothing_stored(
+    imports_db: JobWorld, api: httpx.AsyncClient
+) -> None:
+    """Audit FILES-1: a ~10 MiB one-line header is one file-level refusal, not 5 M items."""
+    tenant = imports_db.tenant("acme")
+    data = b"a," * 5_199_900 + b"a\nx\n"
+    report = assert_import_failed(await upload(api, headers(imports_db), data), "file.header")
+    assert [e.message for e in report.errors] == ["the header row is longer than 32768 characters"]
+    assert stored(imports_db, tenant) == (0, 0) and objects(tenant) == []
+
+
 async def test_import_limits_10mib_plus_1_413(imports_db: JobWorld, api: httpx.AsyncClient) -> None:
     data = b"seller_sku,product_name,category\n" + b"A" * (10 * 1024 * 1024 + 1)
     response = await upload(api, headers(imports_db), data)
@@ -393,6 +405,8 @@ async def test_import_live_cap_per_tenant_429(imports_db: JobWorld, api: httpx.A
     response = await upload(api, headers(imports_db, key=key), GOOD)
     assert response.status_code == 429
     assert response.json()["error"]["type"] == "RATE_LIMITED"
+    # audit VALIDATION-2: a domain-cap 429 carries Retry-After like the limiter's
+    assert response.headers["retry-after"] == str(CAP_RETRY_AFTER_S)
     assert response.json()["error"]["error_report"]["errors"][0]["source"] == "system"
     assert stored(imports_db, tenant) == (0, 2) and objects(tenant) == []
     assert (

@@ -19,9 +19,9 @@ from typing import Final
 SHARDS: Final = (1, 2)
 # Database-heavy folders, split between the two shards by bucket.
 SPLIT_DIRS: Final = ("apps/api/tests/integration/", "apps/api/tests/security/")
-# The share (in percent) of the split folders' files that shard 1 also runs: shard 1 already
-# carries the fast unit and meta suites, the rules-engine branch-coverage gate needs only them.
-SPLIT: Final = 40
+# The share (in percent) of the split folders' files that shard 1 also runs. 40 left shard 2 at
+# 30 min on the runner against 19 for shard 1 (S22b, PR #47); 50 balances the test count.
+SPLIT: Final = 50
 
 
 def bucket(relpath: str) -> int:

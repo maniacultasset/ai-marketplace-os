@@ -4,7 +4,9 @@ ones included, per tenant; a NULL key never dedupes; the payload cap and the ten
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import uuid
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 from app.db.guard import CrossTenantQueryError
@@ -108,3 +110,29 @@ async def test_enqueue_sets_max_attempts_from_policy(jobs_db: JobWorld) -> None:
     done = await _enqueue(jobs_db, _spec(jobs_db))
     assert done.job.max_attempts == 3
     assert done.job.attempt == 0 and done.job.status == "queued"
+
+
+def test_job_idempotency_key_scoped_to_the_http_key_lifetime() -> None:
+    """Audit CONCURRENCY-1/2: the stored HTTP key's `created_at` is part of the derivation, so
+    a reuse after expiry (a new lifetime) derives a new job key; one lifetime derives one."""
+    listing = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    began = datetime(2026, 10, 10, 9, 0, 0, 123456, tzinfo=UTC)
+    raw = "key-1:listing_generate:00000000-0000-0000-0000-000000000001:2026-10-10T09:00:00.123456+00:00"
+    assert job_idempotency_key("key-1", "listing_generate", listing, began) == (
+        hashlib.sha256(raw.encode()).hexdigest()
+    )
+    same_instant = began.astimezone(timezone(timedelta(hours=5, minutes=30)))
+    assert job_idempotency_key("key-1", "listing_generate", listing, same_instant) == (
+        job_idempotency_key("key-1", "listing_generate", listing, began)
+    )
+    later = began + timedelta(hours=25)
+    assert (
+        len(
+            {
+                job_idempotency_key("key-1", "listing_generate", listing),
+                job_idempotency_key("key-1", "listing_generate", listing, began),
+                job_idempotency_key("key-1", "listing_generate", listing, later),
+            }
+        )
+        == 3
+    )

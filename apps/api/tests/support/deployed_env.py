@@ -2,7 +2,9 @@
 one: a Cloud KMS key URI of the Canon shape, https non-loopback marketplace and object-store URLs
 (the OAuth redirect and S3 defaults are loopback, so a deployed boot refuses them) and S3
 credentials that are not the committed MinIO pair, and (S20) the SP-API sandbox host the default
-`AMAZON_USE_SANDBOX=true` requires, and (S23) a real `GIT_SHA` for the Sentry release. Values are `.invalid` and never resolve.
+`AMAZON_USE_SANDBOX=true` requires, and (S23) a real `GIT_SHA` for the Sentry release, and
+(audit PROD-2) an https CORS origin and JWT issuer for the api (their local defaults are
+loopback). Values are `.invalid` and never resolve.
 """
 
 from __future__ import annotations
@@ -30,4 +32,7 @@ DEPLOYED_S15_ENV: Final[dict[str, str]] = {
     "OPENAI_API_KEY": "test-only-not-a-real-key",
     # S23 (D9): a deployed api or worker reports its release
     "GIT_SHA": "0123abc",
+    # audit PROD-2: a deployed api refuses the loopback CORS origin and issuer defaults
+    "ALLOWED_ORIGINS": "https://app.example.invalid",
+    "JWT_ISSUER": "https://api.example.invalid",
 }

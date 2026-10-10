@@ -17,7 +17,8 @@ workers`): S21's publish job calls it, after approval (invariant 1).
 - Flipkart (S22 T13; C5, C10): with `FLIPKART_ENABLED=false` the account is refused with
   `MarketplaceDisabled` right after the row read (nothing unsealed, nothing sent); with it on, the
   API base and token URL are checked against the pin in every environment, then the adapter
-  is `FlipkartAdapter` over `FlipkartClient` with `mkt:flipkart:<account>:<op>` buckets. The
+  is `FlipkartAdapter` over `FlipkartClient` with `mkt:flipkart:<account>:<op>` buckets and the
+  caller's raw-body sink (S22 T22: the publish job's ledger keeps Flipkart's bodies too). The
   seller is the one the account's token was issued for (Flipkart names it in the token reply).
 """
 
@@ -164,7 +165,7 @@ async def open_adapter(
     if account.status != "active":
         raise AuthExpired(failure(ErrorCode.AUTH_EXPIRED, "The account must reconnect."))
     if account.marketplace == "flipkart":
-        return _flipkart(settings, tenant_id, account_id, rows, transport)
+        return _flipkart(settings, tenant_id, account_id, rows, transport, sink)
     problems = spapi_endpoint_errors(
         settings.amazon_spapi_endpoint,
         use_sandbox=settings.amazon_use_sandbox,
@@ -197,6 +198,7 @@ def _flipkart(
     account_id: uuid.UUID,
     rows: Sequence[ErrorMapRow],
     transport: httpx.AsyncBaseTransport | None,
+    sink: RawResponseSink | None = None,
 ) -> FlipkartAdapter:
     """S22 C10: the API base and token URL off the pin are refused in every environment,
     before any unseal or call."""
@@ -214,4 +216,4 @@ def _flipkart(
         limiter=PgOutboundLimiter("flipkart", account_id, rates=flipkart_constants.RATES),
         transport=transport or make_transport(),
     )
-    return FlipkartAdapter(client, ErrorMapper(rows))
+    return FlipkartAdapter(client, ErrorMapper(rows), sink)

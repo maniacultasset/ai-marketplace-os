@@ -4,7 +4,8 @@ DATABASE.md:890; invariant 1).
 `ReaderView` wraps an adapter and exposes exactly one method, `get_listing`: no `create_listing`,
 `update_listing` or `publish_listing`, no `__getattr__`, and the wrapped adapter sits in a
 name-mangled slot. A SKU the marketplace does not know reads as None; a failed read raises
-`ReadFailed` (the job's transport retry), so the sync never needs the adapter module's types. The sync job and service never import the adapter or `open_adapter` themselves
+`ReadFailed` (the job's transport retry), and an account that refuses to open raises
+`AccountInactive`, so the sync never needs the adapter module's types. The sync job and service never import the adapter or `open_adapter` themselves
 (`.importlinter` `status-sync-reader-only`); they get a `ReaderView` from here.
 """
 
@@ -15,13 +16,23 @@ from collections.abc import Awaitable, Callable
 
 from mkos_schemas.publish import ListingResult
 
-from app.adapters.base import AdapterError, ListingNotFound, MarketplaceAdapter, NullSink
+from app.adapters.base import (
+    AdapterError,
+    AuthExpired,
+    ListingNotFound,
+    MarketplaceAdapter,
+    NullSink,
+)
 
 ReaderFactory = Callable[[uuid.UUID, uuid.UUID], Awaitable[MarketplaceAdapter]]
 
 
 class ReadFailed(Exception):  # noqa: N818 - a transport signal to the sync job
     """The marketplace read failed (5xx, throttled, auth): retry the sync job."""
+
+
+class AccountInactive(Exception):  # noqa: N818 - a signal to the sync job
+    """The account refused to open (revoked or `needs_reconnect`): AUTH_EXPIRED, not a retry."""
 
 
 class ReaderView:
@@ -65,4 +76,11 @@ def set_reader_factory(factory: ReaderFactory | None) -> None:
 
 
 async def open_reader(tenant_id: uuid.UUID, account_id: uuid.UUID) -> ReaderView:
-    return ReaderView(await _factory(tenant_id, account_id))
+    """The reader over the account's adapter. An auth refusal while opening (the account is not
+    `active`) is `AccountInactive`; any other adapter failure there is `ReadFailed`."""
+    try:
+        return ReaderView(await _factory(tenant_id, account_id))
+    except AuthExpired:
+        raise AccountInactive(str(account_id)) from None
+    except AdapterError as exc:
+        raise ReadFailed(type(exc).__name__) from None

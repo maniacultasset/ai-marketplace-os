@@ -184,31 +184,34 @@ def _shown(name: str, position: int) -> str:
 
 
 def check_header(columns: Sequence[str]) -> list[tuple[ErrorCode, str]]:
+    """Every header problem in column order, then the missing required columns; at most
+    `MAX_ERROR_ITEMS` of them, the most a report holds (audit FILES-1)."""
     problems: list[tuple[ErrorCode, str]] = []
+
+    def add(code: ErrorCode, message: str) -> None:
+        if len(problems) < MAX_ERROR_ITEMS:
+            problems.append((code, message))
+
     seen: dict[str, str] = {}
     present: set[str] = set()
     for position, raw in enumerate(columns, start=1):
         name = normalize_header(raw if isinstance(raw, str) else "")
         key = row_key(name)
         if key is None:
-            problems.append(
-                (ErrorCode.HEADER_UNKNOWN_COLUMN, f"unknown column {_shown(name, position)}")
-            )
+            add(ErrorCode.HEADER_UNKNOWN_COLUMN, f"unknown column {_shown(name, position)}")
             continue
         identity = name if key == "bullet_1_to_n" else _column_identity(key)
         if identity in seen:
-            problems.append(
-                (
-                    ErrorCode.HEADER_DUPLICATE_COLUMN,
-                    f"duplicate column {_shown(name, position)} (also given as {seen[identity]})",
-                )
+            add(
+                ErrorCode.HEADER_DUPLICATE_COLUMN,
+                f"duplicate column {_shown(name, position)} (also given as {seen[identity]})",
             )
             continue
         seen[identity] = _shown(name, position)
         present.add(key)
     for required in REQUIRED:
         if required not in present:
-            problems.append((ErrorCode.HEADER_MISSING_COLUMN, f"missing column {required}"))
+            add(ErrorCode.HEADER_MISSING_COLUMN, f"missing column {required}")
     return problems
 
 

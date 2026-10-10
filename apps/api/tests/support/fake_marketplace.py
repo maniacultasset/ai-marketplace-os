@@ -42,6 +42,8 @@ confirmed at DW1): `PUT|PATCH|GET /listings/2021-08-01/items/{sellerId}/{sku}?ma
   write, then drops the connection (`httpx.RemoteProtocolError` in process: no reply at all);
   `next_refresh` also takes `malformed`, `oversize` and `extra_field`, each reply embedding the
   `canary` string the control call passes (so a test can prove it is never echoed).
+- Audit JOBS-3: `spapi_body odd_shape` applies the write, then answers its real reply with
+  `"issues": 3` (valid JSON the adapter cannot read).
 - S21 (CP15): `spapi_get {sku: buyable|discoverable|inactive|rejected|gone}` sets what a GET of the
   SKU reads until changed (gone = 404); `POST /__control/reset {"prefix": "<sku prefix>"}` forgets
   the items, issues, GET states and calls of SKUs with that prefix (an e2e run cleans up after
@@ -393,7 +395,9 @@ OVERSIZE_BYTES: Final = 2 * 1024 * 1024
 REFRESH_OUTCOMES: Final = frozenset(
     {"ok", "invalid_grant", "server_error", "timeout", "malformed", "oversize", "extra_field"}
 )
-SPAPI_BODIES: Final = frozenset({"redirect", "oversize", "html", "malformed_json", "extra_field"})
+SPAPI_BODIES: Final = frozenset(
+    {"redirect", "oversize", "html", "malformed_json", "extra_field", "odd_shape"}
+)
 
 
 def issue_token(app: Starlette) -> str:
@@ -535,6 +539,10 @@ async def _spapi(state: FakeState, request: Request) -> Response:
     if shaped == "extra_field":
         reply = json.loads(bytes(response.body))
         reply["unexpected"] = 1
+        return JSONResponse(reply, status_code=response.status_code)
+    if shaped == "odd_shape":
+        reply = json.loads(bytes(response.body))
+        reply["issues"] = 3
         return JSONResponse(reply, status_code=response.status_code)
     return response
 

@@ -427,6 +427,27 @@ class ListingRepository(TenantScopedRepository[Listing]):
             raise
         return row is not None
 
+    async def repoint_account(
+        self, marketplace: str, from_ids: Sequence[uuid.UUID], to_id: uuid.UUID
+    ) -> builtins.list[uuid.UUID]:
+        """Re-point every listing of `marketplace` pinned to one of `from_ids` (the tenant's
+        revoked accounts) to `to_id`, its new active account (DATABASE.md:760); the ids moved.
+        No status changes, so a paused or archived listing moves too."""
+        self._own_session()
+        if not from_ids:
+            return []
+        criterion = self._tenant_criterion(include_platform=False)
+        stmt = self._scoped_write(
+            update(Listing)
+            .where(
+                criterion,
+                Listing.marketplace == marketplace,
+                Listing.marketplace_account_id.in_(tuple(from_ids)),
+            )
+            .values(marketplace_account_id=to_id)
+        ).returning(Listing.id)
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
     async def lock_due_for_sync(self, listing_id: uuid.UUID) -> Listing | None:
         """The listing, locked `FOR UPDATE SKIP LOCKED`, if its sync is still due (S21 T22: a
         second scheduler pass skips a row another holds; the enqueue sets `next_sync_at` NULL)."""
@@ -812,17 +833,22 @@ SYNC_TENANTS: Final = ("trial", "active")
 
 
 async def due_for_sync(
-    session: Any, *, limit: int = 500
+    session: Any, *, limit: int = 500, marketplaces: Sequence[str] | None = None
 ) -> builtins.list[tuple[uuid.UUID, uuid.UUID]]:
     """`(tenant_id, listing_id)` of every listing whose status sync is due (S21 T22;
     `ix_listings_sync_due`): `next_sync_at <= now()`, not paused, archived or publishing, in a
-    `trial`/`active` tenant, oldest slot first. Cross-tenant: run it only in `platform_scope()`
-    (the periodic scheduler); it reads ids only."""
+    `trial`/`active` tenant, pinned to an `active` account (a revoked or `needs_reconnect` one
+    keeps its slot), oldest slot first; with `marketplaces`, only listings of those (the
+    scheduler passes the enabled ones, S22 T21, so a switched-off marketplace keeps its slot).
+    Cross-tenant: run it only in `platform_scope()` (the periodic scheduler); it reads ids only."""
+    from app.db.models.catalog_assets import MarketplaceAccount
     from app.db.models.tenancy import Tenant
 
+    extra = () if marketplaces is None else (Listing.marketplace.in_(tuple(marketplaces)),)
     stmt = (
         select(Listing.tenant_id, Listing.id)
         .where(
+            *extra,
             Listing.next_sync_at.is_not(None),
             Listing.next_sync_at <= func.now(),
             Listing.paused_at.is_(None),
@@ -831,6 +857,15 @@ async def due_for_sync(
             exists(
                 select(Tenant.id).where(
                     Tenant.id == Listing.tenant_id, Tenant.status.in_(SYNC_TENANTS)
+                )
+            ),
+            # a sync reads through the listing's own account: a revoked or needs_reconnect one
+            # keeps the slot due until the listing is on an active account again
+            exists(
+                select(MarketplaceAccount.id).where(
+                    MarketplaceAccount.tenant_id == Listing.tenant_id,
+                    MarketplaceAccount.id == Listing.marketplace_account_id,
+                    MarketplaceAccount.status == "active",
                 )
             ),
         )

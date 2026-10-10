@@ -17,7 +17,8 @@ and the tasks commit together with the job's final row, or not at all:
    (D7);
 6. the account task (CP8): one `marketplace_error_review` per (account, kind), a
    `permission_decision`, or the issue linked to S15's `reconnect_account` task, so a later
-   `resume_publish` can show `human_resolution`.
+   `resume_publish` can show `human_resolution` (none on a revoked account: the next connect
+   links the issue to its own applied task, `marketplaces.confirm`).
 
 `revalidate(uow, ctx)` (CP10): facts or image bytes changed since the approval → the listing
 leaves `publishing` for `needs_review` or `blocked/validation_errors` (event `revalidate`, the
@@ -89,6 +90,9 @@ class AttemptCtx:
     fence_job: bool = True
     """False for an ended job's `pending` row this job resolves (CP1 (c)): the write is fenced
     on the row still being `pending` only."""
+    listing_sku: bool = True
+    """False for a family with no parent row on its marketplace (Flipkart, S22 C9): the listing
+    keeps `marketplace_sku` NULL; its children carry their own SKUs (DATABASE.md:754-755)."""
 
 
 def _aggregate(states: Sequence[str]) -> str:
@@ -151,6 +155,12 @@ async def _open_task(
     if kind is None:
         return
     if kind == "link_reconnect":
+        # a revoked row is never reconnected (confirm makes a new account, which adopts the
+        # listing and resolves its AUTH_EXPIRED issue): no task on it. FOR SHARE orders this
+        # against a concurrent revoke, which then cancels the task opened here.
+        if await uow.marketplace_accounts.status_for_share(ctx.account_id) in (None, "revoked"):
+            log.info("publish.reconnect_task_skipped_revoked", job_run_id=str(ctx.job_id))
+            return
         await uow.human_tasks.open_reconnect(ctx.account_id)
         task_id = await uow.human_tasks.live_account_task(
             ctx.account_id, "reconnect_account", "account.oauth"
@@ -247,7 +257,7 @@ async def _move(
         }
         if listing.first_published_at is None:
             columns["first_published_at"] = DbNow()
-        if listing.marketplace_sku is None:
+        if listing.marketplace_sku is None and ctx.listing_sku:
             columns["marketplace_sku"] = ctx.seller_sku
         if decision.external_id and listing.external_id is None:
             columns["external_id"] = decision.external_id[:128]

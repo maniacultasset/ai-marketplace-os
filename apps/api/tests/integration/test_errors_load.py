@@ -84,13 +84,13 @@ def test_errors_load_idempotent(
     cli_env: Path, superuser_conn: Conn, capsys: pytest.CaptureFixture[str]
 ) -> None:
     before = len(audits(superuser_conn))
-    # S20's 4 Amazon rows, S21's FAKE-QUOTA row and S22's 3 Flipkart rows
-    assert run(FIXTURE, capsys) == (0, "errors load: ok (8 inserted, 0 unchanged, 0 toggled)\n", "")
+    # S20's 4 Amazon rows, S21's FAKE-QUOTA row and S22's 4 Flipkart rows
+    assert run(FIXTURE, capsys) == (0, "errors load: ok (9 inserted, 0 unchanged, 0 toggled)\n", "")
     first = rows(superuser_conn)
-    assert len(first) == 8
+    assert len(first) == 9
     after_first = len(audits(superuser_conn))
-    assert after_first == before + 8
-    assert run(FIXTURE, capsys) == (0, "errors load: ok (0 inserted, 8 unchanged, 0 toggled)\n", "")
+    assert after_first == before + 9
+    assert run(FIXTURE, capsys) == (0, "errors load: ok (0 inserted, 9 unchanged, 0 toggled)\n", "")
     assert rows(superuser_conn) == first
     assert len(audits(superuser_conn)) == after_first
 
@@ -265,6 +265,7 @@ def test_error_map_lookup_flipkart(cli_env: Path, capsys: pytest.CaptureFixture[
     assert {r.raw_value for r in flipkart} == {
         "FAKE-FK-COLOUR",
         "FAKE-FK-MISSING",
+        "FAKE-FK-QUOTA",
         "FAKE_FK_INVALID_ATTRIBUTE",
     }
     assert all(r.marketplace == "flipkart" for r in flipkart)

@@ -1,9 +1,11 @@
 """The limiter dependencies (CANON.md:22, :73; ADR-0005:10-16; CODE-PLAN S10 Q6, C7).
 
 - `limit_ip`: 60/min per client IP; inside every `public()` route.
-- `enforce_tenant_limit(tid)`: 120/min per tenant; `app/api/v1/deps.py::limit_tenant` runs it on
-  the verified access token's `tid` before the principal's membership probe (so the counter's
-  connection is back in the pool first).
+- `enforce_tenant_limit(tid)`: 120/min per tenant; `app/api/v1/deps.py::limit_tenant` runs
+  it after the principal's membership probe passes (the probe's connection is back in the
+  pool first), so a refused token never spends the tenant's budget (AUTH-2, TENANCY-2).
+- `enforce_refused_principal_limit(tid, sub)`: the same limit on `u:<tid>:<sub>`, counted for a
+  verified token whose probe failed (a deactivated member, a suspended tenant).
 - `enforce_login_limit(request, email)`: 5/min per `sha256(ip | lower(email))`, called by the
   login before any password check.
 
@@ -76,3 +78,7 @@ async def enforce_login_limit(request: Request, email: str) -> None:
 
 async def enforce_tenant_limit(tenant_id: UUID) -> None:
     await _enforce(f"t:{tenant_id}", get_settings().rate_limit_per_tenant_per_min)
+
+
+async def enforce_refused_principal_limit(tenant_id: UUID, user_id: UUID) -> None:
+    await _enforce(f"u:{tenant_id}:{user_id}", get_settings().rate_limit_per_tenant_per_min)

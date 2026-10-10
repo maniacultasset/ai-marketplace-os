@@ -9,7 +9,11 @@
   Outside `APP_ENV=local`, `api` and `worker` also need SENTRY_DSN (CANON-ADDENDUM.md §14); a
   blank value counts as missing. They also need a KMS_KEY_URI naming the one token key
   (CANON.md:70), refuse KMS_LOCAL_DEV_KEY (any role), and refuse an http or loopback marketplace
-  authorize/token URL or DASHBOARD_BASE_URL (S15).
+  authorize/token URL or DASHBOARD_BASE_URL (S15). Off local, a JWT_SECRET (and, with the admin
+  on, an ADMIN_SESSION_SECRET) must carry no whitespace and 32+ characters measured unstripped
+  (audit PROD-1; a character-variety floor waits on TEAM-QUESTIONS T132). The api also needs
+  https non-loopback ALLOWED_ORIGINS (exact origins, never `*`) and JWT_ISSUER (PROD-2).
+  Numeric settings carry lower bounds in every env (PROD-3).
 - There is no module-level `settings`: call `get_settings()` where the value is needed.
 """
 
@@ -65,6 +69,12 @@ DEPLOYED_HTTPS_URLS: Final[tuple[tuple[str, str], ...]] = (
     ("flipkart_oauth_redirect_uri", "FLIPKART_OAUTH_REDIRECT_URI"),
     ("dashboard_base_url", "DASHBOARD_BASE_URL"),
 )
+# The same rule for the fields only the api reads: it signs tokens and answers browsers (PROD-2).
+API_HTTPS_URLS: Final[tuple[tuple[str, str], ...]] = (("jwt_issuer", "JWT_ISSUER"),)
+# A deployed secret (PROD-1): no whitespace anywhere and at least this many characters, measured
+# on the raw value. A character-variety floor would also refuse CANON-ADDENDUM A§14's production
+# fixture (`"x" * 32`), so it waits on TEAM-QUESTIONS T132.
+SECRET_MIN_LENGTH: Final = 32
 
 OtelSampler = Literal[
     "always_on",
@@ -91,11 +101,11 @@ class Settings(BaseSettings):
     log_format: Literal["json", "console"] = "json"
     allowed_origins: str = "http://localhost:3000"
     dashboard_base_url: str = "http://localhost:3000"  # an origin: the OAuth callback's 303 target
-    request_max_body_bytes: int = 10_485_760  # Cloud Run hard cap is 32 MiB
-    rate_limit_per_tenant_per_min: int = 120
-    rate_limit_per_ip_per_min: int = 60
-    auth_login_rate_limit_per_min: int = 5
-    oauth_state_ttl_seconds: int = 600
+    request_max_body_bytes: int = Field(default=10_485_760, ge=1)  # Cloud Run hard cap: 32 MiB
+    rate_limit_per_tenant_per_min: int = Field(default=120, ge=1)
+    rate_limit_per_ip_per_min: int = Field(default=60, ge=1)
+    auth_login_rate_limit_per_min: int = Field(default=5, ge=1)
+    oauth_state_ttl_seconds: int = Field(default=600, ge=1)
     admin_enabled: bool = False
     admin_base_url: str = "/internal/admin"
     admin_read_only: bool = True
@@ -109,12 +119,12 @@ class Settings(BaseSettings):
     # ---- database (the pool is per process) ----
     database_url: str | None = Field(default=None, pattern=_PSYCOPG_URL, repr=False)
     alembic_database_url: str | None = Field(default=None, pattern=_PSYCOPG_URL, repr=False)
-    database_pool_size: int = 5
-    database_max_overflow: int = 5
+    database_pool_size: int = Field(default=5, ge=1)
+    database_max_overflow: int = Field(default=5, ge=0)
     database_echo: bool = False
-    database_pool_timeout: int = 10
+    database_pool_timeout: int = Field(default=10, ge=1)
     database_pool_recycle: int = 1800
-    db_statement_timeout_ms: int = 15_000
+    db_statement_timeout_ms: int = Field(default=15_000, ge=1)  # 0 would disable it
 
     # ---- storage ----
     storage_backend: Literal["minio", "gcs"] = "minio"
@@ -140,8 +150,8 @@ class Settings(BaseSettings):
     jwt_algorithm: Literal["HS256"] = "HS256"
     jwt_issuer: str = "http://localhost:8000"
     jwt_audience: str = "ai-marketplace-os"
-    access_token_ttl_minutes: int = 30
-    refresh_token_ttl_days: int = 14
+    access_token_ttl_minutes: int = Field(default=30, ge=1)
+    refresh_token_ttl_days: int = Field(default=14, ge=1)
     password_hash_scheme: Literal["argon2id"] = "argon2id"  # noqa: S105 - a scheme name
 
     # ---- models: per-provider keys ----
@@ -244,6 +254,12 @@ def _is_committed_jwt_secret(secret: str) -> bool:
     return _is_committed_secret(secret, COMMITTED_JWT_SECRETS)
 
 
+def _is_weak_secret(secret: str) -> bool:
+    """Whitespace anywhere (a blank, padded or mangled Secret Manager value) or too short.
+    Measured on the raw value: `min_length` counts the padding, `.strip()` would hide it."""
+    return any(char.isspace() for char in secret) or len(secret) < SECRET_MIN_LENGTH
+
+
 def _is_loopback_host(host: str) -> bool:
     if host == "localhost" or host.endswith(".localhost"):
         return True
@@ -299,14 +315,38 @@ def _storage_errors(s: Settings) -> list[str]:
 def _url_errors(s: Settings) -> list[str]:
     if s.app_env == "local" or s.app_role not in ("api", "worker"):
         return []
+    fields = DEPLOYED_HTTPS_URLS + (API_HTTPS_URLS if s.app_role == "api" else ())
     bad = []
-    for field, name in DEPLOYED_HTTPS_URLS:
+    for field, name in fields:
         value = getattr(s, field)
         if value is not None and _not_deployable_url(value):
             bad.append(name)
-    if not bad:
-        return []
-    return [f"APP_ENV={s.app_env} refuses http or loopback {', '.join(bad)}"]
+    errors = [f"APP_ENV={s.app_env} refuses http or loopback {', '.join(bad)}"] if bad else []
+    if s.app_role == "api" and not _deployable_origins(s.allowed_origins):
+        errors.append(
+            f"APP_ENV={s.app_env} refuses ALLOWED_ORIGINS that are not https non-loopback "
+            "origins (no '*', path, query, userinfo or trailing '/')"
+        )
+    return errors
+
+
+def _deployable_origins(raw: str) -> bool:
+    """Every comma-separated entry an exact browser Origin (`https://host[:port]`), at least one
+    (PROD-2): a `*`, an http or loopback host, or a trailing `/` (no browser sends one, so it
+    silently grants nothing) is refused."""
+    # the split `app.api.cors.parse_origins` applies (app.core never imports app.api)
+    origins = [origin.strip() for origin in raw.split(",") if origin.strip()]
+    if not origins:
+        return False
+    for origin in origins:
+        if origin == "*" or _not_deployable_url(origin):
+            return False
+        parts = urlsplit(origin)
+        if parts.username is not None or parts.password is not None or "@" in parts.netloc:
+            return False
+        if f"{parts.scheme}://{parts.netloc}" != origin:
+            return False
+    return True
 
 
 def _pipeline_stub_installed() -> bool:
@@ -338,6 +378,11 @@ def _boot_errors(s: Settings) -> list[str]:
         errors.append(f"APP_ROLE={s.app_role} requires {', '.join(missing)}")
     if s.app_env != "local" and s.jwt_secret is not None and _is_committed_jwt_secret(s.jwt_secret):
         errors.append(f"APP_ENV={s.app_env} refuses a committed or dev-prefixed JWT_SECRET")
+    elif s.app_env != "local" and s.jwt_secret is not None and _is_weak_secret(s.jwt_secret):
+        errors.append(
+            f"APP_ENV={s.app_env} refuses a weak JWT_SECRET "
+            f"(whitespace, or under {SECRET_MIN_LENGTH} characters)"
+        )
     if s.app_env != "local" and s.app_role in ("api", "worker") and s.sentry_dsn is None:
         errors.append(f"APP_ENV={s.app_env} requires SENTRY_DSN for APP_ROLE={s.app_role}")
     # S23 (D9; ENV.md GIT_SHA): a deployed api or worker reports a real Sentry release
@@ -439,6 +484,11 @@ def _admin_errors(s: Settings) -> list[str]:
     ):
         errors.append(
             f"APP_ENV={s.app_env} refuses a committed or dev-prefixed ADMIN_SESSION_SECRET"
+        )
+    elif s.app_env != "local" and s.admin_enabled and _is_weak_secret(s.admin_session_secret):
+        errors.append(
+            f"APP_ENV={s.app_env} refuses a weak ADMIN_SESSION_SECRET "
+            f"(whitespace, or under {SECRET_MIN_LENGTH} characters)"
         )
     if not s.admin_read_only:
         errors.append("ADMIN_READ_ONLY=false is refused in v1")

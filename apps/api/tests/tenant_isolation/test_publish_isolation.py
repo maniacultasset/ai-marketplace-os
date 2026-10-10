@@ -92,9 +92,12 @@ async def test_iso_scheduler_writes_per_tenant(pw: PubWorld) -> None:
     await run_job(outcome.job_id)
     acme = pw.world.tenant("acme")
     before = {t: _hash(pw.conn, t, acme) for t in ("listings", "job_runs", "listing_submissions")}
+    # the CI job has no object storage, so the publish can fail before it pins the account;
+    # pin it here: the scheduler only picks listings on an active account
     pw.conn.execute(
-        "UPDATE listings SET next_sync_at = now() - interval '1 second' WHERE id = %s",
-        [made.listing_id],
+        "UPDATE listings SET next_sync_at = now() - interval '1 second', "
+        "marketplace_account_id = %s WHERE id = %s",
+        [pw.accounts["bharat"], made.listing_id],
     )
     assert await schedule_status_sync() == 1
     job = pw.conn.execute(

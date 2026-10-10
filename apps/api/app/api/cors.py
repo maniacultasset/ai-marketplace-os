@@ -1,13 +1,16 @@
 """CORS for the FE origins (ENV.md ALLOWED_ORIGINS; CODE-PLAN S10 C13).
 
-Bearer tokens need no cookies, so credentials are off. The allowed request headers are the ones
-the API reads; `X-Request-ID` is exposed so the FE can quote it. A preflight from an origin that
+Bearer tokens need no cookies, so credentials are off. The allowed methods are the ones the frozen
+surface serves (`OPS`), so a new verb on a route is preflight-allowed with it (S16 added DELETE).
+The allowed request headers are the ones the API reads. The exposed response headers are the ones
+openapi.json documents for clients: `ETag` (sent back as `If-Match`), `Retry-After` (on a 429),
+`Location` (on the 303), and `X-Request-ID` so the FE can quote it. A preflight from an origin that
 is not allowed is answered in the one error envelope (invariant 8), not Starlette's plain text.
 """
 
 from __future__ import annotations
 
-from typing import Final
+from typing import Final, get_args
 
 from mkos_schemas.codes import ErrorCode
 from starlette.datastructures import Headers
@@ -16,9 +19,11 @@ from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp
 
 from app.api.errors import STATUS_MESSAGES, envelope_body
+from app.api.v1.surface import OPS, Method
 from app.core.request_context import current_request_id, new_request_id
 
-ALLOWED_METHODS: Final = ("GET", "POST", "PATCH")
+_SERVED: Final = frozenset(op.method for op in OPS.values())
+ALLOWED_METHODS: Final[tuple[str, ...]] = tuple(m for m in get_args(Method) if m in _SERVED)
 ALLOWED_HEADERS: Final = (
     "Authorization",
     "Content-Type",
@@ -26,7 +31,7 @@ ALLOWED_HEADERS: Final = (
     "If-Match",
     "X-Request-ID",
 )
-EXPOSED_HEADERS: Final = ("X-Request-ID",)
+EXPOSED_HEADERS: Final = ("ETag", "Location", "Retry-After", "X-Request-ID")
 PREFLIGHT_MAX_AGE: Final = 600
 
 

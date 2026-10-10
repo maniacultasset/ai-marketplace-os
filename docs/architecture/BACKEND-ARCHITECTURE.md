@@ -602,6 +602,13 @@ links `parent_sku` values to parent products, writes the totals and ends the job
 - **Header errors** [Decided, Canon Addendum §20]: `HEADER_MISSING_COLUMN`, `HEADER_UNKNOWN_COLUMN`
   and `HEADER_DUPLICATE_COLUMN` become one file-level `ErrorReport` (`IMPORT_FAILED`, field
   `file.header`). A SKU repeated inside the file is `DUPLICATE_SKU_IN_FILE`.
+- **Header bounds** [Decided, audit FILES-1/FILES-2]: the header record may use at most 32,768
+  characters and 256 columns (A.6 needs about 170 with the aliases and `bullet_1`..`bullet_99`);
+  a longer one is refused with the same file-level `IMPORT_FAILED` at `file.header` before the
+  csv module splits it, so a 10 MiB one-line header costs no per-column memory. Trailing blank
+  header cells with no value under them in any row (a spreadsheet export's empty last column)
+  are dropped with their cells; a blank header cell with a value under it is still
+  `HEADER_UNKNOWN_COLUMN`.
 - **Row errors** [Decided, Canon Addendum §19]: a bad row shape has `source = schema`; a failed
   category or rule lookup (for example `CATEGORY_NOT_MAPPED`) has `source = rules_engine`.
 - **SKU uniqueness** [Decided, Canon]: `UNIQUE (tenant_id, sku)`, so two brands can both hold
@@ -1439,7 +1446,11 @@ never called directly: it picks jobs up from PostgreSQL (§8.2).
     - another member reusing a key gets 409;
     - batch items each run in their own savepoint;
     - the key is stored in the same transaction as the job rows;
-    - the per-item job key is `sha256(http_key:kind:listing_id)`.
+    - the per-item job key is `sha256(http_key:kind:listing_id)`, with the HTTP key's
+      `created_at` appended, so it is scoped to the key's lifetime: a key reused after it
+      expired queues a fresh job, never the old finished one and never 409 `LISTING_BUSY`;
+      refresh-status resets the sync schedule only when it queued a new job, and its 202 body
+      carries the returned job's real status.
 - **Other endpoints:** whether any other endpoint requires the header is not specified. `DATABASE.md` §7.1 shows it on approve.
 - **Marketplace side:** nothing verifies that Amazon or Flipkart de-duplicate on our key. The proposal is our own per-field ledger plus read-before-retry (`VISION-ALIGNMENT.md` §4.8, G3).
 

@@ -317,9 +317,20 @@ def prod_env() -> dict[str, str]:
 @pytest.fixture
 async def prod_client(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> Any:
     """An httpx client on `create_app()` under APP_ENV=production (no database is touched)."""
-    import app.main
     import httpx
     from app.core.config import get_settings
+    from tests.conftest import CI_DATABASE_URL, CI_JWT_SECRET
+
+    # `app.main` builds a module-level app on first import, so a worker whose first test is this
+    # one would boot it on `clean_env`'s empty env and exit. Import it under the CI env block.
+    for key, value in {
+        "APP_ENV": "local",
+        "DATABASE_URL": CI_DATABASE_URL,
+        "JWT_SECRET": CI_JWT_SECRET,
+    }.items():
+        monkeypatch.setenv(key, value)
+    get_settings.cache_clear()
+    import app.main
 
     for key, value in prod_env().items():
         monkeypatch.setenv(key, value)
