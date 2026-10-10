@@ -165,7 +165,12 @@ def cases(op: Operation) -> frozenset[Case]:
 def _error_codes(op: Operation) -> Mapping[int, tuple[ErrorCode, ...]]:
     c = cases(op)
     extra = op.extra_codes
-    out: dict[int, tuple[ErrorCode, ...]] = {}
+    # The body cap runs before routing on every request (BodyLimitMiddleware): 400 for a malformed
+    # Content-Length (or a body FastAPI cannot parse), 413 over the cap, with or without a body.
+    out: dict[int, tuple[ErrorCode, ...]] = {
+        400: (E.VALIDATION_FAILED,),
+        413: (E.PAYLOAD_TOO_LARGE,),
+    }
     if "validation" in c:
         out[422] = (E.VALIDATION_FAILED, *extra.get(422, ()))
     if "missing_auth" in c or 401 in extra:
@@ -184,8 +189,6 @@ def _error_codes(op: Operation) -> Mapping[int, tuple[ErrorCode, ...]]:
         conflicts.append(E.OAUTH_STATE_INVALID)
     if conflicts:
         out[409] = tuple(conflicts)
-    if op.has_body:
-        out[413] = (E.PAYLOAD_TOO_LARGE,)
     out[429] = (E.RATE_LIMITED,)
     for status, codes in extra.items():
         # an op's own codes join the default ones for a status the cases already declare
@@ -250,8 +253,8 @@ def declared_responses(op: Operation) -> dict[int | str, dict[str, Any]]:
     out["default"] = {
         "model": ErrorEnvelope,
         "description": (
-            "Any other failure, in the same envelope: 501 `NOT_IMPLEMENTED` until the owner "
-            "step lands, 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+            "Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, "
+            "500 `INTERNAL_ERROR`."
         ),
         "content": {
             "application/json": {"example": error_example(500, E.INTERNAL_ERROR)},
@@ -468,7 +471,12 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "marketplaces", "OAuth return: 303 to the app with an opaque pending handle",
               "S15", public=True,
               query=("code", "state", "spapi_oauth_code", "selling_partner_id"), oauth_state=True,
-              extra_codes=_501),
+              extra_codes=MappingProxyType({
+                  **_501,
+                  # the token exchange: a malformed answer (502), a 5xx or timeout (503)
+                  502: (E.MARKETPLACE_UNKNOWN_ERROR,),
+                  503: (E.MARKETPLACE_UNAVAILABLE,),
+              })),
     Operation("marketplaces_accounts", "GET", "/marketplaces/accounts", 200,
               MarketplaceAccountPage, "marketplaces", "Connected accounts and their health",
               "S15", query=("limit", "cursor"), action=A.TENANT_READ),

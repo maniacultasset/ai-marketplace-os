@@ -70,6 +70,8 @@ STATUS_MESSAGES: Final[Mapping[int, str]] = MappingProxyType(
         429: "Too many requests.",
         500: "Internal server error.",
         501: "Not implemented yet.",
+        502: "The marketplace answered unexpectedly; try again.",
+        503: "The marketplace is unavailable; try again.",
     }
 )
 

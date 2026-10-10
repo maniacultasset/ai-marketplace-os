@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Final, cast
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -25,13 +25,22 @@ async def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@router.get("/readyz")
+_NOT_READY: Final = {"status": "unavailable", "checks": {"postgres": "unavailable"}}
+
+
+@router.get(
+    "/readyz",
+    responses={
+        503: {
+            "description": "Not ready: `SELECT 1` failed. The body names the dependency only.",
+            "content": {"application/json": {"example": _NOT_READY}},
+        }
+    },
+)
 async def readyz(request: Request) -> JSONResponse:
     """Readiness: 200 when `SELECT 1` succeeds, else 503 with a fixed body and no detail."""
     # The docstring is the committed openapi.json description: keep it. The body names the
     # dependency (Postgres) and its state only, never the driver's error.
     if await readiness_from(request).is_ready():
         return JSONResponse({"status": "ok", "checks": {"postgres": "ok"}})
-    return JSONResponse(
-        {"status": "unavailable", "checks": {"postgres": "unavailable"}}, status_code=503
-    )
+    return JSONResponse(_NOT_READY, status_code=503)
