@@ -81,7 +81,7 @@ targets (EXECUTION-PLAN.md:605-624, :632-643) and slip with billing (EXECUTION-P
 | S20 | Adapter framework + Amazon | S14b, S15 | B | D32–35 |
 | S21 | Publish, per-field retry, status sync | S19; S20 before final gates | A | D35–37 |
 | S17b | Image pipeline (minimal) | S13, S17a | B | D36–37 |
-| S22 | Flipkart adapter behind a flag | S15, S21 | B | D40–41 or later |
+| S22 | Flipkart adapter behind a flag | S22a (adapter, mapping, flag, connect + preview): S15, S20; S22b (publish wiring): S21 | B | D40–41 or later |
 | S23+S24 | Analytics (4 metrics) + observability completion | S21, S11 | B | D38–39 |
 | S25 | Prod OpenTofu, `deploy-prod.yml`, drills | S4, domain | B | D23–25 |
 | S26 | Launch hardening | all above | A (+B) | D38–41 |

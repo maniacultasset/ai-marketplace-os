@@ -25,6 +25,9 @@ from .auth_support import PREFIX, World, bearer, build_world, tokens_for
 
 Conn = psycopg.Connection[tuple[Any, ...]]
 FAKE_BASE: Final = "http://fake.marketplace.test"
+# S22 C10: Flipkart's OAuth URLs are pinned (loopback on local), so the fake answers them on a
+# loopback origin; the ASGI transport never opens a socket either way.
+FK_FAKE_BASE: Final = "http://127.0.0.1:4020"
 DASHBOARD: Final = "http://dash.test:3000"
 CFG: Final = FakeConfig()
 MKT_ENV: Final[dict[str, str]] = {
@@ -35,8 +38,9 @@ MKT_ENV: Final[dict[str, str]] = {
     "AMAZON_LWA_TOKEN_URL": f"{FAKE_BASE}/amazon/token",
     "FLIPKART_CLIENT_ID": CFG.flipkart.client_id,
     "FLIPKART_CLIENT_SECRET": CFG.flipkart.client_secret,
-    "FLIPKART_AUTHORIZE_URL": f"{FAKE_BASE}/flipkart/authorize",
-    "FLIPKART_TOKEN_URL": f"{FAKE_BASE}/flipkart/token",
+    "FLIPKART_AUTHORIZE_URL": f"{FK_FAKE_BASE}/flipkart/authorize",
+    "FLIPKART_TOKEN_URL": f"{FK_FAKE_BASE}/flipkart/token",
+    "FLIPKART_ENABLED": "true",
     "DASHBOARD_BASE_URL": DASHBOARD,
 }
 

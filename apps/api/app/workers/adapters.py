@@ -14,27 +14,48 @@ workers`): S21's publish job calls it, after approval (invariant 1).
   audit row, and a forced refresh (S15's `refresh_account(force=True)`) writes its own (C15).
 - The limiter is `PgOutboundLimiter` (`mkt:` buckets), the error map the enabled rows, the
   transport `make_transport()` (None in the app; tests pass the fake).
-- Flipkart has no adapter until S22 (`NotImplementedError`).
+- Flipkart (S22 T13; C5, C10): with `FLIPKART_ENABLED=false` the account is refused with
+  `MarketplaceDisabled` right after the row read (nothing unsealed, nothing sent); with it on, the
+  API base and token URL are checked against the pin in every environment, then the adapter
+  is `FlipkartAdapter` over `FlipkartClient` with `mkt:flipkart:<account>:<op>` buckets. The
+  seller is the one the account's token was issued for (Flipkart names it in the token reply).
 """
 
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable, Sequence
 from typing import Final
 
 import httpx
 from mkos_schemas.codes import ErrorCode
+from mkos_schemas.errors import ErrorReport
 from pydantic import SecretStr
 
 from app.adapters.amazon import constants as amazon_constants
 from app.adapters.amazon.adapter import AmazonAdapter
-from app.adapters.amazon.client import SpApiClient, failure
+from app.adapters.amazon.client import SpApiClient
 from app.adapters.amazon.endpoint import spapi_endpoint_errors
-from app.adapters.base import AuthExpired, MarketplaceUnavailable, RawResponseSink
+from app.adapters.base import (
+    AuthExpired,
+    MarketplaceAdapter,
+    MarketplaceDisabled,
+    MarketplaceUnavailable,
+    RawResponseSink,
+    marketplace_failure,
+)
 from app.adapters.credentials import CredentialUnsealError, get_key_unwrapper, unseal
-from app.adapters.error_map import ErrorMapper
+from app.adapters.error_map import ErrorMapper, ErrorMapRow
+from app.adapters.flipkart import constants as flipkart_constants
+from app.adapters.flipkart.adapter import FlipkartAdapter
+from app.adapters.flipkart.client import FlipkartClient
+from app.adapters.flipkart.endpoint import (
+    flipkart_endpoint_errors,
+    flipkart_oauth_endpoint_errors,
+)
 from app.adapters.oauth.http import make_transport
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
+from app.core.flags import marketplace_enabled, not_enabled_report
 from app.repositories.uow import tenant_uow
 from app.workers.outbound_limiter import PgOutboundLimiter
 from app.workers.token_refresh import REFRESH_MARGIN, refresh_account
@@ -49,9 +70,12 @@ class AccountNotFound(LookupError):  # noqa: N818 - the plan's name (S20 T15)
 class WorkerTokenSource:
     """The access token of one account for one adapter session."""
 
-    def __init__(self, tenant_id: uuid.UUID, account_id: uuid.UUID) -> None:
+    def __init__(
+        self, tenant_id: uuid.UUID, account_id: uuid.UUID, marketplace: str = "amazon"
+    ) -> None:
         self._tenant = tenant_id
         self._account = account_id
+        self._marketplace = marketplace
         self._token: SecretStr | None = None
         self._audited = False
 
@@ -67,7 +91,9 @@ class WorkerTokenSource:
                 or snap.token_enc is None
                 or snap.kms_key_version is None
             ):
-                raise AuthExpired(failure(ErrorCode.AUTH_EXPIRED, "The account must reconnect."))
+                raise AuthExpired(
+                    self._failure(ErrorCode.AUTH_EXPIRED, "The account must reconnect.")
+                )
             blob, version = snap.token_enc, snap.kms_key_version
             if audit:
                 await uow.audit.write(
@@ -85,12 +111,15 @@ class WorkerTokenSource:
             )
         except CredentialUnsealError:
             raise MarketplaceUnavailable(
-                failure(
+                self._failure(
                     ErrorCode.MARKETPLACE_UNKNOWN_ERROR,
                     "The stored credential could not be opened.",
                 )
             ) from None
         return pair.access_token
+
+    def _failure(self, code: ErrorCode, message: str) -> ErrorReport:
+        return marketplace_failure(self._marketplace, code, message)
 
     async def get(self) -> SecretStr:
         if self._token is None:
@@ -101,10 +130,15 @@ class WorkerTokenSource:
     async def refresh(self) -> SecretStr:
         outcome = await refresh_account(self._tenant, self._account, force=True)
         if outcome in ("rejected", "stale"):
-            raise AuthExpired(failure(ErrorCode.AUTH_EXPIRED, "Amazon refused the token refresh."))
+            name = self._marketplace.capitalize()
+            raise AuthExpired(
+                self._failure(ErrorCode.AUTH_EXPIRED, f"{name} refused the token refresh.")
+            )
         if outcome in ("transient", "unseal_failed"):
             raise MarketplaceUnavailable(
-                failure(ErrorCode.MARKETPLACE_UNAVAILABLE, "The token refresh did not complete.")
+                self._failure(
+                    ErrorCode.MARKETPLACE_UNAVAILABLE, "The token refresh did not complete."
+                )
             )
         self._token = await self._read(audit=False)  # the refresh audited its own use
         return self._token
@@ -116,7 +150,7 @@ async def open_adapter(
     *,
     transport: httpx.AsyncBaseTransport | None = None,
     sink: RawResponseSink | None = None,
-) -> AmazonAdapter:
+) -> MarketplaceAdapter:
     """`sink` (S21 CP12) keeps every raw marketplace body for the submission ledger."""
     settings = get_settings()
     async with tenant_uow(tenant_id) as uow:
@@ -124,10 +158,13 @@ async def open_adapter(
         rows = await uow.error_map.enabled_rows(account.marketplace) if account else []
     if account is None:
         raise AccountNotFound(str(account_id))
-    if account.marketplace != "amazon":
-        raise NotImplementedError("the Flipkart adapter lands with S22")
+    if not marketplace_enabled(account.marketplace, settings):
+        raise MarketplaceDisabled(not_enabled_report(account.marketplace))
+    failure = _failure_for(account.marketplace)
     if account.status != "active":
         raise AuthExpired(failure(ErrorCode.AUTH_EXPIRED, "The account must reconnect."))
+    if account.marketplace == "flipkart":
+        return _flipkart(settings, tenant_id, account_id, rows, transport)
     problems = spapi_endpoint_errors(
         settings.amazon_spapi_endpoint,
         use_sandbox=settings.amazon_use_sandbox,
@@ -148,3 +185,33 @@ async def open_adapter(
     return AmazonAdapter(
         client, ErrorMapper(rows), sink, marketplace_id=settings.amazon_marketplace_id
     )
+
+
+def _failure_for(marketplace: str) -> Callable[[ErrorCode, str], ErrorReport]:
+    return lambda code, message: marketplace_failure(marketplace, code, message)
+
+
+def _flipkart(
+    settings: Settings,
+    tenant_id: uuid.UUID,
+    account_id: uuid.UUID,
+    rows: Sequence[ErrorMapRow],
+    transport: httpx.AsyncBaseTransport | None,
+) -> FlipkartAdapter:
+    """S22 C10: the API base and token URL off the pin are refused in every environment,
+    before any unseal or call."""
+    problems = flipkart_endpoint_errors(settings.flipkart_api_base, app_env=settings.app_env)
+    problems += flipkart_oauth_endpoint_errors(
+        settings.flipkart_token_url, None, app_env=settings.app_env
+    )
+    if problems:
+        raise MarketplaceUnavailable(
+            marketplace_failure("flipkart", ErrorCode.MARKETPLACE_UNAVAILABLE, "; ".join(problems))
+        )
+    client = FlipkartClient(
+        api_base=settings.flipkart_api_base,
+        tokens=WorkerTokenSource(tenant_id, account_id, "flipkart"),
+        limiter=PgOutboundLimiter("flipkart", account_id, rates=flipkart_constants.RATES),
+        transport=transport or make_transport(),
+    )
+    return FlipkartAdapter(client, ErrorMapper(rows))

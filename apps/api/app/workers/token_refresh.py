@@ -46,7 +46,9 @@ from app.adapters.oauth import (
     TokenGrant,
     get_oauth_client,
 )
+from app.core.config import get_settings
 from app.core.crypto import SealedTokens, get_key_wrapper, seal
+from app.core.flags import marketplace_enabled
 from app.core.logging import get_logger
 from app.repositories.marketplace_accounts import refresh_lock
 from app.repositories.uow import tenant_uow
@@ -86,6 +88,31 @@ async def _wait_for_lock(account_id: uuid.UUID) -> None:
                 return
 
 
+def _refused(tenant_id: uuid.UUID, account_id: uuid.UUID, marketplace: str) -> bool:
+    """S22 D5, C5, C10: a switched-off marketplace is not refreshed (nothing unsealed, nothing
+    sent; the account keeps its status), and a Flipkart token URL off the pin never receives a
+    refresh token, in any environment."""
+    settings = get_settings()
+    if not marketplace_enabled(marketplace, settings):
+        return True
+    if marketplace != "flipkart":
+        return False
+    from app.adapters.flipkart.endpoint import flipkart_oauth_endpoint_errors
+
+    problems = flipkart_oauth_endpoint_errors(
+        settings.flipkart_token_url, None, app_env=settings.app_env
+    )
+    if problems:
+        log.error(
+            "marketplace.token_refresh_endpoint_refused",
+            tenant_id=str(tenant_id),
+            account_id=str(account_id),
+            marketplace=marketplace,
+            reason="; ".join(problems),
+        )
+    return bool(problems)
+
+
 async def _refresh_locked(
     tenant_id: uuid.UUID, account_id: uuid.UUID, *, force: bool = False
 ) -> RefreshOutcome:
@@ -94,6 +121,8 @@ async def _refresh_locked(
     if snap is None or snap.token_enc is None or snap.kms_key_version is None:
         return "skipped"
     if snap.status != "active" or not (snap.due or force):
+        return "skipped"
+    if _refused(tenant_id, account_id, snap.marketplace):
         return "skipped"
     client = get_oauth_client(snap.marketplace)
     if client is None:

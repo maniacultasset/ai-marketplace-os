@@ -331,6 +331,8 @@ def route(
 
 A = Action
 _401: Final = MappingProxyType({401: (E.UNAUTHENTICATED,)})
+# S22 D2: a marketplace that is not configured or is switched off (FLIPKART_ENABLED=false).
+_501: Final = MappingProxyType({501: (E.NOT_IMPLEMENTED,)})
 
 _ROWS: Final[tuple[Operation, ...]] = (
     # ---- auth (S10) ----
@@ -445,11 +447,13 @@ _ROWS: Final[tuple[Operation, ...]] = (
               extra_codes=MappingProxyType({409: (E.LISTING_BUSY,)}), action=A.LISTING_PUBLISH),
     # ---- marketplaces (S15) ----
     Operation("marketplaces_connect", "POST", "/marketplaces/connect", 200, ConnectOut,
-              "marketplaces", "Start OAuth; returns the consent URL", "S15", has_body=True, action=A.MARKETPLACE_CONNECT),
+              "marketplaces", "Start OAuth; returns the consent URL", "S15", has_body=True,
+              extra_codes=_501, action=A.MARKETPLACE_CONNECT),
     Operation("marketplaces_callback", "GET", "/marketplaces/{marketplace}/callback", 303, None,
               "marketplaces", "OAuth return: 303 to the app with an opaque pending handle",
               "S15", public=True,
-              query=("code", "state", "spapi_oauth_code", "selling_partner_id"), oauth_state=True),
+              query=("code", "state", "spapi_oauth_code", "selling_partner_id"), oauth_state=True,
+              extra_codes=_501),
     Operation("marketplaces_accounts", "GET", "/marketplaces/accounts", 200,
               MarketplaceAccountPage, "marketplaces", "Connected accounts and their health",
               "S15", query=("limit", "cursor"), action=A.TENANT_READ),
@@ -457,7 +461,7 @@ _ROWS: Final[tuple[Operation, ...]] = (
               MarketplaceAccountOut, "marketplaces",
               "Confirm a pending connection: the account joins the caller's tenant", "S15",
               has_body=True, conflict_code=E.MARKETPLACE_ACCOUNT_CONFLICT, oauth_state=True,
-              action=A.MARKETPLACE_CONNECT),
+              extra_codes=_501, action=A.MARKETPLACE_CONNECT),
     Operation("marketplaces_accounts_revoke", "POST", "/marketplaces/accounts/{account_id}/revoke",
               200, MarketplaceAccountOut, "marketplaces",
               "Revoke a connection: delete the stored tokens", "S15", path_id="account_id",

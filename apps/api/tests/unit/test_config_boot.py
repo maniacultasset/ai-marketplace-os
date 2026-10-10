@@ -222,3 +222,166 @@ def test_boot_spapi_migrate_role_not_checked(
     """Only the roles that reach SP-API (api, worker) are pinned; a migrate job is not."""
     env = _spapi("staging", "migrate", AMAZON_SPAPI_ENDPOINT=PROD, ALEMBIC_DATABASE_URL=LOCAL_URL)
     assert _boot(monkeypatch, **env) is not None
+
+
+# ---- S22 T2 (AC13; D1, D8; C10, C11): Flipkart with the flag on, off local ----
+
+FK_API = "https://api.flipkart.net/sellers"
+FK_TOKEN = "https://api.flipkart.net/oauth-service/oauth/token"
+FK_AUTHORIZE = "https://api.flipkart.net/oauth-service/oauth/authorize"
+FK_ON = {
+    "FLIPKART_ENABLED": "true",
+    "FLIPKART_CLIENT_ID": "fk-client-zq9",
+    "FLIPKART_CLIENT_SECRET": "fk-secret-zq9-not-committed",
+    "FLIPKART_AUTHORIZE_URL": FK_AUTHORIZE,
+    "FLIPKART_TOKEN_URL": FK_TOKEN,
+    "FLIPKART_API_BASE": FK_API,
+}
+
+
+def _fk(app_env: str, role: str = "api", **over: str) -> dict[str, str]:
+    env = {**_env(app_env, role), **FK_ON}
+    env.update(over)
+    return env
+
+
+@pytest.mark.parametrize("app_env", ["staging", "production"])
+def test_boot_flipkart_off_placeholders_ok(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, app_env: str
+) -> None:
+    env = _env(app_env, "api")
+    env.update(FLIPKART_CLIENT_ID="REPLACE_ME", FLIPKART_CLIENT_SECRET="REPLACE_ME")
+    env.update(FLIPKART_API_BASE="https://evil.example/sellers")
+    env["FLIPKART_TOKEN_URL"] = "https://evil.example/token"
+    if app_env == "production":
+        env.update(AMAZON_SPAPI_ENDPOINT=PROD, AMAZON_USE_SANDBOX="false")
+    assert _boot(monkeypatch, **env) is not None
+
+
+@pytest.mark.parametrize(
+    "name", ["FLIPKART_CLIENT_ID", "FLIPKART_CLIENT_SECRET", "FLIPKART_AUTHORIZE_URL"]
+)
+@pytest.mark.parametrize("value", ["REPLACE_ME", "", None])
+def test_boot_flipkart_on_requires_credentials(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, name: str, value: str | None
+) -> None:
+    env = _fk("staging")
+    if value is None:
+        del env[name]
+    else:
+        env[name] = value
+    code = _refused(monkeypatch, env)
+    assert f"FLIPKART_ENABLED=true requires {name}" in code
+    assert "fk-secret-zq9" not in code
+
+
+@pytest.mark.parametrize("role", ["api", "worker"])
+def test_boot_flipkart_on_pinned_host_ok(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, role: str
+) -> None:
+    assert _boot(monkeypatch, **_fk("staging", role)) is not None
+
+
+@pytest.mark.parametrize("app_env", ["staging", "production"])
+@pytest.mark.parametrize("bad", ["https://evil.example/sellers", "http://api.flipkart.net/sellers"])
+def test_boot_flipkart_on_other_host_refused(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, app_env: str, bad: str
+) -> None:
+    env = _fk(app_env, FLIPKART_API_BASE=bad)
+    if app_env == "production":
+        env.update(AMAZON_SPAPI_ENDPOINT=PROD, AMAZON_USE_SANDBOX="false")
+    assert "FLIPKART_API_BASE must be" in _refused(monkeypatch, env)
+
+
+def test_boot_flipkart_on_path_port_userinfo_query_refused(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for bad in (FK_API + "?a=b", "https://api.flipkart.net:444/sellers", "https://u:p@api.flipkart.net/sellers", FK_API + "/v2"):  # fmt: skip
+        assert "FLIPKART_API_BASE" in _refused(monkeypatch, _fk("staging", FLIPKART_API_BASE=bad))
+
+
+def test_boot_flipkart_on_loopback_ok_on_local(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = {"APP_ENV": "local", "APP_ROLE": "worker", "DATABASE_URL": LOCAL_URL, **FK_ON}
+    env["FLIPKART_API_BASE"] = "http://127.0.0.1:4020/flipkart/sellers"
+    env["FLIPKART_TOKEN_URL"] = "http://127.0.0.1:4020/flipkart/token"
+    assert _boot(monkeypatch, **env) is not None
+
+
+def test_boot_flipkart_on_loopback_refused_off_local(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = _fk("staging", FLIPKART_API_BASE="http://127.0.0.1:4020/flipkart/sellers")
+    assert "FLIPKART_API_BASE" in _refused(monkeypatch, env)
+
+
+def test_boot_flipkart_on_local_placeholders_ok(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Local boots with the `.env.example` placeholders and the flag on; `open_adapter` and the
+    connect route refuse later."""
+    env = {"APP_ENV": "local", "APP_ROLE": "api", "DATABASE_URL": LOCAL_URL, "JWT_SECRET": PRIVATE_JWT}  # fmt: skip
+    env.update(FLIPKART_ENABLED="true", FLIPKART_CLIENT_ID="REPLACE_ME")
+    env.update(FLIPKART_CLIENT_SECRET="REPLACE_ME")
+    assert _boot(monkeypatch, **env) is not None
+
+
+def test_boot_flipkart_messages_name_vars_only(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = _fk("staging", FLIPKART_API_BASE="https://leaky-zq9.evil.example/sellers")
+    env["FLIPKART_TOKEN_URL"] = "https://leaky-zq9.evil.example/t"
+    env["FLIPKART_AUTHORIZE_URL"] = "https://leaky-zq9.evil.example/a"
+    code = _refused(monkeypatch, env)
+    assert "leaky" not in code and "evil" not in code
+    assert "FLIPKART_TOKEN_URL" in code and "FLIPKART_AUTHORIZE_URL" in code
+
+
+@pytest.mark.parametrize("app_env", ["staging", "production"])
+@pytest.mark.parametrize(
+    "bad", ["https://evil.example/oauth-service/oauth/token", "https://api.flipkart.net/other"]
+)
+def test_boot_flipkart_on_token_url_other_host_refused(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, app_env: str, bad: str
+) -> None:
+    env = _fk(app_env, FLIPKART_TOKEN_URL=bad)
+    if app_env == "production":
+        env.update(AMAZON_SPAPI_ENDPOINT=PROD, AMAZON_USE_SANDBOX="false")
+    assert "FLIPKART_TOKEN_URL must be" in _refused(monkeypatch, env)
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "https://evil.example/oauth-service/oauth/authorize",
+        "https://api.flipkart.net.evil.example/oauth-service/oauth/authorize",
+    ],
+)
+def test_boot_flipkart_on_authorize_url_other_host_refused(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, bad: str
+) -> None:
+    env = _fk("staging", FLIPKART_AUTHORIZE_URL=bad)
+    assert "FLIPKART_AUTHORIZE_URL must be https" in _refused(monkeypatch, env)
+
+
+def test_boot_flipkart_on_oauth_urls_pinned_ok(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert _boot(monkeypatch, **_fk("staging")) is not None
+
+
+def test_boot_flipkart_off_oauth_urls_not_checked(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = _fk("staging", FLIPKART_ENABLED="false", FLIPKART_TOKEN_URL="https://evil.example/t")
+    env["FLIPKART_AUTHORIZE_URL"] = "https://evil.example/a"
+    assert _boot(monkeypatch, **env) is not None
+
+
+def test_boot_flipkart_on_migrate_role_not_checked(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = _fk("staging", "migrate", FLIPKART_API_BASE="https://evil.example/s")
+    env["ALEMBIC_DATABASE_URL"] = LOCAL_URL
+    assert _boot(monkeypatch, **env) is not None

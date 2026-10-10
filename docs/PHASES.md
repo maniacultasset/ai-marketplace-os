@@ -78,7 +78,7 @@ Every step runs locally on Docker PostgreSQL 17 + pgvector; Cloud SQL is for sta
 | S21 | Publish, per-field retry, status sync, DLQ requeue | S19; S20 before final gates | FakeAdapter first, fake SP-API | Amazon sandbox (DF1) | built (local) on `feat/s21-publish`, review and merge pending: `POST /listings/publish` (gate, Idempotency-Key, write-ahead submissions, read-before-retry), `retry-fields` (failed fields only, `0008_publish_retry_condition`), at most 3 submissions per version, bounded status sync with `refresh-status`, `GET /listings/{id}/submissions`, submissions bucket; staff requeue of a publish is refused (the user publishes again); DF1-DF3 deferred |
 | S17b | Image pipeline (minimal) | S13, S17a | MinIO for GCS | — | done (local); staging bucket and lifecycle at S4; blocking vision 1.1 (C8); approve gate wired by S19 |
 | S23+S24 | Analytics (4 metrics) + observability completion | S21, S11 | — | — | not started |
-| S22 | Flipkart adapter, behind a flag at launch | S15, S21 | fixtures + FakeAdapter | Flipkart credentials (T78) | not started |
+| S22 | Flipkart adapter, behind a flag at launch | S22a: S15, S20; S22b: S21 | fixtures + the fake Flipkart listings API | Flipkart credentials (T78) | S22a built (adapter, mapping, `FLIPKART_ENABLED` off by default, connect/refresh gates, preview, seed, e2e); S22b (publish wiring) waits on S21; one supervised publish waits on credentials (DW1) |
 | S26 | Launch hardening: failure injection, load test, audits, BRD walkthrough | everything above | — | pilot brand + 2 UAT people (D30; T8) | not started |
 
 - **"Done when":** S2–S26 come from `docs/STEPS.md` (approved 2026-10-04). A step whose untagged

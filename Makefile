@@ -6,7 +6,7 @@ SHELL := bash
 
 # Per-checkout host ports (ADR-0011 amendment):
 # `.worktree.env` is optional and git-ignored; the helper validates it before make reads it.
-WORKTREE_KEYS := COMPOSE_PROJECT_NAME PG_HOST_PORT MINIO_API_HOST_PORT MINIO_CONSOLE_HOST_PORT API_HOST_PORT MOCK_HOST_PORT FAKE_MARKETPLACE_HOST_PORT
+WORKTREE_KEYS := COMPOSE_PROJECT_NAME PG_HOST_PORT MINIO_API_HOST_PORT MINIO_CONSOLE_HOST_PORT API_HOST_PORT MOCK_HOST_PORT FAKE_MARKETPLACE_HOST_PORT FLAG_OFF_API_HOST_PORT
 # `make e2e` against a caller's own stack (S13b): an API_HOST_PORT in the environment wins over
 # .worktree.env there (read before the file is included).
 E2E_ENV_API_PORT := $(if $(filter environment,$(origin API_HOST_PORT)),$(API_HOST_PORT))
@@ -21,6 +21,7 @@ PG_HOST_PORT := $(or $(PG_HOST_PORT),5432)
 API_HOST_PORT := $(or $(API_HOST_PORT),8000)
 MOCK_HOST_PORT := $(or $(MOCK_HOST_PORT),4010)
 FAKE_MARKETPLACE_HOST_PORT := $(or $(FAKE_MARKETPLACE_HOST_PORT),4020)
+FLAG_OFF_API_HOST_PORT := $(or $(FLAG_OFF_API_HOST_PORT),8011)
 
 # A reason when $(1) is not one all-digit word in 1..65535. Non-digits never reach the shell.
 _nondigit = $(subst 0,,$(subst 1,,$(subst 2,,$(subst 3,,$(subst 4,,$(subst 5,,$(subst 6,,$(subst 7,,$(subst 8,,$(subst 9,,$(1)))))))))))
@@ -41,6 +42,10 @@ endif
 fake_port_problem := $(call port_problem,$(FAKE_MARKETPLACE_HOST_PORT))
 ifneq ($(fake_port_problem),)
 $(error FAKE_MARKETPLACE_HOST_PORT is not a valid port: $(fake_port_problem))
+endif
+flag_off_port_problem := $(call port_problem,$(FLAG_OFF_API_HOST_PORT))
+ifneq ($(flag_off_port_problem),)
+$(error FLAG_OFF_API_HOST_PORT is not a valid port: $(flag_off_port_problem))
 endif
 minio_api_port_problem := $(if $(strip $(MINIO_API_HOST_PORT)),$(call port_problem,$(MINIO_API_HOST_PORT)))
 ifneq ($(minio_api_port_problem),)
@@ -202,6 +207,8 @@ bootstrap-mimic:
 # placeholder SP-API application id. The client ids and secrets are the .env.example placeholders.
 # S21: the SP-API endpoint is the fake too (a loopback host is allowed only at APP_ENV=local), so
 # the e2e worker's publish and status-sync jobs never leave the machine.
+# S22 C2: the local API (and every e2e hook) also runs with Flipkart on against the fake's listing
+# routes; `.env.example` and the Settings default keep FLIPKART_ENABLED=false everywhere else.
 FAKE_MARKETPLACE_URL = http://127.0.0.1:$(FAKE_MARKETPLACE_HOST_PORT)
 FAKE_AMAZON_APP_ID := amzn1.sp.solution.REPLACE_ME
 FAKE_MARKETPLACE_ENV = AMAZON_APP_ID=$(FAKE_AMAZON_APP_ID) \
@@ -209,7 +216,9 @@ FAKE_MARKETPLACE_ENV = AMAZON_APP_ID=$(FAKE_AMAZON_APP_ID) \
 	AMAZON_LWA_TOKEN_URL=$(FAKE_MARKETPLACE_URL)/amazon/token \
 	FLIPKART_AUTHORIZE_URL=$(FAKE_MARKETPLACE_URL)/flipkart/authorize \
 	FLIPKART_TOKEN_URL=$(FAKE_MARKETPLACE_URL)/flipkart/token \
-	AMAZON_SPAPI_ENDPOINT=$(FAKE_MARKETPLACE_URL)
+	AMAZON_SPAPI_ENDPOINT=$(FAKE_MARKETPLACE_URL) \
+	FLIPKART_API_BASE=$(FAKE_MARKETPLACE_URL)/flipkart/sellers \
+	FLIPKART_ENABLED=true
 
 # uvicorn keeps its 127.0.0.1 default: never pass --host here.
 .PHONY: dev
@@ -271,6 +280,9 @@ seed:
 E2E_DIR ?= scripts/e2e
 RESET_LIMITS ?= scripts/ci/reset_rate_limits.sh
 FAKE_CTL ?= scripts/ci/fake_marketplace.sh
+# S22 C2: a second, flag-off API (FLIPKART_ENABLED=false) on FLAG_OFF_API_HOST_PORT for the whole
+# pass; the scripts get its URL as FLAG_OFF_URL.
+FLAG_OFF_CTL ?= scripts/ci/flag_off_api.sh
 REFRESH_ONCE ?= APP_ROLE=worker uv run --frozen python -m app.workers.oneshot refresh_marketplace_tokens
 
 # The import flow's hooks (S13b): a local worker beside `make dev` (its PID in E2E_WORKER_PIDFILE)
@@ -300,6 +312,9 @@ e2e:
 	trap '$(FAKE_CTL) stop $(FAKE_MARKETPLACE_HOST_PORT)' EXIT; \
 	export $(FAKE_MARKETPLACE_ENV); \
 	export FAKE_URL="$(FAKE_MARKETPLACE_URL)" REFRESH_ONCE="$(REFRESH_ONCE)"; \
+	$(FLAG_OFF_CTL) start $(FLAG_OFF_API_HOST_PORT) || exit $$?; \
+	trap '$(FLAG_OFF_CTL) stop $(FLAG_OFF_API_HOST_PORT); $(FAKE_CTL) stop $(FAKE_MARKETPLACE_HOST_PORT)' EXIT; \
+	export FLAG_OFF_URL="http://127.0.0.1:$(FLAG_OFF_API_HOST_PORT)"; \
 	for script in $(E2E_DIR)/*.sh; do \
 	  [ -e "$$script" ] || { echo "make e2e: no scripts in $(E2E_DIR)" >&2; exit 1; }; \
 	  [ "$$(basename "$$script")" != onboarding.sh ] || continue; \

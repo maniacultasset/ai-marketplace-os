@@ -171,12 +171,131 @@ async def test_open_adapter_no_transaction_during_http(
     assert probe.seen == [0] * 5
 
 
-async def test_open_adapter_flipkart_not_implemented(
-    spapi_env: MktWorld, mapi: httpx.AsyncClient
+# ---- S22 T13 (AC3, AC6, AC10, AC12; C5, C10): Flipkart through open_adapter ----
+
+FK_API = "http://127.0.0.1:4020/flipkart/sellers"
+
+
+@pytest.fixture
+def fk_env(mkt: MktWorld, monkeypatch: pytest.MonkeyPatch) -> MktWorld:
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("FLIPKART_API_BASE", FK_API)
+    get_settings.cache_clear()
+    return mkt
+
+
+def _fk_calls(mw: MktWorld) -> list[dict[str, Any]]:
+    return [c for c in mw.control.calls if c["marketplace"] == "flipkart"]
+
+
+async def test_flipkart_flag_off_open_adapter_no_unseal(
+    fk_env: MktWorld, mapi: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    account = await connected_account(mapi, spapi_env, marketplace="flipkart")
-    with pytest.raises(NotImplementedError):
-        await _open(spapi_env, account["id"])
+    from app.adapters.base import MarketplaceDisabled
+    from app.core.config import get_settings
+
+    account = await connected_account(mapi, fk_env, marketplace="flipkart", seller="F1OFF")
+    monkeypatch.setenv("FLIPKART_ENABLED", "false")
+    get_settings.cache_clear()
+    with pytest.raises(MarketplaceDisabled) as caught:
+        await _open(fk_env, account["id"])
+    report = caught.value.report
+    assert report.error_code == "NOT_IMPLEMENTED" and report.errors[0].source == "system"
+    assert report.errors[0].message == "Flipkart is not enabled"
+    assert caught.value.completed == ()
+    assert _used(fk_env) == [] and _fk_calls(fk_env) == []
+
+
+@pytest.mark.parametrize("marketplace", ["amazon", "flipkart"])
+async def test_open_adapter_wrong_tenant_both(
+    fk_env: MktWorld, spapi_env: MktWorld, mapi: httpx.AsyncClient, marketplace: str
+) -> None:
+    from app.workers.adapters import AccountNotFound
+
+    account = await connected_account(mapi, fk_env, marketplace=marketplace)
+    with pytest.raises(AccountNotFound):
+        await _open(fk_env, account["id"], slug="bharat")
+    assert _used(fk_env) == []
+
+
+async def test_open_adapter_flipkart_create_end_to_end(
+    fk_env: MktWorld, mapi: httpx.AsyncClient
+) -> None:
+    from app.adapters.flipkart.adapter import FlipkartAdapter
+    from tests.adapters.flipkart_support import fk_family
+
+    account = await connected_account(mapi, fk_env, marketplace="flipkart", seller="F1ROW")
+    adapter = await _open(fk_env, account["id"])
+    assert isinstance(adapter, FlipkartAdapter)
+    result = await adapter.create_listing(fk_family(style="KF-E2E"))
+    await adapter.aclose()
+    assert result.status == "published" and len(result.items) == 4
+    (call,) = _fk_calls(fk_env)
+    assert call["raw_path"] == "/flipkart/sellers/listings/v3"
+    (used,) = _used(fk_env)
+    assert used[9] == "marketplace_call"
+
+
+async def test_open_adapter_flipkart_seller_from_row(
+    fk_env: MktWorld, mapi: httpx.AsyncClient
+) -> None:
+    """The adapter acts as the account's seller: what it writes lands under the seller the
+    account row names (the token the account holds was issued for it)."""
+    from tests.adapters.flipkart_support import fk_item
+
+    account = await connected_account(mapi, fk_env, marketplace="flipkart", seller="F1SELLER")
+    assert account["seller_id"] == "F1SELLER"
+    adapter = await _open(fk_env, account["id"])
+    await adapter.create_listing(fk_item(sku="FK-ROW-1"))
+    assert list(fk_env.control.fk_items) == [("F1SELLER", "FK-ROW-1")]
+
+
+async def test_open_adapter_flipkart_endpoint_mismatch_refused(
+    fk_env: MktWorld, mapi: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Local, a non-loopback http API base: refused before any unseal or call; the message
+    names the variable, never the value."""
+    from app.adapters.base import MarketplaceUnavailable
+    from app.core.config import get_settings
+
+    account = await connected_account(mapi, fk_env, marketplace="flipkart")
+    monkeypatch.setenv("FLIPKART_API_BASE", "http://fake.flipkart.test/sellers")
+    get_settings.cache_clear()
+    with pytest.raises(MarketplaceUnavailable) as caught:
+        await _open(fk_env, account["id"])
+    message = caught.value.report.errors[0].message
+    assert "FLIPKART_API_BASE" in message and "fake.flipkart.test" not in message
+    assert caught.value.report.errors[0].source == "flipkart_adapter"
+    assert _used(fk_env) == [] and _fk_calls(fk_env) == []
+
+
+async def test_open_adapter_flipkart_token_url_mismatch_refused(
+    fk_env: MktWorld, mapi: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.adapters.base import MarketplaceUnavailable
+    from app.core.config import get_settings
+
+    account = await connected_account(mapi, fk_env, marketplace="flipkart")
+    monkeypatch.setenv("FLIPKART_TOKEN_URL", "http://fake.flipkart.test/token")
+    get_settings.cache_clear()
+    with pytest.raises(MarketplaceUnavailable) as caught:
+        await _open(fk_env, account["id"])
+    assert "FLIPKART_TOKEN_URL" in caught.value.report.errors[0].message
+    assert _used(fk_env) == []
+
+
+async def test_open_adapter_flipkart_refresh_once_then_ok(
+    fk_env: MktWorld, mapi: httpx.AsyncClient
+) -> None:
+    from tests.adapters.flipkart_support import fk_item
+
+    account = await connected_account(mapi, fk_env, marketplace="flipkart")
+    fk_env.control.fk_auth_mode, fk_env.control.fk_auth_times = "expired", 1
+    adapter = await _open(fk_env, account["id"])
+    result = await adapter.create_listing(fk_item())
+    assert result.status == "published" and fk_env.control.refreshes == 1
+    assert sorted(u[9] for u in _used(fk_env)) == ["marketplace_call", "token_refresh"]
 
 
 async def test_open_adapter_endpoint_mismatch_refused_on_local(

@@ -274,8 +274,21 @@ def _run_make_e2e(repo_root: Path, tmp_path: Path, fail_first: bool) -> list[str
         f'#!/usr/bin/env bash\nprintf "%s\\n" "fake-$1 $2" >> "{log}"\n', encoding="utf-8"
     )
     fake.chmod(0o755)
+    off = tmp_path / "off.sh"
+    off.write_text(
+        f'#!/usr/bin/env bash\nprintf "%s\\n" "off-$1 $2" >> "{log}"\n', encoding="utf-8"
+    )
+    off.chmod(0o755)
     result = subprocess.run(
-        ["make", "-s", "e2e", f"E2E_DIR={scripts}", f"RESET_LIMITS={reset}", f"FAKE_CTL={fake}"],
+        [
+            "make",
+            "-s",
+            "e2e",
+            f"E2E_DIR={scripts}",
+            f"RESET_LIMITS={reset}",
+            f"FAKE_CTL={fake}",
+            f"FLAG_OFF_CTL={off}",
+        ],
         cwd=repo_root,
         capture_output=True,
         text=True,
@@ -290,10 +303,12 @@ def _run_make_e2e(repo_root: Path, tmp_path: Path, fail_first: bool) -> list[str
 def test_make_e2e_resets_limits_before_each_script(repo_root: Path, tmp_path: Path) -> None:
     assert _run_make_e2e(repo_root, tmp_path, fail_first=False) == [
         "fake-start",
+        "off-start",
         "reset",
         "a",
         "reset",
         "b",
+        "off-stop",
         "fake-stop",
     ]
 
@@ -301,8 +316,10 @@ def test_make_e2e_resets_limits_before_each_script(repo_root: Path, tmp_path: Pa
 def test_make_e2e_stops_on_first_failure(repo_root: Path, tmp_path: Path) -> None:
     assert _run_make_e2e(repo_root, tmp_path, fail_first=True) == [
         "fake-start",
+        "off-start",
         "reset",
         "a",
+        "off-stop",
         "fake-stop",
     ]
 
@@ -354,3 +371,39 @@ def test_make_dev_points_marketplace_urls_at_fake(repo_root: Path) -> None:
     assert "AMAZON_SPAPI_ENDPOINT=$(FAKE_MARKETPLACE_URL)" in joined
     dev = _target(makefile, "dev")
     assert "$(FAKE_MARKETPLACE_ENV) uv run --frozen uvicorn app.main:app" in dev
+
+
+def test_make_dev_flipkart_on_local_only(repo_root: Path) -> None:
+    """S22 C2: `make dev` (and the e2e hooks) run Flipkart on against the fake's listing routes;
+    the committed defaults keep it off everywhere else."""
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    joined = makefile.replace("\\\n\t", " ")
+    assert "FLIPKART_API_BASE=$(FAKE_MARKETPLACE_URL)/flipkart/sellers" in joined
+    assert "FLIPKART_ENABLED=true" in joined
+    assert "$(FAKE_MARKETPLACE_ENV) uv run --frozen uvicorn app.main:app" in _target(
+        makefile, "dev"
+    )
+    example = (repo_root / ".env.example").read_text(encoding="utf-8")
+    assert "\nFLIPKART_ENABLED=false\n" in example
+    config = (repo_root / "apps/api/app/core/config.py").read_text(encoding="utf-8")
+    assert "flipkart_enabled: bool = False" in config
+
+
+def test_make_e2e_starts_flag_off_api(repo_root: Path) -> None:
+    """S22 C2: `make e2e` starts the flag-off API after the fake and its env, stops both on any
+    exit, and hands the scripts FLAG_OFF_URL."""
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    assert "FLAG_OFF_CTL ?= scripts/ci/flag_off_api.sh" in makefile
+    recipe = _e2e_recipe(repo_root)
+    env = recipe.index("export $(FAKE_MARKETPLACE_ENV)")
+    start = recipe.index("$(FLAG_OFF_CTL) start $(FLAG_OFF_API_HOST_PORT)")
+    trap = recipe.index(
+        "trap '$(FLAG_OFF_CTL) stop $(FLAG_OFF_API_HOST_PORT); "
+        "$(FAKE_CTL) stop $(FAKE_MARKETPLACE_HOST_PORT)' EXIT"
+    )
+    hook = recipe.index('export FLAG_OFF_URL="http://127.0.0.1:$(FLAG_OFF_API_HOST_PORT)"')
+    assert env < start < trap < hook < recipe.index("for script in")
+    script = (repo_root / "scripts/ci/flag_off_api.sh").read_text(encoding="utf-8")
+    assert "FLIPKART_ENABLED=false nohup uv run --frozen python -m uvicorn app.main:app" in script
+    assert "--host" not in script and "0.0.0.0" not in script  # noqa: S104
+    assert "pkill" not in script and "killall" not in script
