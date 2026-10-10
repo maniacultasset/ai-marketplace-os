@@ -3,7 +3,9 @@
 - `resolve_range(from_, to, today=)`: the inclusive UTC-day range a request asks for. Both absent:
   the 30 days ending today; only `to`: the 30 days ending `to`; only `from`: `from` to today.
   `from` after `to`, or more than 366 days inclusive, raises `AnalyticsRangeError` (422 at the
-  router). A future `to` is allowed.
+  router). A future `to` is allowed. A range Python's calendar cannot hold (`to` on 9999-12-31,
+  whose end bound is the next day, or a default 30-day start before 0001-01-01) is refused the
+  same way at `to`, before any date arithmetic (audit VALIDATION-1).
 - `DateRange.bounds()`: the half-open UTC instants `[start 00:00Z, end+1 00:00Z)`.
 - `rate(num, den)`: `num / den` as a `Decimal` rounded half-even to 4 places, None when `den` is 0.
 - `summarize(repo, period)`: the `AnalyticsSummary` body (formulas: `app/repositories/analytics.py`).
@@ -73,9 +75,18 @@ class DateRange:
         return lo, hi
 
 
+_LATEST_TO: Final = date.max - timedelta(days=1)
+"""`bounds()` needs `to + 1 day`."""
+_EARLIEST_DEFAULT_TO: Final = date.min + timedelta(days=DEFAULT_DAYS - 1)
+"""Without `from`, the range starts `DEFAULT_DAYS - 1` days before `to`."""
+_OUT_OF_RANGE: Final = "Date out of range."
+
+
 def resolve_range(from_: date | None, to: date | None, *, today: date) -> DateRange:
     if to is None:
         to = today
+    if to > _LATEST_TO or (from_ is None and to < _EARLIEST_DEFAULT_TO):
+        raise AnalyticsRangeError("to", _OUT_OF_RANGE)
     if from_ is None:
         from_ = to - timedelta(days=DEFAULT_DAYS - 1)
     if from_ > to:

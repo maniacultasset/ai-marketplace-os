@@ -107,6 +107,10 @@ BAD_RANGES: dict[str, tuple[dict[str, str], str]] = {
     "malformed_to": ({"from": "2026-09-01", "to": "yesterday"}, "to"),
     "month_13": ({"from": "2026-13-01"}, "from"),
     "blank": ({"from": "", "to": "2026-09-30"}, "from"),
+    # VALIDATION-1 / DB-2: valid ISO dates at the calendar edges (were 500 OverflowError)
+    "to_min": ({"to": "0001-01-01"}, "to"),
+    "to_max": ({"to": "9999-12-31"}, "to"),
+    "from_to_max": ({"from": "9999-12-31", "to": "9999-12-31"}, "to"),
 }
 
 
