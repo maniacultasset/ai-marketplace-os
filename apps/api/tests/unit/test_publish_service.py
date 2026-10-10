@@ -749,3 +749,32 @@ async def test_accept_publish(monkeypatch: pytest.MonkeyPatch) -> None:
         (("uow", "session", principal.tenant_id), principal, items, "key-1"),
         (principal, "key-1", "POST", "/api/v1/listings/publish", b"{}", 202),
     ]
+
+
+async def test_plan_retry_fields_only_refuses_a_non_failed_status_with_a_retry_reason() -> None:
+    uow = _uow()
+    listing = _listing(status="approved", status_reason="publish_partial")
+    with pytest.raises(svc.Refused) as refused:
+        await svc.plan_publish(uow, listing, retry_fields_only=True)
+    assert refused.value.code is ErrorCode.INVALID_STATUS_TRANSITION
+
+
+async def test_plan_reads_the_pending_submission_of_this_listing() -> None:
+    uow = _uow()
+    listing = _listing()
+    await svc.plan_publish(uow, listing)
+    uow.submissions.latest.assert_awaited_once_with(listing.id)
+
+
+async def test_plan_mode_follows_retry_fields_only_not_the_status() -> None:
+    """retry_fields_only asks for a field retry even when the status alone would say publish;
+    without it a publish_failed listing is a full publish after a partial accept."""
+    for only, mode, payload_read in ((True, "retry_fields", True), (False, "publish", False)):
+        uow = _uow(
+            submissions__count_for_version=AsyncMock(return_value=1),
+            submissions__last_for_version=AsyncMock(return_value=_prev("partially_accepted")),
+        )
+        listing = _listing(status="failed", status_reason="publish_failed")
+        plan = await svc.plan_publish(uow, listing, retry_fields_only=only)
+        assert plan.mode == mode, only
+        assert uow.field_results.retry_payload.await_count == int(payload_read)

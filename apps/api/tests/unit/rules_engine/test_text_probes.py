@@ -66,3 +66,17 @@ def test_sub_flags_unicode_group_clears_only_ascii() -> None:
     flags = re.ASCII | re.IGNORECASE
     assert text_mod._sub_flags(flags, (None, re.UNICODE, 0)) == re.IGNORECASE
     assert text_mod._sub_flags(re.IGNORECASE, (None, re.DOTALL, re.IGNORECASE)) == re.DOTALL
+
+
+def test_condition_on_a_null_value_is_false_for_every_value_op() -> None:
+    """D10b: a value op on a path that resolves to null (a product field set to None) is false;
+    only `present`/`absent` look at presence."""
+    from mkos_schemas.rules import Condition
+    from tests.rules_engine_builders import listing
+
+    product = {"gender": None}
+    for op, extra in (("ne", {"value": "men"}), ("not_in", {"values": ["men"]})):
+        cond = Condition.model_validate({"path": "product.gender", "op": op, **extra})
+        assert not text_mod.condition_holds(cond, listing(), product=product, account=None), op
+    absent = Condition.model_validate({"path": "product.gender", "op": "absent"})
+    assert text_mod.condition_holds(absent, listing(), product=product, account=None)
