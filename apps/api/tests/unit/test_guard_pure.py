@@ -151,3 +151,29 @@ def test_check_flush_refuses_outside_a_tenant_unit_of_work() -> None:
 def test_check_flush_passes_own_tenant_and_non_tenant_objects() -> None:
     check_flush(_session(new=[_row(), object()], dirty=[object()], deleted=[_row()]), None, None)
     check_flush(_session(new=[object()], tenant=None), None, None)
+
+
+def _loaded(tenant: uuid.UUID = TENANT) -> JobRun:
+    """A row as if loaded: its tenant column committed, so it carries no change."""
+    from sqlalchemy.orm.attributes import set_committed_value
+
+    row = JobRun(id=uuid.uuid4())
+    set_committed_value(row, "tenant_id", tenant)
+    return row
+
+
+def test_check_flush_update_paths() -> None:
+    check_flush(_session(dirty=[_loaded()]), None, None)
+    with pytest.raises(CrossTenantQueryError) as other:
+        check_flush(_session(dirty=[_loaded(uuid.UUID(int=6))]), None, None)
+    assert str(other.value) == "update of JobRun for another tenant"
+    moved = _loaded()
+    moved.tenant_id = uuid.UUID(int=6)
+    with pytest.raises(CrossTenantQueryError) as changed:
+        check_flush(_session(dirty=[moved]), None, None)
+    assert str(changed.value) == "update of JobRun changes its tenant column"
+
+
+def test_check_flush_checks_past_a_non_tenant_object() -> None:
+    with pytest.raises(CrossTenantQueryError, match="insert of JobRun for another tenant"):
+        check_flush(_session(new=[object(), _row(uuid.UUID(int=6))]), None, None)
