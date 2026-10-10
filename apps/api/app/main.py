@@ -12,6 +12,7 @@ from app.api import health
 from app.api.body_limit import BodyLimitMiddleware
 from app.api.cors import ApiCORSMiddleware
 from app.api.errors import install_error_handlers
+from app.api.security_headers import SecurityHeaders
 from app.api.v1.router import router as v1_router
 from app.api.v1.routers.rules import DRY_RUN_MAX_BODY_BYTES, DRY_RUN_PATH
 from app.core.asgi import MkosApp
@@ -50,6 +51,11 @@ def create_app() -> FastAPI:
         separate_input_output_schemas=False,
     )
     app.tracer = tracer_from(init_tracing(settings))
+    # S26 T8: nosniff, no-referrer, no-store on /api/v1 and HSTS off local, on every answer
+    # (wrapped outside ServerErrorMiddleware, so a 500 carries them too).
+    app.security_headers = SecurityHeaders(
+        api_prefix=settings.api_v1_prefix, hsts=settings.app_env != "local"
+    )
     if sentry_on:
         app.on_request = tag_request
     app.state.readiness = ReadinessCheck()
