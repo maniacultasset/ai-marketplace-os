@@ -138,7 +138,7 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 | Where | Gap | Next |
 |---|---|---|
 | S18 planner | The brand profile lives on `tenants` (`tone`, `guidelines`, `glossary`); `brand_profiles` has no API (S16 PLAN D3). | S18 decides whether generation reads `brand_profiles` or only the profile chunks. |
-| Auth (DATABASE open decision 8) | No self-service password change or reset: staff set one with `python -m app.cli user set-password`, which revokes the user's refresh tokens (S16 PLAN D6). | Decide reset-by-email with the invite work (C6, 1.1). |
+| Auth (DATABASE open decision 8) | No self-service password change or reset: staff set one with `python -m app.cli user set-password`, which revokes the user's refresh tokens (S16 PLAN D6), including the successor of a refresh rotating at that moment (it locks the live rows first, then revokes in a fresh snapshot; audit AUTH-3). **Residual:** an access token issued before the reset stays valid until it expires (`ACCESS_TOKEN_TTL_MINUTES`, 30) and can still call `POST /auth/switch-tenant` for a new refresh family; closing that needs a per-user password epoch checked by the probe and by refresh (a migration), not built in v1. | Decide reset-by-email with the invite work (C6, 1.1). |
 
 - **Image approve gate hand-off to S19 (S17b T14b; blocks DW3 at the endpoint and AC17).** S17b
   ships the gate as the pure `app.services.image_gate.evaluate_image_gate(listing, stored,

@@ -3,6 +3,7 @@ refresh token of the user in each of their tenants, in one audited transaction."
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import httpx
@@ -118,3 +119,63 @@ async def test_cli_set_password_output_has_no_secrets(
         "SELECT hashed_password FROM users WHERE email = 'owner@acme.test'"
     ).fetchone()
     assert code == 0 and NEW not in out + err and hashed not in out + err
+
+
+async def _until_a_lock_wait(auth_db: Any) -> None:
+    """Yield to the event loop until some backend of this database waits on a row lock."""
+    for _ in range(200):
+        (waiting,) = auth_db.execute(
+            "SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock' "
+            "AND datname = current_database()"
+        ).fetchone()
+        if waiting:
+            return
+        await asyncio.sleep(0.02)
+    raise AssertionError("set-password never waited on the in-flight refresh")
+
+
+async def test_cli_set_password_revokes_a_token_rotated_concurrently(
+    world_with_password: Any,
+    auth_db: Any,
+    api: httpx.AsyncClient,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AUTH-3: a refresh in flight while staff reset the password (the rotation's successor is
+    inserted but not committed when the revoke runs) must not leave that successor live."""
+    from app.repositories.identity import RefreshTokenRepository
+
+    stolen = (await login(api, "owner@acme.test")).json()["refresh_token"]
+    rotated, release = asyncio.Event(), asyncio.Event()
+    original = RefreshTokenRepository.rotate
+
+    async def held_rotate(self: Any, *args: Any, **kwargs: Any) -> None:
+        await original(self, *args, **kwargs)
+        rotated.set()
+        await release.wait()  # still inside the refresh transaction
+
+    monkeypatch.setattr(RefreshTokenRepository, "rotate", held_rotate)
+    refreshing = asyncio.create_task(
+        api.post("/api/v1/auth/refresh", json={"refresh_token": stolen})
+    )
+    await rotated.wait()
+    resetting = asyncio.create_task(cli(SET, capsys, NEW + "\n"))
+    try:
+        await _until_a_lock_wait(auth_db)
+    finally:
+        release.set()
+    successor = (await refreshing).json()["refresh_token"]
+    code, out, _ = await resetting
+    monkeypatch.setattr(RefreshTokenRepository, "rotate", original)
+
+    assert code == 0 and out.strip().endswith("revoked=1")
+    assert (
+        count(
+            auth_db,
+            "SELECT count(*) FROM refresh_tokens rt JOIN users u ON u.id = rt.user_id "
+            "WHERE u.email = 'owner@acme.test' AND rt.revoked_at IS NULL",
+        )
+        == 0
+    )
+    after = await api.post("/api/v1/auth/refresh", json={"refresh_token": successor})
+    assert after.status_code == 401, after.text
