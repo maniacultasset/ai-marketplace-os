@@ -1,6 +1,6 @@
 """S22b fix round 2 (F3, F4; invariant 10, L5300-5304): a Flipkart family child that Flipkart
-never created is created by the next retry, and only that child is sent. Moved from the tester's
-repros in docs/plans/s22/repro/."""
+never created is created by the next retry, and only that child is sent (from the tester's
+repros)."""
 
 from __future__ import annotations
 
