@@ -147,7 +147,7 @@ async def post_token(url: str, form: dict[str, str]) -> dict[str, Any]:
 def _json(raw: bytes) -> Any:
     try:
         return json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError):
+    except (UnicodeDecodeError, ValueError, RecursionError):  # deep nesting is unreadable too
         return None
 
 

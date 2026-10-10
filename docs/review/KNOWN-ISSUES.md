@@ -92,6 +92,13 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   per tenant; `tests/integration/test_reaper_orphaned_queued.py`). S26 also retries a body whose
   database connection was lost (a terminated backend) for a retrying kind
   (`app/workers/errors.py::is_transient_db_error`).
+  **Audit follow-up (JOBS-2, JOBS-4, 2026-10-10):** the same sweep now also re-defers a `queued` row
+  whose entry has been `doing` longer than the kind's lease under a live worker (a lost
+  `retry_job`), and ends a `queued` row whose entry is final or gone (the queue gave up after
+  `INFRA_RETRY_CAP` infrastructure errors) as `dead_letter` + `INTERNAL_ERROR` (`cancelled` for a
+  stopped tenant). A new pass retires a `doing` entry whose job ended over 60 s earlier (a lost
+  `finish_job`), so it can no longer hold the `image_compliance` lock for every tenant
+  (`tests/integration/test_reaper_queue_drift.py`).
 - **Job-spine follow-ups from the S13a review (LOW; S26 unless a later step hits them first).**
   Periodic tasks share the 4-slot `default` queue with `bulk_import` (1,800 s timeout), so four
   long imports can delay the reaper up to 30 min (fix: a `periodic` queue). An exception in the

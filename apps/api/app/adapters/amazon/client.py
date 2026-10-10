@@ -272,7 +272,7 @@ class SpApiClient:
                 parsed_ok = True
                 try:
                     parsed = json.loads(raw) if raw else {}
-                except ValueError:
+                except (ValueError, RecursionError):  # a deeply nested body is unreadable too
                     parsed_ok = False
                 self._log(
                     operation,

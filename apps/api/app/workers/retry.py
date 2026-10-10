@@ -10,8 +10,10 @@ queue would stop retrying a job `job_runs` still calls `queued`.
 Any other `Exception` escaped the wrapper outside the body (it records every body outcome
 itself): an infrastructure error while naming, claiming or finishing the job (a DB blip, a
 failover, a pool timeout). It is retried with backoff up to `INFRA_RETRY_CAP` queue attempts
-(procrastinate's own counter, shutdowns included), so the row is never left `queued` with a dead
-entry (S13 fix F2). Redelivery is safe in every case: a claim that never committed leaves the row
+(procrastinate's own counter, shutdowns included; S13 fix F2). Past the cap the queue finishes
+the entry `failed` while the row is still `queued`; the reaper then ends the row
+(`dead_letter` + `INTERNAL_ERROR`, audit JOBS-2), so it is never left `queued` with a dead entry.
+Redelivery is safe in every case: a claim that never committed leaves the row
 `queued` and the next delivery claims it; one that committed leaves it `running`, the claim CAS
 then fails and the delivery is dropped, and the reaper recovers the row at lease expiry.
 """
