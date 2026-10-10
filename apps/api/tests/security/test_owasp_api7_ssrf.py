@@ -28,6 +28,8 @@ OUTBOUND_CLIENTS = {
     "core/slack.py": ("workers/alerting.py", "alert_slack_webhook"),
     "adapters/oauth/http.py": ("adapters/oauth/__init__.py", "s.amazon_lwa_token_url"),
     "adapters/amazon/client.py": ("workers/adapters.py", "amazon_spapi_endpoint"),
+    # S22 (merged after S26a): the base comes from settings and is pinned off local (T128)
+    "adapters/flipkart/client.py": ("workers/adapters.py", "api_base=settings.flipkart_api_base"),
     "services/embeddings.py": ("services/embeddings.py", "OPENAI_BASE_URL"),
 }
 CLIENT_CTORS = {"Client", "AsyncClient", "AsyncOpenAI"}
