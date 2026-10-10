@@ -2,7 +2,7 @@
 
 A queue entry carries only `{"job_run_id"}`, so before any tenant GUC exists the worker names
 the job: one short transaction sets the transaction-local `app.job_id` GUC and reads the row's
-`tenant_id`, `kind` and `request_id` through the `jr_by_id` policy (SELECT where
+`tenant_id`, `kind`, `request_id` and (S23) `traceparent` through the `jr_by_id` policy (SELECT where
 `id = app_job_id()`), the named invariant-5 exception. Nothing else is visible to it, and the
 GUC is gone at COMMIT. Every later statement of the job runs in `unit_of_work(tenant_id)`.
 
@@ -32,6 +32,7 @@ class JobHead:
     tenant_id: UUID
     kind: str
     request_id: str | None
+    traceparent: str | None = None  # S23: the enqueuing request's trace context
 
 
 async def resolve_job(job_run_id: UUID) -> JobHead | None:
@@ -41,14 +42,19 @@ async def resolve_job(job_run_id: UUID) -> JobHead | None:
     async with get_sessionmaker()() as session, session.begin():
         await session.execute(select(func.set_config("app.job_id", str(job_run_id), True)))
         stmt = (
-            select(JobRun.tenant_id, JobRun.kind, JobRun.request_id)
+            select(JobRun.tenant_id, JobRun.kind, JobRun.request_id, JobRun.traceparent)
             .where(JobRun.id == job_run_id)
             .execution_options(**{SCOPE_OK: True})
         )
         row = (await session.execute(stmt)).one_or_none()
     if row is None:
         return None
-    return JobHead(tenant_id=row.tenant_id, kind=row.kind, request_id=row.request_id)
+    return JobHead(
+        tenant_id=row.tenant_id,
+        kind=row.kind,
+        request_id=row.request_id,
+        traceparent=row.traceparent,
+    )
 
 
 async def bind_job_actor(session: Any, job_id: UUID) -> None:

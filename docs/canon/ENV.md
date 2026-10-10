@@ -62,7 +62,7 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | `KMS_KEY_URI` | `(empty — leave blank locally)` | local .env | optional | Empty locally: APP_ENV=local selects LocalKmsStub. staging/prod: projects/<project>/locations/asia-south1/keyRings/marketplace-os/cryptoKeys/oauth-token-key. KMS_KEY_NAME is forbidden. Read through Settings, never os.environ, and construct the KMS client lazily inside the function. |
 | `KMS_LOCAL_DEV_KEY` | `bG9jYWxfZGV2X29ubHlfMzJfYnl0ZV9rZXlfMDAwMDA=` | local .env | optional | base64 32 bytes; LocalKmsStub only. Never set in staging/prod. |
 | `SECRET_MANAGER_ENABLED` | `false` | local .env | required | true in staging/production, where secrets arrive via `gcloud run deploy --set-secrets`. |
-| `GIT_SHA` | `dev` | local .env | optional | Injected by Cloud Build; used as the Sentry release tag. |
+| `GIT_SHA` | `dev` | local .env | optional (local); **required outside local for `api`/`worker`** (S23: boot refuses unset, empty or `dev`) | Injected by Cloud Build; used as the Sentry release tag. |
 
 ## JWT
 
@@ -128,4 +128,4 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `(empty — leave blank)` | local .env | optional | Empty by design in every environment: GCP exports direct to Cloud Trace via opentelemetry-exporter-gcp-trace. Set http://localhost:4317 only if you personally run Jaeger — compose ships no collector. |
 | `OTEL_TRACES_SAMPLER` | `parentbased_traceidratio` | local .env | optional | Standard OTel var name. |
 | `OTEL_TRACES_SAMPLER_ARG` | `0.1` | local .env | optional | 0.1 everywhere; /healthz and /readyz are excluded from tracing and access logs. |
-| `ALERT_SLACK_WEBHOOK` | `(empty — leave blank)` | both | optional | Secret Manager in staging/prod; queue-latency and budget alerts post here. |
+| `ALERT_SLACK_WEBHOOK` | `(empty — leave blank)` | both | optional | Secret Manager in staging/prod; queue-latency, budget and token-refresh-failure alerts post here (S23: `https` only, one attempt, 3 s, ids only; every alert kind also reaches Sentry, and an empty value sends nothing to Slack). |

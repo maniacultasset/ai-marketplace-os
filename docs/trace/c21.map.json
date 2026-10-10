@@ -710,17 +710,17 @@
   },
   {
    "id": "R12661a",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2778; docs/architecture/DATABASE.md:929",
-   "note": "job_runs timestamps exist; processing-time metric not defined"
+   "ref": "apps/api/app/workers/rollup.py",
+   "note": "S23: processing_time per job kind (finished_at - started_at)."
   },
   {
    "id": "R12662",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2778",
-   "note": "ErrorSource recorded; per-source error-rate metric not defined"
+   "ref": "apps/api/app/workers/rollup.py",
+   "note": "S23: job_outcomes per job kind (terminal, failed) over 15 min; feeds the error-rate alert."
   },
   {
    "id": "R12663",
@@ -745,10 +745,10 @@
   },
   {
    "id": "R12677",
-   "status": "gap",
+   "status": "covered",
    "owner": "shared",
-   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2738; docs/architecture/BACKEND-ARCHITECTURE.md:2753",
-   "note": "Only request_id enters jobs; traceparent Proposed (S11); no agent spans"
+   "ref": "apps/api/app/workers/wrapper.py; apps/api/app/core/traceparent.py",
+   "note": "S23: job_runs.traceparent links the request span to the job span; adapter and DB spans nest under it (agent node spans are the AI team's, R12761d)."
   },
   {
    "id": "R12677a",
@@ -976,10 +976,10 @@
   },
   {
    "id": "R12705f",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "docs/drafts/BUILD-SEQUENCE.md:235; docs/architecture/BACKEND-ARCHITECTURE.md:1353",
-   "note": "Cost per listing named; over-time view unspecified"
+   "ref": "apps/api/app/workers/rollup.py; apps/api/app/admin/ops_views.py",
+   "note": "S23: per-listing cost (all time and top 50 over 30 days) and per-day model/trigger views on the staff cost page."
   },
   {
    "id": "R12712",
@@ -1235,10 +1235,10 @@
   },
   {
    "id": "R12761b",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "docs/architecture/BACKEND-ARCHITECTURE.md:2748; docs/drafts/CHECKLISTS.md:370",
-   "note": "No SQLAlchemy/psycopg span instrumentation in plan; only pre-Canon CHECKLISTS (names asyncpg)"
+   "ref": "apps/api/app/db/tracing.py",
+   "note": "S23: one CLIENT span per statement under a recording parent, db.system and db.operation.name only."
   },
   {
    "id": "R12761c",

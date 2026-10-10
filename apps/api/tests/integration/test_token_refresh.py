@@ -75,8 +75,8 @@ async def test_refresh_failure_reconnect(
     sentry_events: SentryCapture,
     log_lines: Callable[..., LogCapture],
 ) -> None:
-    """DW5: `invalid_grant` -> needs_reconnect, AUTH_EXPIRED, one reconnect task, one ERROR log
-    line and one Sentry event with the four fields, exactly one `credential_used`."""
+    """DW5: `invalid_grant` -> needs_reconnect, AUTH_EXPIRED, one reconnect task, one alert event
+    (log line and Sentry message, S23) with the four fields, exactly one `credential_used`."""
     from app.core.config import Settings
     from app.core.observability import init_sentry
 
@@ -91,9 +91,11 @@ async def test_refresh_failure_reconnect(
     assert _tasks(mkt, due_account["id"]) == [("open",)]
     assert len(_used(mkt)) == 1
     assert len(audit_rows(mkt.conn, "marketplace_account.needs_reconnect")) == 1
-    errors = [line for line in capture.lines() if line["severity"] == "ERROR"]
-    assert [e["message"] for e in errors] == ["marketplace.token_refresh_failed"]
-    fields = {k: errors[0][k] for k in ("tenant_id", "account_id", "marketplace", "error_code")}
+    # S23: the alert event (a WARNING `alert.token_refresh_failed` and one Sentry message)
+    assert [line for line in capture.lines() if line["severity"] == "ERROR"] == []
+    alerts = [line for line in capture.lines() if line["message"] == "alert.token_refresh_failed"]
+    assert len(alerts) == 1 and alerts[0]["severity"] == "WARNING"
+    fields = {k: alerts[0][k] for k in ("tenant_id", "account_id", "marketplace", "error_code")}
     assert fields == {
         "tenant_id": str(mkt.tenant("acme")),
         "account_id": due_account["id"],
@@ -104,7 +106,8 @@ async def test_refresh_failure_reconnect(
 
     sentry_sdk.get_client().flush(timeout=2)
     [event] = sentry_events.events()
-    assert "marketplace.token_refresh_failed" in str(event.get("logentry") or event.get("message"))
+    assert event["message"] == "alert.token_refresh_failed"
+    assert event["fingerprint"] == ["alert", "token_refresh_failed", due_account["id"]]
     assert "CANARYzq9" not in sentry_events.serialized()
 
 

@@ -82,7 +82,7 @@ async def test_admin_ops_escapes_tenant_name(
 
 def test_admin_ops_templates_no_safe_filter() -> None:
     templates = sorted(TEMPLATES.glob("*.html"))
-    assert len(templates) == 5
+    assert len(templates) == 6  # S23 added cost_listing.html
     for path in templates:
         text = path.read_text(encoding="utf-8")
         assert "|safe" not in text.replace(" ", ""), path.name

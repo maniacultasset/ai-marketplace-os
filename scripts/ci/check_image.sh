@@ -49,7 +49,7 @@ pythons="$(docker exec "$cid" sh -c \
 # S3: the frozen /api/v1 surface, through the image. No token is 401, and since S10 an unverified
 # token is 401 too (no database is reachable here, and none is needed to refuse it); both are the
 # error envelope with X-Request-ID; openapi.json lists every registry operation. A verified token
-# reaching a 501 stub is the bootstrap auth leg's (scripts/ci/auth_e2e.py, on the compose network).
+# reaching a tenant read is the bootstrap auth leg's (scripts/ci/auth_e2e.py, on the compose network).
 work="$(mktemp -d)"
 trap 'cleanup; rm -rf "$work"' EXIT
 api="http://127.0.0.1:${port}/api/v1/products"

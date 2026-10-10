@@ -78,6 +78,14 @@ class ValidationRun(TenantScoped, Base):
             postgresql_ops={"error_report_json": "jsonb_path_ops"},
             postgresql_where=text("NOT passed"),
         ),
+        # 0009 (S23): first-pass validation rate for analytics
+        Index(
+            conv("ix_validation_runs_tenant_id_created_at_first_pass"),
+            "tenant_id",
+            "created_at",
+            postgresql_include=["passed", "marketplace"],
+            postgresql_where=text("source = 'rules_engine' AND attempt = 1"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = id_column()

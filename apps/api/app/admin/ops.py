@@ -9,29 +9,35 @@ each returning frozen dataclasses. Money stays `Decimal` from `agent_runs.cost_u
 - `daily_spend(now, days=7)`: AI spend per UTC day, in total and per tenant.
 - `cost_per_published_listing(now)`: 30-day spend over listings first published in those 30 days
   (`None` with none published).
+  Both live in `app/workers/rollup.py` since S23 (one copy of the cost SQL) and are re-exported.
 - `funnel(now)`: listings by status whose status changed in the last 24 hours.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import UTC, date, datetime, timedelta
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Final
 from uuid import UUID
 
-from sqlalchemy import Date, cast, desc, func, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql.elements import ColumnElement
 
 from app.db.models.listings import Listing
 from app.db.models.ops import JobRun
-from app.db.models.runs import AgentRun
 from app.db.models.tenancy import Tenant
+from app.workers.rollup import (
+    CostPerListing,
+    DaySpend,
+    aware_utc,
+    cost_per_published_listing,
+    daily_spend,
+)
 
 DEAD_LETTER_LIMIT: Final = 50
-COST_WINDOW: Final = timedelta(days=30)
 FUNNEL_WINDOW: Final = timedelta(hours=24)
+_aware = aware_utc
 MONEY: Final = Decimal("0.000001")
 
 
@@ -54,29 +60,9 @@ class DeadLetter:
 
 
 @dataclass(frozen=True)
-class DaySpend:
-    day: date
-    total: Decimal
-    per_tenant: dict[str, Decimal] = field(default_factory=dict)
-
-
-@dataclass(frozen=True)
-class CostPerListing:
-    spend: Decimal
-    published: int
-    per_listing: Decimal | None
-
-
-@dataclass(frozen=True)
 class FunnelRow:
     status: str
     count: int
-
-
-def _aware(now: datetime) -> datetime:
-    if now.tzinfo is None or now.utcoffset() is None:
-        raise ValueError("now must be timezone-aware")
-    return now.astimezone(UTC)
 
 
 async def queue_stats(session: AsyncSession, now: datetime) -> list[QueueStat]:
@@ -112,46 +98,6 @@ async def dead_letters(session: AsyncSession, limit: int = DEAD_LETTER_LIMIT) ->
         .limit(limit)
     )
     return [DeadLetter(*row) for row in (await session.execute(stmt)).all()]
-
-
-def _utc_day(column: ColumnElement[datetime]) -> ColumnElement[date]:
-    return cast(func.timezone("UTC", column), Date)
-
-
-async def daily_spend(session: AsyncSession, now: datetime, days: int = 7) -> list[DaySpend]:
-    if isinstance(days, bool) or not 1 <= days <= 92:
-        raise ValueError("days must be in 1..92")
-    today = _aware(now).date()
-    first = today - timedelta(days=days - 1)
-    start = datetime(first.year, first.month, first.day, tzinfo=UTC)
-    day = _utc_day(AgentRun.created_at)  # type: ignore[arg-type]
-    stmt = (
-        select(day, Tenant.slug, func.sum(AgentRun.cost_usd))
-        .join(Tenant, Tenant.id == AgentRun.tenant_id)
-        .where(AgentRun.created_at >= start)
-        .group_by(day, Tenant.slug)
-        .order_by(day, Tenant.slug)
-    )
-    totals: dict[date, dict[str, Decimal]] = {first + timedelta(days=n): {} for n in range(days)}
-    for spent_day, slug, total in (await session.execute(stmt)).all():
-        if spent_day in totals:
-            totals[spent_day][slug] = Decimal(total).quantize(MONEY)
-    return [
-        DaySpend(d, sum(per.values(), Decimal("0")).quantize(MONEY), per)
-        for d, per in sorted(totals.items())
-    ]
-
-
-async def cost_per_published_listing(session: AsyncSession, now: datetime) -> CostPerListing:
-    since = _aware(now) - COST_WINDOW
-    spend_stmt = select(func.coalesce(func.sum(AgentRun.cost_usd), 0)).where(
-        AgentRun.created_at >= since
-    )
-    published_stmt = select(func.count()).where(Listing.first_published_at >= since)
-    spend = Decimal((await session.execute(spend_stmt)).scalar_one()).quantize(MONEY)
-    published = int((await session.execute(published_stmt)).scalar_one())
-    per = None if published == 0 else (spend / published).quantize(MONEY)
-    return CostPerListing(spend, published, per)
 
 
 async def funnel(session: AsyncSession, now: datetime) -> list[FunnelRow]:

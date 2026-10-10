@@ -633,7 +633,7 @@ def test_bootstrap_has_auth_leg(repo_root: Path) -> None:
     steps = _auth_steps(repo_root)
     for step in (
         ("me", 200),
-        ("a verified token reaches a stub", 501),
+        ("a verified token reaches a tenant read", 200),
         ("reviewer generate", 403),
         ("refresh reuse", 401),
         ("refresh after reuse", 401),
@@ -913,25 +913,6 @@ def test_bootstrap_resets_before_each_e2e_run(repo_root: Path) -> None:
         assert lines[i - 1] == RESET_CALL
     assert "TRUNCATE" not in code.upper()
     assert "rate_limit_counters" not in code
-
-
-def test_auth_leg_stub_probe_is_still_a_stub(repo_root: Path) -> None:
-    # S12 implemented GET /products: the auth leg's "verified token reaches a stub" probe moved
-    # to a GET route that is still S3's 501 stub.
-    import importlib
-
-    from app.api.v1.surface import OPS, is_stub
-
-    script = (repo_root / "scripts" / "ci" / "auth_e2e.py").read_text(encoding="utf-8")
-    probe = re.search(
-        r'"a verified token reaches a stub",\s*501,\s*leg\.call\("GET", "([^"]+)"', script
-    )
-    assert probe is not None
-    path = probe.group(1).split("?", 1)[0]
-    ops = [o for o in OPS.values() if o.method == "GET" and o.path == path]
-    assert len(ops) == 1
-    module = importlib.import_module(f"app.api.v1.routers.{ops[0].group}")
-    assert is_stub(getattr(module, ops[0].op_id))
 
 
 # ---- S13 A8: a local worker beside `make dev` ----
@@ -3012,3 +2993,179 @@ def test_e2e_flipkart_connect_preview_without_hooks_exits_2(
         assert result.returncode == 2
         assert result.stderr.startswith("usage: FAKE_URL=<fake> FLAG_OFF_URL=<flag-off API>")
     assert not log.exists() or log.read_text(encoding="utf-8") == ""
+
+
+def test_auth_leg_probe_reads_an_implemented_route(repo_root: Path) -> None:
+    # S12 moved the auth leg's probe off GET /products; S23 implemented analytics, the last GET
+    # stub, so the probe now wants 200 from that tenant read (a verified token past the role check).
+    import importlib
+
+    from app.api.v1.surface import OPS, is_stub
+
+    script = (repo_root / "scripts" / "ci" / "auth_e2e.py").read_text(encoding="utf-8")
+    probe = re.search(
+        r'"a verified token reaches a tenant read",\s*200,\s*leg\.call\("GET", "([^"]+)"', script
+    )
+    assert probe is not None
+    path = probe.group(1).split("?", 1)[0]
+    ops = [o for o in OPS.values() if o.method == "GET" and o.path == path]
+    assert len(ops) == 1
+    module = importlib.import_module(f"app.api.v1.routers.{ops[0].group}")
+    assert not is_stub(getattr(module, ops[0].op_id))
+
+
+ANALYTICS_E2E = "scripts/e2e/analytics.sh"
+
+
+ANALYTICS_E2E_STEPS = (
+    "health",
+    "login_acme_operator",
+    "login_acme_reviewer",
+    "login_bharat_operator",
+    "snapshot_acme",
+    "snapshot_bharat",
+    "no_token_401",
+    "from_after_to_422",
+    "alias_equals_summary",
+    "create_3_products",
+    "worker_start",
+    "generate_3",
+    "reviewer_approve_2",
+    "reviewer_reject_1",
+    "worker_stop",
+    "snapshot_acme_after",
+    "assert_deltas",
+    "bharat_unchanged",
+    "staff_cost_listing_200",
+    "staff_cost_bad_day_400",
+)
+
+
+def _analytics_e2e(repo_root: Path) -> str:
+    return (repo_root / ANALYTICS_E2E).read_text(encoding="utf-8")
+
+
+def test_analytics_e2e_steps(repo_root: Path) -> None:
+    code = _code(_analytics_e2e(repo_root))
+    assert "set -euo pipefail" in code
+    assert tuple(re.findall(r"(?m)^step (\w+)$", code)) == ANALYTICS_E2E_STEPS
+    assert not re.search(r":\d{2,5}\b", code)
+    assert "scripts/ci/worktree_env.sh exports .worktree.env" in code
+    assert "FAILED at step $current (HTTP status ${status:-none})" in code
+    assert 'cat "$body"' not in code
+    # the range brackets today (UTC) by a day each side: a midnight crossing cannot break it
+    assert "timedelta(days=1)" in code and "timezone.utc" in code
+
+
+@pytest.mark.parametrize("url", NON_LOCAL_URLS)
+def test_analytics_e2e_refuses_non_local_url(repo_root: Path, tmp_path: Path, url: str) -> None:
+    env, log = _stub_path(tmp_path)
+    env.update(WORKER_START="true", WORKER_STOP="true")
+    result = subprocess.run(
+        [str(repo_root / ANALYTICS_E2E), url],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 2, result.stderr
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""
+
+
+def test_analytics_e2e_without_hooks_exits_2(repo_root: Path, tmp_path: Path) -> None:
+    env, log = _stub_path(tmp_path)
+    env.pop("WORKER_START", None)
+    env.pop("WORKER_STOP", None)
+    result = subprocess.run(
+        [str(repo_root / ANALYTICS_E2E), "http://127.0.0.1:8123"],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 2
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""
+
+
+def test_analytics_e2e_stops_worker_on_exit(repo_root: Path) -> None:
+    code = _code(_analytics_e2e(repo_root))
+    assert "trap cleanup EXIT" in code
+    assert 'bash -c "$WORKER_STOP"' in code.split("cleanup() {", 1)[1].split("}", 1)[0]
+
+
+def test_analytics_e2e_login_budget(repo_root: Path) -> None:
+    """One login per email per run (the `make e2e` loop resets the limiter before each script);
+    HTTP only: no TRUNCATE, psql or docker compose exec."""
+    code = _code(_analytics_e2e(repo_root))
+    emails = re.findall(r"\$\(login ([\w.@]+)\)", code)
+    assert sorted(emails) == sorted(set(emails)) and len(emails) == 3
+    for banned in ("TRUNCATE", "psql", "docker compose exec"):
+        assert banned not in code, banned
+
+
+def test_analytics_e2e_asserts_exact_deltas(repo_root: Path) -> None:
+    code = _code(_analytics_e2e(repo_root))
+    deltas = code.split("step assert_deltas", 1)[1].split("step bharat_unchanged", 1)[0]
+    for key, value in (
+        ("listings_generated", 3),
+        ("approvals", 2),
+        ("rejections", 1),
+        ("validation_first_pass_total", 3),
+        ("publish_succeeded", 0),
+        ("publish_failed", 0),
+    ):
+        assert f'"{key}": {value},' in deltas, key
+
+
+def test_prove_gates_has_s23a_legs(repo_root: Path) -> None:
+    """S23 T13: the rollup module off the R5 allowlist and platform_scope in a service turn
+    lint-imports red; analytics without a tenant criterion turns tenant-isolation red."""
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    assert "leg lint-imports-rollup-not-allowlisted lint-imports ': R5 '" in text
+    assert (
+        "leg lint-imports-platform-scope-in-services lint-imports "
+        "'app.services is not allowed to import app.db.session'"
+    ) in text
+    docker = text.split('if [ "$with_docker" -eq 1 ]; then', 1)[1]
+    assert (
+        "leg tenant-isolation-analytics-no-filter tenant-isolation "
+        "'test_analytics_repo_sees_only_own_tenant' seed_iso_analytics_no_filter"
+    ) in docker
+    for seed in (
+        "seed_iso_analytics_no_filter",
+        "seed_rollup_not_allowlisted",
+        "seed_platform_scope_in_analytics_service",
+    ):
+        assert f"{seed}() {{" in text
+    # each seed's target text is still in the tree (a seed that cannot apply fails its leg)
+    assert "                self._criterion_for(Listing),\n" in (
+        repo_root / "apps/api/app/repositories/analytics.py"
+    ).read_text(encoding="utf-8")
+    assert '    "apps/api/app/workers/rollup.py",\n' in (
+        repo_root / "scripts/ci/check_repo_rules.py"
+    ).read_text(encoding="utf-8")
+
+
+def test_prove_gates_has_s23b_legs(repo_root: Path) -> None:
+    """S23 T26: the traceparent default dropped, or DB spans without their recording check,
+    turn api-tests red on the test that guards each."""
+    text = (repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8")
+    docker = text.split('if [ "$with_docker" -eq 1 ]; then', 1)[1]
+    assert (
+        "leg api-tests-traceparent-no-default api-tests "
+        "'test_job_traceparent_stamped_inside_span' seed_traceparent_no_default"
+    ) in docker
+    assert (
+        "leg api-tests-db-span-no-recording-check api-tests "
+        "'test_db_spans_none_without_recording_parent' seed_db_span_no_recording_check"
+    ) in docker
+    for seed in ("seed_traceparent_no_default", "seed_db_span_no_recording_check"):
+        assert f"{seed}() {{" in text
+    assert "    return mapped_column(Text, nullable=True, default=current_traceparent)" in (
+        repo_root / "apps/api/app/db/base.py"
+    ).read_text(encoding="utf-8")
+    assert "    if context is None or not trace.get_current_span().is_recording():" in (
+        repo_root / "apps/api/app/db/tracing.py"
+    ).read_text(encoding="utf-8")

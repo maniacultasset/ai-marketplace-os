@@ -1,0 +1,12 @@
+{% extends "sqladmin/layout.html" %}
+{% block content %}
+{% include "ops/_nav.html" %}
+<h2>Listing AI cost</h2>
+<p class="text-muted">All time, from <code>agent_runs.cost_usd</code>.</p>
+<dl data-ops="listing-cost">
+  <dt>Listing</dt><dd>{{ listing.listing_id }}</dd>
+  <dt>Tenant</dt><dd>{{ listing.tenant_name }}</dd>
+  <dt>Cost USD</dt><dd>{{ listing.cost_usd }}</dd>
+  <dt>Agent runs</dt><dd>{{ listing.runs }}</dd>
+</dl>
+{% endblock %}

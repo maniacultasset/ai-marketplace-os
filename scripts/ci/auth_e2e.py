@@ -84,15 +84,15 @@ def run(base: str) -> int:
     if (me["role"], me["tenant_id"]) != ("owner", acme):
         sys.exit(f"auth e2e: me says {me['role']} in {me['tenant_id']}")
 
-    # a verified token reaches a route that is still S3's stub (the check_image.sh 501 probe);
-    # S12 implemented GET /products and S19 GET /listings, so the probe reads analytics (S23)
-    stub = leg.expect(
-        "a verified token reaches a stub",
-        501,
+    # a verified token reaches a tenant read past the role check (S23 implemented the last GET
+    # stub, analytics, so the probe now reads it and wants its counts)
+    summary = leg.expect(
+        "a verified token reaches a tenant read",
+        200,
         leg.call("GET", "/analytics?from=2026-10-01&to=2026-10-02", token=owner["access_token"]),
     )
-    if stub["error"]["type"] != "NOT_IMPLEMENTED":
-        sys.exit("auth e2e: the stub did not answer NOT_IMPLEMENTED")
+    if not isinstance(summary.get("counts"), dict):
+        sys.exit("auth e2e: the analytics read carried no counts")
 
     # a reviewer cannot start generation (DW2)
     reviewer = leg.login("reviewer@acme.test")

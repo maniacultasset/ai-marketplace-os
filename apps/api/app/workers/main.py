@@ -16,6 +16,8 @@ import contextlib
 import signal
 import sys
 
+from opentelemetry import trace
+
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
 from app.core.observability import init_sentry, init_tracing, tracer_from
@@ -40,10 +42,14 @@ async def run(stop: asyncio.Event | None = None) -> int:
     settings = get_settings()
     configure_logging(settings)
     init_sentry(settings)
-    # S18 T12: the pipeline's node spans use the worker's own provider (no global provider)
+    # S18 T12: the pipeline's node spans use the worker's own provider; S23 C1: the worker
+    # (never the API) also makes it the OTel global provider, so `trace.get_tracer()` in task
+    # code nests under the job span
     from app.services.pipeline_deps import use_tracer
 
-    use_tracer(tracer_from(init_tracing(settings)))
+    provider = init_tracing(settings)
+    use_tracer(tracer_from(provider))
+    trace.set_tracer_provider(provider)
     stop = stop if stop is not None else asyncio.Event()
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):

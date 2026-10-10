@@ -308,13 +308,33 @@ _BATCH_ITEMS: Final = [
         "error": None,
     }
 ]
+_SUMMARY_COUNTS: Final = {
+    "listings_generated": 120,
+    "approvals": 82,
+    "rejections": 18,
+    "validation_first_pass_passed": 108,
+    "validation_first_pass_total": 120,
+    "publish_succeeded": 77,
+    "publish_failed": 3,
+}
 _SUMMARY: Final = {
     "from": "2026-09-01",
     "to": "2026-09-30",
     "listings_generated": 120,
     "approval_rate": 0.82,
     "validation_pass_rate": 0.9,
-    "publish_success_rate": 0.97,
+    "publish_success_rate": 0.9625,
+    "counts": _SUMMARY_COUNTS,
+    "by_marketplace": [
+        {
+            "marketplace": "amazon",
+            "listings_generated": 120,
+            "approval_rate": 0.82,
+            "validation_pass_rate": 0.9,
+            "publish_success_rate": 0.9625,
+            "counts": _SUMMARY_COUNTS,
+        }
+    ],
 }
 
 SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(

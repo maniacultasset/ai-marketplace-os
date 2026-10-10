@@ -8,8 +8,13 @@
 - `init_tracing()` builds a `TracerProvider` whose service name, sampler and ratio come from
   Settings; the SDK's environment autoconfiguration (`Resource.create()`, `OTEL_*` env) is never
   used. No exporter is installed yet (trace export is decided with billing at S4/S24); tests pass
-  an in-memory one. The global provider is never set: the request middleware gets its tracer
-  from the returned provider.
+  an in-memory one. `init_tracing` never sets the OTel global provider: the request middleware
+  gets its tracer from the returned provider. The worker (only) sets it afterwards (S23 C1), so
+  code that calls `trace.get_tracer()` nests under the job span.
+- `get_tracer(name)` (S23): a tracer from the provider the last `init_tracing` built (a no-op
+  tracer before any), for spans opened below the request or job span (DB, adapter, job).
+- `RequestIdSpanProcessor` (S23): every span started while a request id is bound carries it as
+  `request_id`, so one trace's spans all name their request.
 - With an active span and `GCP_PROJECT_ID` set, log lines carry Cloud Logging's trace fields.
 """
 
@@ -20,8 +25,9 @@ from typing import Any, Final
 
 import sentry_sdk
 from opentelemetry import trace
+from opentelemetry.context import Context
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace import ReadableSpan, Span, SpanProcessor, TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter
 from opentelemetry.sdk.trace.sampling import (
     ALWAYS_OFF,
@@ -41,6 +47,10 @@ from app.core.logging import set_trace_fields_hook
 from app.core.middleware import PROBE_PATHS
 from app.core.redaction import redact
 from app.core.request_context import current_request_id
+from app.core.traceparent import current_traceparent as current_traceparent
+from app.core.traceparent import parse_traceparent as parse_traceparent
+from app.core.tracer import get_tracer as get_tracer
+from app.core.tracer import set_provider
 
 TRACER_NAME: Final = "app"
 TRACE_FIELD: Final = "logging.googleapis.com/trace"
@@ -80,15 +90,36 @@ def trace_log_fields(project_id: str | None) -> Mapping[str, object] | None:
     }
 
 
+class RequestIdSpanProcessor(SpanProcessor):
+    """Stamps `request_id` on every span started while a request id is bound (S23 AC10)."""
+
+    def on_start(self, span: Span, parent_context: Context | None = None) -> None:
+        request_id = current_request_id()
+        if request_id is not None:
+            span.set_attribute("request_id", request_id)
+
+    def on_end(self, span: ReadableSpan) -> None:
+        return None
+
+    def shutdown(self) -> None:
+        return None
+
+    def force_flush(self, timeout_millis: int = 30000) -> bool:
+        return True
+
+
 def init_tracing(settings: Settings, *, exporter: SpanExporter | None = None) -> TracerProvider:
     provider = TracerProvider(
         resource=Resource({"service.name": settings.otel_service_name}),
         sampler=sampler_for(settings.otel_traces_sampler, settings.otel_traces_sampler_arg),
     )
+    # before any exporter: a span is stamped before it can be exported
+    provider.add_span_processor(RequestIdSpanProcessor())
     if exporter is not None:
         provider.add_span_processor(SimpleSpanProcessor(exporter))
     project_id = settings.gcp_project_id
     set_trace_fields_hook(lambda: trace_log_fields(project_id))
+    set_provider(provider)
     return provider
 
 
@@ -190,6 +221,17 @@ def _valid_dsn(dsn: str) -> bool:
     return True
 
 
+def current_trace_id() -> str | None:
+    """The current span's 32-hex trace id, or None without a valid span."""
+    context = trace.get_current_span().get_span_context()
+    return trace.format_trace_id(context.trace_id) if context.is_valid else None
+
+
 def tag_request(request_id: str) -> None:
-    """The request middleware's hook: tag the request's Sentry isolation scope."""
-    sentry_sdk.get_isolation_scope().set_tag("request_id", request_id)
+    """The request middleware's hook: tag the request's Sentry isolation scope with its
+    `request_id` and (S23) the SERVER span's `trace_id`, so an event leads to its trace."""
+    scope = sentry_sdk.get_isolation_scope()
+    scope.set_tag("request_id", request_id)
+    trace_id = current_trace_id()
+    if trace_id is not None:
+        scope.set_tag("trace_id", trace_id)
