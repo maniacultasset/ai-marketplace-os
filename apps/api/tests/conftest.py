@@ -45,24 +45,37 @@ def _xdist_controller(config: pytest.Config) -> bool:
 
 def pytest_configure(config: pytest.Config) -> None:
     """Under pytest-xdist each worker runs on its own copy of mos_test (tests/support/xdist_db.py),
-    set up here, before any test, settings object or engine exists."""
+    set up here, before any test, settings object or engine exists; so does each mutmut child."""
     import os
 
-    from tests.support.xdist_db import drop_worker_databases, use_worker_database
+    from tests.support.xdist_db import (
+        drop_worker_databases,
+        use_mutant_database,
+        use_worker_database,
+    )
 
     workerinput = getattr(config, "workerinput", None)
     if workerinput is not None:
         use_worker_database(str(workerinput["workerid"]))
     elif _xdist_controller(config):
         drop_worker_databases(os.environ.get("DATABASE_URL"))
+    elif "MUTANT_UNDER_TEST" in os.environ:
+        # A mutmut child (`make mutation`, several at once): its own slot copy of mos_test.
+        use_mutant_database(Path.cwd() / ".mutation-db-slots")
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    """`API_TEST_SHARD=1|2` keeps only that CI shard's test files (tests/support/shard.py)."""
+    """`API_TEST_SHARD=1|2` keeps only that CI shard's test files (tests/support/shard.py); a
+    mutmut child runs its tests cheapest file first."""
     import os
 
     from tests.support.shard import parse, shard_of
 
+    if "MUTANT_UNDER_TEST" in os.environ:
+        # a mutmut child (`make mutation`): the cheap files first (tests/support/mutation_order.py)
+        from tests.support.mutation_order import mutation_order
+
+        items[:] = mutation_order(items, Path.cwd() / "mutmut-stats.json")
     shard = parse(os.environ.get("API_TEST_SHARD"))
     if shard is None:
         return

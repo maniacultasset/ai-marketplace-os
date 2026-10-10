@@ -203,17 +203,24 @@ api-tests-integration:
 	API_TEST_SHARD=$(API_TESTS_INTEGRATION_SHARD) $(API_TEST_PYTEST)
 
 # The mutation run over the core modules (ADR-0010 §2; S14a T16; S26 T23, PLAN D9): mutmut over
-# `[tool.mutmut]` in apps/api/pyproject.toml with the test env (its integration tests use the
-# migrated mos_test, one child at a time), then the per-module report (>= 80% or a waiver row in
-# docs/review/MUTATION-WAIVERS.md). Not a required check: the nightly `mutation` leg runs it.
+# `[tool.mutmut]` in apps/api/pyproject.toml with the test env, then the per-module report (>= 80%
+# or a waiver row in docs/review/MUTATION-WAIVERS.md). Not a required check: the nightly
+# `mutation` leg runs it. Every run starts fresh (mutmut keeps a mutant's old verdict even after
+# its tests change, so a kept apps/api/mutants would score stale results). The children run in
+# parallel: each takes a slot copy of the migrated mos_test, `mos_test_mut<n>`
+# (tests/support/xdist_db.py), dropped before and after the run.
 # `mutation-rules` is the S14a name, kept as an alias.
-MUTATION_MAX_CHILDREN ?= 1
+MUTATION_MAX_CHILDREN ?= 6
+MUTATION_ENV = APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) \
+  S3_ENDPOINT_URL=$(TEST_S3_ENDPOINT_URL)
 .PHONY: mutation mutation-rules
 mutation:
 	$(MIGRATE_ENV) $(ALEMBIC) upgrade head
 	$(MIGRATE_ENV) uv run --frozen python -m app.cli dictionary sync
-	cd apps/api && APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) \
-	  S3_ENDPOINT_URL=$(TEST_S3_ENDPOINT_URL) uv run --frozen mutmut run --max-children $(MUTATION_MAX_CHILDREN)
+	rm -rf apps/api/mutants
+	cd apps/api && $(MUTATION_ENV) uv run --frozen python tests/support/xdist_db.py drop-mutant-databases
+	cd apps/api && $(MUTATION_ENV) uv run --frozen mutmut run --max-children $(MUTATION_MAX_CHILDREN)
+	cd apps/api && $(MUTATION_ENV) uv run --frozen python tests/support/xdist_db.py drop-mutant-databases
 	uv run --frozen python scripts/ci/mutation_report.py --root apps/api --waivers docs/review/MUTATION-WAIVERS.md
 
 mutation-rules: mutation

@@ -51,8 +51,8 @@ packages = ["app"]
 # docs/review/MUTATION-WAIVERS.md row); nightly leg `mutation`, never a PR check. Run from apps/api
 # so mutmut's module names match `app.*` (mutmut only understands ./, src/ and source/ roots).
 # The test selection is each module's own unit and integration tests; the integration ones need
-# the migrated mos_test (the Makefile passes the test env) and run one child at a time (they reset
-# shared tables). `-c pyproject.toml --rootdir .` keep pytest on the mutants copy's own config:
+# the migrated mos_test (the Makefile passes the test env). They reset shared tables, so each
+# mutmut child runs on its own slot copy of mos_test (tests/support/xdist_db.py). `-c pyproject.toml --rootdir .` keep pytest on the mutants copy's own config:
 # the root config's `pythonpath = ["apps/api"]` would import the unmutated `app`, so no mutant
 # would ever be hit; `-o asyncio_mode=auto` replaces the root setting the async tests need.
 [tool.mutmut]
@@ -82,6 +82,9 @@ pytest_add_cli_args_test_selection = [
   "tests/integration/test_idempotency.py",
   "tests/integration/test_listings_publish_api.py",
   "tests/integration/test_publish_flow.py",
+  "tests/integration/test_listings_sync_reads_api.py",
+  "tests/integration/test_analytics_repository.py",
+  "tests/integration/test_periodic_tasks.py",
 ]
 pytest_add_cli_args = [
   "-c",

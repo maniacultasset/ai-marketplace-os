@@ -200,7 +200,10 @@ def test_mutmut_scoped_to_core_modules(repo_root: Path) -> None:
     assert "mutmut" not in root["tool"]
     makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
     assert "uv run --frozen mutmut run --max-children $(MUTATION_MAX_CHILDREN)" in makefile
-    assert "MUTATION_MAX_CHILDREN ?= 1" in makefile
+    # Parallel children, each on its own slot copy of mos_test, on a fresh mutants copy.
+    assert "MUTATION_MAX_CHILDREN ?= 6" in makefile
+    assert "\trm -rf apps/api/mutants\n" in makefile
+    assert makefile.count("tests/support/xdist_db.py drop-mutant-databases") == 2
     assert (
         "uv run --frozen python scripts/ci/mutation_report.py --root apps/api "
         "--waivers docs/review/MUTATION-WAIVERS.md" in makefile
