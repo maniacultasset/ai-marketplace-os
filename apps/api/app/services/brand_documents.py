@@ -34,7 +34,7 @@ from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import JobKind
 from mkos_schemas.jobs import BrandChunkType, JobAccepted
 
-from app.core.errors import ConflictError, DomainError, NotFoundError
+from app.core.errors import ConflictError, DomainError, LimitError, NotFoundError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.repositories.brand_chunks import BrandChunkRepository
@@ -71,8 +71,9 @@ class PayloadTooLargeError(DomainError):
     """The file is over `MAX_DOCUMENT_BYTES` (413 PAYLOAD_TOO_LARGE)."""
 
 
-class BrandLimitError(DomainError):
-    """A tenant cap is reached (429 RATE_LIMITED): live document jobs, live documents or chunks."""
+class BrandLimitError(LimitError):
+    """A tenant cap is reached (429 RATE_LIMITED): live document jobs, live documents or chunks.
+    A `LimitError`, so it carries the cap's `retry_after_s` (the 429's `Retry-After`)."""
 
 
 @dataclass(frozen=True, slots=True)

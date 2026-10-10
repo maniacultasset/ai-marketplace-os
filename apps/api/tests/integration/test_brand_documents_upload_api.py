@@ -7,6 +7,7 @@ from collections.abc import Iterator
 
 import httpx
 import pytest
+from app.core.errors import CAP_RETRY_AFTER_S
 
 from .auth_support import PREFIX
 from .brand_support import GUIDE, MemoryStore
@@ -132,6 +133,7 @@ async def test_upload_live_cap_429(
     await _post(api, jobs_db, b"two")
     response = await _post(api, jobs_db, b"three")
     assert response.status_code == 429 and response.json()["error"]["type"] == "RATE_LIMITED"
+    assert response.headers["retry-after"] == str(CAP_RETRY_AFTER_S)  # audit VALIDATION-2
 
 
 @pytest.mark.endpoint("brand_documents_upload", case="conflict")

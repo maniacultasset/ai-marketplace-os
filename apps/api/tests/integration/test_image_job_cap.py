@@ -12,6 +12,7 @@ from typing import Any
 
 import httpx
 import pytest
+from app.core.errors import CAP_RETRY_AFTER_S
 from app.repositories.jobs import EnqueueSpec
 from app.repositories.uow import tenant_uow
 from app.services import image_runner
@@ -97,6 +98,7 @@ async def test_image_live_cap_per_tenant_429(
     response = await register_key(api, hdrs, p, key)
     assert response.status_code == 429, response.text
     assert response.json()["error"]["type"] == "RATE_LIMITED"
+    assert response.headers["retry-after"] == str(CAP_RETRY_AFTER_S)  # audit VALIDATION-2
     assert count(images_db.conn, "SELECT count(*) FROM images") == 0
     assert count(images_db.conn, "SELECT count(*) FROM idempotency_keys") == 0
     images_db.conn.execute(

@@ -27,7 +27,13 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
 from starlette.types import Scope
 
-from app.core.errors import ConflictError, InputError, LimitError, NotFoundError
+from app.core.errors import (
+    CAP_RETRY_AFTER_S,
+    ConflictError,
+    InputError,
+    LimitError,
+    NotFoundError,
+)
 from app.core.flags import MarketplaceNotEnabled, not_enabled_message
 from app.core.request_context import REQUEST_ID_PATTERN, current_request_id, new_request_id
 
@@ -209,6 +215,10 @@ def envelope_headers(status: int, extra: Mapping[str, str] | None = None) -> dic
     headers = dict(extra or {})
     if status == 401:
         headers["WWW-Authenticate"] = "Bearer"
+    if status == 429 and not any(name.lower() == "retry-after" for name in headers):
+        # openapi.json declares Retry-After on every 429; a raiser that names no window gets
+        # the per-tenant cap's fixed hint rather than none.
+        headers["Retry-After"] = str(CAP_RETRY_AFTER_S)
     return headers
 
 
@@ -360,7 +370,7 @@ def domain_api_error(exc: Exception) -> ApiError:
     if isinstance(exc, NotFoundError):
         return ApiError(404, ErrorCode.NOT_FOUND, f"{path_label(exc.field)} not found.")
     if isinstance(exc, LimitError):
-        return ApiError(429, exc.code)
+        return ApiError(429, exc.code, headers={"Retry-After": str(exc.retry_after_s)})
     if isinstance(exc, InputError):
         msg = _INPUT_MESSAGES.get(exc.code, "Invalid value.")
         return ApiError(

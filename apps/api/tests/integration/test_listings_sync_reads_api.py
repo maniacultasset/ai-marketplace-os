@@ -8,6 +8,7 @@ from typing import Any
 
 import httpx
 import pytest
+from app.services.publish import REFRESH_WINDOW_S
 from mkos_schemas.codes import ErrorCode
 
 from .conftest import LOCAL_HOSTS
@@ -132,6 +133,18 @@ async def test_refresh_status_second_in_5_min_429_then_after_ok(
     await run_job(uuid.UUID(first.json()["job_id"]))
     second = await _refresh(api, pub, made.listing_id)
     assert second.status_code == 429 and second.json()["error"]["type"] == "RATE_LIMITED"
+    # audit VALIDATION-2: Retry-After is the rest of the 5-minute window, which the server knows
+    assert 1 <= int(second.headers["retry-after"]) <= REFRESH_WINDOW_S
+    with pub.conn.transaction():  # 200 s of the window pass
+        pub.conn.execute("SET LOCAL session_replication_role = replica")
+        pub.conn.execute(
+            "UPDATE job_runs SET queued_at = queued_at - interval '200 seconds' "
+            "WHERE listing_id = %s AND kind = 'listing_status_sync'",
+            [made.listing_id],
+        )
+    later = await _refresh(api, pub, made.listing_id)
+    assert later.status_code == 429
+    assert 1 <= int(later.headers["retry-after"]) <= REFRESH_WINDOW_S - 200 + 1
     with pub.conn.transaction():  # the clock moves 5 minutes on (terminal rows are immutable)
         pub.conn.execute("SET LOCAL session_replication_role = replica")
         pub.conn.execute(

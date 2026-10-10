@@ -2838,6 +2838,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -3063,6 +3068,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -3306,6 +3316,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -3493,6 +3508,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -3646,6 +3666,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -3889,6 +3914,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -4171,6 +4201,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -4378,6 +4413,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -4695,6 +4735,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -4958,6 +5003,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -5314,6 +5364,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -5630,6 +5685,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -5880,6 +5940,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -6116,6 +6181,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -6373,6 +6443,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -6688,6 +6763,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -6914,6 +6994,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -7247,6 +7332,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -7489,6 +7579,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -7812,6 +7907,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -8027,6 +8127,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -8387,6 +8492,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -8744,6 +8854,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -9106,6 +9221,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -9462,6 +9582,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -9795,6 +9920,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -10204,6 +10334,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -10461,6 +10596,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -10770,6 +10910,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -11125,6 +11270,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -11480,6 +11630,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -11839,6 +11994,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -12073,6 +12233,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -12342,6 +12507,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -12550,6 +12720,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -12825,6 +13000,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -13097,6 +13277,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -13452,6 +13637,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -13686,6 +13876,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -13978,6 +14173,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -14334,6 +14534,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -14568,6 +14773,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -14932,6 +15142,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -15249,6 +15464,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -15494,6 +15714,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -15706,6 +15931,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -16012,6 +16242,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -16229,6 +16464,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -16386,6 +16626,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -16716,6 +16961,11 @@ export interface operations {
             /** @description Too many requests. Codes: `RATE_LIMITED`. */
             429: {
                 headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {

@@ -492,10 +492,11 @@ async def refresh_status(
     live = await uow.job_runs.live_for_listing(listing.id, JobKind.LISTING_STATUS_SYNC)
     if live is not None:
         return live.id
-    if await uow.job_runs.user_requested_since(
+    wait_s = await uow.job_runs.user_request_wait_s(
         listing.id, JobKind.LISTING_STATUS_SYNC, REFRESH_WINDOW_S
-    ):
-        raise LimitError("refresh-status 1 per 5 min per listing")
+    )
+    if wait_s is not None:
+        raise LimitError("refresh-status 1 per 5 min per listing", retry_after_s=wait_s)
     enqueued = await uow.job_runs.enqueue(
         EnqueueSpec(
             kind=JobKind.LISTING_STATUS_SYNC,

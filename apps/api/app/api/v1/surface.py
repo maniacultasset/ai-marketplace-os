@@ -223,8 +223,21 @@ def _codes_text(codes: tuple[ErrorCode, ...]) -> str:
     return ", ".join(f"`{c.value}`" for c in codes)
 
 
+RETRY_AFTER_HEADER: Final[Mapping[str, Any]] = MappingProxyType(
+    {
+        "description": (
+            "Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, "
+            "the rest of a per-listing window, or a fixed hint for a per-tenant cap."
+        ),
+        "schema": {"type": "integer", "minimum": 1},
+        "example": 30,
+    }
+)
+
+
 def declared_responses(op: Operation) -> dict[int | str, dict[str, Any]]:
-    """The non-2xx responses the op declares, each `ErrorEnvelope` with an example (AC5, AC12)."""
+    """The non-2xx responses the op declares, each `ErrorEnvelope` with an example (AC5, AC12);
+    every 429 also declares its `Retry-After` header."""
     out: dict[int | str, dict[str, Any]] = {}
     for status, codes in op.error_codes.items():
         out[status] = {
@@ -232,6 +245,8 @@ def declared_responses(op: Operation) -> dict[int | str, dict[str, Any]]:
             "description": f"{STATUS_MESSAGES.get(status, 'Error')} Codes: {_codes_text(codes)}.",
             "content": {"application/json": {"example": error_example(status, codes[0])}},
         }
+        if status == 429:
+            out[status]["headers"] = {"Retry-After": dict(RETRY_AFTER_HEADER)}
     out["default"] = {
         "model": ErrorEnvelope,
         "description": (
