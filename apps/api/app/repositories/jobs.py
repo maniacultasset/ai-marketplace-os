@@ -33,7 +33,7 @@ from app.db.models.ops import JobRun
 from app.db.models.tenancy import Tenant
 from app.db.queue import cancel_on_session, defer_on_session, retire_on_session
 from app.repositories.base import TenantScopedRepository
-from app.workers.policy import POLICIES
+from app.workers.policy import POLICIES, lock_for
 
 MAX_PAYLOAD_BYTES: Final = 64 * 1024  # DATABASE.md:941
 RUNNING_TENANT: Final = ("trial", "active")
@@ -270,7 +270,11 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             existing = await self.db.execute(self._select().where(JobRun.idempotency_key == key))
             return Enqueued(existing.scalar_one(), created=False)
         queue_job_id = await defer_on_session(
-            self.db, kind=kind.value, queue=job.queue, job_run_id=job.id, lock=spec.lock
+            self.db,
+            kind=kind.value,
+            queue=job.queue,
+            job_run_id=job.id,
+            lock=spec.lock or lock_for(kind),
         )
         await self.db.execute(
             self._scoped_write(
@@ -527,7 +531,11 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             if done is None:
                 return Reaped("skipped")
             queue_job_id = await defer_on_session(
-                self.db, kind=done.kind, queue=done.queue, job_run_id=done.id
+                self.db,
+                kind=done.kind,
+                queue=done.queue,
+                job_run_id=done.id,
+                lock=lock_for(done.kind),
             )
             await self.db.execute(
                 self._scoped_write(
@@ -588,7 +596,7 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             return None
         await retire_on_session(self.db, job.queue_job_id)
         queue_job_id = await defer_on_session(
-            self.db, kind=job.kind, queue=job.queue, job_run_id=job.id
+            self.db, kind=job.kind, queue=job.queue, job_run_id=job.id, lock=lock_for(job.kind)
         )
         await self.db.execute(
             self._scoped_write(
