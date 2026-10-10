@@ -12,7 +12,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorSource
@@ -62,3 +62,24 @@ def system_report(
         errors=[item],
         request_id=request_id,
     )
+
+
+# SQLSTATEs of a lost or killed backend: class 08 (connection exception) and 57P01-57P03
+# (admin_shutdown, crash_shutdown, cannot_connect_now), e.g. `pg_terminate_backend` or a
+# failover. Retrying such a body is safe for a kind whose policy retries (S26 T13; the publish
+# job reads before it writes, imports are idempotent per row).
+_TRANSIENT_SQLSTATES: Final = frozenset({"57P01", "57P02", "57P03"})
+
+
+def is_transient_db_error(exc: BaseException) -> bool:
+    """A database connection lost under the body (not a constraint, data or SQL error)."""
+    import psycopg
+    from sqlalchemy.exc import DBAPIError
+
+    if isinstance(exc, DBAPIError) and exc.connection_invalidated:
+        return True
+    original = exc.orig if isinstance(exc, DBAPIError) else exc
+    if not isinstance(original, psycopg.OperationalError):
+        return False
+    state = original.sqlstate
+    return state is None or state.startswith("08") or state in _TRANSIENT_SQLSTATES
