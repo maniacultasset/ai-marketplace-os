@@ -356,6 +356,12 @@ LOAD_SMOKE_OUT ?= .e2e/load-smoke.json
 load-smoke:
 	scripts/load/run.sh --out $(LOAD_SMOKE_OUT)
 
+# Every e2e script, twice, on a fresh stack (S26 T22; AC 10): profile e2e, `make e2e` with the
+# stack's ports, project and hooks as overrides, then the stack removed. Not a required check.
+.PHONY: e2e-fresh
+e2e-fresh:
+	scripts/e2e/lib/e2e_fresh.sh
+
 # The v1 acceptance run on a fresh stack (S26 T20-T21; AC 9): setup by the staff CLI, then every
 # leg over HTTP against the stack's own fake marketplace and worker; `make e2e` skips the script.
 .PHONY: acceptance

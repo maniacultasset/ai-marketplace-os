@@ -5,7 +5,8 @@
 # (default 8000), MOCK_HOST_PORT (default 4010, the S3 local mock),
 # FAKE_MARKETPLACE_HOST_PORT (default 4020, the S15 fake marketplace) and
 # FLAG_OFF_API_HOST_PORT (default 8011, the S22 flag-off e2e API). The file
-# wins over the environment. ADR-0011 amendment.
+# wins over the environment. ADR-0011 amendment. `exports` reads
+# $FRESH_STACK_WORKTREE_ENV instead when it is set (S26 `make e2e-fresh`).
 set -euo pipefail
 
 KEYS="COMPOSE_PROJECT_NAME PG_HOST_PORT MINIO_API_HOST_PORT MINIO_CONSOLE_HOST_PORT API_HOST_PORT MOCK_HOST_PORT FAKE_MARKETPLACE_HOST_PORT FLAG_OFF_API_HOST_PORT"
@@ -244,7 +245,10 @@ usage() {
 }
 
 case "${1:-}" in
-  exports) exports_file "${2:-.worktree.env}" ;;
+  # S26 T22 (`make e2e-fresh`): FRESH_STACK_WORKTREE_ENV names a fresh stack's own file (same
+  # format), read instead, so every e2e script and the limiter reset reach that stack's compose
+  # project and ports, never this checkout's. Only scripts/e2e/lib/e2e_fresh.sh sets it.
+  exports) exports_file "${FRESH_STACK_WORKTREE_ENV:-${2:-.worktree.env}}" ;;
   check) check_main ;;
   *) usage; exit 2 ;;
 esac
