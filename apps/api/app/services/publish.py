@@ -6,9 +6,12 @@ PLAN D2, D3, D4, D6; CP1, CP3, CP4, CP9; invariants 1, 9, 10).
 item in its own SAVEPOINT, checked in this order, each refusal an item `ErrorReport` (the request
 stays 202):
 
-missing or another tenant's → 404; paused / archived → 409 LISTING_PAUSED / LISTING_ARCHIVED;
+missing or another tenant's → 404; a marketplace switched off here (Flipkart with
+`FLIPKART_ENABLED=false`, S22 C3, C12) → 501 NOT_IMPLEMENTED "Flipkart is not enabled", before
+every other check, so the flag never answers for a foreign id and no status or account check
+hides it; paused / archived → 409 LISTING_PAUSED / LISTING_ARCHIVED;
 `generating|publishing` → 409 LISTING_BUSY; a `listing_version_id` that is not current → 409
-STALE_VERSION (D4); no adapter for the marketplace → 501 NOT_IMPLEMENTED; the current version not
+STALE_VERSION (D4); the current version not
 the approved one → 409 INVALID_STATUS_TRANSITION; the status has no publish event → 409
 INVALID_STATUS_TRANSITION; no active account → 409 AUTH_EXPIRED (D6); then, unless the latest
 submission is a `pending` row whose job ended (resolve-then-retry, CP1 (c): the new job reads the
@@ -24,7 +27,8 @@ which defers the queue entry in the same transaction, and audits `listing.publis
 database's publish gate and status guard re-check all of it; their refusal is the item's 409. No
 adapter is called in the request (invariant 1: only the job publishes).
 
-`retry_fields` is the single-listing field retry (409s raised, not per item): status
+`retry_fields` is the single-listing field retry (409s raised, not per item; a switched-off
+marketplace is the whole-request 501, raised inside `idempotent`, so nothing is stored): status
 `failed/publish_partial|publish_failed`, the same account, cap, resolve-then-retry and
 justification checks, a non-empty retry payload, mode `retry_fields`.
 """
@@ -41,7 +45,9 @@ from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
 from mkos_schemas.enums import ErrorSource, JobKind, RetryClass
 from mkos_schemas.errors import ErrorItem, ErrorReport
 
+from app.core.config import get_settings
 from app.core.errors import ConflictError, DomainError, NotFoundError
+from app.core.flags import MarketplaceNotEnabled, marketplace_enabled, not_enabled_report
 from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.core.request_context import current_request_id
@@ -61,7 +67,6 @@ log = get_logger(__name__)
 
 BUSY: Final = frozenset({"generating", "publishing"})
 TERMINAL_JOB: Final = frozenset({"succeeded", "partial", "failed", "cancelled", "dead_letter"})
-SUPPORTED: Final = frozenset({"amazon"})
 MAX_SUBMISSIONS: Final = 3
 RETRY_FIELDS_REASONS: Final = frozenset({"publish_partial", "publish_failed"})
 _STATUS: Final[Mapping[ErrorCode, int]] = {
@@ -94,6 +99,19 @@ class Refused(Exception):  # noqa: N818 - a per-item answer, not a fault
         super().__init__(code.value)
         self.code = code
         self.status = _STATUS.get(code, 409)
+
+
+class Disabled(Refused):
+    """The listing's marketplace is switched off here (S22 C3): item 501 with the flag's report."""
+
+    def __init__(self, marketplace: str) -> None:
+        super().__init__(ErrorCode.NOT_IMPLEMENTED)
+        self.marketplace = marketplace
+
+    def report(self, listing_id: uuid.UUID) -> ErrorReport:
+        return not_enabled_report(self.marketplace).model_copy(
+            update={"request_id": current_request_id(), "listing_id": listing_id}
+        )
 
 
 def item_report(code: ErrorCode, listing_id: uuid.UUID | None = None) -> ErrorReport:
@@ -143,6 +161,8 @@ class Plan:
 def _gate(listing: Any | None, version_id: uuid.UUID | None) -> Any:
     if listing is None:
         raise Refused(ErrorCode.NOT_FOUND)
+    if not marketplace_enabled(listing.marketplace, get_settings()):
+        raise Disabled(listing.marketplace)
     if listing.paused_at is not None:
         raise Refused(ErrorCode.LISTING_PAUSED)
     if listing.archived_at is not None:
@@ -151,8 +171,6 @@ def _gate(listing: Any | None, version_id: uuid.UUID | None) -> Any:
         raise Refused(ErrorCode.LISTING_BUSY)
     if version_id is not None and version_id != listing.current_version_id:
         raise Refused(ErrorCode.STALE_VERSION)
-    if listing.marketplace not in SUPPORTED:
-        raise Refused(ErrorCode.NOT_IMPLEMENTED)
     if listing.current_version_id is None or listing.approved_version_id != (
         listing.current_version_id
     ):
@@ -327,6 +345,10 @@ async def _one(
                 uow, principal, listing, plan, http_key=http_key, batch_id=batch_id
             )
             return ItemOutcome(item.listing_id, 202, "publishing", job_id)
+    except Disabled as disabled:
+        return ItemOutcome(
+            item.listing_id, disabled.status, status, error=disabled.report(item.listing_id)
+        )
     except Refused as refused:
         code = refused.code
     except DomainError as exc:
@@ -410,6 +432,8 @@ async def retry_fields(
         _gate(listing, None)
         plan = await plan_publish(uow, listing, retry_fields_only=True)
         return await enqueue_publish(uow, principal, listing, plan, http_key=http_key)
+    except Disabled as disabled:
+        raise MarketplaceNotEnabled(disabled.marketplace) from None
     except Refused as refused:
         _raise(refused.code)
     except ConflictError as exc:

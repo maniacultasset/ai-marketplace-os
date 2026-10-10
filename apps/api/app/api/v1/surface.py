@@ -434,7 +434,7 @@ _ROWS: Final[tuple[Operation, ...]] = (
               conflict_code=E.DUPLICATE_SUBMISSION_BLOCKED,
               extra_codes=MappingProxyType({409: (
                   E.INVALID_STATUS_TRANSITION, E.LISTING_BUSY, E.SUBMISSION_ATTEMPTS_EXHAUSTED,
-                  E.AUTH_EXPIRED)}),
+                  E.AUTH_EXPIRED), **_501}),
               action=A.LISTING_PUBLISH),
     Operation("listings_submissions", "GET", "/listings/{listing_id}/submissions", 200,
               SubmissionPage, "listings", "The listing's publish attempts with their per-field "
