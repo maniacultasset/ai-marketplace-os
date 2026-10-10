@@ -43,6 +43,7 @@ import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
@@ -50,6 +51,13 @@ import procrastinate
 from mkos_schemas.codes import ErrorCode
 
 from app.adapters.storage import get_storage, images_bucket
+from app.core.alerts import (
+    DEAD_LETTER_CAP,
+    DEAD_LETTER_CAP_WINDOW,
+    AlertKind,
+    day_window,
+    floor_window,
+)
 from app.core.config import get_settings
 from app.core.flags import enabled_marketplaces
 from app.core.logging import get_logger
@@ -63,9 +71,12 @@ from app.repositories.marketplace_accounts import due_accounts
 from app.repositories.oauth_states import OAuthStateRepository, tenants_with_expired
 from app.services.image_keys import parse_image_key
 from app.services.job_hooks import run_terminal_hook
+from app.workers import rollup
+from app.workers.alerting import alert
 from app.workers.errors import system_report
 from app.workers.settings import STALLED_WORKER_S
 from app.workers.token_refresh import REFRESH_MARGIN, refresh_account
+from app.workers.wrapper import alert_dead_letter
 
 log = get_logger(__name__)
 REAPER_ID: Final = "reaper"
@@ -117,6 +128,9 @@ async def reap_once(job_manager: Any | None = None) -> ReapResult:
                 )
                 result.skipped.append(job_id)
                 continue
+            if reaped.action == "dead_letter" and reaped.job is not None:
+                # S23 T23: after the commit; JOB_TIMEOUT, deduped against the wrapper by job id
+                await alert_dead_letter(tenant_id, job_id, reaped.job.kind, reaped.job.error_code)
             bucket = {
                 "requeued": result.requeued,
                 "dead_letter": result.dead_lettered,
@@ -130,7 +144,11 @@ async def reap_once(job_manager: Any | None = None) -> ReapResult:
 
 
 async def prune_rate_limits(now: datetime | None = None) -> int:
-    pruned = await rate_limits.prune((now or datetime.now(UTC)) - RATE_LIMIT_KEEP)
+    current = now or datetime.now(UTC)
+    # S23 C3: alert dedupe/cap rows stay 25 h (a day-long dedupe window holds all day)
+    pruned = await rate_limits.prune(
+        current - RATE_LIMIT_KEEP, alert_before=current - rate_limits.ALERT_KEEP
+    )
     log.info("periodic.rate_limits_pruned", rows=pruned)
     return pruned
 
@@ -355,6 +373,106 @@ async def retention_daily(job_manager: Any | None = None) -> dict[str, int]:
     return totals
 
 
+# ---- S23 T24: the alert checks (AC11; D7, C8, C9) ----
+
+ERROR_RATE_MIN_TERMINAL: Final = 20
+ERROR_RATE_THRESHOLD: Final = Decimal("0.25")
+QUEUE_LATENCY_S: Final = 600
+BUDGET_THRESHOLDS: Final = (80, 100)
+SLOT_WINDOW: Final = timedelta(minutes=30)
+SUMMARY_LOOKBACK: Final = timedelta(hours=25)
+CAP_PREFIX: Final = "alert:job_dead_lettered:cap:"
+
+
+async def check_alerts(now: datetime | None = None) -> dict[str, int]:
+    """Every 5 minutes (one slot across workers): the job error rate per kind (at least 20
+    terminal jobs in 15 min and a failed share of 25 % or more), the LLM spend of today per tenant
+    and in total (spend plus live reservations, as the kill switch counts) against 80 % and 100 %
+    of its daily budget (a tenant's own `llm_daily_budget_usd`, else the default), the oldest
+    queued job per queue (10 minutes or more), and one summary per closed over-cap dead-letter
+    window. Each condition is deduped by its window; one failing emit never stops the others.
+    Returns the events sent per kind."""
+    current = now or datetime.now(UTC)
+    async with rollup.rollup_session() as session:
+        outcomes = await rollup.job_outcomes(session, current)
+        spend = await rollup.spend_today(session, current)
+        queues = await rollup.oldest_queued(session, current)
+    settings = get_settings()
+    slot = floor_window(current, SLOT_WINDOW)
+    today = day_window(current)
+    sent: dict[str, int] = {}
+
+    async def emit(kind: AlertKind, **kwargs: Any) -> None:
+        try:
+            if await alert(kind, now=current, **kwargs):
+                sent[kind] = sent.get(kind, 0) + 1
+        except Exception as exc:  # one condition's failure never stops the others
+            log.error("alert.check_failed", kind=kind, error_class=type(exc).__name__)
+
+    for row in outcomes:
+        if row.terminal < ERROR_RATE_MIN_TERMINAL:
+            continue
+        share = Decimal(row.failed) / Decimal(row.terminal)
+        if share >= ERROR_RATE_THRESHOLD:
+            await emit(
+                "job_error_rate",
+                key=row.kind,
+                window_start=slot,
+                job_kind=row.kind,
+                count=row.failed,
+                total=row.terminal,
+                rate=share.quantize(Decimal("0.0001")),
+            )
+    # what the kill switch enforces (app/workers/budget.py::reserve): spend plus live
+    # reservations against the tenant's own cap (else the default) and the platform cap
+    global_limit = Decimal(str(settings.llm_daily_budget_usd))
+    budgets: list[tuple[str, UUID | None, Decimal, Decimal, Decimal]] = [
+        ("tenant", tenant, b.spent, b.used, b.cap) for tenant, b in sorted(spend.budgets.items())
+    ]
+    budgets.append(("global", None, spend.global_usd, spend.global_used, global_limit))
+    for scope, tenant, usd, used, limit in budgets:
+        for pct in BUDGET_THRESHOLDS:
+            if limit <= 0 or used < limit * pct / 100:
+                continue
+            ids: dict[str, Any] = {} if tenant is None else {"tenant_id": tenant}
+            await emit(
+                "llm_budget",
+                key=f"{scope}:{tenant or 'all'}:{pct}",
+                window_start=today,
+                scope=scope,
+                threshold_pct=pct,
+                spend_usd=usd,
+                limit_usd=limit,
+                **ids,
+            )
+    for queue in queues:
+        if queue.oldest_s is not None and queue.oldest_s >= QUEUE_LATENCY_S:
+            await emit(
+                "queue_latency",
+                key=queue.queue,
+                window_start=slot,
+                queue=queue.queue,
+                oldest_s=queue.oldest_s,
+            )
+    cap_window = DEAD_LETTER_CAP_WINDOW
+    closed = floor_window(current, cap_window)
+    for bucket, window, n in await rate_limits.over_cap(
+        CAP_PREFIX, DEAD_LETTER_CAP, closed_before=closed, since=current - SUMMARY_LOOKBACK
+    ):
+        job_kind = bucket.removeprefix(CAP_PREFIX)
+        await emit(
+            "job_dead_lettered",
+            key=f"summary:{job_kind}",
+            window_start=window,
+            summary=True,
+            job_kind=job_kind,
+            count=n - DEAD_LETTER_CAP,
+            total=n,
+        )
+    log.info("periodic.alerts_checked", **sent)
+    return sent
+
+
 async def _retention(context: procrastinate.JobContext, timestamp: int) -> None:
     with request_context(new_request_id()):
         await retention_daily(context.app.job_manager)
@@ -382,6 +500,7 @@ PERIODIC: Final[dict[str, tuple[str, Any, bool]]] = {
     "marketplace_token_refresh": ("*/5 * * * *", _plain(refresh_marketplace_tokens), False),
     "oauth_states_prune": ("30 * * * *", _plain(prune_oauth_states), False),
     "schedule_status_sync": ("* * * * *", _plain(schedule_status_sync), False),
+    "check_alerts": ("*/5 * * * *", _plain(check_alerts), False),
 }
 
 

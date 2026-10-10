@@ -117,8 +117,6 @@ class RequestContextMiddleware:
         method = str(scope.get("method", ""))
         sender = _IdSender(send, request_id)
         with request_context(request_id):
-            if self.on_request is not None:
-                self.on_request(request_id)
             span = None if probe else self.tracer.start_span(method, kind=SpanKind.SERVER)
             current = (
                 nullcontext()
@@ -131,6 +129,9 @@ class RequestContextMiddleware:
                 )
             )
             with current:
+                # S23: inside the SERVER span, so the hook can tag its trace id too
+                if self.on_request is not None:
+                    self.on_request(request_id)
                 await self._run(scope, receive, sender, span, request_id, probe, method)
 
     async def _run(

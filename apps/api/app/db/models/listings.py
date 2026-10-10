@@ -218,6 +218,13 @@ class ListingVersion(TenantScoped, Base):
             "job_id",
             postgresql_where=text("job_id IS NOT NULL"),
         ),
+        # 0009 (S23): generation volume for analytics
+        Index(
+            conv("ix_listing_versions_tenant_id_created_at_generated"),
+            "tenant_id",
+            "created_at",
+            postgresql_where=text("origin IN ('generation', 'regeneration')"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = id_column()
@@ -268,6 +275,13 @@ class ReviewDecision(TenantScoped, Base):
             text("decided_at DESC"),
         ),
         Index(conv("ix_review_decisions_tenant_id_batch_id"), "tenant_id", "batch_id"),
+        # 0009 (S23): approval rate for analytics
+        Index(
+            conv("ix_review_decisions_tenant_id_decided_at"),
+            "tenant_id",
+            "decided_at",
+            postgresql_include=["decision"],
+        ),
         Index(
             conv("ix_review_decisions_regeneration_job_id"),
             "regeneration_job_id",

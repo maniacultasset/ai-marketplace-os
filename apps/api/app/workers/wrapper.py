@@ -17,6 +17,12 @@
    (a fixed message, the reservation kept) plus the hook. If that raises too, the row stays
    `running` and the reaper recovers it (S18 CP11).
 
+Tracing (S23 C7): the claim, the body and the terminal write run inside one CONSUMER span `job
+<kind>` whose parent is the enqueuing request's span (`job_runs.traceparent`; NULL or malformed →
+a root span, never an error). Attributes: `job.id`, `job.kind`, `tenant_id`, `job.attempt`,
+`request_id`. ERROR status for `partial`, `failed`, `dead_letter`, a timeout and a retry; an
+exception is recorded by class name only.
+
 Outcomes: `Outcome` → `succeeded`/`partial`; timeout → `failed` + `JOB_TIMEOUT`; `JobFailed` →
 `failed` with its report; `RetryableJobError` → `queued` and `RetryLater(backoff)` while attempts
 are left, else `dead_letter` + `RETRY_EXHAUSTED`; a shutdown abort (`CancelledError`) → back to
@@ -29,27 +35,36 @@ from __future__ import annotations
 import asyncio
 import secrets
 from collections.abc import Mapping
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+import sentry_sdk
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorSource, JobKind
 from mkos_schemas.errors import ErrorItem, ErrorReport
+from opentelemetry.trace import SpanKind, Status, StatusCode
 
+from app.core.alerts import day_window, dead_letter_cap
 from app.core.logging import get_logger
+from app.core.observability import current_trace_id
 from app.core.request_context import bind_tenant, new_request_id, request_context
+from app.core.traceparent import parse_traceparent
+from app.core.tracer import get_tracer
 from app.db.job_context import JobHead, resolve_job
 from app.db.session import unit_of_work
 from app.repositories.jobs import Claimed, JobRunRepository
 from app.repositories.uow import repositories_on
 from app.services.job_hooks import run_terminal_hook
 from app.workers import registry
+from app.workers.alerting import alert
 from app.workers.errors import JobFailed, RetryableJobError, RetryLater, system_report
 from app.workers.policy import POLICIES, JobPolicy, backoff_s, lease_s
 from app.workers.registry import JobContext, Outcome, Persist
 
 log = get_logger(__name__)
 _rand = secrets.SystemRandom()
+OK_STATUSES = frozenset({"succeeded"})
 
 
 def policy_for(kind: JobKind, policies: Mapping[JobKind, JobPolicy] | None = None) -> JobPolicy:
@@ -72,9 +87,47 @@ async def run_job(job_run_id: str) -> None:
         bind_tenant(head.tenant_id)
         kind = JobKind(head.kind)
         policy = policy_for(kind)
-        claimed = await _claim(job_id, head, policy, ctx.request_id)
-        if claimed is not None:
-            await _execute(job_id, head, kind, policy, claimed, ctx.request_id)
+        with (
+            get_tracer().start_as_current_span(
+                f"job {kind.value}",
+                context=parse_traceparent(head.traceparent),
+                kind=SpanKind.CONSUMER,
+                attributes={
+                    "job.id": str(job_id),
+                    "job.kind": kind.value,
+                    "tenant_id": str(head.tenant_id),
+                },
+                record_exception=False,
+                set_status_on_exception=False,
+            ) as span,
+            sentry_sdk.isolation_scope() as sentry_scope,
+        ):
+            # S23 (D9): this job's Sentry events carry its request, trace and kind, and the
+            # scope ends with the job, so the next job starts clean
+            sentry_scope.set_tag("request_id", ctx.request_id)
+            sentry_scope.set_tag("job_kind", kind.value)
+            trace_id = current_trace_id()
+            if trace_id is not None:
+                sentry_scope.set_tag("trace_id", trace_id)
+            claimed = await _claim(job_id, head, policy, ctx.request_id)
+            if claimed is None:
+                return
+            span.set_attribute("job.attempt", claimed.attempt)
+            try:
+                status, error_class = await _execute(
+                    job_id, head, kind, policy, claimed, ctx.request_id
+                )
+            except RetryLater:
+                span.set_status(Status(StatusCode.ERROR))
+                raise
+            except BaseException as exc:  # shutdown abort or a wrapper failure: class name only
+                span.add_event("exception", {"exception.type": type(exc).__name__})
+                span.set_status(Status(StatusCode.ERROR))
+                raise
+            if error_class is not None:
+                span.add_event("exception", {"exception.type": error_class})
+            if status not in OK_STATUSES:
+                span.set_status(Status(StatusCode.ERROR))
 
 
 async def _claim(job_id: UUID, head: JobHead, policy: JobPolicy, request_id: str) -> Claimed | None:
@@ -100,7 +153,9 @@ async def _execute(
     policy: JobPolicy,
     claimed: Claimed,
     request_id: str,
-) -> None:
+) -> tuple[str, str | None]:
+    """Run the body and write its terminal row; returns the job status (`timeout` for a
+    timeout) and, for a body exception, its class name."""
     attempt = claimed.attempt
     max_attempts = claimed.job.max_attempts
     body = registry.body_for(kind)
@@ -127,7 +182,7 @@ async def _execute(
             None,
             failure(ErrorCode.INTERNAL_ERROR, f"no body is registered for {kind.value}"),
         )
-        return
+        return "failed", None
     try:
         async with asyncio.timeout(policy.timeout_s) as deadline:
             try:
@@ -146,7 +201,7 @@ async def _execute(
             None,
             failure(ErrorCode.JOB_TIMEOUT, f"the job exceeded its {policy.timeout_s} s timeout"),
         )
-        return
+        return "timeout", None
     except JobFailed as exc:
         await _finish(
             head,
@@ -158,10 +213,10 @@ async def _execute(
             persist=exc.persist,
             zero_reservation=exc.zero_reservation,
         )
-        return
+        return "failed", None
     except RetryableJobError as exc:
         await _retry_or_dead_letter(head, job_id, policy, attempt, max_attempts, exc, failure)
-        return
+        return "dead_letter", None
     except asyncio.CancelledError:
         await asyncio.shield(_release_shutdown(head, job_id, attempt))
         raise
@@ -176,7 +231,7 @@ async def _execute(
             None,
             failure(ErrorCode.INTERNAL_ERROR, f"the job failed ({name})"),
         )
-        return
+        return "failed", name
     await _finish(
         head,
         job_id,
@@ -186,6 +241,27 @@ async def _execute(
         outcome.error,
         persist=outcome.persist,
         zero_reservation=outcome.zero_reservation,
+    )
+    return outcome.status, None
+
+
+async def alert_dead_letter(
+    tenant_id: UUID, job_id: UUID, job_kind: str, error_code: str | None
+) -> None:
+    """The `job_dead_lettered` alert for a committed dead letter: deduped per job id per UTC day
+    (the wrapper and the reaper never count one job twice), at most 20 per job kind per 15
+    minutes (the storm cap; the periodic check sends the summary)."""
+    now = datetime.now(UTC)
+    await alert(
+        "job_dead_lettered",
+        key=str(job_id),
+        window_start=day_window(now),
+        now=now,
+        cap=dead_letter_cap(job_kind),
+        tenant_id=tenant_id,
+        job_id=job_id,
+        job_kind=job_kind,
+        error_code=error_code or ErrorCode.INTERNAL_ERROR.value,
     )
 
 
@@ -208,13 +284,13 @@ async def _finish(
     report_json: dict[str, Any] | None = None if report is None else report.model_dump(mode="json")
     tenant = head.tenant_id
 
-    async def write() -> None:
+    async def write() -> bool:
         async with unit_of_work(tenant) as session:
             repo = JobRunRepository(session, tenant)
             if persist is not None:
                 if await repo.lock_running(job_id, attempt) is None:
                     log.warning("job.stale_write_dropped", job_run_id=str(job_id), attempt=attempt)
-                    return
+                    return False
                 await persist(repositories_on(session, tenant))
             job = await repo.finish(
                 job_id,
@@ -229,13 +305,17 @@ async def _finish(
             )
             if job is None:
                 log.warning("job.stale_write_dropped", job_run_id=str(job_id), attempt=attempt)
-                return
+                return False
             await run_terminal_hook(session, job, outcome)
         log.info("job.finished", job_run_id=str(job_id), status=status, attempt=attempt)
+        return True
 
     # a shutdown arriving during the terminal write never leaves it half done
     try:
-        await asyncio.shield(write())
+        written = await asyncio.shield(write())
+        if written and status == "dead_letter":  # after the commit only (S23 T23)
+            code = None if report is None or report.error_code is None else report.error_code.value
+            await alert_dead_letter(head.tenant_id, job_id, head.kind, code)
     except Exception as exc:  # the terminal transaction rolled back whole
         log.error(
             "job.persist_error",

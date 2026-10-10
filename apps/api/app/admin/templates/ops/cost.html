@@ -21,4 +21,31 @@
   <dt>Listings first published</dt><dd>{{ per_listing.published }}</dd>
   <dt>Per listing USD</dt><dd>{{ per_listing.per_listing if per_listing.per_listing is not none else "-" }}</dd>
 </dl>
+<h3>Spend on {{ day.isoformat() }} (UTC) per model</h3>
+<table class="table table-vcenter card-table" data-ops="by-model">
+  <thead><tr><th>Model</th><th>USD</th><th>Runs</th></tr></thead>
+  <tbody>
+  {% for row in by_model %}
+    <tr><td>{{ row.key }}</td><td>{{ row.cost_usd }}</td><td>{{ row.runs }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<h3>Spend on {{ day.isoformat() }} (UTC) per trigger</h3>
+<table class="table table-vcenter card-table" data-ops="by-trigger">
+  <thead><tr><th>Trigger</th><th>USD</th><th>Runs</th></tr></thead>
+  <tbody>
+  {% for row in by_trigger %}
+    <tr><td>{{ row.key }}</td><td>{{ row.cost_usd }}</td><td>{{ row.runs }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<h3>Top listings by cost (30 days)</h3>
+<table class="table table-vcenter card-table" data-ops="top-listings">
+  <thead><tr><th>Listing</th><th>Tenant</th><th>USD</th><th>Runs</th></tr></thead>
+  <tbody>
+  {% for row in top %}
+    <tr><td><a href="{{ url_for('admin:view-cost_listing', listing_id=row.listing_id) }}">{{ row.listing_id }}</a></td><td>{{ row.tenant_name }}</td><td>{{ row.cost_usd }}</td><td>{{ row.runs }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
 {% endblock %}

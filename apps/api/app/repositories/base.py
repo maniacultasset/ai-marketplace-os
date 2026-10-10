@@ -34,7 +34,7 @@ from sqlalchemy.orm.util import identity_key
 from sqlalchemy.sql.elements import ClauseElement
 
 from app.core.errors import RowCountError
-from app.db.guard import SCOPE_OK, referenced_tables, tenant_tables
+from app.db.guard import SCOPE_OK, CrossTenantQueryError, referenced_tables, tenant_tables
 from app.db.integrity import to_conflict
 from app.db.models._tenant import TenantScoped
 
@@ -127,6 +127,31 @@ class TenantScopedRepository[ModelT: TenantScoped]:
             raise TypeError("inner statement reads another tenant table")
         if any(_own_tables(node) & tenant_tables() for node in _children_outside(stmt, inner)):
             raise TypeError("outer statement reads a tenant table outside the scoped inner")
+        return stmt.execution_options(**{SCOPE_OK: True})
+
+    def _criterion_for(self, model: type[TenantScoped]) -> ColumnElement[bool]:
+        """`model`'s tenant column equal to this instance's tenant, recorded so `_scoped_read`
+        accepts it. For an aggregate read that joins several tenant tables (S23 analytics)."""
+        criterion: ColumnElement[bool] = model.tenant_col() == self.tenant_id
+        self._criteria.append(criterion)
+        return criterion
+
+    def _scoped_read(self, stmt: Select[Any]) -> Select[Any]:
+        """Stamp a read whose WHERE carries one of this instance's tenant criteria (from
+        `_criterion_for()` or `_tenant_criterion()`) for every tenant table it names. A tenant
+        table without one raises `CrossTenantQueryError`, as the guard would."""
+        covered: set[str] = set()
+        for criterion in getattr(stmt, "_where_criteria", ()):
+            if any(mine is criterion for mine in self._criteria):
+                table = getattr(getattr(criterion, "left", None), "table", None)
+                if isinstance(table, Table):
+                    covered.add(table.name)
+        missing = (referenced_tables(stmt) & tenant_tables()) - covered
+        if missing:
+            raise CrossTenantQueryError(
+                f"read names tenant table(s) {sorted(missing)} without this repository's "
+                "tenant criterion"
+            )
         return stmt.execution_options(**{SCOPE_OK: True})
 
     def _scoped_write[DmlT: (Update, Delete)](self, stmt: DmlT) -> DmlT:

@@ -40,6 +40,7 @@ from sqlalchemy.orm import Session, SessionTransaction
 from app.core.config import get_settings
 from app.db.guard import SCOPE_OK, TENANT_INFO_KEY, check_flush, check_scope
 from app.db.integrity import map_db_error, to_conflict
+from app.db.tracing import instrument_engine
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ def get_engine() -> AsyncEngine:
     settings = get_settings()
     if settings.database_url is None:
         raise RuntimeError("DATABASE_URL is required to build the engine (APP_ROLE api or worker)")
-    return create_async_engine(
+    engine = create_async_engine(
         settings.database_url,
         # Bound values (a hashed_password INSERT) never reach a log line. No `echo=`: SQLAlchemy would
         # attach its own plain-text stdout handler; configure_logging owns the level (S11 C5).
@@ -62,6 +63,8 @@ def get_engine() -> AsyncEngine:
         # libpq `options`: the psycopg form of a per-connection statement_timeout.
         connect_args={"options": f"-c statement_timeout={settings.db_statement_timeout_ms}"},
     )
+    instrument_engine(engine)  # S23: DB spans under a recording request or job span
+    return engine
 
 
 async def dispose_engine() -> None:

@@ -976,10 +976,10 @@
   },
   {
    "id": "R05373",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "BACKEND-ARCHITECTURE.md:1353",
-   "note": "Metric source tables and formulas not specified; no build step implements analytics."
+   "ref": "apps/api/app/repositories/analytics.py; TEAM-QUESTIONS T129",
+   "note": "S23: formulas and source tables defined (T129 default) and built; GET /api/v1/analytics."
   },
   {
    "id": "R05373a",

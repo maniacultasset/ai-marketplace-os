@@ -75,6 +75,8 @@ PLATFORM_SCOPE_FILES = (
     "apps/api/app/workers/periodic.py",
     # S18 T7 (CP9): the claim-time global budget sum (CANON.md:78 allowlist, approval R1)
     "apps/api/app/workers/budget.py",
+    # S23 (KNOWN-ISSUES.md:31): the named rollup module (cost and job rollups, CANON.md:78, R4)
+    "apps/api/app/workers/rollup.py",
 )
 SCOPE_OK_ALLOWED = ("apps/api/app/db",)
 SCOPE_OK_FILES = ("apps/api/app/repositories/base.py",)
@@ -424,8 +426,8 @@ def check_file(relative: str, path: Path) -> list[Violation]:
                 relative,
                 n,
                 "R5",
-                f"{m} outside app/admin, app/cli.py, app/workers/periodic.py, app/workers/budget.py "
-                "and scripts",
+                f"{m} outside app/admin, app/cli.py, app/workers/periodic.py, app/workers/budget.py, "
+                "app/workers/rollup.py and scripts",
             )
             for n, m in _names(tree, "platform_scope", "app.db.session")
         ]

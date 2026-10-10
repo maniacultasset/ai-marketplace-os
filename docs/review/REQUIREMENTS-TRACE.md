@@ -8,18 +8,18 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 - **Every line of the client spec is traced.** All 13,711 lines of the snapshot are in the register:
   11,167 entries, of which 8,916 are checkable statements. `scripts/trace/check_coverage.py` proves 100% line coverage.
 - **Every statement has a verdict**, with a reference, adversarially verified per chunk (`scripts/trace/check_mapping.py`).
-- **7,035 of 8,916 (79%) are covered by our plan**: 6,084 as written and
-  951 deliberately changed by an ADR, Canon row or recorded decision.
-- **508 are gaps** (backend/DB 255, shared seams 129, ops 104, AI team 4, FE team 0, client 16).
+- **7,043 of 8,916 (79%) are covered by our plan**: 6,089 as written and
+  954 deliberately changed by an ADR, Canon row or recorded decision.
+- **500 are gaps** (backend/DB 248, shared seams 128, ops 104, AI team 4, FE team 0, client 16).
 - **319 need the team or client** (54 conflicts, 265 questions);
   each points to a row in `TEAM-QUESTIONS.md`.
 - 512 belong to the AI or FE team, and 542 are marked Phase 2/3 by the site itself.
 
 | Status | Statements | Share |
 |---|---:|---:|
-| ✅ covered | 6,084 | 68.2% |
-| 🔁 covered-changed | 951 | 10.7% |
-| ⚠️ gap | 508 | 5.7% |
+| ✅ covered | 6,089 | 68.3% |
+| 🔁 covered-changed | 954 | 10.7% |
+| ⚠️ gap | 500 | 5.6% |
 | ❌ conflict | 54 | 0.6% |
 | ❓ needs-client | 265 | 3.0% |
 | 🧩 other-team | 512 | 5.7% |
@@ -45,7 +45,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [10] Acceptance Criteria, Metrics & Lead Handoff (§22–26) | 86 | 4 | 11 | 0 | 4 | 0 | 2 | 15 |
 | [01] 45-Day Plan & Definition of Done | 85 | 3 | 1 | 0 | 2 | 0 | 0 | 3 |
 | [02] Phase-1 Scope Lock & Non-Goals | 49 | 1 | 1 | 0 | 4 | 6 | 36 | 5 |
-| [03] Day-by-Day Execution Plan (45 Days) | 441 | 74 | 107 | 1 | 76 | 49 | 0 | 184 |
+| [03] Day-by-Day Execution Plan (45 Days) | 441 | 75 | 106 | 1 | 76 | 49 | 0 | 183 |
 | [04] Team Structure & Solo Sprint | 57 | 7 | 3 | 0 | 13 | 16 | 0 | 16 |
 | [05] GCP Tech Stack & Architecture | 85 | 19 | 6 | 0 | 0 | 11 | 0 | 6 |
 | [06] Consolidated Data Model & Schema | 162 | 34 | 0 | 3 | 3 | 0 | 0 | 6 |
@@ -165,7 +165,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [108] Approval APIs | 5 | 1 | 0 | 1 | 1 | 0 | 0 | 2 |
 | [109] Publishing APIs | 8 | 1 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [110] Marketplace Connection APIs | 7 | 1 | 0 | 0 | 0 | 0 | 0 | ✔ |
-| [111] Analytics APIs | 0 | 2 | 3 | 0 | 2 | 0 | 0 | 5 |
+| [111] Analytics APIs | 0 | 4 | 1 | 0 | 2 | 0 | 0 | 3 |
 | [112] Image APIs | 7 | 3 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [113] Agent APIs | 7 | 0 | 1 | 0 | 0 | 0 | 0 | 1 |
 | [114] Error APIs | 6 | 0 | 3 | 0 | 0 | 0 | 0 | 3 |
@@ -223,14 +223,14 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [166] Prompt Injection Considerations | 5 | 1 | 1 | 0 | 0 | 1 | 0 | 1 |
 | [167] Marketplace Credential Security | 8 | 0 | 1 | 0 | 0 | 0 | 0 | 1 |
 | [168] Logging | 12 | 0 | 0 | 0 | 0 | 0 | 0 | ✔ |
-| [169] Metrics | 4 | 0 | 10 | 0 | 0 | 0 | 0 | 10 |
-| [170] Tracing | 6 | 0 | 1 | 0 | 0 | 0 | 0 | 1 |
+| [169] Metrics | 6 | 0 | 8 | 0 | 0 | 0 | 0 | 8 |
+| [170] Tracing | 7 | 0 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [171] Agent Observability | 16 | 2 | 0 | 0 | 0 | 0 | 0 | ✔ |
-| [172] AI Cost Observability | 8 | 0 | 3 | 0 | 0 | 0 | 0 | 3 |
+| [172] AI Cost Observability | 9 | 0 | 2 | 0 | 0 | 0 | 0 | 2 |
 | [173] Marketplace API Observability | 13 | 0 | 1 | 0 | 0 | 0 | 0 | 1 |
 | [174] Error Monitoring | 10 | 0 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [175] Sentry | 5 | 1 | 0 | 0 | 0 | 2 | 0 | ✔ |
-| [176] OpenTelemetry | 4 | 1 | 3 | 0 | 0 | 0 | 0 | 3 |
+| [176] OpenTelemetry | 5 | 1 | 2 | 0 | 0 | 0 | 0 | 2 |
 | [177] AgentRun Telemetry | 7 | 3 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [178] Recommended Tech Stack | 31 | 12 | 1 | 0 | 0 | 8 | 0 | 1 |
 | [179] Frontend Architecture | 3 | 0 | 0 | 0 | 1 | 4 | 0 | 1 |
@@ -1029,7 +1029,7 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 | R13665 | L13665 | Production launch checklist: All Phase 1 features implemented. | T16; VISION Q25 | Phase-1 set per plan scope lock (T16); steps after S14 unsequenced |
 | R13668 | L13668 | Production launch checklist: Marketplace OAuth flows verified with production accounts. | T77 | Prod filings/app approval status unknown (STATE open decision 5); verify step itself unplanned |
 
-## ⚠️ Gaps we own: backend + DB (255)
+## ⚠️ Gaps we own: backend + DB (248)
 
 Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITECTURE.md and the build steps.
 
@@ -1169,7 +1169,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R05325 | L5325 | Test partial publish path. | BACKEND-ARCHITECTURE.md:2692; ADR-0010 §2 | Publish retry has unit/mutation bars only; partial-publish failure injection listed as a gap. |
 | R05325a | L5325 | Test rate-limit backoff path. | BACKEND-ARCHITECTURE.md:2692 | Rate-limit failure injection not named in ADR-0010. |
 | R05325b | L5325 | Test auth expiry recovery path. | BACKEND-ARCHITECTURE.md:2692 | Token-expiry failure injection not named in ADR-0010. |
-| R05373 | L5373 | Day 39 DoD: Analytics dashboard displays live, accurate metrics computed from staging validation_runs. | BACKEND-ARCHITECTURE.md:1353 | Metric source tables and formulas not specified; no build step implements analytics. |
 | R05373a | L5373 | Day 39 DoD: Analytics metrics computed from staging agent_runs. | BACKEND-ARCHITECTURE.md:1353 | agent_runs as a metric source not stated for /analytics. |
 | R05396 | L5396 | BE: Fix all discovered findings immediately. |  | No remediation rule for audit findings; ADR-0011 fix rounds cover code reviews only. |
 | R05433a | L5433 | Messy UAT product has bad formatting. | BACKEND-ARCHITECTURE.md:2665; T8 | Messy-product fixture is Proposed; bad-formatting content not specified. |
@@ -1425,8 +1424,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
-| R11447b | L11447 | `GET /analytics` supports date range filtering. | BUILD-SEQUENCE.md:48 | Analytics sub-routes named (timeseries); date-range parameters not specified. |
-| R11447c | L11447 | `GET /analytics` supports marketplace filtering. | BUILD-SEQUENCE.md:48 | marketplace-breakdown route only; marketplace filter parameter not specified. |
 | R11447d | L11447 | `GET /analytics` supports product-level drill-down. | BUILD-SEQUENCE.md:48 | No product-level analytics drill-down route planned. |
 
 ### [113] Agent APIs
@@ -1560,8 +1557,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R12658 | L12658 | Key metric: Agent generation duration. | docs/architecture/BACKEND-ARCHITECTURE.md:2778; docs/architecture/DATABASE.md:991 | duration_ms stored; generation-duration metric not defined |
 | R12660 | L12660 | Key metric: Marketplace API latency. | docs/architecture/BACKEND-ARCHITECTURE.md:2778; docs/architecture/BACKEND-ARCHITECTURE.md:2745 | Adapter call duration logged; latency metric not defined |
 | R12661 | L12661 | Key metric: Queue depth. | docs/architecture/BACKEND-ARCHITECTURE.md:2778; docs/drafts/BUILD-SEQUENCE.md:235 | Queue depth surface "not specified" (2778); only pre-Canon S14 /internal/ops/queue; latency alert only |
-| R12661a | L12661 | Key metric: Queue processing time. | docs/architecture/BACKEND-ARCHITECTURE.md:2778; docs/architecture/DATABASE.md:929 | job_runs timestamps exist; processing-time metric not defined |
-| R12662 | L12662 | Key metric: Error rates by source. | docs/architecture/BACKEND-ARCHITECTURE.md:2778 | ErrorSource recorded; per-source error-rate metric not defined |
 
 ### [172] AI Cost Observability
 
@@ -1569,14 +1564,12 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 |---|---|---|---|---|
 | R12705d | L12705 | Dashboards show daily AI spend. | docs/architecture/BACKEND-ARCHITECTURE.md:2764; docs/architecture/BACKEND-ARCHITECTURE.md:2774; docs/drafts/BUILD-SEQUENCE.md:235 | Cost dashboard named, contents unspecified; daily-spend page only pre-Canon S14; daily cost alert exists |
 | R12705e | L12705 | Dashboards show cost trends. | docs/architecture/BACKEND-ARCHITECTURE.md:1353; docs/drafts/BUILD-SEQUENCE.md:235 | analytics costs/timeseries only Proposed; trend view unspecified |
-| R12705f | L12705 | Dashboards show cost per listing over time. | docs/drafts/BUILD-SEQUENCE.md:235; docs/architecture/BACKEND-ARCHITECTURE.md:1353 | Cost per listing named; over-time view unspecified |
 
 ### [176] OpenTelemetry
 
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
 | R12756a | L12756 | OpenTelemetry for metrics. | docs/architecture/BACKEND-ARCHITECTURE.md:2778; docs/review/SPEC-TRACEABILITY.md:289 | OTel used for traces only; no metrics pipeline planned |
-| R12761b | L12761 | OpenTelemetry: database query tracing. | docs/architecture/BACKEND-ARCHITECTURE.md:2748; docs/drafts/CHECKLISTS.md:370 | No SQLAlchemy/psycopg span instrumentation in plan; only pre-Canon CHECKLISTS (names asyncpg) |
 
 ### [186] S3
 
@@ -1669,7 +1662,7 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R13647 | L13647 | Security checklist: TLS on all connections. | docs/architecture/BACKEND-ARCHITECTURE.md:2263 | DB and storage connection encryption stated nowhere; doc gap for ADR-0001/S4 |
 | R13650 | L13650 | Security checklist: SQL injection prevention verified. | docs/architecture/BACKEND-ARCHITECTURE.md:2204 | SQL injection prevention is verified with the repository layer (S9) and the API routes (S10): parameterised queries and tests; ruff S608 (S1) is only the lint half |
 
-## ⚠️ Gaps on a shared seam (backend + AI or FE team) (129)
+## ⚠️ Gaps on a shared seam (backend + AI or FE team) (128)
 
 
 ### [★] Complete Founder BRD (End-to-End)
@@ -1966,12 +1959,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 |---|---|---|---|---|
 | R12425 | L12425 | Application Tier contains "Next.js Frontend" (FE). | docs/architecture/BACKEND-ARCHITECTURE.md:2304 | Next.js hosting, sizing and ingress not specified in our ADRs |
 | R12437a | L12437 | Edge: LB --> FE. | docs/architecture/BACKEND-ARCHITECTURE.md:2304 | LB does not front the web app; web ingress unspecified |
-
-### [170] Tracing
-
-| R-id | Lines | The site says | Ref | What is missing / differs |
-|---|---|---|---|---|
-| R12677 | L12677 | OpenTelemetry traces span the full request lifecycle: user request → API → job queue → agent execution → model call → validation → marketplace API. | docs/architecture/BACKEND-ARCHITECTURE.md:2738; docs/architecture/BACKEND-ARCHITECTURE.md:2753 | Only request_id enters jobs; traceparent Proposed (S11); no agent spans |
 
 ### [176] OpenTelemetry
 

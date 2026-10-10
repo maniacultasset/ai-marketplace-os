@@ -1,6 +1,57 @@
 {
   "components": {
     "schemas": {
+      "AnalyticsCounts": {
+        "description": "The counts each rate is computed from, for the range.",
+        "properties": {
+          "approvals": {
+            "minimum": 0.0,
+            "title": "Approvals",
+            "type": "integer"
+          },
+          "listings_generated": {
+            "minimum": 0.0,
+            "title": "Listings Generated",
+            "type": "integer"
+          },
+          "publish_failed": {
+            "minimum": 0.0,
+            "title": "Publish Failed",
+            "type": "integer"
+          },
+          "publish_succeeded": {
+            "minimum": 0.0,
+            "title": "Publish Succeeded",
+            "type": "integer"
+          },
+          "rejections": {
+            "minimum": 0.0,
+            "title": "Rejections",
+            "type": "integer"
+          },
+          "validation_first_pass_passed": {
+            "minimum": 0.0,
+            "title": "Validation First Pass Passed",
+            "type": "integer"
+          },
+          "validation_first_pass_total": {
+            "minimum": 0.0,
+            "title": "Validation First Pass Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "listings_generated",
+          "approvals",
+          "rejections",
+          "validation_first_pass_passed",
+          "validation_first_pass_total",
+          "publish_succeeded",
+          "publish_failed"
+        ],
+        "title": "AnalyticsCounts",
+        "type": "object"
+      },
       "AnalyticsSummary": {
         "properties": {
           "approval_rate": {
@@ -15,6 +66,31 @@
               }
             ],
             "title": "Approval Rate"
+          },
+          "by_marketplace": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MarketplaceBreakdown"
+                },
+                "maxItems": 2,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "By Marketplace"
+          },
+          "counts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalyticsCounts"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "from": {
             "format": "date",
@@ -2802,6 +2878,68 @@
         "title": "MarketplaceAccountPage",
         "type": "object"
       },
+      "MarketplaceBreakdown": {
+        "description": "The same metrics for one marketplace.",
+        "properties": {
+          "approval_rate": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Rate"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/AnalyticsCounts"
+          },
+          "listings_generated": {
+            "minimum": 0.0,
+            "title": "Listings Generated",
+            "type": "integer"
+          },
+          "marketplace": {
+            "$ref": "#/components/schemas/Marketplace"
+          },
+          "publish_success_rate": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publish Success Rate"
+          },
+          "validation_pass_rate": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation Pass Rate"
+          }
+        },
+        "required": [
+          "marketplace",
+          "listings_generated",
+          "counts"
+        ],
+        "title": "MarketplaceBreakdown",
+        "type": "object"
+      },
       "MarketplacePreview": {
         "description": "`GET /api/v1/listings/{listing_id}/preview`: the per-SKU payloads for the listing's current\nversion and the adapter's mapping errors. It carries no verdict: the Rules Engine decides,\nthe adapter only adds errors (`report`).",
         "properties": {
@@ -4448,21 +4586,35 @@
           {
             "in": "query",
             "name": "from",
-            "required": true,
+            "required": false,
             "schema": {
-              "format": "date",
-              "title": "From",
-              "type": "string"
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
             }
           },
           {
             "in": "query",
             "name": "to",
-            "required": true,
+            "required": false,
             "schema": {
-              "format": "date",
-              "title": "To",
-              "type": "string"
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
             }
           }
         ],
@@ -4472,9 +4624,36 @@
               "application/json": {
                 "example": {
                   "approval_rate": 0.82,
+                  "by_marketplace": [
+                    {
+                      "approval_rate": 0.82,
+                      "counts": {
+                        "approvals": 82,
+                        "listings_generated": 120,
+                        "publish_failed": 3,
+                        "publish_succeeded": 77,
+                        "rejections": 18,
+                        "validation_first_pass_passed": 108,
+                        "validation_first_pass_total": 120
+                      },
+                      "listings_generated": 120,
+                      "marketplace": "amazon",
+                      "publish_success_rate": 0.9625,
+                      "validation_pass_rate": 0.9
+                    }
+                  ],
+                  "counts": {
+                    "approvals": 82,
+                    "listings_generated": 120,
+                    "publish_failed": 3,
+                    "publish_succeeded": 77,
+                    "rejections": 18,
+                    "validation_first_pass_passed": 108,
+                    "validation_first_pass_total": 120
+                  },
                   "from": "2026-09-01",
                   "listings_generated": 120,
-                  "publish_success_rate": 0.97,
+                  "publish_success_rate": 0.9625,
                   "to": "2026-09-30",
                   "validation_pass_rate": 0.9
                 },
@@ -4667,21 +4846,35 @@
           {
             "in": "query",
             "name": "from",
-            "required": true,
+            "required": false,
             "schema": {
-              "format": "date",
-              "title": "From",
-              "type": "string"
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
             }
           },
           {
             "in": "query",
             "name": "to",
-            "required": true,
+            "required": false,
             "schema": {
-              "format": "date",
-              "title": "To",
-              "type": "string"
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
             }
           }
         ],
@@ -4691,9 +4884,36 @@
               "application/json": {
                 "example": {
                   "approval_rate": 0.82,
+                  "by_marketplace": [
+                    {
+                      "approval_rate": 0.82,
+                      "counts": {
+                        "approvals": 82,
+                        "listings_generated": 120,
+                        "publish_failed": 3,
+                        "publish_succeeded": 77,
+                        "rejections": 18,
+                        "validation_first_pass_passed": 108,
+                        "validation_first_pass_total": 120
+                      },
+                      "listings_generated": 120,
+                      "marketplace": "amazon",
+                      "publish_success_rate": 0.9625,
+                      "validation_pass_rate": 0.9
+                    }
+                  ],
+                  "counts": {
+                    "approvals": 82,
+                    "listings_generated": 120,
+                    "publish_failed": 3,
+                    "publish_succeeded": 77,
+                    "rejections": 18,
+                    "validation_first_pass_passed": 108,
+                    "validation_first_pass_total": 120
+                  },
                   "from": "2026-09-01",
                   "listings_generated": 120,
-                  "publish_success_rate": 0.97,
+                  "publish_success_rate": 0.9625,
                   "to": "2026-09-30",
                   "validation_pass_rate": 0.9
                 },

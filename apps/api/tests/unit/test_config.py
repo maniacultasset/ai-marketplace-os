@@ -796,3 +796,38 @@ def test_deployed_refuses_http_or_loopback_s3_endpoint(
 def test_local_keeps_the_minio_defaults(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     loaded = boot(monkeypatch, APP_ENV="local", DATABASE_URL=LOCAL_URL, JWT_SECRET=CI_LITERAL)
     assert loaded.s3_access_key == "local_only_minio_root_user"
+
+
+# ---- S23 T25 (D9; ENV.md GIT_SHA): a deployed api or worker needs a real release ----
+
+
+@pytest.mark.parametrize("app_env", ["staging", "production"])
+@pytest.mark.parametrize("role", ["api", "worker"])
+@pytest.mark.parametrize("sha", [None, "", "dev", "  "])
+def test_config_git_sha_required(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, app_env: str, role: str, sha: str | None
+) -> None:
+    env = {**_deployed_env(role, app_env), "SENTRY_DSN": TEST_SENTRY_DSN}
+    del env["GIT_SHA"]
+    if sha is not None:
+        env["GIT_SHA"] = sha
+    message = abort(monkeypatch, **env)
+    assert (
+        f'APP_ENV={app_env} requires GIT_SHA (not empty, not "dev") for APP_ROLE={role}' in message
+    )
+    assert "0123abc" not in message
+
+
+def test_config_git_sha_optional_local(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    loaded = boot(
+        monkeypatch, APP_ENV="local", APP_ROLE="api", DATABASE_URL=LOCAL_URL, JWT_SECRET=PRIVATE_JWT
+    )
+    assert loaded.git_sha == "dev"
+
+
+@pytest.mark.parametrize("role", ["migrate", "shell"])
+def test_config_git_sha_optional_migrate_shell(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, role: str
+) -> None:
+    env = {"APP_ENV": "staging", "APP_ROLE": role, "ALEMBIC_DATABASE_URL": LOCAL_URL}
+    assert boot(monkeypatch, **env).git_sha == "dev"
