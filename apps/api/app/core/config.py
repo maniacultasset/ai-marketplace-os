@@ -11,8 +11,9 @@
   (CANON.md:70), refuse KMS_LOCAL_DEV_KEY (any role), and refuse an http or loopback marketplace
   authorize/token URL or DASHBOARD_BASE_URL (S15). Off local, a JWT_SECRET (and, with the admin
   on, an ADMIN_SESSION_SECRET) must carry no whitespace and 32+ characters measured unstripped
-  (audit PROD-1; a character-variety floor waits on TEAM-QUESTIONS T130). Numeric settings
-  carry lower bounds in every env (PROD-3).
+  (audit PROD-1; a character-variety floor waits on TEAM-QUESTIONS T130). The api also needs
+  https non-loopback ALLOWED_ORIGINS (exact origins, never `*`) and JWT_ISSUER (PROD-2).
+  Numeric settings carry lower bounds in every env (PROD-3).
 - There is no module-level `settings`: call `get_settings()` where the value is needed.
 """
 
@@ -68,6 +69,8 @@ DEPLOYED_HTTPS_URLS: Final[tuple[tuple[str, str], ...]] = (
     ("flipkart_oauth_redirect_uri", "FLIPKART_OAUTH_REDIRECT_URI"),
     ("dashboard_base_url", "DASHBOARD_BASE_URL"),
 )
+# The same rule for the fields only the api reads: it signs tokens and answers browsers (PROD-2).
+API_HTTPS_URLS: Final[tuple[tuple[str, str], ...]] = (("jwt_issuer", "JWT_ISSUER"),)
 # A deployed secret (PROD-1): no whitespace anywhere and at least this many characters, measured
 # on the raw value. A character-variety floor would also refuse CANON-ADDENDUM A§14's production
 # fixture (`"x" * 32`), so it waits on TEAM-QUESTIONS T130.
@@ -312,14 +315,38 @@ def _storage_errors(s: Settings) -> list[str]:
 def _url_errors(s: Settings) -> list[str]:
     if s.app_env == "local" or s.app_role not in ("api", "worker"):
         return []
+    fields = DEPLOYED_HTTPS_URLS + (API_HTTPS_URLS if s.app_role == "api" else ())
     bad = []
-    for field, name in DEPLOYED_HTTPS_URLS:
+    for field, name in fields:
         value = getattr(s, field)
         if value is not None and _not_deployable_url(value):
             bad.append(name)
-    if not bad:
-        return []
-    return [f"APP_ENV={s.app_env} refuses http or loopback {', '.join(bad)}"]
+    errors = [f"APP_ENV={s.app_env} refuses http or loopback {', '.join(bad)}"] if bad else []
+    if s.app_role == "api" and not _deployable_origins(s.allowed_origins):
+        errors.append(
+            f"APP_ENV={s.app_env} refuses ALLOWED_ORIGINS that are not https non-loopback "
+            "origins (no '*', path, query, userinfo or trailing '/')"
+        )
+    return errors
+
+
+def _deployable_origins(raw: str) -> bool:
+    """Every comma-separated entry an exact browser Origin (`https://host[:port]`), at least one
+    (PROD-2): a `*`, an http or loopback host, or a trailing `/` (no browser sends one, so it
+    silently grants nothing) is refused."""
+    # the split `app.api.cors.parse_origins` applies (app.core never imports app.api)
+    origins = [origin.strip() for origin in raw.split(",") if origin.strip()]
+    if not origins:
+        return False
+    for origin in origins:
+        if origin == "*" or _not_deployable_url(origin):
+            return False
+        parts = urlsplit(origin)
+        if parts.username is not None or parts.password is not None or "@" in parts.netloc:
+            return False
+        if f"{parts.scheme}://{parts.netloc}" != origin:
+            return False
+    return True
 
 
 def _pipeline_stub_installed() -> bool:

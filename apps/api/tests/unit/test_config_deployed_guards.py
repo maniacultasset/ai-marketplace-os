@@ -117,6 +117,80 @@ def test_forged_token_with_a_blank_key_never_verifies(
     _abort(monkeypatch, _deployed(JWT_SECRET=" " * 32))
 
 
+# ---- PROD-2: ALLOWED_ORIGINS and JWT_ISSUER ----
+
+
+def test_deployed_api_refuses_local_default_origins_and_issuer(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = _deployed()
+    env.pop("ALLOWED_ORIGINS")
+    env.pop("JWT_ISSUER")
+    message = _abort(monkeypatch, env)
+    assert "ALLOWED_ORIGINS" in message and "JWT_ISSUER" in message
+
+
+BAD_ORIGINS = {
+    "wildcard": "*",
+    "wildcard among others": "https://app.example.invalid,*",
+    "http": "http://app.example.invalid",
+    "loopback": "https://localhost:3000",
+    "loopback ip": "https://127.0.0.1",
+    "trailing slash": "https://app.example.invalid/",
+    "path": "https://app.example.invalid/app",
+    "query": "https://app.example.invalid?x=1",
+    "userinfo": "https://u@app.example.invalid",
+    "no host": "https://",
+    "empty": " , ",
+}
+
+
+@pytest.mark.parametrize("origins", list(BAD_ORIGINS.values()), ids=list(BAD_ORIGINS))
+def test_deployed_api_refuses_bad_allowed_origins(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, origins: str
+) -> None:
+    message = _abort(monkeypatch, _deployed(ALLOWED_ORIGINS=origins))
+    assert "APP_ENV=production refuses ALLOWED_ORIGINS" in message
+    assert "example.invalid" not in message
+
+
+def test_deployed_api_accepts_several_https_origins(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    origins = "https://app.example.invalid, https://app-2.example.invalid:8443"
+    _boot(monkeypatch, _deployed(ALLOWED_ORIGINS=origins))
+
+
+@pytest.mark.parametrize(
+    "issuer", ["http://localhost:8000", "http://api.example.invalid", "https://127.0.0.1"]
+)
+def test_deployed_api_refuses_http_or_loopback_issuer(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, issuer: str
+) -> None:
+    message = _abort(monkeypatch, _deployed(JWT_ISSUER=issuer))
+    assert "refuses http or loopback JWT_ISSUER" in message
+
+
+def test_deployed_worker_needs_no_cors_or_issuer(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # the api alone serves browsers and signs tokens
+    env = _deployed("staging", APP_ROLE="worker")
+    env.pop("ALLOWED_ORIGINS")
+    env.pop("JWT_ISSUER")
+    _boot(monkeypatch, env)
+
+
+def test_local_keeps_its_loopback_origin_and_issuer(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    loaded = _boot(
+        monkeypatch, {"APP_ENV": "local", "DATABASE_URL": LOCAL_URL, "JWT_SECRET": CI_LITERAL}
+    )
+    assert loaded.allowed_origins == "http://localhost:3000"  # type: ignore[attr-defined]
+    assert loaded.jwt_issuer == "http://localhost:8000"  # type: ignore[attr-defined]
+
+
 # ---- PROD-3: lower bounds on numeric settings ----
 
 BOUNDED = {
