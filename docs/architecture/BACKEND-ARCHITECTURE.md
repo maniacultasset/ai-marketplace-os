@@ -1448,7 +1448,9 @@ never called directly: it picks jobs up from PostgreSQL (§8.2).
     - the key is stored in the same transaction as the job rows;
     - the per-item job key is `sha256(http_key:kind:listing_id)`, with the HTTP key's
       `created_at` appended, so it is scoped to the key's lifetime: a key reused after it
-      expired queues a fresh job, never the old finished one and never 409 `LISTING_BUSY`.
+      expired queues a fresh job, never the old finished one and never 409 `LISTING_BUSY`;
+      refresh-status resets the sync schedule only when it queued a new job, and its 202 body
+      carries the returned job's real status.
 - **Other endpoints:** whether any other endpoint requires the header is not specified. `DATABASE.md` §7.1 shows it on approve.
 - **Marketplace side:** nothing verifies that Amazon or Flipkart de-duplicate on our key. The proposal is our own per-field ledger plus read-before-retry (`VISION-ALIGNMENT.md` §4.8, G3).
 

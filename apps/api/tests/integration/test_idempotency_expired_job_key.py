@@ -131,3 +131,34 @@ async def test_live_key_replays_and_duplicate_items_still_share_one_job(
         [made.listing_id],
     )
     assert jobs == 1
+
+
+async def test_refresh_status_never_resets_the_schedule_for_a_job_it_did_not_queue(
+    api: httpx.AsyncClient, pub: PubWorld
+) -> None:
+    """A job key that already names a (finished) job is 409 LISTING_BUSY, and the listing keeps
+    its sync slot. Called without a stored HTTP key, so the key derives as it did before."""
+    from app.core.errors import ConflictError
+    from app.repositories.uow import tenant_uow
+    from app.services.publish import refresh_status
+    from mkos_schemas.codes import ErrorCode
+
+    made = await approved(pub)
+    await publish_and_run(api, pub, made)
+    principal = pub.world.principal(OPERATOR)
+    key = "svc-" + uuid.uuid4().hex
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        old, _ = await refresh_status(uow, principal, made.listing_id, http_key=key)
+    await run_job(old)
+    _age_job(pub, str(old))
+    pub.conn.execute(
+        "UPDATE listings SET next_sync_at = now() + interval '1 hour', sync_poll_count = 3 "
+        "WHERE id = %s",
+        [made.listing_id],
+    )
+    with pytest.raises(ConflictError) as caught:
+        async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+            await refresh_status(uow, principal, made.listing_id, http_key=key)
+    assert caught.value.code is ErrorCode.LISTING_BUSY
+    row = pub.listing(made.listing_id)
+    assert row["next_sync_at"] is not None and row["sync_poll_count"] == 3
