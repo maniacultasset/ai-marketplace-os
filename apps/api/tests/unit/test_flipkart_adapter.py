@@ -352,12 +352,84 @@ async def test_flipkart_update_empty_no_call() -> None:
     assert _calls(app) == []
 
 
-async def test_flipkart_update_unknown_sku_not_found() -> None:
-    from app.adapters.base import ListingNotFound
-
+async def test_flipkart_update_unknown_sku_created() -> None:
+    """S22b F3: an update of a SKU Flipkart never created answers LISTING_NOT_FOUND; the adapter
+    sends that SKU whole through the create route in the same call, never `ListingNotFound`."""
     app = build_fake()
-    with pytest.raises(ListingNotFound):
-        await flipkart_adapter(app).update_listing(fk_item(sku="NOPE"), fields=["content.title"])
+    result = await flipkart_adapter(app).update_listing(
+        fk_item(sku="NOPE"), fields=["content.title"]
+    )
+    paths = [_route(c) for c in _calls(app)]
+    assert paths == ["update", "create"]
+    assert result.status == "published" and result.items[0].external_id is not None
+    assert any(k[1] == "NOPE" for k in app.state.fake.fk_items)
+
+
+def _route(call: dict[str, Any]) -> str:
+    return "update" if call["path"].endswith("/update") else "create"
+
+
+def _attribute_names(sent: Any, sku: str) -> list[str]:
+    from app.adapters.flipkart.mapping import build
+
+    mapped, _ = build(sent)
+    return sorted(next(m for m in mapped if m.unit.seller_sku == sku).payload["attributes"])
+
+
+async def test_flipkart_family_one_child_all_failed_is_partial() -> None:
+    """S22b F4: one child refused on every attribute while Flipkart created the other three is
+    `partially_published`, not `failed`; the other children keep their succeeded fields."""
+    app = build_fake()
+    sent = fk_family(style="FKALL")
+    bad = sent.items[1].seller_sku
+    app.state.fake.fk_errors[bad] = dict.fromkeys(_attribute_names(sent, bad), "FK-QUOTA")
+    result = await flipkart_adapter(app).create_listing(sent)
+    assert result.status == "partially_published", result.status
+    assert result.marketplace_state == "partially_live"
+    assert result.error is not None and result.error.error_code == "API_REJECTED_PARTIAL"
+    by_sku = {i.seller_sku: i for i in result.items}
+    assert by_sku[bad].marketplace_state == "rejected"
+    for sku, one in by_sku.items():
+        if sku != bad:
+            assert one.external_id is not None
+            assert all(f.status != "failed" for f in one.fields), sku
+            assert any(f.status == "succeeded" for f in one.fields), sku
+
+
+async def test_flipkart_update_listing_path_creates_refused_child() -> None:
+    """S22b F3: a child refused at create (failed path `listing`) is sent through the create
+    route by `update_listing`; the children Flipkart holds are not re-sent."""
+    app = build_fake()
+    adapter = flipkart_adapter(app)
+    sent = fk_family(style="FKRC")
+    bad = sent.items[2].seller_sku
+    await _control(app, fk_reject=[bad])
+    first = await adapter.create_listing(sent)
+    assert first.status == "partially_published"
+    failed = {f.field for i in first.items if i.seller_sku == bad for f in i.fields}
+    assert "listing" in failed
+    app.state.fake.fk_reject.clear()
+    before = len(_calls(app))
+    result = await adapter.update_listing(sent, fields={bad: ["listing"]})
+    calls = _calls(app)[before:]
+    assert [_route(c) for c in calls] == ["create"]
+    (entry,) = json.loads(calls[0]["body"])["listings"]
+    assert entry["sku"] == bad
+    assert result.status == "published", result.error
+    assert [i.seller_sku for i in result.items] == [bad]
+    assert result.items[0].external_id is not None
+    assert any(k[1] == bad for k in app.state.fake.fk_items)
+
+
+async def test_flipkart_update_variant_path_creates_child() -> None:
+    app = build_fake()
+    sent = fk_family(style="FKVR")
+    target = sent.items[0].seller_sku
+    result = await flipkart_adapter(app).update_listing(
+        sent, fields={target: [f"variants[{target}]"]}
+    )
+    assert [_route(c) for c in _calls(app)] == ["create"]
+    assert result.status == "published"
 
 
 async def test_flipkart_replay_same_outcome() -> None:
