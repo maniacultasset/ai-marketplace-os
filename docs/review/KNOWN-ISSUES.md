@@ -132,6 +132,21 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   (`runner._load`; `integration/test_import_retry_parser_refused.py`): fixed 2026-10-10.
   Deferred (2026-10-10): the DB-level `variant_matrix_complete` check (it needs a migration; the
   runner enforces it).
+- **Revoke and reconnect state machine (audit GAP1-UNTOUCHED-OPS-STATE-MACHINE-1..3, 2026-10-10).**
+  A revoke + reconnect made a new account row and nothing re-pointed `listings.marketplace_account_id`
+  (DATABASE.md:760), so a listing published before could never be published again (409
+  AUTH_EXPIRED); the status sync of such a listing failed with INTERNAL_ERROR on every slot; and a
+  revoke during a live publish re-opened a `reconnect_account` task on the revoked account that no
+  confirm could apply. **Fixed:** a connect that creates a new account adopts the listings of the
+  tenant's revoked accounts for that marketplace and resolves their stranded AUTH_EXPIRED issues
+  (`marketplaces._adopt_revoked`); `due_for_sync` and the sync job skip a listing whose account is
+  not `active` (the slot stays due), and an auth refusal when the reader opens is AUTH_EXPIRED; the
+  publish terminal write opens no task on a revoked account
+  (`tests/integration/test_revoke_reconnect_state.py`). **Deferred:** "the system pauses on account
+  revoke" (DATABASE.md:768) is not built; the publish request (409 AUTH_EXPIRED) and the sync skip
+  cover the same ground without freezing the listing. A connect committing between a publish job's
+  token read and its terminal write leaves that one attempt's AUTH_EXPIRED issue unlinked (the next
+  revoke + connect, or support, clears it).
 
 ## S16 follow-ups
 
