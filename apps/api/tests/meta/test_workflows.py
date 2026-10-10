@@ -51,10 +51,39 @@ CI_JWT = "ci_only_not_a_real_secret_at_least_32_chars"
 SHA_PINNED = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(/[A-Za-z0-9_./-]+)?@[0-9a-f]{40}$")
 
 
+NIGHTLY_FILE = "nightly.yml"
+NIGHTLY_LEGS = [
+    "pip-audit",
+    "gitleaks-history",
+    "mutation",
+    "fuzz",
+    "hypothesis-deep",
+    "random-order",
+    "migration-replay",
+    "acceptance",
+    "drill",
+]
+NIGHTLY_LIGHT = {"pip-audit", "gitleaks-history"}
+
+
 @pytest.fixture
 def workflows(repo_root: Path, load_yaml: Callable[[Path], Any]) -> dict[str, dict[str, Any]]:
+    """The PR, push and tag workflows (S26 C1: the nightly has its own fixture and tests)."""
+    directory = repo_root / ".github/workflows"
+    return {name: load_yaml(directory / name) for name in sorted(ALL_FILES)}
+
+
+@pytest.fixture
+def all_workflows(repo_root: Path, load_yaml: Callable[[Path], Any]) -> dict[str, dict[str, Any]]:
     directory = repo_root / ".github/workflows"
     return {path.name: load_yaml(path) for path in sorted(directory.glob("*.y*ml"))}
+
+
+@pytest.fixture
+def nightly(repo_root: Path, load_yaml: Callable[[Path], Any]) -> dict[str, Any]:
+    data = load_yaml(repo_root / ".github/workflows" / NIGHTLY_FILE)
+    assert isinstance(data, dict)
+    return data
 
 
 @pytest.fixture
@@ -92,8 +121,9 @@ def _compose_postgres_image(repo_root: Path, load_yaml: Callable[[Path], Any]) -
     return image
 
 
-def test_exactly_five_workflow_files(workflows: dict[str, dict[str, Any]]) -> None:
-    assert sorted(workflows) == sorted(ALL_FILES)
+def test_exactly_five_workflow_files(all_workflows: dict[str, dict[str, Any]]) -> None:
+    """The five PR/push/tag files plus the S26 nightly (C1)."""
+    assert sorted(all_workflows) == sorted([*ALL_FILES, NIGHTLY_FILE])
 
 
 def test_job_ids_are_the_required_checks_per_file(workflows: dict[str, dict[str, Any]]) -> None:
@@ -126,8 +156,8 @@ def test_triggers_pull_request_to_main_only(workflows: dict[str, dict[str, Any]]
     assert push == {"push": {"branches": ["main"]}}
 
 
-def test_no_pull_request_target(workflows: dict[str, dict[str, Any]], repo_root: Path) -> None:
-    for name, workflow in workflows.items():
+def test_no_pull_request_target(all_workflows: dict[str, dict[str, Any]], repo_root: Path) -> None:
+    for name, workflow in all_workflows.items():
         assert "pull_request_target" not in workflow["on"], name
         assert "pull_request_target" not in (repo_root / ".github/workflows" / name).read_text()
 
@@ -155,9 +185,9 @@ def test_workflow_permissions_empty_jobs_read_only(workflows: dict[str, dict[str
 
 
 def test_every_uses_sha_pinned_or_local(
-    workflows: dict[str, dict[str, Any]], action: dict[str, Any]
+    all_workflows: dict[str, dict[str, Any]], action: dict[str, Any]
 ) -> None:
-    uses = [step["uses"] for step in _all_steps(workflows, action) if "uses" in step]
+    uses = [step["uses"] for step in _all_steps(all_workflows, action) if "uses" in step]
     assert uses
     for ref in uses:
         assert ref.startswith("./.github/actions/") or SHA_PINNED.fullmatch(ref), ref
@@ -411,3 +441,132 @@ def test_required_check_lists_name_every_check(repo_root: Path) -> None:
         assert f"| `{check}` |" in template, check
         assert f"| `{check}` |" in readme, check
     assert f"all {len(REQUIRED_CHECKS)} green" in template
+
+
+# ---- S26 T24 (AC 12; PLAN D8; C1): the nightly workflow, never a required check ----
+
+
+def _on(workflow: dict[Any, Any]) -> Any:
+    """PyYAML reads the bare key `on` as the boolean True."""
+    return workflow["on"] if "on" in workflow else workflow[True]
+
+
+def test_nightly_triggers_schedule_and_dispatch_only(nightly: dict[str, Any]) -> None:
+    on = _on(nightly)
+    assert set(on) == {"schedule", "workflow_dispatch"}
+    assert on["schedule"] == [{"cron": "30 20 * * *"}]  # 02:00 IST
+    force = on["workflow_dispatch"]["inputs"]["force"]
+    assert force["type"] == "boolean" and force["default"] is False
+    assert list(nightly["jobs"]) == [*NIGHTLY_LEGS, "report"]
+    assert nightly["concurrency"] == {"group": "nightly", "cancel-in-progress": False}
+
+
+def test_nightly_permissions_empty_top_level(nightly: dict[str, Any]) -> None:
+    assert nightly["permissions"] == {}
+    for leg in NIGHTLY_LEGS:
+        assert nightly["jobs"][leg]["permissions"] == {"contents": "read"}, leg
+
+
+def test_nightly_only_report_job_has_issues_write(nightly: dict[str, Any]) -> None:
+    writers = {
+        job_id
+        for job_id, job in nightly["jobs"].items()
+        if any(v == "write" for v in job["permissions"].values())
+    }
+    assert writers == {"report"}
+    assert nightly["jobs"]["report"]["permissions"] == {"issues": "write"}
+
+
+def test_nightly_report_needs_all_if_failure(nightly: dict[str, Any]) -> None:
+    report = nightly["jobs"]["report"]
+    assert report["needs"] == NIGHTLY_LEGS and report["if"] == "failure()"
+    (step,) = report["steps"]
+    assert "uses" not in step  # no checkout, no action: the gh CLI on the runner
+    assert step["env"]["GH_TOKEN"] == "${{ secrets.GITHUB_TOKEN }}"
+    assert step["env"]["NEEDS"] == "${{ toJSON(needs) }}"
+    run = step["run"]
+    assert "gh issue create --title nightly-red --label nightly-red" in run
+    assert "gh issue comment" in run and "--label nightly-red" in run
+    assert 'body="Nightly run $RUN_URL failed: $failed"' in run  # URL and leg names only
+    for leg in NIGHTLY_LEGS:
+        assert "if" not in nightly["jobs"][leg] and "needs" not in nightly["jobs"][leg], leg
+
+
+def test_nightly_actions_sha_pinned(nightly: dict[str, Any]) -> None:
+    for leg in NIGHTLY_LEGS:
+        steps = nightly["jobs"][leg]["steps"]
+        assert SHA_PINNED.fullmatch(steps[0]["uses"].split(" ")[0]), leg
+        assert steps[0]["uses"].startswith("actions/checkout@"), leg
+        assert steps[0]["with"]["persist-credentials"] is False, leg
+        assert steps[1] == {"uses": "./.github/actions/py-setup"}, leg
+        assert steps[2]["run"] == f"scripts/ci/nightly.sh {leg}", leg
+        assert steps[2]["env"] == {"NIGHTLY_FORCE": "${{ inputs.force }}"}, leg
+        assert nightly["jobs"][leg]["runs-on"] == "ubuntu-latest", leg
+        assert 5 <= nightly["jobs"][leg]["timeout-minutes"] <= 360, leg
+    assert nightly["jobs"]["gitleaks-history"]["steps"][0]["with"]["fetch-depth"] == 0
+
+
+def test_nightly_no_secrets_but_github_token(repo_root: Path) -> None:
+    text = (repo_root / ".github/workflows" / NIGHTLY_FILE).read_text(encoding="utf-8")
+    assert set(re.findall(r"secrets\.([A-Za-z0-9_]+)", text)) == {"GITHUB_TOKEN"}
+    assert text.count("secrets.GITHUB_TOKEN") == 1
+    assert "pull_request" not in text
+
+
+def test_nightly_no_expression_in_run(nightly: dict[str, Any]) -> None:
+    for job_id, job in nightly["jobs"].items():
+        for step in job["steps"]:
+            assert "${{" not in str(step.get("run", "")), job_id
+
+
+def test_nightly_heavy_legs_use_skip_guard(repo_root: Path) -> None:
+    script = (repo_root / "scripts/ci/nightly.sh").read_text(encoding="utf-8")
+    assert "set -euo pipefail" in script
+    light = re.search(r'^LIGHT="([^"]+)"', script, re.MULTILINE)
+    heavy = re.search(r'^HEAVY="([^"]+)"', script, re.MULTILINE)
+    assert light is not None and heavy is not None
+    assert set(light.group(1).split()) == NIGHTLY_LIGHT
+    assert set(heavy.group(1).split()) == set(NIGHTLY_LEGS) - NIGHTLY_LIGHT
+    guard = script.index(
+        'python3 scripts/ci/nightly_skip.py "$last" --force "${NIGHTLY_FORCE:-false}"'
+    )
+    assert guard < script.index('case "$leg" in\n  pip-audit)')
+    assert "git log -1 --format=%ct origin/main" in script
+    for leg in NIGHTLY_LEGS:
+        assert f"\n  {leg})\n" in script, leg
+    assert "make fuzz FUZZ_MAX_EXAMPLES=500" in script
+    assert "HYPOTHESIS_PROFILE=nightly" in script
+    assert "for seed in 1 2 3; do" in script and "--randomly-seed=$seed" in script
+    assert 'for step in "upgrade head" "downgrade base" "upgrade head"; do' in script
+    for target in ("make mutation", "make acceptance", "make drill-restore"):
+        assert target in script, target
+
+
+def test_nightly_no_cloud_auth_action(repo_root: Path, nightly: dict[str, Any]) -> None:
+    text = (repo_root / ".github/workflows" / NIGHTLY_FILE).read_text(encoding="utf-8")
+    script = (repo_root / "scripts/ci/nightly.sh").read_text(encoding="utf-8")
+    for banned in (
+        "google-github-actions",
+        "aws-actions",
+        "azure/login",
+        "id-token",
+        "gcloud",
+        "tofu",
+        "docker push",
+        "deploy",
+    ):
+        assert banned not in text, banned
+        assert banned not in script, banned
+    uses = {
+        step["uses"].split("@")[0]
+        for job in nightly["jobs"].values()
+        for step in job["steps"]
+        if "uses" in step
+    }
+    assert uses == {"actions/checkout", "./.github/actions/py-setup"}
+
+
+def test_nightly_is_not_a_required_check(repo_root: Path) -> None:
+    template = (repo_root / ".github/pull_request_template.md").read_text(encoding="utf-8")
+    for leg in NIGHTLY_LEGS:
+        assert f"| `{leg}` |" not in template, leg

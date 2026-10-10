@@ -88,6 +88,7 @@ files = [
   "scripts/load",
   "scripts/drill",
   "scripts/ci/mutation_report.py",
+  "scripts/ci/nightly_skip.py",
 ]
 explicit_package_bases = true
 mypy_path = ["apps/api", "packages/schemas/src", "packages/pipeline-stub/src"]

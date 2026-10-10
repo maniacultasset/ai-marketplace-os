@@ -9,6 +9,7 @@ import importlib.util
 import io
 import json
 import logging
+import os
 import re
 import sys
 from collections.abc import Callable, Iterator
@@ -18,12 +19,19 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 import yaml
+from hypothesis import settings as hypothesis_settings
 from tests.support.paths import repo_root as find_repo_root
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
 
 REPO_ROOT = find_repo_root(Path(__file__))
+
+# S26 T24 (AC 12): the nightly `hypothesis-deep` leg sets HYPOTHESIS_PROFILE=nightly (1000
+# examples per property, no deadline); unset, every property keeps its own settings.
+hypothesis_settings.register_profile("nightly", max_examples=1000, deadline=None)
+if os.environ.get("HYPOTHESIS_PROFILE"):
+    hypothesis_settings.load_profile(os.environ["HYPOTHESIS_PROFILE"])
 
 CI_JWT_SECRET = "ci_only_not_a_real_secret_at_least_32_chars"  # A§11:290
 CI_DATABASE_URL = "postgresql+psycopg://postgres:postgres@localhost:5432/mos_test"
