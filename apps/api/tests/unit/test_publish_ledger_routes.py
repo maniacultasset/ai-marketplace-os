@@ -8,7 +8,14 @@ import uuid
 from typing import Any
 
 import pytest
-from app.services.publish_ledger import EXHAUSTED, FieldRow, ItemState, route_error, route_result
+from app.services.publish_ledger import (
+    ACTION,
+    EXHAUSTED,
+    FieldRow,
+    ItemState,
+    route_error,
+    route_result,
+)
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorClass, ErrorSource, ItemMarketplaceState, RetryClass
 from mkos_schemas.errors import ErrorItem, ErrorReport
@@ -162,3 +169,20 @@ def test_ambiguous_keeps_the_report_as_given(kind: Any) -> None:
     report = _report(_err())
     d = route_error(kind, report, attempt=1)
     assert (d.outcome, d.job_status, d.report) == ("pending", "retry", report)
+
+
+@pytest.mark.parametrize(
+    ("kind", "task"),
+    [("auth_expired", "link_reconnect"), ("permission_denied", "permission_decision")],
+)
+def test_action_error_fails_the_job_and_blocks_for_a_human(kind: Any, task: str) -> None:
+    d = route_error(kind, _report(), attempt=1)
+    assert (d.outcome, d.job_status) == ("error", "failed")
+    assert (d.listing_event, d.listing_to, d.reason) == ACTION
+    assert d.open_task == task
+
+
+def test_rate_limited_error_retries_without_a_move() -> None:
+    d = route_error("rate_limited", _report(), attempt=2)
+    assert (d.outcome, d.job_status, d.error_code) == ("error", "retry", ErrorCode.RATE_LIMITED)
+    assert (d.listing_event, d.listing_to, d.reason, d.open_task) == (None, None, None, None)
