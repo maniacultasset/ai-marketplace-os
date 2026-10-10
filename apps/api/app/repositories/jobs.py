@@ -32,6 +32,7 @@ from app.db.integrity import map_db_error, to_conflict
 from app.db.models.ops import JobRun
 from app.db.models.tenancy import Tenant
 from app.db.queue import cancel_on_session, defer_on_session, retire_on_session
+from app.db.session import get_engine
 from app.repositories.base import TenantScopedRepository
 from app.workers.policy import POLICIES, lock_for
 from app.workers.policy import lease_s as kind_lease_s
@@ -169,6 +170,41 @@ _ENTRY_STATES: Final = text(
 QUEUE_FINAL: Final = frozenset({"succeeded", "failed", "cancelled", "aborted"})
 ORPHANED: Final = "orphaned"
 LOST: Final = "lost"
+
+
+# Audit JOBS-4: the `doing` entries of `job_runs` jobs (a periodic task's entry carries no
+# `job_run_id`), with the seconds since each was last fetched (its newest `started` event), for
+# the reaper's sweep of entries whose job already ended. Read and written on an engine connection
+# as `app_rw`: the queue tables have no tenant column and no RLS, and `app_platform_ro` has no
+# grant on them. Only queue ids, job ids and ages are read, never a payload.
+_DOING_JOB_ENTRIES: Final = text(
+    "SELECT j.id, j.args->>'job_run_id', EXTRACT(EPOCH FROM now() - ("
+    "SELECT max(e.at) FROM procrastinate_events e WHERE e.job_id = j.id AND e.type = 'started'"
+    ")) FROM procrastinate_jobs j WHERE j.status = 'doing' AND j.args ? 'job_run_id' "
+    "ORDER BY j.id LIMIT :limit"
+)
+_RETIRE_DOING: Final = text(
+    "UPDATE procrastinate_jobs SET status = 'failed', abort_requested = false "
+    "WHERE id = ANY(:ids) AND status = 'doing' RETURNING id"
+)
+
+
+async def doing_job_entries(*, limit: int = 500) -> list[tuple[int, str | None, float | None]]:
+    """`(queue job id, job_run_id arg, seconds since fetched)` of every `doing` job entry, oldest
+    first (the reaper's lost-finish sweep, audit JOBS-4). Not tenant data: ids and ages only."""
+    async with get_engine().connect() as connection:
+        rows = (await connection.execute(_DOING_JOB_ENTRIES, {"limit": limit})).all()
+    return [(int(r[0]), r[1], None if r[2] is None else float(r[2])) for r in rows]
+
+
+async def retire_doing(queue_job_ids: list[int]) -> list[int]:
+    """Finish the given entries as `failed` if they are still `doing`; the ids retired. Their
+    jobs already ended in `job_runs`, so this only releases the entry (and its lock)."""
+    if not queue_job_ids:
+        return []
+    async with get_engine().begin() as connection:
+        rows = (await connection.execute(_RETIRE_DOING, {"ids": queue_job_ids})).all()
+    return [int(r[0]) for r in rows]
 
 
 def queue_drift(kind: str, entry: Any) -> str | None:

@@ -70,7 +70,6 @@ from app.core.config import get_settings
 from app.core.flags import enabled_marketplaces
 from app.core.logging import get_logger
 from app.core.request_context import new_request_id, request_context
-from app.db.queue import doing_job_entries, retire_doing
 from app.db.session import platform_scope, unit_of_work
 from app.repositories import rate_limits, retention
 from app.repositories.idempotency import IdempotencyKeyRepository
@@ -79,8 +78,10 @@ from app.repositories.jobs import (
     LOST,
     ORPHANED,
     JobRunRepository,
+    doing_job_entries,
     expired_running,
     finished_jobs,
+    retire_doing,
     tenants_with_queued,
 )
 from app.repositories.marketplace_accounts import due_accounts
