@@ -362,3 +362,23 @@ def test_analytics_range_checked(client: TestClient) -> None:
             PREFIX + path, params={"from": "2026-10-02", "to": "2026-10-01"}, headers=BEARER
         )
         _envelope(response, 422, ErrorCode.VALIDATION_FAILED)
+
+
+@pytest.mark.parametrize(
+    ("path", "want"),
+    [
+        ("/api/v1/listings/approve", {"POST"}),
+        ("/api/v1/listings/generate", {"POST"}),
+        ("/api/v1/products/bulk", {"POST"}),
+        ("/api/v1/listings/0b1c2d3e-0000-4000-8000-00000000abcd", {"GET"}),
+    ],
+)
+def test_405_allow_names_the_most_specific_resource(
+    v1_app: FastAPI, path: str, want: set[str]
+) -> None:
+    """S26 fuzz: OPTIONS /listings/approve advertised `GET` (from GET /listings/{listing_id});
+    `Allow` names only the methods of the most specific matching path."""
+    with TestClient(v1_app) as client:
+        response = client.request("OPTIONS", path, headers={"Authorization": "Bearer test"})
+    assert response.status_code == 405, response.text
+    assert set(response.headers["allow"].replace(" ", "").split(",")) == want

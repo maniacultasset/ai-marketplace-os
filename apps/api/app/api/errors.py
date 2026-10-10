@@ -270,16 +270,21 @@ async def _api_error(request: Request, exc: Exception) -> JSONResponse:
 
 
 def _allowed_methods(request: Request) -> str | None:
-    """Every method any route serves at this path. Starlette's own `Allow` names only the first
-    route whose path matched, so `DELETE /products` would advertise POST but not GET."""
+    """Every method the resource at this path serves. Starlette's own `Allow` names only the
+    first route whose path matched, so `DELETE /products` would advertise POST but not GET.
+    Only the most specific matching routes count (the fewest path parameters): at
+    `/listings/approve` that is the POST route, not `GET /listings/{listing_id}` (S26 fuzz)."""
     path = request.scope.get("path", "")
-    methods: set[str] = set()
+    by_params: dict[int, set[str]] = {}
     for candidate in iter_route_contexts(getattr(request.app, "routes", ())):
         regex = getattr(candidate, "path_regex", None)
         served = candidate.methods
         if regex is not None and served and regex.match(path):
-            methods |= served
-    return ", ".join(sorted(methods)) if methods else None
+            params = str(getattr(candidate, "path", "")).count("{")
+            by_params.setdefault(params, set()).update(served)
+    if not by_params:
+        return None
+    return ", ".join(sorted(by_params[min(by_params)]))
 
 
 async def _http_exception(request: Request, exc: Exception) -> JSONResponse:
