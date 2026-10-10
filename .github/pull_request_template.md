@@ -10,13 +10,14 @@
 |---|---|---|
 |  |  |  |
 
-## Checks (all 10 green before merge)
+## Checks (all 11 green before merge)
 
 | Check | Result | Evidence |
 |---|---|---|
 | `api-lint` |  |  |
 | `api-typecheck` |  |  |
 | `api-tests` |  |  |
+| `api-tests-integration` |  |  |
 | `tenant-isolation` |  |  |
 | `contracts` |  |  |
 | `schemas-drift` |  |  |

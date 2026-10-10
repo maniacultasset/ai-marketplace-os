@@ -6,21 +6,28 @@ carries the request id. Kept apart from `app.main`, which builds the app at impo
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from fastapi import FastAPI
 from opentelemetry.trace import NoOpTracer, Tracer
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.middleware import RequestContextMiddleware, ScopeHook, strip_trace_headers
 
+if TYPE_CHECKING:
+    from app.api.security_headers import SecurityHeaders
+
 
 class MkosApp(FastAPI):
     tracer: Tracer = NoOpTracer()
     on_request: ScopeHook | None = None
+    security_headers: SecurityHeaders | None = None
 
     def build_middleware_stack(self) -> ASGIApp:
-        return RequestContextMiddleware(
-            super().build_middleware_stack(), tracer=self.tracer, on_request=self.on_request
-        )
+        stack = super().build_middleware_stack()
+        if self.security_headers is not None:
+            stack = self.security_headers.wrap(stack)
+        return RequestContextMiddleware(stack, tracer=self.tracer, on_request=self.on_request)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         # Inbound trace headers come from untrusted callers: dropped before anything (Sentry's

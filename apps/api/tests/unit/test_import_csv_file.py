@@ -127,3 +127,20 @@ def test_iter_rows_never_raises_unexpected(data: bytes) -> None:
     for row in iter_rows(data):
         assert row.row_number >= 2
         assert (row.error is None) or row.cells == {}
+
+
+# ---- S26 (KNOWN-ISSUES §E, S13b): a row of only separators is blank, not a failed row ----
+
+
+def test_csv_separator_only_row_is_blank() -> None:
+    data = b"seller_sku,product_name,category\n,,\nA-1,Kurta,kurtas\n , ,\n"
+    parsed = parse_upload(data)
+    assert parsed.row_count == 1
+    rows = list(iter_rows(data))
+    assert [r.row_number for r in rows] == [3]
+    assert rows[0].error is None
+
+
+def test_csv_only_separator_rows_is_no_data() -> None:
+    with pytest.raises(ImportFileError):
+        parse_upload(b"seller_sku,product_name,category\n,,\n,,\n")

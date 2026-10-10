@@ -31,6 +31,7 @@ Ports:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from collections.abc import Mapping, Sequence
@@ -288,7 +289,9 @@ class BackendPipelineDeps:
             log.warning("seam.validate_rules_cap", job_id=str(self._job_id))
             return _internal_report(listing)
         started = time.monotonic()
-        report = self._evaluate(listing)
+        # the synchronous engine off the event loop (KNOWN-ISSUES §E, S14b): the worker's
+        # heartbeats and other jobs keep running while a large ruleset is evaluated
+        report = await asyncio.to_thread(self._evaluate, listing)
         self._rules_calls.append(
             RulesCall(
                 attempt=self._validate_calls,
@@ -375,7 +378,7 @@ class BackendPipelineDeps:
         if status != "started":
             return
         async with tenant_uow(self._tenant_id, user_id=self._user_id) as uow:
-            moved = await uow.job_runs.set_node(self._job_id, stage.value)
+            moved = await uow.job_runs.set_node(self._job_id, stage.value, attempt=self._attempt)
         if not moved:
             log.warning("seam.node_event_dropped", job_id=str(self._job_id), node=stage.value)
 

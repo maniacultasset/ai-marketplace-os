@@ -33,6 +33,7 @@ from app.repositories.jobs import EnqueueSpec
 from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
 from app.services.idempotency import idempotent, key_reused, request_hash
 from app.services.image_keys import image_object_key, parse_image_key
+from app.workers.policy import IMAGE_JOB_LOCK as IMAGE_JOB_LOCK
 
 log = get_logger(__name__)
 API_V1: Final = "/api/v1"
@@ -41,7 +42,6 @@ MAX_IMAGE_BYTES: Final = 10_485_760
 REGISTER_WINDOW: Final = timedelta(hours=23)
 MAX_LIVE_IMAGES_PER_PRODUCT: Final = 50
 LIVE_IMAGE_JOB_CAP: Final = 20
-IMAGE_JOB_LOCK: Final = "image_compliance"
 MULTIPART_CONTENT_TYPE: Final = "application/octet-stream"
 
 
