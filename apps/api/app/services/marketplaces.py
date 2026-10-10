@@ -7,7 +7,8 @@ BACKEND-ARCHITECTURE.md §3.2; DATABASE.md §5.4-§5.5; invariant 6).
   exchanged with no transaction open, the tokens are sealed for the state's tenant and stored as a
   *pending* row under a fresh opaque handle. The tenant and user come only from the consumed row.
 - `confirm`: the user who started the flow, in its tenant, turns the pending row into the live
-  account (or reconnects the same seller). Another seller live in the tenant, or the seller live
+  account (or reconnects the same seller); a new account adopts the listings of the tenant's
+  revoked accounts for that marketplace. Another seller live in the tenant, or the seller live
   in any other tenant, is 409 `MARKETPLACE_ACCOUNT_CONFLICT`, and the handle survives the
   rollback for a retry after a revoke.
 - `revoke`: the stored tokens are deleted (`token_enc` and its key version NULL); the app stays
@@ -42,10 +43,11 @@ from app.core.config import get_settings
 from app.core.crypto import SealedTokens, get_key_wrapper, seal
 from app.core.errors import ConflictError, NotFoundError
 from app.core.flags import MarketplaceNotEnabled, marketplace_enabled
+from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.repositories.identity import consume_oauth_state
 from app.repositories.transactions import identity_session
-from app.repositories.uow import tenant_uow
+from app.repositories.uow import TenantUnitOfWork, tenant_uow
 
 __all__ = [
     "SELLER_CONFLICT_MESSAGE",
@@ -59,6 +61,8 @@ __all__ = [
     "revoke",
     "start_connect",
 ]
+
+log = get_logger(__name__)
 
 SELLER_CONFLICT_MESSAGE: Final = (
     "This seller account already has a live connection; revoke it first."
@@ -204,6 +208,40 @@ def seller_conflict() -> ConflictError:
     return ConflictError(ErrorCode.MARKETPLACE_ACCOUNT_CONFLICT, "marketplace_accounts")
 
 
+async def _adopt_revoked(
+    uow: TenantUnitOfWork,
+    principal: Principal,
+    marketplace: str,
+    seller_id: str,
+    account_id: uuid.UUID,
+) -> None:
+    """A new live account replaces the tenant's revoked ones for `marketplace` of the SAME seller
+    (DATABASE.md:760; a revoked account of another seller keeps its listings, whose SKUs belong
+    to that seller):
+    their listings are re-pointed to it, any reconnect task still live on them is cancelled
+    (`superseded`), and the AUTH_EXPIRED issues a revoke stranded mid-publish are linked to one
+    `reconnect_account` task on the new account, applied by this connect, so the publish gate
+    and `human_resolution` let the listing publish again."""
+    revoked = await uow.marketplace_accounts.revoked_ids(marketplace, seller_id)
+    if not revoked:
+        return
+    for old in revoked:
+        await uow.human_tasks.cancel_reconnect(old)
+    moved = await uow.listings.repoint_account(marketplace, revoked, account_id)
+    stranded = await uow.listing_issues.unresolved_auth(moved)
+    linked = 0
+    if stranded:
+        task_id = await uow.human_tasks.applied_by_connect(account_id, principal.user_id)
+        if task_id is not None:
+            linked = await uow.listing_issues.link_ids(stranded, task_id)
+    log.info(
+        "marketplace_account.adopted_listings",
+        account_id=str(account_id),
+        listings=len(moved),
+        issues_linked=linked,
+    )
+
+
 async def confirm(principal: Principal, pending: str) -> AccountView:
     """Turn the caller's pending connection into the tenant's live account, in one transaction.
     Only the user who started the flow, in its tenant, can confirm it; the same seller reconnects
@@ -231,6 +269,7 @@ async def confirm(principal: Principal, pending: str) -> AccountView:
                 connected_by=principal.user_id,
             )
             if created is not None:
+                await _adopt_revoked(uow, principal, row.marketplace, row.seller_id, created.id)
                 await uow.audit.write(
                     tenant_id=principal.tenant_id,
                     actor_type="user",

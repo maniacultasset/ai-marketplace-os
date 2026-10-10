@@ -256,6 +256,32 @@ class MarketplaceAccountRepository(TenantScopedRepository[MarketplaceAccount]):
         found: uuid.UUID | None = (await self.db.execute(stmt.limit(1))).scalar_one_or_none()
         return found
 
+    async def revoked_ids(self, marketplace: str, seller_id: str) -> builtins.list[uuid.UUID]:
+        """The tenant's revoked accounts for `marketplace` of seller `seller_id` (a connect of the
+        same seller adopts their listings; another seller's never move: their SKUs are unknown
+        to the new seller's reader and publish)."""
+        m = MarketplaceAccount
+        stmt = (
+            self._select()
+            .where(m.marketplace == marketplace, m.status == "revoked", m.seller_id == seller_id)
+            .with_only_columns(m.id)
+            .order_by(m.id)
+        )
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
+    async def status_for_share(self, account_id: uuid.UUID) -> str | None:
+        """The account's status, read `FOR SHARE`, so a concurrent revoke (which takes the row
+        `FOR UPDATE`) lands either before this read or after the caller's commit."""
+        m = MarketplaceAccount
+        stmt = (
+            self._select()
+            .where(m.id == account_id)
+            .with_only_columns(m.status)
+            .with_for_update(read=True)
+        )
+        found: str | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        return found
+
     async def active_by_id(self, account_id: uuid.UUID) -> AccountState | None:
         """The tenant's account `account_id` in any status (the caller refuses one that is not
         active), or None, also for another tenant's id. Never selects `token_enc`."""
