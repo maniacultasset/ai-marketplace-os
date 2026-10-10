@@ -91,11 +91,11 @@ class Settings(BaseSettings):
     log_format: Literal["json", "console"] = "json"
     allowed_origins: str = "http://localhost:3000"
     dashboard_base_url: str = "http://localhost:3000"  # an origin: the OAuth callback's 303 target
-    request_max_body_bytes: int = 10_485_760  # Cloud Run hard cap is 32 MiB
-    rate_limit_per_tenant_per_min: int = 120
-    rate_limit_per_ip_per_min: int = 60
-    auth_login_rate_limit_per_min: int = 5
-    oauth_state_ttl_seconds: int = 600
+    request_max_body_bytes: int = Field(default=10_485_760, ge=1)  # Cloud Run hard cap: 32 MiB
+    rate_limit_per_tenant_per_min: int = Field(default=120, ge=1)
+    rate_limit_per_ip_per_min: int = Field(default=60, ge=1)
+    auth_login_rate_limit_per_min: int = Field(default=5, ge=1)
+    oauth_state_ttl_seconds: int = Field(default=600, ge=1)
     admin_enabled: bool = False
     admin_base_url: str = "/internal/admin"
     admin_read_only: bool = True
@@ -109,12 +109,12 @@ class Settings(BaseSettings):
     # ---- database (the pool is per process) ----
     database_url: str | None = Field(default=None, pattern=_PSYCOPG_URL, repr=False)
     alembic_database_url: str | None = Field(default=None, pattern=_PSYCOPG_URL, repr=False)
-    database_pool_size: int = 5
-    database_max_overflow: int = 5
+    database_pool_size: int = Field(default=5, ge=1)
+    database_max_overflow: int = Field(default=5, ge=0)
     database_echo: bool = False
-    database_pool_timeout: int = 10
+    database_pool_timeout: int = Field(default=10, ge=1)
     database_pool_recycle: int = 1800
-    db_statement_timeout_ms: int = 15_000
+    db_statement_timeout_ms: int = Field(default=15_000, ge=1)  # 0 would disable it
 
     # ---- storage ----
     storage_backend: Literal["minio", "gcs"] = "minio"
@@ -140,8 +140,8 @@ class Settings(BaseSettings):
     jwt_algorithm: Literal["HS256"] = "HS256"
     jwt_issuer: str = "http://localhost:8000"
     jwt_audience: str = "ai-marketplace-os"
-    access_token_ttl_minutes: int = 30
-    refresh_token_ttl_days: int = 14
+    access_token_ttl_minutes: int = Field(default=30, ge=1)
+    refresh_token_ttl_days: int = Field(default=14, ge=1)
     password_hash_scheme: Literal["argon2id"] = "argon2id"  # noqa: S105 - a scheme name
 
     # ---- models: per-provider keys ----
