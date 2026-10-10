@@ -52,3 +52,14 @@ def test_multipart_hash_ignores_boundary() -> None:
     parts = _file_part(one, "aaaa1111"), _file_part(two, "bbbb2222")
     assert parts[0] == parts[1] == data
     assert request_hash("POST", path, parts[0]) == request_hash("POST", path, parts[1])
+
+
+def test_key_reused_is_the_idempotency_conflict() -> None:
+    """S26 T23 gate-fix (AC 11): the code and the constraint the 409 maps from."""
+    from app.core.errors import ConflictError
+    from app.services.idempotency import key_reused
+    from mkos_schemas.codes import ErrorCode
+
+    error = key_reused()
+    assert isinstance(error, ConflictError)
+    assert (error.code, error.constraint) == (ErrorCode.IDEMPOTENCY_KEY_REUSED, "idempotency_keys")
