@@ -355,6 +355,12 @@ LOAD_SMOKE_OUT ?= .e2e/load-smoke.json
 load-smoke:
 	scripts/load/run.sh --out $(LOAD_SMOKE_OUT)
 
+# The restore drill (S26 T19; AC 8): the acceptance run on a fresh stack, pg_dump -Fc, a
+# throwaway container (0000 + the password file, then pg_restore), then every check; <= 900 s.
+.PHONY: drill-restore
+drill-restore:
+	scripts/drill/restore.sh --seed-run
+
 # ONBOARDING.md on a clean clone of this branch (S14b T25): its own compose project and free ports,
 # every documented command, then the clone, its stack and its processes removed. Not a CI check.
 .PHONY: e2e-onboarding
