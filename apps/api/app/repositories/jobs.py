@@ -3,7 +3,8 @@ the job spine. Every write names the tenant and, for a running job, fences on th
 `attempt`, so a worker whose lease was reaped can never overwrite the newer attempt's row.
 
 - `enqueue`: INSERT the row and defer its queue entry in the caller's transaction (DW1); a
-  repeated `idempotency_key` returns the existing row and defers nothing.
+  repeated `idempotency_key` returns the existing row and defers nothing. The job key derived
+  from an HTTP key is scoped to that key's current lifetime (`job_idempotency_key`).
 - `claim`: the DATABASE.md:1027 compare-and-set, also requiring a running tenant (PLAN D14).
 - `finish`, `release_retry`, `release_shutdown`: the wrapper's terminal write and its two
   releases, all fenced on `status = 'running' AND attempt = :claimed`.
@@ -17,7 +18,7 @@ import hashlib
 import json
 import uuid
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any, Final
 
 from mkos_schemas.enums import JobKind
@@ -32,19 +33,33 @@ from app.db.integrity import map_db_error, to_conflict
 from app.db.models.ops import JobRun
 from app.db.models.tenancy import Tenant
 from app.db.queue import cancel_on_session, defer_on_session, retire_on_session
+from app.db.session import get_engine
 from app.repositories.base import TenantScopedRepository
 from app.workers.policy import POLICIES, lock_for
+from app.workers.policy import lease_s as kind_lease_s
 
 MAX_PAYLOAD_BYTES: Final = 64 * 1024  # DATABASE.md:941
+_KEY_BEGAN: Final = text(
+    "SELECT created_at FROM idempotency_keys WHERE tenant_id = :t AND key = :k"
+)
 RUNNING_TENANT: Final = ("trial", "active")
 TERMINAL: Final = frozenset({"succeeded", "partial", "failed", "cancelled", "dead_letter"})
 LIVE: Final = ("queued", "running")
 ENTITY_TYPES: Final = frozenset({"listing", "import", "image", "brand_document"})
 
 
-def job_idempotency_key(http_key: str, kind: str, listing_id: uuid.UUID | None) -> str:
-    """DATABASE.md:940: `hex(sha256(http_key ':' kind ':' listing_id))`, one key per batch item."""
+def job_idempotency_key(
+    http_key: str, kind: str, listing_id: uuid.UUID | None, began_at: datetime | None = None
+) -> str:
+    """DATABASE.md:940: `hex(sha256(http_key ':' kind ':' listing_id))`, one key per batch item.
+
+    `began_at` is the `idempotency_keys.created_at` of the HTTP key's current lifetime; when
+    given it is appended (`':' <ISO-8601 UTC, microseconds>`), so the job key lives exactly as
+    long as the HTTP key and an expired key reused later derives a new one (audit
+    CONCURRENCY-1/2: "an expired key counts as new")."""
     raw = f"{http_key}:{kind}:{listing_id or ''}"
+    if began_at is not None:
+        raw += ":" + began_at.astimezone(UTC).isoformat(timespec="microseconds")
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
@@ -157,17 +172,95 @@ async def expired_running(session: Any, *, limit: int = 500) -> list[tuple[uuid.
 
 
 # The orphan sweep's read of the queue's own table (raw SQL, as every queue-table statement here:
-# `procrastinate_jobs` has no tenant column; the ids come from this tenant's own rows).
-_ORPHAN_ENTRIES: Final = text(
-    "SELECT id FROM procrastinate_jobs WHERE id = ANY(:ids) AND status = 'doing' "
-    "AND worker_id IS NULL"
+# `procrastinate_jobs` has no tenant column; the ids come from this tenant's own rows): each
+# entry's status, worker and seconds since it was last fetched (its newest `started` event).
+_ENTRY_STATES: Final = text(
+    "SELECT j.id, j.status::text, j.worker_id, EXTRACT(EPOCH FROM now() - ("
+    "SELECT max(e.at) FROM procrastinate_events e WHERE e.job_id = j.id AND e.type = 'started'"
+    ")) FROM procrastinate_jobs j WHERE j.id = ANY(:ids)"
 )
+# An entry in one of these states never runs again (`aborting` is legacy, unused since 3.0).
+QUEUE_FINAL: Final = frozenset({"succeeded", "failed", "cancelled", "aborted"})
+ORPHANED: Final = "orphaned"
+LOST: Final = "lost"
+
+
+# Audit JOBS-4: the `doing` entries of `job_runs` jobs (a periodic task's entry carries no
+# `job_run_id`), with the seconds since each was last fetched (its newest `started` event), for
+# the reaper's sweep of entries whose job already ended. Read and written on an engine connection
+# as `app_rw`: the queue tables have no tenant column and no RLS, and `app_platform_ro` has no
+# grant on them. Only queue ids, job ids and ages are read, never a payload.
+_DOING_JOB_ENTRIES: Final = text(
+    "SELECT j.id, j.args->>'job_run_id', EXTRACT(EPOCH FROM now() - ("
+    "SELECT max(e.at) FROM procrastinate_events e WHERE e.job_id = j.id AND e.type = 'started'"
+    ")) FROM procrastinate_jobs j WHERE j.status = 'doing' AND j.args ? 'job_run_id' "
+    "ORDER BY j.id LIMIT :limit"
+)
+_RETIRE_DOING: Final = text(
+    "UPDATE procrastinate_jobs SET status = 'failed', abort_requested = false "
+    "WHERE id = ANY(:ids) AND status = 'doing' RETURNING id"
+)
+
+
+async def doing_job_entries(*, limit: int = 500) -> list[tuple[int, str | None, float | None]]:
+    """`(queue job id, job_run_id arg, seconds since fetched)` of every `doing` job entry, oldest
+    first (the reaper's lost-finish sweep, audit JOBS-4). Not tenant data: ids and ages only."""
+    async with get_engine().connect() as connection:
+        rows = (await connection.execute(_DOING_JOB_ENTRIES, {"limit": limit})).all()
+    return [(int(r[0]), r[1], None if r[2] is None else float(r[2])) for r in rows]
+
+
+async def retire_doing(queue_job_ids: list[int]) -> list[int]:
+    """Finish the given entries as `failed` if they are still `doing`; the ids retired. Their
+    jobs already ended in `job_runs`, so this only releases the entry (and its lock)."""
+    if not queue_job_ids:
+        return []
+    async with get_engine().begin() as connection:
+        rows = (await connection.execute(_RETIRE_DOING, {"ids": queue_job_ids})).all()
+    return [int(r[0]) for r in rows]
+
+
+def queue_drift(kind: str, entry: Any) -> str | None:
+    """How a `queued` row's queue entry (an `_ENTRY_STATES` row, or None when it is gone) has
+    drifted from it, or None when it will still run:
+
+    - `orphaned`: the entry is `doing` with no worker (a pruned worker's, KNOWN-ISSUES §E), or
+      `doing` for longer than the kind's lease (a lost `retry_job` under a live worker, audit
+      JOBS-4): no delivery is running the row, so it gets a new entry.
+    - `lost`: the entry is final or gone (the queue gave up after `INFRA_RETRY_CAP`
+      infrastructure errors, audit JOBS-2): nothing will ever run the row, so it is ended."""
+    if entry is None:
+        return LOST
+    status, worker_id, fetched_s = entry[1], entry[2], entry[3]
+    if status in QUEUE_FINAL:
+        return LOST
+    if status != "doing":
+        return None
+    if worker_id is None:
+        return ORPHANED
+    lease = kind_lease_s(POLICIES[JobKind(kind)])
+    return ORPHANED if fetched_s is not None and float(fetched_s) > lease else None
+
+
+async def finished_jobs(session: Any, job_ids: list[uuid.UUID], *, grace_s: int) -> set[uuid.UUID]:
+    """Of `job_ids`, those whose row is terminal and finished over `grace_s` seconds ago, or
+    that no longer exist (audit JOBS-4: a queue entry still `doing` for such a job lost its
+    `finish_job`). Cross-tenant: run it only in `platform_scope()` (the reaper)."""
+    if not job_ids:
+        return set()
+    stmt = select(
+        JobRun.id,
+        JobRun.status.in_(TERMINAL)
+        & (JobRun.finished_at < func.now() - timedelta(seconds=grace_s)),
+    ).where(JobRun.id.in_(job_ids))
+    rows = {row[0]: bool(row[1]) for row in (await session.execute(stmt)).all()}
+    return {job_id for job_id in job_ids if rows.get(job_id, True)}
 
 
 async def tenants_with_queued(session: Any, *, limit: int = 500) -> list[uuid.UUID]:
     """Every tenant holding a `queued` row, for the orphan sweep (KNOWN-ISSUES §E, S13a).
     Cross-tenant: only in `platform_scope()` (the reaper). The queue table itself is read in
-    each tenant's own unit of work (`JobRunRepository.orphaned_queued`)."""
+    each tenant's own unit of work (`JobRunRepository.drifted_queued`)."""
     stmt = select(JobRun.tenant_id).where(JobRun.status == "queued").distinct().limit(limit)
     return [row.tenant_id for row in (await session.execute(stmt)).all()]
 
@@ -230,7 +323,9 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         if _payload_bytes(payload) > MAX_PAYLOAD_BYTES:
             raise ValueError(f"payload exceeds {MAX_PAYLOAD_BYTES} bytes")
         key = (
-            job_idempotency_key(spec.http_key, kind.value, spec.listing_id)
+            job_idempotency_key(
+                spec.http_key, kind.value, spec.listing_id, await self._key_began(spec.http_key)
+            )
             if spec.http_key is not None
             else None
         )
@@ -286,6 +381,13 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
 
     # ---- S21 status-sync helpers (CP4) ----
 
+    async def _key_began(self, http_key: str) -> datetime | None:
+        """The start of the HTTP key's current lifetime (`begin()` sets it on a first use and on
+        the reuse of an expired key), or None when the caller stored no key."""
+        began = await self.db.execute(_KEY_BEGAN, {"t": self.tenant_id, "k": http_key})
+        value = began.scalar_one_or_none()
+        return value if isinstance(value, datetime) else None
+
     async def live_for_listing(self, listing_id: uuid.UUID, kind: JobKind) -> JobRun | None:
         """The listing's live (`queued`/`running`) job of `kind`, if any."""
         stmt = self._select().where(
@@ -295,22 +397,25 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
-    async def user_requested_since(
+    async def user_request_wait_s(
         self, listing_id: uuid.UUID, kind: JobKind, seconds: int
-    ) -> bool:
-        """A job of `kind` a member requested (`created_by` set) in the last `seconds`."""
+    ) -> int | None:
+        """None when no job of `kind` a member requested (`created_by` set) was queued in the last
+        `seconds`; else the whole seconds (at least 1) until the newest one leaves that window."""
+        window = timedelta(seconds=seconds)
+        newest = func.max(JobRun.queued_at)
         stmt = (
             self._select()
             .where(
                 JobRun.listing_id == listing_id,
                 JobRun.kind == JobKind(kind).value,
                 JobRun.created_by.is_not(None),
-                JobRun.queued_at > func.now() - timedelta(seconds=seconds),
+                JobRun.queued_at > func.now() - window,
             )
-            .with_only_columns(JobRun.id)
-            .limit(1)
+            .with_only_columns(func.ceil(func.extract("epoch", newest + window - func.now())))
         )
-        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+        wait = (await self.db.execute(stmt)).scalar_one_or_none()
+        return None if wait is None else max(1, int(wait))
 
     # ---- S16 brand_embed helpers (T9; CP6) ----
 
@@ -558,30 +663,37 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         )
         return Reaped("dead_letter", done)
 
-    async def orphaned_queued(self, *, limit: int = 100) -> list[uuid.UUID]:
-        """This tenant's `queued` rows whose queue entry is orphaned (a worker killed between
-        `release_retry`/`release_shutdown` and the queue's own re-queue), oldest first."""
+    async def _entry_states(self, queue_job_ids: list[int]) -> dict[int, Any]:
+        found = await self.db.execute(_ENTRY_STATES, {"ids": queue_job_ids})
+        return {int(row[0]): row for row in found.all()}
+
+    async def drifted_queued(self, *, limit: int = 100) -> dict[str, list[uuid.UUID]]:
+        """This tenant's `queued` rows whose queue entry drifted (`queue_drift`), oldest first:
+        `{"orphaned": [...], "lost": [...]}`."""
         stmt = (
             self._select()
             .where(JobRun.status == "queued", JobRun.queue_job_id.is_not(None))
             .order_by(JobRun.queued_at)
             .limit(limit)
         )
-        queued = {
-            int(job.queue_job_id): job.id
+        queued = [
+            job
             for job in (await self.db.execute(stmt)).scalars().all()
             if job.queue_job_id is not None and job.queue_job_id.isdigit()
-        }
+        ]
+        drifted: dict[str, list[uuid.UUID]] = {ORPHANED: [], LOST: []}
         if not queued:
-            return []
-        found = await self.db.execute(_ORPHAN_ENTRIES, {"ids": list(queued)})
-        return [queued[row[0]] for row in found.all()]
+            return drifted
+        states = await self._entry_states([int(job.queue_job_id or 0) for job in queued])
+        for job in queued:
+            found = queue_drift(job.kind, states.get(int(job.queue_job_id or 0)))
+            if found is not None:
+                drifted[found].append(job.id)
+        return drifted
 
-    async def redefer_orphan(self, job_id: uuid.UUID) -> JobRun | None:
-        """A `queued` row whose queue entry is orphaned gets a new entry (the old one retired,
-        so it can never run); the attempt is unchanged. Locked `FOR UPDATE SKIP LOCKED` and
-        re-checked under the lock, so a concurrent reaper never doubles it. None when the row
-        no longer qualifies."""
+    async def _lock_drifted(self, job_id: uuid.UUID, want: str) -> JobRun | None:
+        """The `queued` row locked `FOR UPDATE SKIP LOCKED` (a concurrent reaper skips it), if
+        its entry still drifts as `want` under the lock; else None."""
         self._own_session()
         locked = await self.db.execute(
             self._select()
@@ -591,8 +703,15 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         job = locked.scalar_one_or_none()
         if job is None or job.queue_job_id is None or not job.queue_job_id.isdigit():
             return None
-        entry = await self.db.execute(_ORPHAN_ENTRIES, {"ids": [int(job.queue_job_id)]})
-        if entry.first() is None:
+        entry = (await self._entry_states([int(job.queue_job_id)])).get(int(job.queue_job_id))
+        return job if queue_drift(job.kind, entry) == want else None
+
+    async def redefer_orphan(self, job_id: uuid.UUID) -> JobRun | None:
+        """A `queued` row whose queue entry is orphaned gets a new entry (the old one retired,
+        so it can never run); the attempt is unchanged. Re-checked under the row lock, so a
+        concurrent reaper never doubles it. None when the row no longer qualifies."""
+        job = await self._lock_drifted(job_id, ORPHANED)
+        if job is None or job.queue_job_id is None:
             return None
         await retire_on_session(self.db, job.queue_job_id)
         queue_job_id = await defer_on_session(
@@ -605,6 +724,44 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         )
         set_committed_value(job, "queue_job_id", queue_job_id)
         return job
+
+    async def end_lost(self, job_id: uuid.UUID, report_json: Any) -> Reaped:
+        """A `queued` row whose queue entry is final or gone (audit JOBS-2) is ended, so the row
+        matches the queue: a stopped tenant's job is `cancelled`, any other `dead_letter` with
+        `report_json(job)` (`INTERNAL_ERROR`; staff may requeue it). The status guard has no
+        `queued -> dead_letter` edge, so the reaper takes the row (`queued -> running`, the
+        claim's edge, without counting an attempt) and dead-letters it (`running ->
+        dead_letter`, its lease edge) in one transaction. Re-checked under the row lock;
+        `skipped` when the row no longer qualifies."""
+        job = await self._lock_drifted(job_id, LOST)
+        if job is None:
+            return Reaped("skipped")
+        queued = self._where(job_id, JobRun.status == "queued")
+        stopped = await self._update_returning(
+            job_id,
+            [*queued, ~_tenant_running()],
+            {"status": "cancelled", "finished_at": func.now()},
+        )
+        if stopped is not None:
+            return Reaped("cancelled", stopped)
+        report = report_json(job)
+        taken = await self._update_returning(
+            job_id, queued, {"status": "running", "lease_expires_at": func.now()}
+        )
+        if taken is None:
+            return Reaped("skipped")
+        done = await self._update_returning(
+            job_id,
+            self._fence(job_id, taken.attempt),
+            {
+                "status": "dead_letter",
+                "lease_expires_at": None,
+                "finished_at": func.now(),
+                "error_report_json": report,
+                "error_code": report.get("error_code"),
+            },
+        )
+        return Reaped("skipped") if done is None else Reaped("dead_letter", done)
 
     # ---- the staff requeue (A15; DATABASE.md:312; BACKEND-ARCHITECTURE:990-1031) ----
 

@@ -11,6 +11,12 @@ member is a `listing_publish` job (kept for the life of the listing) and no rema
 or `listing_submissions` row points at a member. Every delete takes at most `BATCH` rows; a
 chain's deeper members go first, so a batch boundary never leaves a child pointing at a deleted
 parent.
+
+Auth and brand rows (audit DB-3; DATABASE.md retention table): `refresh_tokens` 7 days after
+`expires_at` (deleting a successor first only clears its predecessor's `replaced_by`, the FK's
+`ON DELETE SET NULL (replaced_by)`), `invitations` 30 days after they closed (accepted, revoked,
+or else expired), and inactive `brand_chunks` 30 days after they were deactivated (`updated_at`,
+stamped by the trigger when `is_active` went false).
 """
 
 from __future__ import annotations
@@ -28,6 +34,18 @@ BATCH: Final = 1000
 IMPORT_DAYS: Final = 90
 JOB_DAYS: Final = 90
 FAILED_JOB_DAYS: Final = 180
+REFRESH_TOKEN_DAYS: Final = 7
+INVITATION_DAYS: Final = 30
+BRAND_CHUNK_DAYS: Final = 30
+# `prune_tenant`'s keys, in run order (the daily totals start from these)
+PRUNED_TABLES: Final = (
+    "import_rows",
+    "imports",
+    "job_runs",
+    "refresh_tokens",
+    "invitations",
+    "brand_chunks",
+)
 
 _IMPORT_ROWS: Final = text(
     "DELETE FROM import_rows WHERE id IN ("
@@ -44,6 +62,22 @@ _IMPORTS: Final = text(
     " AND NOT EXISTS (SELECT 1 FROM import_rows r WHERE r.import_id = i.id)"
     " AND NOT EXISTS (SELECT 1 FROM job_runs j WHERE j.tenant_id = :t AND j.id = i.job_id"
     "  AND j.status IN ('queued', 'running')) LIMIT :batch)"
+)
+_REFRESH_TOKENS: Final = text(
+    "DELETE FROM refresh_tokens WHERE tenant_id = :t AND id IN ("
+    " SELECT id FROM refresh_tokens WHERE tenant_id = :t"
+    " AND expires_at < now() - make_interval(days => :days) LIMIT :batch)"
+)
+_INVITATIONS: Final = text(
+    "DELETE FROM invitations WHERE tenant_id = :t AND id IN ("
+    " SELECT id FROM invitations WHERE tenant_id = :t"
+    " AND coalesce(accepted_at, revoked_at, expires_at) < now() - make_interval(days => :days)"
+    " LIMIT :batch)"
+)
+_BRAND_CHUNKS: Final = text(
+    "DELETE FROM brand_chunks WHERE tenant_id = :t AND id IN ("
+    " SELECT id FROM brand_chunks WHERE tenant_id = :t AND NOT is_active"
+    " AND updated_at < now() - make_interval(days => :days) LIMIT :batch)"
 )
 _JOB_CHAINS: Final = text("""
     WITH RECURSIVE chain AS (
@@ -100,8 +134,9 @@ async def _drain(session: Any, stmt: Any, params: dict[str, Any]) -> tuple[int, 
 
 
 async def prune_tenant(session: Any, tenant_id: uuid.UUID) -> dict[str, tuple[int, int]]:
-    """One tenant's retention pass, children first: import_rows, imports, then job chains.
-    Returns `{table: (rows deleted, batches run)}`."""
+    """One tenant's retention pass, children first: import_rows, imports, then job chains; then
+    expired refresh tokens, closed invitations and inactive brand chunks (DB-3). Returns
+    `{table: (rows deleted, batches run)}`."""
     base = {"t": tenant_id, "days": IMPORT_DAYS}
     out = {
         "import_rows": await _drain(session, _IMPORT_ROWS, base),
@@ -110,6 +145,15 @@ async def prune_tenant(session: Any, tenant_id: uuid.UUID) -> dict[str, tuple[in
             session,
             _JOB_CHAINS,
             {"t": tenant_id, "days": JOB_DAYS, "failed_days": FAILED_JOB_DAYS},
+        ),
+        "refresh_tokens": await _drain(
+            session, _REFRESH_TOKENS, {"t": tenant_id, "days": REFRESH_TOKEN_DAYS}
+        ),
+        "invitations": await _drain(
+            session, _INVITATIONS, {"t": tenant_id, "days": INVITATION_DAYS}
+        ),
+        "brand_chunks": await _drain(
+            session, _BRAND_CHUNKS, {"t": tenant_id, "days": BRAND_CHUNK_DAYS}
         ),
     }
     return out

@@ -2,7 +2,8 @@
 
 `hit(bucket, limit)` counts one request in the bucket's current window and returns the count;
 the API layer answers 429 once it passes `limit`. Bucket keys: `t:<tenant>` (120/min, the
-verified access token's tenant), `ip:<client ip>` (60/min, public routes) and
+verified access token's tenant, counted once its membership probe passes), `u:<tenant>:<user>`
+(the same limit, for a verified token whose probe failed), `ip:<client ip>` (60/min, public routes) and
 `login:<sha256(ip|lower(email))>` (5/min, the login).
 """
 

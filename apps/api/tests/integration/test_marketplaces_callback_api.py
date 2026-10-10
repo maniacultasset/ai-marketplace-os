@@ -10,6 +10,7 @@ from typing import Any
 import httpx
 import psycopg
 import pytest
+from app.api.errors import STATUS_MESSAGES
 
 from .auth_support import PREFIX
 from .conftest import LOCAL_HOSTS
@@ -189,6 +190,8 @@ async def test_callback_exchange_5xx_unavailable_no_pending(
     response = await callback(mapi, "amazon", query)
     assert response.status_code == 503
     assert response.json()["error"]["type"] == "MARKETPLACE_UNAVAILABLE"
+    # audit GAP2-CONTRACT-DOCS-CONFORMANCE-4: a retryable upstream outage, not "Internal server error."
+    assert response.json()["error"]["message"] == STATUS_MESSAGES[503]
     assert oauth_rows(mkt.conn) == []  # the state is burnt; the user restarts the connect
     retry = await callback(mapi, "amazon", query)
     assert retry.status_code == 409
@@ -206,6 +209,7 @@ async def test_callback_amazon_without_seller_param(mkt: MktWorld, mapi: httpx.A
     response = await callback(mapi, "amazon", query)
     assert response.status_code == 502
     assert response.json()["error"]["type"] == "MARKETPLACE_UNKNOWN_ERROR"
+    assert response.json()["error"]["message"] == STATUS_MESSAGES[502]
     assert oauth_rows(mkt.conn) == []
 
 

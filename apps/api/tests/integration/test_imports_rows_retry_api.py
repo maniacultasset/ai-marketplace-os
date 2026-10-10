@@ -12,6 +12,7 @@ from typing import Any
 import httpx
 import pytest
 from app.adapters.storage import StorageUnavailable
+from app.core.errors import CAP_RETRY_AFTER_S
 from app.services.imports import runner
 from app.workers.errors import RetryLater
 from mkos_schemas.errors import ErrorReport
@@ -310,6 +311,7 @@ async def test_imports_rows_retry_cap_429(imports_db: JobWorld, api: httpx.Async
     response = await retry(imports_db, api, import_id)
     assert response.status_code == 429
     assert response.json()["error"]["type"] == "RATE_LIMITED"
+    assert response.headers["retry-after"] == str(CAP_RETRY_AFTER_S)  # audit VALIDATION-2
     assert import_row(imports_db.conn, import_id)["status"] == "partial"
 
 

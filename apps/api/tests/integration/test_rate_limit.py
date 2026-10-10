@@ -291,3 +291,29 @@ async def test_rate_limit_other_email_own_bucket(api: httpx.AsyncClient, world: 
         LOGIN, json={"email": "operator@acme.test", "password": "test-password-0123"}
     )
     assert ok.status_code == 200
+
+
+async def test_rate_limit_refused_member_never_spends_tenant_budget(
+    client: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    """AUTH-2 / TENANCY-2: a deactivated member's still-valid access token gets 401s that never
+    count against the tenant's shared bucket, so it cannot hold the active members at 429; its
+    own refusals are capped in a bucket of its own."""
+    tenant = world.tenant("acme")
+    fired = bearer(tokens_for(world, "operator@acme.test", "acme"))  # issued while a member
+    owner = bearer(tokens_for(world, "owner@acme.test", "acme"))
+    auth_db.execute(
+        "UPDATE tenant_memberships SET is_active = false, deactivated_at = now() "
+        "WHERE tenant_id = %s AND user_id = %s",
+        [tenant, world.user("operator@acme.test")],
+    )
+    statuses = {
+        (await client.get("/api/v1/limited/read", headers=fired)).status_code for _ in range(120)
+    }
+    assert statuses == {401}
+    assert _count(auth_db, f"t:{tenant}") == 0
+    assert (await client.get("/api/v1/limited/read", headers=owner)).status_code == 200
+    assert _count(auth_db, f"t:{tenant}") == 1
+    # the refused token's own bucket: the 121st refusal is a 429, the tenant is untouched
+    _assert_429(await client.get("/api/v1/limited/read", headers=fired))
+    assert _count(auth_db, f"t:{tenant}") == 1

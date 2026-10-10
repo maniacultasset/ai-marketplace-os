@@ -6,7 +6,13 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-from app.services.analytics import AnalyticsRangeError, DateRange, rate, resolve_range
+from app.services.analytics import (
+    DEFAULT_DAYS,
+    AnalyticsRangeError,
+    DateRange,
+    rate,
+    resolve_range,
+)
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -53,6 +59,31 @@ def test_span_367_refused() -> None:
     with pytest.raises(AnalyticsRangeError) as caught:
         resolve_range(start, start + timedelta(days=366), today=TODAY)
     assert caught.value.field == "to"
+
+
+@pytest.mark.parametrize(
+    ("from_", "to"),
+    [
+        (None, date.min),
+        (None, date.min + timedelta(days=28)),
+        (None, date.max),
+        (date.max, date.max),
+        (date.max - timedelta(days=1), date.max),
+    ],
+)
+def test_calendar_edges_refused_not_overflow(from_: date | None, to: date) -> None:
+    """VALIDATION-1 / DB-2: a range whose arithmetic leaves Python's calendar is a 422 at `to`,
+    never an OverflowError (a 500)."""
+    with pytest.raises(AnalyticsRangeError) as caught:
+        resolve_range(from_, to, today=TODAY).bounds()
+    assert caught.value.field == "to"
+
+
+def test_calendar_edges_just_inside_ok() -> None:
+    last = date.max - timedelta(days=1)
+    assert resolve_range(last, last, today=TODAY).bounds()[1].date() == date.max
+    first_to = date.min + timedelta(days=DEFAULT_DAYS - 1)
+    assert resolve_range(None, first_to, today=TODAY).start == date.min
 
 
 def test_same_day_ok() -> None:

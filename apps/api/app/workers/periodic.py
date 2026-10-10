@@ -10,11 +10,21 @@ queue entry carries only `{"timestamp"}`, never tenant data.
   `JOB_TIMEOUT`; the dead queue entry is retired and the kind's terminal hook runs for the two
   terminal moves. A job whose reap raises rolls back alone, is logged `job.reap_failed` and
   skipped, and the pass goes on. Then stale worker rows are pruned (spike REPORT §4 gotcha 5).
+  Then the queue is reconciled with `job_runs` (audit JOBS-2, JOBS-4):
+  - a `doing` entry whose job ended over `ENTRY_GRACE_S` ago (or whose row is gone) lost its
+    `finish_job`; it is retired, so it never holds a kind's lock (`image_compliance`) forever;
+  - a `queued` row whose entry is `doing` with no worker, or for longer than the kind's lease
+    (a lost `retry_job`), gets a new entry (`redeferred`);
+  - a `queued` row whose entry is final or gone (the queue gave up after `INFRA_RETRY_CAP`
+    infrastructure errors) is ended: `dead_letter` + `INTERNAL_ERROR`, or `cancelled` for a
+    stopped tenant, and the kind's terminal hook runs.
 - `prune_rate_limits` (every 5 min): counters whose window started over 5 minutes ago.
 - `prune_idempotency_keys` (hourly): expired HTTP keys, tenant by tenant.
 - `expire_trials` (hourly): `expire_trials()` (trials past their end → `suspended`).
 - `retention_daily` (03:00): per tenant, in batches of 1,000, children first: `import_rows`,
-  `imports`, then `job_runs` chains (`app.repositories.retention`); then the queue's own
+  `imports`, then `job_runs` chains, then `refresh_tokens` 7 days past expiry, `invitations` 30
+  days after they closed and inactive `brand_chunks` 30 days after deactivation
+  (`app.repositories.retention`, audit DB-3); then the queue's own
   finished entries (succeeded after 7 days, every other final state after 90); then the image
   orphan sweep (S17b, below). A sweep failure is logged and never undoes the steps before it.
 - `sweep_image_orphans` (inside `retention_daily`, S17b PLAN D9, CP11): per tenant, every object
@@ -66,7 +76,16 @@ from app.db.session import platform_scope, unit_of_work
 from app.repositories import rate_limits, retention
 from app.repositories.idempotency import IdempotencyKeyRepository
 from app.repositories.images import ImageRepository
-from app.repositories.jobs import JobRunRepository, expired_running, tenants_with_queued
+from app.repositories.jobs import (
+    LOST,
+    ORPHANED,
+    JobRunRepository,
+    doing_job_entries,
+    expired_running,
+    finished_jobs,
+    retire_doing,
+    tenants_with_queued,
+)
 from app.repositories.marketplace_accounts import due_accounts
 from app.repositories.oauth_states import OAuthStateRepository, tenants_with_expired
 from app.services.image_keys import parse_image_key
@@ -74,6 +93,7 @@ from app.services.job_hooks import run_terminal_hook
 from app.workers import rollup
 from app.workers.alerting import alert
 from app.workers.errors import system_report
+from app.workers.policy import LEASE_GRACE_S
 from app.workers.settings import STALLED_WORKER_S
 from app.workers.token_refresh import REFRESH_MARGIN, refresh_account
 from app.workers.wrapper import alert_dead_letter
@@ -81,6 +101,9 @@ from app.workers.wrapper import alert_dead_letter
 log = get_logger(__name__)
 REAPER_ID: Final = "reaper"
 RATE_LIMIT_KEEP: Final = timedelta(minutes=5)
+# How long after a job's terminal write its queue entry may still be `doing` before the reaper
+# calls the `finish_job` lost (the worker writes it right after the wrapper returns).
+ENTRY_GRACE_S: Final = LEASE_GRACE_S
 
 
 @dataclass
@@ -91,6 +114,7 @@ class ReapResult:
     skipped: list[UUID] = field(default_factory=list)
     pruned_workers: list[int] = field(default_factory=list)
     redeferred: list[UUID] = field(default_factory=list)
+    retired_entries: list[int] = field(default_factory=list)
 
 
 def _timeout_report(job: Any, request_id: str) -> dict[str, Any]:
@@ -141,27 +165,84 @@ async def reap_once(job_manager: Any | None = None) -> ReapResult:
             log.info("job.reaped", job_run_id=str(job_id), action=reaped.action)
         if job_manager is not None:
             result.pruned_workers = list(await job_manager.prune_stalled_workers(STALLED_WORKER_S))
-        await _redefer_orphans(result)
+        await _retire_finished_entries(result)
+        await _reconcile_queued(result, ctx.request_id)
     return result
 
 
-async def _redefer_orphans(result: ReapResult) -> None:
-    """KNOWN-ISSUES §E (S13a): a `queued` row whose queue entry a pruned worker left `doing`
-    gets a new entry: one unit of work per tenant (a failure skips only that tenant)."""
+def _lost_report(job: Any, request_id: str) -> dict[str, Any]:
+    report = system_report(
+        ErrorCode.INTERNAL_ERROR,
+        "the queue gave up on the job after repeated infrastructure errors",
+        attempt=job.attempt,
+        max_attempts=job.max_attempts,
+        request_id=job.request_id or request_id,
+    )
+    return report.model_dump(mode="json")
+
+
+async def _retire_finished_entries(result: ReapResult) -> None:
+    """Audit JOBS-4: a queue entry left `doing` after its job ended (its `finish_job` was lost to
+    a DB blip or a kill) is retired, so it never holds the kind's lock or a slot forever."""
+    try:
+        entries = await doing_job_entries()
+        by_job: dict[UUID, tuple[int, float | None]] = {}
+        for queue_job_id, job_run_id, fetched_s in entries:
+            try:
+                by_job[UUID(str(job_run_id))] = (queue_job_id, fetched_s)
+            except ValueError:
+                continue
+        if not by_job:
+            return
+        async with platform_scope() as session:
+            ended = await finished_jobs(session, list(by_job), grace_s=ENTRY_GRACE_S)
+        stale = [
+            by_job[job_id][0]
+            for job_id in ended
+            # a row that is gone gives no finish time: the entry's own age stands in for it
+            if (by_job[job_id][1] or 0.0) > ENTRY_GRACE_S
+        ]
+        for queue_job_id in await retire_doing(stale):
+            result.retired_entries.append(queue_job_id)
+            log.info("job.entry_retired", queue_job_id=queue_job_id)
+    except Exception as exc:
+        log.exception("job.entry_retire_failed", error_class=type(exc).__name__)
+
+
+async def _reconcile_queued(result: ReapResult, request_id: str) -> None:
+    """KNOWN-ISSUES §E (S13a), audit JOBS-2/JOBS-4: a `queued` row whose queue entry drifted is
+    re-deferred (orphaned) or ended (lost), one unit of work per tenant (a failure skips only
+    that tenant)."""
     async with platform_scope() as session:
         tenants = await tenants_with_queued(session)
     for tenant_id in tenants:
+        ended: list[tuple[UUID, Any]] = []
         try:
             async with unit_of_work(tenant_id) as session:
                 repo = JobRunRepository(session, tenant_id)
-                for job_id in await repo.orphaned_queued():
+                drifted = await repo.drifted_queued()
+                for job_id in drifted[ORPHANED]:
                     if await repo.redefer_orphan(job_id) is not None:
                         result.redeferred.append(job_id)
                         log.info("job.redeferred", job_run_id=str(job_id))
+                for job_id in drifted[LOST]:
+                    reaped = await repo.end_lost(job_id, lambda job: _lost_report(job, request_id))
+                    if reaped.job is None:
+                        continue
+                    await run_terminal_hook(session, reaped.job, None)
+                    ended.append((job_id, reaped))
         except Exception as exc:
             log.exception(
                 "job.redefer_failed", tenant_id=str(tenant_id), error_class=type(exc).__name__
             )
+            continue
+        for job_id, reaped in ended:
+            if reaped.action == "dead_letter":
+                result.dead_lettered.append(job_id)
+                await alert_dead_letter(tenant_id, job_id, reaped.job.kind, reaped.job.error_code)
+            else:
+                result.cancelled.append(job_id)
+            log.info("job.queue_lost", job_run_id=str(job_id), action=reaped.action)
 
 
 async def prune_rate_limits(now: datetime | None = None) -> int:
@@ -371,7 +452,7 @@ async def retention_daily(job_manager: Any | None = None) -> dict[str, int]:
     image orphans deleted)."""
     async with platform_scope() as session:
         tenants = await retention.tenant_ids(session)
-    totals: dict[str, int] = {"import_rows": 0, "imports": 0, "job_runs": 0}
+    totals: dict[str, int] = dict.fromkeys(retention.PRUNED_TABLES, 0)
     for tenant_id in tenants:
         async with unit_of_work(tenant_id) as session:
             counts = await retention.prune_tenant(session, tenant_id)

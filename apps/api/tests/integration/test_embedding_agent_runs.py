@@ -150,3 +150,23 @@ async def test_query_embed_refused_input_no_row(products_world: World, auth_db: 
     with pytest.raises(SeamPortError):
         await deps.retrieve_brand_chunks(products_world.tenant("acme"), "   ")
     assert agent_rows(auth_db) == []
+
+
+async def test_malformed_openai_reply_writes_failed_row(
+    products_world: World, auth_db: Conn
+) -> None:
+    """Audit JOBS-5: a 200 reply of an unusable shape (no `usage`) is `EmbeddingFailed`, and the
+    call, which the provider may have billed, still writes its failed `agent_runs` row."""
+    import httpx2
+    from app.services.embeddings import EmbeddingFailed, embed_texts
+    from tests.unit.test_embeddings_openai import Script, _embedder, _ok
+
+    body = _ok(["a"])
+    body.pop("usage")
+    embedder = _embedder(Script(lambda r: httpx2.Response(200, json=body)))
+    with pytest.raises(EmbeddingFailed):
+        await embed_texts(embedder, ["a"], **_ids(products_world))  # type: ignore[arg-type]
+    (row,) = agent_rows(auth_db)
+    assert row["status"] == "failed" and row["model_used"] == MODEL
+    assert row["error_report_json"]["error_code"] == "MODEL_UNAVAILABLE"
+    assert row["error_report_json"]["retryable"] is False

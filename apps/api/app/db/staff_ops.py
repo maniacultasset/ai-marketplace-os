@@ -261,6 +261,19 @@ async def set_password(
             await conn.execute(
                 text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant_id)}
             )
+            # Two statements, not one (audit AUTH-3): under READ COMMITTED the UPDATE's snapshot
+            # cannot see the successor an in-flight /auth/refresh has inserted but not yet
+            # committed. The locking read waits on the predecessor that refresh holds FOR
+            # UPDATE until that transaction commits; the UPDATE then takes a fresh snapshot in
+            # which the successor is visible. A refresh that starts later blocks on this
+            # transaction's locks and finds its row revoked (reuse detection).
+            await conn.execute(
+                text(
+                    "SELECT id FROM refresh_tokens WHERE tenant_id = :t AND user_id = :u "
+                    "AND revoked_at IS NULL FOR UPDATE"
+                ),
+                {"t": tenant_id, "u": user_id},
+            )
             result: Any = await conn.execute(
                 text(
                     "UPDATE refresh_tokens SET revoked_at = now(), revoked_reason = 'password_changed' "

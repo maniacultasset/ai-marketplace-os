@@ -92,6 +92,13 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   per tenant; `tests/integration/test_reaper_orphaned_queued.py`). S26 also retries a body whose
   database connection was lost (a terminated backend) for a retrying kind
   (`app/workers/errors.py::is_transient_db_error`).
+  **Audit follow-up (JOBS-2, JOBS-4, 2026-10-10):** the same sweep now also re-defers a `queued` row
+  whose entry has been `doing` longer than the kind's lease under a live worker (a lost
+  `retry_job`), and ends a `queued` row whose entry is final or gone (the queue gave up after
+  `INFRA_RETRY_CAP` infrastructure errors) as `dead_letter` + `INTERNAL_ERROR` (`cancelled` for a
+  stopped tenant). A new pass retires a `doing` entry whose job ended over 60 s earlier (a lost
+  `finish_job`), so it can no longer hold the `image_compliance` lock for every tenant
+  (`tests/integration/test_reaper_queue_drift.py`).
 - **Job-spine follow-ups from the S13a review (LOW; S26 unless a later step hits them first).**
   Periodic tasks share the 4-slot `default` queue with `bulk_import` (1,800 s timeout), so four
   long imports can delay the reaper up to 30 min (fix: a `periodic` queue). An exception in the
@@ -132,13 +139,34 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   (`runner._load`; `integration/test_import_retry_parser_refused.py`): fixed 2026-10-10.
   Deferred (2026-10-10): the DB-level `variant_matrix_complete` check (it needs a migration; the
   runner enforces it).
+- **Revoke and reconnect state machine (audit GAP1-UNTOUCHED-OPS-STATE-MACHINE-1..3, 2026-10-10).**
+  A revoke + reconnect made a new account row and nothing re-pointed `listings.marketplace_account_id`
+  (DATABASE.md:760), so a listing published before could never be published again (409
+  AUTH_EXPIRED); the status sync of such a listing failed with INTERNAL_ERROR on every slot; and a
+  revoke during a live publish re-opened a `reconnect_account` task on the revoked account that no
+  confirm could apply. **Fixed:** a connect that creates a new account adopts the listings of the
+  tenant's revoked accounts for that marketplace with the same `seller_id` (another seller's
+  listings never move: their SKUs are unknown to the new seller) and resolves their stranded AUTH_EXPIRED issues
+  (`marketplaces._adopt_revoked`); `due_for_sync` and the sync job skip a listing whose account is
+  not `active` (the slot stays due), and an auth refusal when the reader opens is AUTH_EXPIRED; the
+  publish terminal write opens no task on a revoked account
+  (`tests/integration/test_revoke_reconnect_state.py`). **Deferred:** "the system pauses on account
+  revoke" (DATABASE.md:768) is not built; the publish request (409 AUTH_EXPIRED) and the sync skip
+  cover the same ground without freezing the listing. A connect committing between a publish job's
+  token read and its terminal write leaves that one attempt's AUTH_EXPIRED issue unlinked (the next
+  revoke + connect, or support, clears it). **No backfill:** a listing stranded by a revoke +
+  reconnect made before this fix stays pinned to its revoked account, so it cannot be published
+  (409 AUTH_EXPIRED) and, since `due_for_sync` now skips a non-active account, silently drops out
+  of the status sync; it is re-pointed only by a later revoke + connect of the same seller (or a
+  support data fix). Likewise, after a revoke of seller A and a connect of seller B, A's listings
+  stay on A's revoked account, unsynced and unpublishable, by design.
 
 ## S16 follow-ups
 
 | Where | Gap | Next |
 |---|---|---|
 | S18 planner | The brand profile lives on `tenants` (`tone`, `guidelines`, `glossary`); `brand_profiles` has no API (S16 PLAN D3). | S18 decides whether generation reads `brand_profiles` or only the profile chunks. |
-| Auth (DATABASE open decision 8) | No self-service password change or reset: staff set one with `python -m app.cli user set-password`, which revokes the user's refresh tokens (S16 PLAN D6). | Decide reset-by-email with the invite work (C6, 1.1). |
+| Auth (DATABASE open decision 8) | No self-service password change or reset: staff set one with `python -m app.cli user set-password`, which revokes the user's refresh tokens (S16 PLAN D6), including the successor of a refresh rotating at that moment (it locks the live rows first, then revokes in a fresh snapshot; audit AUTH-3). **Residual:** an access token issued before the reset stays valid until it expires (`ACCESS_TOKEN_TTL_MINUTES`, 30) and can still call `POST /auth/switch-tenant` for a new refresh family; closing that needs a per-user password epoch checked by the probe and by refresh (a migration), not built in v1. | Decide reset-by-email with the invite work (C6, 1.1). |
 
 - **Image approve gate hand-off to S19 (S17b T14b; blocks DW3 at the endpoint and AC17).** S17b
   ships the gate as the pure `app.services.image_gate.evaluate_image_gate(listing, stored,

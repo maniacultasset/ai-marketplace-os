@@ -290,9 +290,10 @@ def test_error_codes_per_d2() -> None:
             assert codes[409] == (E.IDEMPOTENCY_KEY_REUSED,), op.op_id
         else:
             assert 409 not in codes, op.op_id
-        assert (413 in codes) is op.has_body, op.op_id
-        if op.has_body:
-            assert codes[413] == (E.PAYLOAD_TOO_LARGE,)
+        # The body cap is global (BodyLimitMiddleware), so 400 and 413 hold on every op
+        # (audit GAP2-CONTRACT-DOCS-CONFORMANCE-5; it used to pin 413 to `has_body` ops only).
+        assert codes[413] == (E.PAYLOAD_TOO_LARGE,), op.op_id
+        assert codes[400] == (E.VALIDATION_FAILED,), op.op_id
         if "validation" in c:
             extra_422 = {
                 "products_create": (E.UNKNOWN_FACT_KEY,),
@@ -353,9 +354,11 @@ def test_listings_preview_row() -> None:
         "conflict",
     }
     assert dict(op.error_codes) == {
+        400: (E.VALIDATION_FAILED,),
         401: (E.UNAUTHENTICATED,),
         404: (E.NOT_FOUND,),
         409: (E.LISTING_BUSY,),
+        413: (E.PAYLOAD_TOO_LARGE,),
         422: (E.VALIDATION_FAILED,),
         429: (E.RATE_LIMITED,),
         501: (E.NOT_IMPLEMENTED,),

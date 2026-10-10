@@ -13,7 +13,7 @@ from mkos_schemas.errors import ErrorReport
 from mkos_schemas.jobs import JobAccepted
 from pydantic import ValidationError
 
-from app.api.errors import ApiError
+from app.api.errors import ApiError, domain_api_error
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import IdempotencyKey, get_current_principal
 from app.api.v1.schemas.brand import BrandDocumentOut, BrandDocumentPage, UploadChunkType
@@ -46,8 +46,8 @@ async def brand_documents_upload(
         )
     except documents.PayloadTooLargeError:
         raise ApiError(413, ErrorCode.PAYLOAD_TOO_LARGE) from None
-    except documents.BrandLimitError:
-        raise ApiError(429, ErrorCode.RATE_LIMITED) from None
+    except documents.BrandLimitError as exc:
+        raise domain_api_error(exc) from None
     if result.status == 422:
         raise InputError(ErrorCode.VALIDATION_FAILED, documents.stored_invalid_field(result.body))
     return JobAccepted.model_validate(result.body)

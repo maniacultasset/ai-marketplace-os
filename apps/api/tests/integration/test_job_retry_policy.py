@@ -57,7 +57,8 @@ def _queue_job(attempts: int) -> Any:
 
 def test_retry_strategy_infrastructure_error_backs_off_up_to_the_cap() -> None:
     """S13 fix F2: an exception that escapes the wrapper (a DB error while naming or claiming
-    the job) is retried with backoff, so the `queued` row is never left with a dead entry."""
+    the job) is retried with backoff up to the cap. Past it the reaper ends the `queued` row
+    (audit JOBS-2, test_reaper_queue_drift.py), so it is never left with a dead entry."""
     strategy = JobRetryStrategy()
     boom = OperationalError("SELECT 1", {}, Exception("connection reset"))
     for other in (boom, RuntimeError("x"), KeyError()):

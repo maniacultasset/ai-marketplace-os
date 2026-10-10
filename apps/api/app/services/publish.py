@@ -42,7 +42,7 @@ from dataclasses import dataclass
 from typing import Any, Final, NoReturn
 
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
-from mkos_schemas.enums import ErrorSource, JobKind, RetryClass
+from mkos_schemas.enums import ErrorSource, JobKind, JobState, RetryClass
 from mkos_schemas.errors import ErrorItem, ErrorReport
 
 from app.core.config import get_settings
@@ -465,12 +465,14 @@ REFRESH_WINDOW_S: Final = 300
 
 async def refresh_status(
     uow: TenantUnitOfWork, principal: Principal, listing_id: uuid.UUID, *, http_key: str
-) -> uuid.UUID:
+) -> tuple[uuid.UUID, JobState]:
     """Check the marketplace now: a `listing_status_sync` job with the poll count reset.
     Allowed on `published` (any marketplace state) and on `failed/publish_partial` after a
     partial accept (D7); `publishing` → 409 LISTING_BUSY; anything else → 409
     INVALID_STATUS_TRANSITION (the sync has no edge there; recovery is a publish). One request
-    per listing per 5 minutes (429 RATE_LIMITED); a live sync job is returned as is."""
+    per listing per 5 minutes (429 RATE_LIMITED); a live sync job is returned as is, with its
+    real status. Returns the job id and its status. The listing's sync schedule is reset only
+    when a new job is queued: a job key that already names a job is 409 LISTING_BUSY."""
     from app.core.errors import LimitError
     from app.workers.payloads import StatusSyncPayload
 
@@ -491,11 +493,12 @@ async def refresh_status(
         raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "listings")
     live = await uow.job_runs.live_for_listing(listing.id, JobKind.LISTING_STATUS_SYNC)
     if live is not None:
-        return live.id
-    if await uow.job_runs.user_requested_since(
+        return live.id, JobState(live.status)
+    wait_s = await uow.job_runs.user_request_wait_s(
         listing.id, JobKind.LISTING_STATUS_SYNC, REFRESH_WINDOW_S
-    ):
-        raise LimitError("refresh-status 1 per 5 min per listing")
+    )
+    if wait_s is not None:
+        raise LimitError("refresh-status 1 per 5 min per listing", retry_after_s=wait_s)
     enqueued = await uow.job_runs.enqueue(
         EnqueueSpec(
             kind=JobKind.LISTING_STATUS_SYNC,
@@ -507,11 +510,13 @@ async def refresh_status(
             payload=dump(StatusSyncPayload(listing_id=listing.id, reason="refresh")),
         )
     )
+    if not enqueued.created:  # never reset the schedule for a job this request did not queue
+        raise ConflictError(ErrorCode.LISTING_BUSY, "job_runs")
     await uow.listings.set_columns(
         listing.id, event="refresh_requested", sync_poll_count=0, next_sync_at=None
     )
     log.info("sync.refresh_requested", listing_id=str(listing.id), job_id=str(enqueued.job.id))
-    return enqueued.job.id
+    return enqueued.job.id, JobState.QUEUED
 
 
 async def accept_refresh_status(
@@ -522,8 +527,8 @@ async def accept_refresh_status(
 
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = repositories_on(session, principal.tenant_id)
-        job_id = await refresh_status(uow, principal, listing_id, http_key=key)
-        return 202, accepted_body(ItemAccepted(job_id=job_id, listing_id=listing_id))
+        job_id, status = await refresh_status(uow, principal, listing_id, http_key=key)
+        return 202, accepted_body(ItemAccepted(job_id=job_id, listing_id=listing_id, status=status))
 
     payload = json.dumps({"listing_id": str(listing_id), "op": "refresh"}).encode()
     _status, stored = await idempotent(principal, key, "POST", path, payload, handler)

@@ -14,6 +14,8 @@ and metering, without renaming anything here.
   `LLM_TIMEOUT_SECONDS` timeout. Failures become `EmbeddingFailed` (`TIMEOUT` retryable; 429, 5xx
   and connection errors `MODEL_UNAVAILABLE` retryable; other 4xx `MODEL_UNAVAILABLE` not), whose
   message is the class name and HTTP status only: never the key, the input or the provider text.
+  A 200 reply of an unusable shape (wrong types, non-finite numbers, missing `usage`, indexes not
+  exactly 0..n-1) is `MODEL_UNAVAILABLE` not retryable, so it is still metered (audit JOBS-5).
 - `get_embedder(settings)`: a usable `OPENAI_API_KEY` → `OpenAIEmbedder`; else `APP_ENV=local` →
   `HashEmbedder(settings.embedding_model)`; else `EmbedderUnavailable` (`MODEL_UNAVAILABLE`).
 - `embed_texts` / `embed_query`: the only callers of `Embedder.embed` (invariant 7). Each call of
@@ -198,21 +200,51 @@ class OpenAIEmbedder:
                 ErrorCode.MODEL_UNAVAILABLE, retryable=False, cause=type(exc).__name__
             ) from None
         if not isinstance(response, CreateEmbeddingResponse):  # a 200 with a non-JSON body
-            raise EmbeddingFailed(
-                ErrorCode.MODEL_UNAVAILABLE, retryable=False, cause="unexpected embedding shape"
-            )
-        data = sorted(response.data, key=lambda item: item.index)
-        if len(data) != len(texts) or any(
-            len(item.embedding) != EMBEDDING_DIMENSIONS for item in data
-        ):
-            raise EmbeddingFailed(
-                ErrorCode.MODEL_UNAVAILABLE, retryable=False, cause="unexpected embedding shape"
-            )
+            raise _unexpected_shape()
         return EmbeddingBatch(
-            vectors=[[float(v) for v in item.embedding] for item in data],
-            input_tokens=int(response.usage.prompt_tokens),
+            vectors=_vectors(response, len(texts)),
+            input_tokens=_prompt_tokens(response),
             model=self.model,
         )
+
+
+def _unexpected_shape() -> EmbeddingFailed:
+    return EmbeddingFailed(
+        ErrorCode.MODEL_UNAVAILABLE, retryable=False, cause="unexpected embedding shape"
+    )
+
+
+def _vectors(response: CreateEmbeddingResponse, count: int) -> list[list[float]]:
+    """One finite 1536-d vector per input, ordered by `index`, which must be exactly 0..count-1.
+    The SDK builds the reply without validating it, so every type is checked here (audit
+    JOBS-5): anything else is `EmbeddingFailed`, never a raw TypeError/ValueError."""
+    data = getattr(response, "data", None)
+    if not isinstance(data, list) or len(data) != count:
+        raise _unexpected_shape()
+    by_index: dict[int, list[float]] = {}
+    for item in data:
+        index = getattr(item, "index", None)
+        embedding = getattr(item, "embedding", None)
+        if type(index) is not int or index in by_index:
+            raise _unexpected_shape()
+        if not isinstance(embedding, list) or len(embedding) != EMBEDDING_DIMENSIONS:
+            raise _unexpected_shape()
+        vector: list[float] = []
+        for value in embedding:
+            if type(value) not in (int, float) or not math.isfinite(value):
+                raise _unexpected_shape()
+            vector.append(float(value))
+        by_index[index] = vector
+    if sorted(by_index) != list(range(count)):
+        raise _unexpected_shape()
+    return [by_index[i] for i in range(count)]
+
+
+def _prompt_tokens(response: CreateEmbeddingResponse) -> int:
+    tokens = getattr(getattr(response, "usage", None), "prompt_tokens", None)
+    if type(tokens) is not int or tokens < 0:
+        raise _unexpected_shape()
+    return tokens
 
 
 # ---- metered calls (S16 T8; invariant 7) ----

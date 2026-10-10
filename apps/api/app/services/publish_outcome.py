@@ -17,7 +17,8 @@ and the tasks commit together with the job's final row, or not at all:
    (D7);
 6. the account task (CP8): one `marketplace_error_review` per (account, kind), a
    `permission_decision`, or the issue linked to S15's `reconnect_account` task, so a later
-   `resume_publish` can show `human_resolution`.
+   `resume_publish` can show `human_resolution` (none on a revoked account: the next connect
+   links the issue to its own applied task, `marketplaces.confirm`).
 
 `revalidate(uow, ctx)` (CP10): facts or image bytes changed since the approval → the listing
 leaves `publishing` for `needs_review` or `blocked/validation_errors` (event `revalidate`, the
@@ -154,6 +155,12 @@ async def _open_task(
     if kind is None:
         return
     if kind == "link_reconnect":
+        # a revoked row is never reconnected (confirm makes a new account, which adopts the
+        # listing and resolves its AUTH_EXPIRED issue): no task on it. FOR SHARE orders this
+        # against a concurrent revoke, which then cancels the task opened here.
+        if await uow.marketplace_accounts.status_for_share(ctx.account_id) in (None, "revoked"):
+            log.info("publish.reconnect_task_skipped_revoked", job_run_id=str(ctx.job_id))
+            return
         await uow.human_tasks.open_reconnect(ctx.account_id)
         task_id = await uow.human_tasks.live_account_task(
             ctx.account_id, "reconnect_account", "account.oauth"
