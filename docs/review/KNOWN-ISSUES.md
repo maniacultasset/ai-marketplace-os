@@ -127,9 +127,11 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   **S26 (2026-10-10):** a line of only separators is now blank and skipped
   (`csv_file._blank`, tests in `unit/test_import_csv_file.py`), and `ObjectStorage.put` maps a
   5xx or an unreachable store to the retryable `StorageUnavailable` as `get` does (`get`'s body
-  read was already mapped; `unit/test_storage_put_errors.py`): fixed. Deferred (2026-10-10): the
-  rows-retry report of a parser-refused row (cosmetic: the row still fails; next import work)
-  and the DB-level `variant_matrix_complete` check (it needs a migration; the runner enforces it).
+  read was already mapped; `unit/test_storage_put_errors.py`): fixed. A rows retry no longer
+  re-runs a row the parser refused (stored with no cells): it keeps its stored error report
+  (`runner._load`; `integration/test_import_retry_parser_refused.py`): fixed 2026-10-10.
+  Deferred (2026-10-10): the DB-level `variant_matrix_complete` check (it needs a migration; the
+  runner enforces it).
 
 ## S16 follow-ups
 
@@ -167,6 +169,14 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   the row `pending` (the gate blocks it); only a new upload or a staff requeue recovers it, and a
   re-registration of the same key replays the dead job. The text overlay, watermark and logo rules
   are not seeded (T119: `ImageRequirementParams` needs a parameter they lack).
+  **S26 (2026-10-10):** every defer now derives the queue lock from the kind
+  (`app.workers.policy.lock_for`): `enqueue` (so the staff requeue too), the lease reaper's
+  requeue and the S26 orphan re-defer (`integration/test_redefer_keeps_queue_lock.py`): fixed.
+  Deferred (2026-10-10), target the 1.1 image work (C8): the `pending` image after a dead or
+  failed job (the approve gate fails closed on it, and a staff requeue or a new upload recovers
+  it, so nothing unchecked can publish), the re-registration replay of the dead job (the
+  idempotent replay of the same key, by design; a new key recovers), and the overlay, watermark
+  and logo rules (they need a contract change to `ImageRequirementParams`, T119).
 - **CI api-tests duration (S26).** The job grew from 15 to 39 minutes (S13b to S19) even under
   pytest-xdist on the runner's 4 vCPUs; its limit is 60 minutes. Fix in S26: split it into two required
   jobs (unit + meta, and integration) with coverage combined, or a larger runner.
