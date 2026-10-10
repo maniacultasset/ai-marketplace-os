@@ -348,6 +348,13 @@ FUZZ_MAX_EXAMPLES ?= 50
 fuzz:
 	scripts/fuzz/run.sh --max-examples $(FUZZ_MAX_EXAMPLES) $(if $(FUZZ_SEED),--seed $(FUZZ_SEED))
 
+# The v1 load smoke on a fresh stack with the production limits (S26 T18; AC 7): a 1,000-row
+# import, 20 concurrent generations, bharat probes; JSON report. Not a required check.
+LOAD_SMOKE_OUT ?= .e2e/load-smoke.json
+.PHONY: load-smoke
+load-smoke:
+	scripts/load/run.sh --out $(LOAD_SMOKE_OUT)
+
 # ONBOARDING.md on a clean clone of this branch (S14b T25): its own compose project and free ports,
 # every documented command, then the clone, its stack and its processes removed. Not a CI check.
 .PHONY: e2e-onboarding

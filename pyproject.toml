@@ -54,6 +54,7 @@ ignore = ["E501"]
 "packages/schemas/tests/**" = ["S101", "S105", "S106", "S603", "S607"]
 "packages/pipeline-stub/tests/**" = ["S101", "S105", "S106", "S603", "S607"]
 "scripts/ci/**" = ["T201", "S603", "S607"]
+"scripts/load/**" = ["T201"]
 "scripts/schemas/**" = ["T201"]
 "apps/api/app_mock/__main__.py" = ["T201"]
 "apps/api/app/services/embeddings.py" = ["TID251"]
@@ -83,6 +84,7 @@ files = [
   "packages/schemas/tests",
   "packages/pipeline-stub/src",
   "packages/pipeline-stub/tests",
+  "scripts/load",
 ]
 explicit_package_bases = true
 mypy_path = ["apps/api", "packages/schemas/src", "packages/pipeline-stub/src"]
