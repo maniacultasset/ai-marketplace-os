@@ -20,7 +20,7 @@ from app.core.request_context import request_context
 from app.repositories.jobs import EnqueueSpec
 from app.services import publish as svc
 from mkos_schemas.codes import ErrorCode
-from mkos_schemas.enums import ErrorSource, JobKind
+from mkos_schemas.enums import ErrorSource, JobKind, JobState
 
 T0 = datetime(2026, 10, 1, 12, 0, tzinfo=UTC)
 VERSION = uuid.UUID(int=7)
@@ -71,7 +71,7 @@ def _uow(**over: Any) -> Any:
             get_by_id=AsyncMock(return_value=None),
             enqueue=AsyncMock(return_value=SimpleNamespace(job=_job(), created=True)),
             live_for_listing=AsyncMock(return_value=None),
-            user_requested_since=AsyncMock(return_value=False),
+            user_request_wait_s=AsyncMock(return_value=None),
         ),
         listings=SimpleNamespace(
             latest_job_id=AsyncMock(return_value=uuid.UUID(int=55)),
@@ -607,8 +607,9 @@ async def test_refresh_status_after_a_partial(latest: str | None, allowed: bool)
         submissions__latest=AsyncMock(return_value=row),
     )
     if allowed:
-        assert await svc.refresh_status(uow, _principal(), listing.id, http_key="k") == uuid.UUID(
-            int=99
+        assert await svc.refresh_status(uow, _principal(), listing.id, http_key="k") == (
+            JOB,
+            JobState.QUEUED,
         )
     else:
         with pytest.raises(ConflictError) as raised:
@@ -621,11 +622,12 @@ async def test_refresh_status_enqueues_a_sync_and_resets_the_polls() -> None:
     principal = _principal()
     listing = _listing(status="published")
     uow = _uow(listings__get_for_update=AsyncMock(return_value=listing))
-    assert await svc.refresh_status(uow, principal, listing.id, http_key="key-3") == uuid.UUID(
-        int=99
+    assert await svc.refresh_status(uow, principal, listing.id, http_key="key-3") == (
+        JOB,
+        JobState.QUEUED,
     )
     uow.job_runs.live_for_listing.assert_awaited_once_with(listing.id, JobKind.LISTING_STATUS_SYNC)
-    uow.job_runs.user_requested_since.assert_awaited_once_with(
+    uow.job_runs.user_request_wait_s.assert_awaited_once_with(
         listing.id, JobKind.LISTING_STATUS_SYNC, 300
     )
     assert _spec(uow) == EnqueueSpec(
@@ -646,35 +648,40 @@ async def test_refresh_status_returns_a_live_sync_and_limits_repeats() -> None:
     listing = _listing(status="published")
     uow = _uow(
         listings__get_for_update=AsyncMock(return_value=listing),
-        job_runs__live_for_listing=AsyncMock(return_value=_job(uuid.UUID(int=44))),
+        job_runs__live_for_listing=AsyncMock(return_value=_job(uuid.UUID(int=44), "running")),
     )
-    assert await svc.refresh_status(uow, _principal(), listing.id, http_key="k") == uuid.UUID(
-        int=44
+    # a live sync is returned with its real status (audit CONCURRENCY-1)
+    assert await svc.refresh_status(uow, _principal(), listing.id, http_key="k") == (
+        uuid.UUID(int=44),
+        JobState.RUNNING,
     )
-    uow.job_runs.user_requested_since.assert_not_awaited()
+    uow.job_runs.user_request_wait_s.assert_not_awaited()
     uow.job_runs.live_for_listing = AsyncMock(return_value=None)
-    uow.job_runs.user_requested_since = AsyncMock(return_value=True)
+    uow.job_runs.user_request_wait_s = AsyncMock(return_value=120)
     with pytest.raises(LimitError) as limited:
         await svc.refresh_status(uow, _principal(), listing.id, http_key="k")
     assert limited.value.code is ErrorCode.RATE_LIMITED
     assert limited.value.limit == "refresh-status 1 per 5 min per listing"
+    assert limited.value.retry_after_s == 120
     uow.job_runs.enqueue.assert_not_awaited()
 
 
 # ---- the idempotent accept wrappers ----
 
 
-def svc_accepted_body(job_id: uuid.UUID, listing_id: uuid.UUID) -> dict[str, Any]:
+def svc_accepted_body(
+    job_id: uuid.UUID, listing_id: uuid.UUID, status: JobState = JobState.QUEUED
+) -> dict[str, Any]:
     from app.services.generation import ItemAccepted, accepted_body
 
-    body = accepted_body(ItemAccepted(job_id=job_id, listing_id=listing_id))
+    body = accepted_body(ItemAccepted(job_id=job_id, listing_id=listing_id, status=status))
     assert body["job_id"] == str(job_id)
     assert body["listing_id"] == str(listing_id)
     return body
 
 
 def _patch_idempotent(
-    monkeypatch: pytest.MonkeyPatch, inner: str, job_id: uuid.UUID
+    monkeypatch: pytest.MonkeyPatch, inner: str, job_id: uuid.UUID, answer: Any = None
 ) -> list[tuple[Any, ...]]:
     """`idempotent` records its arguments and runs the handler on a stub session; the inner
     service call records its own and answers `job_id`."""
@@ -691,7 +698,7 @@ def _patch_idempotent(
 
     async def fake_inner(uow: Any, principal: Any, listing_id: Any, *, http_key: str) -> Any:
         calls.append(("inner", uow, listing_id, http_key))
-        return job_id
+        return job_id if answer is None else answer
 
     monkeypatch.setattr(idempotency, "idempotent", fake_idempotent)
     monkeypatch.setattr(svc, inner, fake_inner)
@@ -712,9 +719,12 @@ async def test_accept_wrappers(
     principal = _principal()
     listing_id = uuid.UUID(int=12)
     job_id = uuid.UUID(int=13)
-    calls = _patch_idempotent(monkeypatch, inner, job_id)
+    # refresh_status answers (job id, status): a live sync keeps its real status in the 202
+    status = JobState.RUNNING if inner == "refresh_status" else JobState.QUEUED
+    answer = (job_id, status) if inner == "refresh_status" else None
+    calls = _patch_idempotent(monkeypatch, inner, job_id, answer)
     body = await getattr(svc, accept)(principal, "key-9", "/api/v1/x", listing_id)
-    assert body == svc_accepted_body(job_id, listing_id)
+    assert body == svc_accepted_body(job_id, listing_id, status)
     expected = {k: (str(listing_id) if v == "L" else v) for k, v in payload.items()}
     assert calls == [
         ("inner", ("uow", "session", principal.tenant_id), listing_id, "key-9"),
