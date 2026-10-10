@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from email.parser import BytesParser
 from email.policy import HTTP
+from types import SimpleNamespace
+from typing import Any
 
+import pytest
 from app.services.idempotency import request_hash
 
 
@@ -63,3 +66,33 @@ def test_key_reused_is_the_idempotency_conflict() -> None:
     error = key_reused()
     assert isinstance(error, ConflictError)
     assert (error.code, error.constraint) == (ErrorCode.IDEMPOTENCY_KEY_REUSED, "idempotency_keys")
+
+
+def _keys(rowcount: int = 1) -> Any:
+    import uuid
+
+    from app.repositories.idempotency import IdempotencyKeyRepository
+
+    class _Session:
+        async def execute(self, *_: Any) -> Any:
+            return SimpleNamespace(rowcount=rowcount)
+
+    session: Any = _Session()
+    return IdempotencyKeyRepository(session, uuid.UUID(int=1))
+
+
+@pytest.mark.parametrize("value", ["x" * 32, b"x" * 31, b"x" * 33])
+def test_key_repository_refuses_a_hash_that_is_not_32_bytes(value: Any) -> None:
+    """S26 T23 gate-fix (AC 11): a 32-character str is refused as well as a short digest."""
+    with pytest.raises(ValueError) as refused:
+        _keys()._check(value)
+    assert str(refused.value) == "request_hash must be 32 bytes (sha256)"
+    _keys()._check(b"x" * 32)
+
+
+async def test_key_repository_complete_needs_exactly_one_begun_row() -> None:
+    await _keys(1).complete("k", 202, {})
+    for rowcount in (0, 2):
+        with pytest.raises(RuntimeError) as missing:
+            await _keys(rowcount).complete("k", 202, {})
+        assert str(missing.value) == "complete() found no begun idempotency key"

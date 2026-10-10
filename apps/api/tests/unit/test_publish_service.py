@@ -778,3 +778,45 @@ async def test_plan_mode_follows_retry_fields_only_not_the_status() -> None:
         plan = await svc.plan_publish(uow, listing, retry_fields_only=only)
         assert plan.mode == mode, only
         assert uow.field_results.retry_payload.await_count == int(payload_read)
+
+
+# ---- publish_batch ----
+
+
+class _Nested:
+    async def __aenter__(self) -> None:
+        return None
+
+    async def __aexit__(self, *exc: object) -> bool:
+        return False
+
+
+async def test_publish_batch_inserts_the_batch_and_passes_the_key() -> None:
+    principal = _principal()
+    listing = _listing()
+    uow = _uow()
+    uow.batches = SimpleNamespace(
+        insert=AsyncMock(return_value=SimpleNamespace(id=uuid.UUID(int=3)))
+    )
+    uow.listings.lock_many = AsyncMock(return_value={listing.id: listing})
+    uow.session = SimpleNamespace(begin_nested=_Nested)
+    items = [svc.PublishItemIn(listing.id), svc.PublishItemIn(uuid.UUID(int=404))]
+    with request_context("req-batch"):
+        batch_id, outcomes = await svc.publish_batch(uow, principal, items, http_key="key-b")
+    assert batch_id == uuid.UUID(int=3)
+    uow.batches.insert.assert_awaited_once_with(
+        "publish", 2, principal.user_id, request_id="req-batch"
+    )
+    uow.listings.lock_many.assert_awaited_once_with([listing.id, uuid.UUID(int=404)])
+    assert [(o.http_status, o.listing_status) for o in outcomes] == [
+        (202, "publishing"),
+        (404, None),
+    ]
+    assert _spec(uow).http_key == "key-b"
+    assert _spec(uow).batch_id == uuid.UUID(int=3)
+
+
+async def test_publish_batch_refuses_no_items() -> None:
+    with pytest.raises(ValueError) as refused:
+        await svc.publish_batch(_uow(), _principal(), [], http_key="k")
+    assert str(refused.value) == "a publish batch has at least one item"

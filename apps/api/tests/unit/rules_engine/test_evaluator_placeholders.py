@@ -113,3 +113,34 @@ def test_scalar_equal_needs_two_numbers() -> None:
     assert scalar_equal(1, 1.0)
     assert not scalar_equal(1, Decimal(1))
     assert not scalar_equal(Decimal(1), 1)
+
+
+def test_cross_field_finding_carries_the_left_value() -> None:
+    r = rule(
+        {
+            "type": "cross_field",
+            "name": "price_under_mrp",
+            "left": "attributes.price",
+            "op": "lte",
+            "right": "attributes.mrp",
+            "message": "v={value}",
+        },
+        field="attributes.price",
+    )
+    (err,) = _errors(listing(attributes={"price": 500, "mrp": 400}), r)
+    assert (err.field, err.message, err.value_submitted) == ("attributes.price", "v=500", "500")
+
+
+def test_pattern_finding_carries_the_text() -> None:
+    r = rule(
+        {
+            "type": "pattern",
+            "name": "p",
+            "regex": "^[0-9]+$",
+            "must": "match",
+            "message": "v={value}",
+        },
+        field="attributes.gtin",
+    )
+    (err,) = _errors(listing(attributes={"gtin": "12a"}), r)
+    assert (err.message, err.value_submitted) == ("v=12a", "12a")

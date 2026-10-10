@@ -132,3 +132,31 @@ def test_refusal_regenerator_is_maker() -> None:
     chain = _chain(gen, regen)
     assert approver_refusal(C, chain) is ErrorCode.MAKER_CHECKER_VIOLATION
     assert approver_refusal(A, chain) is None  # the earlier maker is outside a full regeneration
+
+
+# ---- S26 T23 gate-fix (AC 11) ----
+
+
+def test_chain_generation_with_a_parent_stops_at_itself() -> None:
+    """A generation starts a chain even when it names a parent: the earlier maker is not in it."""
+    older = _v("generation", A)
+    newer = _v("generation", B, older)
+    assert _chain(older, newer) == {B}
+
+
+def test_chain_error_messages() -> None:
+    one = _v("edit", A, None, editor=B, paths=("content",))
+    looped = VersionLink(
+        id=one.id,
+        origin="edit",
+        parent_version_id=one.id,
+        changed_paths=("content",),
+        generated_by_user_id=A,
+        edited_by_user_id=B,
+    )
+    with pytest.raises(ChainError) as cycle:
+        contributor_chain(looped.id, {looped.id: looped})
+    assert str(cycle.value) == "the version chain has a cycle"
+    with pytest.raises(ChainError) as missing:
+        contributor_chain(uuid.uuid4(), {})
+    assert str(missing.value) == "the version chain names a missing version"

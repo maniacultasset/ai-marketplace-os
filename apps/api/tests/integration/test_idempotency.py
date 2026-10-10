@@ -125,11 +125,12 @@ async def test_idempotency_stores_422(jobs_db: JobWorld) -> None:
     assert calls == [1]
 
 
-async def test_idempotency_refuses_unstorable_status(jobs_db: JobWorld) -> None:
+@pytest.mark.parametrize("status", [409, 300, 199])
+async def test_idempotency_refuses_unstorable_status(jobs_db: JobWorld, status: int) -> None:
     p = _principal(jobs_db)
 
     async def wrong(session: Any) -> tuple[int, dict[str, Any]]:
-        return 409, {}
+        return status, {}
 
     with pytest.raises(ValueError, match="raise errors instead"):
         await idempotent(p, "k9", "POST", PATH, b"x", wrong)
