@@ -256,12 +256,14 @@ class MarketplaceAccountRepository(TenantScopedRepository[MarketplaceAccount]):
         found: uuid.UUID | None = (await self.db.execute(stmt.limit(1))).scalar_one_or_none()
         return found
 
-    async def revoked_ids(self, marketplace: str) -> builtins.list[uuid.UUID]:
-        """The tenant's revoked accounts for `marketplace` (a connect adopts their listings)."""
+    async def revoked_ids(self, marketplace: str, seller_id: str) -> builtins.list[uuid.UUID]:
+        """The tenant's revoked accounts for `marketplace` of seller `seller_id` (a connect of the
+        same seller adopts their listings; another seller's never move: their SKUs are unknown
+        to the new seller's reader and publish)."""
         m = MarketplaceAccount
         stmt = (
             self._select()
-            .where(m.marketplace == marketplace, m.status == "revoked")
+            .where(m.marketplace == marketplace, m.status == "revoked", m.seller_id == seller_id)
             .with_only_columns(m.id)
             .order_by(m.id)
         )

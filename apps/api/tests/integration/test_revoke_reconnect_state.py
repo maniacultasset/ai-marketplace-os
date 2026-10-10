@@ -2,8 +2,9 @@
 :768, :1352).
 
 1. A revoke + reconnect makes a NEW account row (confirm's live lookup skips `revoked`), so the
-   connect re-points every listing of the marketplace pinned to a revoked account to the new one:
-   a listing published before can be published again.
+   connect re-points every listing of the marketplace pinned to a revoked account OF THE SAME
+   SELLER to the new one: a listing published before can be published again. A connect of a
+   different seller adopts nothing (the SKUs belong to the old seller).
 2. The status sync never reads through a non-active account: the scheduler leaves the listing's
    slot due, the job skips it (no INTERNAL_ERROR on any slot), and the sync resumes once the
    listing is on an active account again. An auth refusal while opening the reader is the typed
@@ -152,6 +153,49 @@ async def test_reconnect_leaves_listings_of_a_live_account_alone(
     same = await _connect(api, pub, _seller(pub, account))
     assert same == account
     assert pub.listing(made.listing_id)["marketplace_account_id"] == account
+
+
+async def test_connect_of_another_seller_adopts_nothing(
+    api: httpx.AsyncClient, pub: PubWorld
+) -> None:
+    """A revoke of seller A then a connect of seller B: A's listings stay on A's revoked account
+    (their SKUs belong to A, so B's reader and publish must never see them) and the stranded
+    AUTH_EXPIRED issues are not linked to B's account."""
+    from app.workers.periodic import schedule_status_sync
+
+    made = await approved(pub)
+    await publish_and_run(api, pub, made)
+    old = pub.accounts["acme"]
+    seller_a = _seller(pub, old)
+    await _revoke(api, pub, old)
+
+    seller_b = f"{seller_a}B"
+    new = await _connect(api, pub, seller_b)
+    assert new != old
+    assert _seller(pub, new) == seller_b
+    assert pub.listing(made.listing_id)["marketplace_account_id"] == old
+    assert (
+        pub.rows(
+            "SELECT id FROM human_tasks WHERE marketplace_account_id = %s AND kind = 'reconnect_account'",
+            [new],
+        )
+        == []
+    )
+
+    # B's account never syncs A's listing
+    pub.conn.execute(
+        "UPDATE listings SET next_sync_at = now() - interval '1 second' WHERE id = %s",
+        [made.listing_id],
+    )
+    await schedule_status_sync()
+    assert (
+        pub.scalar(
+            "SELECT count(*) FROM job_runs WHERE listing_id = %s AND kind = 'listing_status_sync' "
+            "AND status = 'queued'",
+            [made.listing_id],
+        )
+        == 0
+    )
 
 
 # ---- 2: status sync on a revoked account ----

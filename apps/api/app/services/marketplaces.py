@@ -209,14 +209,20 @@ def seller_conflict() -> ConflictError:
 
 
 async def _adopt_revoked(
-    uow: TenantUnitOfWork, principal: Principal, marketplace: str, account_id: uuid.UUID
+    uow: TenantUnitOfWork,
+    principal: Principal,
+    marketplace: str,
+    seller_id: str,
+    account_id: uuid.UUID,
 ) -> None:
-    """A new live account replaces the tenant's revoked ones for `marketplace` (DATABASE.md:760):
+    """A new live account replaces the tenant's revoked ones for `marketplace` of the SAME seller
+    (DATABASE.md:760; a revoked account of another seller keeps its listings, whose SKUs belong
+    to that seller):
     their listings are re-pointed to it, any reconnect task still live on them is cancelled
     (`superseded`), and the AUTH_EXPIRED issues a revoke stranded mid-publish are linked to one
     `reconnect_account` task on the new account, applied by this connect, so the publish gate
     and `human_resolution` let the listing publish again."""
-    revoked = await uow.marketplace_accounts.revoked_ids(marketplace)
+    revoked = await uow.marketplace_accounts.revoked_ids(marketplace, seller_id)
     if not revoked:
         return
     for old in revoked:
@@ -263,7 +269,7 @@ async def confirm(principal: Principal, pending: str) -> AccountView:
                 connected_by=principal.user_id,
             )
             if created is not None:
-                await _adopt_revoked(uow, principal, row.marketplace, created.id)
+                await _adopt_revoked(uow, principal, row.marketplace, row.seller_id, created.id)
                 await uow.audit.write(
                     tenant_id=principal.tenant_id,
                     actor_type="user",
