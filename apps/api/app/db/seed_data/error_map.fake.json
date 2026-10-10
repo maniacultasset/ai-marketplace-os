@@ -126,5 +126,21 @@
     "plain_text": "{marketplace} throttled the update of {field}; it can be retried.",
     "seller_action": "Retry the failed fields.",
     "enabled": true
+  },
+  {
+    "marketplace": "flipkart",
+    "match_on": "code",
+    "raw_value": "FAKE-FK-QUOTA",
+    "version": 1,
+    "error_code": "RATE_LIMITED",
+    "error_class": "marketplace_technical",
+    "retry_class": "auto_retry",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "{marketplace} throttled the update of {field}; it can be retried.",
+    "seller_action": "Retry the failed fields.",
+    "enabled": true
   }
 ]

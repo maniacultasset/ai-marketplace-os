@@ -89,6 +89,9 @@ class AttemptCtx:
     fence_job: bool = True
     """False for an ended job's `pending` row this job resolves (CP1 (c)): the write is fenced
     on the row still being `pending` only."""
+    listing_sku: bool = True
+    """False for a family with no parent row on its marketplace (Flipkart, S22 C9): the listing
+    keeps `marketplace_sku` NULL; its children carry their own SKUs (DATABASE.md:754-755)."""
 
 
 def _aggregate(states: Sequence[str]) -> str:
@@ -247,7 +250,7 @@ async def _move(
         }
         if listing.first_published_at is None:
             columns["first_published_at"] = DbNow()
-        if listing.marketplace_sku is None:
+        if listing.marketplace_sku is None and ctx.listing_sku:
             columns["marketplace_sku"] = ctx.seller_sku
         if decision.external_id and listing.external_id is None:
             columns["external_id"] = decision.external_id[:128]

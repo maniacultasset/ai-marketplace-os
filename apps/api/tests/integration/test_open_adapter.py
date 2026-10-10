@@ -237,6 +237,29 @@ async def test_open_adapter_flipkart_create_end_to_end(
     assert used[9] == "marketplace_call"
 
 
+async def test_open_adapter_flipkart_raw_bodies_reach_the_sink(
+    fk_env: MktWorld, mapi: httpx.AsyncClient
+) -> None:
+    """S22 T22: the publish job's sink gets Flipkart's raw bodies, one entry per SKU."""
+    from app.services.submission_store import BufferedSink
+    from app.workers.adapters import open_adapter
+    from tests.adapters.flipkart_support import fk_family
+
+    account = await connected_account(mapi, fk_env, marketplace="flipkart", seller="F1SINK")
+    sink = BufferedSink()
+    adapter: Any = await open_adapter(
+        fk_env.tenant("acme"),
+        uuid.UUID(account["id"]),
+        transport=httpx.ASGITransport(app=fk_env.fake),
+        sink=sink,
+    )
+    sent = fk_family(style="KF-SINK")
+    await adapter.create_listing(sent)
+    await adapter.aclose()
+    assert sorted(e[0] for e in sink.entries) == sorted(i.seller_sku for i in sent.items)
+    assert all(e[1] == "create" and b"request_id" in e[2] for e in sink.entries)
+
+
 async def test_open_adapter_flipkart_seller_from_row(
     fk_env: MktWorld, mapi: httpx.AsyncClient
 ) -> None:
