@@ -337,6 +337,7 @@ e2e:
 	for script in $(E2E_DIR)/*.sh; do \
 	  [ -e "$$script" ] || { echo "make e2e: no scripts in $(E2E_DIR)" >&2; exit 1; }; \
 	  [ "$$(basename "$$script")" != onboarding.sh ] || continue; \
+	  [ "$$(basename "$$script")" != acceptance.sh ] || continue; \
 	  $(RESET_LIMITS) "$$base" || exit $$?; \
 	  "$$script" "$$base" || exit $$?; \
 	done
@@ -354,6 +355,12 @@ LOAD_SMOKE_OUT ?= .e2e/load-smoke.json
 .PHONY: load-smoke
 load-smoke:
 	scripts/load/run.sh --out $(LOAD_SMOKE_OUT)
+
+# The v1 acceptance run on a fresh stack (S26 T20-T21; AC 9): setup by the staff CLI, then every
+# leg over HTTP against the stack's own fake marketplace and worker; `make e2e` skips the script.
+.PHONY: acceptance
+acceptance:
+	scripts/e2e/lib/acceptance_run.sh
 
 # The restore drill (S26 T19; AC 8): the acceptance run on a fresh stack, pg_dump -Fc, a
 # throwaway container (0000 + the password file, then pg_restore), then every check; <= 900 s.

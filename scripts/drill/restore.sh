@@ -64,7 +64,7 @@ esac
 
 if [ "$own_stack" -eq 1 ]; then
   if [ "$seed_run" -eq 1 ]; then
-    scripts/e2e/acceptance.sh "$base_url" >&2
+    scripts/e2e/lib/acceptance_run.sh --stack "$stack" >&2  # scripts/e2e/acceptance.sh on it
   else
     APP_ROLE=migrate uv run --frozen python -m app.cli seed --profile demo >&2
   fi
