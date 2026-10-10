@@ -67,7 +67,9 @@ _SCALARS = (
 )
 
 
-@settings(max_examples=150, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(
+    max_examples=150, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
+)
 @given(st.dictionaries(st.from_regex(r"[a-z][a-z0-9_]{1,10}", fullmatch=True), _SCALARS))
 def test_jsonb_text_bytes_property(db: PgConn, value: dict[str, Any]) -> None:
     assert jsonb_text_bytes(value) == _octets(db, value)
