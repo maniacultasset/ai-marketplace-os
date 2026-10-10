@@ -245,3 +245,53 @@ async def test_sync_auth_refused_at_open_is_auth_expired(
     row = pub.job(job)
     assert row["status"] == "failed"
     assert row["error_report_json"]["error_code"] == "AUTH_EXPIRED"
+
+
+# ---- 3: revoke during a live publish ----
+
+
+async def test_revoke_during_publish_opens_no_task_on_revoked_account(
+    api: httpx.AsyncClient, pub: PubWorld
+) -> None:
+    from app.workers import publish as publish_worker
+
+    made = await approved(pub)
+    account = pub.accounts["acme"]
+    pw = pub
+
+    async def factory(tenant_id: uuid.UUID, account_id: uuid.UUID, sink: Any) -> Any:
+        # the revoke lands after the job's read, before the token read (WorkerTokenSource
+        # raises AuthExpired for a revoked row)
+        await _revoke(api, pw, account_id)
+        pw.fake.raise_next = [AuthExpired(ErrorReport(status="failed"))]
+        return pw.fake
+
+    publish_worker.set_adapter_factory(factory)
+    await publish_and_run(api, pub, made)
+    row = pub.listing(made.listing_id)
+    assert (row["status"], row["status_reason"]) == ("blocked", "marketplace_action_required")
+    live = pub.rows(
+        "SELECT id FROM human_tasks WHERE marketplace_account_id = %s "
+        "AND status IN ('open', 'answered')",
+        [account],
+    )
+    assert live == []
+
+    # the tenant connects again: the stranded attempt's issue is resolved by that connect, and the
+    # listing can be resumed on the new account
+    _install_plain_factory(pub)
+    new = await _connect(api, pub, _seller(pub, account))
+    assert pub.listing(made.listing_id)["marketplace_account_id"] == new
+    linked = pub.rows(
+        "SELECT t.kind, t.status, t.marketplace_account_id FROM listing_issues i "
+        "JOIN human_tasks t ON t.id = i.human_task_id "
+        "WHERE i.listing_id = %s AND i.error_code = 'AUTH_EXPIRED' AND i.status = 'open'",
+        [made.listing_id],
+    )
+    assert linked and all(r == ("reconnect_account", "applied", new) for r in linked), linked
+    item = await publish_one(api, pub, made)
+    assert item["http_status"] == 202, item
+    await run_job(uuid.UUID(item["job_id"]))
+    after = pub.listing(made.listing_id)
+    assert after["status"] == "published", (after["status"], after["status_reason"])
+    assert pub.submissions(made.listing_id)[-1]["retry_justification"] == "human_resolution"

@@ -267,6 +267,19 @@ class MarketplaceAccountRepository(TenantScopedRepository[MarketplaceAccount]):
         )
         return builtins.list((await self.db.execute(stmt)).scalars())
 
+    async def status_for_share(self, account_id: uuid.UUID) -> str | None:
+        """The account's status, read `FOR SHARE`, so a concurrent revoke (which takes the row
+        `FOR UPDATE`) lands either before this read or after the caller's commit."""
+        m = MarketplaceAccount
+        stmt = (
+            self._select()
+            .where(m.id == account_id)
+            .with_only_columns(m.status)
+            .with_for_update(read=True)
+        )
+        found: str | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        return found
+
     async def active_by_id(self, account_id: uuid.UUID) -> AccountState | None:
         """The tenant's account `account_id` in any status (the caller refuses one that is not
         active), or None, also for another tenant's id. Never selects `token_enc`."""

@@ -25,13 +25,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Final
 
-from sqlalchemy import func, literal, literal_column, text, tuple_, update
+from sqlalchemy import exists, func, literal, literal_column, select, text, tuple_, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
 from app.db.integrity import map_db_error, to_conflict
-from app.db.models.issues import ListingIssue
+from app.db.models.issues import HumanTask, ListingIssue
 from app.repositories.base import TenantScopedRepository
 
 PAGE_LIMIT_MAX: Final = 200
@@ -123,6 +123,44 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
                 ListingIssue.job_id == job_id,
                 ListingIssue.status == OPEN,
             )
+            .values(human_task_id=task_id)
+        ).returning(ListingIssue.id)
+        return len((await self._run(stmt)).all())
+
+    async def unresolved_auth(self, listing_ids: Sequence[uuid.UUID]) -> builtins.list[uuid.UUID]:
+        """The open `AUTH_EXPIRED` issues of `listing_ids` that no `answered`/`applied` task
+        covers (the 0004 publish gate's anti-loop rule would refuse their listing's publish)."""
+        if not listing_ids:
+            return []
+        covered = exists(
+            select(HumanTask.id).where(
+                HumanTask.tenant_id == ListingIssue.tenant_id,
+                HumanTask.id == ListingIssue.human_task_id,
+                HumanTask.status.in_(("answered", "applied")),
+            )
+        )
+        stmt = (
+            self._select()
+            .where(
+                ListingIssue.listing_id.in_(tuple(listing_ids)),
+                ListingIssue.status == OPEN,
+                ListingIssue.error_code == "AUTH_EXPIRED",
+                ~covered,
+            )
+            .with_only_columns(ListingIssue.id)
+            .order_by(ListingIssue.id)
+        )
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
+    async def link_ids(self, issue_ids: Sequence[uuid.UUID], task_id: uuid.UUID) -> int:
+        """Link open issues, by id, to a human task."""
+        self._own_session()
+        if not issue_ids:
+            return 0
+        criterion = self._tenant_criterion(include_platform=False)
+        stmt = self._scoped_write(
+            update(ListingIssue)
+            .where(criterion, ListingIssue.id.in_(tuple(issue_ids)), ListingIssue.status == OPEN)
             .values(human_task_id=task_id)
         ).returning(ListingIssue.id)
         return len((await self._run(stmt)).all())
