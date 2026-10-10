@@ -75,7 +75,7 @@ make e2e
 
 ### The required checks
 
-Every pull request must pass ten checks; each is a make target with the check's name. These run
+Every pull request must pass eleven checks; each is a make target with the check's name. These run
 locally:
 
 ```sh
@@ -84,6 +84,7 @@ make api-typecheck
 make lint-imports
 make test-db
 make api-tests
+make api-tests-integration
 make tenant-isolation
 make contracts
 make schemas-drift  # skip: installs the pinned TypeScript toolchain from the npm registry; CI runs it on every PR

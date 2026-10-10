@@ -127,7 +127,8 @@ ADR-0004 §2, §4; `EXECUTION-PLAN.md` §5.3; `docker-compose.yml:13`.
   filter: isolation goes red; `scripts/ci/prove_gates.sh`).
 - "Done" means every required check passed, with fresh output; name any skip. Docs-only: "docs-only,
   no gates run".
-- Each of the 10 checks has a same-named `make` target (README "Quickstart"). Run `make test-db`,
+- Each of the 11 checks (10 until S26 split `api-tests` into `api-tests` and
+  `api-tests-integration`, two disjoint shards) has a same-named `make` target (README "Quickstart"). Run `make test-db`,
   with the compose Postgres up, before `api-tests` and `tenant-isolation`.
 - Some checks run reduced until their step (ADR-0013 §4); an empty test selection fails.
 - Coverage: 70 from Day 11, +5 each Friday (`COV_FAIL_UNDER`). Core modules (rules engine, tenant
@@ -162,7 +163,7 @@ Source: `.pre-commit-config.yaml`; `.github/workflows/`; `BACKEND-ARCHITECTURE.m
 - Branch `^(feat|fix|chore|docs|refactor|test|perf)/[a-z0-9._-]+$`; PR title (the squash commit)
   `^(feat|fix|chore|docs|refactor|test|perf)(\([a-z0-9-]+\))?: .+`. A commit-msg hook checks commits.
 - Install the hooks (`make hooks`, or `uv run --frozen pre-commit install`; `make dev` calls `hooks`) before your first commit.
-- Short branch -> PR -> all 10 checks green (advisory on GitHub Free, so confirm them) -> review ->
+- Short branch -> PR -> all 11 checks green (advisory on GitHub Free, so confirm them) -> review ->
   squash merge by the Tech Lead. No direct or force pushes to `main`.
 - The PR body follows `.github/pull_request_template.md` with scope, criteria and results.
 - No tool attribution: no co-author trailers naming an AI tool and no "generated with" footers.

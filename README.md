@@ -31,7 +31,7 @@ single source of truth.
 ## Repository
 
 This repository holds the backend and database. Build step S1 created the skeleton: the uv workspace,
-a FastAPI app with health probes, the local database stack and the ten required checks.
+a FastAPI app with health probes, the local database stack and the required checks (ten at S1; eleven since S26 split `api-tests` in two).
 
 | Path | Contents |
 |---|---|
@@ -108,7 +108,8 @@ Each required check has a make target of the same name, and CI runs exactly that
 |---|---|---|
 | `api-lint` | `make api-lint` | network (pip-audit) |
 | `api-typecheck` | `make api-typecheck` | — |
-| `api-tests` | `make test-db api-tests` | the compose Postgres |
+| `api-tests` | `make test-db api-tests` | the compose Postgres and MinIO (shard 1 of the api suite) |
+| `api-tests-integration` | `make test-db api-tests-integration` | the compose Postgres and MinIO (shard 2) |
 | `tenant-isolation` | `make test-db tenant-isolation` | the compose Postgres |
 | `contracts` | `make contracts` | Docker (oasdiff) once the base branch has `openapi.json` |
 | `schemas-drift` | `make schemas-drift` | Node 24 + pnpm; network on the first run (pinned devDependencies) |
