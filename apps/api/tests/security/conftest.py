@@ -105,7 +105,11 @@ def _side(conn: Any, world: World, slug: str) -> Side:
         t,
         listing_id,
         generated_by_user_id=operator,
-        content_json={"title": f"{canary} listing title"},
+        content_json={
+            "title": f"{canary} listing title",
+            "bullets": ["Soft cotton fabric"],
+            "description": f"{canary} listing description",
+        },
     )
     conn.execute(
         "UPDATE listings SET current_version_id = %s WHERE id = %s", [version_id, listing_id]
@@ -114,7 +118,12 @@ def _side(conn: Any, world: World, slug: str) -> Side:
         t, owner, product_id, account_id, listing_id, version_id, uuid.uuid4(), uuid.uuid4()
     )
     job_id = ops_support.job_run(conn, t, created_by=operator)
-    import_id = ops_support.import_run(conn, seed, filename=f"{canary}.csv")
+    # the import's own job has finished: the tenant holds one live import job (the cap is 2)
+    import_job = ops_support.job_run(
+        conn, t, status="succeeded", started_at="2026-10-06T00:00:00Z",
+        finished_at="2026-10-06T00:00:01Z", attempt=1,
+    )  # fmt: skip
+    import_id = ops_support.import_run(conn, seed, filename=f"{canary}.csv", job_id=import_job)
     ops_support.import_row(conn, t, import_id)
     image_id = f.image(conn, t, product_id)
     document_id = f.brand_document(conn, t, created_by=owner, filename=f"{canary}.pdf")
@@ -274,3 +283,83 @@ def walk(value: Any) -> Iterable[tuple[str, Any]]:
     elif isinstance(value, list):
         for inner in value:
             yield from walk(inner)
+
+
+# ---- a production app (API5, API8): the CI block plus what a deployed boot needs ----
+
+
+def prod_env() -> dict[str, str]:
+    from tests.support.deployed_env import DEPLOYED_S15_ENV
+
+    return {
+        "APP_ENV": "production",
+        "DATABASE_URL": "postgresql+psycopg://u:p@127.0.0.1:5432/x",
+        "JWT_SECRET": "x" * 32,
+        "SENTRY_DSN": "https://public@o0.ingest.example.invalid/0",
+        "ADMIN_ENABLED": "false",
+        **DEPLOYED_S15_ENV,
+    }
+
+
+@pytest.fixture
+async def prod_client(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> Any:
+    """An httpx client on `create_app()` under APP_ENV=production (no database is touched)."""
+    import app.main
+    import httpx
+    from app.core.config import get_settings
+
+    for key, value in prod_env().items():
+        monkeypatch.setenv(key, value)
+    get_settings.cache_clear()
+    monkeypatch.setattr(app.main, "init_sentry", lambda _: False)
+    transport = httpx.ASGITransport(app=app.main.create_app(), raise_app_exceptions=False)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        yield client
+    get_settings.cache_clear()
+
+
+# ---- API7/API10: every outbound connection the code under test opens ----
+
+
+@pytest.fixture
+def socket_spy(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, int]]:
+    """Records the (host, port) of every Python-level socket connect and every httpx request
+    while the test runs (libpq, the database driver, connects in C and is not seen). The real
+    call still happens, under pytest-socket's host allow-list."""
+    import socket
+
+    import httpx
+
+    seen: list[tuple[str, int]] = []
+    sock_cls = socket.socket
+    connect, connect_ex = sock_cls.connect, sock_cls.connect_ex
+
+    def _record(address: Any) -> None:
+        if isinstance(address, tuple) and len(address) >= 2:
+            seen.append((str(address[0]), int(address[1])))
+        else:
+            seen.append((str(address), 0))
+
+    def spy_connect(self: Any, address: Any) -> Any:
+        _record(address)
+        return connect(self, address)
+
+    def spy_connect_ex(self: Any, address: Any) -> Any:
+        _record(address)
+        return connect_ex(self, address)
+
+    monkeypatch.setattr(sock_cls, "connect", spy_connect)
+    monkeypatch.setattr(sock_cls, "connect_ex", spy_connect_ex)
+    for transport in (httpx.AsyncHTTPTransport, httpx.ASGITransport):
+        original = transport.handle_async_request
+
+        def make(orig: Any) -> Any:
+            async def spy(self: Any, request: Any) -> Any:
+                if request.url.host != "testserver":
+                    seen.append((request.url.host, request.url.port or 0))
+                return await orig(self, request)
+
+            return spy
+
+        monkeypatch.setattr(transport, "handle_async_request", make(original))
+    return seen
