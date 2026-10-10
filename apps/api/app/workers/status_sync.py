@@ -3,7 +3,11 @@ DW7; invariant 1).
 
 1. One short read transaction (`created_by` NULL for a scheduled sync, so no user GUC): the
    listing, its account and its items. A listing that is publishing, paused, archived or not
-   submitted is skipped (the outcome says so; nothing is written).
+   submitted is skipped (the outcome says so; nothing is written), and so is a listing whose
+   marketplace is switched off here (Flipkart with `FLIPKART_ENABLED=false`, S22 T21): no read,
+   and the only write puts back the sync slot the enqueue cleared (`next_sync_at` NULL -> now),
+   so the scheduler, which skips switched-off marketplaces, picks the listing up again once the
+   flag is on (S22b F5).
 2. Outside any transaction: one `ReaderView.get_listing` per SKU. The sync only ever holds a
    reader (`open_reader`), never a mutating adapter; a failed read raises `RetryableJobError`.
 3. The writes happen in the wrapper's fenced terminal transaction (`persist`,
@@ -12,18 +16,22 @@ DW7; invariant 1).
 
 from __future__ import annotations
 
+import uuid
 from typing import Final
 
 from mkos_schemas.codes import ErrorCode
 
+from app.core.config import get_settings
+from app.core.flags import marketplace_enabled
 from app.core.logging import get_logger
+from app.repositories.listings import DbNow
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.services.status_sync import ItemRead
 from app.services.status_sync_outcome import apply_sync
 from app.workers.errors import RetryableJobError
 from app.workers.payloads import StatusSyncPayload
 from app.workers.readers import ReadFailed, open_reader
-from app.workers.registry import JobContext, Outcome
+from app.workers.registry import JobContext, Outcome, Persist
 
 log = get_logger(__name__)
 SYNCABLE: Final = frozenset({"published", "failed"})
@@ -41,6 +49,9 @@ async def run_listing_status_sync(ctx: JobContext) -> Outcome:
             or listing.marketplace_account_id is None
         ):
             return Outcome("succeeded", result={"skipped": True})
+        if not marketplace_enabled(listing.marketplace, get_settings()):
+            log.info("sync.marketplace_disabled", listing_id=str(listing.id))
+            return Outcome("succeeded", result={"skipped": True}, persist=_keep_due(listing.id))
         account = listing.marketplace_account_id
         items = [
             (row.seller_sku, row.item_role == "parent")
@@ -72,6 +83,25 @@ async def run_listing_status_sync(ctx: JobContext) -> Outcome:
 
     log.info("sync.read", job_run_id=str(ctx.job_run_id), skus=len(reads), reason=payload.reason)
     return Outcome("succeeded", result={"skus": len(reads)}, persist=persist)
+
+
+def _keep_due(listing_id: uuid.UUID) -> Persist:
+    """The skip's write: a refresh-status or a scheduler enqueue cleared `next_sync_at`; put the
+    slot back (due now) under the listing lock, unless something rescheduled it meanwhile."""
+
+    async def persist(uow: TenantUnitOfWork) -> None:
+        listing = await uow.listings.get_for_update(listing_id)
+        if (
+            listing is None
+            or listing.next_sync_at is not None
+            or listing.status not in SYNCABLE
+            or listing.paused_at is not None
+            or listing.archived_at is not None
+        ):
+            return
+        await uow.listings.set_columns(listing_id, next_sync_at=DbNow())
+
+    return persist
 
 
 def _state(value: object) -> str:

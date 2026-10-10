@@ -294,7 +294,8 @@ async def listings_retry_fields(
     request: Request,
 ) -> JobAccepted:
     """Retry only the fields that failed to publish (invariant 10): a new attempt that resends
-    the fields whose latest result failed, as a `patch`. 409 when nothing may be retried."""
+    the fields whose latest result failed, as a `patch`. 409 when nothing may be retried; 501
+    "Flipkart is not enabled" for a Flipkart listing while `FLIPKART_ENABLED=false`."""
     stored = await publish.accept_retry_fields(
         principal, idempotency_key, request.url.path, listing_id
     )

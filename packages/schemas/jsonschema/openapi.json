@@ -13408,7 +13408,7 @@
     },
     "/api/v1/listings/{listing_id}/publish/retry-fields": {
       "post": {
-        "description": "Retry only the fields that failed to publish (invariant 10): a new attempt that resends\nthe fields whose latest result failed, as a `patch`. 409 when nothing may be retried.",
+        "description": "Retry only the fields that failed to publish (invariant 10): a new attempt that resends\nthe fields whose latest result failed, as a `patch`. 409 when nothing may be retried; 501\n\"Flipkart is not enabled\" for a Flipkart listing while `FLIPKART_ENABLED=false`.",
         "operationId": "listings_retry_fields",
         "parameters": [
           {
@@ -13688,6 +13688,44 @@
               }
             },
             "description": "Too many requests. Codes: `RATE_LIMITED`."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "NOT_IMPLEMENTED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "NOT_IMPLEMENTED",
+                          "field": "request",
+                          "message": "Not implemented yet.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "1.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Not implemented yet.",
+                    "status": 501,
+                    "type": "NOT_IMPLEMENTED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not implemented yet. Codes: `NOT_IMPLEMENTED`."
           },
           "default": {
             "content": {

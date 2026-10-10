@@ -10,8 +10,10 @@ L5300-5304, L6778; invariants 1, 4, 8, 9, 10; S22 T11, T12). Believed wire shape
 - Results per field and per SKU: an ERROR naming an attribute fails the paths that feed it
   (`reverse_index`); an error naming no attribute fails `listing` or the error-map row's
   `field_hint`; a WARNING leaves the field `succeeded` with a warning item (S20 C7). A SKU
-  answered `FAILURE` fails the named paths and skips the rest. Some failed -> `partially_published`
-  + API_REJECTED_PARTIAL; all -> `failed` + PUBLISH_FAILED. Raw codes and text are kept, mapped
+  answered `FAILURE` fails the named paths and skips the rest. Some failed while some item applied
+  a field -> `partially_published` + API_REJECTED_PARTIAL (judged per item, so one refused family
+  child never fails the children Flipkart created, S22b F4); nothing applied -> `failed` +
+  PUBLISH_FAILED. Raw codes and text are kept, mapped
   through the error map to the one `ErrorItem` (`source=flipkart_adapter`).
 - S20 C2: a known failure (429 past the budget, auth, connect) is raised only when nothing was
   applied. After a chunk was applied the result is `partially_published`: applied items keep
@@ -21,7 +23,11 @@ L5300-5304, L6778; invariants 1, 4, 8, 9, 10; S22 T11, T12). Believed wire shape
 - `update_listing(item, fields={sku: paths})`: one update request (chunked) carrying exactly the
   attributes those paths feed for the named SKUs; a path sharing its attribute (`keywords`,
   `images`) expands to every path feeding it, so the full value is sent and each path reported.
-  An update whose every SKU is unknown raises `ListingNotFound`.
+  A SKU Flipkart never created (its failed path is `listing` or `variants[<sku>]`, which a SKU
+  refused at create always carries, or the update answers LISTING_NOT_FOUND while another SKU
+  of the request was found) is sent whole through the create route in the same attempt and
+  merged into the same result (S22b F3). An update whose every SKU is unknown, with no SKU
+  marked not created, raises `ListingNotFound` (the adapter contract).
 - `publish_listing` is `create_listing` (create is an upsert by seller SKU, believed; DW1).
 - `get_listing`: ACTIVE -> live, else processing; open errors -> partially live; unknown SKU ->
   `ListingNotFound`.
@@ -81,6 +87,52 @@ MAX_PERFORMANCE_DAYS: Final = 366
 NOT_FOUND_CODE: Final = "LISTING_NOT_FOUND"
 _ORDER: Final = {"failed": 0, "succeeded": 1, "skipped": 2}
 _RETRYABLE: Final = frozenset({RetryClass.AUTO_RETRY, RetryClass.AI_CORRECT})
+
+
+class _Plan:
+    """One SKU of an update: the attributes `names` to send for the paths in `scope`."""
+
+    def __init__(
+        self,
+        mapped: MappedItem,
+        scope: list[str],
+        blocked: dict[str, ErrorItem],
+        names: list[str],
+        sent: list[str],
+        errors: Sequence[ErrorItem] = (),
+    ) -> None:
+        self.mapped = mapped
+        self.scope = scope
+        self.blocked = blocked
+        self.names = names
+        self.sent = sent
+        self.errors = errors
+
+
+class _Run:
+    def __init__(self) -> None:
+        self.bodies: list[bytes] = []
+        self.ref: str | None = None
+        self.applied = 0
+        self.found = 0
+        self.missing: list[_Plan] = []
+
+
+def _not_created(sku: str, paths: Sequence[str]) -> bool:
+    """A failed path that means Flipkart holds no listing for this SKU: `listing` (the SKU was
+    refused at create) or its own `variants[<sku>]` row."""
+    return any(p in ("listing", f"variants[{sku}]") for p in paths)
+
+
+def _full_plan(
+    one: MappedItem, errors: Sequence[ErrorItem], requested: Sequence[str] = ()
+) -> _Plan:
+    """A SKU Flipkart never created: its whole create payload, every path in scope, plus the
+    requested `listing`/`variants[<sku>]` paths, reported with the create's answer."""
+    blocked = {e.field: e for e in errors if e.field in one.paths}
+    extra = [p for p in requested if p not in one.paths]
+    sent = [p for p in one.paths if p in one.submitted and p not in blocked] + extra
+    return _Plan(one, sorted({*one.paths, *extra}), blocked, [], sent, errors)
 
 
 class _Outcome:
@@ -258,7 +310,8 @@ class FlipkartAdapter(MarketplaceAdapter):
     ) -> ListingResult:
         top = _aggregate(items)
         failed = [f.error for f in top if f.status == "failed" and f.error is not None]
-        succeeded = any(f.status == "succeeded" for f in top)
+        # per item, not per aggregated path: a path one child failed may be applied on another
+        succeeded = any(f.status == "succeeded" for one in items for f in one.fields)
         report: ErrorReport | None = None
         state: MarketplaceState
         if transport_error is not None:
@@ -360,9 +413,13 @@ class FlipkartAdapter(MarketplaceAdapter):
             except AdapterError as exc:
                 if applied == 0:
                     raise type(exc)(exc.report, completed=()) from None
-                results += [self._failed_item(m.unit, m.submitted, exc.report) for m in chunk]
+                # these SKUs never reached Flipkart: `listing` fails so a retry creates them
                 results += [
-                    self._skipped_item(m.unit, m.paths)
+                    _undelivered(self._failed_item(m.unit, m.submitted, exc.report), exc.report)
+                    for m in chunk
+                ]
+                results += [
+                    _undelivered(self._skipped_item(m.unit, m.paths), exc.report)
                     for later in chunks[position + 1 :]
                     for m in later
                 ]
@@ -377,7 +434,7 @@ class FlipkartAdapter(MarketplaceAdapter):
                 outcome = self._outcome(
                     answers(one.unit.seller_sku), one, index, one.paths, one.submitted
                 )
-                results.append(outcome.item)
+                results.append(_mark_not_created(outcome))
                 applied += int(outcome.applied)
         return self._result(item, results, ref=ref, bodies=bodies)
 
@@ -390,15 +447,22 @@ class FlipkartAdapter(MarketplaceAdapter):
         template = item.template.template if item.template is not None else None
         index = reverse_index(template)
         by_sku = {m.unit.seller_sku: m for m in mapped}
+        absent = {s for s, paths in per_sku.items() if _not_created(s, paths)}
         for sku, paths in per_sku.items():
-            if [p for p in paths if p not in by_sku[sku].paths]:
+            if sku not in absent and [p for p in paths if p not in by_sku[sku].paths]:
                 raise ValueError("a field path this item does not carry")
         if not is_mapped(item.template) or any(unsafe_sku(s) for s in per_sku):
             # an unsafe seller SKU is refused as VALUE_NOT_ALLOWED, as create does (invariant 8)
             return self._blocked(item, [by_sku[s] for s in per_sku], errors)
-        plans: list[tuple[MappedItem, list[str], dict[str, ErrorItem], list[str], list[str]]] = []
+        plans: list[_Plan] = []
+        creates: list[_Plan] = []
         results: list[ItemResult] = []
         for one in [m for m in mapped if m.unit.seller_sku in per_sku]:
+            if one.unit.seller_sku in absent:
+                # Flipkart never created this SKU (refused at create): its full payload goes
+                # through the create route in this attempt (the update route answers NOT_FOUND)
+                creates.append(_full_plan(one, errors, per_sku[one.unit.seller_sku]))
+                continue
             scope = _expand(per_sku[one.unit.seller_sku], index, one.paths)
             blocked = {e.field: e for e in errors if e.field in scope}
             attributes = one.payload["attributes"]
@@ -413,59 +477,113 @@ class FlipkartAdapter(MarketplaceAdapter):
             if not names:
                 results.append(_local_item(one.unit, scope, blocked))
                 continue
-            plans.append((one, scope, blocked, names, sent))
-        bodies: list[bytes] = []
-        ref: str | None = None
-        applied = 0
-        found = 0
+            plans.append(_Plan(one, scope, blocked, names, sent, errors))
+        run = _Run()
+        stop = await self._send(item, "update", plans, index, results, run, creates)
+        if stop is None and run.missing and run.found == 0 and not creates:
+            # every SKU of the update is unknown to Flipkart (the adapter contract)
+            raise ListingNotFound(run.missing[0].mapped.unit.seller_sku)
+        creates += run.missing
+        if stop is None:
+            stop = await self._send(item, "create", creates, index, results, run, [])
+        if stop is not None:
+            return stop
+        order = {m.unit.seller_sku: n for n, m in enumerate(mapped)}
+        results.sort(key=lambda r: order[r.seller_sku])
+        return self._result(item, results, ref=run.ref, bodies=run.bodies)
+
+    async def _send(
+        self,
+        item: AdapterListing,
+        operation: str,
+        plans: list[_Plan],
+        index: Mapping[str, tuple[str, ...]],
+        results: list[ItemResult],
+        run: _Run,
+        creates: list[_Plan],
+    ) -> ListingResult | None:
+        """Send `plans` through the update or create route in chunks, appending each SKU's
+        result. An update answered NOT_FOUND moves the SKU, full payload, to `creates`. Returns
+        a finished `partially_published` result when a transport failure follows an applied
+        chunk (S20 C2), else None. A SKU to create whose own values `check()` refused is
+        reported failed and not sent, as `create_listing` does."""
+        if operation == "create":
+            for p in [p for p in plans if p.blocked]:
+                results.append(_with_marker(_local_item(p.mapped.unit, p.scope, p.blocked)))
+            plans = [p for p in plans if not p.blocked]
         batches = [plans[i : i + c.CHUNK] for i in range(0, len(plans), c.CHUNK)]
         for position, batch in enumerate(batches):
-            entries = [
-                {
-                    "sku": one.unit.seller_sku,
-                    "attributes": {n: one.payload["attributes"][n] for n in names},
-                }
-                for one, _, _, names, _ in batch
-            ]
+            if operation == "update":
+                entries: list[Any] = [
+                    {
+                        "sku": p.mapped.unit.seller_sku,
+                        "attributes": {n: p.mapped.payload["attributes"][n] for n in p.names},
+                    }
+                    for p in batch
+                ]
+            else:
+                entries = [p.mapped.payload for p in batch]
             try:
-                response = await self._client.update(entries)
+                if operation == "update":
+                    response = await self._client.update(entries)
+                else:
+                    response = await self._client.create(entries)
             except MarketplaceAmbiguous as exc:
                 raise MarketplaceAmbiguous(exc.report, completed=results) from None
             except AdapterError as exc:
-                if applied == 0:
+                if run.applied == 0:
                     raise type(exc)(exc.report, completed=()) from None
-                results += [self._failed_item(p[0].unit, p[4], exc.report) for p in batch]
+                # a SKU bound for the create route is not on Flipkart: `listing` fails (F3)
+                creating = operation == "create"
                 results += [
-                    self._skipped_item(p[0].unit, p[1])
+                    (
+                        _undelivered(
+                            self._failed_item(p.mapped.unit, p.sent, exc.report), exc.report
+                        )
+                        if creating
+                        else self._failed_item(p.mapped.unit, p.sent, exc.report)
+                    )
+                    for p in batch
+                ]
+                results += [
+                    (
+                        _undelivered(self._skipped_item(p.mapped.unit, p.scope), exc.report)
+                        if creating
+                        else self._skipped_item(p.mapped.unit, p.scope)
+                    )
                     for later in batches[position + 1 :]
                     for p in later
                 ]
+                results += [
+                    _undelivered(self._skipped_item(p.mapped.unit, p.scope), exc.report)
+                    for p in [*creates, *run.missing]
+                ]
                 return self._result(
-                    item, results, ref=ref, bodies=bodies, transport_error=exc.report
+                    item, results, ref=run.ref, bodies=run.bodies, transport_error=exc.report
                 )
-            bodies.append(response.raw)
-            self._store("update", [p[0] for p in batch], response.raw)
-            ref = ref or response.request_id
+            run.bodies.append(response.raw)
+            self._store(operation, [p.mapped for p in batch], response.raw)
+            run.ref = run.ref or response.request_id
             answers = _answers(response)
-            for one, scope, blocked, _, sent in batch:
-                answer = answers(one.unit.seller_sku)
-                if not _not_found(answer):
-                    found += 1
-                outcome = self._outcome(answer, one, index, scope, sent)
+            for p in batch:
+                answer = answers(p.mapped.unit.seller_sku)
+                if operation == "update" and _not_found(answer):
+                    run.missing.append(_full_plan(p.mapped, p.errors, p.scope))
+                    continue
+                run.found += int(operation == "update")
+                outcome = self._outcome(answer, p.mapped, index, p.scope, p.sent)
                 merged = {f.field: f for f in outcome.item.fields}
-                for path, problem in blocked.items():
+                for path, problem in p.blocked.items():
                     merged[path] = FieldResult(field=path, status="failed", error=problem)
-                results.append(
-                    outcome.item.model_copy(
-                        update={"fields": sorted(merged.values(), key=lambda f: f.field)}
-                    )
+                one = outcome.item.model_copy(
+                    update={"fields": sorted(merged.values(), key=lambda f: f.field)}
                 )
-                applied += int(outcome.applied)
-        if plans and found == 0:
-            raise ListingNotFound(plans[0][0].unit.seller_sku)
-        order = {m.unit.seller_sku: n for n, m in enumerate(mapped)}
-        results.sort(key=lambda r: order[r.seller_sku])
-        return self._result(item, results, ref=ref, bodies=bodies)
+                if operation == "create" and not outcome.applied:
+                    # refused again at create: still not on Flipkart, so the marker stays failed
+                    one = _with_marker(one)
+                results.append(one)
+                run.applied += int(outcome.applied)
+        return None
 
     async def get_listing(
         self, seller_sku: str, *, listing_id: UUID | None = None
@@ -560,6 +678,48 @@ def _not_found(answer: Mapping[str, Any] | None) -> bool:
     if answer is None or str(answer.get("status", "")).upper() == c.SUCCESS:
         return False
     return any(isinstance(e, dict) and e.get("code") == NOT_FOUND_CODE for e in error_rows(answer))
+
+
+def _mark_not_created(outcome: _Outcome) -> ItemResult:
+    """A SKU Flipkart refused at create holds no listing there: it also fails `listing`, so a
+    retry of its failed paths sends it through the create route again (S22b F3, F4)."""
+    if outcome.applied:
+        return outcome.item
+    return _with_marker(outcome.item)
+
+
+def _with_marker(item: ItemResult, fallback: ErrorItem | None = None) -> ItemResult:
+    """`item` with a failed `listing` marker: the SKU is not on Flipkart. A `listing` or
+    `variants[<sku>]` result that is not failed (a create answer reports a requested `listing`
+    path `skipped`) is replaced, since S21's retry reads only the newest verdict per field
+    (S22b F7)."""
+    markers = ("listing", f"variants[{item.seller_sku}]")
+    if any(f.field in markers and f.status == "failed" for f in item.fields):
+        return item
+    first = next((f.error for f in item.fields if f.error is not None), fallback)
+    if first is None:
+        first = error(
+            "listing",
+            ErrorCode.MARKETPLACE_UNKNOWN_ERROR,
+            "Flipkart holds no listing for this SKU yet.",
+        )
+    marker = FieldResult(
+        field="listing", status="failed", error=first.model_copy(update={"field": "listing"})
+    )
+    kept = [f for f in item.fields if f.field not in markers]
+    return item.model_copy(update={"fields": sorted([*kept, marker], key=lambda f: f.field)})
+
+
+def _undelivered(item: ItemResult, report: ErrorReport) -> ItemResult:
+    """A SKU a transport failure kept from the create route: still not on Flipkart, so it fails
+    `listing` with the failure's code and a retry creates it (S22b F6)."""
+    base = report.errors[0] if report.errors else None
+    fallback = base or error(
+        "listing",
+        report.error_code or ErrorCode.MARKETPLACE_UNAVAILABLE,
+        "Flipkart did not receive this SKU.",
+    )
+    return _with_marker(item, fallback)
 
 
 def _dedupe(results: Iterable[FieldResult]) -> list[FieldResult]:

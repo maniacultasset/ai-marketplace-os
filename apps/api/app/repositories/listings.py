@@ -789,17 +789,20 @@ SYNC_TENANTS: Final = ("trial", "active")
 
 
 async def due_for_sync(
-    session: Any, *, limit: int = 500
+    session: Any, *, limit: int = 500, marketplaces: Sequence[str] | None = None
 ) -> builtins.list[tuple[uuid.UUID, uuid.UUID]]:
     """`(tenant_id, listing_id)` of every listing whose status sync is due (S21 T22;
     `ix_listings_sync_due`): `next_sync_at <= now()`, not paused, archived or publishing, in a
-    `trial`/`active` tenant, oldest slot first. Cross-tenant: run it only in `platform_scope()`
-    (the periodic scheduler); it reads ids only."""
+    `trial`/`active` tenant, oldest slot first; with `marketplaces`, only listings of those (the
+    scheduler passes the enabled ones, S22 T21, so a switched-off marketplace keeps its slot).
+    Cross-tenant: run it only in `platform_scope()` (the periodic scheduler); it reads ids only."""
     from app.db.models.tenancy import Tenant
 
+    extra = () if marketplaces is None else (Listing.marketplace.in_(tuple(marketplaces)),)
     stmt = (
         select(Listing.tenant_id, Listing.id)
         .where(
+            *extra,
             Listing.next_sync_at.is_not(None),
             Listing.next_sync_at <= func.now(),
             Listing.paused_at.is_(None),

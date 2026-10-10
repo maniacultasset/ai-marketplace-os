@@ -699,8 +699,8 @@ async def test_seed_calls_platform_load_once(
     assert await _seed("demo") == 0
     assert calls == [1, 1]
     assert _promotions(superuser_conn, "ethnic_wear_kurta_sets") == 1
-    # S20's 4 Amazon rows, S21's FAKE-QUOTA row and S22's 3 Flipkart rows
-    assert _scalar(superuser_conn, "SELECT count(*) FROM marketplace_error_map") == 8
+    # S20's 4 Amazon rows, S21's FAKE-QUOTA row and S22's 4 Flipkart rows
+    assert _scalar(superuser_conn, "SELECT count(*) FROM marketplace_error_map") == 9
 
 
 # ---- S20 T21 (AC17; C12): the demo kurta family ----

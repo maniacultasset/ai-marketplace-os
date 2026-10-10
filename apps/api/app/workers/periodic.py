@@ -246,7 +246,9 @@ async def schedule_status_sync() -> int:
     from app.workers.payloads import StatusSyncPayload, dump
 
     async with platform_scope() as session:
-        due = await due_for_sync(session, limit=SYNC_BATCH)
+        due = await due_for_sync(
+            session, limit=SYNC_BATCH, marketplaces=enabled_marketplaces(get_settings())
+        )
     enqueued = 0
     for tenant_id, listing_id in due:
         try:

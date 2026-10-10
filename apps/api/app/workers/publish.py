@@ -24,7 +24,8 @@ listing is locked only in the short write-ahead transaction.
    older version's open `accepted` row (attempt 1), INSERT the `pending` row (snapshot written
    first under a pre-minted id, deleted again if Tx A refuses), upsert the items, set the account.
    COMMIT before any marketplace call.
-5. **Send**: stamp `sent_at`, open the adapter (`open_adapter`, or the test factory), hand it
+5. **Send**: stamp `sent_at`, use the adapter (opened before step 4, so a switched-off
+   marketplace, S22 T21, fails the job with its 501 report before any row is written), hand it
    24-hour signed image URLs held in memory only, `create`/`update`/`patch` with the submission key
    and attempt, buffer the raw bodies, store them once.
 6. **Route** (`publish_ledger`): every ledger write happens in the wrapper's terminal transaction
@@ -35,6 +36,7 @@ listing is locked only in the short write-ahead transaction.
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import uuid
 from collections.abc import Awaitable, Callable, Mapping, Sequence
@@ -52,12 +54,14 @@ from app.adapters.base import (
     ListingNotFound,
     MarketplaceAdapter,
     MarketplaceAmbiguous,
+    MarketplaceDisabled,
     MarketplaceUnavailable,
     PermissionDenied,
     RateLimited,
     RawResponseSink,
     submitted_fields,
 )
+from app.adapters.registry import family_has_parent
 from app.adapters.storage import (
     StorageNotFound,
     StorageObjectTooLarge,
@@ -300,13 +304,23 @@ class Attempt:
 
 
 def _items(source: PreviewSource) -> list[NewItem]:
+    """The ledger's items: what the adapter sends. A family on a marketplace with no parent row
+    (Flipkart, S22 C9) has its children only (DATABASE.md:754-755)."""
     product = source.product
     if product.variation_theme is None:
         return [NewItem(product.id, "standalone", product.sku)]
-    return [
-        NewItem(product.id, "parent", product.sku),
-        *(NewItem(c.id, "child", c.sku) for c in source.children),
-    ]
+    children = [NewItem(c.id, "child", c.sku) for c in source.children]
+    if not family_has_parent(source.marketplace):
+        return children
+    return [NewItem(product.id, "parent", product.sku), *children]
+
+
+def _listing_sku(prep: Prepared) -> bool:
+    """Whether the listing itself has a marketplace SKU: not a parentless family (S22 C9), whose
+    style SKU names no marketplace row (each child has its own SKU and external id)."""
+    return prep.source.product.variation_theme is None or family_has_parent(
+        prep.listing.marketplace
+    )
 
 
 def _image_tags(prep: Prepared) -> dict[uuid.UUID, str]:
@@ -506,6 +520,7 @@ def _ctx_for(
         seller_sku=item.seller_sku,
         sent_paths=tuple(sorted({p for paths in sent.values() for p in paths})),
         fence_job=fence_job,
+        listing_sku=_listing_sku(prep),
     )
 
 
@@ -557,7 +572,12 @@ async def run_listing_publish(ctx: JobContext) -> Outcome:
     prep = await _read(ctx, payload)
     await _check_pins(ctx, prep)
     sink = BufferedSink()
-    adapter = await _factory(ctx.tenant_id, prep.account_id, sink)
+    try:
+        # before the write-ahead row: a switched-off marketplace (S22 T21) writes and sends
+        # nothing; the terminal hook moves the listing `publishing -> failed/publish_failed`
+        adapter = await _factory(ctx.tenant_id, prep.account_id, sink)
+    except MarketplaceDisabled as exc:
+        raise JobFailed(exc.report) from None
     try:
         return await _publish(ctx, prep, payload, adapter, sink)
     finally:
@@ -677,19 +697,7 @@ async def _with_raw(ctx: JobContext, attempt_ctx: AttemptCtx, sink: BufferedSink
     if stored is None:
         return attempt_ctx
     key, sha = stored
-    return AttemptCtx(
-        attempt_ctx.job_id,
-        attempt_ctx.tenant_id,
-        attempt_ctx.listing_id,
-        attempt_ctx.version_id,
-        attempt_ctx.submission_id,
-        attempt_ctx.account_id,
-        attempt_ctx.seller_sku,
-        attempt_ctx.sent_paths,
-        key,
-        sha,
-        attempt_ctx.fence_job,
-    )
+    return dataclasses.replace(attempt_ctx, raw_key=key, raw_sha=sha)
 
 
 async def _on_error(

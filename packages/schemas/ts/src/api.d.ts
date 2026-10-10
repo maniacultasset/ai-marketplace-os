@@ -604,7 +604,8 @@ export interface paths {
         /**
          * Retry only the fields that failed to publish
          * @description Retry only the fields that failed to publish (invariant 10): a new attempt that resends
-         *     the fields whose latest result failed, as a `patch`. 409 when nothing may be retried.
+         *     the fields whose latest result failed, as a `patch`. 409 when nothing may be retried; 501
+         *     "Flipkart is not enabled" for a Flipkart listing while `FLIPKART_ENABLED=false`.
          */
         post: operations["listings_retry_fields"];
         delete?: never;
@@ -11154,6 +11155,45 @@ export interface operations {
                      *         "message": "Too many requests.",
                      *         "status": 429,
                      *         "type": "RATE_LIMITED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not implemented yet. Codes: `NOT_IMPLEMENTED`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "NOT_IMPLEMENTED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "NOT_IMPLEMENTED",
+                     *               "field": "request",
+                     *               "message": "Not implemented yet.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "1.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Not implemented yet.",
+                     *         "status": 501,
+                     *         "type": "NOT_IMPLEMENTED"
                      *       }
                      *     }
                      */
