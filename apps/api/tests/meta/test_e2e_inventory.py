@@ -256,3 +256,24 @@ def test_make_e2e_fresh_uses_e2e_profile_and_overrides(repo_root: Path) -> None:
         if p.name != "nightly.yml"
     )
     assert "e2e-fresh" not in workflows  # not a required check
+
+
+def test_fresh_stack_down_refuses_a_foreign_dir(repo_root: Path, tmp_path: Path) -> None:
+    """S26b: `down` removes only a directory `up` made, whose project is a fresh one."""
+    import subprocess
+
+    script = str(repo_root / "scripts/e2e/lib/fresh_stack.sh")
+    other = tmp_path / "keep-me"
+    other.mkdir()
+    (other / "file").write_text("x", encoding="utf-8")
+    result = subprocess.run(
+        [script, "down", str(other)], capture_output=True, text=True, timeout=60, check=False
+    )
+    assert result.returncode == 2 and (other / "file").is_file()
+    fake = tmp_path / "mkos-fresh.abc123"
+    fake.mkdir()
+    (fake / "env").write_text("COMPOSE_PROJECT_NAME=mkos-s26b\n", encoding="utf-8")
+    result = subprocess.run(
+        [script, "down", str(fake)], capture_output=True, text=True, timeout=60, check=False
+    )
+    assert result.returncode == 2 and (fake / "env").is_file()

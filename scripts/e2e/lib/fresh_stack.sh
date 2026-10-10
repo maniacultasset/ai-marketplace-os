@@ -125,8 +125,15 @@ has_setting() {
 }
 
 down() {
-  local dir="$1" pid
+  local dir="$1" pid project
   [ -n "$dir" ] && [ -d "$dir" ] || { log "nothing to stop"; return 0; }
+  # only a directory `up` made (mkos-fresh.XXXXXX) whose project is a fresh one: never rm -rf or
+  # `down -v` anything else (S26b)
+  case "$(basename "$dir")" in mkos-fresh.*) ;; *) die "refusing to remove $dir (not a fresh stack dir)" 2 ;; esac
+  if [ -f "$dir/env" ]; then
+    project="$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' "$dir/env")"
+    case "$project" in mkos-fresh-*) ;; *) die "refusing to stop project '$project' (not a fresh stack)" 2 ;; esac
+  fi
   if [ -f "$dir/pids" ]; then
     while read -r pid; do
       [ -n "$pid" ] || continue
