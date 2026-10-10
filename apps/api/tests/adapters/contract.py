@@ -252,7 +252,8 @@ async def run_contract_suite(factory: Factory, *, prepare: Prepare | None = None
         changed = sample_listing(
             content=sent.listing.content.model_copy(update={"title": "Child title"})
         )
-        first_child, second_child = sent.units()[1:3]
+        children = [u for u in sent.units() if u.item_role == "child"]
+        first_child, second_child = children[:2]  # parent-agnostic (S22: Flipkart has none)
         update = AdapterListing(
             listing_id=sent.listing_id,
             seller_sku=sent.seller_sku,

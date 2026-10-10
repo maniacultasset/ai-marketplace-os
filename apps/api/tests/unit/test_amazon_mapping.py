@@ -285,10 +285,10 @@ def test_preview_deterministic(color: str, size: str, title: str) -> None:
     assert dump() == dump()
 
 
-def test_registry_flipkart_not_implemented() -> None:
+def test_registry_amazon_previewer() -> None:
+    """S22 replaced the Flipkart `NotImplementedError` (tests/unit/test_flipkart_mapping.py
+    `test_registry_flipkart_previewer`)."""
     from app.adapters.amazon.mapping import preview
     from app.adapters.registry import previewer
 
     assert previewer("amazon") is preview
-    with pytest.raises(NotImplementedError):
-        previewer("flipkart")

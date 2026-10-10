@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# .worktree.env is an optional, git-ignored file for one checkout. The seven keys
+# .worktree.env is an optional, git-ignored file for one checkout. The eight keys
 # are COMPOSE_PROJECT_NAME, PG_HOST_PORT (default 5432), MINIO_API_HOST_PORT
 # (default 9000), MINIO_CONSOLE_HOST_PORT (default 9001), API_HOST_PORT
-# (default 8000), MOCK_HOST_PORT (default 4010, the S3 local mock) and
-# FAKE_MARKETPLACE_HOST_PORT (default 4020, the S15 fake marketplace). The file
+# (default 8000), MOCK_HOST_PORT (default 4010, the S3 local mock),
+# FAKE_MARKETPLACE_HOST_PORT (default 4020, the S15 fake marketplace) and
+# FLAG_OFF_API_HOST_PORT (default 8011, the S22 flag-off e2e API). The file
 # wins over the environment. ADR-0011 amendment.
 set -euo pipefail
 
-KEYS="COMPOSE_PROJECT_NAME PG_HOST_PORT MINIO_API_HOST_PORT MINIO_CONSOLE_HOST_PORT API_HOST_PORT MOCK_HOST_PORT FAKE_MARKETPLACE_HOST_PORT"
+KEYS="COMPOSE_PROJECT_NAME PG_HOST_PORT MINIO_API_HOST_PORT MINIO_CONSOLE_HOST_PORT API_HOST_PORT MOCK_HOST_PORT FAKE_MARKETPLACE_HOST_PORT FLAG_OFF_API_HOST_PORT"
 
 default_of() {
   case "$1" in
@@ -17,6 +18,7 @@ default_of() {
     API_HOST_PORT) printf '%s' 8000 ;;
     MOCK_HOST_PORT) printf '%s' 4010 ;;
     FAKE_MARKETPLACE_HOST_PORT) printf '%s' 4020 ;;
+    FLAG_OFF_API_HOST_PORT) printf '%s' 8011 ;;
     *) return 1 ;;
   esac
 }
@@ -145,6 +147,7 @@ effective_port() {
     API_HOST_PORT) val="${API_HOST_PORT-}" ;;
     MOCK_HOST_PORT) val="${MOCK_HOST_PORT-}" ;;
     FAKE_MARKETPLACE_HOST_PORT) val="${FAKE_MARKETPLACE_HOST_PORT-}" ;;
+    FLAG_OFF_API_HOST_PORT) val="${FLAG_OFF_API_HOST_PORT-}" ;;
   esac
   if [ -z "$val" ]; then
     val="$(default_of "$key")"

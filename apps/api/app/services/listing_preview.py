@@ -6,7 +6,8 @@ marketplace account, no token), so it sends nothing (invariant 1) and gives no v
 Rules Engine decides, invariant 2). One `tenant_uow` read: another tenant's listing is 404.
 
 - No listing → 404; no current version, or `generating` → 409 LISTING_BUSY.
-- A marketplace with no adapter yet (Flipkart until S22) → `MarketplaceNotSupported` (501).
+- A marketplace with no adapter → `MarketplaceNotSupported` (501); since S22 both have one. A
+  Flipkart family previews its children only (no parent row), whatever `FLIPKART_ENABLED` says.
 - Images are opaque `image:<id>` references, never URLs.
 """
 
@@ -23,7 +24,11 @@ from app.adapters.registry import previewer
 from app.core.errors import ConflictError, NotFoundError
 from app.core.rbac import Principal
 from app.repositories.uow import tenant_uow
-from app.services.adapter_input import build_adapter_listing, canonical_listing
+from app.services.adapter_input import (
+    build_adapter_listing,
+    canonical_listing,
+    colour_image_ids,
+)
 
 LISTING_BUSY_REASON: Final = "listing_busy"
 
@@ -44,7 +49,8 @@ async def preview_listing(principal: Principal, listing_id: uuid.UUID) -> Market
     except NotImplementedError:
         raise MarketplaceNotSupported(source.marketplace) from None
     body = canonical_listing(source)
-    refs = {image.image_id: f"image:{image.image_id}" for image in body.images}
+    ids = {image.image_id for image in body.images} | colour_image_ids(source)
+    refs = {image_id: f"image:{image_id}" for image_id in ids}
     adapter_listing = build_adapter_listing(
         source, image_refs=refs, idempotency_key=f"preview:{listing_id}"
     )

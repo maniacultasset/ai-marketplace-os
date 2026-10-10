@@ -28,6 +28,7 @@ from starlette.requests import Request
 from starlette.types import Scope
 
 from app.core.errors import ConflictError, InputError, LimitError, NotFoundError
+from app.core.flags import MarketplaceNotEnabled, not_enabled_message
 from app.core.request_context import REQUEST_ID_PATTERN, current_request_id, new_request_id
 
 CORRELATION_ID_PATTERN: Final = REQUEST_ID_PATTERN
@@ -383,9 +384,20 @@ async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
     return error_response_for_scope(request.scope, 500, ErrorCode.INTERNAL_ERROR)
 
 
+def marketplace_not_enabled(marketplace: str) -> ApiError:
+    """The one answer for a switched-off marketplace (S22 D2): 501 NOT_IMPLEMENTED."""
+    return ApiError(501, ErrorCode.NOT_IMPLEMENTED, not_enabled_message(marketplace))
+
+
+async def _not_enabled(request: Request, exc: Exception) -> JSONResponse:
+    assert isinstance(exc, MarketplaceNotEnabled)  # noqa: S101
+    return await _api_error(request, marketplace_not_enabled(exc.marketplace.value))
+
+
 def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(ApiError, _api_error)
     app.add_exception_handler(NotImplementedYet, _not_implemented)
+    app.add_exception_handler(MarketplaceNotEnabled, _not_enabled)
     for domain in (ConflictError, NotFoundError, InputError, LimitError):
         app.add_exception_handler(domain, _domain_error)
     app.add_exception_handler(RequestValidationError, _validation_error)

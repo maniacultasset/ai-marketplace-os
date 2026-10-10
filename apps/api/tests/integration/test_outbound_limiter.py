@@ -161,3 +161,59 @@ def test_outbound_limiter_unknown_operation_refused() -> None:
     limiter = PgOutboundLimiter("amazon", uuid.uuid4(), rates={"put": 1})
     with pytest.raises(ValueError, match="unknown"):
         asyncio.run(limiter.acquire("delete"))
+
+
+async def test_outbound_limiter_flipkart(limiter_db: None, superuser_conn: Conn) -> None:
+    """S22 T13 (AC6, AC12): two Flipkart adapters on one account, 40 creates: at most one call
+    per 1 s window per operation, bucket `mkt:flipkart:<account>:create`, and a past-budget
+    refusal reports from `flipkart_adapter`."""
+    from app.adapters.base import RateLimited
+    from app.adapters.flipkart.constants import RATES
+    from app.workers.outbound_limiter import PgOutboundLimiter, bucket_key
+    from tests.adapters.flipkart_support import fk_item, flipkart_adapter
+    from tests.support.fake_marketplace import build_fake
+
+    app = build_fake()
+    account = uuid.uuid4()
+    fake = FakeTime(_start())
+    admitted: list[tuple[str, float]] = []
+
+    class Recording:
+        def __init__(self) -> None:
+            self.inner = PgOutboundLimiter(
+                "flipkart", account, rates=RATES, sleep=fake.sleep, clock=fake.clock
+            )
+
+        async def acquire(self, operation: str) -> float:
+            window = float(await self.inner.acquire(operation))
+            admitted.append((operation, window))
+            return window
+
+    first, second = (flipkart_adapter(app, limiter=Recording()) for _ in range(2))
+
+    async def worker(adapter: Any) -> None:
+        for _ in range(20):
+            await adapter.create_listing(fk_item())
+
+    await asyncio.gather(worker(first), worker(second))
+    per_window = Counter(admitted)
+    assert len(admitted) == 40 and max(per_window.values()) <= 1
+    assert {op for op, _ in admitted} == {"create"}
+    key = bucket_key("flipkart", account, "create")
+    assert key == f"mkt:flipkart:{account}:create"
+    rows = superuser_conn.execute(
+        "SELECT count(*) FROM rate_limit_counters WHERE bucket_key = %s", [key]
+    ).fetchone()
+    assert rows is not None and rows != (0,)
+
+    async def always_full(key: str, window: Any) -> int:
+        return 99
+
+    full = PgOutboundLimiter(
+        "flipkart", account, rates=RATES, sleep=fake.sleep, clock=fake.clock,
+        increment=always_full,
+    )  # fmt: skip
+    with pytest.raises(RateLimited) as caught:
+        await full.acquire("create")
+    (item,) = caught.value.report.errors
+    assert item.source == "flipkart_adapter" and item.marketplace == "flipkart"

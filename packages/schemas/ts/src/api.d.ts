@@ -13093,6 +13093,45 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description Not implemented yet. Codes: `NOT_IMPLEMENTED`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "NOT_IMPLEMENTED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "NOT_IMPLEMENTED",
+                     *               "field": "request",
+                     *               "message": "Not implemented yet.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "1.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Not implemented yet.",
+                     *         "status": 501,
+                     *         "type": "NOT_IMPLEMENTED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Any other failure, in the same envelope: 501 `NOT_IMPLEMENTED` until the owner step lands, 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. */
             default: {
                 headers: {
@@ -13409,6 +13448,45 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description Not implemented yet. Codes: `NOT_IMPLEMENTED`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "NOT_IMPLEMENTED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "NOT_IMPLEMENTED",
+                     *               "field": "request",
+                     *               "message": "Not implemented yet.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "1.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Not implemented yet.",
+                     *         "status": 501,
+                     *         "type": "NOT_IMPLEMENTED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Any other failure, in the same envelope: 501 `NOT_IMPLEMENTED` until the owner step lands, 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. */
             default: {
                 headers: {
@@ -13598,6 +13676,45 @@ export interface operations {
                      *         "message": "Too many requests.",
                      *         "status": 429,
                      *         "type": "RATE_LIMITED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not implemented yet. Codes: `NOT_IMPLEMENTED`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "NOT_IMPLEMENTED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "NOT_IMPLEMENTED",
+                     *               "field": "request",
+                     *               "message": "Not implemented yet.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "1.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Not implemented yet.",
+                     *         "status": 501,
+                     *         "type": "NOT_IMPLEMENTED"
                      *       }
                      *     }
                      */

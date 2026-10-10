@@ -221,6 +221,7 @@ async def test_seed_category_templates_present(superuser_conn: Conn) -> None:
         ("amazon", "tshirts"),  # S20 T5: the Amazon tshirts mapping
         ("flipkart", "ethnic_wear_kurta_sets"),
         ("flipkart", "home_decor_lamps"),
+        ("flipkart", "tshirts"),  # S22 T15: the Flipkart tshirts mapping
     ]
 
 
@@ -638,7 +639,9 @@ async def test_seed_on_existing_v1_db_ok(
 
     with monkeypatch.context() as patch:
         patch.setattr(seed_ops, "seed_amazon_mappings", before_s20)
+        patch.setattr(seed_ops, "seed_flipkart_mappings", before_s20)  # S22 T15 likewise
         patch.setattr(seed_ops, "seed_demo_family", no_family)
+        patch.setattr(seed_ops, "seed_demo_flipkart", no_family)
         assert await _seed("demo") == 0
     assert [r[0] for r in _templates(superuser_conn, "ethnic_wear_kurta_sets")] == [1]
     assert _kurta_001_pin(superuser_conn) == 1
@@ -696,9 +699,8 @@ async def test_seed_calls_platform_load_once(
     assert await _seed("demo") == 0
     assert calls == [1, 1]
     assert _promotions(superuser_conn, "ethnic_wear_kurta_sets") == 1
-    assert (
-        _scalar(superuser_conn, "SELECT count(*) FROM marketplace_error_map") == 5
-    )  # S21 FAKE-QUOTA
+    # S20's 4 Amazon rows, S21's FAKE-QUOTA row and S22's 3 Flipkart rows
+    assert _scalar(superuser_conn, "SELECT count(*) FROM marketplace_error_map") == 8
 
 
 # ---- S20 T21 (AC17; C12): the demo kurta family ----
@@ -782,3 +784,88 @@ async def test_seed_demo_listing_stays_on_v1(superuser_conn: Conn) -> None:
     preview = await _preview(demo_listing_ids()[0])
     assert preview.product_type is None and len(preview.items) == 1
     assert [e.error_code.value for e in preview.report.errors] == ["CATEGORY_NOT_MAPPED"]
+
+
+# ---- S22 T15 (D7; R3): the Flipkart mappings and acme's Flipkart demo listings ----
+
+
+def _fk_templates(conn: Conn, category: str) -> list[tuple[Any, ...]]:
+    return conn.execute(
+        "SELECT version, is_current, product_type, attributes FROM category_templates "
+        "WHERE marketplace = 'flipkart' AND category = %s ORDER BY version",
+        [category],
+    ).fetchall()
+
+
+def _fk_promotions(conn: Conn, category: str) -> int:
+    return int(
+        _scalar(
+            conn,
+            "SELECT count(*) FROM audit_log WHERE action = 'category_template.promoted' "
+            "AND tenant_id IS NULL AND after ->> 'category' = %s "
+            "AND after ->> 'marketplace' = 'flipkart'",
+            [category],
+        )
+    )
+
+
+async def test_seed_flipkart_kurta_v2_promoted_once(superuser_conn: Conn) -> None:
+    from app.db.seed_ops import _template_rows
+
+    assert await _seed("demo") == 0
+    first = _fk_templates(superuser_conn, "ethnic_wear_kurta_sets")
+    assert await _seed("demo") == 0
+    rows = _fk_templates(superuser_conn, "ethnic_wear_kurta_sets")
+    assert rows == first
+    assert [(r[0], r[1], r[2]) for r in rows] == [(1, False, "KURTA"), (2, True, "kurta")]
+    (v1_seed,) = [
+        t
+        for t in _template_rows()
+        if (t["marketplace"], t["category"]) == ("flipkart", "ethnic_wear_kurta_sets")
+    ]
+    assert rows[0][3] == v1_seed["attributes"]
+    assert rows[1][3]["specs"]["color"]["marketplace_field"] == "Colour"
+    assert _fk_promotions(superuser_conn, "ethnic_wear_kurta_sets") == 1
+    lamps = _fk_templates(superuser_conn, "home_decor_lamps")
+    assert [(r[0], r[1]) for r in lamps] == [(1, True)]
+
+
+async def test_seed_flipkart_tshirts_v1_current(superuser_conn: Conn) -> None:
+    assert await _seed("isolation") == 0
+    rows = _fk_templates(superuser_conn, "tshirts")
+    assert [(r[0], r[1], r[2]) for r in rows] == [(1, True, "t_shirt")]
+
+
+async def test_seed_demo_flipkart_once(superuser_conn: Conn) -> None:
+    from app.db.seed_ops import demo_flipkart_ids
+
+    assert await _seed("demo") == 0
+    assert await _seed("demo") == 0
+    for listing, version in demo_flipkart_ids().values():
+        row = superuser_conn.execute(
+            "SELECT l.marketplace, l.current_version_id, t.marketplace, t.version "
+            "FROM listings l JOIN listing_versions v ON v.id = l.current_version_id "
+            "JOIN category_templates t ON t.id = v.category_template_id WHERE l.id = %s",
+            [listing],
+        ).fetchone()
+        assert row == ("flipkart", version, "flipkart", 2)
+    count = _scalar(superuser_conn, "SELECT count(*) FROM listings WHERE marketplace = 'flipkart'")
+    assert count == 2
+
+
+async def test_seed_demo_flipkart_family_preview_no_errors(superuser_conn: Conn) -> None:
+    from app.db.seed_ops import DEMO_FAMILY_SKU, DEMO_LISTING_SKU, demo_flipkart_ids
+
+    assert await _seed("demo") == 0
+    ids = demo_flipkart_ids()
+    family = await _preview(ids[DEMO_FAMILY_SKU][0])
+    assert family.product_type == "kurta"
+    assert [i.item_role for i in family.items] == ["child"] * 4
+    assert DEMO_FAMILY_SKU not in {i.seller_sku for i in family.items}
+    assert family.report.errors == []
+    for item in family.items:
+        assert item.payload["attributes"]["style_code"] == [{"value": DEMO_FAMILY_SKU}]
+    standalone = await _preview(ids[DEMO_LISTING_SKU][0])
+    assert [i.item_role for i in standalone.items] == ["standalone"]
+    assert standalone.report.errors == [], standalone.report.errors
+    assert standalone.items[0].payload["attributes"]["Colour"] == [{"value": "Indigo"}]

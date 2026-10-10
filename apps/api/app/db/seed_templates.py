@@ -160,3 +160,104 @@ def seed_templates() -> list[SeedTemplate]:
         SeedTemplate(KURTA_PRODUCT_TYPE, 2, CategoryTemplate.model_validate(_kurta())),
         SeedTemplate(TSHIRT_PRODUCT_TYPE, 1, CategoryTemplate.model_validate(_tshirt())),
     ]
+
+
+# ---- S22 T5/T15 (PLAN D4, D7; C7): the Flipkart mappings for the two launch categories ----
+#
+# Flipkart kurta **version 2** (S9's v1 content plus the Flipkart vertical, each spec's
+# `marketplace_field` and `value_map`, promoted over v1) and Flipkart `tshirts` **version 1**.
+# Every Flipkart name (vertical, attribute names, enum spellings) is believed (spec L10635:
+# canonical `color="navy blue"` -> Flipkart `Colour="Navy Blue"`), not confirmed: DW1 and DW2
+# confirm them. `home_decor_lamps` stays unmapped. No price, MRP, stock, HSN, package or
+# fulfilment attribute (user decision: content only).
+
+FK_COLORS: Final = (
+    "Black",
+    "Blue",
+    "Green",
+    "Grey",
+    "Indigo",
+    "Maroon",
+    "Navy Blue",
+    "Pink",
+    "Red",
+    "White",
+    "Yellow",
+)
+FK_COLOR_MAP: Final = {
+    "navy blue": "Navy Blue",
+    "navy": "Navy Blue",
+    "dark blue": "Navy Blue",
+    "wine": "Maroon",
+    "burgundy": "Maroon",
+    "off white": "White",
+    "gray": "Grey",
+}
+FK_FABRICS: Final = ("Cotton", "Cotton Blend", "Linen", "Polyester", "Rayon", "Silk", "Viscose")
+FK_FABRIC_MAP: Final = {
+    "organic cotton": "Cotton",
+    "organic cotton blend": "Cotton Blend",
+    "poly": "Polyester",
+}
+FK_SLEEVES: Final = ("3/4 Sleeve", "Full Sleeve", "Half Sleeve", "Sleeveless")
+FK_SLEEVE_MAP: Final = {
+    "long": "Full Sleeve",
+    "full": "Full Sleeve",
+    "short": "Half Sleeve",
+    "half": "Half Sleeve",
+    "sleeveless": "Sleeveless",
+    "three_quarter": "3/4 Sleeve",
+}
+FK_NECKS: Final = ("Collared Neck", "Mandarin Collar", "Round Neck", "V-Neck")
+FK_NECK_MAP: Final = {
+    "round": "Round Neck",
+    "crew": "Round Neck",
+    "v_neck": "V-Neck",
+    "v neck": "V-Neck",
+    "polo": "Collared Neck",
+}
+
+
+def _flipkart_apparel_specs() -> dict[str, Any]:
+    return {
+        "color": _enum("Colour", FK_COLORS, FK_COLOR_MAP, "required"),
+        "fabric_type": _enum("Fabric", FK_FABRICS, FK_FABRIC_MAP, "required"),
+        "size": _enum("Size", SIZES, SIZE_MAP, "optional"),
+        "sleeve_length": _enum("Sleeve", FK_SLEEVES, FK_SLEEVE_MAP, "optional"),
+        "fit": _enum("Fit", FITS, {}, "optional"),
+        "neckline": _enum("Neck", FK_NECKS, FK_NECK_MAP, "optional"),
+        "pattern": _text("Pattern"),
+        "country_of_origin": _text("Country of Origin"),
+        "number_of_pieces": {
+            "requirement": "optional",
+            "marketplace_field": "Number of Contents in Sales Package",
+            "value_type": "number",
+        },
+    }
+
+
+def _flipkart(category: str, extra: dict[str, Any]) -> dict[str, Any]:
+    specs = {**_flipkart_apparel_specs(), **extra}
+    return {
+        "marketplace": "flipkart",
+        "category": category,
+        "external_category_id": None,
+        "required_attributes": ["color", "fabric_type"],
+        "optional_attributes": sorted(k for k in specs if k not in ("color", "fabric_type")),
+        "specs": specs,
+        "variation_themes": THEMES,
+    }
+
+
+FLIPKART_KURTA_VERTICAL: Final = "kurta"
+FLIPKART_TSHIRT_VERTICAL: Final = "t_shirt"
+
+
+def flipkart_seed_templates() -> list[SeedTemplate]:
+    """The two Flipkart mappings, as the S13 loader takes them (no database needed)."""
+    kurta = _flipkart("ethnic_wear_kurta_sets", {"kurta_type": _text("Type")})
+    tshirt = _flipkart("tshirts", {})
+    return [
+        SeedTemplate(FLIPKART_KURTA_VERTICAL, 2, CategoryTemplate.model_validate(kurta)),
+        SeedTemplate(FLIPKART_TSHIRT_VERTICAL, 1, CategoryTemplate.model_validate(tshirt)),
+    ]
