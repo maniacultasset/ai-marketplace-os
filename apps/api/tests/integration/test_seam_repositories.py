@@ -269,3 +269,14 @@ async def test_dictionary_revisions_one_statement(products_world: World) -> None
         with statements() as seen:
             await uow.dictionary.revisions(CATEGORY)
     assert len(seen) == 1
+
+
+async def test_set_node_fenced_on_attempt(products_world: World, auth_db: Conn) -> None:
+    """S26 (KNOWN-ISSUES §E, S14b): a reaped attempt's late node event never overwrites the
+    node of the attempt that replaced it."""
+    tenant = products_world.tenant("acme")
+    job = running_job(auth_db, tenant, attempt=2, max_attempts=3)
+    async with _uow(products_world) as uow:
+        assert await uow.job_runs.set_node(job, "content_agent", attempt=1) is False
+        assert await uow.job_runs.set_node(job, "retrieve_brand", attempt=2) is True
+    assert node_of(auth_db, job) == "retrieve_brand"

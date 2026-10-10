@@ -129,9 +129,21 @@ class ObjectStorage:
         return "ObjectStorage(<s3 client>)"
 
     async def put(self, bucket: str, key: str, data: bytes, content_type: str) -> None:
-        await asyncio.to_thread(
-            self._client.put_object, Bucket=bucket, Key=key, Body=data, ContentType=content_type
-        )
+        """Write the object. A 5xx or an unreachable store is `StorageUnavailable` (retryable),
+        as on `get` (KNOWN-ISSUES §E, S13b: `put` used to map nothing)."""
+
+        def write() -> None:
+            try:
+                self._client.put_object(Bucket=bucket, Key=key, Body=data, ContentType=content_type)
+            except ClientError as exc:
+                code, status = _client_error(exc)
+                if _unavailable(code, status):
+                    raise StorageUnavailable("the store answered 5xx") from None
+                raise
+            except BotoCoreError:
+                raise StorageUnavailable("the store could not be reached") from None
+
+        await asyncio.to_thread(write)
 
     async def get(self, bucket: str, key: str, *, max_bytes: int | None = None) -> bytes:
         """The object's bytes. `max_bytes=None` reads it whole (the S13 call); a given cap reads

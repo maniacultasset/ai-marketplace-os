@@ -21,7 +21,7 @@ from datetime import timedelta
 from typing import Any, Final
 
 from mkos_schemas.enums import JobKind
-from sqlalchemy import exists, func, null, select, update
+from sqlalchemy import exists, func, null, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm.attributes import set_committed_value
@@ -154,6 +154,22 @@ async def expired_running(session: Any, *, limit: int = 500) -> list[tuple[uuid.
         .limit(limit)
     )
     return [(row.id, row.tenant_id) for row in (await session.execute(stmt)).all()]
+
+
+# The orphan sweep's read of the queue's own table (raw SQL, as every queue-table statement here:
+# `procrastinate_jobs` has no tenant column; the ids come from this tenant's own rows).
+_ORPHAN_ENTRIES: Final = text(
+    "SELECT id FROM procrastinate_jobs WHERE id = ANY(:ids) AND status = 'doing' "
+    "AND worker_id IS NULL"
+)
+
+
+async def tenants_with_queued(session: Any, *, limit: int = 500) -> list[uuid.UUID]:
+    """Every tenant holding a `queued` row, for the orphan sweep (KNOWN-ISSUES §E, S13a).
+    Cross-tenant: only in `platform_scope()` (the reaper). The queue table itself is read in
+    each tenant's own unit of work (`JobRunRepository.orphaned_queued`)."""
+    stmt = select(JobRun.tenant_id).where(JobRun.status == "queued").distinct().limit(limit)
+    return [row.tenant_id for row in (await session.execute(stmt)).all()]
 
 
 def _tenant_running() -> ColumnElement[bool]:
@@ -450,12 +466,17 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         )
         return row is not None
 
-    async def set_node(self, job_id: uuid.UUID, node: str) -> bool:
+    async def set_node(self, job_id: uuid.UUID, node: str, *, attempt: int | None = None) -> bool:
         """The transient pipeline stage of a running job (`emit_node_event`, BA:1536; S14b T5).
-        Only a `running` row moves; a queued, terminal or foreign row is left as it is (False)."""
-        row = await self._update_returning(
-            job_id, self._where(job_id, JobRun.status == "running"), {"node": node}
+        Only a `running` row moves; a queued, terminal or foreign row is left as it is (False).
+        With `attempt` (the pipeline's), it is fenced on that attempt too, so a reaped attempt
+        never overwrites the node of the attempt that replaced it (KNOWN-ISSUES §E, S14b)."""
+        where = (
+            self._fence(job_id, attempt)
+            if attempt is not None
+            else self._where(job_id, JobRun.status == "running")
         )
+        row = await self._update_returning(job_id, where, {"node": node})
         return row is not None
 
     # ---- API cancel (A14) ----
@@ -528,6 +549,54 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             },
         )
         return Reaped("dead_letter", done)
+
+    async def orphaned_queued(self, *, limit: int = 100) -> list[uuid.UUID]:
+        """This tenant's `queued` rows whose queue entry is orphaned (a worker killed between
+        `release_retry`/`release_shutdown` and the queue's own re-queue), oldest first."""
+        stmt = (
+            self._select()
+            .where(JobRun.status == "queued", JobRun.queue_job_id.is_not(None))
+            .order_by(JobRun.queued_at)
+            .limit(limit)
+        )
+        queued = {
+            int(job.queue_job_id): job.id
+            for job in (await self.db.execute(stmt)).scalars().all()
+            if job.queue_job_id is not None and job.queue_job_id.isdigit()
+        }
+        if not queued:
+            return []
+        found = await self.db.execute(_ORPHAN_ENTRIES, {"ids": list(queued)})
+        return [queued[row[0]] for row in found.all()]
+
+    async def redefer_orphan(self, job_id: uuid.UUID) -> JobRun | None:
+        """A `queued` row whose queue entry is orphaned gets a new entry (the old one retired,
+        so it can never run); the attempt is unchanged. Locked `FOR UPDATE SKIP LOCKED` and
+        re-checked under the lock, so a concurrent reaper never doubles it. None when the row
+        no longer qualifies."""
+        self._own_session()
+        locked = await self.db.execute(
+            self._select()
+            .where(JobRun.id == job_id, JobRun.status == "queued")
+            .with_for_update(skip_locked=True)
+        )
+        job = locked.scalar_one_or_none()
+        if job is None or job.queue_job_id is None or not job.queue_job_id.isdigit():
+            return None
+        entry = await self.db.execute(_ORPHAN_ENTRIES, {"ids": [int(job.queue_job_id)]})
+        if entry.first() is None:
+            return None
+        await retire_on_session(self.db, job.queue_job_id)
+        queue_job_id = await defer_on_session(
+            self.db, kind=job.kind, queue=job.queue, job_run_id=job.id
+        )
+        await self.db.execute(
+            self._scoped_write(
+                update(JobRun).where(*self._where(job_id)).values(queue_job_id=queue_job_id)
+            )
+        )
+        set_committed_value(job, "queue_job_id", queue_job_id)
+        return job
 
     # ---- the staff requeue (A15; DATABASE.md:312; BACKEND-ARCHITECTURE:990-1031) ----
 

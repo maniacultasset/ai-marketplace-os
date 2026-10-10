@@ -87,6 +87,11 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   (`app/workers/periodic.py`) reads only expired `running` rows, so that job never runs or ends.
   Fix: a reaper sweep that re-defers `queued` rows whose entry belongs to a pruned worker, with a
   kill-at-that-point test. A graceful SIGTERM does not hit this (ADR-0017 drain).
+  **Fixed in S26 (2026-10-10):** each reaper pass, after pruning stale workers, gives such a row
+  a new queue entry and retires the old one (`JobRunRepository.redefer_orphan`, one unit of work
+  per tenant; `tests/integration/test_reaper_orphaned_queued.py`). S26 also retries a body whose
+  database connection was lost (a terminated backend) for a retrying kind
+  (`app/workers/errors.py::is_transient_db_error`).
 - **Job-spine follow-ups from the S13a review (LOW; S26 unless a later step hits them first).**
   Periodic tasks share the 4-slot `default` queue with `bulk_import` (1,800 s timeout), so four
   long imports can delay the reaper up to 30 min (fix: a `periodic` queue). An exception in the
@@ -94,6 +99,10 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   record `failed`/`INTERNAL_ERROR` in a second fenced transaction). `retention_daily` holds one
   transaction per tenant, not per 1,000-row batch. Rows whose reap keeps failing are skipped per job
   (F1), but 500 of them would fill the oldest-lease page (fix: push the lease forward on failure).
+  **Deferred (2026-10-10) to S25, all four:** they need production load to bite (four imports
+  of 30 min each, a failing terminal write, thousands of rows per tenant, 500 rows that keep
+  failing to reap), and each is bounded today by the reaper and by every body's idempotency
+  (the publish ledger reads before it writes; imports are per row; generation dead-letters).
 - **AI-seam follow-ups from the S14b review (LOW).** `JobRunRepository.set_node` fences on status,
   not on the claimed attempt, so a reaped attempt 1 can overwrite attempt 2's `node` (fix in S18:
   pass the attempt to `_fence`). `BackendPipelineDeps.validate_rules` runs the synchronous rules
@@ -102,6 +111,12 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   listing on the same SKU skips the insert and the version insert then fails its FK (local seed
   only). API CORS also answers preflights on `/internal/admin` (the gate still refuses the GET).
   `FakeAdapter.update_listing` on a path the listing lacks raises a raw `KeyError`.
+  **S26 (2026-10-10):** `set_node` is fenced on the claimed attempt when the pipeline passes it
+  (`set_node(..., attempt=)`, test `test_set_node_fenced_on_attempt`), and `validate_rules` runs
+  the engine in a thread (`asyncio.to_thread`): fixed. Deferred (2026-10-10), local or test-only:
+  the seed's untargeted `on_conflict_do_nothing()` (local demo seed only), the admin preflight
+  (CORS answers it, the gate still refuses the request; S25 with the admin's production
+  kill-switch) and the FakeAdapter `KeyError` (a test stand-in).
 - **CSV-import follow-ups from the S13b review (LOW).** A row of only commas fails instead of
   being skipped as blank (`csv_file.py`). On a rows retry, a row the parser refused (`raw_row {}`)
   loses its real error and shows four `REQUIRED_FIELD_MISSING` (keep the stored report). In
@@ -109,6 +124,12 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   `INTERNAL_ERROR`, not a retryable `TIMEOUT`, and `put()` maps nothing. DB backstop:
   `variant_matrix_complete` does not fire when a child's `parent_product_id` goes NOT NULL → NULL
   (the import runner checks it; a DB-level check needs its own migration).
+  **S26 (2026-10-10):** a line of only separators is now blank and skipped
+  (`csv_file._blank`, tests in `unit/test_import_csv_file.py`), and `ObjectStorage.put` maps a
+  5xx or an unreachable store to the retryable `StorageUnavailable` as `get` does (`get`'s body
+  read was already mapped; `unit/test_storage_put_errors.py`): fixed. Deferred (2026-10-10): the
+  rows-retry report of a parser-refused row (cosmetic: the row still fails; next import work)
+  and the DB-level `variant_matrix_complete` check (it needs a migration; the runner enforces it).
 
 ## S16 follow-ups
 
@@ -149,3 +170,8 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 - **CI api-tests duration (S26).** The job grew from 15 to 39 minutes (S13b to S19) even under
   pytest-xdist on the runner's 4 vCPUs; its limit is 60 minutes. Fix in S26: split it into two required
   jobs (unit + meta, and integration) with coverage combined, or a larger runner.
+  **Fixed in S26 (2026-10-10):** two required jobs over disjoint, complete shards
+  (`tests/support/shard.py`; `make api-tests` is shard 1 with the migration round trip, the
+  unit, meta and package suites, 40% of the database suites and the rules-engine branch gate;
+  `make api-tests-integration` is shard 2), each with `COV_FAIL_UNDER` on its own shard and a
+  30-minute cap. A cross-job coverage merge needs `needs:`, which the required-check rules forbid.
