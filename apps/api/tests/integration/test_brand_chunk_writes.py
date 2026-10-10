@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 from sqlalchemy import event
+from tests.timing import budget
 
 from .auth_support import World
 from .brand_support import Conn, chunk_rows
@@ -126,10 +127,18 @@ async def test_other_tenant_insert_refused(products_world: World, auth_db: Conn)
     assert chunk_rows(auth_db, bharat, active=None) == []
 
 
-async def test_bulk_500_rows_one_statement(products_world: World, auth_db: Conn) -> None:
-    from app.db.session import get_engine
+async def test_bulk_500_rows_one_statement(
+    products_world: World, auth_db: Conn, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.core.config import get_settings
+    from app.db.session import dispose_engine, get_engine
     from app.repositories.uow import tenant_uow
 
+    # The HNSW insert of 500 vectors alone costs ~3.3 s of server time here, so a loaded runner
+    # crosses the app's 15 s statement_timeout. The timeout is not what this test checks: scale it.
+    monkeypatch.setenv("DB_STATEMENT_TIMEOUT_MS", str(int(budget(60) * 1000)))
+    get_settings.cache_clear()
+    await dispose_engine()
     acme, doc = products_world.tenant("acme"), uuid.uuid4()
     rows = _chunks(doc, [f"text {i}" for i in range(500)])
     inserts: list[str] = []

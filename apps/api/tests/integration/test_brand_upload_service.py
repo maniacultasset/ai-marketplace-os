@@ -10,6 +10,7 @@ from collections.abc import Iterator
 from typing import Any
 
 import pytest
+from tests.timing import budget
 
 from .auth_support import World, audit_rows
 from .brand_support import GUIDE, Conn, MemoryStore, chunk_rows, doc_row, finish_jobs, principal
@@ -314,7 +315,8 @@ async def test_upload_validation_runs_off_event_loop(
             ticks.append(time.perf_counter() - start)
 
     await asyncio.gather(_upload(products_world, body[:10_000_000]), heartbeat())
-    assert max(ticks) < 0.2
+    # validation inline on the loop stalls a tick 2.4x this budget untraced, 7x traced
+    assert max(ticks) < budget(0.2)
 
 
 async def test_upload_concurrent_identical_one_document(
