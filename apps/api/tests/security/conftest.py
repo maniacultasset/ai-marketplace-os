@@ -43,6 +43,9 @@ if TYPE_CHECKING:
 
 HERE = Path(__file__).resolve().parent
 SLUGS = ("acme", "bharat")
+# A category with a seeded template (tests/integration/imports_support.py), so every op that
+# reads the template (validate, generate, preview, dry-run) runs its real path.
+CATEGORY = "ethnic_wear_kurta_sets"
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
@@ -95,11 +98,15 @@ def _side(conn: Any, world: World, slug: str) -> Side:
     owner = world.user(f"owner@{slug}.test")
     operator = world.user(f"operator@{slug}.test")
     canary = canary_for(slug)
-    product_id = f.product(conn, t, sku=f"{slug.upper()}-SKU-1", title=f"{canary} kurta")
+    product_id = f.product(
+        conn, t, sku=f"{slug.upper()}-SKU-1", title=f"{canary} kurta", category=CATEGORY
+    )
     account_id = f.marketplace_account(
         conn, t, connected_by_user_id=owner, seller_id=f"{slug.upper()}SELLER"
     )
-    listing_id = f.listing(conn, t, product_id, marketplace_account_id=account_id)
+    listing_id = f.listing(
+        conn, t, product_id, marketplace_account_id=account_id, category=CATEGORY
+    )
     version_id = f.version(
         conn,
         t,
@@ -146,10 +153,12 @@ def _side(conn: Any, world: World, slug: str) -> Side:
 
 
 def build_world2(conn: Any) -> World2:
+    from tests.integration.imports_support import seed_templates
     from tests.integration.products_support import seed_dictionary
     from tests.support.rate_limits import reset_rate_limits
 
     seed_dictionary(conn)
+    seed_templates(conn)
     base = build_world(conn)
     sides = {slug: _side(conn, base, slug) for slug in SLUGS}
     reset_rate_limits(conn)
@@ -200,6 +209,10 @@ def call_for(op: Operation, world: World2, slug: str) -> Call:
         call.url = call.url.replace(placeholder, value)
     if call.json is not None:
         body = dict(call.json)
+        if op.op_id == "products_create":
+            body["category"] = CATEGORY
+        if op.op_id == "rules_dry_run":
+            body["listing"] = {**body["listing"], "category": CATEGORY}
         for name in ("product_id", "listing_id", "target_tenant_id"):
             if name in body:
                 body[name] = str(side.ids[name])

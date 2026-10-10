@@ -66,6 +66,9 @@ async def test_api3_unknown_fields_422(
     conn = world2.base.conn
     acme = world2.side("acme").tenant_id
     headers = {} if op.public else world2.headers(f"{role_for(op)}@acme.test")
+    # the body without the extra key passes validation, so the 422 below is the extra key's
+    base = await send(api, call_for(op, world2, "acme"), headers)
+    assert base.status_code != 422, (op.op_id, base.text[:300])
     before = tenant_fingerprint(conn, acme)
     for name in MASS_FIELDS:
         reset_rate_limits(conn)
