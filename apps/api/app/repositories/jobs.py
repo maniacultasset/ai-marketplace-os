@@ -295,22 +295,25 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
-    async def user_requested_since(
+    async def user_request_wait_s(
         self, listing_id: uuid.UUID, kind: JobKind, seconds: int
-    ) -> bool:
-        """A job of `kind` a member requested (`created_by` set) in the last `seconds`."""
+    ) -> int | None:
+        """None when no job of `kind` a member requested (`created_by` set) was queued in the last
+        `seconds`; else the whole seconds (at least 1) until the newest one leaves that window."""
+        window = timedelta(seconds=seconds)
+        newest = func.max(JobRun.queued_at)
         stmt = (
             self._select()
             .where(
                 JobRun.listing_id == listing_id,
                 JobRun.kind == JobKind(kind).value,
                 JobRun.created_by.is_not(None),
-                JobRun.queued_at > func.now() - timedelta(seconds=seconds),
+                JobRun.queued_at > func.now() - window,
             )
-            .with_only_columns(JobRun.id)
-            .limit(1)
+            .with_only_columns(func.ceil(func.extract("epoch", newest + window - func.now())))
         )
-        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+        wait = (await self.db.execute(stmt)).scalar_one_or_none()
+        return None if wait is None else max(1, int(wait))
 
     # ---- S16 brand_embed helpers (T9; CP6) ----
 

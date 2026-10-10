@@ -12,6 +12,7 @@ from typing import Any
 import httpx
 import pytest
 from app.adapters.storage import ObjectStorage, csv_bucket, get_storage
+from app.core.errors import CAP_RETRY_AFTER_S
 from app.services.imports import upload as upload_service
 from mkos_schemas.errors import ErrorReport
 
@@ -393,6 +394,8 @@ async def test_import_live_cap_per_tenant_429(imports_db: JobWorld, api: httpx.A
     response = await upload(api, headers(imports_db, key=key), GOOD)
     assert response.status_code == 429
     assert response.json()["error"]["type"] == "RATE_LIMITED"
+    # audit VALIDATION-2: a domain-cap 429 carries Retry-After like the limiter's
+    assert response.headers["retry-after"] == str(CAP_RETRY_AFTER_S)
     assert response.json()["error"]["error_report"]["errors"][0]["source"] == "system"
     assert stored(imports_db, tenant) == (0, 2) and objects(tenant) == []
     assert (

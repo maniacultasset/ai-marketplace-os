@@ -5,7 +5,13 @@ Messages carry codes, constraint names and counts only, never row values.
 
 from __future__ import annotations
 
+from typing import Final
+
 from mkos_schemas.codes import ErrorCode
+
+CAP_RETRY_AFTER_S: Final = 30
+"""The `Retry-After` hint (seconds) of a per-tenant cap 429 that has no known end: a live-job cap
+frees up when a job finishes, which the API cannot predict."""
 
 
 class DomainError(Exception):
@@ -59,9 +65,17 @@ class ForbiddenError(DomainError):
 
 class LimitError(DomainError):
     """A per-tenant cap refused the request (429 `RATE_LIMITED`; the live-import cap, PD13).
-    `limit` names the cap (a server constant), never a request value."""
+    `limit` names the cap (a server constant), never a request value. `retry_after_s` is the
+    429's `Retry-After`: the time left when the cap has a known end, else `CAP_RETRY_AFTER_S`."""
 
-    def __init__(self, limit: str, code: ErrorCode = ErrorCode.RATE_LIMITED) -> None:
+    def __init__(
+        self,
+        limit: str,
+        code: ErrorCode = ErrorCode.RATE_LIMITED,
+        *,
+        retry_after_s: int = CAP_RETRY_AFTER_S,
+    ) -> None:
         super().__init__(f"{code.value} ({limit})")
         self.code = code
         self.limit = limit
+        self.retry_after_s = max(1, retry_after_s)
