@@ -243,14 +243,14 @@
    "id": "R11447b",
    "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "apps/api/app/services/analytics.py; TEAM-QUESTIONS T126",
+   "ref": "apps/api/app/services/analytics.py; TEAM-QUESTIONS T129",
    "note": "S23: optional from/to (inclusive UTC days, default last 30, max 366) on /analytics; no timeseries sub-route."
   },
   {
    "id": "R11447c",
    "status": "covered-changed",
    "owner": "backend-db",
-   "ref": "apps/api/app/api/v1/schemas/analytics.py; TEAM-QUESTIONS T126",
+   "ref": "apps/api/app/api/v1/schemas/analytics.py; TEAM-QUESTIONS T129",
    "note": "S23: by_marketplace breakdown in the summary instead of a filter parameter or sub-route."
   },
   {

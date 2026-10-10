@@ -258,13 +258,125 @@ async def test_listings_preview_conflict_409(
     assert response.json()["error"]["type"] == "LISTING_BUSY"
 
 
-async def test_listings_preview_flipkart_501(
+def _flipkart_kurta_v2(conn: Conn) -> uuid.UUID:
+    """The seeded Flipkart kurta mapping (version 2), as `seed_flipkart_mappings` writes it."""
+    from app.db.seed_templates import flipkart_seed_templates
+
+    (seed,) = [s for s in flipkart_seed_templates() if s.template.category == CATEGORY]
+    attributes = seed.template.model_dump(
+        mode="json", exclude={"marketplace", "category", "external_category_id"}
+    )
+    return f.insert(  # type: ignore[no-any-return]
+        conn,
+        "category_templates",
+        marketplace="flipkart",
+        category=CATEGORY,
+        version=seed.version,
+        is_current=True,
+        product_type=seed.product_type,
+        source="manual",
+        attributes=attributes,
+    )
+
+
+def _flipkart_family(world: World, conn: Conn, sku: str = "KFAM-FK") -> tuple[uuid.UUID, Any]:
+    acme = world.tenant("acme")
+    style, kids = family(conn, acme, sku, category=CATEGORY)
+    content = _body(uuid.uuid4())
+    del content["attributes"]["color"]
+    listing_id = _listing(
+        conn, acme, style, content=content, template_id=_flipkart_kurta_v2(conn),
+        marketplace="flipkart",
+    )  # fmt: skip
+    return listing_id, kids
+
+
+@pytest.mark.endpoint("listings_preview", case="success")
+async def test_listings_preview_flipkart_family(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    """S22 T16 (AC15): a Flipkart family previews its 4 children, no parent row, each with its
+    style code and colour group; `product_type` is the Flipkart vertical."""
+    listing_id, kids = _flipkart_family(products_world, auth_db)
+    response = await _get(api, products_world, listing_id, "operator@acme.test")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["marketplace"] == "flipkart" and body["product_type"] == "kurta"
+    assert [(i["seller_sku"], i["item_role"]) for i in body["items"]] == [
+        (sku, "child") for sku in sorted(kids)
+    ]
+    for item in body["items"]:
+        attributes = item["payload"]["attributes"]
+        assert attributes["style_code"] == [{"value": "KFAM-FK"}]
+        assert attributes["colour_group"][0]["value"] in ("navy blue", "maroon")
+    assert body["report"]["errors"] == [], body["report"]
+
+
+@pytest.mark.endpoint("listings_preview", case="success")
+async def test_listings_preview_flipkart_standalone(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    listing_id, image_id = _standalone(
+        products_world, auth_db, marketplace="flipkart", template_id=_flipkart_kurta_v2(auth_db)
+    )
+    response = await _get(api, products_world, listing_id)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    (item,) = body["items"]
+    assert (item["seller_sku"], item["item_role"]) == ("KURTA-PV-1", "standalone")
+    attributes = item["payload"]["attributes"]
+    assert attributes["Colour"] == [{"value": "Navy Blue"}]
+    assert attributes["images"] == [{"value": f"image:{image_id}"}]
+    assert body["report"]["errors"] == [], body["report"]
+
+
+async def test_listings_preview_flipkart_unmapped_category(
     api: httpx.AsyncClient, products_world: World, auth_db: Conn
 ) -> None:
     listing_id, _ = _standalone(products_world, auth_db, marketplace="flipkart", template_id=None)
     response = await _get(api, products_world, listing_id)
-    assert response.status_code == 501
-    assert response.json()["error"]["type"] == "NOT_IMPLEMENTED"
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["product_type"] is None
+    assert [e["error_code"] for e in body["report"]["errors"]] == ["CATEGORY_NOT_MAPPED"]
+
+
+async def test_listings_preview_flipkart_flag_off_200(
+    api: httpx.AsyncClient,
+    products_world: World,
+    auth_db: Conn,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """D5: preview stays ungated; it sends nothing whatever the flag says."""
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("FLIPKART_ENABLED", "false")
+    get_settings.cache_clear()
+    listing_id, _ = _flipkart_family(products_world, auth_db)
+    response = await _get(api, products_world, listing_id)
+    assert response.status_code == 200, response.text
+    get_settings.cache_clear()
+
+
+async def test_listings_preview_flipkart_no_socket_no_account(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    """No Flipkart account exists and only loopback is allowed: the preview sends nothing and
+    names no URL or token."""
+    listing_id, _ = _flipkart_family(products_world, auth_db)
+    assert auth_db.execute("SELECT count(*) FROM marketplace_accounts").fetchone() == (0,)
+    response = await _get(api, products_world, listing_id)
+    assert response.status_code == 200, response.text
+    assert "http://" not in response.text and "https://" not in response.text
+
+
+@pytest.mark.endpoint("listings_preview", case="wrong_tenant")
+async def test_listings_preview_flipkart_wrong_tenant_404(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    listing_id, _ = _flipkart_family(products_world, auth_db)
+    response = await _get(api, products_world, listing_id, "owner@bharat.test")
+    assert response.status_code == 404, response.text
 
 
 async def test_listings_preview_no_socket_no_account(

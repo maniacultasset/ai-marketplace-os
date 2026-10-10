@@ -54,7 +54,7 @@ from app.db.platform_loads import (
     load_template_rows,
     sync_rows,
 )
-from app.db.seed_templates import seed_templates
+from app.db.seed_templates import flipkart_seed_templates, seed_templates
 from app.repositories.base import TenantScopedRepository
 
 SEED_NAMESPACE: Final = uuid.UUID("5eed0000-9c1e-4d6a-8a51-0c5a1e5eed00")
@@ -268,6 +268,21 @@ def amazon_template_loads() -> list[TemplateLoad]:
     ]
 
 
+def flipkart_template_loads() -> list[TemplateLoad]:
+    """S22 T15 (D7): Flipkart kurta v2 and Flipkart tshirts v1 as S13 loader entries."""
+    return [
+        TemplateLoad(version=t.version, product_type=t.product_type, template=t.template)
+        for t in flipkart_seed_templates()
+    ]
+
+
+async def seed_flipkart_mappings(connection: AsyncConnection) -> TemplateCounts:
+    """Insert the Flipkart mappings and promote each over the current version, exactly as
+    `seed_amazon_mappings` does for Amazon (S9's v1 rows are never edited; a rerun writes
+    nothing). Runs on the caller's migrator transaction."""
+    return await load_template_rows(connection, flipkart_template_loads())
+
+
 async def seed_amazon_mappings(connection: AsyncConnection) -> TemplateCounts:
     """Insert the Amazon mappings and promote each over the current version (the two ordered
     `is_current` UPDATEs, audited with a NULL tenant). S9's v1 rows are never edited; a rerun
@@ -286,15 +301,22 @@ async def platform_load(
 ) -> PlatformLoadCounts:
     """Every platform row a fresh database needs, and no tenant row (S20 T5b; C18): S9's
     platform rows (templates v1, the NULL-tenant rules, the dictionary), then the Amazon
-    mappings, then the error map. One migrator transaction per part, each upserting on its
+    mappings, then the Flipkart mappings (S22), then the error map. One migrator transaction per part, each upserting on its
     natural key, so a rerun writes and audits nothing. `seed` and `app.cli platform load` (the
     tenant-less acceptance stack) share this one path."""
     async with engine.begin() as connection:
         await seed_platform_rows(connection, rules_path)
     async with engine.begin() as connection:
-        templates = await seed_amazon_mappings(connection)
+        amazon = await seed_amazon_mappings(connection)
+    async with engine.begin() as connection:
+        flipkart = await seed_flipkart_mappings(connection)
     async with engine.begin() as connection:
         error_map = await load_error_map_rows(connection, error_map_rows)
+    templates = TemplateCounts(
+        inserted=amazon.inserted + flipkart.inserted,
+        unchanged=amazon.unchanged + flipkart.unchanged,
+        promoted=amazon.promoted + flipkart.promoted,
+    )
     return PlatformLoadCounts(templates=templates, error_map=error_map)
 
 
@@ -753,3 +775,99 @@ async def seed_demo_family(session: AsyncSession) -> None:
             .values(current_version_id=version_id)
         )
     )
+
+
+# ---- S22 T15 (D7; R3): acme's Flipkart demo listings, pinned to the Flipkart kurta mapping ----
+
+DEMO_FLIPKART_MARKETPLACE: Final = "flipkart"
+DEMO_FLIPKART_TEMPLATE_VERSION: Final = 2
+
+
+def demo_flipkart_ids() -> dict[str, tuple[uuid.UUID, uuid.UUID]]:
+    """{sku: (listing, version 1)}: fixed `uuid5` ids, so a rerun inserts nothing."""
+    return {
+        sku: (
+            uuid.uuid5(SEED_NAMESPACE, f"acme:demo-flipkart:{sku}"),
+            uuid.uuid5(SEED_NAMESPACE, f"acme:demo-flipkart:{sku}:v1"),
+        )
+        for sku in (DEMO_LISTING_SKU, DEMO_FAMILY_SKU)
+    }
+
+
+def demo_flipkart_standalone_content() -> dict[str, Any]:
+    """KURTA-001's Flipkart version: the whole canonical body, with the colour and fabric the
+    Flipkart mapping requires (DATABASE.md:778)."""
+    return {
+        "content": {
+            "title": "Cotton Kurta Set for Women with Straight Fit and Round Neck",
+            "bullets": ["Soft cotton fabric that stays comfortable through the day"],
+            "description": "A cotton kurta set with a straight fit and a round neck.",
+        },
+        "keywords": {"search_terms": ["cotton kurta set"], "hidden_terms": []},
+        "attributes": dict(DEMO_ATTRIBUTES),
+    }
+
+
+async def seed_demo_flipkart(session: AsyncSession) -> None:
+    """acme's Flipkart listings for KURTA-001 (standalone) and KURTA-FAM-01 (the 2 x 2 family,
+    children only on Flipkart), each with version 1 pinned to the Flipkart kurta mapping
+    (version 2, promoted by `platform_load`). Runs after `seed_demo_family` in acme's unit of
+    work; every row has a fixed id and is inserted `ON CONFLICT DO NOTHING`."""
+    tenant_id = seed_tenant_id("acme")
+    operator = await _user_id(session, seed_user_email("operator", "acme"))
+    if operator is None:
+        raise RuntimeError("the acme operator is missing: seed the tenants first")
+    template = (
+        await session.execute(
+            select(CategoryTemplate.id).where(
+                CategoryTemplate.marketplace == DEMO_FLIPKART_MARKETPLACE,
+                CategoryTemplate.category == DEMO_LISTING_CATEGORY,
+                CategoryTemplate.version == DEMO_FLIPKART_TEMPLATE_VERSION,
+            )
+        )
+    ).scalar_one()
+    products = _Products(session, tenant_id)
+    contents = {
+        DEMO_LISTING_SKU: demo_flipkart_standalone_content(),
+        DEMO_FAMILY_SKU: demo_family_content(),
+    }
+    listings = _Listings(session, tenant_id)
+    criterion = listings._tenant_criterion(include_platform=False)
+    for sku, (listing_id, version_id) in demo_flipkart_ids().items():
+        product_id = (
+            await session.execute(
+                products._select().where(Product.sku == sku).with_only_columns(Product.id)
+            )
+        ).scalar_one()
+        await session.execute(
+            insert(Listing)
+            .values(
+                id=listing_id,
+                tenant_id=tenant_id,
+                product_id=product_id,
+                marketplace=DEMO_FLIPKART_MARKETPLACE,
+                category=DEMO_LISTING_CATEGORY,
+            )
+            .on_conflict_do_nothing()
+        )
+        await session.execute(
+            insert(ListingVersion)
+            .values(
+                id=version_id,
+                tenant_id=tenant_id,
+                listing_id=listing_id,
+                version=1,
+                content_json=contents[sku],
+                generated_by_user_id=operator,
+                origin="generation",
+                category_template_id=template,
+            )
+            .on_conflict_do_nothing()
+        )
+        await session.execute(
+            listings._scoped_write(
+                update(Listing)
+                .where(Listing.id == listing_id, Listing.current_version_id.is_(None), criterion)
+                .values(current_version_id=version_id)
+            )
+        )

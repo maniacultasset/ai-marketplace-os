@@ -84,12 +84,13 @@ def test_errors_load_idempotent(
     cli_env: Path, superuser_conn: Conn, capsys: pytest.CaptureFixture[str]
 ) -> None:
     before = len(audits(superuser_conn))
-    assert run(FIXTURE, capsys) == (0, "errors load: ok (5 inserted, 0 unchanged, 0 toggled)\n", "")
+    # S20's 4 Amazon rows, S21's FAKE-QUOTA row and S22's 3 Flipkart rows
+    assert run(FIXTURE, capsys) == (0, "errors load: ok (8 inserted, 0 unchanged, 0 toggled)\n", "")
     first = rows(superuser_conn)
-    assert len(first) == 5
+    assert len(first) == 8
     after_first = len(audits(superuser_conn))
-    assert after_first == before + 5
-    assert run(FIXTURE, capsys) == (0, "errors load: ok (0 inserted, 5 unchanged, 0 toggled)\n", "")
+    assert after_first == before + 8
+    assert run(FIXTURE, capsys) == (0, "errors load: ok (0 inserted, 8 unchanged, 0 toggled)\n", "")
     assert rows(superuser_conn) == first
     assert len(audits(superuser_conn)) == after_first
 
@@ -240,3 +241,49 @@ def test_app_rw_cannot_write_error_map(
             with pytest.raises(psycopg.errors.InsufficientPrivilege):
                 app_rw.execute(sql)
         assert app_rw.execute("SELECT count(*) FROM marketplace_error_map").fetchone() == (1,)
+
+
+def test_error_map_lookup_flipkart(cli_env: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """S22 T15: the fake map's Flipkart rows load, read back for Flipkart only, and the code row
+    wins over the category row in the mapper."""
+    from app.adapters.error_map import ErrorMapper
+    from app.repositories.error_map import ErrorMapRepository
+    from mkos_schemas.codes import ErrorCode
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
+    assert run(FIXTURE, capsys)[0] == 0
+
+    async def read(marketplace: str) -> list[Any]:
+        engine = create_async_engine(os.environ["DATABASE_URL"])
+        try:
+            async with AsyncSession(engine) as session:
+                return list(await ErrorMapRepository(session).enabled_rows(marketplace))
+        finally:
+            await engine.dispose()
+
+    flipkart = asyncio.run(read("flipkart"))
+    assert {r.raw_value for r in flipkart} == {
+        "FAKE-FK-COLOUR",
+        "FAKE-FK-MISSING",
+        "FAKE_FK_INVALID_ATTRIBUTE",
+    }
+    assert all(r.marketplace == "flipkart" for r in flipkart)
+    assert all(not r.raw_value.startswith("FAKE-FK") for r in asyncio.run(read("amazon")))
+    mapper = ErrorMapper(flipkart)
+    item = mapper.to_item(
+        raw_code="FAKE-FK-MISSING",
+        raw_message="Fabric is missing.",
+        field="attributes.fabric_type",
+        marketplace="flipkart",
+        categories=["FAKE_FK_INVALID_ATTRIBUTE"],
+    )
+    assert item.error_code is ErrorCode.MISSING_ATTRIBUTE
+    assert item.source == "flipkart_adapter" and item.raw_code == "FAKE-FK-MISSING"
+    by_category = mapper.to_item(
+        raw_code="FK-UNKNOWN",
+        raw_message="Bad value.",
+        field="attributes.color",
+        marketplace="flipkart",
+        categories=["FAKE_FK_INVALID_ATTRIBUTE"],
+    )
+    assert by_category.error_code is ErrorCode.VALUE_NOT_ALLOWED

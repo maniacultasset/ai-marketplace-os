@@ -44,7 +44,8 @@ from app.core.errors import ConflictError
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
 from app.db.integrity import map_db_error, to_conflict
 from app.db.job_context import bind_job_actor, unbind_job_actor
-from app.db.models.catalog import Product
+from app.db.models.catalog import Product, ProductColourway, VariantMatrixCell
+from app.db.models.catalog_assets import Image
 from app.db.models.listings import Listing, ListingVersion
 from app.db.models.ops import JobRun
 from app.db.session import USER_INFO_KEY
@@ -165,6 +166,9 @@ class SourceProduct:
     variation_theme: str | None
     attributes: Mapping[str, Any] = field(default_factory=dict)
     variant_attributes: Mapping[str, str] = field(default_factory=dict)
+    colour_key: str | None = None
+    """A child's colourway key, through its available matrix cell (S22 C1); else None."""
+    colour_sku: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -179,6 +183,8 @@ class PreviewSource:
     children: tuple[SourceProduct, ...] = ()
     template: PinnedTemplate | None = None
     """None when the version pinned no template, or a template with no `product_type`."""
+    colour_images: Mapping[str, tuple[uuid.UUID, ...]] = field(default_factory=dict)
+    """colour_key -> the live images of that colourway, main first, then by position (S22 C1)."""
 
 
 class _Versions(TenantScopedRepository[ListingVersion]):
@@ -187,6 +193,18 @@ class _Versions(TenantScopedRepository[ListingVersion]):
 
 class _Products(TenantScopedRepository[Product]):
     model = Product
+
+
+class _Cells(TenantScopedRepository[VariantMatrixCell]):
+    model = VariantMatrixCell
+
+
+class _Colourways(TenantScopedRepository[ProductColourway]):
+    model = ProductColourway
+
+
+class _Images(TenantScopedRepository[Image]):
+    model = Image
 
 
 class ListingRepository(TenantScopedRepository[Listing]):
@@ -467,6 +485,10 @@ class ListingRepository(TenantScopedRepository[Listing]):
         if version is not None and version.category_template_id is not None:
             pinned = await CategoryTemplateRepository(self.db).pinned(version.category_template_id)
             template = pinned if pinned is not None and pinned.product_type else None
+        children = await _children(products, product.id)
+        colour_images: dict[str, tuple[uuid.UUID, ...]] = {}
+        if children:
+            children, colour_images = await self._colours(product.id, children)
         return PreviewSource(
             listing_id=row.id,
             marketplace=row.marketplace,
@@ -474,9 +496,78 @@ class ListingRepository(TenantScopedRepository[Listing]):
             status=row.status,
             product=product,
             version=version,
-            children=await _children(products, product.id),
+            children=children,
             template=template,
+            colour_images=colour_images,
         )
+
+    async def _colours(
+        self, style_id: uuid.UUID, children: tuple[SourceProduct, ...]
+    ) -> tuple[tuple[SourceProduct, ...], dict[str, tuple[uuid.UUID, ...]]]:
+        """Each child's colourway (its available matrix cell -> a live colourway) and each
+        colourway's live images (S22 C1; DATABASE.md:438, :441-452, :480). SELECTs only, each
+        through its own tenant-scoped repository (RLS and the guard)."""
+        cells = _Cells(self.db, self.tenant_id)
+        cell_rows = (
+            await self.db.execute(
+                cells._select()
+                .where(
+                    VariantMatrixCell.style_product_id == style_id,
+                    VariantMatrixCell.availability == "available",
+                    VariantMatrixCell.variant_product_id.is_not(None),
+                )
+                .with_only_columns(
+                    VariantMatrixCell.variant_product_id, VariantMatrixCell.colourway_id
+                )
+            )
+        ).all()
+        colourways = _Colourways(self.db, self.tenant_id)
+        cw_rows = (
+            await self.db.execute(
+                colourways._select()
+                .where(
+                    ProductColourway.style_product_id == style_id,
+                    ProductColourway.deleted_at.is_(None),
+                )
+                .with_only_columns(
+                    ProductColourway.id, ProductColourway.colour_key, ProductColourway.colour_sku
+                )
+            )
+        ).all()
+        by_colourway = {r.id: (r.colour_key, r.colour_sku) for r in cw_rows if r.colour_key}
+        by_child = {
+            r.variant_product_id: by_colourway[r.colourway_id]
+            for r in cell_rows
+            if r.colourway_id in by_colourway
+        }
+        images = _Images(self.db, self.tenant_id)
+        image_rows = (
+            await self.db.execute(
+                images._select()
+                .where(
+                    Image.product_id == style_id,
+                    Image.colourway_id.is_not(None),
+                    Image.deleted_at.is_(None),
+                )
+                .with_only_columns(Image.id, Image.colourway_id, Image.slot, Image.position)
+            )
+        ).all()
+        grouped: dict[str, list[Any]] = {}
+        for image in image_rows:
+            colour = by_colourway.get(image.colourway_id)
+            if colour is not None:
+                grouped.setdefault(colour[0], []).append(image)
+        colour_images = {
+            key: tuple(
+                i.id for i in sorted(rows, key=lambda i: (i.slot != "main", i.position, str(i.id)))
+            )
+            for key, rows in sorted(grouped.items())
+        }
+        enriched = tuple(
+            _with_colour(child, *by_child[child.id]) if child.id in by_child else child
+            for child in children
+        )
+        return enriched, colour_images
 
     async def _version(
         self, listing_id: uuid.UUID, version_id: uuid.UUID | None
@@ -658,6 +749,18 @@ def _source(row: Any) -> SourceProduct:
         variation_theme=row.variation_theme,
         attributes=dict(row.attributes or {}),
         variant_attributes={str(k): str(v) for k, v in (row.variant_attributes or {}).items()},
+    )
+
+
+def _with_colour(child: SourceProduct, colour_key: str, colour_sku: str | None) -> SourceProduct:
+    return SourceProduct(
+        id=child.id,
+        sku=child.sku,
+        variation_theme=child.variation_theme,
+        attributes=child.attributes,
+        variant_attributes=child.variant_attributes,
+        colour_key=colour_key,
+        colour_sku=colour_sku,
     )
 
 

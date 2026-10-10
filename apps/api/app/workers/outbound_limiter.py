@@ -27,8 +27,7 @@ from uuid import UUID
 
 from mkos_schemas.codes import ErrorCode
 
-from app.adapters.amazon.client import failure
-from app.adapters.base import RateLimited
+from app.adapters.base import RateLimited, marketplace_failure
 from app.repositories.rate_limits import increment as pg_increment
 
 MAX_WAITS: Final = 30
@@ -80,7 +79,11 @@ class PgOutboundLimiter:
                 return start
             if waits >= self._max_waits:
                 raise RateLimited(
-                    failure(ErrorCode.RATE_LIMITED, "The outbound marketplace limit stayed full.")
+                    marketplace_failure(
+                        self._marketplace,
+                        ErrorCode.RATE_LIMITED,
+                        "The outbound marketplace limit stayed full.",
+                    )
                 )
             waits += 1
             await self._sleep(start + WINDOW_S - now)
