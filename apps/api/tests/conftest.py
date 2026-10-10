@@ -18,11 +18,12 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 import yaml
+from tests.support.paths import repo_root as find_repo_root
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = find_repo_root(Path(__file__))
 
 CI_JWT_SECRET = "ci_only_not_a_real_secret_at_least_32_chars"  # A§11:290
 CI_DATABASE_URL = "postgresql+psycopg://postgres:postgres@localhost:5432/mos_test"

@@ -46,12 +46,53 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
 
-# Local mutation run over the Rules Engine (ADR-0010 §2; S14a T16): report-only,
-# `make mutation-rules`, run from apps/api so mutmut's module names match `app.*` (mutmut only
-# understands ./, src/ and source/ roots). The nightly workflow is S26.
+# The mutation run over the core modules (ADR-0010 §2; S14a T16; S26 PLAN D9): `make mutation`
+# (`make mutation-rules` is its alias), then scripts/ci/mutation_report.py (>= 80% per module or a
+# docs/review/MUTATION-WAIVERS.md row); nightly leg `mutation`, never a PR check. Run from apps/api
+# so mutmut's module names match `app.*` (mutmut only understands ./, src/ and source/ roots).
+# The test selection is each module's own unit and integration tests; the integration ones need
+# the migrated mos_test (the Makefile passes the test env) and run one child at a time (they reset
+# shared tables). `-c pyproject.toml --rootdir .` keep pytest on the mutants copy's own config:
+# the root config's `pythonpath = ["apps/api"]` would import the unmutated `app`, so no mutant
+# would ever be hit; `-o asyncio_mode=auto` replaces the root setting the async tests need.
 [tool.mutmut]
 source_paths = ["app"]
-only_mutate = ["app/services/rules_engine/*"]
-pytest_add_cli_args_test_selection = ["tests/unit/rules_engine"]
-pytest_add_cli_args = ["--no-cov", "-p", "no:randomly"]
-also_copy = ["tests"]
+only_mutate = [
+  "app/services/rules_engine/*",
+  "app/db/guard.py",
+  "app/repositories/base.py",
+  "app/services/maker_checker.py",
+  "app/services/idempotency.py",
+  "app/repositories/idempotency.py",
+  "app/services/publish_rules.py",
+  "app/services/publish_ledger.py",
+  "app/services/publish.py",
+]
+pytest_add_cli_args_test_selection = [
+  "tests/unit/rules_engine",
+  "tests/unit/test_scoped_write.py",
+  "tests/unit/test_repository_wiring.py",
+  "tests/unit/test_maker_checker.py",
+  "tests/unit/test_request_hash.py",
+  "tests/unit/test_publish_rules.py",
+  "tests/unit/test_publish_ledger.py",
+  "tests/integration/test_guard.py",
+  "tests/integration/test_repository_base.py",
+  "tests/integration/test_approve_maker_checker.py",
+  "tests/integration/test_idempotency.py",
+  "tests/integration/test_listings_publish_api.py",
+  "tests/integration/test_publish_flow.py",
+]
+pytest_add_cli_args = [
+  "-c",
+  "pyproject.toml",
+  "--rootdir",
+  ".",
+  "--import-mode=importlib",
+  "--no-cov",
+  "-p",
+  "no:randomly",
+  "-o",
+  "asyncio_mode=auto",
+]
+also_copy = ["tests", "alembic", "alembic.ini"]

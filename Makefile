@@ -201,10 +201,21 @@ api-tests-integration:
 	$(MIGRATE_ENV) uv run --frozen python -m app.cli dictionary sync
 	API_TEST_SHARD=$(API_TESTS_INTEGRATION_SHARD) $(API_TEST_PYTEST)
 
-# Mutation run over the Rules Engine (ADR-0010 §2): report-only, not a required check (S14a T16).
-.PHONY: mutation-rules
-mutation-rules:
-	cd apps/api && uv run --frozen mutmut run
+# The mutation run over the core modules (ADR-0010 §2; S14a T16; S26 T23, PLAN D9): mutmut over
+# `[tool.mutmut]` in apps/api/pyproject.toml with the test env (its integration tests use the
+# migrated mos_test, one child at a time), then the per-module report (>= 80% or a waiver row in
+# docs/review/MUTATION-WAIVERS.md). Not a required check: the nightly `mutation` leg runs it.
+# `mutation-rules` is the S14a name, kept as an alias.
+MUTATION_MAX_CHILDREN ?= 1
+.PHONY: mutation mutation-rules
+mutation:
+	$(MIGRATE_ENV) $(ALEMBIC) upgrade head
+	$(MIGRATE_ENV) uv run --frozen python -m app.cli dictionary sync
+	cd apps/api && APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) \
+	  S3_ENDPOINT_URL=$(TEST_S3_ENDPOINT_URL) uv run --frozen mutmut run --max-children $(MUTATION_MAX_CHILDREN)
+	uv run --frozen python scripts/ci/mutation_report.py --root apps/api --waivers docs/review/MUTATION-WAIVERS.md
+
+mutation-rules: mutation
 
 .PHONY: tenant-isolation
 tenant-isolation:
