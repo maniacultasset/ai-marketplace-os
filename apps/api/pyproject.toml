@@ -79,6 +79,7 @@ pytest_add_cli_args_test_selection = [
   "tests/unit/test_publish_ledger_routes.py",
   "tests/unit/test_publish_service.py",
   "tests/unit/test_repository_reads.py",
+  "tests/unit/test_guard_pure.py",
   "tests/integration/test_guard.py",
   "tests/integration/test_repository_base.py",
   "tests/integration/test_approve_maker_checker.py",
