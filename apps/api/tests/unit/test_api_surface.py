@@ -382,3 +382,30 @@ def test_405_allow_names_the_most_specific_resource(
         response = client.request("OPTIONS", path, headers={"Authorization": "Bearer test"})
     assert response.status_code == 405, response.text
     assert set(response.headers["allow"].replace(" ", "").split(",")) == want
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "want"),
+    [
+        ("GET", "/api/v1/listings/approve", {"POST"}),
+        ("GET", "/api/v1/listings/generate", {"POST"}),
+        ("DELETE", "/api/v1/listings/approve", {"POST"}),
+    ],
+)
+def test_405_not_422_when_a_static_path_is_shadowed_by_a_parameter_route(
+    v1_app: FastAPI, method: str, path: str, want: set[str]
+) -> None:
+    """S26 fix round 1 (Schemathesis `unsupported_method`): `GET /listings/approve` used to reach
+    `GET /listings/{listing_id}` and answer 422 for the UUID; the resource is POST-only: 405."""
+    with TestClient(v1_app) as client:
+        response = client.request(method, path, headers={"Authorization": "Bearer test"})
+    _envelope(response, 405, ErrorCode.METHOD_NOT_ALLOWED)
+    assert set(response.headers["allow"].replace(" ", "").split(",")) == want
+
+
+def test_a_bad_uuid_on_a_parameter_route_stays_422(v1_app: FastAPI) -> None:
+    with TestClient(v1_app) as client:
+        response = client.get(
+            "/api/v1/listings/not-a-uuid", headers={"Authorization": "Bearer test"}
+        )
+    assert response.status_code == 422, response.text

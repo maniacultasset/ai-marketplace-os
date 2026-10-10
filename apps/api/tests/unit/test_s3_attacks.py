@@ -86,9 +86,11 @@ def test_lookalike_paths_are_404_never_redirect(client: TestClient, path: str) -
 
 
 def test_get_on_literal_post_path_never_answers_200(client: TestClient) -> None:
-    # /listings/validate is POST only; GET falls to /listings/{listing_id} and fails the UUID.
+    # /listings/validate is POST only; GET would fall to /listings/{listing_id} and fail the
+    # UUID, so the shadowed static path answers 405 with its own Allow (S26 fix round 1).
     r = client.get("/api/v1/listings/validate", headers=BEARER)
-    _envelope(r, 422, "VALIDATION_FAILED")
+    _envelope(r, 405, "METHOD_NOT_ALLOWED")
+    assert r.headers["Allow"] == "POST"
 
 
 # ---- presence-only bearer (AC3) ----

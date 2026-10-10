@@ -16,13 +16,13 @@ def test_fuzz_script_all_checks_stateful_seed_printed(repo_root: Path) -> None:
     text = _text(repo_root)
     assert "set -euo pipefail" in text
     assert "--checks all" in text
-    # only the three schema-precision checks are excluded; a 5xx always fails the run
+    # only the two schema-precision checks are excluded (unsupported_method runs since S26 fix
+    # round 1); a 5xx always fails the run
     excluded = re.search(r"--exclude-checks (\S+)", text)
     assert excluded is not None
     assert set(excluded.group(1).split(",")) == {
         "positive_data_acceptance",
         "negative_data_rejection",
-        "unsupported_method",
     }
     assert "not_a_server_error" not in excluded.group(1)
     assert "--phases examples,coverage,fuzzing,stateful" in text

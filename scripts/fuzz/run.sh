@@ -6,13 +6,12 @@
 # Brings up a fresh stack (scripts/e2e/lib/fresh_stack.sh, profile acceptance) with raised rate
 # limits in the API's process env only (PLAN D6: the committed defaults never change), seeds the
 # local demo tenants, logs in one user per role over HTTP and runs `schemathesis run` once per
-# token: every check but the three below, every phase (stateful included), the given seed.
+# token: every check but the two below, every phase (stateful included), the given seed.
 # Excluded (S26 DEVIATIONS): `positive_data_acceptance` (the API's validators are stricter than
 # the OpenAPI can say: control characters, cross-field rules, cursor tokens; a contract change is
-# out of S26's scope), `negative_data_rejection` (unknown query parameters are ignored, by
-# design) and `unsupported_method` (a GET to a POST-only path such as /listings/approve is routed
-# to GET /listings/{listing_id} and answers 422 for the id; the 405 `Allow` header names the
-# documented methods). Every 5xx (`not_a_server_error`) and every other check fails the run.
+# out of S26's scope) and `negative_data_rejection` (unknown query parameters are ignored, by
+# design, and the request models strip surrounding whitespace before the length check). Every
+# 5xx (`not_a_server_error`), `unsupported_method` and every other check fails the run.
 # Operator and reviewer go first; admin and owner last, because a stateful PATCH /members or
 # tenant change can demote or revoke a token; a token that answers 401 is logged in again.
 # Prints the seed; exits non-zero on any failure. Loopback only. Not a required check.
@@ -71,7 +70,7 @@ for role in $ROLES; do
   echo "fuzz: role=$role"
   uv run --frozen schemathesis run "$base_url/openapi.json" \
     --checks all \
-    --exclude-checks positive_data_acceptance,negative_data_rejection,unsupported_method \
+    --exclude-checks positive_data_acceptance,negative_data_rejection \
     --phases examples,coverage,fuzzing,stateful \
     --seed "$seed" \
     --max-examples "$max_examples" \
