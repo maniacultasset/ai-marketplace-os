@@ -3,7 +3,10 @@
 # `scripts/ci/nightly.sh <leg>` per job. Never a PR check; no secret; the stub pipeline only;
 # nothing released, no cloud. Every leg runs on the runner's own Docker (compose postgres + MinIO, or a
 # fresh stack), never a remote database.
-#
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+
+# The legs:
 #   pip-audit          the locked packages against the advisory service (ADR-0013 §6)
 #   gitleaks-history   every commit reachable from HEAD
 #   mutation           `make mutation` (>= 80% per core module or a waiver row)
@@ -17,8 +20,6 @@
 # The heavy legs (all but pip-audit and gitleaks-history) print `SKIP main unchanged in 24 h`
 # and exit 0 when origin/main has no commit in 24 h and NIGHTLY_FORCE is not `true`
 # (scripts/ci/nightly_skip.py).
-set -euo pipefail
-cd "$(dirname "$0")/../.."
 
 LIGHT="pip-audit gitleaks-history"
 HEAVY="mutation fuzz hypothesis-deep random-order migration-replay acceptance drill"

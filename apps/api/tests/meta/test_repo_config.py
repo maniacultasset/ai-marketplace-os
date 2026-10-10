@@ -152,7 +152,8 @@ def test_mypy_excludes_alembic_versions(repo_root: Path) -> None:
     import tomllib
 
     mypy = tomllib.loads((repo_root / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mypy"]
-    assert mypy["exclude"] == ["^apps/api/alembic/versions/"]
+    # S26 T23: and mutmut's git-ignored working copy (`make mutation`)
+    assert mypy["exclude"] == ["^apps/api/alembic/versions/", "^apps/api/mutants/"]
 
 
 def test_mutmut_scoped_to_core_modules(repo_root: Path) -> None:
