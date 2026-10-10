@@ -16,6 +16,8 @@ PACKAGE = Path(__file__).resolve().parents[1] / "src" / "mkos_pipeline"
 ALLOWED_MODULES = frozenset(
     {
         "__future__",
+        # S26: `stub:timeout` awaits one bounded `asyncio.sleep` (no clock read, no loop time)
+        "asyncio",
         "collections.abc",
         "dataclasses",
         "datetime",

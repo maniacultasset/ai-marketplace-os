@@ -37,6 +37,11 @@ confirmed at DW1): `PUT|PATCH|GET /listings/2021-08-01/items/{sellerId}/{sku}?ma
   {mode: expired|denied, times}` (expired -> 401, denied -> 403), `spapi_summary {sku:
   BUYABLE|DISCOVERABLE}`, `spapi_body redirect|oversize|html` (the next SP-API answer, once).
 - `GET /__calls`: every SP-API call (method, path, time, body sha256).
+- S26 (failure injection): `spapi_body` also takes `malformed_json` (a truncated JSON reply) and
+  `extra_field` (the real reply plus `"unexpected": 1`); `spapi_drop_after_write [sku]` stores the
+  write, then drops the connection (`httpx.RemoteProtocolError` in process: no reply at all);
+  `next_refresh` also takes `malformed`, `oversize` and `extra_field`, each reply embedding the
+  `canary` string the control call passes (so a test can prove it is never echoed).
 - S21 (CP15): `spapi_get {sku: buyable|discoverable|inactive|rejected|gone}` sets what a GET of the
   SKU reads until changed (gone = 404); `POST /__control/reset {"prefix": "<sku prefix>"}` forgets
   the items, issues, GET states and calls of SKUs with that prefix (an e2e run cleans up after
@@ -58,6 +63,7 @@ from pathlib import Path
 from typing import Any, Final
 from urllib.parse import urlencode
 
+import httpx
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
@@ -138,6 +144,9 @@ class FakeState:
     spapi_summary: dict[str, str] = field(default_factory=dict)
     spapi_body: str | None = None
     spapi_get: dict[str, str] = field(default_factory=dict)
+    # ---- S26 failure injection ----
+    spapi_drop_after_write: set[str] = field(default_factory=set)
+    refresh_canary: str = "CANARYzq9-0000000000000000"
     calls: list[dict[str, Any]] = field(default_factory=list)
     submissions: int = 0
 
@@ -249,12 +258,22 @@ def build_fake(config: FakeConfig | None = None) -> Starlette:
             return _bad("server_error", 500)
         if outcome == "timeout":
             await asyncio.sleep(cfg.timeout_s)
+        canary = state.refresh_canary
+        if outcome == "malformed":
+            return Response(
+                f'{{"access_token": "{canary}", "token_ty', media_type="application/json"
+            )
+        if outcome == "oversize":
+            pad = "x" * OVERSIZE_BYTES
+            return JSONResponse({"access_token": canary, "token_type": "bearer", "pad": pad})
         known = state.refresh_tokens.get(form.get("refresh_token", ""))
         if outcome == "invalid_grant" or known is None or known[0] != mkt:
             return _bad("invalid_grant")
         body = _tokens(mkt, known[1], refresh=form["refresh_token"])
         if mkt == "flipkart":
             body.pop("seller_id", None)
+        if outcome == "extra_field":
+            body["unexpected"] = canary
         return JSONResponse(body)
 
     async def token(request: Request) -> Response:
@@ -283,8 +302,10 @@ def build_fake(config: FakeConfig | None = None) -> Starlette:
         body = await request.json()
         if not isinstance(body, dict):
             return _bad("expected an object")
-        if body.get("next_refresh") in ("ok", "invalid_grant", "server_error", "timeout"):
+        if body.get("next_refresh") in REFRESH_OUTCOMES:
             state.next_refresh = body["next_refresh"]
+        if isinstance(body.get("canary"), str):
+            state.refresh_canary = body["canary"]
         if body.get("next_exchange") in ("ok", "invalid_grant", "server_error"):
             state.next_exchange = body["next_exchange"]
         if isinstance(body.get("next_exchange_seller"), str):
@@ -329,6 +350,10 @@ def build_fake(config: FakeConfig | None = None) -> Starlette:
 
 SPAPI_ROUTE: Final = "/listings/2021-08-01/items/{seller}/{sku:path}"
 OVERSIZE_BYTES: Final = 2 * 1024 * 1024
+REFRESH_OUTCOMES: Final = frozenset(
+    {"ok", "invalid_grant", "server_error", "timeout", "malformed", "oversize", "extra_field"}
+)
+SPAPI_BODIES: Final = frozenset({"redirect", "oversize", "html", "malformed_json", "extra_field"})
 
 
 def issue_token(app: Starlette) -> str:
@@ -354,8 +379,10 @@ def _spapi_control(state: FakeState, body: dict[str, Any]) -> None:
         state.spapi_auth_mode, state.spapi_auth_times = auth["mode"], int(auth.get("times", 1))
     if isinstance(body.get("spapi_summary"), dict):
         state.spapi_summary.update(body["spapi_summary"])
-    if body.get("spapi_body") in ("redirect", "oversize", "html"):
+    if body.get("spapi_body") in SPAPI_BODIES:
         state.spapi_body = body["spapi_body"]
+    if isinstance(body.get("spapi_drop_after_write"), list):
+        state.spapi_drop_after_write |= {str(sku) for sku in body["spapi_drop_after_write"]}
     gets = body.get("spapi_get")
     if isinstance(gets, dict):
         states = ("buyable", "discoverable", "inactive", "rejected", "gone")
@@ -445,6 +472,8 @@ async def _spapi(state: FakeState, request: Request) -> Response:
     if shaped == "oversize":
         filler = "x" * OVERSIZE_BYTES
         return JSONResponse({"sku": sku, "status": "ACCEPTED", "pad": filler})
+    if shaped == "malformed_json":
+        return Response(f'{{"sku": "{sku}", "status": "ACC', media_type="application/json")
     key = (seller, sku)
     if request.method == "GET":
         return _spapi_get(state, key)
@@ -459,6 +488,13 @@ async def _spapi(state: FakeState, request: Request) -> Response:
     after = state.spapi_after_write.pop(sku, None)
     if after is not None:
         return _errors("InternalFailure", "We encountered an internal error.", after)
+    if sku in state.spapi_drop_after_write:
+        state.spapi_drop_after_write.discard(sku)
+        raise httpx.RemoteProtocolError("Server disconnected without sending a response.")
+    if shaped == "extra_field":
+        reply = json.loads(bytes(response.body))
+        reply["unexpected"] = 1
+        return JSONResponse(reply, status_code=response.status_code)
     return response
 
 

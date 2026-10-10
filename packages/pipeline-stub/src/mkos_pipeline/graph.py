@@ -15,6 +15,13 @@ Scenarios, chosen by a `user_instructions` prefix `stub:<name>` (anything else i
 - `warnings`: the `ok` listing with the word `stubwarn` in its title (S19). The stub decides
   nothing: a tenant rule that flags the word as a warning (the local `demo` seed has one for
   acme) makes it `needs_review` with one open warning issue; without such a rule it is `generated`.
+- `timeout` (S26 failure injection): after loading the context and the brand chunks, it awaits
+  the generation credentials' `timeout_seconds` + 1 s once (bounded, no loop) and then raises
+  `TimeoutError`, as a model call past its deadline would; a job timeout shorter than that ends
+  the job first.
+- `malformed` (S26): the `ok` result with `attempts_used=7` set without validation
+  (`model_copy`), so it breaks the contract (`le=3`) and the backend's strict re-validation
+  must refuse it.
 
 Ids are `uuid5(ctx.job_id, "<agent>:<attempt>")` and every timestamp is `STUB_EPOCH`, so two runs
 over the same context return byte-identical results.
@@ -22,6 +29,7 @@ over the same context return byte-identical results.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -46,8 +54,11 @@ from mkos_schemas.pipeline import PipelineDeps
 from mkos_schemas.rules import RequiredAttribute
 from mkos_schemas.validation import ValidationResult, ValidationSummary
 
-Scenario = Literal["ok", "blocked", "failed", "vision_warn", "warnings"]
-SCENARIOS: Final[frozenset[str]] = frozenset({"ok", "blocked", "failed", "vision_warn", "warnings"})
+Scenario = Literal["ok", "blocked", "failed", "vision_warn", "warnings", "timeout", "malformed"]
+SCENARIOS: Final[frozenset[str]] = frozenset(
+    {"ok", "blocked", "failed", "vision_warn", "warnings", "timeout", "malformed"}
+)
+MALFORMED_ATTEMPTS: Final = 7
 WARN_WORD: Final = "stubwarn"
 STUB_EPOCH: Final = datetime(2026, 1, 1, tzinfo=UTC)
 STUB_MODEL: Final = "stub"
@@ -293,11 +304,16 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
     chosen = scenario(ctx)
     fixture = _fixture()
     await deps.emit_node_event(S.LOAD_CONTEXT, "started")
-    await deps.get_model_credentials("generation")
+    credentials = await deps.get_model_credentials("generation")
     await deps.emit_node_event(S.LOAD_CONTEXT, "ok")
     await deps.emit_node_event(S.RETRIEVE_BRAND, "started")
     await deps.retrieve_brand_chunks(ctx.tenant_id, fixture.brand_query, k=BRAND_K)
     await deps.emit_node_event(S.RETRIEVE_BRAND, "ok")
+
+    if chosen == "timeout":
+        await deps.emit_node_event(S.CONTENT_AGENT, "started")
+        await asyncio.sleep(credentials.timeout_seconds + 1)
+        raise TimeoutError("the stub's timeout scenario passed the model deadline")
 
     if chosen == "failed":
         await deps.emit_node_event(S.CONTENT_AGENT, "started")
@@ -379,4 +395,8 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
         "terminal_state": "generated" if passed else "blocked",
         "error": error,
     }
-    return GenerationResult.model_validate(payload)
+    result = GenerationResult.model_validate(payload)
+    if chosen == "malformed":
+        # deliberately invalid: model_copy skips validation (the backend must refuse it)
+        return result.model_copy(update={"attempts_used": MALFORMED_ATTEMPTS})
+    return result
