@@ -4,6 +4,7 @@ children first, whole requeue chains only, failed jobs 180 days, publish jobs ke
 
 from __future__ import annotations
 
+import hashlib
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -72,7 +73,15 @@ async def test_retention_children_first(jobs_db: JobWorld) -> None:
     job = _old_job(jobs_db, "acme", days=100)
     imp = _import(jobs_db, "acme", job, days=100)
     totals = await retention_daily()
-    assert totals == {"import_rows": 2, "imports": 1, "job_runs": 1, "image_orphans": 0}
+    assert totals == {
+        "import_rows": 2,
+        "imports": 1,
+        "job_runs": 1,
+        "refresh_tokens": 0,
+        "invitations": 0,
+        "brand_chunks": 0,
+        "image_orphans": 0,
+    }
     assert not _exists(jobs_db, "imports", imp) and not _exists(jobs_db, "job_runs", job)
 
 
@@ -206,3 +215,123 @@ async def test_retention_chain_split_across_batches(
         counts = await retention.prune_tenant(session, acme)
     assert counts["job_runs"] == (3, 4)
     assert not any(_exists(jobs_db, "job_runs", j) for j in (root, child, grandchild))
+
+
+# ---- audit DB-3: refresh_tokens 7 d after expiry, invitations and inactive brand_chunks 30 d ----
+
+
+def _refresh_token(
+    jw: JobWorld, slug: str, *, expired_days: float, replaced_by: uuid.UUID | None = None
+) -> uuid.UUID:
+    row_id = uuid.uuid4()
+    jw.conn.execute(
+        "INSERT INTO refresh_tokens (id, tenant_id, user_id, token_hash, expires_at, revoked_at, "
+        "revoked_reason, replaced_by, user_agent, ip, family_id) "
+        "VALUES (%s, %s, %s, %s, %s, %s, 'rotated', %s, 'Mozilla/5.0 test', '203.0.113.7', %s)",
+        [
+            row_id,
+            jw.tenant(slug),
+            jw.owner(slug),
+            hashlib.sha256(row_id.bytes).digest(),
+            _ago(expired_days),
+            _ago(expired_days + 14),
+            replaced_by,
+            uuid.uuid4(),
+        ],
+    )
+    return row_id
+
+
+def _invitation(jw: JobWorld, slug: str, **times: datetime) -> uuid.UUID:
+    row_id = uuid.uuid4()
+    columns = {"expires_at": _ago(-7), **times}
+    jw.conn.execute(
+        "INSERT INTO invitations (id, tenant_id, email, role, token_hash, expires_at, "
+        "accepted_at, revoked_at) VALUES (%s, %s, %s, 'operator', %s, %s, %s, %s)",
+        [
+            row_id,
+            jw.tenant(slug),
+            f"{row_id.hex[:12]}@invitee.test",
+            hashlib.sha256(row_id.bytes).digest(),
+            columns["expires_at"],
+            columns.get("accepted_at"),
+            columns.get("revoked_at"),
+        ],
+    )
+    return row_id
+
+
+def _brand_chunk(jw: JobWorld, slug: str, *, active: bool, changed_days: float) -> uuid.UUID:
+    row_id = uuid.uuid4()
+    jw.conn.execute(
+        "INSERT INTO brand_chunks (id, tenant_id, type, text, embedding, embedding_model, "
+        "content_hash, source_type, source_id, is_active) "
+        "VALUES (%s, %s, 'tone_rule', 'warm', array_fill(0.0::real, ARRAY[1536])::vector, "
+        "'stub', %s, 'brand_profile', %s, %s)",
+        [row_id, jw.tenant(slug), row_id.hex, uuid.uuid4(), active],
+    )
+    # the updated_at trigger stamps now(): backdate past it as a harness reset
+    jw.conn.execute("SET session_replication_role = replica")
+    try:
+        jw.conn.execute(
+            "UPDATE brand_chunks SET updated_at = %s WHERE id = %s", [_ago(changed_days), row_id]
+        )
+    finally:
+        jw.conn.execute("RESET session_replication_role")
+    return row_id
+
+
+async def test_retention_refresh_tokens_7_days_after_expiry(jobs_db: JobWorld) -> None:
+    newest = _refresh_token(jobs_db, "acme", expired_days=8)
+    # its predecessor points at it: deleting the successor first must not break the chain
+    older = _refresh_token(jobs_db, "acme", expired_days=60, replaced_by=newest)
+    recent = _refresh_token(jobs_db, "acme", expired_days=6)
+    live = _refresh_token(jobs_db, "acme", expired_days=-14)
+    theirs = _refresh_token(jobs_db, "bharat", expired_days=60)
+    acme = jobs_db.tenant("acme")
+    async with unit_of_work(acme) as session:
+        counts = await retention.prune_tenant(session, acme)
+    assert counts["refresh_tokens"][0] == 2
+    assert not _exists(jobs_db, "refresh_tokens", newest)
+    assert not _exists(jobs_db, "refresh_tokens", older)
+    assert all(_exists(jobs_db, "refresh_tokens", r) for r in (recent, live, theirs))
+
+
+async def test_retention_refresh_tokens_split_across_batches(
+    jobs_db: JobWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(retention, "BATCH", 1)
+    successor = _refresh_token(jobs_db, "acme", expired_days=30)
+    _refresh_token(jobs_db, "acme", expired_days=40, replaced_by=successor)
+    acme = jobs_db.tenant("acme")
+    async with unit_of_work(acme) as session:
+        counts = await retention.prune_tenant(session, acme)
+    assert counts["refresh_tokens"] == (2, 3)
+    assert count(jobs_db.conn, "SELECT count(*) FROM refresh_tokens") == 0
+
+
+async def test_retention_invitations_30_days_after_closing(jobs_db: JobWorld) -> None:
+    expired = _invitation(jobs_db, "acme", expires_at=_ago(31))
+    accepted = _invitation(jobs_db, "acme", expires_at=_ago(25), accepted_at=_ago(31))
+    revoked = _invitation(jobs_db, "acme", expires_at=_ago(-1), revoked_at=_ago(40))
+    kept = [
+        _invitation(jobs_db, "acme", expires_at=_ago(29)),
+        _invitation(jobs_db, "acme", expires_at=_ago(60), accepted_at=_ago(20)),
+        _invitation(jobs_db, "acme"),  # pending
+    ]
+    theirs = _invitation(jobs_db, "bharat", expires_at=_ago(90))
+    totals = await retention_daily()
+    assert totals["invitations"] == 4  # bharat's expired invitation goes in its own pass
+    assert not any(_exists(jobs_db, "invitations", i) for i in (expired, accepted, revoked))
+    assert all(_exists(jobs_db, "invitations", i) for i in kept)
+    assert not _exists(jobs_db, "invitations", theirs)
+
+
+async def test_retention_inactive_brand_chunks_30_days(jobs_db: JobWorld) -> None:
+    stale = _brand_chunk(jobs_db, "acme", active=False, changed_days=31)
+    fresh = _brand_chunk(jobs_db, "acme", active=False, changed_days=29)
+    active = _brand_chunk(jobs_db, "acme", active=True, changed_days=400)
+    totals = await retention_daily()
+    assert totals["brand_chunks"] == 1
+    assert not _exists(jobs_db, "brand_chunks", stale)
+    assert _exists(jobs_db, "brand_chunks", fresh) and _exists(jobs_db, "brand_chunks", active)

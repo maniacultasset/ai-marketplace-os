@@ -14,7 +14,9 @@ queue entry carries only `{"timestamp"}`, never tenant data.
 - `prune_idempotency_keys` (hourly): expired HTTP keys, tenant by tenant.
 - `expire_trials` (hourly): `expire_trials()` (trials past their end → `suspended`).
 - `retention_daily` (03:00): per tenant, in batches of 1,000, children first: `import_rows`,
-  `imports`, then `job_runs` chains (`app.repositories.retention`); then the queue's own
+  `imports`, then `job_runs` chains, then `refresh_tokens` 7 days past expiry, `invitations` 30
+  days after they closed and inactive `brand_chunks` 30 days after deactivation
+  (`app.repositories.retention`, audit DB-3); then the queue's own
   finished entries (succeeded after 7 days, every other final state after 90); then the image
   orphan sweep (S17b, below). A sweep failure is logged and never undoes the steps before it.
 - `sweep_image_orphans` (inside `retention_daily`, S17b PLAN D9, CP11): per tenant, every object
@@ -371,7 +373,7 @@ async def retention_daily(job_manager: Any | None = None) -> dict[str, int]:
     image orphans deleted)."""
     async with platform_scope() as session:
         tenants = await retention.tenant_ids(session)
-    totals: dict[str, int] = {"import_rows": 0, "imports": 0, "job_runs": 0}
+    totals: dict[str, int] = dict.fromkeys(retention.PRUNED_TABLES, 0)
     for tenant_id in tenants:
         async with unit_of_work(tenant_id) as session:
             counts = await retention.prune_tenant(session, tenant_id)
