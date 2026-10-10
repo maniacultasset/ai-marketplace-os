@@ -15,7 +15,7 @@ import pytest
 
 from .conftest import LOCAL_HOSTS
 from .flipkart_publish_support import FkWorld, fkp, flag, pub
-from .publish_support import approved, post_publish, retry
+from .publish_support import approved, post_publish, retry, run_job
 from .review_support import OPERATOR, generated
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
@@ -228,3 +228,91 @@ async def test_flipkart_flag_off_mixed_batch_foreign_flipkart_id_404(
     assert first["http_status"] == 202 and first["job_id"] is not None
     assert (second["http_status"], second["error"]["error_code"]) == (404, "NOT_FOUND")
     _untouched(fkp, acme_fk.listing_id, "approved")
+
+
+# ---- T21: a job claimed while off; the status sync ----
+
+
+async def test_flipkart_job_claimed_flag_off(
+    api: httpx.AsyncClient, fkp: FkWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Enqueued with the flag on, claimed with it off: nothing is written ahead or sent, the job
+    fails with the 501 report and the listing leaves `publishing` for `failed/publish_failed`."""
+    made = await _fk(fkp)
+    response = await post_publish(api, fkp.pub, OPERATOR, [{"listing_id": str(made.listing_id)}])
+    (item,) = response.json()["items"]
+    assert item["http_status"] == 202, item
+    flag(monkeypatch, False)
+    await run_job(uuid.UUID(item["job_id"]))
+    assert fkp.pub.submissions(made.listing_id) == []
+    assert fkp.calls() == [] and fkp.opened == []
+    row = fkp.pub.listing(made.listing_id)
+    assert (row["status"], row["status_reason"], row["last_event"]) == (
+        "failed",
+        "publish_failed",
+        "submission_failed",
+    )
+    job = fkp.pub.job(item["job_id"])
+    assert job["status"] == "failed"
+    report = job["error_report_json"]
+    assert report["error_code"] == "NOT_IMPLEMENTED", report
+    assert report["errors"][0]["message"] == "Flipkart is not enabled"
+
+
+async def test_flipkart_job_claimed_flag_off_then_on_publishes_attempt_1(
+    api: httpx.AsyncClient, fkp: FkWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    made = await _fk(fkp)
+    response = await post_publish(api, fkp.pub, OPERATOR, [{"listing_id": str(made.listing_id)}])
+    (item,) = response.json()["items"]
+    flag(monkeypatch, False)
+    await run_job(uuid.UUID(item["job_id"]))
+    flag(monkeypatch, True)
+    response = await post_publish(api, fkp.pub, OPERATOR, [{"listing_id": str(made.listing_id)}])
+    (again,) = response.json()["items"]
+    assert again["http_status"] == 202, again
+    assert fkp.pub.listing(made.listing_id)["last_event"] == "retry_publish"
+    await run_job(uuid.UUID(again["job_id"]))
+    (sub,) = fkp.pub.submissions(made.listing_id)
+    assert (sub["attempt"], sub["operation"], sub["outcome"]) == (1, "create", "accepted")
+    assert fkp.pub.listing(made.listing_id)["status"] == "published"
+    assert len(fkp.calls()) == 1
+
+
+async def test_flipkart_sync_skipped(
+    api: httpx.AsyncClient, fkp: FkWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A published Flipkart listing: with the flag off the sync job reads nothing and changes
+    nothing, and the scheduler does not pick it up (it resumes once the flag is on)."""
+    from app.workers.periodic import schedule_status_sync
+
+    made = await _fk(fkp)
+    response = await post_publish(api, fkp.pub, OPERATOR, [{"listing_id": str(made.listing_id)}])
+    (item,) = response.json()["items"]
+    await run_job(uuid.UUID(item["job_id"]))
+    before = fkp.pub.listing(made.listing_id)
+    assert before["status"] == "published"
+    calls = len(fkp.calls())
+    fkp.pub.conn.execute(
+        "UPDATE listings SET next_sync_at = now() - interval '1 minute' WHERE id = %s",
+        [made.listing_id],
+    )
+    flag(monkeypatch, False)
+    await schedule_status_sync()
+    assert fkp.jobs(made.listing_id, "listing_status_sync") == 0
+    assert fkp.pub.listing(made.listing_id)["next_sync_at"] is not None  # kept for later
+    flag(monkeypatch, True)
+    refresh = await api.post(
+        f"/api/v1/listings/{made.listing_id}/refresh-status",
+        headers=fkp.world.headers(OPERATOR),
+    )
+    assert refresh.status_code == 202, refresh.text
+    sync = uuid.UUID(refresh.json()["job_id"])
+    before = fkp.pub.listing(made.listing_id)
+    flag(monkeypatch, False)
+    await run_job(sync)
+    after = fkp.pub.listing(made.listing_id)
+    assert fkp.pub.job(sync)["status"] == "succeeded"
+    assert len(fkp.calls()) == calls and len(fkp.opened) == 1
+    for column in ("status", "marketplace_state", "sync_poll_count", "live_url", "next_sync_at"):
+        assert after[column] == before[column], column

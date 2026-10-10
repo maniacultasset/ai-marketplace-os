@@ -3,7 +3,9 @@ DW7; invariant 1).
 
 1. One short read transaction (`created_by` NULL for a scheduled sync, so no user GUC): the
    listing, its account and its items. A listing that is publishing, paused, archived or not
-   submitted is skipped (the outcome says so; nothing is written).
+   submitted is skipped (the outcome says so; nothing is written), and so is a listing whose
+   marketplace is switched off here (Flipkart with `FLIPKART_ENABLED=false`, S22 T21): no read,
+   no write; the scheduler leaves such listings due until the flag is on again.
 2. Outside any transaction: one `ReaderView.get_listing` per SKU. The sync only ever holds a
    reader (`open_reader`), never a mutating adapter; a failed read raises `RetryableJobError`.
 3. The writes happen in the wrapper's fenced terminal transaction (`persist`,
@@ -16,6 +18,8 @@ from typing import Final
 
 from mkos_schemas.codes import ErrorCode
 
+from app.core.config import get_settings
+from app.core.flags import marketplace_enabled
 from app.core.logging import get_logger
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.services.status_sync import ItemRead
@@ -40,6 +44,9 @@ async def run_listing_status_sync(ctx: JobContext) -> Outcome:
             or listing.archived_at is not None
             or listing.marketplace_account_id is None
         ):
+            return Outcome("succeeded", result={"skipped": True})
+        if not marketplace_enabled(listing.marketplace, get_settings()):
+            log.info("sync.marketplace_disabled", listing_id=str(listing.id))
             return Outcome("succeeded", result={"skipped": True})
         account = listing.marketplace_account_id
         items = [

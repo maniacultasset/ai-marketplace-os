@@ -24,7 +24,8 @@ listing is locked only in the short write-ahead transaction.
    older version's open `accepted` row (attempt 1), INSERT the `pending` row (snapshot written
    first under a pre-minted id, deleted again if Tx A refuses), upsert the items, set the account.
    COMMIT before any marketplace call.
-5. **Send**: stamp `sent_at`, open the adapter (`open_adapter`, or the test factory), hand it
+5. **Send**: stamp `sent_at`, use the adapter (opened before step 4, so a switched-off
+   marketplace, S22 T21, fails the job with its 501 report before any row is written), hand it
    24-hour signed image URLs held in memory only, `create`/`update`/`patch` with the submission key
    and attempt, buffer the raw bodies, store them once.
 6. **Route** (`publish_ledger`): every ledger write happens in the wrapper's terminal transaction
@@ -52,6 +53,7 @@ from app.adapters.base import (
     ListingNotFound,
     MarketplaceAdapter,
     MarketplaceAmbiguous,
+    MarketplaceDisabled,
     MarketplaceUnavailable,
     PermissionDenied,
     RateLimited,
@@ -557,7 +559,12 @@ async def run_listing_publish(ctx: JobContext) -> Outcome:
     prep = await _read(ctx, payload)
     await _check_pins(ctx, prep)
     sink = BufferedSink()
-    adapter = await _factory(ctx.tenant_id, prep.account_id, sink)
+    try:
+        # before the write-ahead row: a switched-off marketplace (S22 T21) writes and sends
+        # nothing; the terminal hook moves the listing `publishing -> failed/publish_failed`
+        adapter = await _factory(ctx.tenant_id, prep.account_id, sink)
+    except MarketplaceDisabled as exc:
+        raise JobFailed(exc.report) from None
     try:
         return await _publish(ctx, prep, payload, adapter, sink)
     finally:
