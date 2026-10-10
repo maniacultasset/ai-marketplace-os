@@ -1845,7 +1845,7 @@ flowchart LR
 
 **Pruning [Proposed].**
 - **Fact evidence outlives its source rows.** Facts live for the life of the product, but `import_rows` go at 90 days and `human_tasks`/`agent_runs` at 13 months. So a Fact whose `evidence_ref` has a prunable kind carries an `evidence_snapshot` written with it (§5.6, enforced by `fact_map_valid`); after pruning the ref dangles harmlessly and the proof stays readable. Matrix cells' `import:<id>` refs may dangle the same way.
-- **Mutable tables:** a daily task loops over tenants with `set_config` and deletes in batches of 1,000, children first (`import_rows`, `imports`, then `job_runs`).
+- **Mutable tables:** a daily task loops over tenants with `set_config` and deletes in batches of 1,000, children first (`import_rows`, `imports`, then `job_runs`), then `refresh_tokens` 7 days past `expires_at`, `invitations` 30 days after they closed (`coalesce(accepted_at, revoked_at, expires_at)`) and inactive `brand_chunks` 30 days after deactivation (`updated_at`) (`retention_daily`; audit DB-3).
 - **`job_runs` chains** are deleted only when every member is terminal and past its cutoff; job references from longer-lived tables are soft, and `parent_job_id` is NO ACTION, so no SET NULL ever UPDATEs a terminal row.
 - **Tables where `app_rw` has no DELETE** (`audit_log`, `agent_runs`, `validation_runs`, closed `listing_issues`, terminal `human_tasks`) are pruned only by the migrator-only `prune_audit_log(cutoff)`, `prune_append_only(regclass, cutoff)` and `prune_closed(regclass, cutoff)`, run from the Cloud Run job. Each refuses a cutoff inside its table's floor and sets the prune GUC the triggers check. The §8.2 catalog assertion fails if a table is missing from this map.
 
