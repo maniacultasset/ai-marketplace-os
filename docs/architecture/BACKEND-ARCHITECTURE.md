@@ -602,10 +602,13 @@ links `parent_sku` values to parent products, writes the totals and ends the job
 - **Header errors** [Decided, Canon Addendum §20]: `HEADER_MISSING_COLUMN`, `HEADER_UNKNOWN_COLUMN`
   and `HEADER_DUPLICATE_COLUMN` become one file-level `ErrorReport` (`IMPORT_FAILED`, field
   `file.header`). A SKU repeated inside the file is `DUPLICATE_SKU_IN_FILE`.
-- **Header bounds** [Decided, audit FILES-1]: the header record may use at most 32,768
+- **Header bounds** [Decided, audit FILES-1/FILES-2]: the header record may use at most 32,768
   characters and 256 columns (A.6 needs about 170 with the aliases and `bullet_1`..`bullet_99`);
   a longer one is refused with the same file-level `IMPORT_FAILED` at `file.header` before the
-  csv module splits it, so a 10 MiB one-line header costs no per-column memory.
+  csv module splits it, so a 10 MiB one-line header costs no per-column memory. Trailing blank
+  header cells with no value under them in any row (a spreadsheet export's empty last column)
+  are dropped with their cells; a blank header cell with a value under it is still
+  `HEADER_UNKNOWN_COLUMN`.
 - **Row errors** [Decided, Canon Addendum §19]: a bad row shape has `source = schema`; a failed
   category or rule lookup (for example `CATEGORY_NOT_MAPPED`) has `source = rules_engine`.
 - **SKU uniqueness** [Decided, Canon]: `UNIQUE (tenant_id, sku)`, so two brands can both hold

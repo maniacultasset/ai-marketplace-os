@@ -1,4 +1,5 @@
-"""Audit FILES-1: the CSV header is bounded before it is parsed."""
+"""Audit FILES-1 and FILES-2: the CSV header is bounded before it is parsed, and a trailing
+spreadsheet-export column with no name and no cells is not an unknown column."""
 
 from __future__ import annotations
 
@@ -82,3 +83,52 @@ def test_iter_rows_refuses_the_same_wide_header() -> None:
 def test_check_header_keeps_at_most_the_report_cap() -> None:
     problems = check_header(["zz"] * (MAX_ERROR_ITEMS * 3))
     assert len(problems) == MAX_ERROR_ITEMS
+
+
+# ---- FILES-2: a trailing empty column from a spreadsheet export ----
+
+TRAILING = (
+    b"seller_sku,product_name,category,mrp,selling_price,main_image,\n"
+    b"SKU-1,Cotton Kurta,ethnic_wear_kurta_sets,1299,999,https://cdn.example.com/p/1.jpg,\n"
+)
+
+
+def test_trailing_empty_header_column_is_ignored() -> None:
+    parsed = parse_upload(TRAILING)
+    assert parsed.columns[-1] == "main_image"
+    assert check_header(parsed.columns) == []
+    got = list(iter_rows(TRAILING))
+    assert [r.error for r in got] == [None]
+    assert "" not in got[0].cells
+    assert got[0].cells["main_image"] == "https://cdn.example.com/p/1.jpg"
+
+
+def test_several_trailing_empty_columns_and_blank_cells_are_ignored() -> None:
+    data = b"seller_sku,product_name,category, ,,\nA-1,K,kurtas, ,,\nA-2,K,kurtas\n"
+    parsed = parse_upload(data)
+    assert parsed.columns == ["seller_sku", "product_name", "category"]
+    assert parsed.row_count == 2
+    got = list(iter_rows(data))
+    assert [r.error for r in got] == [None, None]
+    assert list(got[0].cells) == ["seller_sku", "product_name", "category"]
+
+
+def test_trailing_unnamed_column_with_a_value_is_still_refused() -> None:
+    data = b"seller_sku,product_name,category,\nA-1,K,kurtas,\nA-2,K,kurtas,surprise\n"
+    parsed = parse_upload(data)
+    assert len(parsed.columns) == 4
+    assert [code for code, _ in check_header(parsed.columns)] == [ErrorCode.HEADER_UNKNOWN_COLUMN]
+
+
+def test_only_the_empty_tail_is_dropped() -> None:
+    data = b"seller_sku,product_name,category,,,\nA-1,K,kurtas,,v,\n"
+    parsed = parse_upload(data)
+    assert len(parsed.columns) == 5
+    assert len(check_header(parsed.columns)) == 2
+
+
+def test_a_row_longer_than_the_full_header_still_fails() -> None:
+    data = b"seller_sku,product_name,category,\nA-1,K,kurtas,,,\n"
+    assert parse_upload(data).columns == ["seller_sku", "product_name", "category"]
+    got = list(iter_rows(data))
+    assert got[0].error is not None and got[0].error[0] is ErrorCode.VALUE_NOT_ALLOWED
