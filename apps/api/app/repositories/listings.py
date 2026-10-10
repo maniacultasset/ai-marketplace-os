@@ -814,9 +814,11 @@ async def due_for_sync(
 ) -> builtins.list[tuple[uuid.UUID, uuid.UUID]]:
     """`(tenant_id, listing_id)` of every listing whose status sync is due (S21 T22;
     `ix_listings_sync_due`): `next_sync_at <= now()`, not paused, archived or publishing, in a
-    `trial`/`active` tenant, oldest slot first; with `marketplaces`, only listings of those (the
+    `trial`/`active` tenant, pinned to an `active` account (a revoked or `needs_reconnect` one
+    keeps its slot), oldest slot first; with `marketplaces`, only listings of those (the
     scheduler passes the enabled ones, S22 T21, so a switched-off marketplace keeps its slot).
     Cross-tenant: run it only in `platform_scope()` (the periodic scheduler); it reads ids only."""
+    from app.db.models.catalog_assets import MarketplaceAccount
     from app.db.models.tenancy import Tenant
 
     extra = () if marketplaces is None else (Listing.marketplace.in_(tuple(marketplaces)),)
@@ -832,6 +834,15 @@ async def due_for_sync(
             exists(
                 select(Tenant.id).where(
                     Tenant.id == Listing.tenant_id, Tenant.status.in_(SYNC_TENANTS)
+                )
+            ),
+            # a sync reads through the listing's own account: a revoked or needs_reconnect one
+            # keeps the slot due until the listing is on an active account again
+            exists(
+                select(MarketplaceAccount.id).where(
+                    MarketplaceAccount.tenant_id == Listing.tenant_id,
+                    MarketplaceAccount.id == Listing.marketplace_account_id,
+                    MarketplaceAccount.status == "active",
                 )
             ),
         )
