@@ -50,6 +50,73 @@ def test_deployed_env_helper_boots(clean_env: Path, monkeypatch: pytest.MonkeyPa
         _boot(monkeypatch, _deployed(app_env))
 
 
+# ---- PROD-1: a weak JWT_SECRET or ADMIN_SESSION_SECRET ----
+# A character-variety floor ('a' * 32) waits on TEAM-QUESTIONS T130: CANON-ADDENDUM A§14 pins
+# `"x" * 32` as the production fixture.
+
+WEAK_SECRETS = {
+    "spaces": " " * 32,
+    "tabs": "\t" * 40,
+    "inner whitespace": "Zq9-not-committed private-secret-32+",
+    "padded": " Zq9-not-committed-private-secret-32+ ",
+    "short once stripped": "Zq9-short-secret" + " " * 20,
+}
+
+
+@pytest.mark.parametrize("secret", list(WEAK_SECRETS.values()), ids=list(WEAK_SECRETS))
+@pytest.mark.parametrize("app_env", ["staging", "production"])
+def test_deployed_refuses_weak_jwt_secret(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, app_env: str, secret: str
+) -> None:
+    message = _abort(monkeypatch, _deployed(app_env, JWT_SECRET=secret))
+    assert f"APP_ENV={app_env} refuses a weak JWT_SECRET" in message
+    assert secret.strip() not in message or not secret.strip()
+
+
+@pytest.mark.parametrize("secret", list(WEAK_SECRETS.values()), ids=list(WEAK_SECRETS))
+def test_staging_refuses_weak_admin_session_secret(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, secret: str
+) -> None:
+    env = _deployed("staging", ADMIN_ENABLED="true", ADMIN_SESSION_SECRET=secret)
+    message = _abort(monkeypatch, env)
+    assert "APP_ENV=staging refuses a weak ADMIN_SESSION_SECRET" in message
+
+
+def test_staging_admin_off_ignores_admin_secret(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _boot(monkeypatch, _deployed("staging", ADMIN_SESSION_SECRET="a" * 32))
+
+
+@pytest.mark.parametrize(
+    "secret",
+    [
+        PRIVATE_JWT,
+        "0123456789abcdef" * 4,  # `openssl rand -hex 32`
+        "q1x0Hn4i0r3dSxwX5ZQwq3a4E+u0sXQbrw0q3T2K8sY=",  # `openssl rand -base64 32`
+    ],
+)
+def test_deployed_accepts_a_random_secret(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, secret: str
+) -> None:
+    env = _deployed("staging", JWT_SECRET=secret, ADMIN_ENABLED="true", ADMIN_SESSION_SECRET=secret)
+    _boot(monkeypatch, env)
+
+
+def test_local_keeps_its_committed_secrets(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # local and CI are not deployed: the committed literals and the defaults still boot
+    _boot(monkeypatch, {"APP_ENV": "local", "DATABASE_URL": LOCAL_URL, "JWT_SECRET": CI_LITERAL})
+
+
+def test_forged_token_with_a_blank_key_never_verifies(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # the repro's impact: production never gets as far as signing with a guessable key
+    _abort(monkeypatch, _deployed(JWT_SECRET=" " * 32))
+
+
 # ---- PROD-3: lower bounds on numeric settings ----
 
 BOUNDED = {

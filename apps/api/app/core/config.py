@@ -9,7 +9,10 @@
   Outside `APP_ENV=local`, `api` and `worker` also need SENTRY_DSN (CANON-ADDENDUM.md §14); a
   blank value counts as missing. They also need a KMS_KEY_URI naming the one token key
   (CANON.md:70), refuse KMS_LOCAL_DEV_KEY (any role), and refuse an http or loopback marketplace
-  authorize/token URL or DASHBOARD_BASE_URL (S15).
+  authorize/token URL or DASHBOARD_BASE_URL (S15). Off local, a JWT_SECRET (and, with the admin
+  on, an ADMIN_SESSION_SECRET) must carry no whitespace and 32+ characters measured unstripped
+  (audit PROD-1; a character-variety floor waits on TEAM-QUESTIONS T130). Numeric settings
+  carry lower bounds in every env (PROD-3).
 - There is no module-level `settings`: call `get_settings()` where the value is needed.
 """
 
@@ -65,6 +68,10 @@ DEPLOYED_HTTPS_URLS: Final[tuple[tuple[str, str], ...]] = (
     ("flipkart_oauth_redirect_uri", "FLIPKART_OAUTH_REDIRECT_URI"),
     ("dashboard_base_url", "DASHBOARD_BASE_URL"),
 )
+# A deployed secret (PROD-1): no whitespace anywhere and at least this many characters, measured
+# on the raw value. A character-variety floor would also refuse CANON-ADDENDUM A§14's production
+# fixture (`"x" * 32`), so it waits on TEAM-QUESTIONS T130.
+SECRET_MIN_LENGTH: Final = 32
 
 OtelSampler = Literal[
     "always_on",
@@ -244,6 +251,12 @@ def _is_committed_jwt_secret(secret: str) -> bool:
     return _is_committed_secret(secret, COMMITTED_JWT_SECRETS)
 
 
+def _is_weak_secret(secret: str) -> bool:
+    """Whitespace anywhere (a blank, padded or mangled Secret Manager value) or too short.
+    Measured on the raw value: `min_length` counts the padding, `.strip()` would hide it."""
+    return any(char.isspace() for char in secret) or len(secret) < SECRET_MIN_LENGTH
+
+
 def _is_loopback_host(host: str) -> bool:
     if host == "localhost" or host.endswith(".localhost"):
         return True
@@ -338,6 +351,11 @@ def _boot_errors(s: Settings) -> list[str]:
         errors.append(f"APP_ROLE={s.app_role} requires {', '.join(missing)}")
     if s.app_env != "local" and s.jwt_secret is not None and _is_committed_jwt_secret(s.jwt_secret):
         errors.append(f"APP_ENV={s.app_env} refuses a committed or dev-prefixed JWT_SECRET")
+    elif s.app_env != "local" and s.jwt_secret is not None and _is_weak_secret(s.jwt_secret):
+        errors.append(
+            f"APP_ENV={s.app_env} refuses a weak JWT_SECRET "
+            f"(whitespace, or under {SECRET_MIN_LENGTH} characters)"
+        )
     if s.app_env != "local" and s.app_role in ("api", "worker") and s.sentry_dsn is None:
         errors.append(f"APP_ENV={s.app_env} requires SENTRY_DSN for APP_ROLE={s.app_role}")
     # S23 (D9; ENV.md GIT_SHA): a deployed api or worker reports a real Sentry release
@@ -439,6 +457,11 @@ def _admin_errors(s: Settings) -> list[str]:
     ):
         errors.append(
             f"APP_ENV={s.app_env} refuses a committed or dev-prefixed ADMIN_SESSION_SECRET"
+        )
+    elif s.app_env != "local" and s.admin_enabled and _is_weak_secret(s.admin_session_secret):
+        errors.append(
+            f"APP_ENV={s.app_env} refuses a weak ADMIN_SESSION_SECRET "
+            f"(whitespace, or under {SECRET_MIN_LENGTH} characters)"
         )
     if not s.admin_read_only:
         errors.append("ADMIN_READ_ONLY=false is refused in v1")
