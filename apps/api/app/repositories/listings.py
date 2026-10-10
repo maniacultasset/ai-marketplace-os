@@ -530,11 +530,18 @@ class ListingRepository(TenantScopedRepository[Listing]):
                     ProductColourway.deleted_at.is_(None),
                 )
                 .with_only_columns(
-                    ProductColourway.id, ProductColourway.colour_key, ProductColourway.colour_sku
+                    ProductColourway.id,
+                    ProductColourway.colour_key,
+                    ProductColourway.colour_sku,
+                    ProductColourway.attributes,
                 )
             )
         ).all()
-        by_colourway = {r.id: (r.colour_key, r.colour_sku) for r in cw_rows if r.colour_key}
+        by_colourway = {
+            r.id: (r.colour_key, r.colour_sku, _normalized_colour(r.attributes))
+            for r in cw_rows
+            if r.colour_key
+        }
         by_child = {
             r.variant_product_id: by_colourway[r.colourway_id]
             for r in cell_rows
@@ -752,13 +759,29 @@ def _source(row: Any) -> SourceProduct:
     )
 
 
-def _with_colour(child: SourceProduct, colour_key: str, colour_sku: str | None) -> SourceProduct:
+def _normalized_colour(attributes: Any) -> str | None:
+    """The colourway's normalized colour (the CSV's `normalized_color`), lower-cased; None when
+    the seller gave none (the colour key, the seller value lower-cased, is used then)."""
+    fact = attributes.get("color") if isinstance(attributes, Mapping) else None
+    value = fact.get("normalized") if isinstance(fact, Mapping) else None
+    return value.strip().lower() if isinstance(value, str) and value.strip() else None
+
+
+def _with_colour(
+    child: SourceProduct, colour_key: str, colour_sku: str | None, normalized: str | None = None
+) -> SourceProduct:
+    """A child with its colourway. Its colour axis value is the colourway's normalized colour
+    when there is one (spec L2108: the marketplace gets the accepted value, the seller's value
+    stays on the colourway); the colourway identity (`colour_key`) never changes."""
+    variant = dict(child.variant_attributes)
+    if normalized is not None and "color" in variant:
+        variant["color"] = normalized
     return SourceProduct(
         id=child.id,
         sku=child.sku,
         variation_theme=child.variation_theme,
         attributes=child.attributes,
-        variant_attributes=child.variant_attributes,
+        variant_attributes=variant,
         colour_key=colour_key,
         colour_sku=colour_sku,
     )
