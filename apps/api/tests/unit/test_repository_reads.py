@@ -121,3 +121,70 @@ def test_scoped_read_names_every_uncovered_table_sorted() -> None:
     stmt = select(JobRun.id).join(ImportRow, ImportRow.id == JobRun.id)
     with pytest.raises(CrossTenantQueryError, match=r"\['import_rows', 'job_runs'\]"):
         repo._scoped_read(stmt)
+
+
+# ---- _scoped_outer (S13 A3): an outer statement over this instance's scoped inner ----
+
+
+def test_scoped_outer_stamps_a_read_over_its_own_inner() -> None:
+    repo = _repo()
+    inner = repo._select().cte()
+    stamped = repo._scoped_outer(select(inner.c.id), inner)
+    assert stamped.get_execution_options()[SCOPE_OK] is True
+
+
+def test_scoped_outer_refuses_an_inner_of_another_instance() -> None:
+    repo, other = _repo(), _repo()
+    inner = other._select().cte()
+    with pytest.raises(TypeError) as refused:
+        repo._scoped_outer(select(inner.c.id), inner)
+    assert str(refused.value) == "inner statement was not built by this repository's _select()"
+    plain = select(JobRun.id).cte()
+    with pytest.raises(TypeError, match="not built by this repository"):
+        repo._scoped_outer(select(plain.c.id), plain)
+
+
+def test_scoped_outer_refuses_an_inner_reading_another_tenant_table() -> None:
+    repo = _repo()
+    inner = repo._select().join(ImportRow, ImportRow.id == JobRun.id).subquery()
+    with pytest.raises(TypeError) as refused:
+        repo._scoped_outer(select(inner.c.id), inner)
+    assert str(refused.value) == "inner statement reads another tenant table"
+
+
+OUTSIDE = "outer statement reads a tenant table outside the scoped inner"
+
+
+def test_scoped_outer_refuses_a_tenant_table_joined_outside() -> None:
+    repo = _repo()
+    inner = repo._select().cte()
+    stmt = select(inner.c.id).join(ImportRow, ImportRow.id == inner.c.id)
+    with pytest.raises(TypeError) as refused:
+        repo._scoped_outer(stmt, inner)
+    assert str(refused.value) == OUTSIDE
+
+
+def test_scoped_outer_refuses_a_tenant_column_named_outside() -> None:
+    repo = _repo()
+    inner = repo._select().cte()
+    stmt = select(inner.c.id).where(inner.c.id == ImportRow.id)
+    with pytest.raises(TypeError, match=OUTSIDE):
+        repo._scoped_outer(stmt, inner)
+
+
+def test_scoped_outer_refuses_a_tenant_column_only_in_order_by() -> None:
+    """ORDER BY names the column without bringing its table into the walk."""
+    repo = _repo()
+    inner = repo._select().cte()
+    stmt = select(inner.c.id).order_by(ImportRow.id)
+    with pytest.raises(TypeError, match=OUTSIDE):
+        repo._scoped_outer(stmt, inner)
+
+
+def test_scoped_outer_refuses_another_subquery_over_a_tenant_table() -> None:
+    repo = _repo()
+    inner = repo._select().cte()
+    other = select(ImportRow.id).subquery()
+    stmt = select(inner.c.id).join(other, other.c.id == inner.c.id)
+    with pytest.raises(TypeError, match=OUTSIDE):
+        repo._scoped_outer(stmt, inner)
