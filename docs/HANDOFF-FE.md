@@ -31,6 +31,7 @@ The backend serves one versioned REST API under **`/api/v1`**. Its contract is `
 | Concurrency | `PATCH /tenants/me` uses `ETag` / `If-Match`. A stale write is 409, so re-read and retry. |
 | Rate limits | Per tenant and per IP. A 429 carries `Retry-After`. |
 | Request ids | Send `X-Request-ID` if you have one, and the API echoes it. Otherwise it generates one. |
+| CORS | Only the `ALLOWED_ORIGINS` origins get a grant, with no credentials. Every method the API serves (`GET`, `POST`, `PATCH`, `DELETE`) is preflight-allowed. `ETag`, `Retry-After`, `Location` and `X-Request-ID` are exposed, so cross-origin JS can read them. |
 
 ## 4. The v1 screens and their operations
 

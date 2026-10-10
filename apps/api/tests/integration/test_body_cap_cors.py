@@ -78,7 +78,8 @@ def test_cors_allowed_origin(capped: TestClient) -> None:
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == ORIGIN
     assert "access-control-allow-credentials" not in response.headers
-    assert response.headers["access-control-expose-headers"] == "X-Request-ID"
+    exposed = {h.strip() for h in response.headers["access-control-expose-headers"].split(",")}
+    assert exposed == {"ETag", "Location", "Retry-After", "X-Request-ID"}
     second = capped.get("/healthz", headers={"Origin": "http://127.0.0.1:3000"})
     assert second.headers["access-control-allow-origin"] == "http://127.0.0.1:3000"
 
@@ -101,18 +102,71 @@ def test_cors_preflight_methods(capped: TestClient) -> None:
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == ORIGIN
     methods = {m.strip() for m in response.headers["access-control-allow-methods"].split(",")}
-    assert {"GET", "POST", "PATCH"} <= methods
-    assert "DELETE" not in methods
+    assert methods == {"GET", "POST", "PATCH", "DELETE"}
+    assert "PUT" not in methods
     allowed = response.headers["access-control-allow-headers"].lower()
     for header in ("authorization", "content-type", "idempotency-key", "if-match", "x-request-id"):
         assert header in allowed
+
+
+def test_cors_delete_preflight_granted(capped: TestClient) -> None:
+    """AUTH-1 / GAP3-LIVE-E2E-ACCEPTANCE-1: the S16 DELETE route is reachable from the dashboard
+    origin: its preflight (with Authorization) is granted, not refused in the envelope."""
+    response = capped.options(
+        "/api/v1/brand/documents/00000000-0000-0000-0000-000000000001",
+        headers={
+            "Origin": ORIGIN,
+            "Access-Control-Request-Method": "DELETE",
+            "Access-Control-Request-Headers": "Authorization",
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert response.headers["access-control-allow-origin"] == ORIGIN
+    methods = {m.strip() for m in response.headers["access-control-allow-methods"].split(",")}
+    assert "DELETE" in methods
+
+
+def test_cors_allows_every_registry_method() -> None:
+    """Guard: every method the frozen surface serves is preflight-allowed, so a new verb on a
+    route cannot silently be unreachable from a browser on another origin."""
+    from app.api.cors import ALLOWED_METHODS
+    from app.api.v1.surface import OPS
+
+    assert {op.method for op in OPS.values()} <= set(ALLOWED_METHODS)
+
+
+def test_cors_exposes_every_documented_response_header(make_app: Callable[[], FastAPI]) -> None:
+    """Guard (GAP2-CONTRACT-DOCS-CONFORMANCE-1, GAP3-LIVE-E2E-ACCEPTANCE-2): every response header
+    openapi.json documents for clients (ETag for If-Match, Retry-After, Location) is in
+    Access-Control-Expose-Headers, or cross-origin JS reads it as null."""
+    from app.api.cors import EXPOSED_HEADERS
+
+    spec = make_app().openapi()
+    documented = {
+        name
+        for item in spec["paths"].values()
+        for op in item.values()
+        for response in op["responses"].values()
+        for name in response.get("headers", {})
+    }
+    assert documented, "the spec documents response headers"
+    assert {h.lower() for h in documented} <= {h.lower() for h in EXPOSED_HEADERS}
+
+
+def test_cors_etag_readable_cross_origin(capped: TestClient) -> None:
+    """GAP3-LIVE-E2E-ACCEPTANCE-2: a cross-origin answer names ETag in Expose-Headers."""
+    response = capped.get("/healthz", headers={"Origin": ORIGIN})
+    exposed = {
+        h.strip().lower() for h in response.headers["access-control-expose-headers"].split(",")
+    }
+    assert {"etag", "retry-after"} <= exposed
 
 
 @pytest.mark.parametrize(
     "headers",
     [
         {"Origin": EVIL, "Access-Control-Request-Method": "POST"},
-        {"Origin": ORIGIN, "Access-Control-Request-Method": "DELETE"},
+        {"Origin": ORIGIN, "Access-Control-Request-Method": "PUT"},
         {
             "Origin": ORIGIN,
             "Access-Control-Request-Method": "POST",
