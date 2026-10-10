@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Final
 
-from sqlalchemy import func, literal, literal_column, tuple_, update
+from sqlalchemy import func, literal, literal_column, text, tuple_, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
@@ -158,7 +158,9 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
         insert = pg_insert(ListingIssue).values(**values)
         stmt: Any = insert.on_conflict_do_update(
             index_elements=[ListingIssue.listing_id, ListingIssue.dedupe_key],
-            index_where=ListingIssue.status == OPEN,
+            # a literal predicate: a bound one stops Postgres inferring `li_one_open` once psycopg
+            # prepares the statement (from the 11th run on one connection)
+            index_where=text("status = 'open'"),
             set_={
                 "occurrences": ListingIssue.occurrences + 1,
                 "last_seen_at": func.now(),
