@@ -171,6 +171,34 @@ async def test_failure_injection_stub_timeout_job_timeout_no_version(
     assert (row["status"], row["status_reason"]) == ("failed", "generation_failed")
 
 
+async def test_failure_injection_stub_timeout_shipped_policy_job_timeout(
+    gen_world: GenWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """S26 fix round 1: under the shipped policy (300 s job timeout) the stub's model-deadline
+    TimeoutError itself ends `JOB_TIMEOUT` with no version, not `INTERNAL_ERROR`. The stub's
+    wait (LLM_TIMEOUT_SECONDS + 1 s) is made instant, only inside the stub module."""
+    import types
+
+    import mkos_pipeline.graph as graph
+
+    async def instant(_seconds: float) -> None:
+        return None
+
+    monkeypatch.setattr(graph, "asyncio", types.SimpleNamespace(sleep=instant))
+    accepted = await make_generating(gen_world, instructions="stub:timeout")
+    await _run(accepted.job_id)
+    job = gen_world.conn.execute(
+        "SELECT status, error_code, error_report_json FROM job_runs WHERE id = %s",
+        [accepted.job_id],
+    ).fetchone()
+    assert job is not None
+    assert (job[0], job[1]) == ("failed", "JOB_TIMEOUT"), job
+    assert job[2]["error_code"] == "JOB_TIMEOUT"
+    assert _versions(gen_world, accepted.listing_id) == 0
+    row = gen_world.listing(accepted.listing_id)
+    assert (row["status"], row["status_reason"]) == ("failed", "generation_failed")
+
+
 async def test_failure_injection_stub_malformed_internal_error(gen_world: GenWorld) -> None:
     accepted = await make_generating(gen_world, instructions="stub:malformed")
     await _run(accepted.job_id)

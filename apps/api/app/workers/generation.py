@@ -164,6 +164,13 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         result = await run_listing_pipeline(gctx, deps)
     except asyncio.CancelledError:
         raise
+    except TimeoutError:  # a model call passed its deadline (S26 AC 5): JOB_TIMEOUT, no version
+        log.warning("generation.pipeline_timeout", job_run_id=str(job_id))
+        plan = PersistPlan(**plan_base, move=None, rules_calls=deps.rules_calls)
+        raise JobFailed(
+            job_report(ErrorCode.JOB_TIMEOUT, "the model call passed its deadline", ctx=ctx),
+            persist=make_persist(plan),
+        ) from None
     except Exception as exc:  # a port or the pipeline raised: recorded, the reservation kept
         log.warning(
             "generation.pipeline_error", job_run_id=str(job_id), error_class=type(exc).__name__
