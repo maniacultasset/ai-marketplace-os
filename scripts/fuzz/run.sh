@@ -4,7 +4,9 @@
 #   scripts/fuzz/run.sh [--max-examples N] [--seed S]
 #
 # Brings up a fresh stack (scripts/e2e/lib/fresh_stack.sh, profile acceptance) with raised rate
-# limits in the API's process env only (PLAN D6: the committed defaults never change), seeds the
+# limits in the API's process env only (PLAN D6: the committed defaults never change) and Flipkart
+# on, as `make dev` runs it (S22 C2; with the flag off every Flipkart route is a by-design 501,
+# which `not_a_server_error` would count; the flag-off 501 is the acceptance run's leg), seeds the
 # local demo tenants, logs in one user per role over HTTP and runs `schemathesis run` once per
 # token: every check but the two below, every phase (stateful included), the given seed.
 # Excluded (S26 DEVIATIONS): `positive_data_acceptance` (the API's validators are stricter than
@@ -35,6 +37,7 @@ cat >"$limits" <<'LIMITS'
 RATE_LIMIT_PER_TENANT_PER_MIN=100000
 RATE_LIMIT_PER_IP_PER_MIN=100000
 AUTH_LOGIN_RATE_LIMIT_PER_MIN=100000
+FLIPKART_ENABLED=true
 LIMITS
 stack=""
 cleanup() {

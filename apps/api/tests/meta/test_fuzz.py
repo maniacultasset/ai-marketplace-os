@@ -54,6 +54,8 @@ def test_fuzz_script_raised_limits_only_in_process_env(repo_root: Path) -> None:
     ):
         assert f"{key}=100000" in text
         assert f"export {key}" not in text
+    # S26b: Flipkart on in that process env only, as `make dev` runs it (S22 C2)
+    assert "FLIPKART_ENABLED=true" in text and "export FLIPKART_ENABLED" not in text
     example = (repo_root / ".env.example").read_text(encoding="utf-8")
     assert "RATE_LIMIT_PER_TENANT_PER_MIN=120" in example
     assert "RATE_LIMIT_PER_IP_PER_MIN=60" in example

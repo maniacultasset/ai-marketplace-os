@@ -205,7 +205,7 @@ up() {
     echo "FLIPKART_AUTHORIZE_URL=$fake/flipkart/authorize"
     echo "FLIPKART_TOKEN_URL=$fake/flipkart/token"
     echo "AMAZON_SPAPI_ENDPOINT=$fake"
-    if has_setting flipkart_api_base; then echo "FLIPKART_API_BASE=$fake/flipkart"; fi
+    if has_setting flipkart_api_base; then echo "FLIPKART_API_BASE=$fake/flipkart/sellers"; fi  # the fake's FK_BASE, as `make dev`
     if [ "$profile" = e2e ]; then
       local overrides="COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME PG_HOST_PORT=$PG_HOST_PORT API_HOST_PORT=$API_HOST_PORT"
       echo "WORKER_START='mkdir -p $STACK_DIR/e2e; env $overrides DATABASE_URL=$app_dsn ALEMBIC_DATABASE_URL=$migrator_dsn S3_ENDPOINT_URL=$s3 APP_ROLE=worker APP_NAME=marketplace-os-worker OTEL_SERVICE_NAME=marketplace-os-worker nohup uv run --frozen python -m app.workers.main >$STACK_DIR/logs/worker.log 2>&1 & echo \$! >$STACK_DIR/e2e/worker.pid'"
