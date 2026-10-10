@@ -937,7 +937,7 @@ Std tenant. Timestamps are `queued_at`, `started_at?`, `lease_expires_at?` and `
 | attempt / max_attempts | int | Canon | 0 / 3; CHECK `0 <= attempt <= max_attempts`, `max_attempts` 1..3; generation = 1; sync = 3 (transport only), timeout 120 s, lease 180 s |
 | queue_job_id | text? | Canon ADR-0004 | was `arq_job_id`; replaced whenever re-deferred |
 | listing_id / entity_type / entity_id | uuid? / text / uuid | Canon | → listings; required for the 3 listing kinds; vocabulary `listing\|import\|image\|brand_document` |
-| idempotency_key | text? | Canon | `UNIQUE (tenant_id, idempotency_key) WHERE NOT NULL`; derivation `hex(sha256(http_key ':' kind ':' listing_id))`, one key per batch item |
+| idempotency_key | text? | Canon | `UNIQUE (tenant_id, idempotency_key) WHERE NOT NULL`; derivation `hex(sha256(http_key ':' kind ':' listing_id))`, one key per batch item; when the HTTP key is stored, `':' <its idempotency_keys.created_at, ISO-8601 UTC µs>` is appended, so the job key lives as long as the HTTP key and an expired key reused later queues a new job (audit CONCURRENCY-1/2) |
 | payload_json / result_json / error_report_json | jsonb / jsonb? / jsonb? | Canon | ids only, ≤ 64 KiB; error required on failure; timeout = `JOB_TIMEOUT` |
 | correlation_id / request_id / parent_job_id / created_by | uuid / text? / uuid? / uuid? | Canon | parent → self, NO ACTION, [S8] as `(tenant_id, parent_job_id) → job_runs (tenant_id, id)` on the row's own anchor, so a requeue stays in its tenant; `created_by` → m (NULL allowed for system sync jobs); a requeue copies `created_by` |
 | batch_id / error_code | uuid? / text? | Proposed | `(tenant_id, batch_id)` → batches (MATCH SIMPLE; batches outlive jobs); `error_code` copied from the report |

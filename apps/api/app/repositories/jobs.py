@@ -3,7 +3,8 @@ the job spine. Every write names the tenant and, for a running job, fences on th
 `attempt`, so a worker whose lease was reaped can never overwrite the newer attempt's row.
 
 - `enqueue`: INSERT the row and defer its queue entry in the caller's transaction (DW1); a
-  repeated `idempotency_key` returns the existing row and defers nothing.
+  repeated `idempotency_key` returns the existing row and defers nothing. The job key derived
+  from an HTTP key is scoped to that key's current lifetime (`job_idempotency_key`).
 - `claim`: the DATABASE.md:1027 compare-and-set, also requiring a running tenant (PLAN D14).
 - `finish`, `release_retry`, `release_shutdown`: the wrapper's terminal write and its two
   releases, all fenced on `status = 'running' AND attempt = :claimed`.
@@ -17,7 +18,7 @@ import hashlib
 import json
 import uuid
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any, Final
 
 from mkos_schemas.enums import JobKind
@@ -36,15 +37,27 @@ from app.repositories.base import TenantScopedRepository
 from app.workers.policy import POLICIES, lock_for
 
 MAX_PAYLOAD_BYTES: Final = 64 * 1024  # DATABASE.md:941
+_KEY_BEGAN: Final = text(
+    "SELECT created_at FROM idempotency_keys WHERE tenant_id = :t AND key = :k"
+)
 RUNNING_TENANT: Final = ("trial", "active")
 TERMINAL: Final = frozenset({"succeeded", "partial", "failed", "cancelled", "dead_letter"})
 LIVE: Final = ("queued", "running")
 ENTITY_TYPES: Final = frozenset({"listing", "import", "image", "brand_document"})
 
 
-def job_idempotency_key(http_key: str, kind: str, listing_id: uuid.UUID | None) -> str:
-    """DATABASE.md:940: `hex(sha256(http_key ':' kind ':' listing_id))`, one key per batch item."""
+def job_idempotency_key(
+    http_key: str, kind: str, listing_id: uuid.UUID | None, began_at: datetime | None = None
+) -> str:
+    """DATABASE.md:940: `hex(sha256(http_key ':' kind ':' listing_id))`, one key per batch item.
+
+    `began_at` is the `idempotency_keys.created_at` of the HTTP key's current lifetime; when
+    given it is appended (`':' <ISO-8601 UTC, microseconds>`), so the job key lives exactly as
+    long as the HTTP key and an expired key reused later derives a new one (audit
+    CONCURRENCY-1/2: "an expired key counts as new")."""
     raw = f"{http_key}:{kind}:{listing_id or ''}"
+    if began_at is not None:
+        raw += ":" + began_at.astimezone(UTC).isoformat(timespec="microseconds")
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
@@ -230,7 +243,9 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         if _payload_bytes(payload) > MAX_PAYLOAD_BYTES:
             raise ValueError(f"payload exceeds {MAX_PAYLOAD_BYTES} bytes")
         key = (
-            job_idempotency_key(spec.http_key, kind.value, spec.listing_id)
+            job_idempotency_key(
+                spec.http_key, kind.value, spec.listing_id, await self._key_began(spec.http_key)
+            )
             if spec.http_key is not None
             else None
         )
@@ -285,6 +300,13 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         return Enqueued(job, created=True)
 
     # ---- S21 status-sync helpers (CP4) ----
+
+    async def _key_began(self, http_key: str) -> datetime | None:
+        """The start of the HTTP key's current lifetime (`begin()` sets it on a first use and on
+        the reuse of an expired key), or None when the caller stored no key."""
+        began = await self.db.execute(_KEY_BEGAN, {"t": self.tenant_id, "k": http_key})
+        value = began.scalar_one_or_none()
+        return value if isinstance(value, datetime) else None
 
     async def live_for_listing(self, listing_id: uuid.UUID, kind: JobKind) -> JobRun | None:
         """The listing's live (`queued`/`running`) job of `kind`, if any."""
