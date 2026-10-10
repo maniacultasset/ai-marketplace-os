@@ -17,7 +17,7 @@ from mkos_schemas.auth import JWTClaims
 from mkos_schemas.codes import ErrorCode
 
 from app.api.errors import ApiError
-from app.api.rate_limit import enforce_tenant_limit, limit_ip
+from app.api.rate_limit import enforce_refused_principal_limit, enforce_tenant_limit, limit_ip
 from app.core.rbac import PUBLIC, Action, Principal, allows, mark_policy
 from app.core.request_context import bind_tenant
 from app.core.security import InvalidToken, decode
@@ -79,21 +79,31 @@ async def access_claims(
     raise _unauthenticated()
 
 
-async def limit_tenant(claims: Annotated[JWTClaims, Depends(access_claims)]) -> JWTClaims:
-    """120 requests a minute per tenant, on the verified token's `tid` (no probe needed)."""
-    await enforce_tenant_limit(claims.tid)
-    return claims
+async def probed_principal(claims: Annotated[JWTClaims, Depends(access_claims)]) -> Principal:
+    """One membership probe in the token's tenant; the role is the row's. A verified token whose
+    probe fails (a deactivated member, a suspended tenant) is counted in a bucket of its own,
+    `u:<tid>:<sub>` at the tenant limit, never in the tenant's (AUTH-2, TENANCY-2), then 401."""
+    principal = await probe_principal(claims)
+    if principal is None:
+        await enforce_refused_principal_limit(claims.tid, claims.sub)
+        raise _unauthenticated()
+    return principal
+
+
+async def limit_tenant(principal: Annotated[Principal, Depends(probed_principal)]) -> Principal:
+    """120 requests a minute per tenant, counted only for a principal the probe let through, so
+    a refused token can never hold the tenant's active members at 429. The probe's connection
+    is back in the pool before this autocommit increment runs."""
+    await enforce_tenant_limit(principal.tenant_id)
+    return principal
 
 
 async def get_current_principal(
-    claims: Annotated[JWTClaims, Depends(limit_tenant)],
+    principal: Annotated[Principal, Depends(limit_tenant)],
 ) -> Principal:
-    """The verified caller (CODE-PLAN S10 C5): the access token, the tenant limiter, then one
-    membership probe in its tenant; the role is the row's. Every failure is the same 401 UNAUTHENTICATED, and the
+    """The verified caller (CODE-PLAN S10 C5): the access token, one membership probe in its
+    tenant, then the tenant limiter. Every failure is the same 401 UNAUTHENTICATED, and the
     tenant is bound to the request only after the probe passes."""
-    principal = await probe_principal(claims)
-    if principal is None:
-        raise _unauthenticated()
     bind_tenant(principal.tenant_id)
     return principal
 
