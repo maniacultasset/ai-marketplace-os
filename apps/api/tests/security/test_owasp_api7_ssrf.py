@@ -35,8 +35,9 @@ MODULE_CALLS = {"get", "post", "put", "patch", "delete", "request", "stream", "h
 
 
 def _hostile_targets(seen: list[tuple[str, int]]) -> list[tuple[str, int]]:
-    bad = {"169.254.169.254", "::1", "[::1]"}
-    return [t for t in seen if t[0] in bad or t[1] == 1]
+    """A connect to a URL from the data: the metadata IP, or port 1 (every loopback URL in
+    `HOSTILE` names it). The object store (MinIO on localhost, IPv4 or IPv6) is expected."""
+    return [t for t in seen if t[0] == "169.254.169.254" or t[1] == 1]
 
 
 @pytest.mark.parametrize("url", HOSTILE, ids=["loopback", "metadata", "file", "ipv6"])
