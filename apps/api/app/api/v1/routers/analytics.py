@@ -3,17 +3,22 @@
 `GET /analytics` and `GET /analytics/summary` answer the same `AnalyticsSummary` for the caller's
 tenant (from the token, never a parameter): the four metrics, their counts and the marketplace
 breakdown for the inclusive UTC-day range `from`..`to` (both optional; see
-`app.services.analytics.resolve_range`). A bad range is 422 at the parameter at fault; a third
+`app.services.analytics.resolve_range`). Each is an ISO `YYYY-MM-DD` string, as openapi.json
+declares (`format: date`): pydantic's lax date parsing would otherwise read a bare integer as Unix
+seconds (audit VALIDATION-3). A bad range is 422 at the parameter at fault; a third
 concurrent request of the tenant is 429; a read that runs out of its 5 s budget is 500
 `INTERNAL_ERROR` with no driver text."""
 
 from __future__ import annotations
 
+import re
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Any, Final
 
 from fastapi import APIRouter, Depends, Query
 from mkos_schemas.codes import ErrorCode
+from pydantic import BeforeValidator
+from pydantic_core import PydanticCustomError
 
 from app.api.errors import ApiError
 from app.api.v1.deps import get_current_principal
@@ -24,8 +29,20 @@ from app.services import analytics
 
 router = APIRouter()
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
-From = Annotated[date | None, Query(alias="from")]
-To = Annotated[date | None, Query()]
+_ISO_DATE: Final = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def _iso_date_only(value: Any) -> Any:
+    """Refuse a query value that is not `YYYY-MM-DD` before pydantic's lax date parsing runs.
+    The calendar check (month 13, day 32) stays pydantic's."""
+    if isinstance(value, str) and not _ISO_DATE.fullmatch(value):
+        raise PydanticCustomError("mkos_invalid", "Input should be a date in YYYY-MM-DD format.")
+    return value
+
+
+IsoDate = Annotated[date, BeforeValidator(_iso_date_only)]
+From = Annotated[IsoDate | None, Query(alias="from")]
+To = Annotated[IsoDate | None, Query()]
 BUSY_RETRY_AFTER_SECONDS = "5"
 
 

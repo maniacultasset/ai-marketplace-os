@@ -111,6 +111,9 @@ BAD_RANGES: dict[str, tuple[dict[str, str], str]] = {
     "to_min": ({"to": "0001-01-01"}, "to"),
     "to_max": ({"to": "9999-12-31"}, "to"),
     "from_to_max": ({"from": "9999-12-31", "to": "9999-12-31"}, "to"),
+    # VALIDATION-3: a bare integer is not a YYYY-MM-DD date (pydantic read it as Unix seconds)
+    "epoch_pair": ({"from": "0", "to": "86400"}, "from"),
+    "epoch_to": ({"to": "1791590400"}, "to"),
 }
 
 
