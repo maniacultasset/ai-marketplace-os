@@ -70,7 +70,11 @@ class ApproveRequest(StrictModel):
 
 
 class PublishItem(StrictModel):
+    """S21 D4: `listing_version_id`, when given, must be the listing's current version (else the
+    item is 409 `STALE_VERSION`), so a client publishes exactly what it reviewed."""
+
     listing_id: UUID
+    listing_version_id: UUID | None = None
 
 
 class PublishRequest(StrictModel):

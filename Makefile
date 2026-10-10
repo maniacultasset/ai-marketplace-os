@@ -200,13 +200,16 @@ bootstrap-mimic:
 # S15: the local API and the e2e refresh pass talk OAuth to the fake marketplace
 # (`make fake-marketplace`) on this checkout's FAKE_MARKETPLACE_HOST_PORT, with the fake's
 # placeholder SP-API application id. The client ids and secrets are the .env.example placeholders.
+# S21: the SP-API endpoint is the fake too (a loopback host is allowed only at APP_ENV=local), so
+# the e2e worker's publish and status-sync jobs never leave the machine.
 FAKE_MARKETPLACE_URL = http://127.0.0.1:$(FAKE_MARKETPLACE_HOST_PORT)
 FAKE_AMAZON_APP_ID := amzn1.sp.solution.REPLACE_ME
 FAKE_MARKETPLACE_ENV = AMAZON_APP_ID=$(FAKE_AMAZON_APP_ID) \
 	AMAZON_AUTHORIZE_URL=$(FAKE_MARKETPLACE_URL)/amazon/authorize \
 	AMAZON_LWA_TOKEN_URL=$(FAKE_MARKETPLACE_URL)/amazon/token \
 	FLIPKART_AUTHORIZE_URL=$(FAKE_MARKETPLACE_URL)/flipkart/authorize \
-	FLIPKART_TOKEN_URL=$(FAKE_MARKETPLACE_URL)/flipkart/token
+	FLIPKART_TOKEN_URL=$(FAKE_MARKETPLACE_URL)/flipkart/token \
+	AMAZON_SPAPI_ENDPOINT=$(FAKE_MARKETPLACE_URL)
 
 # uvicorn keeps its 127.0.0.1 default: never pass --host here.
 .PHONY: dev

@@ -515,6 +515,15 @@ leg lint-imports-adapter-from-service lint-imports 'only app.adapters and app.wo
   seed_adapter_from_service make lint-imports
 leg lint-imports-mapping-httpx lint-imports 'adapter mapping, endpoint check, error map and registry do no I/O BROKEN' \
   seed_mapping_httpx make lint-imports
+# S21 T19, T24 (AC11, AC13): the status sync reaching a mutating adapter directly, and an
+# implemented publish route that drops one of its marked cases.
+seed_sync_imports_adapter() { append apps/api/app/workers/status_sync.py 'import app.workers.adapters  # noqa: F401'; }
+seed_publish_case_matrix() {
+  cp "$root/.env" .env
+  replace apps/api/tests/integration/test_listings_publish_api.py $'@pytest.mark.endpoint("listings_publish", case="conflict")\n' ''
+}
+leg lint-imports-sync-imports-adapter lint-imports 'the status sync reaches the marketplace only through the reader view BROKEN' \
+  seed_sync_imports_adapter make lint-imports
 
 # S17b T17: the image check child stays pure, the image repository keeps its tenant filter, and
 # the job refuses an image key outside its tenant's prefix before any read.
@@ -563,6 +572,7 @@ if [ "$with_docker" -eq 1 ]; then
   leg api-tests-no-if-match api-tests 'test_patch_stale_409' seed_no_if_match COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-approve-image-gate api-tests 'test_approve_blocked_unchecked_image' seed_no_image_gate COMPOSE_PROJECT_NAME="$self_project" make api-tests
   leg api-tests-dismiss-error-precheck api-tests 'test_issue_dismiss_error_409' seed_dismiss_error_precheck COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-publish-case-matrix api-tests 'listings_publish: missing endpoint cases' seed_publish_case_matrix COMPOSE_PROJECT_NAME="$self_project" make api-tests
   # A throwaway database with 0000, so the seeded revision legs never stamp mos_test. The broken
   # downgrade leaves its revision stamped there, so that leg runs last.
   docker compose exec -T postgres dropdb -U postgres --if-exists --force mos_prove

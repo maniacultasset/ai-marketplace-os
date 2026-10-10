@@ -30,7 +30,7 @@ from app.adapters.amazon import constants as amazon_constants
 from app.adapters.amazon.adapter import AmazonAdapter
 from app.adapters.amazon.client import SpApiClient, failure
 from app.adapters.amazon.endpoint import spapi_endpoint_errors
-from app.adapters.base import AuthExpired, MarketplaceUnavailable
+from app.adapters.base import AuthExpired, MarketplaceUnavailable, RawResponseSink
 from app.adapters.credentials import CredentialUnsealError, get_key_unwrapper, unseal
 from app.adapters.error_map import ErrorMapper
 from app.adapters.oauth.http import make_transport
@@ -115,7 +115,9 @@ async def open_adapter(
     account_id: uuid.UUID,
     *,
     transport: httpx.AsyncBaseTransport | None = None,
+    sink: RawResponseSink | None = None,
 ) -> AmazonAdapter:
+    """`sink` (S21 CP12) keeps every raw marketplace body for the submission ledger."""
     settings = get_settings()
     async with tenant_uow(tenant_id) as uow:
         account = await uow.marketplace_accounts.active_by_id(account_id)
@@ -143,4 +145,6 @@ async def open_adapter(
         limiter=PgOutboundLimiter("amazon", account_id, rates=amazon_constants.RATES),
         transport=transport or make_transport(),
     )
-    return AmazonAdapter(client, ErrorMapper(rows), marketplace_id=settings.amazon_marketplace_id)
+    return AmazonAdapter(
+        client, ErrorMapper(rows), sink, marketplace_id=settings.amazon_marketplace_id
+    )

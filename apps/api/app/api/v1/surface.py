@@ -2,7 +2,8 @@
 
 `OPS` is the frozen list (35 operations at S3, 38 with S10's switch and members, 40 with S15's
 connect confirm and account revoke, 43 with S16's profile update and document list and delete,
-44 with S20's listing preview, 48 with S19's listing history, issues, issue dismiss and tasks; no
+44 with S20's listing preview, 48 with S19's listing history, issues, issue dismiss and tasks,
+50 with S21's listing submissions and refresh-status; no
 dead-letter path,
 which is staff tooling per T82). It
 drives the routers (`route()`), the declared OpenAPI responses (`declared_responses()`), the
@@ -55,6 +56,7 @@ from app.api.v1.schemas.marketplaces import (
 )
 from app.api.v1.schemas.products import ProductOut, ProductPage
 from app.api.v1.schemas.rules import RulePage
+from app.api.v1.schemas.submissions import SubmissionPage
 from app.api.v1.schemas.tasks import TaskPage
 from app.api.v1.schemas.tenants import TenantOut
 from app.core.rbac import PUBLIC, Action, roles_for
@@ -186,7 +188,8 @@ def _error_codes(op: Operation) -> Mapping[int, tuple[ErrorCode, ...]]:
         out[413] = (E.PAYLOAD_TOO_LARGE,)
     out[429] = (E.RATE_LIMITED,)
     for status, codes in extra.items():
-        out.setdefault(status, codes)
+        # an op's own codes join the default ones for a status the cases already declare
+        out[status] = (*out.get(status, ()), *(c for c in codes if c not in out.get(status, ())))
     return MappingProxyType(dict(sorted(out.items())))
 
 
@@ -425,7 +428,21 @@ _ROWS: Final[tuple[Operation, ...]] = (
               path_id="listing_id", has_body=True, idempotency=True, action=A.LISTING_REGENERATE),
     Operation("listings_retry_fields", "POST", "/listings/{listing_id}/publish/retry-fields",
               202, JobAccepted, "listings", "Retry only the fields that failed to publish",
-              "S21", path_id="listing_id", idempotency=True, action=A.LISTING_PUBLISH),
+              "S21", path_id="listing_id", idempotency=True,
+              conflict_code=E.DUPLICATE_SUBMISSION_BLOCKED,
+              extra_codes=MappingProxyType({409: (
+                  E.INVALID_STATUS_TRANSITION, E.LISTING_BUSY, E.SUBMISSION_ATTEMPTS_EXHAUSTED,
+                  E.AUTH_EXPIRED)}),
+              action=A.LISTING_PUBLISH),
+    Operation("listings_submissions", "GET", "/listings/{listing_id}/submissions", 200,
+              SubmissionPage, "listings", "The listing's publish attempts with their per-field "
+              "results, newest first", "S21", path_id="listing_id", query=("limit", "cursor"),
+              action=A.TENANT_READ),
+    Operation("listings_refresh_status", "POST", "/listings/{listing_id}/refresh-status", 202,
+              JobAccepted, "listings", "Check the marketplace status now (at most once per 5 "
+              "minutes per listing)", "S21", path_id="listing_id", idempotency=True,
+              conflict_code=E.INVALID_STATUS_TRANSITION,
+              extra_codes=MappingProxyType({409: (E.LISTING_BUSY,)}), action=A.LISTING_PUBLISH),
     # ---- marketplaces (S15) ----
     Operation("marketplaces_connect", "POST", "/marketplaces/connect", 200, ConnectOut,
               "marketplaces", "Start OAuth; returns the consent URL", "S15", has_body=True, action=A.MARKETPLACE_CONNECT),

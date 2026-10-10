@@ -39,6 +39,11 @@ from app.repositories.product_facts import ProductFactsRepository
 from app.repositories.products import ProductRepository
 from app.repositories.review_decisions import ReviewDecisionRepository
 from app.repositories.rules import RuleRepository
+from app.repositories.submissions import (
+    ListingItemRepository,
+    ListingSubmissionRepository,
+    PublishFieldResultRepository,
+)
 from app.repositories.templates import CategoryTemplateRepository
 from app.repositories.tenants import TenantProfileRepository
 from app.repositories.transactions import unit_of_work
@@ -82,6 +87,10 @@ class TenantUnitOfWork:
     audit_log: AuditLogRepository
     members: MembersRepository
     listing_issues: ListingIssueRepository
+    # S21: the submission ledger, its field verdicts and the marketplace items.
+    submissions: ListingSubmissionRepository
+    field_results: PublishFieldResultRepository
+    listing_items: ListingItemRepository
 
 
 def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
@@ -116,6 +125,9 @@ def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
         audit_log=AuditLogRepository(session, tenant_id),
         members=MembersRepository(session, tenant_id),
         listing_issues=ListingIssueRepository(session, tenant_id),
+        submissions=ListingSubmissionRepository(session, tenant_id),
+        field_results=PublishFieldResultRepository(session, tenant_id),
+        listing_items=ListingItemRepository(session, tenant_id),
     )
 
 

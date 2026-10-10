@@ -37,6 +37,10 @@ confirmed at DW1): `PUT|PATCH|GET /listings/2021-08-01/items/{sellerId}/{sku}?ma
   {mode: expired|denied, times}` (expired -> 401, denied -> 403), `spapi_summary {sku:
   BUYABLE|DISCOVERABLE}`, `spapi_body redirect|oversize|html` (the next SP-API answer, once).
 - `GET /__calls`: every SP-API call (method, path, time, body sha256).
+- S21 (CP15): `spapi_get {sku: buyable|discoverable|inactive|rejected|gone}` sets what a GET of the
+  SKU reads until changed (gone = 404); `POST /__control/reset {"prefix": "<sku prefix>"}` forgets
+  the items, issues, GET states and calls of SKUs with that prefix (an e2e run cleans up after
+  itself without touching another run's SKUs).
 """
 
 from __future__ import annotations
@@ -133,6 +137,7 @@ class FakeState:
     spapi_auth_times: int = 0
     spapi_summary: dict[str, str] = field(default_factory=dict)
     spapi_body: str | None = None
+    spapi_get: dict[str, str] = field(default_factory=dict)
     calls: list[dict[str, Any]] = field(default_factory=list)
     submissions: int = 0
 
@@ -289,6 +294,12 @@ def build_fake(config: FakeConfig | None = None) -> Starlette:
         _spapi_control(state, body)
         return JSONResponse({"ok": True})
 
+    async def reset(request: Request) -> Response:
+        body = await request.json()
+        if not isinstance(body, dict) or not isinstance(body.get("prefix"), str):
+            return _bad("expected {prefix}")
+        return JSONResponse({"reset": reset_prefix(state, body["prefix"])})
+
     async def healthz(request: Request) -> Response:
         return PlainTextResponse("ok")
 
@@ -302,6 +313,7 @@ def build_fake(config: FakeConfig | None = None) -> Starlette:
         routes=[
             Route("/healthz", healthz, methods=["GET"]),
             Route("/__control", control, methods=["POST"]),
+            Route("/__control/reset", reset, methods=["POST"]),
             Route("/__calls", calls, methods=["GET"]),
             Route(SPAPI_ROUTE, spapi, methods=["GET", "PUT", "PATCH"]),
             Route("/{mkt}/authorize", authorize, methods=["GET"]),
@@ -344,6 +356,24 @@ def _spapi_control(state: FakeState, body: dict[str, Any]) -> None:
         state.spapi_summary.update(body["spapi_summary"])
     if body.get("spapi_body") in ("redirect", "oversize", "html"):
         state.spapi_body = body["spapi_body"]
+    gets = body.get("spapi_get")
+    if isinstance(gets, dict):
+        states = ("buyable", "discoverable", "inactive", "rejected", "gone")
+        state.spapi_get.update({k: v for k, v in gets.items() if v in states})
+
+
+def reset_prefix(state: FakeState, prefix: str) -> int:
+    """Forget every SP-API item, issue, GET state and call of SKUs starting with `prefix`."""
+    if not prefix:
+        return 0
+    gone = [key for key in state.spapi_items if key[1].startswith(prefix)]
+    for key in gone:
+        del state.spapi_items[key]
+    for table in (state.spapi_issues, state.spapi_get, state.spapi_summary):
+        for sku in [s for s in table if s.startswith(prefix)]:
+            del table[sku]
+    state.calls = [c for c in state.calls if f"/{prefix}" not in c["path"]]
+    return len(gone)
 
 
 def _errors(code: str, message: str, status: int) -> JSONResponse:
@@ -486,9 +516,23 @@ def _spapi_patch(state: FakeState, key: tuple[str, str], body: dict[str, Any]) -
 
 def _spapi_get(state: FakeState, key: tuple[str, str]) -> Response:
     stored = state.spapi_items.get(key)
-    if stored is None:
+    mode = state.spapi_get.get(key[1])
+    if stored is None or mode == "gone":
         return _errors("NOT_FOUND", "The requested listing was not found.", 404)
     status = state.spapi_summary.get(key[1], "DISCOVERABLE")
+    issues = stored["issues"]
+    if mode == "buyable":
+        status = "BUYABLE"
+    elif mode == "discoverable":
+        status, issues = "DISCOVERABLE", []
+    elif mode == "rejected":
+        status = "DISCOVERABLE"
+        issues = [{"code": "90220", "message": "The listing was rejected.", "severity": "ERROR"}]
+    statuses: list[str] = (
+        []
+        if mode == "inactive"
+        else [status] if status == "DISCOVERABLE" else [status, "DISCOVERABLE"]
+    )
     return JSONResponse(
         {
             "sku": key[1],
@@ -497,11 +541,11 @@ def _spapi_get(state: FakeState, key: tuple[str, str]) -> Response:
                     "marketplaceId": "A21TJRUUN4KGV",
                     "asin": "B0" + hashlib.sha256("/".join(key).encode()).hexdigest()[:8].upper(),
                     "productType": stored["productType"],
-                    "status": [status] if status == "DISCOVERABLE" else [status, "DISCOVERABLE"],
+                    "status": statuses,
                 }
             ],
             "attributes": stored["attributes"],
-            "issues": stored["issues"],
+            "issues": issues,
         }
     )
 

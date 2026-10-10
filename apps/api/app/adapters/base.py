@@ -265,6 +265,14 @@ def fields_by_sku(item: AdapterListing, fields: UpdateFields) -> dict[str, list[
     return out
 
 
+class MarketplaceReader(Protocol):
+    """The one call the status sync may make (DATABASE.md:890; S21 T19): a read, never a write."""
+
+    async def get_listing(
+        self, seller_sku: str, *, listing_id: UUID | None = None
+    ) -> ListingResult: ...
+
+
 class MarketplaceAdapter(ABC):
     """One marketplace. Every listing method returns a `ListingResult`."""
 

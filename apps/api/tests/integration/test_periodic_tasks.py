@@ -36,6 +36,7 @@ def test_periodic_table_literal() -> None:
         "retention_daily": "0 3 * * *",
         "marketplace_token_refresh": "*/5 * * * *",  # S15
         "oauth_states_prune": "30 * * * *",  # S15
+        "schedule_status_sync": "* * * * *",  # S21
     }
 
 

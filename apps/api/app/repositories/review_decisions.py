@@ -80,6 +80,21 @@ class ReviewDecisionRepository(TenantScopedRepository[ReviewDecision]):
             }
         )
 
+    async def approve_digest(self, version_id: uuid.UUID) -> bytes | None:
+        """The `approve` decision's `facts_digest` of a version (S21: the publish pin, C:48)."""
+        stmt = (
+            self._select()
+            .where(
+                ReviewDecision.listing_version_id == version_id,
+                ReviewDecision.decision == "approve",
+            )
+            .with_only_columns(ReviewDecision.facts_digest)
+            .order_by(ReviewDecision.decided_at.desc())
+            .limit(1)
+        )
+        found: bytes | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        return found
+
     async def insert_reject(
         self,
         listing_id: uuid.UUID,

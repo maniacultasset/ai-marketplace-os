@@ -23,10 +23,12 @@ from typing import Any, Final
 from mkos_schemas.enums import JobKind
 from sqlalchemy import exists, func, null, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
+from app.db.integrity import map_db_error, to_conflict
 from app.db.models.ops import JobRun
 from app.db.models.tenancy import Tenant
 from app.db.queue import cancel_on_session, defer_on_session, retire_on_session
@@ -239,7 +241,15 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
                 index_where=JobRun.idempotency_key.is_not(None),
             )
         stmt = insert.returning(JobRun)
-        job = (await self.db.execute(stmt)).scalar_one_or_none()
+        try:
+            job = (await self.db.execute(stmt)).scalar_one_or_none()
+        except IntegrityError as exc:  # S21: ux_job_runs_live → 409 LISTING_BUSY
+            raise to_conflict(exc) from exc
+        except DBAPIError as exc:  # S21: a 0004 guard (the publish gate) → its DomainError
+            mapped = map_db_error(exc)
+            if mapped is not None:
+                raise mapped from exc
+            raise
         if job is None:
             existing = await self.db.execute(self._select().where(JobRun.idempotency_key == key))
             return Enqueued(existing.scalar_one(), created=False)
@@ -253,6 +263,34 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         )
         set_committed_value(job, "queue_job_id", queue_job_id)
         return Enqueued(job, created=True)
+
+    # ---- S21 status-sync helpers (CP4) ----
+
+    async def live_for_listing(self, listing_id: uuid.UUID, kind: JobKind) -> JobRun | None:
+        """The listing's live (`queued`/`running`) job of `kind`, if any."""
+        stmt = self._select().where(
+            JobRun.listing_id == listing_id,
+            JobRun.kind == JobKind(kind).value,
+            JobRun.status.in_(LIVE),
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def user_requested_since(
+        self, listing_id: uuid.UUID, kind: JobKind, seconds: int
+    ) -> bool:
+        """A job of `kind` a member requested (`created_by` set) in the last `seconds`."""
+        stmt = (
+            self._select()
+            .where(
+                JobRun.listing_id == listing_id,
+                JobRun.kind == JobKind(kind).value,
+                JobRun.created_by.is_not(None),
+                JobRun.queued_at > func.now() - timedelta(seconds=seconds),
+            )
+            .with_only_columns(JobRun.id)
+            .limit(1)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
 
     # ---- S16 brand_embed helpers (T9; CP6) ----
 

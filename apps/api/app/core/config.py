@@ -120,6 +120,7 @@ class Settings(BaseSettings):
     storage_backend: Literal["minio", "gcs"] = "minio"
     gcs_bucket_images: str = "marketplace-images"
     gcs_bucket_csv: str = "marketplace-csv"
+    gcs_bucket_submissions: str = "marketplace-submissions"  # S21 D5: snapshots, raw bodies
     s3_endpoint_url: str = "http://localhost:9000"
     s3_access_key: str = "local_only_minio_root_user"
     s3_secret_key: str = Field(default="local_only_minio_root_password_32_chars", repr=False)

@@ -1,8 +1,10 @@
-"""Marketplace publish results (per-field outcomes) and the marketplace preview (what the adapter
-would send, sending nothing)."""
+"""Marketplace publish results (per-field outcomes), the marketplace preview (what the adapter
+would send, sending nothing) and the submission ledger read (S21: one `SubmissionOut` per attempt,
+with its per-item, per-field results; never a storage key, a digest or a raw marketplace body)."""
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Annotated, Literal, get_args
 from urllib.parse import urlparse
 from uuid import UUID
@@ -10,6 +12,7 @@ from uuid import UUID
 from pydantic import Field, JsonValue, field_validator
 
 from .base import SCHEMA_VERSION, NonBlankStr, WireModel
+from .codes import ErrorCode
 from .enums import ItemMarketplaceState, Marketplace, MarketplaceState
 from .errors import ErrorItem, ErrorReport
 from .paths import is_valid_field_path
@@ -108,3 +111,51 @@ class MarketplacePreview(WireModel):
     product_type: Annotated[str | None, Field(default=None, max_length=128)] = None
     items: list[PreviewItem] = Field(default_factory=list)
     report: ErrorReport
+
+
+SubmissionOutcome = Literal[
+    "pending", "accepted", "partially_accepted", "rejected", "error", "live", "superseded"
+]
+SubmissionOperation = Literal["create", "update", "patch"]
+RetryJustification = Literal[
+    "changed_input", "retryable_condition", "marketplace_transition", "human_resolution"
+]
+
+
+class SubmissionItemOut(WireModel):
+    """One marketplace SKU of a submission: its latest state and the field results this attempt
+    recorded for it (empty while the attempt is `pending`)."""
+
+    listing_item_id: UUID
+    seller_sku: Annotated[NonBlankStr, Field(max_length=64)]
+    marketplace_state: ItemMarketplaceState
+    fields: list[FieldResult] = Field(default_factory=list)
+
+
+class SubmissionOut(WireModel):
+    """`GET /api/v1/listings/{listing_id}/submissions`: one publish attempt (at most 3 per
+    approved version). `field_paths` is set only for a `patch` (the failed paths being resent);
+    `error` is the attempt's one ErrorReport. Storage keys, digests and raw bodies stay internal."""
+
+    id: UUID
+    listing_version_id: UUID
+    attempt: Annotated[int, Field(ge=1, le=3)]
+    operation: SubmissionOperation
+    field_paths: list[str] | None = None
+    outcome: SubmissionOutcome
+    error_code: ErrorCode | None = None
+    retry_justification: RetryJustification | None = None
+    requested_by_user_id: UUID
+    items: list[SubmissionItemOut] = Field(default_factory=list)
+    error: ErrorReport | None = None
+    sent_at: datetime | None = None
+    responded_at: datetime | None = None
+    resolved_at: datetime | None = None
+    created_at: datetime
+
+    @field_validator("field_paths")
+    @classmethod
+    def _paths(cls, value: list[str] | None) -> list[str] | None:
+        if value is not None and not all(is_valid_field_path(p) for p in value):
+            raise ValueError("field_paths must be legal field paths")
+        return value

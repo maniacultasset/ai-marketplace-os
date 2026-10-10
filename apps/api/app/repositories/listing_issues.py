@@ -102,6 +102,31 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
+    async def task_ids_for_job(self, job_id: uuid.UUID) -> builtins.list[uuid.UUID]:
+        """The human tasks linked to the issues a job raised (S21: `human_resolution`)."""
+        stmt = (
+            self._select()
+            .where(ListingIssue.job_id == job_id, ListingIssue.human_task_id.is_not(None))
+            .with_only_columns(ListingIssue.human_task_id)
+        )
+        return [row for row in (await self.db.execute(stmt)).scalars() if row is not None]
+
+    async def link_task(self, listing_id: uuid.UUID, job_id: uuid.UUID, task_id: uuid.UUID) -> int:
+        """Link the open issues a job raised on a listing to a human task (S21 CP8)."""
+        self._own_session()
+        criterion = self._tenant_criterion(include_platform=False)
+        stmt = self._scoped_write(
+            update(ListingIssue)
+            .where(
+                criterion,
+                ListingIssue.listing_id == listing_id,
+                ListingIssue.job_id == job_id,
+                ListingIssue.status == OPEN,
+            )
+            .values(human_task_id=task_id)
+        ).returning(ListingIssue.id)
+        return len((await self._run(stmt)).all())
+
     async def upsert_open(self, new: NewIssue) -> tuple[ListingIssue, bool]:
         self._own_session()
         previous = await self.latest_closed(new.listing_id, new.dedupe_key)

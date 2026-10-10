@@ -1869,7 +1869,7 @@ confirmed later by the status sync (§3.6).
   - **Submissions.** Each attempt is a write-ahead `listing_submissions` row; at most 3 per approved version (T19), then the listing is `blocked`. The key includes the attempt and the payload hash.
   - **Publish gate.** The gate checks `approved_version_id = current_version_id` and status `approved`, `failed` (a retry) or `blocked` for a marketplace action (a resume). The Canon only checks `status='approved'`.
   - **Meaning of `published`.** The marketplace accepted the submission. Whether it is live comes from the marketplace state, read by a bounded status-sync job (T18); the dashboard shows "Submitted" until then (T13, §3.6). `partial` is a job status, never a listing status.
-- **Open.** Whether the first field retries run automatically inside the job or on a user's click is not specified. The retry endpoint `POST /api/v1/listings/{id}/publish/retry-fields` is [Proposed] (`BUILD-SEQUENCE.md` S3).
+- **Open.** Whether the first field retries run automatically inside the job or on a user's click is not specified. The retry endpoint `POST /api/v1/listings/{id}/publish/retry-fields` is [Proposed] (`BUILD-SEQUENCE.md` S3). **[S21 D2]** Built on the user's click: `retry-fields` (and a publish of a `failed/publish_partial` listing, which acts as one) resends only the fields whose latest verdict failed, as a `patch`; transport retries stay automatic inside the job.
 
 ## 9. Security and tenant isolation
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import time
 import unicodedata
 from collections.abc import Callable
@@ -197,20 +198,41 @@ WORST_CASES: dict[str, Callable[[int], str]] = {
 }
 
 
+def _chunk_bounded(text: str) -> None:
+    try:
+        drafts = chunk_document(text, "tone_rule", limit=500)
+    except ChunkingError:
+        pass
+    else:
+        assert len(drafts) <= 501
+
+
+def _best_of(
+    run: Callable[[], None], runs: int = 3, clock: Callable[[], float] = time.perf_counter
+) -> float:
+    """Fastest of `runs` timings: a descheduled or GC-paused sample under xdist load never sets it."""
+    samples = []
+    for _ in range(runs):
+        start = clock()
+        run()
+        samples.append(clock() - start)
+    return min(samples)
+
+
+def test_best_of_ignores_one_stalled_sample() -> None:
+    ticks = iter([0.0, 0.9, 1.0, 1.05, 2.0, 2.06])  # samples 0.9 (stalled), 0.05, 0.06
+    calls = []
+    assert _best_of(lambda: calls.append(1), clock=lambda: next(ticks)) == pytest.approx(0.05)
+    assert len(calls) == 3
+
+
 @pytest.mark.parametrize("case", sorted(WORST_CASES))
 def test_chunk_document_worst_case_10mib_bounded(case: str) -> None:
     make = WORST_CASES[case]
     timings = []
     for size in (1 << 20, 10 << 20):
         text = make(size)
-        start = time.perf_counter()
-        try:
-            drafts = chunk_document(text, "tone_rule", limit=500)
-        except ChunkingError:
-            pass
-        else:
-            assert len(drafts) <= 501
-        timings.append(time.perf_counter() - start)
+        timings.append(_best_of(functools.partial(_chunk_bounded, text)))
     small, large = timings
     assert large <= budget(5.0), (case, large)  # machine-scaled (tests/timing.py)
     assert large <= 15 * max(small, 0.01), (case, small, large)

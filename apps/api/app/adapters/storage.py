@@ -14,7 +14,9 @@ Nothing here logs or reprs a credential.
 
 S17b adds the image pipeline's calls: `presign_put` (a create-only signed PUT: the URL can create
 the object but never overwrite it, because `If-None-Match: *` is signed), `head`, `get(...,
-max_bytes=)`, `delete`, `delete_many` and the paged `iter_older_than` (the orphan sweep).
+max_bytes=)`, `delete`, `delete_many` and the paged `iter_older_than` (the orphan sweep). S21
+adds `presign_get` (a V4 signed GET the marketplace adapter hands over as an image URL; computed
+locally, never logged, never stored).
 `get_storage()` refuses the committed `local_only_` MinIO values, blank keys and a non-https
 endpoint outside `APP_ENV=local` (`StorageConfigError`, KNOWN-ISSUES D), whatever the role. The
 boto loggers are pinned to WARNING, so a DEBUG root logger never prints a signed URL.
@@ -184,6 +186,20 @@ class ObjectStorage:
         )
         return url
 
+    async def presign_get(self, bucket: str, key: str, *, expires_s: int) -> str:
+        """A V4 signed GET of exactly this key, valid `expires_s` seconds (S21 T2a: the image URL a
+        publish hands the adapter). No network call. The URL is a bearer credential for the
+        object: callers keep it in memory and never log, store or report it."""
+        if expires_s < 1:
+            raise ValueError("expires_s must be positive")
+        url: str = self._client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": bucket, "Key": key},
+            ExpiresIn=expires_s,
+            HttpMethod="GET",
+        )
+        return url
+
     async def head(self, bucket: str, key: str) -> ObjectHead | None:
         """The object's size, type and last-modified time; None when it does not exist."""
 
@@ -335,3 +351,7 @@ def csv_bucket() -> str:
 
 def images_bucket() -> str:
     return get_settings().gcs_bucket_images
+
+
+def submissions_bucket() -> str:
+    return get_settings().gcs_bucket_submissions

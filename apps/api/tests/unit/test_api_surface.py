@@ -253,6 +253,8 @@ def test_list_ops_are_the_page_models() -> None:
         "listings_history",
         "issues_list",
         "tasks_list",
+        # S21: the submission ledger read
+        "listings_submissions",
     }
 
 

@@ -253,8 +253,9 @@ def test_init_creates_both_buckets_idempotently(compose: dict[str, Any], repo_ro
     example = (repo_root / ".env.example").read_text(encoding="utf-8")
     images = re.search(r"^GCS_BUCKET_IMAGES=(.+)$", example, re.MULTILINE)
     csv = re.search(r"^GCS_BUCKET_CSV=(.+)$", example, re.MULTILINE)
-    assert images is not None and csv is not None
-    assert names == [images.group(1), csv.group(1)]
+    submissions = re.search(r"^GCS_BUCKET_SUBMISSIONS=(.+)$", example, re.MULTILINE)  # S21
+    assert images is not None and csv is not None and submissions is not None
+    assert names == [images.group(1), csv.group(1), submissions.group(1)]
     assert _as_command(service["command"]) == [
         "mb",
         "--ignore-existing",

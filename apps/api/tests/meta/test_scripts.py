@@ -1156,6 +1156,30 @@ def test_prove_gates_s20_legs(repo_root: Path) -> None:
     assert code.index("leg api-tests-preview-case-matrix") > docker
 
 
+# ---- S21 T24 (AC11, AC13): the reader-only sync contract and the publish case matrix ----
+
+S21_LEGS = {
+    "lint-imports-sync-imports-adapter": (
+        "lint-imports",
+        "the status sync reaches the marketplace only through the reader view BROKEN",
+    ),
+    "api-tests-publish-case-matrix": ("api-tests", "listings_publish: missing endpoint cases"),
+}
+
+
+def test_prove_gates_s21_legs(repo_root: Path) -> None:
+    code = _code((repo_root / "scripts" / "ci" / "prove_gates.sh").read_text(encoding="utf-8"))
+    for name, (gate, regex) in S21_LEGS.items():
+        leg = re.search(rf"(?m)^[ \t]*leg {re.escape(name)} {gate} '([^']*)' (\S+)", code)
+        assert leg is not None, name
+        assert leg.group(1) == regex, name
+    assert "apps/api/app/workers/status_sync.py" in code and "import app.workers.adapters" in code
+    assert "test_listings_publish_api.py" in code
+    docker = code.index('if [ "$with_docker" -eq 1 ]; then')
+    assert code.index("leg lint-imports-sync-imports-adapter") < docker
+    assert code.index("leg api-tests-publish-case-matrix") > docker
+
+
 def test_bootstrap_imports_pipeline(repo_root: Path) -> None:
     # S14b T14 (ADR-0013 §4): the image ships the pipeline module the generation worker imports.
     text = (repo_root / "scripts" / "ci" / "bootstrap.sh").read_text(encoding="utf-8")
@@ -2628,3 +2652,134 @@ def test_prove_gates_s19b_legs(repo_root: Path) -> None:
     repo = (repo_root / "apps/api/app/repositories/listing_issues.py").read_text(encoding="utf-8")
     assert 'if issue.status != "open" or issue.severity != "warning":' in issues
     assert "stmt = self._select().where(ListingIssue.status == filters.status)" in repo
+
+
+# ---- S21 T25, T26 (AC15): the publish e2e scripts ----
+
+PUBLISH_E2E = {
+    "scripts/e2e/publish_flow.sh": (
+        "health",
+        "fake_health",
+        "errors_load",
+        "login_acme_owner",
+        "cleanup_live_amazon",
+        "connect_confirm",
+        "login_acme_operator",
+        "login_acme_reviewer",
+        "worker_start",
+        "create_generate_approve",
+        "reviewer_publish_403",
+        "publish_202",
+        "publish_replay_identical",
+        "publish_other_body_409",
+        "poll_published_processing",
+        "fake_set_buyable",
+        "refresh_status_202",
+        "refresh_again_429",
+        "poll_live",
+        "create_generate_approve_2",
+        "fake_fail_two_fields",
+        "publish_2",
+        "poll_failed_partial",
+        "submissions_2_fields_failed",
+        "retry_fields_202",
+        "poll_published_2",
+        "fake_calls_only_two_paths",
+        "no_token_401",
+        "login_bharat_operator",
+        "bharat_publish_item_404",
+        "bharat_submissions_404",
+        "worker_stop",
+        "revoke_account",
+    ),
+    "scripts/e2e/publish_recovery.sh": (
+        "health",
+        "fake_health",
+        "errors_load",
+        "login_acme_owner",
+        "cleanup_live_amazon",
+        "connect_confirm",
+        "login_acme_operator",
+        "login_acme_reviewer",
+        "worker_start",
+        "create_generate_approve",
+        "fake_auth_expired",
+        "publish_202",
+        "poll_blocked_action_required",
+        "publish_blocked_until_reconnect_409",
+        "reconnect",
+        "publish_resume_202",
+        "poll_published",
+        "create_generate_approve_2",
+        "fake_429_always",
+        "publish_until_exhausted",
+        "poll_blocked_attempts_exhausted",
+        "publish_cap_409",
+        "retry_fields_cap_409",
+        "fake_reset",
+        "worker_stop",
+        "revoke_account",
+    ),
+}
+
+
+@pytest.mark.parametrize("script", sorted(PUBLISH_E2E))
+def test_e2e_publish_scripts_steps(repo_root: Path, script: str) -> None:
+    code = _code((repo_root / script).read_text(encoding="utf-8"))
+    assert "set -euo pipefail" in code
+    assert tuple(re.findall(r"(?m)^step (\w+)$", code)) == PUBLISH_E2E[script]
+    logins = re.findall(r"\$\(login (\S+)\)", code)
+    assert len(logins) == len(set(logins)), logins  # one login per seeded email (the limiter)
+    assert not re.search(r":\d{2,5}\b", code)
+    assert "scripts/ci/worktree_env.sh exports .worktree.env" in code
+    assert "FAILED at step $current (HTTP status ${status:-none})" in code
+    assert 'cat "$body"' not in code and "psql" not in code
+    # each script connects its own account (its own seller) and revokes it, so it stands alone
+    assert "connect_confirm" in code and "revoke_account" in code
+    assert "__control/reset" in code
+
+
+@pytest.mark.parametrize("script", sorted(PUBLISH_E2E))
+@pytest.mark.parametrize("url", NON_LOCAL_URLS)
+def test_e2e_publish_scripts_refuse_non_local_url(
+    repo_root: Path, tmp_path: Path, script: str, url: str
+) -> None:
+    env, log = _stub_path(tmp_path)
+    env.update(
+        {
+            "FAKE_URL": "http://127.0.0.1:4999",
+            "WORKER_START": "true",
+            "WORKER_STOP": "true",
+            "ERRORS_LOAD": "true",
+        }
+    )
+    result = subprocess.run(
+        [str(repo_root / script), url],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 2, result.stderr
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""
+
+
+@pytest.mark.parametrize("script", sorted(PUBLISH_E2E))
+def test_e2e_publish_scripts_without_hooks_exit_2(
+    repo_root: Path, tmp_path: Path, script: str
+) -> None:
+    env, log = _stub_path(tmp_path)
+    for name in ("FAKE_URL", "WORKER_START", "WORKER_STOP", "ERRORS_LOAD"):
+        env.pop(name, None)
+    result = subprocess.run(
+        [str(repo_root / script), "http://127.0.0.1:8123"],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 2
+    assert result.stderr.startswith("usage: FAKE_URL=<fake>")
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""

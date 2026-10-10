@@ -29,6 +29,11 @@ queue entry carries only `{"timestamp"}`, never tenant data.
   through `refresh_account` (its own lock and short transactions), one after another. One
   account's failure is logged and the pass goes on.
 - `prune_oauth_states` (hourly, S15): expired OAuth state and pending rows, tenant by tenant.
+- `schedule_status_sync` (every minute, S21 T22; DATABASE.md:770): the due listings through
+  `platform_scope()` (ids only), then per listing in its tenant's `unit_of_work`: re-check under
+  `FOR UPDATE SKIP LOCKED`, enqueue a `listing_status_sync` job (no user) and set `next_sync_at`
+  NULL in the same transaction, so a slow job is never enqueued twice and two workers never
+  enqueue one slot twice. A listing that already has a live sync job is skipped.
 """
 
 from __future__ import annotations
@@ -182,6 +187,50 @@ async def prune_oauth_states() -> int:
     return total
 
 
+SYNC_BATCH: Final = 500
+
+
+async def schedule_status_sync() -> int:
+    """One scheduler pass (module docstring); the count of sync jobs enqueued."""
+    from mkos_schemas.enums import JobKind
+
+    from app.core.errors import ConflictError
+    from app.repositories.jobs import EnqueueSpec
+    from app.repositories.listings import ListingRepository, due_for_sync
+    from app.workers.payloads import StatusSyncPayload, dump
+
+    async with platform_scope() as session:
+        due = await due_for_sync(session, limit=SYNC_BATCH)
+    enqueued = 0
+    for tenant_id, listing_id in due:
+        try:
+            async with unit_of_work(tenant_id) as session:
+                listings = ListingRepository(session, tenant_id)
+                listing = await listings.lock_due_for_sync(listing_id)
+                if listing is None:
+                    continue
+                await JobRunRepository(session, tenant_id).enqueue(
+                    EnqueueSpec(
+                        kind=JobKind.LISTING_STATUS_SYNC,
+                        entity_type="listing",
+                        entity_id=listing_id,
+                        listing_id=listing_id,
+                        created_by=None,
+                        payload=dump(StatusSyncPayload(listing_id=listing_id, reason="scheduled")),
+                    )
+                )
+                await listings.set_columns(listing_id, next_sync_at=None)
+                enqueued += 1
+        except ConflictError:  # a live sync job of the listing already exists
+            log.info("sync.schedule_skipped_live_job", listing_id=str(listing_id))
+        except Exception as exc:  # one listing's failure never blocks another tenant's sync
+            log.exception(
+                "sync.schedule_failed", listing_id=str(listing_id), error_class=type(exc).__name__
+            )
+    log.info("periodic.status_sync_scheduled", due=len(due), enqueued=enqueued)
+    return enqueued
+
+
 QUEUE_SUCCEEDED_HOURS: Final = 7 * 24
 QUEUE_OTHER_HOURS: Final = 90 * 24
 
@@ -325,6 +374,7 @@ PERIODIC: Final[dict[str, tuple[str, Any, bool]]] = {
     "retention_daily": ("0 3 * * *", _retention, True),
     "marketplace_token_refresh": ("*/5 * * * *", _plain(refresh_marketplace_tokens), False),
     "oauth_states_prune": ("30 * * * *", _plain(prune_oauth_states), False),
+    "schedule_status_sync": ("* * * * *", _plain(schedule_status_sync), False),
 }
 
 
