@@ -352,17 +352,30 @@ async def test_flipkart_update_empty_no_call() -> None:
     assert _calls(app) == []
 
 
-async def test_flipkart_update_unknown_sku_created() -> None:
-    """S22b F3: an update of a SKU Flipkart never created answers LISTING_NOT_FOUND; the adapter
-    sends that SKU whole through the create route in the same call, never `ListingNotFound`."""
+async def test_flipkart_update_unknown_sku_not_found() -> None:
+    from app.adapters.base import ListingNotFound
+
     app = build_fake()
-    result = await flipkart_adapter(app).update_listing(
-        fk_item(sku="NOPE"), fields=["content.title"]
+    with pytest.raises(ListingNotFound):
+        await flipkart_adapter(app).update_listing(fk_item(sku="NOPE"), fields=["content.title"])
+
+
+async def test_flipkart_update_not_found_child_created_with_found_sibling() -> None:
+    """S22b F3: in an update naming two children, one Flipkart holds and one it answers
+    LISTING_NOT_FOUND for, the unknown child is sent whole through the create route."""
+    app = build_fake()
+    adapter = flipkart_adapter(app)
+    sent = fk_family(style="FKNF")
+    held, gone = sent.items[0].seller_sku, sent.items[1].seller_sku
+    await adapter.create_listing(sent)
+    app.state.fake.fk_items = {k: v for k, v in app.state.fake.fk_items.items() if k[1] != gone}
+    before = len(_calls(app))
+    result = await adapter.update_listing(
+        sent, fields={held: ["content.title"], gone: ["content.title"]}
     )
-    paths = [_route(c) for c in _calls(app)]
-    assert paths == ["update", "create"]
-    assert result.status == "published" and result.items[0].external_id is not None
-    assert any(k[1] == "NOPE" for k in app.state.fake.fk_items)
+    assert [_route(c) for c in _calls(app)[before:]] == ["update", "create"]
+    assert result.status == "published", result.error
+    assert any(k[1] == gone for k in app.state.fake.fk_items)
 
 
 def _route(call: dict[str, Any]) -> str:
@@ -389,6 +402,7 @@ async def test_flipkart_family_one_child_all_failed_is_partial() -> None:
     assert result.error is not None and result.error.error_code == "API_REJECTED_PARTIAL"
     by_sku = {i.seller_sku: i for i in result.items}
     assert by_sku[bad].marketplace_state == "rejected"
+    assert {f.field: f.status for f in by_sku[bad].fields}["listing"] == "failed"
     for sku, one in by_sku.items():
         if sku != bad:
             assert one.external_id is not None
