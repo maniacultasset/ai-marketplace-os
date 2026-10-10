@@ -2785,6 +2785,125 @@ def test_e2e_publish_scripts_without_hooks_exit_2(
     assert not log.exists() or log.read_text(encoding="utf-8") == ""
 
 
+FLIPKART_PUBLISH_E2E = "scripts/e2e/flipkart_publish.sh"
+FLIPKART_PUBLISH_HOOKS = ("FAKE_URL", "FLAG_OFF_URL", "WORKER_START", "WORKER_STOP", "ERRORS_LOAD")
+FLIPKART_PUBLISH_STEPS = (
+    "health",
+    "fake_health",
+    "off_health",
+    "errors_load",
+    "login_acme_owner",
+    "fake_reset_calls",
+    "worker_start",
+    "create_product",
+    "off_generate_flipkart_202",
+    "off_wait_generated",
+    "off_publish_item_501",
+    "off_status_unchanged",
+    "off_submissions_empty",
+    "off_retry_fields_501",
+    "fake_calls_0",
+    "cleanup_live_flipkart",
+    "connect",
+    "consent",
+    "callback",
+    "confirm",
+    "login_acme_reviewer",
+    "approve_200",
+    "fake_fail_2_fields",
+    "publish_202",
+    "wait_partial",
+    "retry_fields_202",
+    "fake_body_two_attrs",
+    "sync_once",
+    "state_live",
+    "publish_replay_same",
+    "worker_stop",
+    "revoke_200",
+)
+
+
+def _flipkart_publish_hooks() -> dict[str, str]:
+    return {
+        "FAKE_URL": "http://127.0.0.1:4020",
+        "FLAG_OFF_URL": "http://127.0.0.1:8011",
+        "WORKER_START": "true",
+        "WORKER_STOP": "true",
+        "ERRORS_LOAD": "true",
+    }
+
+
+def test_e2e_flipkart_publish_steps(repo_root: Path) -> None:
+    """S22 T23 (AC20): the flag-off half publishes a real Flipkart listing (generated on the
+    flag-off API first) and reads the item 501; the flag-on half approves that same listing."""
+    code = _code((repo_root / FLIPKART_PUBLISH_E2E).read_text(encoding="utf-8"))
+    assert "set -euo pipefail" in code
+    steps = tuple(re.findall(r"(?m)^step (\w+)$", code))
+    assert steps == FLIPKART_PUBLISH_STEPS
+    assert steps.index("off_generate_flipkart_202") < steps.index("off_publish_item_501")
+    assert steps.index("off_wait_generated") < steps.index("off_publish_item_501")
+    assert "off_publish_501" not in steps
+    logins = re.findall(r"\$\(login (\S+)\)", code)
+    assert logins == ["owner@acme.test", "reviewer@acme.test"]
+    assert not re.search(r":\d{2,5}\b", code)
+    assert "scripts/ci/worktree_env.sh exports .worktree.env" in code
+    assert "FAILED at step $current (HTTP status ${status:-none})" in code
+    assert 'cat "$body"' not in code and "psql" not in code
+    bodies = _step_bodies(code)
+    for name in ("off_generate_flipkart_202", "off_publish_item_501", "off_retry_fields_501"):
+        assert "$off_api/" in bodies[name], name
+    assert '"marketplace\\": \\"flipkart\\"' in bodies["off_generate_flipkart_202"]
+    assert 'http_status"] == 501' in bodies["off_publish_item_501"]
+    assert "expect 501" in bodies["off_retry_fields_501"]
+    assert "__calls?marketplace=flipkart" in bodies["fake_calls_0"]
+    assert "$off_api" not in bodies["approve_200"] and "$off_api" not in bodies["publish_202"]
+    assert "/listings/generate" not in "".join(
+        bodies[s] for s in steps[steps.index("connect") :]
+    )  # the flag-on half approves the listing generated while off
+
+
+@pytest.mark.parametrize("url", NON_LOCAL_URLS)
+def test_e2e_flipkart_publish_refuses_non_local_url(
+    repo_root: Path, tmp_path: Path, url: str
+) -> None:
+    env, log = _stub_path(tmp_path)
+    env.update(_flipkart_publish_hooks())
+    for args, extra in (
+        ([url], {}),
+        (["http://127.0.0.1:8123"], {"FLAG_OFF_URL": url}),
+        (["http://127.0.0.1:8123"], {"FAKE_URL": url}),
+    ):
+        result = subprocess.run(
+            [str(repo_root / FLIPKART_PUBLISH_E2E), *args],
+            capture_output=True,
+            text=True,
+            env={**env, **extra},
+            timeout=60,
+            check=False,
+        )
+        assert result.returncode == 2, result.stderr
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""
+
+
+def test_e2e_flipkart_publish_without_hooks_exits_2(repo_root: Path, tmp_path: Path) -> None:
+    env, log = _stub_path(tmp_path)
+    base_env = {k: v for k, v in env.items() if k not in FLIPKART_PUBLISH_HOOKS}
+    for missing in FLIPKART_PUBLISH_HOOKS:
+        hooks = _flipkart_publish_hooks()
+        del hooks[missing]
+        result = subprocess.run(
+            [str(repo_root / FLIPKART_PUBLISH_E2E), "http://127.0.0.1:8123"],
+            capture_output=True,
+            text=True,
+            env={**base_env, **hooks},
+            timeout=60,
+            check=False,
+        )
+        assert result.returncode == 2, missing
+        assert result.stderr.startswith("usage: FAKE_URL=<fake> FLAG_OFF_URL=<flag-off API>")
+    assert not log.exists() or log.read_text(encoding="utf-8") == ""
+
+
 S22_LEGS = {
     "lint-imports-flipkart-adapter-from-service": (
         "lint-imports",
