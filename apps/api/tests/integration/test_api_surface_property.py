@@ -2,7 +2,7 @@
 `/api/v1` surface (Schemathesis), now against PostgreSQL with real bearers.
 
 Every generated request must get a declared status, content type, headers and a body matching the
-declared schema, and never a 500. `not_a_server_error` stays off while 501 stubs exist. One run per
+declared schema, and never a 5xx: `not_a_server_error` is on since S26 (no stub is left). One run per
 role (an owner, operator, reviewer and admin of the seeded `acme`), each with a real access token,
 so the role checks, the probe and the limiters run for real; the counters are emptied before
 every example. Requests go through one httpx client on one event loop held for the whole test,
@@ -42,6 +42,7 @@ BASE_URL: Final = "http://testserver"
 # Ops left out of the run, each with its reason; the list shrinks as later steps land.
 EXCLUDED_OPS: Final[dict[str, str]] = {}
 CHECKS: Final = [
+    not_a_server_error,
     status_code_conformance,
     content_type_conformance,
     response_schema_conformance,
@@ -92,10 +93,18 @@ def surface(
     from app.core.config import get_settings
     from app.db.session import dispose_engine, get_engine, get_sessionmaker
     from app.main import create_app
+    from tests.support.fake_marketplace import build_fake
+
+    from .marketplace_support import CFG, MKT_ENV, install_fake
 
     admin = os.environ["DATABASE_URL"]
     monkeypatch.setenv("ALEMBIC_DATABASE_URL", admin)
     monkeypatch.setenv("DATABASE_URL", as_app_rw(admin))
+    # S26: the marketplaces are configured (on the in-process fake), so connect and callback
+    # answer for real instead of 501 NOT_IMPLEMENTED, which `not_a_server_error` would flag
+    for key, value in MKT_ENV.items():
+        monkeypatch.setenv(key, value)
+    install_fake(monkeypatch, build_fake(CFG))
     monkeypatch.chdir(tmp_path)
     get_settings.cache_clear()
     get_sessionmaker.cache_clear()
@@ -148,8 +157,8 @@ def _property_for(role: str) -> Any:
         )
         kwargs["headers"] = dict(kwargs["headers"])
         response = surface.send(kwargs)
-        case.validate_response(response, checks=CHECKS, excluded_checks=[not_a_server_error])
-        assert response.status_code != 500, response.text
+        case.validate_response(response, checks=CHECKS)
+        assert response.status_code < 500, response.text
 
     test.__name__ = f"test_surface_property_{role}"
     return test
@@ -168,6 +177,12 @@ def test_property_runs_every_role() -> None:
 def test_excluded_ops_are_known() -> None:
     assert set(OPS) >= set(EXCLUDED_OPS)
     assert all(reason.strip() for reason in EXCLUDED_OPS.values())
+
+
+def test_property_excludes_no_op_and_checks_server_errors() -> None:
+    """S26 T15 (AC 4): every op runs, and a 5xx fails the property."""
+    assert EXCLUDED_OPS == {}
+    assert not_a_server_error in CHECKS
 
 
 def test_property_covers_every_op(surface_schema: Any) -> None:

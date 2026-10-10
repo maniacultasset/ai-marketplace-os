@@ -193,7 +193,13 @@ def test_tenant_isolation_migrates_then_runs_as_app_rw(repo_root: Path) -> None:
         "JWT_SECRET=$(CI_JWT_SECRET)",
     ):
         assert part in run
-    assert '-m "not tenant_isolation and not cloudsql_mimic"' in _target(makefile, "api-tests")
+    assert (
+        "\nAPI_TEST_MARKERS := not tenant_isolation and not cloudsql_mimic and not drill\n"
+        in makefile
+    )
+    assert '-m "$(API_TEST_MARKERS)"' in makefile
+    for target in ("api-tests", "api-tests-integration"):
+        assert "$(API_TEST_PYTEST)" in _target(makefile, target), target
 
 
 def test_no_sentinel_left(repo_root: Path) -> None:
@@ -371,6 +377,35 @@ def test_make_dev_points_marketplace_urls_at_fake(repo_root: Path) -> None:
     assert "AMAZON_SPAPI_ENDPOINT=$(FAKE_MARKETPLACE_URL)" in joined
     dev = _target(makefile, "dev")
     assert "$(FAKE_MARKETPLACE_ENV) uv run --frozen uvicorn app.main:app" in dev
+
+
+# ---- S26 (KNOWN-ISSUES §E): api-tests as two required jobs over disjoint shards ----
+
+
+def test_api_tests_runs_shard_one_and_integration_shard_two(repo_root: Path) -> None:
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    one = _target(makefile, "api-tests")
+    two = _target(makefile, "api-tests-integration")
+    assert "API_TEST_SHARD=$(API_TESTS_SHARD) $(API_TEST_PYTEST)" in one
+    assert "API_TEST_SHARD=$(API_TESTS_INTEGRATION_SHARD) $(API_TEST_PYTEST)" in two
+    assert "\nAPI_TESTS_SHARD ?= 1\n" in makefile
+    assert "\nAPI_TESTS_INTEGRATION_SHARD ?= 2\n" in makefile
+    # the migration round trip and the rules-engine branch gate run once, in api-tests
+    assert "downgrade base" in one and "downgrade base" not in two
+    assert "branch_coverage.py" in one and "branch_coverage.py" not in two
+
+
+def test_api_tests_integration_migrates_then_runs_pytest_with_coverage(repo_root: Path) -> None:
+    lines = _dry_run(repo_root, "api-tests-integration")
+    alembic = "alembic -c apps/api/alembic.ini"
+    at = _first(lines, f"{alembic} upgrade head")
+    assert re.search(r"ALEMBIC_DATABASE_URL=\S+/mos_test\b", lines[at]), lines[at]
+    at = _first(lines, "dictionary sync", at + 1)
+    at = _first(lines, "API_TEST_SHARD=2", at + 1)
+    joined = " ".join(lines[at:])
+    assert re.search(r" -n \S+ --maxprocesses=4 --dist loadgroup ", joined), joined
+    assert "--cov=app" in joined and "--cov-fail-under=70" in joined
+    assert "not tenant_isolation and not cloudsql_mimic and not drill" in joined
 
 
 def test_make_dev_flipkart_on_local_only(repo_root: Path) -> None:

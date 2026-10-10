@@ -271,16 +271,21 @@ async def _api_error(request: Request, exc: Exception) -> JSONResponse:
 
 
 def _allowed_methods(request: Request) -> str | None:
-    """Every method any route serves at this path. Starlette's own `Allow` names only the first
-    route whose path matched, so `DELETE /products` would advertise POST but not GET."""
+    """Every method the resource at this path serves. Starlette's own `Allow` names only the
+    first route whose path matched, so `DELETE /products` would advertise POST but not GET.
+    Only the most specific matching routes count (the fewest path parameters): at
+    `/listings/approve` that is the POST route, not `GET /listings/{listing_id}` (S26 fuzz)."""
     path = request.scope.get("path", "")
-    methods: set[str] = set()
+    by_params: dict[int, set[str]] = {}
     for candidate in iter_route_contexts(getattr(request.app, "routes", ())):
         regex = getattr(candidate, "path_regex", None)
         served = candidate.methods
         if regex is not None and served and regex.match(path):
-            methods |= served
-    return ", ".join(sorted(methods)) if methods else None
+            params = str(getattr(candidate, "path", "")).count("{")
+            by_params.setdefault(params, set()).update(served)
+    if not by_params:
+        return None
+    return ", ".join(sorted(by_params[min(by_params)]))
 
 
 async def _http_exception(request: Request, exc: Exception) -> JSONResponse:
@@ -294,8 +299,29 @@ async def _http_exception(request: Request, exc: Exception) -> JSONResponse:
     return error_response_for_scope(request.scope, exc.status_code, headers=headers)
 
 
+def _shadowed_static_allow(request: Request) -> str | None:
+    """The methods of a static path (no parameters) that matches this request but does not
+    serve its method, or None. `GET /listings/approve` otherwise reaches `GET
+    /listings/{listing_id}` and fails its UUID check with a 422; the resource is the POST-only
+    `/listings/approve`, so it is a 405 (S26 fix round 1, Schemathesis `unsupported_method`)."""
+    path = request.scope.get("path", "")
+    served: set[str] = set()
+    for candidate in iter_route_contexts(getattr(request.app, "routes", ())):
+        regex = getattr(candidate, "path_regex", None)
+        methods = candidate.methods
+        route_path = str(getattr(candidate, "path", ""))
+        if regex is not None and methods and "{" not in route_path and regex.match(path):
+            served.update(methods)
+    if not served or request.method in served:
+        return None
+    return ", ".join(sorted(served))
+
+
 async def _validation_error(request: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, RequestValidationError)  # noqa: S101
+    allowed = _shadowed_static_allow(request)
+    if allowed is not None:
+        return error_response_for_scope(request.scope, 405, headers={"Allow": allowed})
     return error_response_for_scope(
         request.scope, 422, ErrorCode.VALIDATION_FAILED, details=validation_details(exc.errors())
     )

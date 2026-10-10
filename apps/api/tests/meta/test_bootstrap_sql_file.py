@@ -101,7 +101,12 @@ def test_mimic_suite_is_marked_and_split(repo_root: Path) -> None:
     makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
     api_tests = re.search(r"^api-tests:\n((?:\t.+\n)+)", makefile, re.MULTILINE)
     assert api_tests is not None
-    assert '-m "not tenant_isolation and not cloudsql_mimic"' in api_tests.group(1)
+    # S26: both api-tests shards share one marker expression (API_TEST_MARKERS)
+    assert "$(API_TEST_PYTEST)" in api_tests.group(1)
+    assert (
+        "\nAPI_TEST_MARKERS := not tenant_isolation and not cloudsql_mimic and not drill\n"
+        in makefile
+    )
     mimic = re.search(r"^bootstrap-mimic:\n((?:\t.+\n)+)", makefile, re.MULTILINE)
     assert mimic is not None
     assert mimic.group(1).strip() == (

@@ -44,6 +44,18 @@ POLICIES: Final[Mapping[JobKind, JobPolicy]] = MappingProxyType(
 )
 
 
+# S17b: image_compliance jobs run one at a time (procrastinate queueing lock). S26: every defer
+# (enqueue, the lease reaper's requeue, the orphan re-defer, the staff requeue) derives the lock
+# from the kind here, so a re-deferred job never runs unlocked beside another one.
+IMAGE_JOB_LOCK: Final = "image_compliance"
+_LOCKS: Final[Mapping[JobKind, str]] = MappingProxyType({JobKind.IMAGE_COMPLIANCE: IMAGE_JOB_LOCK})
+
+
+def lock_for(kind: JobKind | str) -> str | None:
+    """The procrastinate lock every queue entry of `kind` carries, or None (unserialised)."""
+    return _LOCKS.get(JobKind(kind))
+
+
 def lease_s(policy: JobPolicy) -> int:
     """The lease a claim takes: the body timeout plus the grace (DATABASE.md:944)."""
     return policy.timeout_s + LEASE_GRACE_S

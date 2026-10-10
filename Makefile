@@ -65,7 +65,7 @@ endif
 
 .PHONY: help
 help:
-	@echo "make dev | worker | hooks | test-unit | bootstrap-db | test-db | mock | mock-smoke | seed | e2e | <check-id>"
+	@echo "make dev | worker | hooks | test-unit | bootstrap-db | test-db | mock | mock-smoke | seed | e2e | fuzz | <check-id>"
 
 .PHONY: test-unit
 test-unit:
@@ -163,6 +163,20 @@ ALEMBIC := uv run --frozen alembic -c apps/api/alembic.ini
 MIGRATE_ENV = APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) ALEMBIC_DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET)
 
 # api-tests keeps `not tenant_isolation`: that suite needs app_rw on a migrated mos_iso (S9 D8).
+# S26 (KNOWN-ISSUES §E): the suite runs as two required jobs over disjoint shards
+# (tests/support/shard.py): `api-tests` is shard 1 (the migration round trip, the unit, meta and
+# package suites, a share of the database suites and the rules-engine branch gate) and
+# `api-tests-integration` is shard 2 (the rest of the database suites). Each enforces
+# COV_FAIL_UNDER on its own shard. `make api-tests api-tests-integration` is the full local run;
+# `make api-tests API_TESTS_SHARD=` (empty) runs every test in one pass (scripts/ci/prove_gates.sh).
+API_TESTS_SHARD ?= 1
+API_TESTS_INTEGRATION_SHARD ?= 2
+API_TEST_MARKERS := not tenant_isolation and not cloudsql_mimic and not drill
+API_TEST_PYTEST = APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) S3_ENDPOINT_URL=$(TEST_S3_ENDPOINT_URL) \
+	  uv run --frozen pytest -q -m "$(API_TEST_MARKERS)" \
+	  -n $(API_TEST_WORKERS) --maxprocesses=4 --dist loadgroup --cov=app --cov-report=term-missing \
+	  --cov-fail-under=$(COV_FAIL_UNDER)
+
 .PHONY: api-tests
 api-tests:
 	$(PG_PORT_GUARD)
@@ -174,13 +188,18 @@ api-tests:
 	  $(MIGRATE_ENV) $(ALEMBIC) upgrade head --sql >"$$sql"; \
 	  uv run --frozen python scripts/ci/squawk_report.py "$$sql"
 	$(MIGRATE_ENV) uv run --frozen python -m app.cli dictionary sync
-	APP_ENV=local DATABASE_URL=$(TEST_DATABASE_URL) JWT_SECRET=$(CI_JWT_SECRET) S3_ENDPOINT_URL=$(TEST_S3_ENDPOINT_URL) \
-	  uv run --frozen pytest -q -m "not tenant_isolation and not cloudsql_mimic" \
-	  -n $(API_TEST_WORKERS) --maxprocesses=4 --dist loadgroup --cov=app --cov-report=term-missing \
-	  --cov-fail-under=$(COV_FAIL_UNDER)
+	API_TEST_SHARD=$(API_TESTS_SHARD) $(API_TEST_PYTEST)
 	cov="$$(mktemp)"; trap 'rm -f "$$cov"' EXIT; \
 	  uv run --frozen coverage json -q --include='*/app/services/rules_engine/*' -o "$$cov" && \
 	  uv run --frozen python scripts/ci/branch_coverage.py "$$cov" --min 90 --label rules_engine
+
+# The second api-tests shard (S26): mos_test at head with the dictionary synced, then shard 2.
+.PHONY: api-tests-integration
+api-tests-integration:
+	$(PG_PORT_GUARD)
+	$(MIGRATE_ENV) $(ALEMBIC) upgrade head
+	$(MIGRATE_ENV) uv run --frozen python -m app.cli dictionary sync
+	API_TEST_SHARD=$(API_TESTS_INTEGRATION_SHARD) $(API_TEST_PYTEST)
 
 # Mutation run over the Rules Engine (ADR-0010 §2): report-only, not a required check (S14a T16).
 .PHONY: mutation-rules
@@ -321,6 +340,13 @@ e2e:
 	  $(RESET_LIMITS) "$$base" || exit $$?; \
 	  "$$script" "$$base" || exit $$?; \
 	done
+
+# Live Schemathesis over the served OpenAPI on a fresh stack (S26 T15): every check and phase,
+# one pass per role, raised limits in that stack's API process only. Not a required check.
+FUZZ_MAX_EXAMPLES ?= 50
+.PHONY: fuzz
+fuzz:
+	scripts/fuzz/run.sh --max-examples $(FUZZ_MAX_EXAMPLES) $(if $(FUZZ_SEED),--seed $(FUZZ_SEED))
 
 # ONBOARDING.md on a clean clone of this branch (S14b T25): its own compose project and free ports,
 # every documented command, then the clone, its stack and its processes removed. Not a CI check.

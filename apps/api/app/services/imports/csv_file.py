@@ -87,6 +87,12 @@ def _records(text: str) -> Iterator[list[str]]:
         raise ImportFileError(file_report("the file is not well-formed CSV")) from None
 
 
+def _blank(record: list[str]) -> bool:
+    """An empty line, or a line of only separators and spaces (`,,,`): skipped, not a row
+    (KNOWN-ISSUES §E, S13b)."""
+    return not any(cell.strip() for cell in record)
+
+
 def parse_upload(data: bytes) -> ParsedFile:
     if not isinstance(data, bytes):
         raise TypeError("data must be bytes")
@@ -96,7 +102,7 @@ def parse_upload(data: bytes) -> ParsedFile:
         raise ImportFileError(file_report("the file has no header row", "file.header"))
     rows = 0
     for record in records:
-        if not record:
+        if _blank(record):
             continue
         rows += 1
         if rows > MAX_IMPORT_ROWS:
@@ -121,7 +127,7 @@ def iter_rows(data: bytes, start_after: int = 0) -> Iterator[CsvRow]:
         return
     names = [normalize_header(h) for h in header]
     for index, record in enumerate(records, start=2):
-        if not record or index <= start_after:
+        if _blank(record) or index <= start_after:
             continue
         if len(record) > len(names):
             yield CsvRow(

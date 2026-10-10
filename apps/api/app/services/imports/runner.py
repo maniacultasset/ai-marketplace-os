@@ -295,7 +295,10 @@ async def _load(ctx: JobContext) -> Loaded:
         rows = ImportRowRepository(session, ctx.tenant_id)
         if not ctx.payload.get("retry"):
             return Loaded(imp, await rows.finished_row_numbers(imp.id))
-        failed = await rows.failed_rows(imp.id)
+        # A row the parser refused (more cells than the header, an over-long cell) was stored
+        # with no cells (`_prepare`): a retry cannot fix it without a new file, so it keeps its
+        # stored error report and is not re-run (KNOWN-ISSUES §E, S26 fix round 1).
+        failed = [r for r in await rows.failed_rows(imp.id) if r.raw_row]
         keys = {k for r in failed for k in (r.sku, r.parent_sku) if k}
         family = await rows.imported_family_rows(imp.id, keys)
         retry = [

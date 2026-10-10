@@ -333,3 +333,55 @@ async def test_stub_scenario_warnings_generated() -> None:
 async def test_stub_byte_identical_across_runs_warnings() -> None:
     ctx = _ctx(user_instructions="stub:warnings")
     assert (await _run(ctx)).model_dump_json() == (await _run(ctx)).model_dump_json()
+
+
+# ---- S26 T9 (AC 2 API10, AC 5): the failure-injection scenarios ----
+
+
+async def test_stub_timeout_sleeps_past_ctx_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    import asyncio
+
+    slept: list[float] = []
+
+    async def fake_sleep(seconds: float) -> None:
+        slept.append(seconds)
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+    deps = FakeDeps()
+    with pytest.raises(TimeoutError):
+        await run_listing_pipeline(_ctx(user_instructions="stub:timeout"), deps)
+    credentials = ModelCredentials(
+        provider="openai", api_key="local_only_model_key_unset", model="m"
+    )
+    assert slept == [credentials.timeout_seconds + 1]
+    # it loaded the context and the brand chunks, then stopped before any validation
+    assert {"get_model_credentials", "retrieve_brand_chunks"} <= deps.ports()
+    assert "validate_rules" not in deps.ports()
+    assert scenario(_ctx(user_instructions="stub:timeout")) == "timeout"
+
+
+async def test_stub_malformed_fails_strict_validation() -> None:
+    from pydantic import ValidationError
+
+    result = await run_listing_pipeline(_ctx(user_instructions="stub:malformed"), FakeDeps())
+    assert result.attempts_used == 7
+    with pytest.raises(ValidationError, match="attempts_used"):
+        GenerationResult.model_validate_json(result.model_dump_json())
+
+
+def test_stub_extra_key_is_dropped_by_the_wire_model() -> None:
+    """An extra key is not malformed: the seam models are `extra="ignore"` and drop it, so no
+    `stub:extra_key` scenario is needed (the result cannot carry the key at all)."""
+    data = json.loads((FIXTURES / "GenerationResult.json").read_text(encoding="utf-8"))
+    data["unexpected"] = 1
+    if isinstance(data.get("listing"), dict):
+        data["listing"]["unexpected"] = 1
+    result = GenerationResult.model_validate(data)
+    assert "unexpected" not in result.model_dump_json()
+
+
+@pytest.mark.parametrize("text", ["stub:nope", "stub:", "Stub:timeout", " please stub:timeout"])
+async def test_stub_unknown_scenario_still_ok(text: str) -> None:
+    result = await run_listing_pipeline(_ctx(user_instructions=text), FakeDeps())
+    assert result.terminal_state == "generated"
+    GenerationResult.model_validate_json(result.model_dump_json())

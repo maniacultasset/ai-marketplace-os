@@ -516,6 +516,26 @@ seed_no_if_match() {
   replace apps/api/app/services/listing_edit.py \
     '    if if_match != listing.current_version_id:' '    if False:'
 }
+# S26 T16: the security and failure-injection suites go red when their guard is removed.
+seed_no_tenant_filter() {
+  cp "$root/.env" .env
+  replace apps/api/app/repositories/products.py \
+    '        stmt = self._select().where(Product.id == id, Product.deleted_at.is_(None))' \
+    '        stmt = __import__("sqlalchemy").select(Product).where(Product.id == id, Product.deleted_at.is_(None))'
+}
+seed_extra_fields_ignored() {
+  cp "$root/.env" .env
+  replace apps/api/app/api/v1/schemas/products.py 'class ProductCreate(StrictModel):' \
+    $'class ProductCreate(StrictModel):\n    model_config = StrictModel.model_config | {"extra": "ignore"}'
+}
+seed_cors_wildcard() {
+  cp "$root/.env" .env
+  replace apps/api/app/api/cors.py '            allow_origins=parse_origins(allowed_origins),' '            allow_origins=["*"],'
+}
+seed_no_read_before_retry() {
+  cp "$root/.env" .env
+  replace apps/api/app/workers/publish.py $'            return False\n    return True' $'            return False\n    return False'
+}
 seed_no_image_gate() {
   cp "$root/.env" .env
   replace apps/api/app/services/review.py '    _image_gate(ctx, listing, version)' '    pass'
@@ -580,46 +600,51 @@ leg lint-imports-budget-not-allowlisted lint-imports ': R5 ' seed_budget_not_all
 
 if [ "$with_docker" -eq 1 ]; then
   self_project="$(docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"
-  leg api-tests-failing-test api-tests 'test_seeded' seed_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-schema-test api-tests 'test_seeded' seed_schema_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-case-matrix api-tests 'tenants_me: missing endpoint cases' seed_case_matrix COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-no-log-redaction api-tests 'test_redaction_logs' seed_no_log_redaction COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-no-request-id-default api-tests 'test_request_id_stamped_on_rows|test_every_request_id_column_stamped' seed_no_request_id_default COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-presence-only-auth api-tests 'tenants_me: presence-only bearer_required' seed_presence_only_auth COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-route-without-role api-tests 'test_every_route_declares_role' seed_route_without_role COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-limiter-off api-tests 'test_rate_limit_sixth_login_429' seed_limiter_off COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-cas-without-status api-tests 'test_claim_cas_drops_duplicate' seed_cas_without_status COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-traceparent-no-default api-tests 'test_job_traceparent_stamped_inside_span' seed_traceparent_no_default COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-db-span-no-recording-check api-tests 'test_db_spans_none_without_recording_parent' seed_db_span_no_recording_check COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-row-model-nan api-tests 'test_row_model_nan_infinity_row_error' seed_row_model_nan COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-failing-test api-tests 'test_seeded' seed_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-schema-test api-tests 'test_seeded' seed_schema_failing_test COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-case-matrix api-tests 'tenants_me: missing endpoint cases' seed_case_matrix COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-no-log-redaction api-tests 'test_redaction_logs' seed_no_log_redaction COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-no-request-id-default api-tests 'test_request_id_stamped_on_rows|test_every_request_id_column_stamped' seed_no_request_id_default COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-presence-only-auth api-tests 'tenants_me: presence-only bearer_required' seed_presence_only_auth COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-route-without-role api-tests 'test_every_route_declares_role' seed_route_without_role COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-limiter-off api-tests 'test_rate_limit_sixth_login_429' seed_limiter_off COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-cas-without-status api-tests 'test_claim_cas_drops_duplicate' seed_cas_without_status COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-traceparent-no-default api-tests 'test_job_traceparent_stamped_inside_span' seed_traceparent_no_default COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-db-span-no-recording-check api-tests 'test_db_spans_none_without_recording_parent' seed_db_span_no_recording_check COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-row-model-nan api-tests 'test_row_model_nan_infinity_row_error' seed_row_model_nan COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
   leg contracts-response-field-removed contracts 'response-required-property-removed' seed_response_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
   leg contracts-response-optional-property-removed contracts 'response-optional-property-removed' seed_optional_field_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
   leg contracts-response-non-success-status-removed contracts 'response-non-success-status-removed' seed_error_status_removed CONTRACTS_BASE_REF="$base" sh -c 'make -C packages/schemas openapi && make contracts'
-  leg api-tests-admin-prod-guard-removed api-tests 'test_admin_killswitch_enabled_exits' seed_admin_prod_guard_removed COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-engine-impure api-tests 'test_rules_engine_import_allowlist' seed_engine_impure COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-engine-coverage api-tests 'rules_engine branch coverage' seed_engine_coverage COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-revoke-no-shred api-tests 'ck_ma_revoked_shredded|test_revoke_crypto_shreds' seed_revoke_no_shred COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-preview-case-matrix api-tests 'listings_preview: missing endpoint cases' seed_preview_case_matrix COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-no-api-maker-checker api-tests 'test_api_maker_checker_refuses_before_sql' seed_no_api_maker_checker COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-no-if-match api-tests 'test_patch_stale_409' seed_no_if_match COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-approve-image-gate api-tests 'test_approve_blocked_unchecked_image' seed_no_image_gate COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-dismiss-error-precheck api-tests 'test_issue_dismiss_error_409' seed_dismiss_error_precheck COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-publish-case-matrix api-tests 'listings_publish: missing endpoint cases' seed_publish_case_matrix COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-admin-prod-guard-removed api-tests 'test_admin_killswitch_enabled_exits' seed_admin_prod_guard_removed COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-engine-impure api-tests 'test_rules_engine_import_allowlist' seed_engine_impure COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-engine-coverage api-tests 'rules_engine branch coverage' seed_engine_coverage COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-revoke-no-shred api-tests 'ck_ma_revoked_shredded|test_revoke_crypto_shreds' seed_revoke_no_shred COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-preview-case-matrix api-tests 'listings_preview: missing endpoint cases' seed_preview_case_matrix COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-no-api-maker-checker api-tests 'test_api_maker_checker_refuses_before_sql' seed_no_api_maker_checker COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-no-if-match api-tests 'test_patch_stale_409' seed_no_if_match COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-approve-image-gate api-tests 'test_approve_blocked_unchecked_image' seed_no_image_gate COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-dismiss-error-precheck api-tests 'test_issue_dismiss_error_409' seed_dismiss_error_precheck COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-publish-case-matrix api-tests 'listings_publish: missing endpoint cases' seed_publish_case_matrix COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-security-tenant-filter api-tests 'test_api1_foreign_id_404\[products_get\]' seed_no_tenant_filter COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-security-extra-fields api-tests 'test_api3_unknown_fields_422\[products_create\]' seed_extra_fields_ignored COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-security-cors-wildcard api-tests 'test_api8_disallowed_origin_no_acao' seed_cors_wildcard COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-failure-write-counter api-tests 'test_failure_injection_drop_after_write_pending_read_before_retry' seed_no_read_before_retry COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-security-maker-checker-api api-tests 'test_api6_generator_approve_403_maker_checker' seed_no_api_maker_checker COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
   # A throwaway database with 0000, so the seeded revision legs never stamp mos_test. The broken
   # downgrade leaves its revision stamped there, so that leg runs last.
   docker compose exec -T postgres dropdb -U postgres --if-exists --force mos_prove
   docker compose exec -T postgres createdb -U postgres mos_prove
   docker compose exec -T postgres psql -U postgres -v ON_ERROR_STOP=1 -q -d mos_prove -f - <scripts/db/0000_bootstrap.sql
-  leg api-tests-alembic-drift api-tests 'New upgrade operations detected' seed_alembic_drift COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests
-  leg api-tests-squawk-missing api-tests 'squawk did not check the SQL' seed_squawk_missing COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests
-  leg api-tests-roundtrip-broken api-tests 'seeded downgrade failure' seed_roundtrip_broken COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests
+  leg api-tests-alembic-drift api-tests 'New upgrade operations detected' seed_alembic_drift COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests API_TESTS_SHARD=
+  leg api-tests-squawk-missing api-tests 'squawk did not check the SQL' seed_squawk_missing COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests API_TESTS_SHARD=
+  leg api-tests-roundtrip-broken api-tests 'seeded downgrade failure' seed_roundtrip_broken COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests API_TESTS_SHARD=
   docker compose exec -T postgres dropdb -U postgres --force mos_prove
   fresh_prove_db
-  leg api-tests-lv-guard-dropped api-tests 'test_db_maker_checker_generator' seed_lv_guard_dropped COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests
+  leg api-tests-lv-guard-dropped api-tests 'test_db_maker_checker_generator' seed_lv_guard_dropped COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests API_TESTS_SHARD=
   fresh_prove_db
-  leg api-tests-audit-update-granted api-tests 'test_audit_append_only' seed_audit_update_granted COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests
+  leg api-tests-audit-update-granted api-tests 'test_audit_append_only' seed_audit_update_granted COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests API_TESTS_SHARD=
   fresh_prove_db
-  leg tenant-isolation-policy-dropped api-tests 'test_rls_forced_everywhere' seed_rls_policy_dropped COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests
+  leg tenant-isolation-policy-dropped api-tests 'test_rls_forced_everywhere' seed_rls_policy_dropped COMPOSE_PROJECT_NAME="$self_project" TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_prove make api-tests API_TESTS_SHARD=
   docker compose exec -T postgres dropdb -U postgres --force mos_prove
   leg tenant-isolation-no-marker tenant-isolation 'deselected' seed_no_marker COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-no-filter tenant-isolation 'test_list_returns_only_own_rows' seed_iso_no_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
@@ -632,10 +657,10 @@ if [ "$with_docker" -eq 1 ]; then
   leg tenant-isolation-images-no-tenant-filter tenant-isolation 'test_iso_images_repository_reads' seed_images_no_tenant_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-analytics-no-filter tenant-isolation 'test_analytics_repo_sees_only_own_tenant' seed_iso_analytics_no_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
   leg tenant-isolation-issues-unscoped tenant-isolation 'test_iso_issue_and_task_reads_other_tenant_empty' seed_issues_unscoped COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
-  leg api-tests-image-key-prefix api-tests 'test_runner_rejects_foreign_key_prefix' seed_image_key_prefix COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-image-key-prefix api-tests 'test_runner_rejects_foreign_key_prefix' seed_image_key_prefix COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
   leg tenant-isolation-listings-no-tenant-filter tenant-isolation 'test_iso_generation_repositories_other_tenant_empty' seed_listings_no_tenant_filter COMPOSE_PROJECT_NAME="$self_project" make tenant-isolation
-  leg api-tests-generation-publishes api-tests 'test_generation_never_publishes' seed_generation_publishes COMPOSE_PROJECT_NAME="$self_project" make api-tests
-  leg api-tests-validate-rules-cap api-tests 'test_validate_rules_port_call_cap' seed_validate_rules_uncapped COMPOSE_PROJECT_NAME="$self_project" make api-tests
+  leg api-tests-generation-publishes api-tests 'test_generation_never_publishes' seed_generation_publishes COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
+  leg api-tests-validate-rules-cap api-tests 'test_validate_rules_port_call_cap' seed_validate_rules_uncapped COMPOSE_PROJECT_NAME="$self_project" make api-tests API_TESTS_SHARD=
   # mos_iso is migrated already: the leg downgrades it below 0007 so the seeded revision applies,
   # and remigrate_iso puts this checkout's revisions back afterwards.
   leg tenant-isolation-hash-branch-pending tenant-isolation 'hides_pending_row' seed_hash_branch_pending COMPOSE_PROJECT_NAME="$self_project" sh -c 'APP_ENV=local APP_ROLE=migrate ALEMBIC_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:${PG_HOST_PORT:-5432}/mos_iso uv run --frozen alembic -c apps/api/alembic.ini downgrade 0005_rls && make tenant-isolation'

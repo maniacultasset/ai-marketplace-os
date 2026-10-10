@@ -58,7 +58,13 @@ from app.repositories.uow import repositories_on
 from app.services.job_hooks import run_terminal_hook
 from app.workers import registry
 from app.workers.alerting import alert
-from app.workers.errors import JobFailed, RetryableJobError, RetryLater, system_report
+from app.workers.errors import (
+    JobFailed,
+    RetryableJobError,
+    RetryLater,
+    is_transient_db_error,
+    system_report,
+)
 from app.workers.policy import POLICIES, JobPolicy, backoff_s, lease_s
 from app.workers.registry import JobContext, Outcome, Persist
 
@@ -221,6 +227,20 @@ async def _execute(
         await asyncio.shield(_release_shutdown(head, job_id, attempt))
         raise
     except Exception as exc:  # the body's own failure: recorded, never re-raised to the queue
+        if policy.retry_transport and is_transient_db_error(exc):
+            # S26 T13: the database connection was lost under the body (a terminated backend, a
+            # failover): retried like a transport failure, the row back to `queued`.
+            log.warning("job.db_connection_lost", job_run_id=str(job_id), attempt=attempt)
+            await _retry_or_dead_letter(
+                head,
+                job_id,
+                policy,
+                attempt,
+                max_attempts,
+                RetryableJobError(ErrorCode.INTERNAL_ERROR),
+                failure,
+            )
+            return "dead_letter", None
         name = "TimeoutError" if isinstance(exc, _BodyTimeoutError) else type(exc).__name__
         log.warning("job.body_failed", job_run_id=str(job_id), error_class=name)
         await _finish(

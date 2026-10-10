@@ -1,5 +1,6 @@
-"""AC12, AC13: the four workflow files and the composite action (EXECUTION-PLAN.md:245-260;
-CANON.md:21, :77; CANON-ADDENDUM.md §11; ADR-0013 §5)."""
+"""AC12, AC13: the workflow files and the composite action (EXECUTION-PLAN.md:245-260;
+CANON.md:21, :77; CANON-ADDENDUM.md §11; ADR-0013 §5). S26 split api-tests into two required
+jobs (api-tests, api-tests-integration; KNOWN-ISSUES §E), so there are 11 required checks."""
 
 from __future__ import annotations
 
@@ -18,6 +19,7 @@ PR_FILES = {
         "api-lint",
         "api-typecheck",
         "api-tests",
+        "api-tests-integration",
         "tenant-isolation",
         "lint-imports",
         "bootstrap",
@@ -28,14 +30,18 @@ PR_FILES = {
 PUSH_FILE = "main-gitleaks.yml"
 PUBLISH_FILE = "publish-schemas.yml"
 ALL_FILES = [*PR_FILES, PUSH_FILE, PUBLISH_FILE]
-TEN_CHECKS = {job for jobs in PR_FILES.values() for job in jobs}
+REQUIRED_CHECKS = {job for jobs in PR_FILES.values() for job in jobs}
+# The api suite's two shards (tests/support/shard.py): the same services, steps and env.
+API_TEST_JOBS = ("api-tests", "api-tests-integration")
 TIMEOUTS = {"ci-api.yml": 15, "contracts.yml": 10, "ci-meta.yml": 5, PUSH_FILE: 5, PUBLISH_FILE: 10}
-# Per-job exceptions: the full api suite with coverage outgrew 15 min on the runner (S13b).
-JOB_TIMEOUTS = {("ci-api.yml", "api-tests"): 60}
+# Per-job exceptions: the api suite with coverage outgrew 15 min on the runner (S13b); since S26
+# each of its two shards stays under ~25 min, capped at 30.
+JOB_TIMEOUTS = {("ci-api.yml", "api-tests"): 30, ("ci-api.yml", "api-tests-integration"): 30}
 ENV_JOBS = {
     "api-lint": "mos_test",
     "api-typecheck": "mos_test",
     "api-tests": "mos_test",
+    "api-tests-integration": "mos_test",
     "tenant-isolation": "mos_iso",
     "contracts": "mos_test",
     "schemas-drift": "mos_test",
@@ -90,11 +96,11 @@ def test_exactly_five_workflow_files(workflows: dict[str, dict[str, Any]]) -> No
     assert sorted(workflows) == sorted(ALL_FILES)
 
 
-def test_job_ids_are_the_ten_checks_per_file(workflows: dict[str, dict[str, Any]]) -> None:
+def test_job_ids_are_the_required_checks_per_file(workflows: dict[str, dict[str, Any]]) -> None:
     for name, jobs in PR_FILES.items():
         assert list(workflows[name]["jobs"]) == jobs, name
     assert list(workflows[PUSH_FILE]["jobs"]) == ["gitleaks-main"]
-    assert len(TEN_CHECKS) == 10
+    assert len(REQUIRED_CHECKS) == 11
 
 
 def test_no_path_filters(workflows: dict[str, dict[str, Any]]) -> None:
@@ -230,19 +236,21 @@ def test_postgres_services_pinned_with_job_db(
 ) -> None:
     image = _compose_postgres_image(repo_root, load_yaml)
     jobs = {jid: job for _, jid, job in _jobs(workflows)}
-    for job_id, database in (("api-tests", "mos_test"), ("tenant-isolation", "mos_iso")):
+    pairs = [*((job, "mos_test") for job in API_TEST_JOBS), ("tenant-isolation", "mos_iso")]
+    for job_id, database in pairs:
         service = jobs[job_id]["services"]["postgres"]
         assert service["image"] == image
         assert service["env"]["POSTGRES_DB"] == database
     assert [jid for jid, job in jobs.items() if "services" in job] == [
-        "api-tests",
+        *API_TEST_JOBS,
         "tenant-isolation",
     ]
 
 
 def test_psql_bootstrap_precedes_pytest(workflows: dict[str, dict[str, Any]]) -> None:
     jobs = {jid: job for _, jid, job in _jobs(workflows)}
-    for job_id, database in (("api-tests", "mos_test"), ("tenant-isolation", "mos_iso")):
+    pairs = [*((job, "mos_test") for job in API_TEST_JOBS), ("tenant-isolation", "mos_iso")]
+    for job_id, database in pairs:
         runs = [str(step.get("run", "")) for step in jobs[job_id]["steps"]]
         psql = [i for i, run in enumerate(runs) if run.lstrip().startswith("psql ")]
         assert len(psql) == 1, job_id
@@ -330,7 +338,7 @@ def test_publish_token_only_in_env(workflows: dict[str, dict[str, Any]], repo_ro
     assert checkout["with"] == {"persist-credentials": False, "fetch-depth": 0}
 
 
-@pytest.mark.parametrize("job_id", ["tenant-isolation", "api-tests"])
+@pytest.mark.parametrize("job_id", ["tenant-isolation", *API_TEST_JOBS])
 def test_db_jobs_set_app_rw_password(workflows: dict[str, dict[str, Any]], job_id: str) -> None:
     """S9 D14: the job sets app_rw's CI-only password from the Makefile constant, as a verifier.
     api-tests needs it too since S10b: its RLS legs log in as app_rw (tests/support/dsn.py)."""
@@ -351,14 +359,15 @@ def test_api_tests_starts_compose_minio_before_pytest(workflows: dict[str, dict[
     an `M` suite (image upload flow, signed PUTs, the orphan sweep) runs in the required check.
     No other job runs `docker compose`."""
     jobs = {jid: job for _, jid, job in _jobs(workflows)}
-    runs = [str(step.get("run", "")) for step in jobs["api-tests"]["steps"]]
-    assert runs[-1].strip() == "make api-tests"
-    up = next(i for i, run in enumerate(runs) if "docker compose up -d --wait minio" in run)
-    init = next(i for i, run in enumerate(runs) if "docker compose run --rm minio-init" in run)
-    assert up <= init < len(runs) - 1
-    assert runs[up].index("up -d --wait minio") < runs[init].index("run --rm minio-init")
+    for api_job in API_TEST_JOBS:
+        runs = [str(step.get("run", "")) for step in jobs[api_job]["steps"]]
+        assert runs[-1].strip() == f"make {api_job}"
+        up = next(i for i, run in enumerate(runs) if "docker compose up -d --wait minio" in run)
+        init = next(i for i, run in enumerate(runs) if "docker compose run --rm minio-init" in run)
+        assert up <= init < len(runs) - 1
+        assert runs[up].index("up -d --wait minio") < runs[init].index("run --rm minio-init")
     for _, job_id, job in _jobs(workflows):
-        if job_id in ("api-tests", "bootstrap"):
+        if job_id in (*API_TEST_JOBS, "bootstrap"):
             continue
         assert not any("docker compose" in str(s.get("run", "")) for s in job["steps"]), job_id
 
@@ -381,3 +390,24 @@ def test_config_storage_defaults_match_env_example(repo_root: Path) -> None:
     fields = Settings.model_fields
     for name in ("GCS_BUCKET_IMAGES", "S3_ENDPOINT_URL", "S3_ACCESS_KEY", "S3_SECRET_KEY"):
         assert fields[name.lower()].default == example[name], name
+
+
+def test_api_test_jobs_share_one_shape(workflows: dict[str, dict[str, Any]]) -> None:
+    """The two shards differ only in their make target (and the explanatory comment)."""
+    first, second = (workflows["ci-api.yml"]["jobs"][job] for job in API_TEST_JOBS)
+    assert first["services"] == second["services"]
+    assert first["env"] == second["env"]
+    assert first["steps"][:-1] == second["steps"][:-1]
+    assert [first["steps"][-1], second["steps"][-1]] == [
+        {"run": f"make {job}"} for job in API_TEST_JOBS
+    ]
+
+
+def test_required_check_lists_name_every_check(repo_root: Path) -> None:
+    """The PR template and the README's check table list every required check."""
+    template = (repo_root / ".github/pull_request_template.md").read_text(encoding="utf-8")
+    readme = (repo_root / "README.md").read_text(encoding="utf-8")
+    for check in REQUIRED_CHECKS:
+        assert f"| `{check}` |" in template, check
+        assert f"| `{check}` |" in readme, check
+    assert f"all {len(REQUIRED_CHECKS)} green" in template

@@ -48,6 +48,25 @@ def pytest_configure(config: pytest.Config) -> None:
         drop_worker_databases(os.environ.get("DATABASE_URL"))
 
 
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """`API_TEST_SHARD=1|2` keeps only that CI shard's test files (tests/support/shard.py)."""
+    import os
+
+    from tests.support.shard import parse, shard_of
+
+    shard = parse(os.environ.get("API_TEST_SHARD"))
+    if shard is None:
+        return
+    keep: list[pytest.Item] = []
+    drop: list[pytest.Item] = []
+    for item in items:
+        rel = Path(str(item.path)).resolve().relative_to(REPO_ROOT).as_posix()
+        (keep if shard_of(rel) == shard else drop).append(item)
+    if drop:
+        config.hook.pytest_deselected(items=drop)
+        items[:] = keep
+
+
 def pytest_unconfigure(config: pytest.Config) -> None:
     import os
 

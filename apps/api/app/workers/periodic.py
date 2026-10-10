@@ -66,7 +66,7 @@ from app.db.session import platform_scope, unit_of_work
 from app.repositories import rate_limits, retention
 from app.repositories.idempotency import IdempotencyKeyRepository
 from app.repositories.images import ImageRepository
-from app.repositories.jobs import JobRunRepository, expired_running
+from app.repositories.jobs import JobRunRepository, expired_running, tenants_with_queued
 from app.repositories.marketplace_accounts import due_accounts
 from app.repositories.oauth_states import OAuthStateRepository, tenants_with_expired
 from app.services.image_keys import parse_image_key
@@ -90,6 +90,7 @@ class ReapResult:
     cancelled: list[UUID] = field(default_factory=list)
     skipped: list[UUID] = field(default_factory=list)
     pruned_workers: list[int] = field(default_factory=list)
+    redeferred: list[UUID] = field(default_factory=list)
 
 
 def _timeout_report(job: Any, request_id: str) -> dict[str, Any]:
@@ -140,7 +141,27 @@ async def reap_once(job_manager: Any | None = None) -> ReapResult:
             log.info("job.reaped", job_run_id=str(job_id), action=reaped.action)
         if job_manager is not None:
             result.pruned_workers = list(await job_manager.prune_stalled_workers(STALLED_WORKER_S))
+        await _redefer_orphans(result)
     return result
+
+
+async def _redefer_orphans(result: ReapResult) -> None:
+    """KNOWN-ISSUES §E (S13a): a `queued` row whose queue entry a pruned worker left `doing`
+    gets a new entry: one unit of work per tenant (a failure skips only that tenant)."""
+    async with platform_scope() as session:
+        tenants = await tenants_with_queued(session)
+    for tenant_id in tenants:
+        try:
+            async with unit_of_work(tenant_id) as session:
+                repo = JobRunRepository(session, tenant_id)
+                for job_id in await repo.orphaned_queued():
+                    if await repo.redefer_orphan(job_id) is not None:
+                        result.redeferred.append(job_id)
+                        log.info("job.redeferred", job_run_id=str(job_id))
+        except Exception as exc:
+            log.exception(
+                "job.redefer_failed", tenant_id=str(tenant_id), error_class=type(exc).__name__
+            )
 
 
 async def prune_rate_limits(now: datetime | None = None) -> int:
