@@ -112,7 +112,7 @@ def _client(marketplace: str) -> OAuthClient:
         raise MarketplaceNotConfiguredError
     try:
         get_key_wrapper()  # the tokens must be sealable before any consent starts
-    except NotImplementedError:
+    except RuntimeError:  # no KMS_KEY_URI off local
         raise MarketplaceNotConfiguredError from None
     return client
 

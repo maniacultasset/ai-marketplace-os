@@ -136,13 +136,7 @@ def test_unseal_error_has_no_detail() -> None:
         raise AssertionError("unseal of another tenant's blob succeeded")
 
 
-@pytest.mark.parametrize("app_env", ["staging", "production"])
-def test_unwrapper_non_local_not_implemented(app_env: str) -> None:
-    from app.adapters.credentials import get_key_unwrapper
-    from app.core.config import Settings
-
-    with pytest.raises(NotImplementedError, match="Cloud KMS"):
-        get_key_unwrapper(Settings(_env_file=None, app_env=app_env, app_role="shell"))
+# The deployed (Cloud KMS) selection is tests/unit/test_cloud_kms_wrapper.py (S4).
 
 
 def test_unwrapper_local_is_stub() -> None:

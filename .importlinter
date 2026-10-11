@@ -213,6 +213,21 @@ ignore_imports =
     app.adapters.storage -> botocore
 allow_indirect_imports = True
 
+# The Cloud KMS client (S4; ADR-0018): `google.cloud.kms` lives in the KMS adapter only, so no
+# other module builds a client with its own credentials or timeouts (DESIGN.md: domain code
+# reaches KMS through the `KeyWrapper`). Import-linter names external packages by their root.
+[importlinter:contract:kms-client-only-in-kms-adapter]
+name = google.cloud.kms only in app.adapters.kms
+type = forbidden
+source_modules =
+    app
+    mkos_schemas
+forbidden_modules =
+    google
+ignore_imports =
+    app.adapters.kms -> google
+allow_indirect_imports = True
+
 # Invariant 1 (S20 T20; S22 T17 adds Flipkart): the mutating marketplace adapters and their HTTP
 # clients are reached only
 # from app.adapters and app.workers (S21's publish job, after approval). A service previews

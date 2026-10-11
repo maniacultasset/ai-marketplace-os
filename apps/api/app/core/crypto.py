@@ -11,7 +11,7 @@ Blob layout (all lengths in bytes): `MKT1` | u16 big-endian wrapped-key length |
 
 The wrapper is chosen at first use, never at import (CANON.md:163): `APP_ENV=local` gets
 `LocalKmsStub` (AES-256-GCM under `KMS_LOCAL_DEV_KEY`, so a laptop and CI open each other's blobs);
-anything else waits for the Cloud KMS wrapper (S4) and refuses with `NotImplementedError`.
+anything else gets `CloudKmsKeyWrapper` (`app.adapters.kms`, S4) on `KMS_KEY_URI`.
 Errors never carry key, token or blob bytes.
 """
 
@@ -107,12 +107,21 @@ def _settings(settings: Settings | None) -> Settings:
     return get_settings()
 
 
+def kms_key_uri(settings: Settings) -> str:
+    """The deployed token key; unset is a `RuntimeError` (the api and worker boot refuse it)."""
+    if not settings.kms_key_uri:
+        raise RuntimeError(f"APP_ENV={settings.app_env} needs KMS_KEY_URI to seal or unseal")
+    return settings.kms_key_uri
+
+
 def get_key_wrapper(settings: Settings | None = None) -> KeyWrapper:
     """The wrapper for this environment, built on each call (cheap), never at import."""
     resolved = _settings(settings)
     if resolved.app_env == "local":
         return LocalKmsStub(resolved.kms_local_dev_key)
-    raise NotImplementedError("Cloud KMS wrapper lands with S4")
+    from app.adapters.kms import CloudKmsKeyWrapper
+
+    return CloudKmsKeyWrapper(kms_key_uri(resolved))
 
 
 def _plaintext(tokens: TokenPair) -> bytes:
