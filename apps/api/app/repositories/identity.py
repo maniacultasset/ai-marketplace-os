@@ -112,19 +112,23 @@ class UserRepository:
 
     async def insert_signup_user(
         self, *, user_id: uuid.UUID, email: str, password_hash: str, display_name: str
-    ) -> None:
+    ) -> bool:
         """A new user from the public sign-up (users_signup needs `app.login_email` = the
-        lower-cased email). The id is chosen here, so no RETURNING has to pass a SELECT policy;
-        `is_platform_admin` keeps its default (the 0010 trigger refuses anything else)."""
+        lower-cased email); False when a concurrent sign-up of the same email took
+        `uq_users_email_lower` first (nothing written). RETURNING passes users_login (the same
+        GUC). `is_platform_admin` keeps its default (the 0010 trigger refuses anything else)."""
         stmt = identity_scope(
-            insert(User).values(
+            pg_insert(User)
+            .values(
                 id=user_id,
                 email=email,
                 hashed_password=password_hash,
                 display_name=display_name,
             )
+            .on_conflict_do_nothing()
+            .returning(User.id)
         )
-        await self.db.execute(stmt)
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
 
     async def touch_login(self, user_id: uuid.UUID) -> None:
         """`last_login_at = now()` on the caller's own row (users_self needs `app.user_id`)."""

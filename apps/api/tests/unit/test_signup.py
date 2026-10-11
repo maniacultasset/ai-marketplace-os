@@ -368,6 +368,7 @@ class World:
     tenants: list[dict[str, Any]] = field(default_factory=list)
     taken: set[str] = field(default_factory=set)
     race: bool = False
+    email_race: bool = False
 
 
 def _install(monkeypatch: pytest.MonkeyPatch, world: World) -> None:
@@ -385,8 +386,11 @@ def _install(monkeypatch: pytest.MonkeyPatch, world: World) -> None:
         async def by_email(self, email: str) -> UserRow | None:
             return world.users.get(email)
 
-        async def insert_signup_user(self, **kw: Any) -> None:
+        async def insert_signup_user(self, **kw: Any) -> bool:
+            if world.email_race:  # a concurrent first sign-up took the email
+                return False
             world.inserted_users.append(kw)
+            return True
 
         async def is_platform_admin(self, _: uuid.UUID) -> bool:
             return True
@@ -482,6 +486,14 @@ async def test_signup_new_email_creates_user_and_pending(monkeypatch: pytest.Mon
     [audit] = world.audits
     assert audit["action"] == "signup.requested" and audit["tenant_id"] is None
     assert audit["actor_type"] == "system" and audit["entity_id"] == made["user_id"]
+
+
+async def test_signup_new_email_race_answers_a_blank_202(monkeypatch: pytest.MonkeyPatch) -> None:
+    world = World(email_race=True)
+    _install(monkeypatch, world)
+    accepted = await _signup()
+    assert accepted.status == "pending"
+    assert not world.requests and not world.audits
 
 
 async def test_signup_existing_email_wrong_password_writes_nothing(

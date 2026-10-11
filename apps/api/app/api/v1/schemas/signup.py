@@ -20,9 +20,8 @@ from pydantic_core import PydanticCustomError
 from app.api.pagination import Page
 from app.api.v1.schemas.auth import Email, LoginEmail
 from app.api.v1.schemas.tenants import ProfileName
+from app.core.passwords import PASSWORD_MAX, PASSWORD_MIN  # the staff CLI's rule
 
-PASSWORD_MIN: Final = 12  # app.core.passwords.PASSWORD_MIN, the staff CLI's rule
-PASSWORD_MAX: Final = 1024
 EMAIL_OCTETS_MAX: Final = 254  # ck_users_email
 REASON_MAX: Final = 1000
 PHONE_PATTERN: Final = r"^\+?[0-9][0-9 ()-]{5,30}$"

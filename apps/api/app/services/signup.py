@@ -133,12 +133,14 @@ async def signup(
         user = await users.by_email(email)
         if user is None:
             user_id = uuid.uuid4()
-            await users.insert_signup_user(
+            created = await users.insert_signup_user(
                 user_id=user_id,
                 email=email,
                 password_hash=hash_password(password),
                 display_name=owner_name,
             )
+            if not created:  # a concurrent first sign-up of this email won: the same blank 202
+                return SignupAccepted(uuid.uuid4())
             await set_gucs(session, user_id=user_id)
         else:
             stored = user.hashed_password
