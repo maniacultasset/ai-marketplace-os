@@ -371,7 +371,9 @@ class SignupRepository:
             )
             .on_conflict_do_nothing(
                 index_elements=[SignupRequest.user_id],
-                index_where=SignupRequest.status == "pending",
+                # a literal predicate: the partial index is inferred at plan time, never from a
+                # bound parameter
+                index_where=text("status = 'pending'"),
             )
             .returning(SignupRequest.id)
         )
