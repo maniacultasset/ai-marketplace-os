@@ -60,7 +60,7 @@ REST=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) DRY_RUN=1; shift ;;
-    --sha) SHA="$2"; shift 2 ;;
+    --sha) [ $# -ge 2 ] || usage; SHA="$2"; shift 2 ;;
     *) REST+=("$1"); shift ;;
   esac
 done
@@ -279,11 +279,12 @@ setup_kms() {
     gc kms keys create "$KMS_KEY" --keyring="$KMS_KEYRING" --location="$REGION" \
       --purpose=encryption --rotation-period=90d --next-rotation-time="$next" --labels="$LABELS"
   fi
-  local name
-  for name in "$SA_API" "$SA_WORKER"; do
+  # ADR-0018: the api only seals (encrypt); the worker seals and unseals (encrypt and decrypt).
+  local pair
+  for pair in "$SA_API:roles/cloudkms.cryptoKeyEncrypter" \
+    "$SA_WORKER:roles/cloudkms.cryptoKeyEncrypterDecrypter"; do
     retry gc kms keys add-iam-policy-binding "$KMS_KEY" --keyring="$KMS_KEYRING" --location="$REGION" \
-      --member="serviceAccount:$(sa_email "$name")" --role=roles/cloudkms.cryptoKeyEncrypterDecrypter \
-      --format=none
+      --member="serviceAccount:$(sa_email "${pair%%:*}")" --role="${pair#*:}" --format=none
   done
 }
 
@@ -325,10 +326,18 @@ print(json.dumps([{"origin": origins, "method": ["GET", "HEAD", "PUT"],
 setup_hmac() {
   ensure_secret S3_ACCESS_KEY
   ensure_secret S3_SECRET_KEY
-  if secret_has_version S3_ACCESS_KEY && secret_has_version S3_SECRET_KEY; then
+  local have=0
+  ! secret_has_version S3_ACCESS_KEY || have=$((have + 1))
+  ! secret_has_version S3_SECRET_KEY || have=$((have + 1))
+  if [ "$have" -eq 2 ]; then
     say "secrets S3_ACCESS_KEY, S3_SECRET_KEY: kept"
     return 0
   fi
+  # Half a pair means an earlier run stopped between the two adds: a new key would leave the
+  # first one active and unused, so a person resolves it.
+  [ "$have" -eq 0 ] || die "only one of S3_ACCESS_KEY / S3_SECRET_KEY has a version: deactivate \
+and delete that HMAC key (gcloud storage hmac list --project=$PROJECT), disable the lone secret \
+version, then rerun setup"
   pipe_note "gcloud storage hmac create $(sa_email "$SA_STORAGE") --format=json | (access id -> S3_ACCESS_KEY, secret -> S3_SECRET_KEY)"
   [ "$DRY_RUN" -eq 1 ] && return 0
   local key
@@ -752,9 +761,14 @@ cmd_release() {
 }
 
 # ---- tenant (the staff CLI, app/cli.py, in a one-off job) ----
-# An email -> its initial-password secret id (Secret Manager ids: letters, digits, - and _).
+# An email -> its initial-password secret id (Secret Manager ids: letters, digits, - and _). The
+# folded address is readable but not unique (a.b@x and a_b@x fold alike), so a hash of the exact
+# lowercased address ends the id: two users never share an initial password.
 password_secret() {
-  printf 'INITIAL_PASSWORD_%s' "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '_' | cut -c1-200)"
+  local folded digest
+  folded="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  digest="$(printf '%s' "$folded" | openssl dgst -sha256 -r | cut -c1-12)"
+  printf 'INITIAL_PASSWORD_%s_%s' "$(printf '%s' "$folded" | tr -c 'a-z0-9' '_' | cut -c1-200)" "$digest"
 }
 
 # EMAIL FRESH: the user's initial-password secret; FRESH=1 adds a new version even if one exists.

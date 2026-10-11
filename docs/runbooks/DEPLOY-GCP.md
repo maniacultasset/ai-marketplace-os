@@ -26,7 +26,7 @@ passed on a command line or written to a committed file.
 | `deploy` | The api service: public, the app does its own auth, Cloud SQL attached, secrets as env vars. A new revision gets 0% traffic until its tagged URL passes `smoke`, then takes all traffic. On the first deploy, `JWT_ISSUER` and the OAuth redirect URIs are re-pointed to the URL the service got. Then the worker pool (`WORKER_ENABLED=true` only), then `smoke`. |
 | `release` | `build`, `migrate`, `deploy`: the normal update. |
 | `smoke` | `GET /healthz` must answer 200; `GET /readyz` must answer 200 with `"postgres":"ok"`. Retried for cold starts. |
-| `tenant` | `tenant create --name N --slug S --owner-email E --staff-email F [--trial-days D]`, `tenant add-member --slug S --email E --role owner\|operator\|reviewer\|admin --staff-email F`, `tenant set-password --email E --staff-email F`. Runs the staff CLI (`python -m app.cli`) in a one-off job. A new user's password is generated into `INITIAL_PASSWORD_<email>`, and the job reads it on stdin from a mounted file. The script prints the `gcloud secrets versions access` command that shows it, never the value. A rerun of `create` with a taken slug fails and changes nothing. |
+| `tenant` | `tenant create --name N --slug S --owner-email E --staff-email F [--trial-days D]`, `tenant add-member --slug S --email E --role owner\|operator\|reviewer\|admin --staff-email F`, `tenant set-password --email E --staff-email F`. Runs the staff CLI (`python -m app.cli`) in a one-off job. A new user's password is generated into `INITIAL_PASSWORD_<email>_<hash>`, and the job reads it on stdin from a mounted file. The script prints the `gcloud secrets versions access` command that shows it, never the value. A rerun of `create` with a taken slug fails and changes nothing. |
 | `status` | The service URL, latest revisions, worker pool, recent job runs and secret names (never values). |
 
 `--sha <12 hex>` points `db-init`, `migrate`, `deploy`, `smoke` and `tenant` at an image other
@@ -70,8 +70,8 @@ After that, every update is `deploy.sh staging release`.
 
 | Account | Project roles | Resource roles |
 |---|---|---|
-| `aimos-api` | `cloudsql.client` | accessor on its 6 secrets; `cryptoKeyEncrypterDecrypter` on the one key |
-| `aimos-worker` | `cloudsql.client` | accessor on its 5 secrets (adds `OPENAI_API_KEY`); the key |
+| `aimos-api` | `cloudsql.client` | accessor on its 6 secrets; `cryptoKeyEncrypter` (encrypt only, ADR-0018) on the one key |
+| `aimos-worker` | `cloudsql.client` | accessor on its 5 secrets (adds `OPENAI_API_KEY`); `cryptoKeyEncrypterDecrypter` on the key |
 | `aimos-migrate` | `cloudsql.client` | accessor on `ALEMBIC_DATABASE_URL` |
 | `aimos-ops` | `cloudsql.client` | accessor on the 4 DB passwords, `ALEMBIC_DATABASE_URL`, each `INITIAL_PASSWORD_*` |
 | `aimos-storage` | none | `storage.objectAdmin` on the 3 app buckets: the identity behind the HMAC key |

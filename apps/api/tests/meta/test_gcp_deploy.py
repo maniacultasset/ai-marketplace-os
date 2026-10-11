@@ -224,9 +224,14 @@ def test_setup_generates_secrets_without_values(toolkit: Path, tmp_path: Path) -
     # the user-provided secrets: a read -s command for the user's own terminal, then a stop
     for name in ("SENTRY_DSN", "OPENAI_API_KEY"):
         assert f'bash -c \'read -rsp "{name}: " v; echo; printf %s "$v" | ' in out
-    # least privilege: the token key for api + worker only; secrets granted one by one
-    kms = [line for line in out.splitlines() if "cryptoKeyEncrypterDecrypter" in line]
-    assert len(kms) == 2 and all(re.search(r"aimos-(api|worker)@", line) for line in kms)
+    # least privilege (ADR-0018): the api encrypts only, the worker encrypts and decrypts; no
+    # other account touches the token key; secrets granted one by one
+    kms = [line for line in out.splitlines() if "kms keys add-iam-policy-binding" in line]
+    assert len(kms) == 2
+    (api,) = [line for line in kms if "aimos-api@" in line]
+    (worker,) = [line for line in kms if "aimos-worker@" in line]
+    assert "--role=roles/cloudkms.cryptoKeyEncrypter " in api
+    assert "--role=roles/cloudkms.cryptoKeyEncrypterDecrypter " in worker
     assert "roles/secretmanager.secretAccessor" not in "".join(
         line for line in out.splitlines() if "projects add-iam-policy-binding" in line
     )
@@ -257,6 +262,35 @@ def test_prod_setup_sizes(toolkit: Path, tmp_path: Path) -> None:
         assert flag in sql, flag
     # the prod worker waits for the AI package, so its OpenAI key is not asked for yet
     assert "OPENAI_API_KEY: " not in out
+
+
+def test_initial_password_secrets_never_collide(toolkit: Path, tmp_path: Path) -> None:
+    """Two addresses that fold to the same readable id still get two secrets."""
+    names = []
+    for email in ("A.B@x.test", "a_b@x.test"):
+        out = _run(
+            toolkit,
+            tmp_path,
+            "staging",
+            "tenant",
+            "set-password",
+            "--email",
+            email,
+            "--staff-email",
+            "s@a.test",
+            "--dry-run",
+            "--sha",
+            SHA,
+        ).stdout
+        match = re.search(r"secrets create (INITIAL_PASSWORD_a_b_x_test_[0-9a-f]{12}) ", out)
+        assert match is not None, out
+        names.append(match.group(1))
+    assert names[0] != names[1]
+
+
+def test_sha_flag_needs_a_value(toolkit: Path, tmp_path: Path) -> None:
+    result = _run(toolkit, tmp_path, "staging", "status", "--dry-run", "--sha")
+    assert result.returncode == 2 and "unbound variable" not in result.stderr
 
 
 def test_build_refuses_a_dirty_tree(toolkit: Path, tmp_path: Path) -> None:
