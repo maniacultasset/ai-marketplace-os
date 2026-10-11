@@ -318,8 +318,10 @@ sequenceDiagram
 
 How to read it:
 - The 202 is the same for a new email, for an existing email with a wrong password (nothing is
-  written) and for a repeat while pending (the same `request_id`). The answer never reveals
-  whether an account exists.
+  written) and for a repeat while pending (the same `request_id`). One answer never reveals
+  whether an account exists; a pair can (ADR-0019 decision 2), until email verification exists.
+- Staff cannot hand an applicant's email a tenant through the CLI (`tenant create`, `add-member`
+  exit 4) until the admin approves the request: the applicant chose that password unverified.
 - Until approval the applicant has no membership, so login is the usual 401 and no tenant data is
   reachable. `POST /signup/status` is the only thing they can read, and it needs the password.
 - A platform admin is a normal member of some tenant (for example a staff tenant) whose user row

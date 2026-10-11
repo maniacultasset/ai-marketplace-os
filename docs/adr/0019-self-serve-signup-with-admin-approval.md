@@ -24,9 +24,13 @@ email provider exists yet (ADR-0006 decision 6 is still open), so nothing may de
    `{request_id, status: "pending"}`. A new email gets a user and a request. An existing email with
    the right password gets a request too (or its current pending one: re-submitting is
    idempotent). An existing email with a wrong password gets the same 202 with a fresh id, and
-   nothing is written. Every path costs one argon2 operation. So the form reveals no more than the
-   login already does (the login's 401 is also the same for an unknown email and a wrong
-   password). Because of this, the duplicate-pending case needs no error code.
+   nothing is written. Every path costs one argon2 operation, and the duplicate-pending case needs
+   no error code. One answer cannot tell the cases apart, but a pair can: sending the form twice
+   with the same password, or the form then `POST /signup/status`, shows whether the email was
+   free (the same id, or a 200 status, because the first call just created the account) or
+   already taken (two fresh ids, or a 401). Any sign-up that lets the new account authenticate
+   has this oracle; closing it needs email verification, which waits for ADR-0006 decision 6. The
+   per-IP limit (decision 9) bounds it, and probing a free email squats it (see Consequences).
 3. **A pending applicant has no token.** A pending or rejected applicant has no membership. The
    login therefore keeps its existing no-membership behaviour (the one 401), and no token, tenant
    GUC or tenant row exists for them. We chose this over a tenant-less token: a token without
@@ -75,6 +79,12 @@ email provider exists yet (ADR-0006 decision 6 is still open), so nothing may de
 9. **Rate limits.** The form is limited to 5 a minute per client IP (`signup:<sha256(ip)>`, the
    login's per-minute setting), on top of the public 60 a minute per IP. The status read uses the
    login's per-IP-and-email bucket.
+10. **The staff CLI does not attach an unvetted applicant.** Nothing proves that whoever
+    filled the form owns the email, and they chose its password. `tenant create --owner-email` and
+   `tenant add-member --email` therefore refuse (exit 4) a user who has a sign-up request and no
+   membership: otherwise a stranger could register a brand's email first and receive the tenant
+   staff later create for it. The admin decides the request in the queue instead; once approved,
+   the user is a normal existing user for the CLI.
 
 ## Consequences
 
@@ -85,4 +95,7 @@ email provider exists yet (ADR-0006 decision 6 is still open), so nothing may de
 - Follow-ups, not in v1: an email notification on a decision (when ADR-0006 decision 6 picks a
   provider); `redact_user()` does not yet clear `signup_requests.owner_name` and `phone`, and an
   erasure request must clear them by hand until it does; there are no anti-automation measures
-  beyond the per-IP limit (no CAPTCHA).
+  beyond the per-IP limit (no CAPTCHA); with no email verification, someone who registers a
+  brand's email first holds it: the real owner's form gets the silent 202 and the status read a
+  401, and staff recover it only by rejecting the squatter's request and resetting the password
+  with `user set-password` before the owner signs up again with that password.

@@ -3,8 +3,9 @@
 - `signup()`: the public form. A new email gets a global `users` row (argon2id) and a pending
   `signup_requests` row; an existing email with the right password gets a pending request too
   (or its current one: re-submitting is idempotent); an existing email with a wrong password
-  gets the same 202 with a fresh id and nothing is written, so the answer never reveals whether
-  the email had an account. Each path costs one argon2 operation.
+  gets the same 202 with a fresh id and nothing is written, so one answer never reveals whether
+  the email had an account (a pair can, until email verification: ADR-0019 decision 2). Each
+  path costs one argon2 operation.
 - `signup_status()`: the applicant's latest request, behind email and password (None for any
   refusal: the caller answers 401 like the login). A pending applicant has no membership, so the
   login keeps answering 401 and no token, tenant or tenant data exists for them.

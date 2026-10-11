@@ -19,7 +19,7 @@ import pytest
 from tests.conftest import CI_JWT_SECRET
 
 from .auth_support import PREFIX, Conn, World, audit_rows, bearer, build_world, tokens_for
-from .cli_support import cli
+from .cli_support import cli, create_argv
 from .conftest import LOCAL_HOSTS
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
@@ -619,3 +619,27 @@ async def test_cli_make_admin(
         ["user", "make-admin", "--email", "nobody@x.test", "--staff-email", "s@ops.test"], capsys
     )
     assert unknown == 4 and "refused" in err
+
+
+async def test_cli_refuses_an_unvetted_applicant(
+    api: httpx.AsyncClient, world: World, auth_db: Conn, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Pre-account takeover: whoever filled the form chose the password and proved nothing about
+    the email, so the staff CLI must not hand that login a tenant before an admin approves it."""
+    request_id = await _pending(api)
+    email = FORM["email"]
+    code, _, err = await cli(create_argv("kalakar", email), capsys)
+    assert code == 4 and "self-serve applicant" in err
+    assert _count(auth_db, "SELECT count(*) FROM tenants WHERE slug = 'kalakar'") == 0
+    add = ["tenant", "add-member", "--slug", "acme", "--email", email, "--role", "reviewer",
+           "--staff-email", "staff@ops.test"]  # fmt: skip
+    code, _, err = await cli(add, capsys)
+    assert code == 4 and "self-serve applicant" in err
+    member_sql = (
+        "SELECT count(*) FROM tenant_memberships m JOIN users u ON u.id = m.user_id "
+        "WHERE u.email = %s"
+    )
+    assert _count(auth_db, member_sql, [email]) == 0
+    assert (await _approve(api, world, request_id)).status_code == 200
+    code, _, err = await cli(add, capsys)  # vetted now: a normal existing user
+    assert (code, err) == (0, "")

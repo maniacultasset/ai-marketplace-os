@@ -84,6 +84,21 @@ async def user_exists(engine: AsyncEngine, email: str) -> bool:
         return found.first() is not None
 
 
+async def _unvetted_applicant(conn: AsyncConnection, user_id: uuid.UUID) -> bool:
+    """A user who came in through the public sign-up (ADR-0019) and holds no membership yet. Its
+    password was chosen by whoever filled the form, and nothing proved they own the email, so
+    `tenant create` / `add-member` must not hand that login a tenant: the platform admin vets the
+    applicant in the queue instead."""
+    found = await conn.execute(
+        text(
+            "SELECT 1 WHERE EXISTS (SELECT 1 FROM signup_requests WHERE user_id = :u) "
+            "AND NOT EXISTS (SELECT 1 FROM tenant_memberships WHERE user_id = :u)"
+        ),
+        {"u": user_id},
+    )
+    return found.first() is not None
+
+
 async def _user_id(conn: AsyncConnection, user: NewUser) -> uuid.UUID:
     found = (
         await conn.execute(
@@ -94,6 +109,10 @@ async def _user_id(conn: AsyncConnection, user: NewUser) -> uuid.UUID:
     if found is not None:
         if not found.is_active or found.erased_at is not None:
             raise NotEligibleError("the user is inactive or erased")
+        if await _unvetted_applicant(conn, found.id):
+            raise NotEligibleError(
+                "a self-serve applicant with no tenant: decide the sign-up in the admin queue"
+            )
         return found.id  # type: ignore[no-any-return]
     if user.password_hash is None:
         raise NotEligibleError("a new user needs a password")
