@@ -824,7 +824,7 @@ flag_value() {
 }
 
 cmd_tenant() {
-  [ ${#REST[@]} -ge 1 ] || die "usage: tenant create --name N --slug S --owner-email E --staff-email F [--trial-days D] | add-member --slug S --email E --role owner|operator|reviewer|admin --staff-email F | set-password --email E --staff-email F"
+  [ ${#REST[@]} -ge 1 ] || die "usage: tenant create --name N --slug S --owner-email E --staff-email F [--trial-days D] | add-member --slug S --email E --role owner|operator|reviewer|admin --staff-email F | set-password --email E --staff-email F | make-admin --email E --staff-email F"
   local action="${REST[0]}" email
   local -a args
   args=("${REST[@]}")
@@ -852,7 +852,16 @@ cmd_tenant() {
       ops_job "$email" "the new password of $email (its sessions are revoked)." \
         user set-password "${args[@]}"
       ;;
-    *) die "unknown tenant action '$action' (create | add-member | set-password)" ;;
+    make-admin)
+      # ADR-0019: flags an existing user (create a staff tenant with them as owner first, so they
+      # can log in) as a platform admin who approves sign-up requests.
+      email="$(flag_value email "${args[@]}")"
+      [ -n "$email" ] || die "tenant make-admin needs --email"
+      ensure_password "$email" 0
+      ops_job "$email" "$email is now a platform admin; its password is unchanged. Its initial password, if this job made one:" \
+        user make-admin "${args[@]}"
+      ;;
+    *) die "unknown tenant action '$action' (create | add-member | set-password | make-admin)" ;;
   esac
 }
 

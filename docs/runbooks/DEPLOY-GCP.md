@@ -50,6 +50,7 @@ than `HEAD`'s.
 9. `scripts/deploy/gcp/deploy.sh staging tenant create --name "Pilot" --slug pilot --owner-email
    owner@brand.example --staff-email you@yourco.example`. Then read the initial password once
    with the command it prints, and hand it over out of band.
+   First platform admin (ADR-0019): `tenant create --name "Staff" --slug staff --owner-email admin@yourco.example --staff-email you@yourco.example`, then `tenant make-admin --email admin@yourco.example --staff-email you@yourco.example`. That account logs in and approves sign-up requests.
 10. `scripts/deploy/gcp/deploy.sh staging status`
 
 After that, every update is `deploy.sh staging release`.
