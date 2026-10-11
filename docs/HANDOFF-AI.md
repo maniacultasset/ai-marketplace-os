@@ -1,5 +1,7 @@
 # Handoff to the AI team: the generation seam (v1)
 
+> **Superseded for v1 handover:** the full, code-checked guide is [`handover/AI-TEAM-GUIDE.md`](handover/AI-TEAM-GUIDE.md), with the API reference, flows and diagrams beside it. Where this page differs, `handover/` wins.
+
 The backend owns the API, the database, jobs, adapters and the Rules Engine. The AI team owns the
 `mkos_pipeline` package: the prompts, the models and the LangGraph flow. The two sides meet at
 exactly one function, defined by the contracts package `mkos-schemas` at tag **`schemas-v1.0.0`**.

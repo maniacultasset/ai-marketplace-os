@@ -89,8 +89,8 @@ def _memberships(items: list[auth.Membership]) -> list[MembershipOut]:
 
 @route(router, OPS["auth_me"])
 async def auth_me(principal: Annotated[Principal, Depends(get_current_principal)]) -> MeOut:
-    """The current principal: user, active tenant, role (from the membership row) and the live
-    memberships."""
+    """The current principal: user, active tenant, role (from the membership row), the live
+    memberships and whether the user is a platform admin."""
     found = await auth.me(principal)
     return MeOut.model_validate(
         {
@@ -100,6 +100,7 @@ async def auth_me(principal: Annotated[Principal, Depends(get_current_principal)
             "tenant_id": found.tenant_id,
             "role": found.role,
             "memberships": _memberships(found.memberships),
+            "is_platform_admin": found.is_platform_admin,
         }
     )
 

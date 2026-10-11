@@ -11,7 +11,7 @@ import pytest
 from app.api.rate_limit import limit_ip
 from app.api.v1.deps import limit_tenant
 from app.api.v1.surface import OPS, Operation
-from app.core.rbac import PUBLIC, route_policy
+from app.core.rbac import PLATFORM_ADMIN, PUBLIC, route_policy
 from fastapi import FastAPI
 from fastapi.routing import iter_route_contexts
 from tests.api_requests import valid_request
@@ -61,7 +61,8 @@ def test_every_route_declares_role() -> None:
         assert policy is not None, f"{path}: no require() or public()"
         op = OPS.get(getattr(route, "operation_id", None) or "")
         if op is not None:
-            assert policy == (PUBLIC if op.public else op.action), path
+            expected = PLATFORM_ADMIN if op.platform_admin else op.action  # ADR-0019
+            assert policy == (PUBLIC if op.public else expected), path
         else:
             assert path in UNLIMITED_ROUTES and policy == PUBLIC, path
     assert {f"/api/v1{op.path}" for op in OPS.values()} <= seen

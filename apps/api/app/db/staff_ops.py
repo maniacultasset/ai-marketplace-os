@@ -1,6 +1,8 @@
 """Staff tenant onboarding (S16 T19-T20a; PLAN D6; CP9; DATABASE.md:312): the SQL behind
-`python -m app.cli tenant create|add-member` and `user set-password` (repo rule R4: the CLI holds
-no SQL).
+`python -m app.cli tenant create|add-member` and `user set-password|make-admin` (repo rule R4: the
+CLI holds no SQL). `insert_tenant` and `add_owner` also serve the platform admin's sign-up
+approval (ADR-0019), which runs them on the app's own connection as app_rw under the new
+tenant's GUC, so a CLI tenant and an approved sign-up are created by the same statements.
 
 Each operation is ONE transaction as `migrator` on the admin URL (`ALEMBIC_DATABASE_URL`), with
 `app.tenant_id` set to the tenant first, so the `t_migrator` policies and the append-only and
@@ -48,7 +50,7 @@ async def _as_migrator(conn: AsyncConnection, tenant_id: uuid.UUID) -> None:
 async def _audit(
     conn: AsyncConnection,
     *,
-    tenant_id: uuid.UUID,
+    tenant_id: uuid.UUID | None,
     staff_email: str,
     action: str,
     entity_type: str,
@@ -82,6 +84,21 @@ async def user_exists(engine: AsyncEngine, email: str) -> bool:
         return found.first() is not None
 
 
+async def _unvetted_applicant(conn: AsyncConnection, user_id: uuid.UUID) -> bool:
+    """A user who came in through the public sign-up (ADR-0019) and holds no membership yet. Its
+    password was chosen by whoever filled the form, and nothing proved they own the email, so
+    `tenant create` / `add-member` must not hand that login a tenant: the platform admin vets the
+    applicant in the queue instead."""
+    found = await conn.execute(
+        text(
+            "SELECT 1 WHERE EXISTS (SELECT 1 FROM signup_requests WHERE user_id = :u) "
+            "AND NOT EXISTS (SELECT 1 FROM tenant_memberships WHERE user_id = :u)"
+        ),
+        {"u": user_id},
+    )
+    return found.first() is not None
+
+
 async def _user_id(conn: AsyncConnection, user: NewUser) -> uuid.UUID:
     found = (
         await conn.execute(
@@ -92,6 +109,10 @@ async def _user_id(conn: AsyncConnection, user: NewUser) -> uuid.UUID:
     if found is not None:
         if not found.is_active or found.erased_at is not None:
             raise NotEligibleError("the user is inactive or erased")
+        if await _unvetted_applicant(conn, found.id):
+            raise NotEligibleError(
+                "a self-serve applicant with no tenant: decide the sign-up in the admin queue"
+            )
         return found.id  # type: ignore[no-any-return]
     if user.password_hash is None:
         raise NotEligibleError("a new user needs a password")
@@ -136,6 +157,65 @@ async def _member(
     )
 
 
+async def insert_tenant(
+    conn: AsyncConnection,
+    *,
+    tenant_id: uuid.UUID,
+    name: str,
+    slug: str,
+    staff_email: str,
+    trial_days: int | None,
+    request_id: str,
+) -> None:
+    """The tenant row and its `tenant.created` staff audit row, on a connection whose
+    `app.tenant_id` is already `tenant_id`. `SlugTakenError` (nothing written) when the slug is
+    used. Shared by `tenant create` and the platform admin's sign-up approval (ADR-0019), so both
+    create a tenant the same way."""
+    status = "active" if trial_days is None else "trial"
+    trial_ends = None if trial_days is None else datetime.now(UTC) + timedelta(days=trial_days)
+    inserted = (
+        await conn.execute(
+            text(
+                "INSERT INTO tenants (id, name, slug, status, trial_ends_at) "
+                "VALUES (:id, :name, :slug, :status, :trial) "
+                "ON CONFLICT (slug) DO NOTHING RETURNING id"
+            ),
+            {"id": tenant_id, "name": name, "slug": slug, "status": status, "trial": trial_ends},
+        )
+    ).first()
+    if inserted is None:
+        raise SlugTakenError("slug taken")
+    await _audit(
+        conn,
+        tenant_id=tenant_id,
+        staff_email=staff_email,
+        action="tenant.created",
+        entity_type="tenant",
+        entity_id=tenant_id,
+        after=_json({"name": name}),
+        request_id=request_id,
+    )
+
+
+async def add_owner(
+    conn: AsyncConnection,
+    *,
+    tenant_id: uuid.UUID,
+    user_id: uuid.UUID,
+    staff_email: str,
+    request_id: str,
+) -> None:
+    """The first owner membership and its `membership.created` staff audit row."""
+    await _member(
+        conn,
+        tenant_id=tenant_id,
+        user_id=user_id,
+        role="owner",
+        staff_email=staff_email,
+        request_id=request_id,
+    )
+
+
 async def create_tenant_with_owner(
     engine: AsyncEngine,
     *,
@@ -147,44 +227,22 @@ async def create_tenant_with_owner(
     request_id: str,
 ) -> uuid.UUID:
     tenant_id = uuid.uuid4()  # fixed before the transaction opens (S9 D16)
-    status = "active" if trial_days is None else "trial"
-    trial_ends = None if trial_days is None else datetime.now(UTC) + timedelta(days=trial_days)
     async with engine.begin() as conn:
         await _as_migrator(conn, tenant_id)
-        inserted = (
-            await conn.execute(
-                text(
-                    "INSERT INTO tenants (id, name, slug, status, trial_ends_at) "
-                    "VALUES (:id, :name, :slug, :status, :trial) "
-                    "ON CONFLICT (slug) DO NOTHING RETURNING id"
-                ),
-                {
-                    "id": tenant_id,
-                    "name": name,
-                    "slug": slug,
-                    "status": status,
-                    "trial": trial_ends,
-                },
-            )
-        ).first()
-        if inserted is None:
-            raise SlugTakenError("slug taken")
-        await _audit(
+        await insert_tenant(
             conn,
             tenant_id=tenant_id,
+            name=name,
+            slug=slug,
             staff_email=staff_email,
-            action="tenant.created",
-            entity_type="tenant",
-            entity_id=tenant_id,
-            after=_json({"name": name}),
+            trial_days=trial_days,
             request_id=request_id,
         )
         user_id = await _user_id(conn, owner)
-        await _member(
+        await add_owner(
             conn,
             tenant_id=tenant_id,
             user_id=user_id,
-            role="owner",
             staff_email=staff_email,
             request_id=request_id,
         )
@@ -293,6 +351,46 @@ async def set_password(
                 request_id=request_id,
             )
     return user_id, revoked
+
+
+async def make_platform_admin(
+    engine: AsyncEngine, *, email: str, staff_email: str, request_id: str
+) -> uuid.UUID:
+    """`users.is_platform_admin = true` for an active user (ADR-0019), as migrator, with one
+    platform `user.platform_admin_granted` staff audit row. Idempotent: an admin stays one and
+    gets no second audit row. `NotEligibleError` for an unknown, inactive or erased user."""
+    async with engine.begin() as conn:
+        current = (await conn.execute(text("SELECT current_user"))).scalar_one()
+        if current != "migrator":
+            await conn.execute(text("SET LOCAL ROLE migrator"))
+        found = (
+            await conn.execute(
+                text(
+                    "SELECT id, is_active, erased_at, is_platform_admin FROM users "
+                    "WHERE lower(email) = lower(:e) FOR UPDATE"
+                ),
+                {"e": email},
+            )
+        ).first()
+        if found is None or not found.is_active or found.erased_at is not None:
+            raise NotEligibleError("unknown, inactive or erased user")
+        user_id: uuid.UUID = found.id
+        if found.is_platform_admin:
+            return user_id
+        await conn.execute(
+            text("UPDATE users SET is_platform_admin = true WHERE id = :u"), {"u": user_id}
+        )
+        await _audit(
+            conn,
+            tenant_id=None,
+            staff_email=staff_email,
+            action="user.platform_admin_granted",
+            entity_type="user",
+            entity_id=user_id,
+            after=None,
+            request_id=request_id,
+        )
+    return user_id
 
 
 def _json(value: dict[str, Any]) -> str:

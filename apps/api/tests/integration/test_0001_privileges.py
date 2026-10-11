@@ -179,7 +179,10 @@ def _functions(conn: Conn) -> list[tuple[str, int]]:
     return [(str(name), int(oid)) for name, oid in rows]
 
 
-DEFINERS_0004 = frozenset({"set_tenant_lifecycle(uuid,text,text)", "expire_trials()"})
+# 0004's two tenant-scoped definers (DATABASE.md §8.1) and 0010's platform-admin check (ADR-0019)
+DEFINERS = frozenset(
+    {"set_tenant_lifecycle(uuid,text,text)", "expire_trials()", "app_is_platform_admin()"}
+)
 
 
 def test_0001_privileges_no_public_execute(db: Conn) -> None:
@@ -195,8 +198,7 @@ def test_0001_privileges_no_public_execute(db: Conn) -> None:
         ).fetchone()
         assert public == (0,), name
         definer = db.execute("SELECT prosecdef FROM pg_proc WHERE oid = %s", (oid,)).fetchone()
-        # 0004's two tenant-scoped definers (DATABASE.md §8.1) are the only SECURITY DEFINERs
-        assert definer == ((name in DEFINERS_0004),), name
+        assert definer == ((name in DEFINERS),), name
 
 
 @pytest.mark.parametrize("function", GRANTED_FUNCTIONS)

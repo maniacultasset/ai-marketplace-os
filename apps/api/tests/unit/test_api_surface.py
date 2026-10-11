@@ -255,6 +255,8 @@ def test_list_ops_are_the_page_models() -> None:
         "tasks_list",
         # S21: the submission ledger read
         "listings_submissions",
+        # ADR-0019: the platform admin's sign-up queue
+        "admin_signup_requests_list",
     }
 
 

@@ -89,7 +89,7 @@ def test_mock_callback_303(client: TestClient) -> None:
 
 def test_mock_every_op_answers(client: TestClient, spec: dict[str, Any]) -> None:
     ops = _ops(spec)
-    assert len(ops) == 50  # S3's 35, S10's 3, S15's 2, S16's 3, S20's 1, S19's 4, S21's 2
+    assert len(ops) == 55  # S3 35, S10 3, S15 2, S16 3, S20 1, S19 4, S21 2, ADR-0019 5
     for method, template in ops:
         path = template.replace("{marketplace}", "amazon")
         for name in ("product_id", "import_id", "listing_id", "image_id", "job_id", "user_id"):

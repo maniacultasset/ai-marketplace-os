@@ -23,7 +23,9 @@ TEMPLATE = frozenset({"t_tenant", "t_platform", "t_migrator"})
 # The named branches beside (or instead of) the template, per table (DATABASE.md §5.1-§5.4).
 POLICIES: dict[str, frozenset[str]] = {
     "tenants": TEMPLATE | {"tenants_switcher"},
-    "users": frozenset({"users_self", "users_login", "users_signup", "users_teammates"})
+    "users": frozenset(
+        {"users_self", "users_login", "users_signup", "users_teammates", "users_platform_admin"}
+    )
     | {"t_platform", "t_migrator"},
     "tenant_memberships": TEMPLATE | {"memberships_own"},
     "refresh_tokens": TEMPLATE | {"refresh_tokens_hash", "refresh_tokens_own"},

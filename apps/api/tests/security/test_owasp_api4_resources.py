@@ -23,15 +23,8 @@ BODY_OPS = [op for op in OPS.values() if op.has_body]
 LIST_OPS = [op for op in OPS.values() if op.method == "GET" and "limit" in op.query]
 
 
-def _role(op: Operation) -> str:
-    for role in ("owner", "operator", "reviewer", "admin"):
-        if role in (op.roles or ()):
-            return role
-    raise AssertionError(op.op_id)
-
-
 def _headers(world: World2, op: Operation) -> dict[str, str]:
-    return {} if op.public else world.headers(f"{_role(op)}@acme.test")
+    return world.caller_headers(op)
 
 
 FORM_HEAD = (

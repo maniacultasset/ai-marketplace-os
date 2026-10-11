@@ -81,6 +81,21 @@ class World2:
     def headers(self, email: str, slug: str | None = None) -> dict[str, str]:
         return bearer(self.token(email, slug))
 
+    def caller_headers(self, op: Operation) -> dict[str, str]:
+        """The headers of a caller `op` lets through in acme: none for a public op; for a
+        platform-admin op (ADR-0019) acme's operator, flagged a platform admin for this test
+        only (no member is one in the shared world, so every role still gets its 403
+        elsewhere); else the first role the op allows."""
+        if op.public:
+            return {}
+        if op.platform_admin:
+            self.base.conn.execute(
+                "UPDATE users SET is_platform_admin = true WHERE email = 'operator@acme.test'"
+            )
+            return self.headers("operator@acme.test")
+        role = next(r for r in ROLES if r in (op.roles or ()))
+        return self.headers(f"{role}@acme.test")
+
     def foreign_values(self, slug: str) -> list[str]:
         """Every id and canary of `slug`'s side, as text (what must never cross over)."""
         side = self.sides[slug]

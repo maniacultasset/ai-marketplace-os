@@ -6,6 +6,8 @@
   connects marketplaces and manages the team and settings but is not an approver (T88); every role
   reads its own tenant and its analytics.
 - `Principal` is the verified caller: its `role` comes from the membership row, never the token.
+- `PLATFORM_ADMIN` is the one policy outside the matrix (ADR-0019): no role holds it; the flag on
+  the user row does.
 - The FastAPI dependencies `require(action)` and `public()` live in `app/api/v1/deps.py` (they
   need the principal and the limiter); each is marked with its policy, and `route_policy(route)`
   reads that mark back from a route's dependency tree.
@@ -68,7 +70,11 @@ MATRIX: Final[Mapping[Role, frozenset[Action]]] = MappingProxyType(
 )
 
 PUBLIC: Final = "public"
-Policy = Action | Literal["public"]
+# ADR-0019: the platform admin's sign-up queue. Not an `Action` (owner holds every action, so a
+# matrix entry would grant it to every owner): `require_platform_admin()` checks the user's own
+# `users.is_platform_admin` row on every request, whatever the role in the token's tenant.
+PLATFORM_ADMIN: Final = "platform:admin"
+Policy = Action | Literal["public", "platform:admin"]
 POLICY_ATTR: Final = "__mkos_policy__"
 
 

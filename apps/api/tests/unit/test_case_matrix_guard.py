@@ -88,6 +88,12 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "listings_refresh_status",
         "analytics_get",
         "analytics_summary",
+        # ADR-0019
+        "signup_create",
+        "signup_status",
+        "admin_signup_requests_list",
+        "admin_signup_requests_approve",
+        "admin_signup_requests_reject",
     }
 )
 

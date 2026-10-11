@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 from app.api.v1.surface import ALL_ROLES, OPS, cases
-from app.core.rbac import MATRIX, PUBLIC, Action
+from app.core.rbac import MATRIX, PLATFORM_ADMIN, PUBLIC, Action
 from tests.conftest import REPO_ROOT
 
 # CODE-PLAN Q7, written out: the action each operation requires.
@@ -64,6 +64,12 @@ Q7: dict[str, str] = {
     "analytics_summary": "analytics:read",
     "members_list": "team:manage",
     "members_patch": "team:manage",
+    # ADR-0019: the public sign-up and the platform admin's queue (no role in the matrix)
+    "signup_create": PUBLIC,
+    "signup_status": PUBLIC,
+    "admin_signup_requests_list": PLATFORM_ADMIN,
+    "admin_signup_requests_approve": PLATFORM_ADMIN,
+    "admin_signup_requests_reject": PLATFORM_ADMIN,
 }
 NARROWED_BY_S10 = (
     "images_upload_url",
@@ -88,7 +94,8 @@ def _operation(spec: dict[str, Any], op_id: str) -> dict[str, Any]:
 
 
 def test_ops_are_the_q7_list() -> None:
-    assert len(OPS) == 50  # S10 38 + S15 two + S16 three + S20 preview + S19 four + S21 two
+    # S10 38 + S15 two + S16 three + S20 preview + S19 four + S21 two + ADR-0019 five
+    assert len(OPS) == 55
     assert set(OPS) == set(Q7)
 
 
@@ -98,6 +105,10 @@ def test_ops_roles_equal_matrix_for_action(op_id: str) -> None:
     if Q7[op_id] == PUBLIC:
         assert op.public and op.action is None
         assert op.roles == ALL_ROLES
+        return
+    if Q7[op_id] == PLATFORM_ADMIN:
+        assert op.platform_admin and op.action is None
+        assert op.roles == frozenset()
         return
     assert not op.public
     assert op.action == Action(Q7[op_id])

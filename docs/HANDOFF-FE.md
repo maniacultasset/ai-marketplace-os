@@ -1,5 +1,7 @@
 # Handoff to the FE team: the v1 API
 
+> **Superseded for v1 handover:** the full, code-checked guide is [`handover/FRONTEND-GUIDE.md`](handover/FRONTEND-GUIDE.md), with the API reference, flows and diagrams beside it. Where this page differs, `handover/` wins.
+
 The backend serves one versioned REST API under **`/api/v1`**. Its contract is `openapi.json` in `packages/schemas`, released as **`schemas-v1.0.0`**.
 
 ## 1. Install the contract

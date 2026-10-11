@@ -18,9 +18,10 @@ from mkos_schemas.codes import ErrorCode
 
 from app.api.errors import ApiError
 from app.api.rate_limit import enforce_refused_principal_limit, enforce_tenant_limit, limit_ip
-from app.core.rbac import PUBLIC, Action, Principal, allows, mark_policy
+from app.core.rbac import PLATFORM_ADMIN, PUBLIC, Action, Principal, allows, mark_policy
 from app.core.request_context import bind_tenant
 from app.core.security import InvalidToken, decode
+from app.services import signup
 from app.services.auth import probe_principal
 
 IDEMPOTENCY_KEY_PATTERN: Final = r"^[\x21-\x7E]{1,255}$"
@@ -121,6 +122,23 @@ def require(action: Action) -> Any:
 
     dependency.__name__ = f"require_{action.name.lower()}"
     return Depends(mark_policy(dependency, action))
+
+
+async def _platform_admin(
+    principal: Annotated[Principal, Depends(get_current_principal)],
+) -> Principal:
+    """The verified caller whose own user row is a platform admin (ADR-0019), read fresh on
+    every request (never from the token, so a revoked flag takes effect at once); 403
+    PERMISSION_DENIED otherwise, whatever the caller's role in the token's tenant."""
+    if not await signup.is_platform_admin(principal):
+        raise ApiError(403, ErrorCode.PERMISSION_DENIED)
+    return principal
+
+
+@cache
+def require_platform_admin() -> Any:
+    """`Depends` on the platform-admin check, marked with the `platform:admin` policy."""
+    return Depends(mark_policy(_platform_admin, PLATFORM_ADMIN))
 
 
 async def _public_limited(_: Annotated[None, Depends(limit_ip)]) -> None:

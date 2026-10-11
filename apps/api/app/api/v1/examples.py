@@ -32,6 +32,8 @@ TASK: Final = "0b1c2d3e-0000-4000-8000-000000001101"
 AUDIT_EVENT: Final = "0b1c2d3e-0000-4000-8000-000000001201"
 SUBMISSION: Final = "0b1c2d3e-0000-4000-8000-000000001301"
 LISTING_ITEM: Final = "0b1c2d3e-0000-4000-8000-000000001401"
+SIGNUP: Final = "0b1c2d3e-0000-4000-8000-000000001501"
+APPLICANT: Final = "0b1c2d3e-0000-4000-8000-000000001502"
 
 _MEMBERSHIPS: Final = [{"tenant_id": TENANT, "tenant_name": "Fabrica", "role": "owner"}]
 _TOKENS: Final = {
@@ -337,6 +339,21 @@ _SUMMARY: Final = {
     ],
 }
 
+_SIGNUP_REQUEST: Final = {
+    "id": SIGNUP,
+    "user_id": APPLICANT,
+    "email": "founder@kalakar.example",
+    "brand_name": "Kalakar Weaves",
+    "owner_name": "Meera Iyer",
+    "phone": "+91 98765 43210",
+    "website": "https://kalakar.example",
+    "status": "pending",
+    "reason": None,
+    "tenant_id": None,
+    "created_at": T0,
+    "decided_at": None,
+}
+
 SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
     {
         "auth_login": _TOKENS,
@@ -349,6 +366,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "tenant_id": TENANT,
             "role": "owner",
             "memberships": _MEMBERSHIPS,
+            "is_platform_admin": False,
         },
         "auth_switch_tenant": _TOKENS,
         "members_list": _page(
@@ -584,5 +602,28 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
         "tasks_list": _page([_TASK]),
         "analytics_get": _SUMMARY,
         "analytics_summary": _SUMMARY,
+        "signup_create": {"request_id": SIGNUP, "status": "pending"},
+        "signup_status": {
+            "request_id": SIGNUP,
+            "brand_name": "Kalakar Weaves",
+            "status": "pending",
+            "reason": None,
+            "tenant_id": None,
+            "created_at": T0,
+            "decided_at": None,
+        },
+        "admin_signup_requests_list": _page([_SIGNUP_REQUEST]),
+        "admin_signup_requests_approve": {
+            **_SIGNUP_REQUEST,
+            "status": "approved",
+            "tenant_id": TENANT,
+            "decided_at": T1,
+        },
+        "admin_signup_requests_reject": {
+            **_SIGNUP_REQUEST,
+            "status": "rejected",
+            "reason": "We could not verify the brand; write to support with your GSTIN.",
+            "decided_at": T1,
+        },
     }
 )

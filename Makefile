@@ -432,3 +432,12 @@ schemas-drift:
 	$(MAKE) -C packages/schemas ts-pack-check
 	$(MAKE) -C packages/schemas ts-consumer-check
 	@echo "schemas-drift: OK"
+
+# The handover docs (docs/handover/): the API reference and Swagger page from the committed contract,
+# the generated part of DATABASE.md from the models and an offline `alembic --sql` (never connects).
+.PHONY: docs-handover
+docs-handover:
+	uv run --frozen python scripts/docs/gen_api_reference.py
+	APP_ENV=local APP_ROLE=migrate PYTHONPATH=apps/api \
+	  ALEMBIC_DATABASE_URL=postgresql+psycopg://migrator@localhost:1/placeholder_offline_only \
+	  uv run --frozen python scripts/docs/gen_db_er.py
