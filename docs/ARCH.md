@@ -124,6 +124,8 @@ Source: BACKEND-ARCHITECTURE.md §9.1; CANON.md migration ledger; EXECUTION-PLAN
 
 - No cloud dev tier. The staging DB tier follows EXECUTION-PLAN decision 6, not ADR-0001's shared-core
   row. ADR-0009 is still proposed. **Open:** the apex domain (STATE open decision 5).
+- Until S4's CD exists, `scripts/deploy/gcp/deploy.sh` stands up and deploys staging or prod by hand,
+  run by a person in their own terminal (`docs/runbooks/DEPLOY-GCP.md`).
 
 Source: ADR-0001 §Decision; ADR-0009 §Decision; docs/STATE.md ("Decided", "GCP account"); EXECUTION-PLAN.md §2
 decision 6, §5.3; docker-compose.yml; Makefile.

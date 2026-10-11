@@ -1,0 +1,17 @@
+# The API image on Cloud Build (`deploy.sh <env> build`). The source is a `git archive` of one
+# clean commit, so the image holds exactly that commit; the build context is the repo root, as
+# apps/api/Dockerfile requires. _IMAGE and _GIT_SHA come from deploy.sh.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    env: ["DOCKER_BUILDKIT=1"]
+    args:
+      - build
+      - --file=apps/api/Dockerfile
+      - --tag=${_IMAGE}
+      - --label=org.opencontainers.image.revision=${_GIT_SHA}
+      - .
+images: ["${_IMAGE}"]
+options:
+  # The build service account writes to Cloud Logging only (no logs bucket to grant).
+  logging: CLOUD_LOGGING_ONLY
+timeout: 1800s
