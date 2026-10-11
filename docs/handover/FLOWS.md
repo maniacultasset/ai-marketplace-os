@@ -255,8 +255,9 @@ frontend must send them back to the login screen. An owner or admin deactivating
 
 ### 2.1 Creating a tenant and adding members (staff CLI)
 
-In v1 a tenant, its first owner and any further member are created by **staff**, with the
-operator command line. There is no sign-up endpoint and no invite email.
+Staff can still create a tenant, its first owner and any further member with the operator
+command line. A brand can also sign up on its own and wait for a platform admin to approve it
+(section 2.1b, ADR-0019). There is no invite email.
 
 ```mermaid
 sequenceDiagram
@@ -279,6 +280,56 @@ sequenceDiagram
 
 How to read it: everything before the login is staff work. From step 6 on the owner uses the
 normal API. `scripts/e2e/acceptance.sh` starts exactly like this.
+
+### 2.1b Self-serve sign-up, waiting for approval, approve or reject (ADR-0019)
+
+The form asks only for the minimum. The rest of the brand profile is filled in after approval
+(section 2.2). No email is sent at any step.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Brand as Brand (browser)
+    participant API
+    participant DB
+    participant Admin as Platform admin (browser)
+    Brand->>API: POST /api/v1/signup {brand_name, owner_name, email, password, phone?, website?}
+    API->>DB: insert user (if new), signup_requests row (pending), audit signup.requested
+    API-->>Brand: 202 {request_id, status: pending}
+    Brand->>API: POST /api/v1/auth/login
+    API-->>Brand: 401 (no membership yet)
+    Brand->>API: POST /api/v1/signup/status {email, password}
+    API-->>Brand: 200 {status: pending}: show the waiting screen
+    Admin->>API: GET /api/v1/admin/signup-requests?status=pending
+    API-->>Admin: 200 page of requests (email, brand, owner, phone, website)
+    alt approve
+        Admin->>API: POST /api/v1/admin/signup-requests/{id}/approve {trial_days?}
+        API->>DB: tenant (trial, slug from brand name), owner membership, request approved, staff audit rows
+        API-->>Admin: 200 {status: approved, tenant_id}
+        Brand->>API: POST /api/v1/auth/login
+        API-->>Brand: 200 tokens for the new tenant: the normal dashboard and onboarding
+    else reject
+        Admin->>API: POST /api/v1/admin/signup-requests/{id}/reject {reason}
+        API-->>Admin: 200 {status: rejected, reason}
+        Brand->>API: POST /api/v1/signup/status
+        API-->>Brand: 200 {status: rejected, reason}: the brand may sign up again
+    end
+```
+
+How to read it:
+- The 202 is the same for a new email, for an existing email with a wrong password (nothing is
+  written) and for a repeat while pending (the same `request_id`). One answer never reveals
+  whether an account exists; a pair can (ADR-0019 decision 2), until email verification exists.
+- Staff cannot hand an applicant's email a tenant through the CLI (`tenant create`, `add-member`
+  exit 4) until the admin approves the request: the applicant chose that password unverified.
+- Until approval the applicant has no membership, so login is the usual 401 and no tenant data is
+  reachable. `POST /signup/status` is the only thing they can read, and it needs the password.
+- A platform admin is a normal member of some tenant (for example a staff tenant) whose user row
+  has `is_platform_admin`. Staff set it with
+  `python -m app.cli user make-admin --email E --staff-email F`. Everyone else gets 403 on the
+  three admin calls.
+- Approve and reject are idempotent: the same decision again returns the stored row. The opposite
+  decision is 409 `INVALID_STATUS_TRANSITION`.
 
 ### 2.2 Brand profile and brand documents
 

@@ -111,7 +111,9 @@ def test_rls_table_list_matches_catalog(admin_conn: Conn) -> None:
         "SELECT relname FROM pg_class WHERE relnamespace = 'public'::regnamespace "
         "AND relkind IN ('r', 'p') AND relrowsecurity"
     ).fetchall()
-    assert {str(r[0]) for r in rows} == set(TENANT_COLUMN) | {"users"}
+    # ADR-0019: `signup_requests` is a platform table under its own policies
+    # (test_signup_isolation.py), not the tenant template.
+    assert {str(r[0]) for r in rows} == set(TENANT_COLUMN) | {"users", "signup_requests"}
 
 
 @pytest.mark.parametrize("table", TABLES)

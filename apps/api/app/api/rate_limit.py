@@ -7,7 +7,10 @@
 - `enforce_refused_principal_limit(tid, sub)`: the same limit on `u:<tid>:<sub>`, counted for a
   verified token whose probe failed (a deactivated member, a suspended tenant).
 - `enforce_login_limit(request, email)`: 5/min per `sha256(ip | lower(email))`, called by the
-  login before any password check.
+  login (and the sign-up status read) before any password check.
+- `enforce_signup_limit(request)`: the same 5/min per `sha256(ip)` alone, called by the public
+  sign-up before anything else, so one address cannot mint accounts across many emails
+  (ADR-0019).
 
 The client IP (Q6): uvicorn runs with `--proxy-headers --forwarded-allow-ips='*'`, which rewrites
 the ASGI peer to the left-most `X-Forwarded-For` entry, so `request.client` is never trusted when
@@ -74,6 +77,14 @@ def login_bucket(ip: str, email: str) -> str:
 async def enforce_login_limit(request: Request, email: str) -> None:
     bucket = login_bucket(request_ip(request), email)
     await _enforce(bucket, get_settings().auth_login_rate_limit_per_min)
+
+
+def signup_bucket(ip: str) -> str:
+    return f"signup:{hashlib.sha256(ip.encode()).hexdigest()}"
+
+
+async def enforce_signup_limit(request: Request) -> None:
+    await _enforce(signup_bucket(request_ip(request)), get_settings().auth_login_rate_limit_per_min)
 
 
 async def enforce_tenant_limit(tenant_id: UUID) -> None:

@@ -3,7 +3,8 @@
 `OPS` is the frozen list (35 operations at S3, 38 with S10's switch and members, 40 with S15's
 connect confirm and account revoke, 43 with S16's profile update and document list and delete,
 44 with S20's listing preview, 48 with S19's listing history, issues, issue dismiss and tasks,
-50 with S21's listing submissions and refresh-status; no
+50 with S21's listing submissions and refresh-status, 55 with ADR-0019's sign-up, sign-up status
+and the platform admin's list, approve and reject; no
 dead-letter path,
 which is staff tooling per T82). It
 drives the routers (`route()`), the declared OpenAPI responses (`declared_responses()`), the
@@ -34,7 +35,7 @@ from mkos_schemas.validation import ValidationResult, ValidationSummary
 from pydantic import BaseModel
 
 from app.api.errors import STATUS_MESSAGES, ErrorEnvelope, envelope_body
-from app.api.v1.deps import public, require
+from app.api.v1.deps import public, require, require_platform_admin
 from app.api.v1.examples import CALLBACK_LOCATION, ETAG_EXAMPLE, SUCCESS_EXAMPLES
 from app.api.v1.schemas.analytics import AnalyticsSummary
 from app.api.v1.schemas.auth import MemberOut, MemberPage, MeOut, TokenResponse
@@ -56,10 +57,16 @@ from app.api.v1.schemas.marketplaces import (
 )
 from app.api.v1.schemas.products import ProductOut, ProductPage
 from app.api.v1.schemas.rules import RulePage
+from app.api.v1.schemas.signup import (
+    SignupAccepted,
+    SignupRequestOut,
+    SignupRequestPage,
+    SignupStatusOut,
+)
 from app.api.v1.schemas.submissions import SubmissionPage
 from app.api.v1.schemas.tasks import TaskPage
 from app.api.v1.schemas.tenants import TenantOut
-from app.core.rbac import PUBLIC, Action, roles_for
+from app.core.rbac import PLATFORM_ADMIN, PUBLIC, Action, roles_for
 
 Case = Literal[
     "success",
@@ -109,7 +116,10 @@ class Operation:
     etag: bool = False
     """The success response carries an `ETag` header (S16 CP3: the version a PATCH sends back)."""
     action: Action | None = None
-    """The action `require()` checks (CODE-PLAN S10 Q7); None exactly when the op is public."""
+    """The action `require()` checks (CODE-PLAN S10 Q7); None exactly when the op is public or
+    platform-admin only."""
+    platform_admin: bool = False
+    """Platform admins only (ADR-0019): `require_platform_admin()`, no role in the matrix."""
     roles: frozenset[Role] | None = None
     """Derived from `action` through the matrix when not given; a public op holds ALL_ROLES."""
     extra_codes: Mapping[int, tuple[ErrorCode, ...]] = field(
@@ -119,15 +129,24 @@ class Operation:
     or a status of the op's own (listings_preview's 501 for a marketplace with no adapter)."""
 
     def __post_init__(self) -> None:
-        if (self.action is None) is not self.public:
-            raise ValueError(f"{self.op_id}: a public op has no action; any other op needs one")
+        if self.public and self.platform_admin:
+            raise ValueError(f"{self.op_id}: an op is public or platform-admin, not both")
+        if (self.action is None) is not (self.public or self.platform_admin):
+            raise ValueError(
+                f"{self.op_id}: a public or platform-admin op has no action; any other op needs one"
+            )
         if self.roles is None:
-            derived = ALL_ROLES if self.action is None else roles_for(self.action)
+            if self.platform_admin:
+                derived = NO_ROLES
+            else:
+                derived = ALL_ROLES if self.action is None else roles_for(self.action)
             object.__setattr__(self, "roles", derived)
 
     @property
     def policy(self) -> str:
-        """The `x-mkos-action` value: the action, or `public`."""
+        """The `x-mkos-action` value: the action, `public` or `platform:admin`."""
+        if self.platform_admin:
+            return PLATFORM_ADMIN
         return PUBLIC if self.action is None else self.action.value
 
     @property
@@ -311,6 +330,8 @@ def is_stub(fn: object) -> bool:
 
 
 def _policy(op: Operation) -> Any:
+    if op.platform_admin:
+        return require_platform_admin()
     if op.action is None:
         return public()
     return require(op.action)
@@ -526,6 +547,26 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "Operational metrics (alias of /analytics/summary)", "S23", query=("from", "to"), action=A.ANALYTICS_READ),
     Operation("analytics_summary", "GET", "/analytics/summary", 200, AnalyticsSummary,
               "analytics", "Operational metrics for a date range", "S23", query=("from", "to"), action=A.ANALYTICS_READ),
+    # ---- self-serve sign-up and the platform admin's queue (ADR-0019) ----
+    Operation("signup_create", "POST", "/signup", 202, SignupAccepted, "signup",
+              "Sign up a brand: a pending request a platform admin approves", "ADR-0019",
+              public=True, has_body=True),
+    Operation("signup_status", "POST", "/signup/status", 200, SignupStatusOut, "signup",
+              "The caller's latest sign-up request (email and password)", "ADR-0019",
+              public=True, has_body=True, extra_codes=_401),
+    Operation("admin_signup_requests_list", "GET", "/admin/signup-requests", 200,
+              SignupRequestPage, "admin", "List sign-up requests, oldest first (platform admins)",
+              "ADR-0019", query=("status", "limit", "cursor"), platform_admin=True),
+    Operation("admin_signup_requests_approve", "POST",
+              "/admin/signup-requests/{request_id}/approve", 200, SignupRequestOut, "admin",
+              "Approve a sign-up: create the trial tenant and its owner (idempotent)", "ADR-0019",
+              has_body=True, conflict_code=E.INVALID_STATUS_TRANSITION,
+              extra_codes=MappingProxyType({404: (E.NOT_FOUND,)}), platform_admin=True),
+    Operation("admin_signup_requests_reject", "POST",
+              "/admin/signup-requests/{request_id}/reject", 200, SignupRequestOut, "admin",
+              "Reject a sign-up with a reason (idempotent)", "ADR-0019", has_body=True,
+              conflict_code=E.INVALID_STATUS_TRANSITION,
+              extra_codes=MappingProxyType({404: (E.NOT_FOUND,)}), platform_admin=True),
 )  # fmt: skip
 
 OPS: Final[Mapping[str, Operation]] = MappingProxyType({op.op_id: op for op in _ROWS})

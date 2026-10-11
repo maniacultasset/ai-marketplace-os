@@ -49,6 +49,16 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
         "bytes": 1024,
     },
     "rules_dry_run": {"listing": _LISTING_JSON},
+    # ADR-0019
+    "signup_create": {
+        "brand_name": "Kalakar Weaves",
+        "owner_name": "Meera Iyer",
+        "email": "founder@kalakar.example",
+        "password": "a-long-enough-pass",
+    },
+    "signup_status": {"email": "founder@kalakar.example", "password": "pw"},
+    "admin_signup_requests_approve": {"trial_days": 14},
+    "admin_signup_requests_reject": {"reason": "Could not verify the brand."},
 }
 _FORM_OPS = {"brand_documents_upload", "products_bulk", "images_upload"}
 _QUERY: dict[str, dict[str, str]] = {
@@ -84,6 +94,8 @@ def _path(op: Operation, value: str = ID) -> str:
     path = op.path
     if op.path_id:
         path = path.replace("{" + op.path_id + "}", value)
+    # ADR-0019: a platform row's id, not a tenant-owned one (so no `path_id`)
+    path = path.replace("{request_id}", value)
     return PREFIX + path.replace("{marketplace}", "amazon")
 
 
@@ -106,7 +118,7 @@ def valid_request(op: Operation) -> Call:
 def invalid_request(op: Operation) -> Call:
     """Break one input. Raises when an op has no input (it then declares no 422)."""
     call = valid_request(op)
-    if op.path_id:
+    if op.path_id or "{request_id}" in op.path:
         call.url = _path(op, "not-a-uuid")
     elif op.op_id == "marketplaces_callback":
         call.params = {"code": "auth-code"}

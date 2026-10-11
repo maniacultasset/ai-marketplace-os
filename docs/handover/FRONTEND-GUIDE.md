@@ -739,6 +739,27 @@ All paths are under `/api/v1`. "Key" means the call needs an `Idempotency-Key`.
 | Current user, role and tenants | `GET /auth/me` |
 | Tenant switcher | `POST /auth/switch-tenant` |
 
+### Sign-up and approval (ADR-0019)
+
+Three screens. The flow is in FLOWS.md section 2.1b.
+
+| Screen | Need | Endpoint |
+|---|---|---|
+| Sign-up form | Brand name, owner name, email, password (12+ characters); phone and website optional | `POST /signup` (always 202 `{request_id, status: "pending"}`) |
+| Waiting for approval | Show "waiting for approval", or the rejection reason with a "sign up again" button | `POST /signup/status` with email and password: `pending`, `rejected` (+ `reason`) or `approved` |
+| Waiting for approval | After a login 401, check whether the person has a sign-up pending | `POST /signup/status` (a 401 here means a real wrong email or password) |
+| Admin: sign-up requests | Only when `GET /auth/me` has `is_platform_admin: true` | `GET /admin/signup-requests?status=pending` (keyset pages) |
+| Admin: sign-up requests | Approve (optional `trial_days`, default 14) or reject (a `reason` the brand reads) | `POST /admin/signup-requests/{request_id}/approve`, `POST /admin/signup-requests/{request_id}/reject` |
+
+Notes:
+- Do not keep the password to poll the status. Ask for it again on the waiting screen, or poll
+  only while the form is still in memory.
+- After approval the brand logs in normally and lands on the dashboard. Onboarding details go
+  through the existing settings screens (`PATCH /tenants/me`, `/brand/documents`). Nothing new
+  is needed there.
+- Both sign-up calls are limited to 5 a minute (per IP for the form, per IP and email for the
+  status). Honour `Retry-After`.
+
 ### Dashboard and analytics
 
 | Need | Endpoint |

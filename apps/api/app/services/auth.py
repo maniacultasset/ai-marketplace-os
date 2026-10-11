@@ -68,12 +68,12 @@ class TokenPair:
 
 
 @cache
-def _dummy_hash() -> str:
+def dummy_hash() -> str:
     """A real argon2id hash of a random secret: an unknown email still costs one verify."""
     return hash_password(secrets.token_urlsafe(32))
 
 
-def _inet(ip: str | None) -> str | None:
+def inet(ip: str | None) -> str | None:
     """The address for an `inet` column, or None when the limiter's value is not an IP."""
     if ip is None:
         return None
@@ -109,7 +109,7 @@ async def _issue(
         family_id=family_id,
         token_hash=token_hash(raw_refresh),
         expires_at=datetime.fromtimestamp(refresh.exp, UTC),
-        ip=_inet(ip),
+        ip=inet(ip),
         user_agent=_agent(user_agent),
     )
     return encode(access), raw_refresh, row_id
@@ -130,7 +130,7 @@ async def login(
         await set_gucs(session, login_email=email)
         user = await UserRepository(session).by_email(email)
         stored = user.hashed_password if user is not None and user.hashed_password else None
-        verified = verify_password(password, stored or _dummy_hash())
+        verified = verify_password(password, stored or dummy_hash())
         memberships: list[MembershipRow] = []
         reason = "unknown_email"
         if user is not None:
@@ -150,7 +150,7 @@ async def login(
                 entity_type="user",
                 entity_id=user.id if user is not None else None,
                 reason=reason,
-                ip=_inet(ip),
+                ip=inet(ip),
             )
             return None
         assert user is not None  # noqa: S101 - memberships are read only for a verified user
@@ -175,7 +175,7 @@ async def login(
             action="auth.login",
             entity_type="user",
             entity_id=user.id,
-            ip=_inet(ip),
+            ip=inet(ip),
         )
     return TokenPair(access, refresh, _access_ttl(), [_membership(m) for m in memberships])
 
@@ -214,7 +214,7 @@ async def refresh(raw_token: str, *, ip: str | None, user_agent: str | None) -> 
                 action="auth.refresh_reuse_detected",
                 entity_type="user",
                 entity_id=row.user_id,
-                ip=_inet(ip),
+                ip=inet(ip),
             )
             return None
         if row.expires_at <= datetime.now(UTC):
@@ -265,7 +265,7 @@ async def logout(raw_token: str, *, ip: str | None) -> None:
             action="auth.logout",
             entity_type="user",
             entity_id=row.user_id,
-            ip=_inet(ip),
+            ip=inet(ip),
         )
 
 
@@ -277,12 +277,15 @@ class Me:
     tenant_id: UUID
     role: str
     memberships: list[Membership]
+    is_platform_admin: bool = False
 
 
 async def me(principal: Principal) -> Me:
-    """The caller with every live membership (the switcher lists them)."""
+    """The caller with every live membership (the switcher lists them) and their own platform
+    admin flag (ADR-0019: the FE shows the sign-up queue only to admins)."""
     async with unit_of_work(principal.tenant_id, user_id=principal.user_id) as session:
         rows = await MembershipRepository(session).list_active_for_user(principal.user_id)
+        admin = await UserRepository(session).is_platform_admin(principal.user_id)
     current = next((r for r in rows if r.tenant_id == principal.tenant_id), None)
     return Me(
         user_id=principal.user_id,
@@ -291,6 +294,7 @@ async def me(principal: Principal) -> Me:
         tenant_id=principal.tenant_id,
         role=principal.role,
         memberships=[_membership(r) for r in rows],
+        is_platform_admin=admin,
     )
 
 
@@ -328,7 +332,7 @@ async def switch_tenant(
             action="auth.tenant_switched",
             entity_type="user",
             entity_id=principal.user_id,
-            ip=_inet(ip),
+            ip=inet(ip),
         )
         listed = await memberships.list_active_for_user(principal.user_id)
     return TokenPair(access, refresh_token, _access_ttl(), [_membership(m) for m in listed])

@@ -89,7 +89,11 @@ def test_catalog_definer_search_path(db: Conn) -> None:
         "SELECT p.oid::regprocedure::text, p.proconfig FROM pg_proc p "
         "WHERE p.pronamespace = 'public'::regnamespace AND p.prosecdef ORDER BY 1"
     ).fetchall()
-    assert [r[0] for r in rows] == ["expire_trials()", "set_tenant_lifecycle(uuid,text,text)"]
+    assert [r[0] for r in rows] == [
+        "app_is_platform_admin()",  # 0010 (ADR-0019)
+        "expire_trials()",
+        "set_tenant_lifecycle(uuid,text,text)",
+    ]
     for name, config in rows:
         assert config == ["search_path=pg_catalog, public, pg_temp"], name
 

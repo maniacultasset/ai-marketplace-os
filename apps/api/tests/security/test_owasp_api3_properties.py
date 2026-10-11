@@ -29,21 +29,24 @@ EXTRA_DENIED = frozenset(
     {"token_enc", "password_hash", "refresh_token_hash", "payload_storage_key"}
 )
 # Personal data the product shows its own users by design: a member list and "who am I".
-PERSONAL_KEYS = frozenset({"email"})
-PERSONAL_OPS = frozenset({"auth_me", "members_list", "members_patch"})
+# ADR-0019: the platform admin's sign-up queue shows the applicant's email and phone.
+PERSONAL_KEYS = frozenset({"email", "phone"})
+PERSONAL_OPS = frozenset(
+    {
+        "auth_me",
+        "members_list",
+        "members_patch",
+        "admin_signup_requests_list",
+        "admin_signup_requests_approve",
+        "admin_signup_requests_reject",
+    }
+)
 TOKEN_KEYS = frozenset({"access_token", "refresh_token"})
 # The rules dry-run body carries the seam's CanonicalListing (CANON.md:122: every seam model is a
 # WireModel, `extra="ignore"`, so a newer peer's keys are dropped, never stored). The dry-run
 # writes nothing, and its own request model forbids extra keys at the top level.
 SEAM_MODELS = frozenset({"CanonicalListing", "ImageRef", "ListingContent", "ListingKeywords"})
 TOKEN_OPS = frozenset({"auth_login", "auth_refresh", "auth_switch_tenant"})
-
-
-def role_for(op: Operation) -> str:
-    for role in ("owner", "operator", "reviewer", "admin"):
-        if role in (op.roles or ()):
-            return role
-    raise AssertionError(op.op_id)
 
 
 def denied(key: str) -> bool:
@@ -65,7 +68,7 @@ async def test_api3_unknown_fields_422(
 
     conn = world2.base.conn
     acme = world2.side("acme").tenant_id
-    headers = {} if op.public else world2.headers(f"{role_for(op)}@acme.test")
+    headers = world2.caller_headers(op)
     # the body without the extra key passes validation, so the 422 below is the extra key's
     base = await send(api, call_for(op, world2, "acme"), headers)
     assert base.status_code != 422, (op.op_id, base.text[:300])
@@ -185,9 +188,7 @@ async def test_api3_no_response_holds_denied_key(
     api: httpx.AsyncClient, world2: World2, op: Operation
 ) -> None:
     """The answers themselves, walked recursively (a free-form JSON column included)."""
-    response = await send(
-        api, call_for(op, world2, "acme"), world2.headers(f"{role_for(op)}@acme.test")
-    )
+    response = await send(api, call_for(op, world2, "acme"), world2.caller_headers(op))
     assert response.status_code < 500, (op.op_id, response.text)
     if not response.headers.get("content-type", "").startswith("application/json"):
         return

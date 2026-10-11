@@ -27,7 +27,9 @@
    query still filters on `tenant_id` (invariant 5 is unchanged).
 4. **Maker-checker FKs point at memberships** `(tenant_id, user_id)`. This means an approver from
    another tenant fails at the FK, not only in code.
-5. **Invite-only onboarding in v1:**
+5. **Invite-only onboarding in v1:** *(superseded for brand onboarding by
+   [ADR-0019](0019-self-serve-signup-with-admin-approval.md), 2026-10-11: a brand signs up on its
+   own and a platform admin approves it; invitations still add members to a running tenant.)*
    - An `invitations` table stores a sha256 token hash only, a TTL and one pending invite per email.
    - Staff create tenants.
    - `tenants.status` (`trial | active | suspended | offboarded`), `plan` and `trial_ends_at` are

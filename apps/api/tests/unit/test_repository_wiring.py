@@ -56,6 +56,7 @@ def test_every_repository_subclasses_tenant_base() -> None:
             "AuditRepository",
             "MembershipRepository",
             "RefreshTokenRepository",
+            "SignupRepository",  # ADR-0019: the platform sign-up queue, under its own RLS
             "UserRepository",
         }
     }
