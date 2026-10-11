@@ -19,7 +19,13 @@ from .conftest import World2, call_for, ids_of, ops, send, tenant_fingerprint
 
 FOREIGN_PATH_OPS = ops(path_id=True)
 FOREIGN_BODY_OPS = [op for op in OPS.values() if op.body_ids]
-LIST_OPS = [op for op in OPS.values() if op.method == "GET" and "cursor" in op.query]
+# Tenant lists only: a platform-admin list (ADR-0019) spans every applicant by design, and its
+# admin-only access is covered by tests/integration/test_signup_api.py.
+LIST_OPS = [
+    op
+    for op in OPS.values()
+    if op.method == "GET" and "cursor" in op.query and not op.platform_admin
+]
 BATCH_OPS = {"listings_approve", "listings_publish"}
 # A role of bharat allowed to call the op (the owner holds every action but none of these).
 OWNER = "owner@bharat.test"
