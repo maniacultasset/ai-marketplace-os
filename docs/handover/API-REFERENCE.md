@@ -2,7 +2,7 @@
 
 > Generated from `packages/schemas/jsonschema/openapi.json` by `scripts/docs/gen_api_reference.py`. Do not edit by hand: change the code, export the contract, then run `make docs-handover`.
 
-This is the complete reference of the backend's HTTP API for the frontend and AI teams. It lists all 52 operations: what each one does, who may call it, what to send and what comes back. The same contract ships as generated TypeScript types in the npm package `@maniacultasset/schemas` (GitHub Packages), which the frontend installs under the alias `@mkos/schemas`, so never hand-write a request or response type.
+This is the complete reference of the backend's HTTP API for the frontend and AI teams. It lists all 57 operations: what each one does, who may call it, what to send and what comes back. The same contract ships as generated TypeScript types in the npm package `@maniacultasset/schemas` (GitHub Packages), which the frontend installs under the alias `@mkos/schemas`, so never hand-write a request or response type.
 
 - Read **Conventions** first: auth, tenants, idempotency, concurrency, paging, errors and jobs work the same everywhere.
 - Then use the **summary table** to find an operation, and its section for the details.
@@ -108,7 +108,7 @@ Each operation requires one **action** (shown as "Permission" in every operation
 | `team:manage` | yes | yes | - | - | 2 |
 | `tenant:read` | yes | yes | yes | yes | 20 |
 
-Public operations (`x-mkos-action: public`) need no token. `/healthz` and `/readyz` carry no action at all. A role not in the table holds nothing.
+Public operations (`x-mkos-action: public`) need no token. `/healthz` and `/readyz` carry no action at all. A role not in the table holds nothing. The sign-up queue (`x-mkos-action: platform:admin`, ADR-0019) is not in the table: it needs the caller's own `users.is_platform_admin` flag, whatever their role.
 
 <sub>Source: apps/api/app/core/rbac.py, apps/api/app/api/v1/deps.py</sub>
 
@@ -192,6 +192,7 @@ These operations are paginated:
 - [`GET /api/v1/tasks`](#get-apiv1tasks) (`tasks_list`)
 - [`GET /api/v1/marketplaces/accounts`](#get-apiv1marketplacesaccounts) (`marketplaces_accounts`)
 - [`GET /api/v1/rules`](#get-apiv1rules) (`rules_list`)
+- [`GET /api/v1/admin/signup-requests`](#get-apiv1adminsignup-requests) (`admin_signup_requests_list`)
 
 <sub>Source: apps/api/app/api/pagination.py, apps/api/app/repositories/listings.py (QUEUE_STATUSES), apps/api/app/repositories/members.py, apps/api/app/repositories/rules.py, apps/api/app/repositories/imports.py</sub>
 
@@ -264,7 +265,8 @@ A request body over 10 MiB (`REQUEST_MAX_BODY_BYTES`, default 10,485,760 bytes) 
 |---|---|---|
 | Per tenant | every authenticated request, counted after the token and membership check pass | 120 per minute (`RATE_LIMIT_PER_TENANT_PER_MIN`) |
 | Per IP | every public route (login, refresh, logout, OAuth callback) | 60 per minute (`RATE_LIMIT_PER_IP_PER_MIN`) |
-| Login | `POST /auth/login`, per IP and email | 5 per minute (`AUTH_LOGIN_RATE_LIMIT_PER_MIN`) |
+| Login | `POST /auth/login` and `POST /signup/status`, per IP and email | 5 per minute (`AUTH_LOGIN_RATE_LIMIT_PER_MIN`) |
+| Sign-up | `POST /signup`, per IP | 5 per minute (`AUTH_LOGIN_RATE_LIMIT_PER_MIN`) |
 | Status refresh | `POST /listings/{listing_id}/refresh-status`, per listing | once per 5 minutes |
 | Per-tenant caps | live imports, live image jobs, live brand document jobs, documents and chunks per tenant | fixed caps |
 | Daily AI budget | `listings/generate`, `listings/{listing_id}/regenerate`, and (per item) a reject with `regenerate` in `listings/approve` | a daily spend cap per tenant (`LLM_TENANT_DAILY_BUDGET_USD`); answers `429 BUDGET_EXCEEDED` |
@@ -421,8 +423,13 @@ Auth: `yes` means a Bearer access token is required. Permission: the action the 
 | 48 | POST | [`/api/v1/rules/dry-run`](#post-apiv1rulesdry-run) | Run the Rules Engine on a draft listing; saves nothing | yes | `listing:edit`: owner, operator | yes (saves nothing) |
 | 49 | GET | [`/api/v1/analytics`](#get-apiv1analytics) | Operational metrics (alias of /analytics/summary) | yes | `analytics:read`: owner, admin, operator, reviewer | yes (read-only) |
 | 50 | GET | [`/api/v1/analytics/summary`](#get-apiv1analyticssummary) | Operational metrics for a date range | yes | `analytics:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 51 | GET | [`/healthz`](#get-healthz) | Liveness probe: always 200, never touches the database | no | none (public probe) | yes (read-only) |
-| 52 | GET | [`/readyz`](#get-readyz) | Readiness probe: 200 when the database answers, else 503 | no | none (public probe) | yes (read-only) |
+| 51 | POST | [`/api/v1/signup`](#post-apiv1signup) | Sign up a brand: a pending request a platform admin approves | no | none (public) | no |
+| 52 | POST | [`/api/v1/signup/status`](#post-apiv1signupstatus) | The caller's latest sign-up request (email and password) | no | none (public) | no |
+| 53 | GET | [`/api/v1/admin/signup-requests`](#get-apiv1adminsignup-requests) | List sign-up requests, oldest first (platform admins) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | yes (read-only) |
+| 54 | POST | [`/api/v1/admin/signup-requests/{request_id}/approve`](#post-apiv1adminsignup-requestsrequest_idapprove) | Approve a sign-up: create the trial tenant and its owner (idempotent) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | no |
+| 55 | POST | [`/api/v1/admin/signup-requests/{request_id}/reject`](#post-apiv1adminsignup-requestsrequest_idreject) | Reject a sign-up with a reason (idempotent) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | no |
+| 56 | GET | [`/healthz`](#get-healthz) | Liveness probe: always 200, never touches the database | no | none (public probe) | yes (read-only) |
+| 57 | GET | [`/readyz`](#get-readyz) | Readiness probe: 200 when the database answers, else 503 | no | none (public probe) | yes (read-only) |
 
 ## Auth
 
@@ -588,7 +595,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 
 **The current principal and memberships.**
 
-The current principal: user, active tenant, role (from the membership row) and the live memberships.
+The current principal: user, active tenant, role (from the membership row), the live memberships and whether the user is a platform admin.
 
 | | |
 |---|---|
@@ -632,6 +639,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 |---|---|---|---|---|
 | `display_name` | string or null | no |  |  |
 | `email` | string | yes |  | min length 3; max length 320; pattern `^[^@\s]+@[^@\s]+$` |
+| `is_platform_admin` | boolean | no | True for a platform admin (ADR-0019): show the sign-up request queue. | default `false` |
 | `memberships` | array of MembershipOut | yes |  |  |
 | `memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |
 | `memberships[].tenant_id` | string (uuid) | yes |  |  |
@@ -646,6 +654,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 {
   "display_name": "Asha",
   "email": "owner@fabrica.example",
+  "is_platform_admin": false,
   "memberships": [
     {
       "role": "owner",
@@ -5603,6 +5612,485 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 
 [Back to the summary](#all-operations)
 
+## Signup
+
+Self-serve brand sign-up (ADR-0019): a pending request a platform admin approves, and the applicant's status read. Both are public and rate limited per IP.
+
+| Operation | Purpose |
+|---|---|
+| [`POST /api/v1/signup`](#post-apiv1signup) | Sign up a brand: a pending request a platform admin approves |
+| [`POST /api/v1/signup/status`](#post-apiv1signupstatus) | The caller's latest sign-up request (email and password) |
+
+### POST /api/v1/signup
+
+**Sign up a brand: a pending request a platform admin approves.**
+
+Brand name, owner name, email and password (phone and website optional) in; a pending request out. Always 202 with this shape: the answer never says whether the email already had an account. Re-submitting while a request is pending answers that request. The brand logs in only after a platform admin approves (until then the login is 401; read the status with `POST /signup/status`). The rest of the brand profile is filled in after approval with `PATCH /tenants/me` and `/brand/documents`.
+
+| | |
+|---|---|
+| Operation id | `signup_create` |
+| Auth | none |
+| Permission (roles that hold it) | none (public) |
+| Idempotent | no |
+| Success | 202 `SignupAccepted` |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+Content type `application/json`, required. Schema: `SignupCreate`.
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `brand_name` | string | yes |  | min length 1; max length 200 |
+| `email` | string | yes |  | min length 3; max length 320; pattern `^[^@\s]+@[^@\s]+$` |
+| `owner_name` | string | yes |  | min length 1; max length 200 |
+| `password` | string (password) | yes |  | min length 12; max length 1024; write-only (never returned) |
+| `phone` | string or null | no |  | max length 32; pattern `^\+?[0-9][0-9 ()-]{5,30}$` |
+| `website` | string or null | no |  | max length 2048; pattern `^https?://[^\s/?#]+\.[^\s]+$` |
+
+Example (built from the schema; values are placeholders):
+
+```json
+{
+  "brand_name": "string",
+  "email": "user@example.com",
+  "owner_name": "string",
+  "password": "<PASSWORD>",
+  "phone": "string",
+  "website": "string"
+}
+```
+
+#### Example call
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/signup" \
+  -H "Content-Type: application/json" \
+  -d '{"brand_name":"string","email":"user@example.com","owner_name":"string","password":"<PASSWORD>","phone":"string","website":"string"}'
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 202 | Success. | `SignupAccepted` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**202 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `request_id` | string (uuid) | yes |  |  |
+| `status` | const "pending" | yes |  |  |
+
+202 example:
+
+```json
+{
+  "request_id": "0b1c2d3e-0000-4000-8000-000000001501",
+  "status": "pending"
+}
+```
+
+[Back to the summary](#all-operations)
+
+### POST /api/v1/signup/status
+
+**The caller's latest sign-up request (email and password).**
+
+The caller's newest sign-up request: `pending` (show "waiting for approval"), `rejected` (with the admin's `reason`; the brand may sign up again) or `approved` (log in). Every refusal (unknown email, wrong password, no request) is the same 401 as the login.
+
+| | |
+|---|---|
+| Operation id | `signup_status` |
+| Auth | none |
+| Permission (roles that hold it) | none (public) |
+| Idempotent | no |
+| Success | 200 `SignupStatusOut` |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+Content type `application/json`, required. Schema: `SignupStatusRequest`.
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `email` | string | yes |  | min length 3; max length 320; pattern `^[^@\s]+@[^@\s]+$` |
+| `password` | string (password) | yes |  | min length 1; max length 1024; write-only (never returned) |
+
+Example (built from the schema; values are placeholders):
+
+```json
+{
+  "email": "user@example.com",
+  "password": "<PASSWORD>"
+}
+```
+
+#### Example call
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/signup/status" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"<PASSWORD>"}'
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 200 | Success. | `SignupStatusOut` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**200 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `brand_name` | string | yes |  | min length 1 |
+| `created_at` | string (date-time) | yes |  |  |
+| `decided_at` | string (date-time) or null | no |  |  |
+| `reason` | string or null | no |  |  |
+| `request_id` | string (uuid) | yes |  |  |
+| `status` | string (enum) | yes |  | one of: `pending`, `approved`, `rejected` |
+| `tenant_id` | string (uuid) or null | no |  |  |
+
+200 example:
+
+```json
+{
+  "brand_name": "Kalakar Weaves",
+  "created_at": "2026-10-05T09:30:00Z",
+  "request_id": "0b1c2d3e-0000-4000-8000-000000001501",
+  "status": "pending"
+}
+```
+
+[Back to the summary](#all-operations)
+
+## Admin
+
+The platform admin's sign-up queue: list, approve (creates the trial tenant and its owner) and reject. Platform admins only; everyone else gets 403.
+
+| Operation | Purpose |
+|---|---|
+| [`GET /api/v1/admin/signup-requests`](#get-apiv1adminsignup-requests) | List sign-up requests, oldest first (platform admins) |
+| [`POST /api/v1/admin/signup-requests/{request_id}/approve`](#post-apiv1adminsignup-requestsrequest_idapprove) | Approve a sign-up: create the trial tenant and its owner (idempotent) |
+| [`POST /api/v1/admin/signup-requests/{request_id}/reject`](#post-apiv1adminsignup-requestsrequest_idreject) | Reject a sign-up with a reason (idempotent) |
+
+### GET /api/v1/admin/signup-requests
+
+**List sign-up requests, oldest first (platform admins).**
+
+Every brand's sign-up requests, oldest first, optionally one status.
+
+| | |
+|---|---|
+| Operation id | `admin_signup_requests_list` |
+| Auth | Bearer access token |
+| Permission (roles that hold it) | `platform:admin`: platform admins only (`users.is_platform_admin`), any role |
+| Idempotent | yes (read-only) |
+| Success | 200 `SignupRequestPage` |
+
+#### Parameters
+
+| Name | In | Type | Required | Description | Constraints |
+|---|---|---|---|---|---|
+| `cursor` | query | string or null | no | Opaque `page.next_cursor` from the previous page. | min length 1; max length 512 |
+| `limit` | query | integer | no | Page size, 1..200 (default 50). | min 1; max 200; default `50` |
+| `status` | query | string (enum) or null | no | Only this status (`pending` for the queue). | one of: `pending`, `approved`, `rejected` |
+
+#### Request body
+
+None.
+
+#### Example call
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/admin/signup-requests" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 200 | Success. | `SignupRequestPage` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
+| 403 | Permission denied. | `ErrorEnvelope` |  | `PERMISSION_DENIED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**200 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `data` | array of SignupRequestOut | yes |  |  |
+| `data[].brand_name` | string | yes |  | min length 1 |
+| `data[].created_at` | string (date-time) | yes |  |  |
+| `data[].decided_at` | string (date-time) or null | no |  |  |
+| `data[].email` | string | yes |  | min length 3; max length 320; pattern `^[^@\s]+@[^@\s]+$` |
+| `data[].id` | string (uuid) | yes |  |  |
+| `data[].owner_name` | string | yes |  | min length 1 |
+| `data[].phone` | string or null | no |  |  |
+| `data[].reason` | string or null | no |  |  |
+| `data[].status` | string (enum) | yes |  | one of: `pending`, `approved`, `rejected` |
+| `data[].tenant_id` | string (uuid) or null | no | The tenant created on approve; null until then. |  |
+| `data[].user_id` | string (uuid) | yes |  |  |
+| `data[].website` | string or null | no |  |  |
+| `page` | PageInfo | yes |  |  |
+| `page.has_more` | boolean | yes |  |  |
+| `page.limit` | integer | yes |  | min 1; max 200 |
+| `page.next_cursor` | string or null | no |  | max length 512 |
+
+200 example:
+
+```json
+{
+  "data": [
+    {
+      "brand_name": "Kalakar Weaves",
+      "created_at": "2026-10-05T09:30:00Z",
+      "email": "founder@kalakar.example",
+      "id": "0b1c2d3e-0000-4000-8000-000000001501",
+      "owner_name": "Meera Iyer",
+      "phone": "+91 98765 43210",
+      "status": "pending",
+      "user_id": "0b1c2d3e-0000-4000-8000-000000001502",
+      "website": "https://kalakar.example"
+    }
+  ],
+  "page": {
+    "has_more": false,
+    "limit": 50
+  }
+}
+```
+
+[Back to the summary](#all-operations)
+
+### POST /api/v1/admin/signup-requests/{request_id}/approve
+
+**Approve a sign-up: create the trial tenant and its owner (idempotent).**
+
+Create the brand's tenant (status `trial`, `trial_days` default 14, a unique slug from the brand name) and its owner membership, exactly as the staff `tenant create` does. The owner then logs in normally. Approving an approved request answers it again; a rejected one is 409 `INVALID_STATUS_TRANSITION`; an unknown id is 404.
+
+| | |
+|---|---|
+| Operation id | `admin_signup_requests_approve` |
+| Auth | Bearer access token |
+| Permission (roles that hold it) | `platform:admin`: platform admins only (`users.is_platform_admin`), any role |
+| Idempotent | no |
+| Success | 200 `SignupRequestOut` |
+
+#### Parameters
+
+| Name | In | Type | Required | Description | Constraints |
+|---|---|---|---|---|---|
+| `request_id` | path | string (uuid) | yes |  |  |
+
+#### Request body
+
+Content type `application/json`, optional (the body may be omitted). Schema: `SignupApprove or null`.
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `trial_days` | integer or null | no | Trial length in days (default 14). | min 1; max 365 |
+
+Example (built from the schema; values are placeholders):
+
+```json
+{
+  "trial_days": 1
+}
+```
+
+#### Example call
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/admin/signup-requests/<request_id>/approve" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"trial_days":1}'
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 200 | Success. | `SignupRequestOut` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
+| 403 | Permission denied. | `ErrorEnvelope` |  | `PERMISSION_DENIED` |
+| 404 | Not found. | `ErrorEnvelope` |  | `NOT_FOUND` |
+| 409 | The request conflicts with the current state. | `ErrorEnvelope` |  | `INVALID_STATUS_TRANSITION` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**200 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `brand_name` | string | yes |  | min length 1 |
+| `created_at` | string (date-time) | yes |  |  |
+| `decided_at` | string (date-time) or null | no |  |  |
+| `email` | string | yes |  | min length 3; max length 320; pattern `^[^@\s]+@[^@\s]+$` |
+| `id` | string (uuid) | yes |  |  |
+| `owner_name` | string | yes |  | min length 1 |
+| `phone` | string or null | no |  |  |
+| `reason` | string or null | no |  |  |
+| `status` | string (enum) | yes |  | one of: `pending`, `approved`, `rejected` |
+| `tenant_id` | string (uuid) or null | no | The tenant created on approve; null until then. |  |
+| `user_id` | string (uuid) | yes |  |  |
+| `website` | string or null | no |  |  |
+
+200 example:
+
+```json
+{
+  "brand_name": "Kalakar Weaves",
+  "created_at": "2026-10-05T09:30:00Z",
+  "decided_at": "2026-10-05T09:31:00Z",
+  "email": "founder@kalakar.example",
+  "id": "0b1c2d3e-0000-4000-8000-000000001501",
+  "owner_name": "Meera Iyer",
+  "phone": "+91 98765 43210",
+  "status": "approved",
+  "tenant_id": "0b1c2d3e-0000-4000-8000-000000000001",
+  "user_id": "0b1c2d3e-0000-4000-8000-000000001502",
+  "website": "https://kalakar.example"
+}
+```
+
+[Back to the summary](#all-operations)
+
+### POST /api/v1/admin/signup-requests/{request_id}/reject
+
+**Reject a sign-up with a reason (idempotent).**
+
+Reject with a reason the applicant reads from `POST /signup/status`. Rejecting a rejected request answers it again; an approved one is 409 `INVALID_STATUS_TRANSITION`; an unknown id is 404.
+
+| | |
+|---|---|
+| Operation id | `admin_signup_requests_reject` |
+| Auth | Bearer access token |
+| Permission (roles that hold it) | `platform:admin`: platform admins only (`users.is_platform_admin`), any role |
+| Idempotent | no |
+| Success | 200 `SignupRequestOut` |
+
+#### Parameters
+
+| Name | In | Type | Required | Description | Constraints |
+|---|---|---|---|---|---|
+| `request_id` | path | string (uuid) | yes |  |  |
+
+#### Request body
+
+Content type `application/json`, required. Schema: `SignupReject`.
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `reason` | string | yes |  | min length 1; max length 1000 |
+
+Example (built from the schema; values are placeholders):
+
+```json
+{
+  "reason": "string"
+}
+```
+
+#### Example call
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/admin/signup-requests/<request_id>/reject" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"reason":"string"}'
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 200 | Success. | `SignupRequestOut` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
+| 403 | Permission denied. | `ErrorEnvelope` |  | `PERMISSION_DENIED` |
+| 404 | Not found. | `ErrorEnvelope` |  | `NOT_FOUND` |
+| 409 | The request conflicts with the current state. | `ErrorEnvelope` |  | `INVALID_STATUS_TRANSITION` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**200 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `brand_name` | string | yes |  | min length 1 |
+| `created_at` | string (date-time) | yes |  |  |
+| `decided_at` | string (date-time) or null | no |  |  |
+| `email` | string | yes |  | min length 3; max length 320; pattern `^[^@\s]+@[^@\s]+$` |
+| `id` | string (uuid) | yes |  |  |
+| `owner_name` | string | yes |  | min length 1 |
+| `phone` | string or null | no |  |  |
+| `reason` | string or null | no |  |  |
+| `status` | string (enum) | yes |  | one of: `pending`, `approved`, `rejected` |
+| `tenant_id` | string (uuid) or null | no | The tenant created on approve; null until then. |  |
+| `user_id` | string (uuid) | yes |  |  |
+| `website` | string or null | no |  |  |
+
+200 example:
+
+```json
+{
+  "brand_name": "Kalakar Weaves",
+  "created_at": "2026-10-05T09:30:00Z",
+  "decided_at": "2026-10-05T09:31:00Z",
+  "email": "founder@kalakar.example",
+  "id": "0b1c2d3e-0000-4000-8000-000000001501",
+  "owner_name": "Meera Iyer",
+  "phone": "+91 98765 43210",
+  "reason": "We could not verify the brand; write to support with your GSTIN.",
+  "status": "rejected",
+  "user_id": "0b1c2d3e-0000-4000-8000-000000001502",
+  "website": "https://kalakar.example"
+}
+```
+
+[Back to the summary](#all-operations)
+
 ## Health
 
 Probes for the load balancer and for you. Not under `/api/v1`, no auth, never rate limited. They answer plain JSON, not the error envelope.
@@ -5797,8 +6285,8 @@ How to act on the retry class:
 | `IDENTIFIER_MISSING` | adapter | identifier_error | user_action |  |  |
 | `IMAGE_NON_COMPLIANT` | vision | media_error | user_action |  |  |
 | `IMPORT_FAILED` | summary |  | user_action |  | `products_bulk` |
-| `INTERNAL_ERROR` | system |  | system_failure |  | 50 operations |
-| `INVALID_STATUS_TRANSITION` | api |  | user_action |  | `imports_rows_retry`, `issues_dismiss`, `jobs_cancel`, `listings_generate`, `listings_refresh_status`, `listings_regenerate`, `listings_retry_fields` |
+| `INTERNAL_ERROR` | system |  | system_failure |  | 55 operations |
+| `INVALID_STATUS_TRANSITION` | api |  | user_action |  | `admin_signup_requests_approve`, `admin_signup_requests_reject`, `imports_rows_retry`, `issues_dismiss`, `jobs_cancel`, `listings_generate`, `listings_refresh_status`, `listings_regenerate`, `listings_retry_fields` |
 | `JOB_TIMEOUT` | system |  | system_failure |  |  |
 | `JSON_INVALID` | ai |  | auto_retry |  |  |
 | `KEYWORD_DUPLICATE` | rules | content_error | ai_correct | reformat |  |
@@ -5811,18 +6299,18 @@ How to act on the retry class:
 | `MARKETPLACE_UNAVAILABLE` | adapter | marketplace_technical | auto_retry |  | `marketplaces_callback` |
 | `MARKETPLACE_UNCONFIRMED` | adapter | marketplace_technical | auto_retry |  |  |
 | `MARKETPLACE_UNKNOWN_ERROR` | adapter | unknown | user_action |  | `marketplaces_callback` |
-| `METHOD_NOT_ALLOWED` | api |  | user_action |  | 50 operations |
+| `METHOD_NOT_ALLOWED` | api |  | user_action |  | 55 operations |
 | `MISSING_ATTRIBUTE` | rules | missing_data | user_action |  |  |
 | `MODEL_UNAVAILABLE` | ai |  | auto_retry |  |  |
-| `NOT_FOUND` | api |  | user_action |  | 28 operations |
+| `NOT_FOUND` | api |  | user_action |  | 30 operations |
 | `NOT_IMPLEMENTED` | api |  | system_failure |  | `listings_preview`, `listings_retry_fields`, `marketplaces_callback`, `marketplaces_connect`, `marketplaces_connect_confirm` |
 | `OAUTH_STATE_INVALID` | api |  | user_action |  | `marketplaces_callback`, `marketplaces_connect_confirm` |
 | `PATTERN_MISMATCH` | rules | content_error | ai_correct |  |  |
-| `PAYLOAD_TOO_LARGE` | api |  | user_action |  | 50 operations |
-| `PERMISSION_DENIED` | api |  | user_action |  | 24 operations |
+| `PAYLOAD_TOO_LARGE` | api |  | user_action |  | 55 operations |
+| `PERMISSION_DENIED` | api |  | user_action |  | 27 operations |
 | `PRICE_ABOVE_MRP` | facts | invalid_value | user_action |  |  |
 | `PUBLISH_FAILED` | summary |  | user_action |  |  |
-| `RATE_LIMITED` | adapter | marketplace_technical | auto_retry |  | 50 operations |
+| `RATE_LIMITED` | adapter | marketplace_technical | auto_retry |  | 55 operations |
 | `REQUIRED_FIELD_MISSING` | schema | missing_data | user_action |  |  |
 | `RETRY_EXHAUSTED` | system |  | system_failure |  |  |
 | `SCHEMA_INVALID` | schema | content_error | ai_correct |  |  |
@@ -5834,10 +6322,10 @@ How to act on the retry class:
 | `SUBMISSION_NOT_APPLIED` | adapter | marketplace_technical | auto_retry |  |  |
 | `TIMEOUT` | ai |  | auto_retry |  |  |
 | `TOKEN_LIMIT` | ai |  | auto_retry |  |  |
-| `UNAUTHENTICATED` | api |  | user_action |  | 48 operations |
+| `UNAUTHENTICATED` | api |  | user_action |  | 52 operations |
 | `UNKNOWN_FACT_KEY` | facts | invalid_value | user_action |  | `products_create` |
 | `UNSUPPORTED_CLAIM` | rules | content_error | ai_correct |  |  |
-| `VALIDATION_FAILED` | summary |  | user_action |  | 50 operations |
+| `VALIDATION_FAILED` | summary |  | user_action |  | 55 operations |
 | `VALUE_NOT_ALLOWED` | rules | invalid_value | user_action |  |  |
 | `VARIANT_MATRIX_INCOMPLETE` | facts | variation_error | user_action |  |  |
 | `VARIATION_INVALID` | adapter | variation_error | user_action | rebuild_variation |  |
