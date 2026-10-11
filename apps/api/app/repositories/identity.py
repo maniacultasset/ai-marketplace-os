@@ -20,14 +20,16 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Final
 
-from sqlalchemy import and_, delete, func, insert, select, text, update
+from sqlalchemy import and_, delete, func, insert, literal, select, text, tuple_, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import undefer
 
 from app.core.errors import RowCountError
 from app.core.request_context import current_request_id
+from app.db import staff_ops
 from app.db.models.ops import OAuthState, RefreshToken
-from app.db.models.tenancy import Tenant, TenantMembership, User
+from app.db.models.tenancy import SignupRequest, Tenant, TenantMembership, User
 from app.db.session import identity_scope, set_gucs
 from app.repositories.audit import AUDITED_ENTITIES
 
@@ -39,11 +41,15 @@ __all__ = [
     "MembershipRow",
     "RefreshRow",
     "RefreshTokenRepository",
+    "SignupRepository",
+    "SignupRow",
+    "SlugTakenError",
     "UserRepository",
     "consume_oauth_state",
 ]
 
 LIVE_TENANT_STATUSES: Final = ("trial", "active")
+SlugTakenError = staff_ops.SlugTakenError
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,6 +101,30 @@ class UserRepository:
         if user is None:
             return None
         return UserRow(user.id, user.email, user.hashed_password, user.is_active, user.display_name)
+
+    async def is_platform_admin(self, user_id: uuid.UUID) -> bool:
+        """The caller's own flag (users_self needs `app.user_id` = `user_id`); False for an
+        inactive or unknown user."""
+        stmt = identity_scope(
+            select(User.is_platform_admin).where(User.id == user_id, User.is_active.is_(True))
+        )
+        return bool((await self.db.execute(stmt)).scalar_one_or_none())
+
+    async def insert_signup_user(
+        self, *, user_id: uuid.UUID, email: str, password_hash: str, display_name: str
+    ) -> None:
+        """A new user from the public sign-up (users_signup needs `app.login_email` = the
+        lower-cased email). The id is chosen here, so no RETURNING has to pass a SELECT policy;
+        `is_platform_admin` keeps its default (the 0010 trigger refuses anything else)."""
+        stmt = identity_scope(
+            insert(User).values(
+                id=user_id,
+                email=email,
+                hashed_password=password_hash,
+                display_name=display_name,
+            )
+        )
+        await self.db.execute(stmt)
 
     async def touch_login(self, user_id: uuid.UUID) -> None:
         """`last_login_at = now()` on the caller's own row (users_self needs `app.user_id`)."""
@@ -274,6 +304,179 @@ class RefreshTokenRepository:
         if expect_live and count < 1:
             raise RowCountError(1, count)
         return count
+
+
+@dataclass(frozen=True, slots=True)
+class SignupRow:
+    id: uuid.UUID
+    user_id: uuid.UUID
+    email: str
+    brand_name: str
+    owner_name: str
+    phone: str | None
+    website: str | None
+    status: str
+    reason: str | None
+    created_tenant_id: uuid.UUID | None
+    decided_at: datetime | None
+    created_at: datetime
+
+
+def _signup_select() -> Any:
+    return select(
+        SignupRequest.id,
+        SignupRequest.user_id,
+        User.email,
+        SignupRequest.brand_name,
+        SignupRequest.owner_name,
+        SignupRequest.phone,
+        SignupRequest.website,
+        SignupRequest.status,
+        SignupRequest.reason,
+        SignupRequest.created_tenant_id,
+        SignupRequest.decided_at,
+        SignupRequest.created_at,
+    ).join(User, User.id == SignupRequest.user_id)
+
+
+class SignupRepository:
+    """`signup_requests` (0010; ADR-0019). RLS narrows every statement: the applicant sees and
+    inserts only their own rows (`app.user_id`); a platform admin (`app_is_platform_admin()`)
+    reads and decides any row."""
+
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+
+    async def insert_pending(
+        self,
+        *,
+        user_id: uuid.UUID,
+        brand_name: str,
+        owner_name: str,
+        phone: str | None,
+        website: str | None,
+    ) -> uuid.UUID | None:
+        """A new pending request, or None when the user already has one (the partial unique
+        index `uq_signup_requests_pending` takes the race)."""
+        row_id = uuid.uuid4()
+        stmt = identity_scope(
+            pg_insert(SignupRequest)
+            .values(
+                id=row_id,
+                user_id=user_id,
+                brand_name=brand_name,
+                owner_name=owner_name,
+                phone=phone,
+                website=website,
+            )
+            .on_conflict_do_nothing(
+                index_elements=[SignupRequest.user_id],
+                index_where=SignupRequest.status == "pending",
+            )
+            .returning(SignupRequest.id)
+        )
+        found = (await self.db.execute(stmt)).scalar_one_or_none()
+        return None if found is None else row_id
+
+    async def latest_for(
+        self, user_id: uuid.UUID, *, pending_only: bool = False
+    ) -> SignupRow | None:
+        """The user's newest request (or newest pending one)."""
+        stmt = _signup_select().where(SignupRequest.user_id == user_id)
+        if pending_only:
+            stmt = stmt.where(SignupRequest.status == "pending")
+        stmt = identity_scope(
+            stmt.order_by(SignupRequest.created_at.desc(), SignupRequest.id.desc()).limit(1)
+        )
+        row = (await self.db.execute(stmt)).one_or_none()
+        return None if row is None else SignupRow(*row)
+
+    async def page(
+        self,
+        *,
+        status: str | None,
+        limit: int,
+        after: tuple[datetime, uuid.UUID] | None,
+    ) -> builtins.list[SignupRow]:
+        """Up to `limit + 1` rows, oldest first on `(created_at, id)` (the caller trims)."""
+        stmt = _signup_select()
+        if status is not None:
+            stmt = stmt.where(SignupRequest.status == status)
+        if after is not None:
+            at, row_id = after
+            bound = tuple_(
+                literal(at, SignupRequest.created_at.type), literal(row_id, SignupRequest.id.type)
+            )
+            stmt = stmt.where(tuple_(SignupRequest.created_at, SignupRequest.id) > bound)
+        stmt = identity_scope(
+            stmt.order_by(SignupRequest.created_at, SignupRequest.id).limit(limit + 1)
+        )
+        return [SignupRow(*row) for row in (await self.db.execute(stmt)).all()]
+
+    async def lock(self, request_id: uuid.UUID) -> SignupRow | None:
+        stmt = identity_scope(
+            _signup_select().where(SignupRequest.id == request_id).with_for_update(of=SignupRequest)
+        )
+        row = (await self.db.execute(stmt)).one_or_none()
+        return None if row is None else SignupRow(*row)
+
+    async def decide(
+        self,
+        request_id: uuid.UUID,
+        *,
+        status: str,
+        reason: str | None,
+        decided_by: uuid.UUID,
+        created_tenant_id: uuid.UUID | None,
+    ) -> None:
+        """Move a pending request to `approved` or `rejected`; exactly one row."""
+        stmt = identity_scope(
+            update(SignupRequest)
+            .where(SignupRequest.id == request_id, SignupRequest.status == "pending")
+            .values(
+                status=status,
+                reason=reason,
+                decided_by_user_id=decided_by,
+                decided_at=func.now(),
+                created_tenant_id=created_tenant_id,
+            )
+        ).execution_options(synchronize_session=False)
+        result = await self.db.execute(stmt)
+        if _rowcount(result) != 1:
+            raise RowCountError(1, _rowcount(result))
+
+    async def create_tenant(
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        name: str,
+        slug: str,
+        trial_days: int,
+        owner_id: uuid.UUID,
+        staff_email: str,
+    ) -> None:
+        """The tenant and its owner membership through the staff CLI's own statements
+        (`staff_ops.insert_tenant` and `add_owner`), on this session's connection as app_rw.
+        The caller has set `app.tenant_id` = `tenant_id` (the t_tenant policies). A used slug is
+        `SlugTakenError` with nothing written, so the caller may try another."""
+        conn = await self.db.connection()
+        request_id = current_request_id() or "-"
+        await staff_ops.insert_tenant(
+            conn,
+            tenant_id=tenant_id,
+            name=name,
+            slug=slug,
+            staff_email=staff_email,
+            trial_days=trial_days,
+            request_id=request_id,
+        )
+        await staff_ops.add_owner(
+            conn,
+            tenant_id=tenant_id,
+            user_id=owner_id,
+            staff_email=staff_email,
+            request_id=request_id,
+        )
 
 
 @dataclass(frozen=True, slots=True)

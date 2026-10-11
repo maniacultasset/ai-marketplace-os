@@ -64,8 +64,10 @@ queue entry, the kind's requeue hook and a `staff` audit row naming E and R.
 | not eligible (unknown, not dead_letter or failed, already requeued, tenant not running) | stderr | 4 |
 
 `tenant create --name N --slug S --owner-email E --staff-email F [--trial-days D]`,
-`tenant add-member --slug S --email E --role R --staff-email F` and
-`user set-password --email E --staff-email F` are the staff onboarding tools (S16 PLAN D6;
+`tenant add-member --slug S --email E --role R --staff-email F`,
+`user set-password --email E --staff-email F` and `user make-admin --email E --staff-email F`
+(ADR-0019: the platform admin who approves self-serve sign-ups; idempotent) are the staff
+onboarding tools (S16 PLAN D6;
 DATABASE.md:312): each is one migrator transaction on `ALEMBIC_DATABASE_URL` (the SQL is in
 `app/db/staff_ops.py`), audited as `actor_type='staff'`. A new user's password comes only from
 stdin (asked twice on a terminal), never from argv or the environment. Emails are trimmed,
@@ -676,7 +678,15 @@ async def run_tenant_command(args: argparse.Namespace, stdin: TextIO) -> int:
         return EXIT_FAILED
     try:
         with request_scope(new_request_id()) as ctx:
-            if args.group == "user":
+            if args.group == "user" and args.command == "make-admin":
+                user_id = await staff_ops.make_platform_admin(
+                    engine,
+                    email=args.email,
+                    staff_email=args.staff_email,
+                    request_id=ctx.request_id,
+                )
+                sys.stdout.write(f"user_id={user_id} platform_admin=true\n")
+            elif args.group == "user":
                 from app.core.passwords import hash_password, read_password
 
                 secret = read_password(stdin)
@@ -747,6 +757,9 @@ def _add_onboarding(groups: Any) -> None:
     reset = user_commands.add_parser("set-password", help="a new password from stdin")
     reset.add_argument("--email", type=_member_email, required=True)
     reset.add_argument("--staff-email", type=_member_email, required=True)
+    admin = user_commands.add_parser("make-admin", help="a platform admin (sign-up approvals)")
+    admin.add_argument("--email", type=_member_email, required=True)
+    admin.add_argument("--staff-email", type=_member_email, required=True)
 
 
 def build_parser() -> argparse.ArgumentParser:

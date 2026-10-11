@@ -84,6 +84,8 @@ TAG_ORDER = (
     "marketplaces",
     "rules",
     "analytics",
+    "signup",
+    "admin",
     "health",
 )
 TAG_BLURBS = {
@@ -96,6 +98,14 @@ TAG_BLURBS = {
         "when it writes listings. Updates use `ETag` / `If-Match`."
     ),
     "members": "The people in the tenant and their roles. Only owners and admins manage the team.",
+    "signup": (
+        "Self-serve brand sign-up (ADR-0019): a pending request a platform admin approves, and "
+        "the applicant's status read. Both are public and rate limited per IP."
+    ),
+    "admin": (
+        "The platform admin's sign-up queue: list, approve (creates the trial tenant and its "
+        "owner) and reject. Platform admins only; everyone else gets 403."
+    ),
     "brand": (
         "Brand documents (style guides and similar). An upload is split into chunks and embedded "
         "in the background, so the AI can quote the brand's own words."
@@ -916,6 +926,8 @@ def roles_label(action: str | None, matrix: dict[str, list[str]]) -> str:
         return "none (public probe)"
     if action == "public":
         return "none (public)"
+    if action == "platform:admin":  # ADR-0019: the user's flag, not a role
+        return "`platform:admin`: platform admins only (`users.is_platform_admin`), any role"
     roles = matrix.get(action)
     if roles is None:
         raise SystemExit(f"x-mkos-action {action!r} is not an Action in {RBAC_PATH}")
@@ -1357,7 +1369,8 @@ A request body over 10 MiB (`REQUEST_MAX_BODY_BYTES`, default 10,485,760 bytes) 
 |---|---|---|
 | Per tenant | every authenticated request, counted after the token and membership check pass | 120 per minute (`RATE_LIMIT_PER_TENANT_PER_MIN`) |
 | Per IP | every public route (login, refresh, logout, OAuth callback) | 60 per minute (`RATE_LIMIT_PER_IP_PER_MIN`) |
-| Login | `POST /auth/login`, per IP and email | 5 per minute (`AUTH_LOGIN_RATE_LIMIT_PER_MIN`) |
+| Login | `POST /auth/login` and `POST /signup/status`, per IP and email | 5 per minute (`AUTH_LOGIN_RATE_LIMIT_PER_MIN`) |
+| Sign-up | `POST /signup`, per IP | 5 per minute (`AUTH_LOGIN_RATE_LIMIT_PER_MIN`) |
 | Status refresh | `POST /listings/{listing_id}/refresh-status`, per listing | once per 5 minutes |
 | Per-tenant caps | live imports, live image jobs, live brand document jobs, documents and chunks per tenant | fixed caps |
 | Daily AI budget | `listings/generate`, `listings/{listing_id}/regenerate`, and (per item) a reject with `regenerate` in `listings/approve` | a daily spend cap per tenant (`LLM_TENANT_DAILY_BUDGET_USD`); answers `429 BUDGET_EXCEEDED` |
@@ -1435,7 +1448,9 @@ def role_matrix_table(matrix: dict[str, list[str]], ops: list[Op]) -> str:
     lines.append("")
     lines.append(
         "Public operations (`x-mkos-action: public`) need no token. `/healthz` and `/readyz` carry "
-        "no action at all. A role not in the table holds nothing."
+        "no action at all. A role not in the table holds nothing. The sign-up queue "
+        "(`x-mkos-action: platform:admin`, ADR-0019) is not in the table: it needs the caller's "
+        "own `users.is_platform_admin` flag, whatever their role."
     )
     return "\n".join(lines)
 

@@ -19,7 +19,7 @@ from mkos_schemas.codes import ErrorCode
 
 # The frozen list (PLAN D1): 35 operations at S3 plus S10's switch and members (38), no
 # dead-letter path. Later steps add ops as
-# "merged literal + N" (S10 38, S15 40, S16 43, S19 47, S20 48, S21 50).
+# "merged literal + N" (S10 38, S15 40, S16 43, S19 47, S20 48, S21 50, ADR-0019 55).
 FROZEN: tuple[tuple[str, str, str], ...] = (
     ("auth_login", "POST", "/auth/login"),
     ("auth_refresh", "POST", "/auth/refresh"),
@@ -75,13 +75,19 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("tasks_list", "GET", "/tasks"),
     ("analytics_get", "GET", "/analytics"),
     ("analytics_summary", "GET", "/analytics/summary"),
+    # ADR-0019: self-serve sign-up and the platform admin's queue (50 + 5)
+    ("signup_create", "POST", "/signup"),
+    ("signup_status", "POST", "/signup/status"),
+    ("admin_signup_requests_list", "GET", "/admin/signup-requests"),
+    ("admin_signup_requests_approve", "POST", "/admin/signup-requests/{request_id}/approve"),
+    ("admin_signup_requests_reject", "POST", "/admin/signup-requests/{request_id}/reject"),
 )
 
 E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 50
+    assert len(FROZEN) == 55
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -224,10 +230,12 @@ def test_idempotency_set_is_d9() -> None:
 
 
 def test_public_and_action_go_together() -> None:
-    with pytest.raises(ValueError, match="public op has no action"):
+    with pytest.raises(ValueError, match="public or platform-admin op has no action"):
         _op(public=True)
-    with pytest.raises(ValueError, match="public op has no action"):
+    with pytest.raises(ValueError, match="public or platform-admin op has no action"):
         _op(action=None)
+    with pytest.raises(ValueError, match="public or platform-admin op has no action"):
+        _op(platform_admin=True)
 
 
 def test_public_ops() -> None:
@@ -236,6 +244,9 @@ def test_public_ops() -> None:
         "auth_refresh",
         "auth_logout",
         "marketplaces_callback",
+        # ADR-0019
+        "signup_create",
+        "signup_status",
     }
 
 
@@ -265,12 +276,15 @@ def test_error_codes_per_d2() -> None:
             E.INVALID_STATUS_TRANSITION,
             E.LISTING_BUSY,
         ),
+        # ADR-0019: approving a rejected request, or rejecting an approved one
+        "admin_signup_requests_approve": (E.INVALID_STATUS_TRANSITION,),
+        "admin_signup_requests_reject": (E.INVALID_STATUS_TRANSITION,),
     }
     for op in OPS.values():
         codes = op.error_codes
         c = cases(op)
         assert codes[429] == (E.RATE_LIMITED,)
-        if "missing_auth" in c or op.op_id in {"auth_login", "auth_refresh"}:
+        if "missing_auth" in c or op.op_id in {"auth_login", "auth_refresh", "signup_status"}:
             assert codes[401] == (E.UNAUTHENTICATED,), op.op_id
         else:
             assert 401 not in codes, op.op_id
@@ -280,7 +294,10 @@ def test_error_codes_per_d2() -> None:
             assert codes[403] == (E.PERMISSION_DENIED,), op.op_id
         else:
             assert 403 not in codes, op.op_id
-        if "not_found" in c:
+        # ADR-0019: a platform row's unknown id is 404 too, but it is not tenant-owned, so the
+        # op has no not_found/wrong_tenant case pair (an admin's tenant never narrows it)
+        platform_404 = op.op_id in {"admin_signup_requests_approve", "admin_signup_requests_reject"}
+        if "not_found" in c or platform_404:
             assert codes[404] == (E.NOT_FOUND,), op.op_id
         else:
             assert 404 not in codes, op.op_id
@@ -308,6 +325,7 @@ def test_error_codes_per_d2() -> None:
 def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
+        "ADR-0019",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id

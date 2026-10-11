@@ -1,5 +1,5 @@
 """Tenancy models: `tenants`, global `users`, `tenant_memberships`, `invitations`
-(DATABASE.md §5.1; ADR-0006). Columns, defaults, keys and indexes mirror revision
+(DATABASE.md §5.1; ADR-0006) and the platform `signup_requests` (0010; ADR-0019). Columns, defaults, keys and indexes mirror revision
 0001_core_tenancy under the same names; the CHECK constraints live only in the revision."""
 
 from __future__ import annotations
@@ -125,6 +125,57 @@ class User(Base):
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created_at_column()
+    updated_at: Mapped[datetime] = updated_at_column()
+    # 0010: set only by staff (`user make-admin`); a trigger refuses any other writer.
+    is_platform_admin: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+
+
+class SignupRequest(Base):
+    """A self-serve brand sign-up awaiting a platform admin (0010; ADR-0019). A platform table:
+    no `tenant_id` and not `TenantScoped`; `created_tenant_id` is set on approve."""
+
+    __tablename__ = "signup_requests"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_signup_requests")),
+        ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            ondelete="CASCADE",
+            name=conv("fk_signup_requests_user_id_users"),
+        ),
+        ForeignKeyConstraint(
+            ["decided_by_user_id"],
+            ["users.id"],
+            name=conv("fk_signup_requests_decided_by_user_id_users"),
+        ),
+        ForeignKeyConstraint(
+            ["created_tenant_id"],
+            ["tenants.id"],
+            ondelete="SET NULL",
+            name=conv("fk_signup_requests_created_tenant_id_tenants"),
+        ),
+        Index(
+            conv("uq_signup_requests_pending"),
+            "user_id",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+        Index(conv("ix_signup_requests_status_created_at"), "status", "created_at", "id"),
+        Index(conv("ix_signup_requests_user_id"), "user_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    brand_name: Mapped[str] = mapped_column(Text)
+    owner_name: Mapped[str] = mapped_column(Text)
+    phone: Mapped[str | None] = mapped_column(Text)
+    website: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, server_default=text("'pending'"))
+    reason: Mapped[str | None] = mapped_column(Text)
+    decided_by_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_tenant_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
 

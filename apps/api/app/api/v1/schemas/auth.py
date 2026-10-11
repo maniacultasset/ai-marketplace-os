@@ -63,6 +63,10 @@ class MeOut(WireModel):
     tenant_id: UUID
     role: Role
     memberships: list[MembershipOut]
+    is_platform_admin: bool = Field(
+        default=False,
+        description="True for a platform admin (ADR-0019): show the sign-up request queue.",
+    )
 
 
 class SwitchTenantRequest(StrictModel):

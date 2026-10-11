@@ -8,6 +8,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.api.v1.routers import (
+    admin,
     analytics,
     auth,
     brand,
@@ -20,6 +21,7 @@ from app.api.v1.routers import (
     members,
     products,
     rules,
+    signup,
     tasks,
     tenants,
 )
@@ -40,5 +42,7 @@ for module in (
     issues,
     tasks,
     analytics,
+    signup,
+    admin,
 ):
     router.include_router(module.router)
