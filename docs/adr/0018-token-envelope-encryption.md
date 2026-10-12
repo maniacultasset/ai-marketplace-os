@@ -33,9 +33,14 @@ layers.
   `LocalKmsStub` (AES-256-GCM under `KMS_LOCAL_DEV_KEY`, AAD `mkos-dek|<version>|<tenant>`, version
   `local-1`); every other environment uses Cloud KMS
   `projects/<project>/locations/asia-south1/keyRings/marketplace-os/cryptoKeys/oauth-token-key`
-  (CANON.md:70), which lands with S4. Until then a deployed api or worker refuses to seal or unseal
-  (`NotImplementedError`), and the boot refuses a missing or forbidden `KMS_KEY_URI` and any
-  `KMS_LOCAL_DEV_KEY`.
+  (CANON.md:70) through `CloudKmsKeyWrapper` (`app/adapters/kms.py`) and `CloudKmsKeyUnwrapper`
+  (`app/adapters/credentials.py`), S4. They call KMS `encrypt` and `decrypt` on the CryptoKey with
+  AAD `mkos-dek|<KMS_KEY_URI>|<tenant>` (KMS picks the CryptoKeyVersion only while it encrypts, so
+  the key name fills the version slot) and store the CryptoKeyVersion KMS used, its full resource
+  name from the encrypt reply, in `kms_key_version`; an unwrap whose stored version is not under
+  `KMS_KEY_URI` fails before any KMS call. The client is the async one on Application Default
+  Credentials, built at first use once per process. The boot refuses a missing or forbidden
+  `KMS_KEY_URI` and any `KMS_LOCAL_DEV_KEY`.
 - **Unseal** (`app/adapters/credentials.py`): only `app.adapters.*` and `app.workers.*` import it,
   directly or indirectly (import contract `decrypt-path-only-in-adapters-and-workers`). Every
   failure is one detail-free `CredentialUnsealError`. Plaintext lives only in the caller's locals as
@@ -60,5 +65,5 @@ layers.
   to call the marketplace must be a worker job.
 - Rotating the key-encryption key needs a re-wrap pass (a worker job) keyed by `kms_key_version`;
   not built in v1.
-- S4 must add the Cloud KMS wrapper and unwrapper behind the same two protocols, with the
-  decision-15 grants (API: encrypt; worker: encrypt and decrypt).
+- S4 added the Cloud KMS wrapper and unwrapper behind the same two protocols; the decision-15
+  grants (API: encrypt; worker: encrypt and decrypt) are still to provision with the S4 OpenTofu.

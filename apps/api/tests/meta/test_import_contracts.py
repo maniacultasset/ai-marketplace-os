@@ -32,3 +32,14 @@ def test_decrypt_path_contract_present(repo_root: Path) -> None:
     assert _lines(contract["forbidden_modules"]) == {"app.adapters.credentials"}
     assert contract.get("allow_indirect_imports", "False").strip() in ("False", "false")
     assert "ignore_imports" not in contract
+
+
+def test_kms_client_contract_present(repo_root: Path) -> None:
+    """S4 (ADR-0018): `google.cloud.kms` is imported by `app.adapters.kms` alone."""
+    parser = configparser.ConfigParser()
+    parser.read(repo_root / ".importlinter", encoding="utf-8")
+    contract = parser["importlinter:contract:kms-client-only-in-kms-adapter"]
+    assert contract["type"] == "forbidden"
+    assert _lines(contract["source_modules"]) == {"app", "mkos_schemas"}
+    assert _lines(contract["forbidden_modules"]) == {"google"}
+    assert _lines(contract["ignore_imports"]) == {"app.adapters.kms -> google"}

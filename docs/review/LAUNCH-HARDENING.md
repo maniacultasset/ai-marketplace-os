@@ -37,7 +37,7 @@ make target. Commands: `AT` = `make api-tests api-tests-integration` (the two re
 | Publish needs an approved, current version (invariant 1) | `apps/api/tests/security/test_owasp_api5_api6.py::test_api6_publish_not_approved_refused`; `apps/api/tests/security/test_owasp_api5_api6.py::test_api6_publish_stale_version_refused` | AT | 2026-10-10 | P0 | pass |
 | KMS: token_enc holds no canary bytes and opens only via the adapter path | `apps/api/tests/security/test_secrets_never_logged.py::test_token_enc_has_no_canary_bytes`; `apps/api/tests/security/test_secrets_never_logged.py::test_token_enc_decrypts_only_via_adapter_path` | AT | 2026-10-10 | P0 | pass |
 | KMS: a restored token_enc decrypts with the local key | `scripts/drill/check_restore.py#token_enc_decrypts` | make drill-restore | 2026-10-10 | P1 | pass |
-| KMS in staging/prod: Cloud KMS wrapper | - | S4 (the Cloud KMS wrapper lands with S4) | - | P0 | deferred |
+| KMS in staging/prod: Cloud KMS wrapper | - | S4 (the wrapper is built and unit-tested against a fake KMS; the live round trip needs the staging key) | - | P0 | deferred |
 | CORS: a disallowed origin gets no ACAO; no wildcard (API8) | `apps/api/tests/security/test_owasp_api8_config.py::test_api8_disallowed_origin_no_acao`; `apps/api/tests/security/test_owasp_api8_config.py::test_api8_no_wildcard_origin` | AT | 2026-10-10 | P1 | pass |
 | Security headers on every response | `apps/api/tests/unit/test_security_headers.py::test_security_headers_set_on_every_response` | AT | 2026-10-10 | P2 | pass |
 | TLS audit (R06718d) | - | S4 staging (TLS terminates at the load balancer) | - | P1 | deferred |
@@ -104,7 +104,7 @@ make target. Commands: `AT` = `make api-tests api-tests-integration` (the two re
 | Production smoke, production OAuth | S25 (T77, T78) | needs production |
 | TLS audit (R06718d) | S4 staging | TLS ends at the load balancer |
 | Cloud SQL PITR, non-superuser restore | S25 DW6 (T87) | needs Cloud SQL |
-| Cloud KMS wrapper | S4 | the local stub only today |
+| Cloud KMS live round trip | S4 | the wrapper is unit-tested against a fake KMS; no staging key yet |
 | Real marketplace calls and credentials | S20/S22 DW1 | needs seller accounts |
 | Nightly's first scheduled run | after merge, on the user's go (S26 AC 12) | needs the workflow on main |
 

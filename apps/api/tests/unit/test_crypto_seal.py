@@ -140,14 +140,7 @@ def test_get_key_wrapper_local_is_stub() -> None:
     assert isinstance(wrapper, LocalKmsStub)
 
 
-@pytest.mark.parametrize("app_env", ["staging", "production"])
-def test_get_key_wrapper_non_local_not_implemented(app_env: str) -> None:
-    from app.core.config import Settings
-    from app.core.crypto import get_key_wrapper
-
-    deployed = Settings(_env_file=None, app_env=app_env, app_role="shell")
-    with pytest.raises(NotImplementedError, match="Cloud KMS wrapper lands with S4"):
-        get_key_wrapper(deployed)
+# The deployed (Cloud KMS) selection is tests/unit/test_cloud_kms_wrapper.py (S4).
 
 
 def test_tokenpair_repr_hides() -> None:

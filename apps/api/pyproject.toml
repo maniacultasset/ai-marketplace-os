@@ -33,6 +33,8 @@ dependencies = [
   "boto3==1.43.108",
   # S16 (CANON.md:126; R2): the embedding client, imported only by app/services/embeddings.py.
   "openai==3.19.1",
+  # S4 (ADR-0018): the Cloud KMS key wrapper, imported only by app/adapters/kms.py.
+  "google-cloud-kms==3.18.0",
 ]
 
 [tool.uv.sources]
