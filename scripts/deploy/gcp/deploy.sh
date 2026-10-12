@@ -388,7 +388,7 @@ setup_sql() {
       --retain-backups-on-delete --maintenance-window-day=SUN --maintenance-window-hour=21 \
       --database-flags="$(sql_flags)" --insights-config-query-insights-enabled \
       --assign-ip --connector-enforcement=REQUIRED --ssl-mode=ENCRYPTED_ONLY \
-      "$protection" --labels="$LABELS" --async
+      "$protection" --async
   fi
   wait_sql_runnable
   gq sql databases describe "$DB_NAME" --instance="$SQL_INSTANCE" --format='value(name)' >/dev/null ||
