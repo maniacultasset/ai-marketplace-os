@@ -796,9 +796,19 @@ ops_job() {
   shift 2
   secret="$(password_secret "$email")"
   image="$(image_ref)"
-  args='-c|import runpy, sys; sys.stdin = open(sys.argv[1], encoding="utf-8"); sys.argv = ["app.cli", *sys.argv[2:]]; runpy.run_module("app.cli", run_name="__main__", alter_sys=True)'
+  # The password reaches the CLI as an in-memory stdin: a file on the secret volume can report
+  # isatty(), and the CLI would then prompt twice and hit EOF on the repeat.
+  args='-c|import io, runpy, sys; sys.stdin = io.StringIO(open(sys.argv[1], encoding="utf-8").read()); sys.argv = ["app.cli", *sys.argv[2:]]; runpy.run_module("app.cli", run_name="__main__", alter_sys=True)'
   args="$args|$PW_MOUNT"
-  for arg in "$@"; do
+  # gcloud refuses a repeated --args value, so `--flag value` pairs travel as `--flag=value`
+  # (the same email as --owner-email and --staff-email would otherwise repeat).
+  while [ $# -gt 0 ]; do
+    arg="$1"
+    shift
+    case "$arg" in
+      --*=*) ;;
+      --*) if [ $# -gt 0 ] && case "$1" in --*) false ;; *) true ;; esac; then arg="$arg=$1"; shift; fi ;;
+    esac
     case "$arg" in *"|"*) die "an argument may not contain '|'" ;; esac
     args="$args|$arg"
   done
