@@ -725,13 +725,16 @@ cmd_deploy() {
 # ---- smoke ----
 # URL: /healthz 200, then /readyz 200 with postgres ok (retried: staging scales to zero).
 smoke() {
-  local url="$1" code body n=0
-  show curl -sS -o /dev/null -w '%{http_code}' "$url/healthz"
+  local url="$1" code body n=0 live="/healthz" want="200"
+  # A *.run.app front end answers /healthz itself with a 404 that never reaches the container,
+  # so there liveness is an API route that must answer 401 without a token.
+  case "$url" in *.run.app) live="/api/v1/auth/me" want="401" ;; esac
+  show curl -sS -o /dev/null -w '%{http_code}' "$url$live"
   show curl -sS "$url/readyz"
   [ "$DRY_RUN" -eq 0 ] || return 0
-  until code="$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' "$url/healthz")" && [ "$code" = "200" ]; do
+  until code="$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' "$url$live")" && [ "$code" = "$want" ]; do
     n=$((n + 1))
-    [ "$n" -lt 10 ] || { say "smoke: /healthz answered '$code'"; return 1; }
+    [ "$n" -lt 10 ] || { say "smoke: $live answered '$code', want $want"; return 1; }
     sleep 6
   done
   n=0
@@ -740,7 +743,7 @@ smoke() {
     [ "$n" -lt 10 ] || { say "smoke: /readyz answered '$body'"; return 1; }
     sleep 6
   done
-  say "smoke OK: $url (/healthz 200, /readyz postgres ok)"
+  say "smoke OK: $url ($live $want, /readyz postgres ok)"
 }
 
 cmd_smoke() {

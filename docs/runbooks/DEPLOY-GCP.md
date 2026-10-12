@@ -25,7 +25,7 @@ passed on a command line or written to a committed file.
 | `migrate` | The migrate job (`APP_ROLE=migrate`: `alembic upgrade head` as `migrator`, then the dictionary sync). It runs with `max-retries 0`, waits, and fails when the run fails. |
 | `deploy` | The api service: public, the app does its own auth, Cloud SQL attached, secrets as env vars. A new revision gets 0% traffic until its tagged URL passes `smoke`, then takes all traffic. On the first deploy, `JWT_ISSUER` and the OAuth redirect URIs are re-pointed to the URL the service got. Then the worker pool (`WORKER_ENABLED=true` only), then `smoke`. |
 | `release` | `build`, `migrate`, `deploy`: the normal update. |
-| `smoke` | `GET /healthz` must answer 200; `GET /readyz` must answer 200 with `"postgres":"ok"`. Retried for cold starts. |
+| `smoke` | `GET /healthz` must answer 200 (on a `*.run.app` URL, whose front end answers `/healthz` itself with a 404, `GET /api/v1/auth/me` must answer 401 instead); `GET /readyz` must answer 200 with `"postgres":"ok"`. Retried for cold starts. |
 | `tenant` | `tenant create --name N --slug S --owner-email E --staff-email F [--trial-days D]`, `tenant add-member --slug S --email E --role owner\|operator\|reviewer\|admin --staff-email F`, `tenant set-password --email E --staff-email F`. Runs the staff CLI (`python -m app.cli`) in a one-off job. A new user's password is generated into `INITIAL_PASSWORD_<email>_<hash>`, and the job reads it on stdin from a mounted file. The script prints the `gcloud secrets versions access` command that shows it, never the value. A rerun of `create` with a taken slug fails and changes nothing. |
 | `status` | The service URL, latest revisions, worker pool, recent job runs and secret names (never values). |
 
