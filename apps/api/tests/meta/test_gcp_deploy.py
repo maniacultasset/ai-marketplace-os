@@ -451,7 +451,10 @@ def test_env_files_hold_no_secret(repo_root: Path, env_name: str) -> None:
     assert values["REGION"] == "asia-south1"
     assert values["KMS_KEYRING"] == "marketplace-os" and values["KMS_KEY"] == "oauth-token-key"
     assert values["FLIPKART_ENABLED"] == "false" and values["AMAZON_USE_SANDBOX"] == "true"
-    assert values["ALLOWED_ORIGINS"] == "__FILL_ME__" == values["DASHBOARD_BASE_URL"]
+    # The placeholder until the dashboard is hosted, then the committed https origins (runbook).
+    for name in ("ALLOWED_ORIGINS", "DASHBOARD_BASE_URL"):
+        for origin in values[name].split(","):
+            assert origin == "__FILL_ME__" or re.fullmatch(r"https://[a-z0-9.-]+", origin), name
     assert values["PROJECT"] == {"staging": "aimos-staging", "prod": "aimos-prod"}[env_name]
 
 
