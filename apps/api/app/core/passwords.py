@@ -5,10 +5,13 @@ passlib is forbidden. `verify_password` never raises on a malformed or foreign h
 
 from __future__ import annotations
 
+import functools
 import getpass
+from collections.abc import Callable
 from functools import lru_cache
 from typing import Final, TextIO
 
+import anyio
 from pwdlib import PasswordHash
 from pwdlib.exceptions import UnknownHashError
 from pwdlib.hashers.argon2 import Argon2Hasher
@@ -33,6 +36,26 @@ def verify_password(plain: str, hashed: str) -> bool:
         return _hasher().verify(plain, hashed)
     except (UnknownHashError, ValueError):
         return False
+
+
+# argon2id takes ~64 MiB and tens of ms per call: run it off the event loop, a few at a time, so
+# a burst of logins cannot stall every other request or exhaust the instance's memory.
+ARGON2_CONCURRENCY: Final = 4
+_limiter: anyio.CapacityLimiter | None = None
+
+
+def _argon2_limiter() -> anyio.CapacityLimiter:
+    global _limiter
+    if _limiter is None:
+        _limiter = anyio.CapacityLimiter(ARGON2_CONCURRENCY)
+    return _limiter
+
+
+async def off_loop[**P, R](fn: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
+    """Run an argon2 call (`hash_password`, `verify_password`) in a worker thread."""
+    return await anyio.to_thread.run_sync(
+        functools.partial(fn, *args, **kwargs), limiter=_argon2_limiter()
+    )
 
 
 PASSWORD_MIN: Final = 12

@@ -1370,6 +1370,7 @@ A request body over 10 MiB (`REQUEST_MAX_BODY_BYTES`, default 10,485,760 bytes) 
 | Per tenant | every authenticated request, counted after the token and membership check pass | 120 per minute (`RATE_LIMIT_PER_TENANT_PER_MIN`) |
 | Per IP | every public route (login, refresh, logout, OAuth callback) | 60 per minute (`RATE_LIMIT_PER_IP_PER_MIN`) |
 | Login | `POST /auth/login` and `POST /signup/status`, per IP and email | 5 per minute (`AUTH_LOGIN_RATE_LIMIT_PER_MIN`) |
+| Login | `POST /auth/login` and `POST /signup/status`, per email from any address | 10 per minute (`AUTH_LOGIN_EMAIL_RATE_LIMIT_PER_MIN`) |
 | Sign-up | `POST /signup`, per IP | 5 per minute (`AUTH_LOGIN_RATE_LIMIT_PER_MIN`) |
 | Status refresh | `POST /listings/{listing_id}/refresh-status`, per listing | once per 5 minutes |
 | Per-tenant caps | live imports, live image jobs, live brand document jobs, documents and chunks per tenant | fixed caps |

@@ -25,7 +25,7 @@ from app.core.passwords import PASSWORD_MAX, PASSWORD_MIN  # the staff CLI's rul
 EMAIL_OCTETS_MAX: Final = 254  # ck_users_email
 REASON_MAX: Final = 1000
 PHONE_PATTERN: Final = r"^\+?[0-9][0-9 ()-]{5,30}$"
-WEBSITE_PATTERN: Final = r"^https?://[^\s/?#]+\.[^\s]+$"
+WEBSITE_PATTERN: Final = r"^https?://[^\s/?#\x00-\x1f\x7f]+\.[^\s\x00-\x1f\x7f]+$"
 
 SignupStatus = Literal["pending", "approved", "rejected"]
 
@@ -47,7 +47,7 @@ def _no_nul(value: str) -> str:
 SignupEmail = Annotated[LoginEmail, AfterValidator(_signup_email)]
 NewPassword = Annotated[SecretStr, Field(min_length=PASSWORD_MIN, max_length=PASSWORD_MAX)]
 Phone = Annotated[str, Field(max_length=32, pattern=PHONE_PATTERN)]
-Website = Annotated[str, Field(max_length=2048, pattern=WEBSITE_PATTERN)]
+Website = Annotated[str, Field(max_length=2048, pattern=WEBSITE_PATTERN), AfterValidator(_no_nul)]
 Reason = Annotated[NonBlankStr, Field(max_length=REASON_MAX), AfterValidator(_no_nul)]
 
 

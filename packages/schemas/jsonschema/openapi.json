@@ -3773,7 +3773,7 @@
             "anyOf": [
               {
                 "maxLength": 2048,
-                "pattern": "^https?://[^\\s/?#]+\\.[^\\s]+$",
+                "pattern": "^https?://[^\\s/?#\\x00-\\x1f\\x7f]+\\.[^\\s\\x00-\\x1f\\x7f]+$",
                 "type": "string"
               },
               {

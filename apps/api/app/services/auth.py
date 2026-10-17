@@ -18,7 +18,7 @@ from uuid import UUID
 from mkos_schemas.auth import JWTClaims
 
 from app.core.config import get_settings
-from app.core.passwords import hash_password, verify_password
+from app.core.passwords import hash_password, off_loop, verify_password
 from app.core.rbac import Principal
 from app.core.security import InvalidToken, decode, encode, issue_claims, token_hash
 from app.repositories.identity import (
@@ -130,7 +130,7 @@ async def login(
         await set_gucs(session, login_email=email)
         user = await UserRepository(session).by_email(email)
         stored = user.hashed_password if user is not None and user.hashed_password else None
-        verified = verify_password(password, stored or dummy_hash())
+        verified = await off_loop(verify_password, password, stored or dummy_hash())
         memberships: list[MembershipRow] = []
         reason = "unknown_email"
         if user is not None:

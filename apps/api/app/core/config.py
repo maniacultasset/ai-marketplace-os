@@ -105,6 +105,7 @@ class Settings(BaseSettings):
     rate_limit_per_tenant_per_min: int = Field(default=120, ge=1)
     rate_limit_per_ip_per_min: int = Field(default=60, ge=1)
     auth_login_rate_limit_per_min: int = Field(default=5, ge=1)
+    auth_login_email_rate_limit_per_min: int = Field(default=10, ge=1)
     oauth_state_ttl_seconds: int = Field(default=600, ge=1)
     admin_enabled: bool = False
     admin_base_url: str = "/internal/admin"

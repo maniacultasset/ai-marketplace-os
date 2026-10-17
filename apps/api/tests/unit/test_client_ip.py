@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import get_args
 
 import pytest
-from app.api.rate_limit import HOPS, client_ip, login_bucket
+from app.api.rate_limit import HOPS, client_ip, login_bucket, login_email_bucket
 
 PEER = "10.0.0.9"
 
@@ -16,20 +16,26 @@ def test_client_ip_local_ignores_xff() -> None:
     assert client_ip(["1.1.1.1"], PEER, 0) == PEER
 
 
-def test_client_ip_production_second_from_right() -> None:
-    # <forged>,<client>,<lb>: the load balancer appended the last two
-    assert client_ip(["6.6.6.6, 203.0.113.5, 130.211.0.1"], PEER, HOPS["production"]) == (
-        "203.0.113.5"
-    )
+def test_client_ip_production_right_most() -> None:
+    # run.app: Google's front end appends only <client>; anything left of it is caller-written
+    assert client_ip(["203.0.113.5"], PEER, HOPS["production"]) == "203.0.113.5"
+    assert client_ip(["6.6.6.6, 203.0.113.5"], PEER, HOPS["production"]) == "203.0.113.5"
 
 
-def test_client_ip_lb_only_header() -> None:
-    assert client_ip(["203.0.113.5, 130.211.0.1"], PEER, HOPS["production"]) == "203.0.113.5"
+def test_client_ip_forged_entries_never_pick_the_bucket() -> None:
+    # the live bypass: a rotating forged left-most entry must not change the bucket
+    for forged in ("198.51.100.7", "198.51.100.8", "1.1.1.1, 2.2.2.2"):
+        assert client_ip([f"{forged}, 203.0.113.5"], PEER, HOPS["production"]) == "203.0.113.5"
+
+
+def test_client_ip_behind_a_load_balancer() -> None:
+    # <forged>,<client>,<lb>: with an ALB in front, hops becomes 2
+    assert client_ip(["6.6.6.6, 203.0.113.5, 130.211.0.1"], PEER, 2) == "203.0.113.5"
 
 
 def test_client_ip_staging_hops() -> None:
-    assert HOPS["staging"] == 2
-    assert client_ip(["9.9.9.9,198.51.100.4,35.191.0.7"], PEER, HOPS["staging"]) == "198.51.100.4"
+    assert HOPS["staging"] == 1
+    assert client_ip(["9.9.9.9,198.51.100.4"], PEER, HOPS["staging"]) == "198.51.100.4"
 
 
 def test_client_ip_fewer_entries_than_hops() -> None:
@@ -62,7 +68,7 @@ def test_hops_table_literal() -> None:
 
     app_envs = get_args(Settings.model_fields["app_env"].annotation)
     assert set(HOPS) == set(app_envs) == {"local", "staging", "production"}
-    assert dict(HOPS) == {"local": 0, "staging": 2, "production": 2}
+    assert dict(HOPS) == {"local": 0, "staging": 1, "production": 1}
 
 
 @pytest.mark.parametrize("email", ["Owner@Acme.test", " owner@acme.test ", "OWNER@ACME.TEST"])
@@ -71,3 +77,10 @@ def test_login_bucket_folds_email(email: str) -> None:
     assert login_bucket("1.2.3.4", email).startswith("login:")
     assert "acme" not in login_bucket("1.2.3.4", email)
     assert login_bucket("1.2.3.5", email) != login_bucket("1.2.3.4", email)
+
+
+def test_login_email_bucket_ignores_ip_and_case() -> None:
+    assert login_email_bucket(" Owner@Acme.test ") == login_email_bucket("owner@acme.test")
+    assert login_email_bucket("owner@acme.test").startswith("login-email:")
+    assert "acme" not in login_email_bucket("owner@acme.test")
+    assert login_email_bucket("owner@acme.test") != login_bucket("1.2.3.4", "owner@acme.test")

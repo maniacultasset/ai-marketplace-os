@@ -6,8 +6,9 @@
   pool first), so a refused token never spends the tenant's budget (AUTH-2, TENANCY-2).
 - `enforce_refused_principal_limit(tid, sub)`: the same limit on `u:<tid>:<sub>`, counted for a
   verified token whose probe failed (a deactivated member, a suspended tenant).
-- `enforce_login_limit(request, email)`: 5/min per `sha256(ip | lower(email))`, called by the
-  login (and the sign-up status read) before any password check.
+- `enforce_login_limit(request, email)`: 5/min per `sha256(ip | lower(email))`, plus 10/min per
+  `sha256(lower(email))` from any address (so rotating addresses cannot multiply the guesses on
+  one account), called by the login (and the sign-up status read) before any password check.
 - `enforce_signup_limit(request)`: the same 5/min per `sha256(ip)` alone, called by the public
   sign-up before anything else, so one address cannot mint accounts across many emails
   (ADR-0019).
@@ -15,9 +16,11 @@
 The client IP (Q6): uvicorn runs with `--proxy-headers --forwarded-allow-ips='*'`, which rewrites
 the ASGI peer to the left-most `X-Forwarded-For` entry, so `request.client` is never trusted when
 a proxy is in front. `client_ip()` reads the entry `HOPS[APP_ENV]` places from the right of the
-raw header: local has no proxy (0: the ASGI peer); the production load balancer appends
-`<client>,<lb>` (2: the second from the right); staging is 2 until its first deploy verifies it
-(S12). With fewer entries than `hops`, the left-most present entry is used.
+raw header: local has no proxy (0: the ASGI peer); staging and production take traffic straight
+on the `run.app` URL, where Google's front end appends only the client address (1: the right-most
+entry; a caller-written entry is always to its left). Put a load balancer in front and this becomes
+2 (`<client>,<lb>`) in the same change. With fewer entries than `hops`, the left-most present entry
+is used.
 """
 
 from __future__ import annotations
@@ -36,7 +39,7 @@ from app.core.config import get_settings
 from app.services import rate_limit
 
 AppEnv = Literal["local", "staging", "production"]
-HOPS: Final[Mapping[AppEnv, int]] = MappingProxyType({"local": 0, "staging": 2, "production": 2})
+HOPS: Final[Mapping[AppEnv, int]] = MappingProxyType({"local": 0, "staging": 1, "production": 1})
 MAX_IP_CHARS: Final = 64
 UNKNOWN_IP: Final = "unknown"
 
@@ -74,9 +77,14 @@ def login_bucket(ip: str, email: str) -> str:
     return f"login:{digest}"
 
 
+def login_email_bucket(email: str) -> str:
+    return f"login-email:{hashlib.sha256(email.strip().lower().encode()).hexdigest()}"
+
+
 async def enforce_login_limit(request: Request, email: str) -> None:
-    bucket = login_bucket(request_ip(request), email)
-    await _enforce(bucket, get_settings().auth_login_rate_limit_per_min)
+    settings = get_settings()
+    await _enforce(login_bucket(request_ip(request), email), settings.auth_login_rate_limit_per_min)
+    await _enforce(login_email_bucket(email), settings.auth_login_email_rate_limit_per_min)
 
 
 def signup_bucket(ip: str) -> str:
