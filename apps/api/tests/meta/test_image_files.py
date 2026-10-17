@@ -188,6 +188,7 @@ def test_entrypoint_api_role_trusts_proxy_headers(entrypoint: Path) -> None:
         "--proxy-headers",
         "--forwarded-allow-ips='*'",
         "--no-access-log",
+        "--no-server-header",
     ]
 
 
@@ -218,7 +219,9 @@ def test_entrypoint_no_access_log(entrypoint: Path) -> None:
         for line in entrypoint.read_text(encoding="utf-8").splitlines()
         if "exec uvicorn" in line
     ]
-    assert line.rstrip().endswith("--no-access-log")
+    assert "--no-access-log" in line.split()
+    # the API does not announce its server software
+    assert line.rstrip().endswith("--no-server-header")
 
 
 def test_image_excludes_tests_dir(repo_root: Path) -> None:

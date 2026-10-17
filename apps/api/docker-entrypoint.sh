@@ -14,7 +14,7 @@ case "$ROLE" in
     # forwarded headers are trusted and request.url reads https. The client IP is then the
     # left-most, client-supplied X-Forwarded-For entry: never key a rate limit on it. The app writes
     # its own access line (request id, route template, no query string), so uvicorn's is off.
-    exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8080}" --proxy-headers --forwarded-allow-ips='*' --no-access-log
+    exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8080}" --proxy-headers --forwarded-allow-ips='*' --no-access-log --no-server-header
     ;;
   worker)
     # procrastinate on queues default and publish (S13); SIGTERM drains within 10 s.

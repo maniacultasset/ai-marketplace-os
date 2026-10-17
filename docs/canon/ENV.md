@@ -19,6 +19,7 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | `RATE_LIMIT_PER_TENANT_PER_MIN` | `120` | local .env | required | The 600 figure is deleted. |
 | `RATE_LIMIT_PER_IP_PER_MIN` | `60` | local .env | required | Applies to unauthenticated routes. |
 | `AUTH_LOGIN_RATE_LIMIT_PER_MIN` | `5` | local .env | required | Per IP + per email on POST /api/v1/auth/login. |
+| `AUTH_LOGIN_EMAIL_RATE_LIMIT_PER_MIN` | `10` | local .env | required | Per email from any address on POST /api/v1/auth/login and /signup/status, so rotating addresses cannot multiply the guesses on one account. |
 | `OAUTH_STATE_TTL_SECONDS` | `600` | local .env | required | Marketplace OAuth state parameter lifetime (stored in Postgres `oauth_states`). |
 | `ADMIN_ENABLED` | `true` | local .env | required | The internal SQLAdmin mounts only when ADMIN_ENABLED=true AND APP_ENV != production. CI test asserts /internal/admin returns 404 with APP_ENV=production. |
 | `ADMIN_BASE_URL` | `/internal/admin` | local .env | optional | Unversioned by design. |

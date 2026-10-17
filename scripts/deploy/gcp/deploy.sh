@@ -308,7 +308,7 @@ setup_buckets() {
 import json, os
 origins = [o.strip() for o in os.environ["ALLOWED_ORIGINS"].split(",") if o.strip()]
 print(json.dumps([{"origin": origins, "method": ["GET", "HEAD", "PUT"],
-                   "responseHeader": ["Content-Type"], "maxAgeSeconds": 3600}]))' >"$WORK/cors.json"
+                   "responseHeader": ["Content-Type", "If-None-Match"], "maxAgeSeconds": 3600}]))' >"$WORK/cors.json"
   for bucket in "$BUCKET_IMAGES" "$BUCKET_CSV"; do
     gc storage buckets update "gs://$bucket" --cors-file="$WORK/cors.json"
   done

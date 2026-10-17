@@ -32,7 +32,7 @@ from typing import Final, Literal
 from mkos_schemas.codes import ErrorCode
 
 from app.core.errors import ConflictError, NotFoundError
-from app.core.passwords import hash_password, verify_password
+from app.core.passwords import hash_password, off_loop, verify_password
 from app.core.rbac import Principal
 from app.repositories.identity import (
     AuditRepository,
@@ -136,7 +136,7 @@ async def signup(
             created = await users.insert_signup_user(
                 user_id=user_id,
                 email=email,
-                password_hash=hash_password(password),
+                password_hash=await off_loop(hash_password, password),
                 display_name=owner_name,
             )
             if not created:  # a concurrent first sign-up of this email won: the same blank 202
@@ -144,7 +144,7 @@ async def signup(
             await set_gucs(session, user_id=user_id)
         else:
             stored = user.hashed_password
-            verified = verify_password(password, stored or dummy_hash())
+            verified = await off_loop(verify_password, password, stored or dummy_hash())
             if not (verified and stored is not None and user.is_active):
                 return SignupAccepted(uuid.uuid4())  # names nothing; nothing written
             user_id = user.id
@@ -183,7 +183,7 @@ async def signup_status(email: str, password: str) -> SignupRow | None:
         await set_gucs(session, login_email=email)
         user = await UserRepository(session).by_email(email)
         stored = user.hashed_password if user is not None and user.hashed_password else None
-        verified = verify_password(password, stored or dummy_hash())
+        verified = await off_loop(verify_password, password, stored or dummy_hash())
         if user is None or stored is None or not verified or not user.is_active:
             return None
         await set_gucs(session, user_id=user.id)

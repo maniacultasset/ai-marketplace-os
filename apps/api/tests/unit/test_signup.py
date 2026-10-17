@@ -735,3 +735,26 @@ def test_0010_is_the_single_head() -> None:
         if down:
             parents.add(down.group(1))
     assert revisions - parents == {"0010_signup_requests"}
+
+
+@pytest.mark.parametrize(
+    "website",
+    [
+        "https://acme.test/\x00",
+        "https://ac\x00me.test",
+        "https://acme.test/\x1b[0m",
+        "https://acme.test/\x7f",
+    ],
+)
+def test_signup_website_refuses_control_characters(website: str) -> None:
+    # a NUL reached Postgres as a 500 and told an existing account from a new one
+    body = {
+        "brand_name": "Acme",
+        "owner_name": "Owner",
+        "email": "owner@acme.test",
+        "password": "a-long-enough-password",
+        "website": website,
+    }
+    with pytest.raises(ValidationError):
+        SignupCreate.model_validate(body)
+    assert SignupCreate.model_validate({**body, "website": "https://acme.test/shop"}).website
