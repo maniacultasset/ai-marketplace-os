@@ -2433,6 +2433,122 @@
       "brd_ref": null,
       "enabled": true,
       "columns": []
+    },
+    {
+      "key": "lamp_type",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "lamp_material",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "shade_material",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
+      "key": "light_source_type",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "colour",
+        "variant",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim",
+        "marketplace",
+        "derived",
+        "ai"
+      ],
+      "min_confidence": "0.70",
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
     }
   ],
   "category_attributes": []

@@ -212,7 +212,8 @@ async def seed_platform_rows(connection: AsyncConnection, rules_path: Path) -> N
 
 
 def amazon_template_loads() -> list[TemplateLoad]:
-    """S20 T5 (C12): Amazon kurta v2 and Amazon tshirts v1 as S13 loader entries."""
+    """S20 T5 (C12): Amazon kurta v2, Amazon tshirts v1 and (A2) Amazon lamps v2 as S13 loader
+    entries."""
     return [
         TemplateLoad(version=t.version, product_type=t.product_type, template=t.template)
         for t in seed_templates()
@@ -220,7 +221,8 @@ def amazon_template_loads() -> list[TemplateLoad]:
 
 
 def flipkart_template_loads() -> list[TemplateLoad]:
-    """S22 T15 (D7): Flipkart kurta v2 and Flipkart tshirts v1 as S13 loader entries."""
+    """S22 T15 (D7): Flipkart kurta v2, Flipkart tshirts v1 and (A2) Flipkart lamps v2 as S13
+    loader entries."""
     return [
         TemplateLoad(version=t.version, product_type=t.product_type, template=t.template)
         for t in flipkart_seed_templates()

@@ -9,7 +9,8 @@ guard keeps it immutable; only `is_current` moves):
   invariant 4) and the three neutral axis sets as `variation_themes`. Promoted over S9's v1.
 - Amazon `tshirts` **version 1**, current.
 
-S9's v1 rows (`seed_ops._template_rows`) are not touched. `home_decor_lamps` stays unmapped.
+S9's v1 rows (`seed_ops._template_rows`) are not touched. A2 (ai-deps PLAN) adds the
+`home_decor_lamps` mappings for both marketplaces at the end of this module.
 
 Every Amazon name here (`product_type`, attribute names, enum spellings) is believed from the
 public SP-API product type definitions, not yet confirmed against a sandbox or a PTD fetch: DW1
@@ -155,10 +156,11 @@ TSHIRT_PRODUCT_TYPE: Final = "SHIRT"
 
 
 def seed_templates() -> list[SeedTemplate]:
-    """The two Amazon mappings, as the S13 loader takes them (no database needed)."""
+    """The three Amazon mappings, as the S13 loader takes them (no database needed)."""
     return [
         SeedTemplate(KURTA_PRODUCT_TYPE, 2, CategoryTemplate.model_validate(_kurta())),
         SeedTemplate(TSHIRT_PRODUCT_TYPE, 1, CategoryTemplate.model_validate(_tshirt())),
+        SeedTemplate(LAMP_PRODUCT_TYPE, 2, CategoryTemplate.model_validate(_amazon_lamp())),
     ]
 
 
@@ -168,8 +170,8 @@ def seed_templates() -> list[SeedTemplate]:
 # `marketplace_field` and `value_map`, promoted over v1) and Flipkart `tshirts` **version 1**.
 # Every Flipkart name (vertical, attribute names, enum spellings) is believed (spec L10635:
 # canonical `color="navy blue"` -> Flipkart `Colour="Navy Blue"`), not confirmed: DW1 and DW2
-# confirm them. `home_decor_lamps` stays unmapped. No price, MRP, stock, HSN, package or
-# fulfilment attribute (user decision: content only).
+# confirm them. The lamp mapping (A2) is at the end of this module. No price, MRP, stock, HSN,
+# package or fulfilment attribute (user decision: content only).
 
 FK_COLORS: Final = (
     "Black",
@@ -254,10 +256,96 @@ FLIPKART_TSHIRT_VERTICAL: Final = "t_shirt"
 
 
 def flipkart_seed_templates() -> list[SeedTemplate]:
-    """The two Flipkart mappings, as the S13 loader takes them (no database needed)."""
+    """The three Flipkart mappings, as the S13 loader takes them (no database needed)."""
     kurta = _flipkart("ethnic_wear_kurta_sets", {"kurta_type": _text("Type")})
     tshirt = _flipkart("tshirts", {})
+    lamp = _flipkart_lamp()
     return [
         SeedTemplate(FLIPKART_KURTA_VERTICAL, 2, CategoryTemplate.model_validate(kurta)),
         SeedTemplate(FLIPKART_TSHIRT_VERTICAL, 1, CategoryTemplate.model_validate(tshirt)),
+        SeedTemplate(FLIPKART_LAMP_VERTICAL, 2, CategoryTemplate.model_validate(lamp)),
     ]
+
+
+# ---- A2 (ai-deps PLAN; C1, C20): the home_decor_lamps mappings ----
+#
+# Amazon `LAMP` and Flipkart `table_lamp`, both **version 2**: promoted over S9's empty v1 rows
+# (left as they are), or over nothing on a database without them (prod). `required_attributes`
+# are `color` and `product_dimensions`, the attributes the seeded lamp RuleSets require
+# (invariant 2). The lamp keys are canonical dictionary keys; the lamp material is
+# `lamp_material`, because `material` is already `fabric_type`'s input alias (C1). A lamp family
+# varies by colour only. The product dimensions travel as the seller's text (for example
+# "30 x 15 x 15 cm"). Every marketplace name here (product type, vertical, attribute names, enum
+# spellings) is believed, not confirmed: DW1 and DW2 confirm them, as for the apparel mappings.
+
+LAMP_PRODUCT_TYPE: Final = "LAMP"
+FLIPKART_LAMP_VERTICAL: Final = "table_lamp"
+LAMP_THEMES: Final = [["color"]]
+LAMP_REQUIRED: Final = ("color", "product_dimensions")
+LAMP_COLORS: Final = (
+    "Beige",
+    "Black",
+    "Blue",
+    "Brass",
+    "Bronze",
+    "Brown",
+    "Copper",
+    "Gold",
+    "Green",
+    "Grey",
+    "Red",
+    "Silver",
+    "White",
+    "Yellow",
+)
+LAMP_COLOR_MAP: Final = {
+    "golden": "Gold",
+    "antique brass": "Brass",
+    "gray": "Grey",
+    "off white": "White",
+    "cream": "Beige",
+}
+FK_LAMP_COLORS: Final = (*LAMP_COLORS, "Navy Blue")
+FK_LAMP_COLOR_MAP: Final = {**LAMP_COLOR_MAP, "navy blue": "Navy Blue", "navy": "Navy Blue"}
+
+
+def _lamp(marketplace: str, specs: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "marketplace": marketplace,
+        "category": "home_decor_lamps",
+        "external_category_id": None,
+        "required_attributes": list(LAMP_REQUIRED),
+        "optional_attributes": sorted(k for k in specs if k not in LAMP_REQUIRED),
+        "specs": specs,
+        "variation_themes": LAMP_THEMES,
+    }
+
+
+def _amazon_lamp() -> dict[str, Any]:
+    return _lamp(
+        "amazon",
+        {
+            "color": _enum("color", LAMP_COLORS, LAMP_COLOR_MAP, "required"),
+            "product_dimensions": _text("item_dimensions", "required"),
+            "lamp_type": _text("lamp_type"),
+            "lamp_material": _text("material"),
+            "shade_material": _text("shade_material"),
+            "light_source_type": _text("light_source_type"),
+            "country_of_origin": _text("country_of_origin"),
+        },
+    )
+
+
+def _flipkart_lamp() -> dict[str, Any]:
+    return _lamp(
+        "flipkart",
+        {
+            "color": _enum("Colour", FK_LAMP_COLORS, FK_LAMP_COLOR_MAP, "required"),
+            "product_dimensions": _text("Dimensions", "required"),
+            "lamp_type": _text("Type"),
+            "lamp_material": _text("Material"),
+            "shade_material": _text("Shade Material"),
+            "light_source_type": _text("Bulb Type"),
+            "country_of_origin": _text("Country of Origin"),
+        },
+    )

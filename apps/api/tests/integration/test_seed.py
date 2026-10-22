@@ -827,7 +827,35 @@ async def test_seed_flipkart_kurta_v2_promoted_once(superuser_conn: Conn) -> Non
     assert rows[1][3]["specs"]["color"]["marketplace_field"] == "Colour"
     assert _fk_promotions(superuser_conn, "ethnic_wear_kurta_sets") == 1
     lamps = _fk_templates(superuser_conn, "home_decor_lamps")
-    assert [(r[0], r[1]) for r in lamps] == [(1, True)]
+    assert [(r[0], r[1]) for r in lamps] == [(1, False), (2, True)]  # A2: the lamp mapping
+
+
+async def test_seed_lamp_mappings_v2_promoted_once(superuser_conn: Conn) -> None:
+    """A2: `home_decor_lamps` gets a mapped version 2 on both marketplaces, promoted over S9's
+    empty version 1 (left as it was); a second seed writes and audits nothing."""
+    from app.db.seed_ops import _template_rows
+
+    assert await _seed("demo") == 0
+    first = (
+        _templates(superuser_conn, "home_decor_lamps"),
+        _fk_templates(superuser_conn, "home_decor_lamps"),
+    )
+    assert await _seed("demo") == 0
+    amazon = _templates(superuser_conn, "home_decor_lamps")
+    flipkart = _fk_templates(superuser_conn, "home_decor_lamps")
+    assert (amazon, flipkart) == first
+    assert [(r[0], r[1], r[2]) for r in amazon] == [(1, False, "LAMP"), (2, True, "LAMP")]
+    assert [(r[0], r[1], r[2]) for r in flipkart] == [(1, False, "LAMP"), (2, True, "table_lamp")]
+    v1 = {
+        t["marketplace"]: t["attributes"]
+        for t in _template_rows()
+        if t["category"] == "home_decor_lamps"
+    }
+    assert amazon[0][3] == v1["amazon"] and flipkart[0][3] == v1["flipkart"]
+    for rows in (amazon, flipkart):
+        assert rows[1][3]["required_attributes"] == ["color", "product_dimensions"]
+    assert _promotions(superuser_conn, "home_decor_lamps") == 1
+    assert _fk_promotions(superuser_conn, "home_decor_lamps") == 1
 
 
 async def test_seed_flipkart_tshirts_v1_current(superuser_conn: Conn) -> None:

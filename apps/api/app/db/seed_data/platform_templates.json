@@ -423,6 +423,126 @@
   },
   {
     "version": 2,
+    "product_type": "LAMP",
+    "template": {
+      "marketplace": "amazon",
+      "category": "home_decor_lamps",
+      "external_category_id": null,
+      "required_attributes": [
+        "color",
+        "product_dimensions"
+      ],
+      "optional_attributes": [
+        "country_of_origin",
+        "lamp_material",
+        "lamp_type",
+        "light_source_type",
+        "shade_material"
+      ],
+      "conditional_attributes": [],
+      "unsupported_attributes": [],
+      "specs": {
+        "color": {
+          "requirement": "required",
+          "marketplace_field": "color",
+          "value_type": "enum",
+          "allowed_values": [
+            "Beige",
+            "Black",
+            "Blue",
+            "Brass",
+            "Bronze",
+            "Brown",
+            "Copper",
+            "Gold",
+            "Green",
+            "Grey",
+            "Red",
+            "Silver",
+            "White",
+            "Yellow"
+          ],
+          "value_map": {
+            "golden": "Gold",
+            "antique brass": "Brass",
+            "gray": "Grey",
+            "off white": "White",
+            "cream": "Beige"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "product_dimensions": {
+          "requirement": "required",
+          "marketplace_field": "item_dimensions",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "lamp_type": {
+          "requirement": "optional",
+          "marketplace_field": "lamp_type",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "lamp_material": {
+          "requirement": "optional",
+          "marketplace_field": "material",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "shade_material": {
+          "requirement": "optional",
+          "marketplace_field": "shade_material",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "light_source_type": {
+          "requirement": "optional",
+          "marketplace_field": "light_source_type",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "country_of_origin": {
+          "requirement": "optional",
+          "marketplace_field": "country_of_origin",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        }
+      },
+      "variation_themes": [
+        [
+          "color"
+        ]
+      ]
+    }
+  },
+  {
+    "version": 2,
     "product_type": "kurta",
     "template": {
       "marketplace": "flipkart",
@@ -829,6 +949,129 @@
         ],
         [
           "size",
+          "color"
+        ]
+      ]
+    }
+  },
+  {
+    "version": 2,
+    "product_type": "table_lamp",
+    "template": {
+      "marketplace": "flipkart",
+      "category": "home_decor_lamps",
+      "external_category_id": null,
+      "required_attributes": [
+        "color",
+        "product_dimensions"
+      ],
+      "optional_attributes": [
+        "country_of_origin",
+        "lamp_material",
+        "lamp_type",
+        "light_source_type",
+        "shade_material"
+      ],
+      "conditional_attributes": [],
+      "unsupported_attributes": [],
+      "specs": {
+        "color": {
+          "requirement": "required",
+          "marketplace_field": "Colour",
+          "value_type": "enum",
+          "allowed_values": [
+            "Beige",
+            "Black",
+            "Blue",
+            "Brass",
+            "Bronze",
+            "Brown",
+            "Copper",
+            "Gold",
+            "Green",
+            "Grey",
+            "Red",
+            "Silver",
+            "White",
+            "Yellow",
+            "Navy Blue"
+          ],
+          "value_map": {
+            "golden": "Gold",
+            "antique brass": "Brass",
+            "gray": "Grey",
+            "off white": "White",
+            "cream": "Beige",
+            "navy blue": "Navy Blue",
+            "navy": "Navy Blue"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "product_dimensions": {
+          "requirement": "required",
+          "marketplace_field": "Dimensions",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "lamp_type": {
+          "requirement": "optional",
+          "marketplace_field": "Type",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "lamp_material": {
+          "requirement": "optional",
+          "marketplace_field": "Material",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "shade_material": {
+          "requirement": "optional",
+          "marketplace_field": "Shade Material",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "light_source_type": {
+          "requirement": "optional",
+          "marketplace_field": "Bulb Type",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "country_of_origin": {
+          "requirement": "optional",
+          "marketplace_field": "Country of Origin",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        }
+      },
+      "variation_themes": [
+        [
           "color"
         ]
       ]
