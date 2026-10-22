@@ -6,7 +6,7 @@
    "status": "covered",
    "owner": "shared",
    "ref": "SPEC-TRACEABILITY.md:152; CANON.md:54",
-   "note": "keyword_agent stage in v1; 250-byte hidden_terms rule missing (R09774c)."
+   "note": "keyword_agent stage in v1; 250-byte hidden_terms rule seeded (R09774c)."
   },
   {
    "id": "R09769",
@@ -45,10 +45,10 @@
   },
   {
    "id": "R09774c",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "DATABASE.md:514; DATABASE.md:1369",
-   "note": "max_length (unit bytes) expressible; no Amazon keywords.hidden_terms 250-byte row seeded."
+   "ref": "packages/schemas/fixtures/rules.seed.json; DATABASE.md:514",
+   "note": "A2: one keywords.hidden_terms max_length row per Amazon RuleSet (limit 250, unit bytes, BYTE_BUDGET_EXCEEDED); the terms are joined with one space and counted in UTF-8 bytes after NFC."
   },
   {
    "id": "R09774d",
@@ -241,10 +241,10 @@
   },
   {
    "id": "R09840",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "DATABASE.md:514; DATABASE.md:525",
-   "note": "No 250-byte hidden_terms rule seeded; BYTE_BUDGET_EXCEEDED code exists."
+   "ref": "packages/schemas/fixtures/rules.seed.json; DATABASE.md:514",
+   "note": "A2: one keywords.hidden_terms max_length row per Amazon RuleSet (limit 250, unit bytes, BYTE_BUDGET_EXCEEDED); the terms are joined with one space and counted in UTF-8 bytes after NFC."
   },
   {
    "id": "R09840a",
