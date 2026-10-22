@@ -22,6 +22,17 @@
           "$ref": "#/$defs/ErrorCode",
           "default": "VALUE_NOT_ALLOWED"
         },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "message": {
           "maxLength": 1000,
           "minLength": 1,
@@ -233,6 +244,17 @@
         "error_code": {
           "$ref": "#/$defs/ErrorCode",
           "default": "BANNED_TERM"
+        },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "match": {
           "default": "word",
@@ -595,6 +617,17 @@
           "$ref": "#/$defs/ErrorCode",
           "default": "UNSUPPORTED_CLAIM"
         },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "match": {
           "default": "word",
           "enum": [
@@ -779,6 +812,17 @@
           "$ref": "#/$defs/ErrorCode",
           "default": "MISSING_ATTRIBUTE"
         },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "message": {
           "maxLength": 1000,
           "minLength": 1,
@@ -867,6 +911,17 @@
         "error_code": {
           "$ref": "#/$defs/ErrorCode",
           "default": "CROSS_FIELD_MISMATCH"
+        },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "left": {
           "title": "Left",
@@ -1096,6 +1151,17 @@
           "$ref": "#/$defs/ErrorCode",
           "default": "FACT_MISMATCH"
         },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "message": {
           "maxLength": 1000,
           "minLength": 1,
@@ -1195,6 +1261,17 @@
           "title": "Forbidden Sources",
           "type": "array"
         },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "message": {
           "maxLength": 1000,
           "minLength": 1,
@@ -1277,6 +1354,22 @@
       "title": "FactSource",
       "type": "object"
     },
+    "Gate": {
+      "description": "The nine quality gates before submission (spec L1388-1424); schemas 1.2.0.",
+      "enum": [
+        "identity",
+        "classification",
+        "attributes",
+        "variants",
+        "media",
+        "content",
+        "compliance",
+        "commercial",
+        "submission"
+      ],
+      "title": "Gate",
+      "type": "string"
+    },
     "ImageRef": {
       "properties": {
         "image_id": {
@@ -1334,6 +1427,17 @@
         "error_code": {
           "$ref": "#/$defs/ErrorCode",
           "default": "IMAGE_NON_COMPLIANT"
+        },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "issue_code": {
           "$ref": "#/$defs/ErrorCode",
@@ -1652,6 +1756,17 @@
           "$ref": "#/$defs/ErrorCode",
           "default": "FIELD_TOO_LONG"
         },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "limit": {
           "exclusiveMinimum": 0,
           "title": "Limit",
@@ -1740,6 +1855,17 @@
         "error_code": {
           "$ref": "#/$defs/ErrorCode",
           "default": "FIELD_TOO_LONG"
+        },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "limit": {
           "exclusiveMinimum": 0,
@@ -1835,6 +1961,17 @@
           "$ref": "#/$defs/ErrorCode",
           "default": "FIELD_TOO_SHORT"
         },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "limit": {
           "exclusiveMinimum": 0,
           "title": "Limit",
@@ -1918,6 +2055,17 @@
         "error_code": {
           "$ref": "#/$defs/ErrorCode",
           "default": "FIELD_TOO_SHORT"
+        },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "limit": {
           "exclusiveMinimum": 0,
@@ -2020,6 +2168,17 @@
           },
           "title": "Flags",
           "type": "array"
+        },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "message": {
           "maxLength": 1000,
@@ -2202,6 +2361,17 @@
         "error_code": {
           "$ref": "#/$defs/ErrorCode",
           "default": "MISSING_ATTRIBUTE"
+        },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "message": {
           "maxLength": 1000,

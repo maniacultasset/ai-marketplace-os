@@ -110,6 +110,22 @@ export type ErrorClass =
  */
 export type FixAction = "remap_value" | "reformat" | "derive_field" | "rebuild_variation";
 /**
+ * The nine quality gates before submission (spec L1388-1424); schemas 1.2.0.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "Gate".
+ */
+export type Gate =
+  | "identity"
+  | "classification"
+  | "attributes"
+  | "variants"
+  | "media"
+  | "content"
+  | "compliance"
+  | "commercial"
+  | "submission";
+/**
  * This interface was referenced by `MkosContracts`'s JSON-Schema
  * via the `definition` "Marketplace".
  */
@@ -250,6 +266,7 @@ export interface ErrorItem {
   error_code: ErrorCode;
   field: string;
   fix_action?: FixAction | null;
+  gate?: Gate | null;
   marketplace?: Marketplace | null;
   message: string;
   raw_code?: string | null;
@@ -311,6 +328,7 @@ export interface AllowedValues {
   attribute: string;
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   message: string;
   normalize?: "casefold_trim";
   pack?: string;
@@ -381,6 +399,7 @@ export interface BannedTerms {
   case_sensitive?: boolean;
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   match?: "word" | "substring" | "regex";
   message: string;
   pack?: string;
@@ -526,6 +545,7 @@ export interface ClaimRequiresAttribute {
   claim: string;
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   match?: "word" | "substring";
   message: string;
   pack?: string;
@@ -549,6 +569,7 @@ export interface ConditionalRequired {
   attribute: string;
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   message: string;
   pack?: string;
   policy_ref?: PolicyRef | null;
@@ -573,6 +594,7 @@ export interface ConditionalRequired {
 export interface CrossField {
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   left: string;
   message: string;
   name: string;
@@ -594,6 +616,7 @@ export interface FactBackedAttribute {
   compare?: "normalized";
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   message: string;
   pack?: string;
   policy_ref?: PolicyRef | null;
@@ -611,6 +634,7 @@ export interface FactSource {
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
   forbidden_sources: string[];
+  gate?: Gate | null;
   message: string;
   min_confidence?: number | null;
   pack?: string;
@@ -737,6 +761,7 @@ export interface Rule {
 export interface MaxLength {
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   limit: number;
   message: string;
   pack?: string;
@@ -754,6 +779,7 @@ export interface MaxLength {
 export interface MinLength {
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   limit: number;
   message: string;
   pack?: string;
@@ -773,6 +799,7 @@ export interface RequiredAttribute {
   attribute: string;
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   message: string;
   pack?: string;
   policy_ref?: PolicyRef | null;
@@ -788,6 +815,7 @@ export interface RequiredAttribute {
 export interface MaxItems {
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   limit: number;
   message: string;
   pack?: string;
@@ -805,6 +833,7 @@ export interface MaxItems {
 export interface MinItems {
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   limit: number;
   message: string;
   pack?: string;
@@ -832,6 +861,7 @@ export interface ImageRequirement {
     | "max_bytes";
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   issue_code?: ErrorCode;
   message: string;
   pack?: string;
@@ -877,6 +907,7 @@ export interface Pattern {
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
   flags?: "i"[];
+  gate?: Gate | null;
   message: string;
   must: "match" | "not_match";
   name: string;

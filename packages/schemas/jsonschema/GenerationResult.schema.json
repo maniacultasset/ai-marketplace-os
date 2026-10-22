@@ -529,6 +529,17 @@
           ],
           "default": null
         },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "marketplace": {
           "anyOf": [
             {
@@ -740,6 +751,22 @@
         "rebuild_variation"
       ],
       "title": "FixAction",
+      "type": "string"
+    },
+    "Gate": {
+      "description": "The nine quality gates before submission (spec L1388-1424); schemas 1.2.0.",
+      "enum": [
+        "identity",
+        "classification",
+        "attributes",
+        "variants",
+        "media",
+        "content",
+        "compliance",
+        "commercial",
+        "submission"
+      ],
+      "title": "Gate",
       "type": "string"
     },
     "ImageCheck": {

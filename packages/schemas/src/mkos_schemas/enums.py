@@ -108,6 +108,20 @@ class FixAction(StrEnum):
     REBUILD_VARIATION = "rebuild_variation"
 
 
+class Gate(StrEnum):
+    """The nine quality gates before submission (spec L1388-1424); schemas 1.2.0."""
+
+    IDENTITY = "identity"
+    CLASSIFICATION = "classification"
+    ATTRIBUTES = "attributes"
+    VARIANTS = "variants"
+    MEDIA = "media"
+    CONTENT = "content"
+    COMPLIANCE = "compliance"
+    COMMERCIAL = "commercial"
+    SUBMISSION = "submission"
+
+
 class MarketplaceState(StrEnum):
     NOT_SUBMITTED = "not_submitted"
     PROCESSING = "processing"

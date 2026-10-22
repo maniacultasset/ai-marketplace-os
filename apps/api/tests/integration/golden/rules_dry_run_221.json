@@ -8,6 +8,7 @@
       "error_code": "FIELD_TOO_LONG",
       "field": "content.title",
       "fix_action": null,
+      "gate": null,
       "marketplace": "amazon",
       "message": "title longer than 200 characters",
       "raw_code": null,

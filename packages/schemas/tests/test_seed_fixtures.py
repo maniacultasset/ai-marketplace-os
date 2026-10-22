@@ -8,6 +8,7 @@ import importlib.util
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 from mkos_schemas.rules import (
     BannedTerms,
@@ -313,11 +314,22 @@ def test_rules_seed_hidden_terms_byte_rule_amazon_only() -> None:
 
 
 def test_rules_seed_apparel_unchanged_but_the_byte_rows() -> None:
-    """Kurta and tshirts keep every pre-A2 row exactly; only the byte rows are new."""
+    """Kurta and tshirts keep every pre-A2 row exactly; only the byte rows are new.
+
+    The 1.2.0 `gate` key (null on every seed row) is the additive default and is left out of the
+    digest; a seed row that sets a gate changes the digest.
+    """
     raw = json.loads(SEED.read_text(encoding="utf-8"))
     new_ids = set(BYTE_RULE_IDS.values())
+
+    def pre_gate(rule: dict[str, Any]) -> dict[str, Any]:
+        rule_def = dict(rule["rule_def"])
+        if rule_def.get("gate", "unset") is None:
+            del rule_def["gate"]
+        return {**rule, "rule_def": rule_def}
+
     apparel = [
-        {**s, "rules": [r for r in s["rules"] if r["id"] not in new_ids]}
+        {**s, "rules": [pre_gate(r) for r in s["rules"] if r["id"] not in new_ids]}
         for s in raw
         if s["category"] != "home_decor_lamps"
     ]

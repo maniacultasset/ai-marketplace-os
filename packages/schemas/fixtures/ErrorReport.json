@@ -21,7 +21,8 @@
       "error_class": null,
       "retry_class": null,
       "auto_fixable": false,
-      "fix_action": null
+      "fix_action": null,
+      "gate": "content"
     }
   ],
   "request_id": null,

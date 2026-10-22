@@ -16,7 +16,7 @@ from .base import (
     find_seam_secret_key,
 )
 from .codes import ErrorCode
-from .enums import ErrorClass, ErrorSource, FixAction, Marketplace, RetryClass, Severity
+from .enums import ErrorClass, ErrorSource, FixAction, Gate, Marketplace, RetryClass, Severity
 from .paths import is_valid_field_path
 
 VALUE_SUBMITTED_MAX: Final = 600
@@ -53,6 +53,7 @@ class ErrorItem(WireModel):
     retry_class: RetryClass | None = None
     auto_fixable: bool = False
     fix_action: FixAction | None = None
+    gate: Gate | None = None  # 1.2.0: copied from the rule by the engine
 
     @field_validator("field")
     @classmethod

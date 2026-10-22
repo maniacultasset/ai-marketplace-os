@@ -1509,6 +1509,7 @@ export interface components {
             /** Field */
             field: string;
             fix_action?: components["schemas"]["FixAction"] | null;
+            gate?: components["schemas"]["Gate"] | null;
             marketplace?: components["schemas"]["Marketplace"] | null;
             /** Message */
             message: string;
@@ -1583,6 +1584,12 @@ export interface components {
          * @enum {string}
          */
         FixAction: "remap_value" | "reformat" | "derive_field" | "rebuild_variation";
+        /**
+         * Gate
+         * @description The nine quality gates before submission (spec L1388-1424); schemas 1.2.0.
+         * @enum {string}
+         */
+        Gate: "identity" | "classification" | "attributes" | "variants" | "media" | "content" | "compliance" | "commercial" | "submission";
         /** GenerateListingRequest */
         GenerateListingRequest: {
             /** Category */
