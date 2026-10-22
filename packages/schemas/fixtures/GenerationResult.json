@@ -147,5 +147,23 @@
   "blocks": [],
   "attempts_used": 1,
   "terminal_state": "needs_review",
-  "error": null
+  "error": null,
+  "questions": [
+    {
+      "kind": "missing_fact",
+      "target_path": "facts.attributes.fiber_composition",
+      "question": "What is the fibre composition of this kurta set, as printed on the care label?",
+      "reason": "Amazon requires the fibre composition for kurta sets, and the product has none yet.",
+      "suggestions": [],
+      "evidence": []
+    }
+  ],
+  "changes": [
+    {
+      "field": "attributes.color",
+      "before": "blue",
+      "after": "navy blue",
+      "reason": "Matches the colour the seller confirmed."
+    }
+  ]
 }

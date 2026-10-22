@@ -795,6 +795,80 @@
       "title": "ErrorSource",
       "type": "string"
     },
+    "FieldChange": {
+      "description": "One field a regeneration changed, for the agent log (1.2.0).",
+      "properties": {
+        "after": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "After"
+        },
+        "before": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Before"
+        },
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 300,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "field",
+        "before",
+        "after",
+        "reason"
+      ],
+      "title": "FieldChange",
+      "type": "object"
+    },
     "FixAction": {
       "enum": [
         "remap_value",
@@ -1124,6 +1198,63 @@
       "title": "Marketplace",
       "type": "string"
     },
+    "Question": {
+      "description": "One plain question for the seller about a missing, conflicting or unverified fact (1.2.0).",
+      "properties": {
+        "evidence": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "kind": {
+          "enum": [
+            "missing_fact",
+            "conflicting_facts",
+            "unverified_declaration"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "question": {
+          "maxLength": 300,
+          "minLength": 5,
+          "title": "Question",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 5,
+          "title": "Reason",
+          "type": "string"
+        },
+        "suggestions": {
+          "items": {
+            "maxLength": 120,
+            "type": "string"
+          },
+          "maxItems": 6,
+          "title": "Suggestions",
+          "type": "array"
+        },
+        "target_path": {
+          "pattern": "^(facts|brand|account)(\\.[a-z0-9_]{1,64}){1,2}$",
+          "title": "Target Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "target_path",
+        "question",
+        "reason",
+        "suggestions",
+        "evidence"
+      ],
+      "title": "Question",
+      "type": "object"
+    },
     "RetryClass": {
       "enum": [
         "auto_retry",
@@ -1357,6 +1488,13 @@
       "title": "Blocks",
       "type": "array"
     },
+    "changes": {
+      "items": {
+        "$ref": "#/$defs/FieldChange"
+      },
+      "title": "Changes",
+      "type": "array"
+    },
     "error": {
       "anyOf": [
         {
@@ -1390,6 +1528,13 @@
         }
       ],
       "default": null
+    },
+    "questions": {
+      "items": {
+        "$ref": "#/$defs/Question"
+      },
+      "title": "Questions",
+      "type": "array"
     },
     "request_id": {
       "maxLength": 128,

@@ -14,12 +14,14 @@ from mkos_schemas.jobs import (
     AttributeSpec,
     BrandChunkDTO,
     CategoryTemplate,
+    FieldChange,
     GenerateListingRequest,
     GenerationContext,
     GenerationResult,
     JobAccepted,
     JobEnvelope,
     ModelCredentials,
+    Question,
 )
 from mkos_schemas.listing import CanonicalListing
 from mkos_schemas.rules import RuleSet
@@ -410,3 +412,118 @@ def test_model_credentials_is_a_wire_model() -> None:
     assert ModelCredentials.model_json_schema().get("additionalProperties") is not False
     with pytest.raises(ValidationError):
         ModelCredentials.model_validate({"provider": "openai", "api_key": "  ", "model": "m"})
+
+
+# ---- 1.2.0: GenerationResult.questions and .changes (assignment §10.1, D1-20, D1-34) ----
+
+
+def _result(**overrides: object) -> GenerationResult:
+    base: dict[str, object] = {"request_id": "r", "job_id": _JID, "terminal_state": "needs_review"}
+    base.update(overrides)
+    return GenerationResult.model_validate(base)
+
+
+def _question(**overrides: object) -> dict[str, object]:
+    base: dict[str, object] = {
+        "kind": "missing_fact",
+        "target_path": "facts.attributes.fiber_composition",
+        "question": "What is the fibre composition of this kurta?",
+        "reason": "Amazon needs the fibre composition for apparel.",
+        "suggestions": [],
+        "evidence": [],
+    }
+    base.update(overrides)
+    return base
+
+
+def _change(**overrides: object) -> dict[str, object]:
+    base: dict[str, object] = {
+        "field": "attributes.color",
+        "before": "navy",
+        "after": "indigo",
+        "reason": "The seller answered the colour question.",
+    }
+    base.update(overrides)
+    return base
+
+
+def test_result_questions_and_changes_default_empty() -> None:
+    result = _result()
+    assert result.questions == [] and result.changes == []
+    dumped = result.model_dump(mode="json")
+    assert dumped["questions"] == [] and dumped["changes"] == []
+
+
+def test_result_questions_and_changes_round_trip() -> None:
+    result = _result(
+        questions=[
+            _question(),
+            _question(
+                kind="conflicting_facts",
+                target_path="facts.attributes.color",
+                suggestions=["navy", "indigo"],
+                evidence=["import_row:42", "image:" + str(_PID)],
+            ),
+        ],
+        changes=[_change(), _change(field="content.bullets[1]", before=None, after="New")],
+    )
+    again = GenerationResult.model_validate_json(result.model_dump_json())
+    assert again == result
+    assert again.questions[1].suggestions == ["navy", "indigo"]
+    assert again.changes[1].before is None
+
+
+def test_question_kind_is_the_three_fact_kinds() -> None:
+    for kind in ("missing_fact", "conflicting_facts", "unverified_declaration"):
+        assert Question.model_validate(_question(kind=kind)).kind == kind
+    for kind in ("approval_or_evidence", "image_replacement", "low_confidence_category"):
+        with pytest.raises(ValidationError):
+            Question.model_validate(_question(kind=kind))
+
+
+@pytest.mark.parametrize(
+    "path", ["facts.attributes.fiber_composition", "facts.mrp", "brand.tone", "account.settings"]
+)
+def test_question_target_path_matches_the_task_check(path: str) -> None:
+    assert Question.model_validate(_question(target_path=path)).target_path == path
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["attributes.color", "facts", "facts.a.b.c", "facts.Attributes", "facts..x", "facts.x "],
+)
+def test_question_target_path_refuses_other_paths(path: str) -> None:
+    with pytest.raises(ValidationError):
+        Question.model_validate(_question(target_path=path))
+
+
+def test_question_text_caps() -> None:
+    Question.model_validate(_question(question="a" * 5, reason="b" * 5))
+    Question.model_validate(_question(question="a" * 300, reason="b" * 500))
+    for bad in ({"question": "a" * 4}, {"question": "a" * 301}, {"reason": "b" * 4}):
+        with pytest.raises(ValidationError):
+            Question.model_validate(_question(**bad))
+    with pytest.raises(ValidationError):
+        Question.model_validate(_question(reason="b" * 501))
+
+
+def test_question_suggestion_caps() -> None:
+    Question.model_validate(_question(suggestions=["s" * 120] * 6))
+    with pytest.raises(ValidationError):
+        Question.model_validate(_question(suggestions=["s"] * 7))
+    with pytest.raises(ValidationError):
+        Question.model_validate(_question(suggestions=["s" * 121]))
+
+
+@pytest.mark.parametrize("value", ["text", 3, 2.5, True, ["a", "b"], None])
+def test_field_change_values_are_attribute_values(value: object) -> None:
+    change = FieldChange.model_validate(_change(before=value, after=value))
+    assert change.before == value and change.after == value
+
+
+def test_field_change_refuses_objects_and_long_reasons() -> None:
+    with pytest.raises(ValidationError):
+        FieldChange.model_validate(_change(after={"nested": "object"}))
+    FieldChange.model_validate(_change(reason="r" * 300))
+    with pytest.raises(ValidationError):
+        FieldChange.model_validate(_change(reason="r" * 301))

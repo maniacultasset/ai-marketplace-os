@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import ipaddress
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Final, Literal
 from urllib.parse import urlparse
 from uuid import UUID
 
@@ -23,7 +23,7 @@ from .base import (
 from .enums import JobKind, JobState, Locale, Marketplace, PipelineStage
 from .errors import ErrorReport
 from .images import ImageReport
-from .listing import CanonicalListing
+from .listing import AttributeValue, CanonicalListing
 from .rules import Condition, RuleSet
 from .validation import ValidationSummary
 
@@ -196,6 +196,32 @@ class GenerationContext(WireModel):
         return self
 
 
+# 1.2.0: what the worker stores as a fact task (`human_tasks`): `kind` is one of its fact kinds and
+# `target_path` passes `ck_human_tasks_target_path` (0002_listing_pipeline.py).
+QuestionKind = Literal["missing_fact", "conflicting_facts", "unverified_declaration"]
+QUESTION_TARGET_PATH: Final = r"^(facts|brand|account)(\.[a-z0-9_]{1,64}){1,2}$"
+
+
+class Question(WireModel):
+    """One plain question for the seller about a missing, conflicting or unverified fact (1.2.0)."""
+
+    kind: QuestionKind
+    target_path: Annotated[str, Field(pattern=QUESTION_TARGET_PATH)]  # facts.attributes.<key>
+    question: Annotated[str, Field(min_length=5, max_length=300)]
+    reason: Annotated[str, Field(min_length=5, max_length=500)]
+    suggestions: Annotated[list[Annotated[str, Field(max_length=120)]], Field(max_length=6)]
+    evidence: list[str]  # "image:<uuid>", "import_row:<id>", "agent_run:<uuid>"
+
+
+class FieldChange(WireModel):
+    """One field a regeneration changed, for the agent log (1.2.0)."""
+
+    field: str
+    before: AttributeValue | None  # text, or an attribute value
+    after: AttributeValue | None
+    reason: Annotated[str, Field(max_length=300)]
+
+
 class AgentBlockStatus(WireModel):
     agent: Literal["content", "keyword", "attribute", "image"]
     status: Literal["ok", "failed", "skipped"]
@@ -217,3 +243,5 @@ class GenerationResult(WireModel):
     attempts_used: Annotated[int, Field(ge=0, le=3)] = 0
     terminal_state: TerminalState
     error: ErrorReport | None = None
+    questions: list[Question] = Field(default_factory=list)  # 1.2.0
+    changes: list[FieldChange] = Field(default_factory=list)  # 1.2.0

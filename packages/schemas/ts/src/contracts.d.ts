@@ -663,6 +663,19 @@ export interface FactSource {
   [k: string]: unknown;
 }
 /**
+ * One field a regeneration changed, for the agent log (1.2.0).
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "FieldChange".
+ */
+export interface FieldChange {
+  after: string | number | boolean | string[] | null;
+  before: string | number | boolean | string[] | null;
+  field: string;
+  reason: string;
+  [k: string]: unknown;
+}
+/**
  * This interface was referenced by `MkosContracts`'s JSON-Schema
  * via the `definition` "FieldResult".
  */
@@ -946,10 +959,12 @@ export interface GenerationResult {
   agent_runs?: AgentRunRecord[];
   attempts_used?: number;
   blocks?: AgentBlockStatus[];
+  changes?: FieldChange[];
   error?: ErrorReport | null;
   image_reports?: ImageReport[];
   job_id: string;
   listing?: CanonicalListing | null;
+  questions?: Question[];
   request_id: string;
   schema_version?: string;
   terminal_state: "generated" | "needs_review" | "blocked" | "failed";
@@ -1016,6 +1031,31 @@ export interface ImageIssue {
     | "product_visibility";
   code: ImageIssueCode;
   suggestion: string;
+  [k: string]: unknown;
+}
+/**
+ * One plain question for the seller about a missing, conflicting or unverified fact (1.2.0).
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "Question".
+ */
+export interface Question {
+  evidence: string[];
+  kind: "missing_fact" | "conflicting_facts" | "unverified_declaration";
+  question: string;
+  reason: string;
+  /**
+   * @maxItems 6
+   */
+  suggestions:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string];
+  target_path: string;
   [k: string]: unknown;
 }
 /**
