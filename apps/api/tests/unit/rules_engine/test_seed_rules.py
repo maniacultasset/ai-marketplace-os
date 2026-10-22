@@ -76,7 +76,9 @@ def test_rules_seed_every_ruleset_has_a_fixture_listing() -> None:
 @pytest.mark.parametrize("category", list(CATEGORY_PRODUCT))
 def test_rules_seed_flipkart_resolves_to_150(category: str) -> None:
     resolved = _resolved("flipkart", category)
-    (title_max,) = [r for r in resolved.rules if r.rule_def.type == "max_length"]
+    (title_max,) = [
+        r for r in resolved.rules if r.rule_def.type == "max_length" and r.field == "content.title"
+    ]
     assert title_max.rule_def.limit == 150  # type: ignore[union-attr]
     item = _listing(CATEGORY_PRODUCT[category], "flipkart")
     long_title = item.model_copy(
@@ -85,7 +87,9 @@ def test_rules_seed_flipkart_resolves_to_150(category: str) -> None:
     codes = [(e.field, e.error_code.value) for e in _run(long_title).errors]
     assert ("content.title", "FIELD_TOO_LONG") in codes
     amazon = _resolved("amazon", category)
-    (amazon_max,) = [r for r in amazon.rules if r.rule_def.type == "max_length"]
+    (amazon_max,) = [
+        r for r in amazon.rules if r.rule_def.type == "max_length" and r.field == "content.title"
+    ]
     assert amazon_max.rule_def.limit == 200  # type: ignore[union-attr]
 
 
@@ -133,3 +137,60 @@ def test_rules_seed_tshirts_missing_fabric_type_fails(marketplace: str) -> None:
     assert [(e.field, e.error_code.value) for e in rep.errors] == [
         ("attributes.fabric_type", "MISSING_ATTRIBUTE")
     ]
+
+
+# ---- A2 (ai-deps PLAN C19): Amazon backend keywords fit in 250 UTF-8 bytes ----
+#
+# The engine joins the list with one space, normalises to NFC and counts UTF-8 bytes
+# (`rules_engine/text.py` `measure`), so the joining spaces count toward the budget.
+
+
+def _with_hidden(item: CanonicalListing, terms: list[str]) -> CanonicalListing:
+    keywords = item.keywords.model_copy(update={"hidden_terms": terms})
+    return item.model_copy(update={"keywords": keywords})
+
+
+def _byte_errors(item: CanonicalListing) -> list[Any]:
+    return [e for e in _run(item).errors if e.error_code.value == "BYTE_BUDGET_EXCEEDED"]
+
+
+@pytest.mark.parametrize("category", list(CATEGORY_PRODUCT))
+def test_rules_seed_hidden_terms_250_bytes_pass(category: str) -> None:
+    item = _listing(CATEGORY_PRODUCT[category], "amazon")
+    assert _byte_errors(_with_hidden(item, ["a" * 250])) == []
+    assert _byte_errors(_with_hidden(item, ["a" * 124, "b" * 125])) == []  # 124 + 1 + 125
+
+
+@pytest.mark.parametrize("category", list(CATEGORY_PRODUCT))
+def test_rules_seed_hidden_terms_251_bytes_fail(category: str) -> None:
+    item = _listing(CATEGORY_PRODUCT[category], "amazon")
+    (error,) = _byte_errors(_with_hidden(item, ["a" * 251]))
+    assert error.field == "keywords.hidden_terms"
+    assert error.severity.value == "error" and error.rule_id is not None
+    assert "250" in error.message
+    assert _run(_with_hidden(item, ["a" * 251])).status == "failed"
+
+
+@pytest.mark.parametrize("category", list(CATEGORY_PRODUCT))
+def test_rules_seed_hidden_terms_joining_space_counts(category: str) -> None:
+    """Two terms of 125 bytes are 251 bytes once joined: the space tips them over."""
+    item = _listing(CATEGORY_PRODUCT[category], "amazon")
+    (error,) = _byte_errors(_with_hidden(item, ["a" * 125, "b" * 125]))
+    assert error.field == "keywords.hidden_terms"
+
+
+def test_rules_seed_hidden_terms_devanagari_counts_bytes_not_chars() -> None:
+    """Devanagari letters are 3 UTF-8 bytes each: 83 letters (249 bytes) pass, 84 (252 bytes)
+    fail, though both are far under 250 characters."""
+    item = _listing("kurta_002", "amazon")
+    letter = "\u0915"  # DEVANAGARI LETTER KA
+    assert len(letter.encode("utf-8")) == 3
+    assert _byte_errors(_with_hidden(item, [letter * 83])) == []
+    (error,) = _byte_errors(_with_hidden(item, [letter * 84]))
+    assert error.field == "keywords.hidden_terms"
+
+
+@pytest.mark.parametrize("category", list(CATEGORY_PRODUCT))
+def test_rules_seed_hidden_terms_no_flipkart_byte_rule(category: str) -> None:
+    item = _listing(CATEGORY_PRODUCT[category], "flipkart")
+    assert _byte_errors(_with_hidden(item, ["a" * 251])) == []

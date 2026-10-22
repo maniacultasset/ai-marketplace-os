@@ -194,6 +194,34 @@
         }
       },
       {
+        "id": "5eed0000-0000-4000-8000-000100010007",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "keywords.hidden_terms",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "backend keywords longer than {limit} bytes",
+          "suggestion": "Drop the backend keywords that repeat the title, bullets or other keywords until all of them, joined by single spaces, fit in {limit} bytes.",
+          "error_code": "BYTE_BUDGET_EXCEEDED",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Marketplace-specific Content (spec [42])",
+            "url": null,
+            "section": "backend keywords: 250 bytes",
+            "retrieved_on": "2026-09-27"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "max_length",
+          "limit": 250,
+          "unit": "bytes"
+        }
+      },
+      {
         "id": "5eed0000-0000-4000-8000-000701000001",
         "tenant_id": null,
         "marketplace": "amazon",
@@ -631,6 +659,34 @@
           "type": "required_attribute",
           "attribute": "product_dimensions",
           "allowed_values": null
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100020007",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "home_decor_lamps",
+        "field": "keywords.hidden_terms",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "backend keywords longer than {limit} bytes",
+          "suggestion": "Drop the backend keywords that repeat the title, bullets or other keywords until all of them, joined by single spaces, fit in {limit} bytes.",
+          "error_code": "BYTE_BUDGET_EXCEEDED",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Marketplace-specific Content (spec [42])",
+            "url": null,
+            "section": "backend keywords: 250 bytes",
+            "retrieved_on": "2026-09-27"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "max_length",
+          "limit": 250,
+          "unit": "bytes"
         }
       }
     ],
@@ -1562,6 +1618,34 @@
           "type": "required_attribute",
           "attribute": "fabric_type",
           "allowed_values": null
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100030007",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "tshirts",
+        "field": "keywords.hidden_terms",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "backend keywords longer than {limit} bytes",
+          "suggestion": "Drop the backend keywords that repeat the title, bullets or other keywords until all of them, joined by single spaces, fit in {limit} bytes.",
+          "error_code": "BYTE_BUDGET_EXCEEDED",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Marketplace-specific Content (spec [42])",
+            "url": null,
+            "section": "backend keywords: 250 bytes",
+            "retrieved_on": "2026-09-27"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "type": "max_length",
+          "limit": 250,
+          "unit": "bytes"
         }
       }
     ],
