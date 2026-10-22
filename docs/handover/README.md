@@ -56,8 +56,8 @@ All routes are under `/api/v1`, except the health checks `/healthz` and `/readyz
 ## Contract version
 
 The API contract is `packages/schemas` version **1.1.0** (additive over 1.0.0; see
-`packages/schemas/CHANGELOG.md`). The published package is still `schemas-v1.0.0` until the 1.1.0
-release tag is cut.
+`packages/schemas/CHANGELOG.md`). Its CHANGELOG heading is closed (2026-10-22), and the
+`schemas-v1.1.0` tag goes on its release commit.
 
 ## Keeping these pages true
 
