@@ -5,9 +5,9 @@ The generation worker builds one per job with `build_pipeline_deps` and hands it
 
 - public, non-secret ids: `tenant_id`, `job_id`, `marketplace`;
 - the loaded RuleSet and template, the product facts and the stored image reports (D6);
-- the embedder, and `_ModelConfig`: a snapshot of the model settings with the two model keys
-  (D5). No `Settings` object, no marketplace account, no ORM instance is kept, so AI code that
-  walks the object graph reaches no other secret (invariant 6; PLAN AC 3).
+- the embedder, and `_ModelConfig`: a snapshot of the model settings with the model keys (D5).
+  No `Settings` object, no marketplace account, no ORM instance is kept, so AI code that walks
+  the object graph reaches no other secret (invariant 6; PLAN AC 3).
 
 Ports:
 - `retrieve_brand_chunks`: validates every input before any SQL (a foreign tenant is an internal
@@ -21,8 +21,10 @@ Ports:
   4th call gets an `INTERNAL_ERROR` report without evaluating (the cap lives in the graph,
   this is the backstop).
 - `validate_images`: the stored reports of the listing's images, no I/O, no model.
-- `get_model_credentials`: `generation`/`vision` → the `LLM_PROVIDER` key; `embedding` → always
-  the OpenAI key (ENV.md:86, BA:1538). Never a marketplace credential.
+- `get_model_credentials`: `generation` → the `LLM_PROVIDER` key and `LLM_MODEL_DEFAULT`;
+  `vision` → the `LLM_PROVIDER_VISION` key (OpenAI only: DeepSeek has no vision model) and
+  `LLM_MODEL_VISION` (B2, ai-deps C18); `embedding` → always the OpenAI key (ENV.md:86,
+  BA:1538). Never a marketplace credential.
 - `emit_node_event`: `started` writes `job_runs.node` on the running job (never
   `listings.status`) and opens span `pipeline.<node>` (attributes `job_id`, `tenant_id`, `node`
   only); `ok`/`failed` ends it with that status. `close_spans()` ends any left open. `detail` is
@@ -110,6 +112,10 @@ def _secret(value: str | None) -> SecretStr | None:
     return SecretStr(value)
 
 
+def _provider_key(settings: Settings, provider: Literal["openai", "deepseek"]) -> SecretStr | None:
+    return _secret(settings.openai_api_key if provider == "openai" else settings.deepseek_api_key)
+
+
 @dataclass(frozen=True)
 class _ModelConfig:
     """The model settings the credential port needs, copied once (no `Settings` is kept)."""
@@ -117,25 +123,26 @@ class _ModelConfig:
     app_env: str
     provider: Literal["openai", "deepseek"]
     generation_model: str
+    vision_provider: Literal["openai"]
+    vision_model: str
     embedding_model: str
     timeout_seconds: float
     generation_key: SecretStr | None = field(repr=False)
+    vision_key: SecretStr | None = field(repr=False)
     embedding_key: SecretStr | None = field(repr=False)
 
     @classmethod
     def from_settings(cls, settings: Settings) -> _ModelConfig:
-        provider_key = (
-            settings.openai_api_key
-            if settings.llm_provider == "openai"
-            else settings.deepseek_api_key
-        )
         return cls(
             app_env=settings.app_env,
             provider=settings.llm_provider,
             generation_model=settings.llm_model_default,
+            vision_provider=settings.llm_provider_vision,
+            vision_model=settings.llm_model_vision,
             embedding_model=settings.embedding_model,
             timeout_seconds=float(settings.llm_timeout_seconds),
-            generation_key=_secret(provider_key),
+            generation_key=_provider_key(settings, settings.llm_provider),
+            vision_key=_provider_key(settings, settings.llm_provider_vision),
             embedding_key=_secret(settings.openai_api_key),
         )
 
@@ -332,9 +339,11 @@ class BackendPipelineDeps:
         models = self._models
         if purpose not in PURPOSES:
             raise SeamPortError(ErrorCode.VALIDATION_FAILED, "purpose")
+        provider: Literal["openai", "deepseek"]
         if purpose == "embedding":
-            provider: Literal["openai", "deepseek"] = "openai"
-            key, model = models.embedding_key, models.embedding_model
+            provider, key, model = "openai", models.embedding_key, models.embedding_model
+        elif purpose == "vision":
+            provider, key, model = models.vision_provider, models.vision_key, models.vision_model
         else:
             provider, key, model = models.provider, models.generation_key, models.generation_model
         if key is None:

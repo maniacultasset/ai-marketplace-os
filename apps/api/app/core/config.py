@@ -13,7 +13,8 @@
   on, an ADMIN_SESSION_SECRET) must carry no whitespace and 32+ characters measured unstripped
   (audit PROD-1; a character-variety floor waits on TEAM-QUESTIONS T132). The api also needs
   https non-loopback ALLOWED_ORIGINS (exact origins, never `*`) and JWT_ISSUER (PROD-2).
-  Numeric settings carry lower bounds in every env (PROD-3).
+  Numeric settings carry lower bounds in every env (PROD-3). A worker off local also needs the
+  vision provider's key (B2): OpenAI, the only provider with a vision model.
 - There is no module-level `settings`: call `get_settings()` where the value is needed.
 """
 
@@ -22,8 +23,10 @@ from __future__ import annotations
 import ipaddress
 import logging
 import re
+from collections.abc import Mapping
 from functools import lru_cache
 from importlib import metadata
+from types import MappingProxyType
 from typing import Final, Literal
 from urllib.parse import urlsplit
 
@@ -33,6 +36,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from app.core.model_prices import EMBEDDING_PRICE_USD_PER_MTOK, is_usable_openai_key
 
 EMBEDDING_DIMENSIONS: Final[int] = 1536
+
+# B2 (ai-deps C18): the env var holding each vision provider's key. DeepSeek has no vision model,
+# so `LLM_PROVIDER_VISION` is OpenAI only, whatever `LLM_PROVIDER` says.
+VisionProvider = Literal["openai"]
+VISION_PROVIDER_KEY_ENV: Final[Mapping[str, str]] = MappingProxyType({"openai": "OPENAI_API_KEY"})
 
 # Every JWT literal committed to the repo or the Canon: ENV.md's JWT_SECRET row (.env.example),
 # CANON-ADDENDUM.md:290 (the CI env block) and CANON-ADDENDUM.md:319 (the schema export).
@@ -161,6 +169,8 @@ class Settings(BaseSettings):
     deepseek_api_key: str | None = Field(default=None, repr=False)
     llm_model_default: str = "gpt-4o-mini"
     llm_model_escalation: str = "gpt-4o"
+    llm_provider_vision: VisionProvider = "openai"
+    llm_model_vision: str = Field(default="gpt-4o-mini", min_length=1, max_length=128)
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = EMBEDDING_DIMENSIONS  # pinned: the vector(1536) column type
     llm_timeout_seconds: int = 60
@@ -404,6 +414,7 @@ def _boot_errors(s: Settings) -> list[str]:
     errors += _url_errors(s)
     errors += _storage_errors(s)
     errors += _embedding_errors(s)
+    errors += _vision_errors(s)
     errors += _spapi_errors(s)
     errors += _flipkart_errors(s)
     return errors
@@ -421,6 +432,21 @@ def _embedding_errors(s: Settings) -> list[str]:
     if s.embedding_model not in EMBEDDING_PRICE_USD_PER_MTOK:
         errors.append("EMBEDDING_MODEL has no price entry")
     return errors
+
+
+def _vision_errors(s: Settings) -> list[str]:
+    """B2 (ai-deps C18): a worker sends product images to `LLM_PROVIDER_VISION`, so outside local
+    it needs that provider's key; the placeholder counts as none. Local uses the port's
+    placeholder key. Names only, never the key or the model value."""
+    if s.app_role != "worker" or s.app_env == "local":
+        return []
+    name = VISION_PROVIDER_KEY_ENV[s.llm_provider_vision]
+    if is_usable_openai_key(getattr(s, name.lower())):
+        return []
+    return [
+        f"LLM_PROVIDER_VISION={s.llm_provider_vision} requires {name} "
+        "for APP_ROLE=worker outside APP_ENV=local"
+    ]
 
 
 def _spapi_errors(s: Settings) -> list[str]:
