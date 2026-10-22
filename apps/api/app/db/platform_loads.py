@@ -743,7 +743,7 @@ async def load_rule_rows(connection: AsyncConnection, rule_sets: Sequence[RuleSe
             )
             inserted += 1
             continue
-        if any(getattr(stored, name) != row[name] for name in _RULE_CONTENT):
+        if any(stored._mapping[name] != row[name] for name in _RULE_CONTENT):
             raise RuleConflict(rule_id, "already holds other content; bump version")
         if stored.enabled == row["enabled"]:
             unchanged += 1
