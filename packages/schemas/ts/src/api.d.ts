@@ -1397,12 +1397,18 @@ export interface components {
         };
         /** CanonicalListing */
         CanonicalListing: {
+            /** Attribute Sources */
+            attribute_sources?: {
+                [key: string]: string;
+            };
             /** Attributes */
             attributes?: {
                 [key: string]: string | number | boolean | string[];
             };
             /** Category */
             category: string;
+            /** Claims */
+            claims?: components["schemas"]["Claim"][];
             /** Confidence Score */
             confidence_score?: number | null;
             content: components["schemas"]["ListingContent"];
@@ -1439,6 +1445,26 @@ export interface components {
              * @default 1
              */
             version: number;
+        };
+        /**
+         * Claim
+         * @description A factual statement kept in the listing text, and the product facts behind it (1.2.0).
+         */
+        Claim: {
+            /** Fact Keys */
+            fact_keys: string[];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "supported" | "unsupported" | "removed";
+            /** Text Path */
+            text_path: string;
         };
         /**
          * ConnectConfirmRequest

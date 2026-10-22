@@ -2,19 +2,22 @@
 
 from __future__ import annotations
 
+import re
 from decimal import Decimal
 from math import isfinite
-from typing import Annotated, Final
+from typing import Annotated, Final, Literal
 from uuid import UUID
 
 from pydantic import AwareDatetime, Field, field_validator, model_validator
 
 from .base import SCHEMA_VERSION, AttrKey, NonBlankStr, Slug, WireModel
 from .enums import ImageSlot, ListingStatus, Locale, Marketplace
+from .paths import is_valid_field_path
 
 MAX_LISTING_IMAGES: Final = 20
 MAX_LISTING_ATTRIBUTES: Final = 128
 MAX_KEYWORD_OR_ATTR_STRING: Final = 256
+_CLAIM_TEXT_PATH: Final = re.compile(r"^content\.(title|description|bullets\[[0-9]{1,3}\])$")
 
 
 def _max_code_points(value: str, limit: int) -> str:
@@ -60,6 +63,22 @@ class ImageRef(WireModel):
 AttributeValue = str | int | float | bool | list[str]
 
 
+class Claim(WireModel):
+    """A factual statement kept in the listing text, and the product facts behind it (1.2.0)."""
+
+    id: UUID
+    text_path: str  # content.title, content.bullets[<n>] or content.description
+    fact_keys: list[str]  # dotted product paths that support the claim, e.g. attributes.color
+    status: Literal["supported", "unsupported", "removed"]
+
+    @field_validator("text_path")
+    @classmethod
+    def _text_path(cls, value: str) -> str:
+        if not is_valid_field_path(value) or not _CLAIM_TEXT_PATH.fullmatch(value):
+            raise ValueError(f"{value!r} is not a listing text path")
+        return value
+
+
 class CanonicalListing(WireModel):
     schema_version: str = SCHEMA_VERSION
     listing_id: UUID | None = None
@@ -76,6 +95,9 @@ class CanonicalListing(WireModel):
     confidence_score: Annotated[float | None, Field(default=None, ge=0.0, le=1.0)] = None
     generated_by_agent_run_id: UUID | None = None
     created_at: AwareDatetime | None = None
+    claims: list[Claim] = Field(default_factory=list)  # 1.2.0
+    # 1.2.0: attribute key -> the fact key or dotted product path its value came from.
+    attribute_sources: dict[str, str] = Field(default_factory=dict)
 
     @field_validator("attributes")
     @classmethod

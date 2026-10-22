@@ -55,7 +55,9 @@
     ],
     "confidence_score": 0.91,
     "generated_by_agent_run_id": "7b3c9e10-22d5-4f6a-8c31-9e0a4d5b6f22",
-    "created_at": "2026-09-22T10:30:00Z"
+    "created_at": "2026-09-22T10:30:00Z",
+    "claims": [],
+    "attribute_sources": {}
   },
   "image_reports": [],
   "validation": {

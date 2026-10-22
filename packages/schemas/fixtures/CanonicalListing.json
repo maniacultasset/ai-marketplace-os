@@ -51,5 +51,27 @@
   ],
   "confidence_score": 0.91,
   "generated_by_agent_run_id": "7b3c9e10-22d5-4f6a-8c31-9e0a4d5b6f22",
-  "created_at": "2026-09-22T10:30:00Z"
+  "created_at": "2026-09-22T10:30:00Z",
+  "claims": [
+    {
+      "id": "7b0c1e52-3f4a-4c8e-9d21-6a5f0e8b1c01",
+      "text_path": "content.bullets[0]",
+      "fact_keys": [
+        "attributes.fiber_composition",
+        "compliance.certifications"
+      ],
+      "status": "supported"
+    },
+    {
+      "id": "7b0c1e52-3f4a-4c8e-9d21-6a5f0e8b1c02",
+      "text_path": "content.bullets[3]",
+      "fact_keys": [],
+      "status": "removed"
+    }
+  ],
+  "attribute_sources": {
+    "color": "attributes.color",
+    "size": "attributes.size",
+    "fit": "attributes.fit"
+  }
 }

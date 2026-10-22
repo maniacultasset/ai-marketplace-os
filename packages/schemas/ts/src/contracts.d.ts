@@ -434,6 +434,9 @@ export interface BrandChunkDTO {
  * via the `definition` "CanonicalListing".
  */
 export interface CanonicalListing {
+  attribute_sources?: {
+    [k: string]: string;
+  };
   attributes?: {
     /**
      * This interface was referenced by `undefined`'s JSON-Schema definition
@@ -442,6 +445,7 @@ export interface CanonicalListing {
     [k: string]: string | number | boolean | string[];
   };
   category: string;
+  claims?: Claim[];
   confidence_score?: number | null;
   content: ListingContent;
   created_at?: string | null;
@@ -455,6 +459,19 @@ export interface CanonicalListing {
   schema_version?: string;
   status?: ListingStatus;
   version?: number;
+  [k: string]: unknown;
+}
+/**
+ * A factual statement kept in the listing text, and the product facts behind it (1.2.0).
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "Claim".
+ */
+export interface Claim {
+  fact_keys: string[];
+  id: string;
+  status: "supported" | "unsupported" | "removed";
+  text_path: string;
   [k: string]: unknown;
 }
 /**

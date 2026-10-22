@@ -12,6 +12,7 @@ from mkos_schemas.listing import (
     MAX_LISTING_ATTRIBUTES,
     MAX_LISTING_IMAGES,
     CanonicalListing,
+    Claim,
     ImageRef,
     ListingContent,
     ListingKeywords,
@@ -182,3 +183,69 @@ def test_version_is_distinct_from_schema_version() -> None:
     obj = _listing(version=2)
     assert obj.version == 2
     assert obj.schema_version == "1.2.0"
+
+
+_CLAIM_ID = "55555555-5555-5555-5555-555555555555"
+
+
+def _claim(**overrides: object) -> Claim:
+    base: dict[str, object] = {
+        "id": _CLAIM_ID,
+        "text_path": "content.bullets[0]",
+        "fact_keys": ["attributes.fabric_type"],
+        "status": "supported",
+    }
+    base.update(overrides)
+    return Claim.model_validate(base)
+
+
+def test_claims_and_attribute_sources_default_empty() -> None:
+    obj = _listing()
+    assert obj.claims == []
+    assert obj.attribute_sources == {}
+    dumped = obj.model_dump(mode="json")
+    assert dumped["claims"] == []
+    assert dumped["attribute_sources"] == {}
+
+
+def test_claims_and_attribute_sources_round_trip() -> None:
+    obj = _listing(
+        claims=[_claim(), _claim(text_path="content.title", status="removed")],
+        attribute_sources={"color": "attributes.color"},
+    )
+    again = CanonicalListing.model_validate_json(obj.model_dump_json())
+    assert again == obj
+    assert again.claims[1].status == "removed"
+    assert again.attribute_sources == {"color": "attributes.color"}
+
+
+@pytest.mark.parametrize("path", ["content.title", "content.bullets[9]", "content.description"])
+def test_claim_text_path_names_a_content_field(path: str) -> None:
+    assert _claim(text_path=path).text_path == path
+
+
+@pytest.mark.parametrize(
+    "path", ["title", "content.bullets", "attributes.color", "keywords.search_terms", ""]
+)
+def test_claim_text_path_refuses_other_paths(path: str) -> None:
+    with pytest.raises(ValidationError):
+        _claim(text_path=path)
+
+
+def test_claim_status_is_closed() -> None:
+    for status in ("supported", "unsupported", "removed"):
+        assert _claim(status=status).status == status
+    with pytest.raises(ValidationError):
+        _claim(status="verified")
+
+
+def test_listing_from_1_1_0_without_claims_still_parses() -> None:
+    raw: dict[str, Any] = {
+        "schema_version": "1.1.0",
+        "product_id": "11111111-1111-1111-1111-111111111111",
+        "marketplace": "amazon",
+        "category": "ethnic_wear_kurta_sets",
+        "content": {"title": "T", "bullets": ["b"], "description": "d"},
+    }
+    obj = CanonicalListing.model_validate(raw)
+    assert obj.claims == [] and obj.attribute_sources == {}
