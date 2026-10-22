@@ -321,6 +321,9 @@ def _lamp(marketplace: str, specs: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# product_dimensions goes out as one text value, a stopgap: the dictionary declares it a measure in
+# cm, and Amazon's item_dimensions is likely structured (length, width, height, each with a unit).
+# DW1/DW2 confirm the shape; a structured one needs a multi-part measurement in the adapter.
 def _amazon_lamp() -> dict[str, Any]:
     return _lamp(
         "amazon",

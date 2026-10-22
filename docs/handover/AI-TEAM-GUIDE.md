@@ -605,7 +605,8 @@ stub. Set a real model key in `.env` for real calls.
 
 - The Python package `mkos-schemas` and the npm package share one version, released by one
   `schemas-v<version>` git tag. `schemas-v1.0.0` is tagged. **1.1.0 is closed** (its CHANGELOG
-  heading is dated 2026-10-22) and is tagged `schemas-v1.1.0` on its release commit; pin 1.1.0.
+  heading is dated 2026-10-22). Its `schemas-v1.1.0` tag is pushed after the merge, on the owner's go; pin 1.1.0
+  once the tag exists, and until then use the backend branch tip.
   The seam types did not change between 1.0.0 and 1.1.0. 1.1.0 adds the lamp keys to the attribute
   dictionary (`lamp_type`, `lamp_material`, `shade_material`, `light_source_type`), and the
   platform data adds the lamp mappings and Amazon's 250-byte `keywords.hidden_terms` rule.
