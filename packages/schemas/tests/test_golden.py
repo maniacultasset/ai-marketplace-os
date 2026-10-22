@@ -6,7 +6,10 @@ import json
 from pathlib import Path
 
 import pytest
+from mkos_schemas.errors import ErrorReport
 from mkos_schemas.export import MODELS
+from mkos_schemas.jobs import GenerationResult
+from mkos_schemas.rules import RuleSet
 from pydantic import BaseModel
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
@@ -92,3 +95,41 @@ def test_context_and_result_fixtures_are_one_pair() -> None:
         assert ctx[key] == result["listing"][key], key
     assert ctx["marketplace_rules"]["category"] == ctx["category"]
     assert ctx["category_template"]["category"] == ctx["category"]
+
+
+# ---- 1.2.0 is additive: what a 1.1.0 producer sends still parses (C14) ----
+# golden_1_1_0/ holds the 1.1.0 fixtures as they were before the bump; never regenerate them.
+GOLDEN_1_1_0 = Path(__file__).resolve().parent / "golden_1_1_0"
+_NEW_IN_1_2_0: dict[str, dict[str, object]] = {
+    "GenerationContext": {"product_provenance": {}, "conflicts": [], "answered_keys": []},
+    "GenerationResult": {"questions": [], "changes": []},
+    "CanonicalListing": {"claims": [], "attribute_sources": {}},
+    "ErrorReport": {},
+    "RuleSet": {},
+}
+
+
+@pytest.mark.parametrize("name", sorted(_NEW_IN_1_2_0))
+def test_1_1_0_payloads_still_parse(name: str) -> None:
+    model = next(m for m in MODELS if m.__name__ == name)
+    raw = json.loads((GOLDEN_1_1_0 / f"{name}.json").read_text(encoding="utf-8"))
+    assert raw.get("schema_version", "1.1.0") == "1.1.0"
+    dumped = model.model_validate(raw).model_dump(by_alias=True, mode="json")
+    for key, default in _NEW_IN_1_2_0[name].items():
+        assert key not in raw
+        assert dumped.pop(key) == default
+    assert dumped.get("schema_version") == raw.get("schema_version")
+
+
+def test_1_1_0_errors_and_rules_parse_with_no_gate() -> None:
+    report = ErrorReport.model_validate_json(
+        (GOLDEN_1_1_0 / "ErrorReport.json").read_text(encoding="utf-8")
+    )
+    assert report.errors and all(item.gate is None for item in report.errors)
+    rules = RuleSet.model_validate_json((GOLDEN_1_1_0 / "RuleSet.json").read_text(encoding="utf-8"))
+    assert rules.rules and all(rule.rule_def.gate is None for rule in rules.rules)
+    result = GenerationResult.model_validate_json(
+        (GOLDEN_1_1_0 / "GenerationResult.json").read_text(encoding="utf-8")
+    )
+    assert result.listing is not None and result.listing.claims == []
+    assert result.questions == [] and result.changes == []
