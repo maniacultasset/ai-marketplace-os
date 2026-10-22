@@ -14,6 +14,7 @@ from mkos_schemas.jobs import (
     AttributeSpec,
     BrandChunkDTO,
     CategoryTemplate,
+    FactConflict,
     FieldChange,
     GenerateListingRequest,
     GenerationContext,
@@ -21,6 +22,7 @@ from mkos_schemas.jobs import (
     JobAccepted,
     JobEnvelope,
     ModelCredentials,
+    Provenance,
     Question,
 )
 from mkos_schemas.listing import CanonicalListing
@@ -527,3 +529,69 @@ def test_field_change_refuses_objects_and_long_reasons() -> None:
     FieldChange.model_validate(_change(reason="r" * 300))
     with pytest.raises(ValidationError):
         FieldChange.model_validate(_change(reason="r" * 301))
+
+
+# ---- 1.2.0: GenerationContext.product_provenance, .conflicts and .answered_keys (§10.1) ----
+
+
+def _conflict(**overrides: object) -> dict[str, object]:
+    base: dict[str, object] = {
+        "key": "attributes.color",
+        "values": [
+            {"source": "import", "value": "navy", "evidence_ref": "import_row:42"},
+            {"source": "label", "value": "indigo", "evidence_ref": "image:" + str(_PID)},
+        ],
+    }
+    base.update(overrides)
+    return base
+
+
+def test_context_new_fields_default_empty() -> None:
+    ctx = _context()
+    assert ctx.product_provenance == {}
+    assert ctx.conflicts == []
+    assert ctx.answered_keys == []
+
+
+def test_context_new_fields_round_trip() -> None:
+    ctx = _context(
+        product_provenance={
+            "attributes.color": {"source": "seller", "confidence": None, "confirmed": True},
+            "attributes.neckline": {"source": "ai", "confidence": 0.82, "confirmed": False},
+        },
+        conflicts=[_conflict()],
+        answered_keys=["attributes.fiber_composition"],
+    )
+    again = GenerationContext.model_validate_json(ctx.model_dump_json())
+    assert again == ctx
+    assert again.product_provenance["attributes.neckline"].confidence == 0.82
+    assert again.conflicts[0].values[1].value == "indigo"
+    assert again.answered_keys == ["attributes.fiber_composition"]
+
+
+def test_provenance_shape() -> None:
+    assert set(Provenance.model_fields) == {"source", "confidence", "confirmed"}
+    for bad in (-0.01, 1.01, float("nan")):
+        with pytest.raises(ValidationError):
+            Provenance.model_validate({"source": "ai", "confidence": bad, "confirmed": False})
+
+
+def test_conflict_needs_two_observed_values() -> None:
+    raw = _conflict()
+    values = raw["values"]
+    assert isinstance(values, list)
+    with pytest.raises(ValidationError):
+        FactConflict.model_validate({**raw, "values": values[:1]})
+    with pytest.raises(ValidationError):
+        FactConflict.model_validate(
+            {**raw, "values": [{**values[0], "value": {"nested": "object"}}, values[1]]}
+        )
+
+
+def test_context_from_1_1_0_still_parses() -> None:
+    raw = json.loads(_context().model_dump_json())
+    for key in ("product_provenance", "conflicts", "answered_keys"):
+        del raw[key]
+    raw["schema_version"] = "1.1.0"
+    ctx = GenerationContext.model_validate(raw)
+    assert ctx.schema_version == "1.1.0" and ctx.conflicts == []

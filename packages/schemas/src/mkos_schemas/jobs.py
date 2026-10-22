@@ -160,6 +160,29 @@ class ModelCredentials(WireModel):
         return value
 
 
+class Provenance(WireModel):
+    """Where one product value came from (1.2.0). Absent: treat the value as seller-confirmed."""
+
+    source: str
+    confidence: Annotated[float | None, Field(ge=0.0, le=1.0)]
+    confirmed: bool
+
+
+class ObservedValue(WireModel):
+    """One value a source gave for a fact the conflict scan found disagreeing (1.2.0)."""
+
+    source: str
+    value: AttributeValue
+    evidence_ref: str
+
+
+class FactConflict(WireModel):
+    """Sources that disagree on one product key (1.2.0); the pipeline phrases a question."""
+
+    key: str
+    values: Annotated[list[ObservedValue], Field(min_length=2)]
+
+
 class GenerationContext(WireModel):
     schema_version: str = SCHEMA_VERSION
     request_id: RequestId
@@ -178,6 +201,12 @@ class GenerationContext(WireModel):
     max_attempts: Annotated[int, Field(ge=1, le=3)] = 3
     locale: Locale = "en-IN"
     review_feedback: Annotated[list[NonBlankStr], Field(max_length=5)] = Field(default_factory=list)
+    # 1.2.0, filled by the backend: per product key, where its value came from.
+    product_provenance: dict[str, Provenance] = Field(default_factory=dict)
+    # 1.2.0: keys the conflict scan found disagreeing; absent means no conflict questions.
+    conflicts: list[FactConflict] = Field(default_factory=list)
+    # 1.2.0: dotted paths into `product` the seller just answered (e.g. attributes.fiber_composition).
+    answered_keys: list[str] = Field(default_factory=list)
 
     @field_validator("review_feedback")
     @classmethod

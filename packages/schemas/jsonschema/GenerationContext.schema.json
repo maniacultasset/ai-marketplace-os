@@ -1276,6 +1276,29 @@
       "title": "FactBackedAttribute",
       "type": "object"
     },
+    "FactConflict": {
+      "description": "Sources that disagree on one product key (1.2.0); the pipeline phrases a question.",
+      "properties": {
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "$ref": "#/$defs/ObservedValue"
+          },
+          "minItems": 2,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "values"
+      ],
+      "title": "FactConflict",
+      "type": "object"
+    },
     "FactSource": {
       "properties": {
         "attribute": {
@@ -2196,6 +2219,49 @@
       "title": "MinLength",
       "type": "object"
     },
+    "ObservedValue": {
+      "description": "One value a source gave for a fact the conflict scan found disagreeing (1.2.0).",
+      "properties": {
+        "evidence_ref": {
+          "title": "Evidence Ref",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": [
+        "source",
+        "value",
+        "evidence_ref"
+      ],
+      "title": "ObservedValue",
+      "type": "object"
+    },
     "Pattern": {
       "properties": {
         "error_class": {
@@ -2375,6 +2441,39 @@
         "title"
       ],
       "title": "PolicyRef",
+      "type": "object"
+    },
+    "Provenance": {
+      "description": "Where one product value came from (1.2.0). Absent: treat the value as seller-confirmed.",
+      "properties": {
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Confidence"
+        },
+        "confirmed": {
+          "title": "Confirmed",
+          "type": "boolean"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "confidence",
+        "confirmed"
+      ],
+      "title": "Provenance",
       "type": "object"
     },
     "RequiredAttribute": {
@@ -2678,6 +2777,13 @@
   },
   "$id": "https://schemas.mkos.internal/GenerationContext.schema.json",
   "properties": {
+    "answered_keys": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Answered Keys",
+      "type": "array"
+    },
     "brand_profile": {
       "additionalProperties": true,
       "title": "Brand Profile",
@@ -2690,6 +2796,13 @@
     },
     "category_template": {
       "$ref": "#/$defs/CategoryTemplate"
+    },
+    "conflicts": {
+      "items": {
+        "$ref": "#/$defs/FactConflict"
+      },
+      "title": "Conflicts",
+      "type": "array"
     },
     "job_id": {
       "format": "uuid",
@@ -2740,6 +2853,13 @@
       "format": "uuid",
       "title": "Product Id",
       "type": "string"
+    },
+    "product_provenance": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Provenance"
+      },
+      "title": "Product Provenance",
+      "type": "object"
     },
     "request_id": {
       "maxLength": 128,

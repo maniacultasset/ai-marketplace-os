@@ -80,3 +80,15 @@ def test_fixtures_are_canonically_formatted_and_seeded() -> None:
     )
     err = json.loads((FIXTURES / "ErrorReport.json").read_text())
     assert err["errors"][0]["message"] == "Title is 221 chars; Amazon limit is 200"
+
+
+def test_context_and_result_fixtures_are_one_pair() -> None:
+    """The AI team builds tests from this pair, so it carries one category and one set of ids."""
+    ctx = json.loads((FIXTURES / "GenerationContext.json").read_text(encoding="utf-8"))
+    result = json.loads((FIXTURES / "GenerationResult.json").read_text(encoding="utf-8"))
+    assert ctx["request_id"] == result["request_id"]
+    assert ctx["job_id"] == result["job_id"]
+    for key in ("product_id", "listing_id", "marketplace", "category"):
+        assert ctx[key] == result["listing"][key], key
+    assert ctx["marketplace_rules"]["category"] == ctx["category"]
+    assert ctx["category_template"]["category"] == ctx["category"]

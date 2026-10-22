@@ -643,6 +643,32 @@ export interface FactBackedAttribute {
   [k: string]: unknown;
 }
 /**
+ * Sources that disagree on one product key (1.2.0); the pipeline phrases a question.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "FactConflict".
+ */
+export interface FactConflict {
+  key: string;
+  /**
+   * @minItems 2
+   */
+  values: [ObservedValue, ObservedValue, ...ObservedValue[]];
+  [k: string]: unknown;
+}
+/**
+ * One value a source gave for a fact the conflict scan found disagreeing (1.2.0).
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "ObservedValue".
+ */
+export interface ObservedValue {
+  evidence_ref: string;
+  source: string;
+  value: string | number | boolean | string[];
+  [k: string]: unknown;
+}
+/**
  * This interface was referenced by `MkosContracts`'s JSON-Schema
  * via the `definition` "FactSource".
  */
@@ -701,11 +727,13 @@ export interface GenerateListingRequest {
  * via the `definition` "GenerationContext".
  */
 export interface GenerationContext {
+  answered_keys?: string[];
   brand_profile: {
     [k: string]: unknown;
   };
   category: string;
   category_template: CategoryTemplate;
+  conflicts?: FactConflict[];
   job_id: string;
   listing_id: string;
   locale?: "en-IN";
@@ -717,6 +745,9 @@ export interface GenerationContext {
     [k: string]: unknown;
   };
   product_id: string;
+  product_provenance?: {
+    [k: string]: Provenance;
+  };
   request_id: string;
   /**
    * @maxItems 5
@@ -947,6 +978,18 @@ export interface Pattern {
   retry_class?: RetryClass | null;
   suggestion?: string | null;
   type: "pattern";
+  [k: string]: unknown;
+}
+/**
+ * Where one product value came from (1.2.0). Absent: treat the value as seller-confirmed.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "Provenance".
+ */
+export interface Provenance {
+  confidence: number | null;
+  confirmed: boolean;
+  source: string;
   [k: string]: unknown;
 }
 /**
