@@ -24,9 +24,14 @@ case "$ROLE" in
     ;;
   migrate)
     # alembic upgrade head as migrator, under the migration lock, then the attribute dictionary
-    # sync the facts guard reads (DATABASE.md §8.2); one fixed output line each.
+    # sync the facts guard reads (DATABASE.md §8.2), then the platform rules and templates from
+    # the files in the image (the CLI's defaults); one fixed output line each. Rules go before
+    # templates: generation is gated on a current template only, so a failed rules load must
+    # leave no category generatable. Each load is idempotent, so a rerun writes nothing.
     python -m app.cli db migrate
-    exec python -m app.cli dictionary sync
+    python -m app.cli dictionary sync
+    python -m app.cli rules load
+    exec python -m app.cli templates load
     ;;
   seed)
     exec python -m app.cli seed --profile "${SEED_PROFILE:-demo}"

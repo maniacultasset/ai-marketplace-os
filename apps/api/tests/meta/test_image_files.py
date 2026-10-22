@@ -147,6 +147,29 @@ def test_entrypoint_migrate_role_runs_the_cli(entrypoint: Path, tmp_path: Path) 
         assert token not in result.stdout + result.stderr, token
 
 
+def _role_block(entrypoint: Path, role: str) -> list[str]:
+    text = entrypoint.read_text(encoding="utf-8")
+    body = text.split(f"  {role})\n", 1)[1].split("    ;;", 1)[0]
+    return [
+        line.strip()
+        for line in body.splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+
+
+def test_entrypoint_migrate_role_loads_platform_data_in_order(entrypoint: Path) -> None:
+    """The migrate job: the schema, the dictionary the facts guard reads, then the platform rules
+    before the templates (generation is gated on a current template only, so a failed rules load
+    must leave no category generatable). No path arguments (the CLI's defaults ship in the image)
+    and no shell variables (`set -eu`); only the last command execs."""
+    assert _role_block(entrypoint, "migrate") == [
+        "python -m app.cli db migrate",
+        "python -m app.cli dictionary sync",
+        "python -m app.cli rules load",
+        "exec python -m app.cli templates load",
+    ]
+
+
 def test_dockerignore_secret_globs_nested_and_ordered(repo_root: Path) -> None:
     lines = [
         line.strip()

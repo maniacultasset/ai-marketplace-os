@@ -46,6 +46,10 @@ file ("bump version", exit 1, nothing written), and so does a new id on a stored
 `rules_scope_key`. Each write is audited with a NULL tenant. An invalid file exits 1, a missing
 one 2.
 
+The deploy's migrate job (`APP_ROLE=migrate`) runs `db migrate`, `dictionary sync`, `rules load`
+and `templates load`, in that order and with no path: rules before templates, because generation
+is gated on a current template only, so a failed rules load leaves no category generatable.
+
 `errors load --file PATH` (S20 T4) loads a JSON list of `marketplace_error_map` rows as `migrator`,
 in one transaction: a stored key with the same content is a no-op, one that differs only in
 `enabled` flips it, any other difference refuses the file ("bump version", exit 1, nothing
