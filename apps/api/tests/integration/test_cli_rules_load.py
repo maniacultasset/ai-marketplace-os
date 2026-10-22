@@ -122,24 +122,78 @@ def test_rules_load_matches_the_seed_path(
     )  # fmt: skip
 
 
+@pytest.mark.parametrize("start", [True, False], ids=["turn off", "turn back on"])
 def test_rules_load_enabled_flip(
-    cli_env: Path, superuser_conn: Conn, capsys: pytest.CaptureFixture[str]
+    cli_env: Path, superuser_conn: Conn, capsys: pytest.CaptureFixture[str], start: bool
 ) -> None:
-    assert run(capsys, "--file", str(write(cli_env, rule_set(rule()))))[0] == 0
+    assert run(capsys, "--file", str(write(cli_env, rule_set(rule(enabled=start)))))[0] == 0
     ((_, enabled, revision, _),) = rows(superuser_conn)
-    assert enabled is True
-    off = write(cli_env, rule_set(rule(enabled=False)), "off.json")
-    assert run(capsys, "--file", str(off)) == (
+    assert enabled is start
+    flip = write(cli_env, rule_set(rule(enabled=not start)), "flip.json")
+    assert run(capsys, "--file", str(flip)) == (
         0, "rules load: ok (0 inserted, 0 unchanged, 1 toggled)\n", ""
     )  # fmt: skip
     ((_, enabled, flipped, _),) = rows(superuser_conn)
-    assert enabled is False and flipped > revision  # rules_guard takes a new revision
+    assert enabled is (not start) and flipped > revision  # rules_guard takes a new revision
     assert audits(superuser_conn)[-1] == (
-        None, "system", "rules.enabled_changed", {"enabled": True}, {"enabled": False}
+        None, "system", "rules.enabled_changed", {"enabled": start}, {"enabled": not start}
     )  # fmt: skip
-    assert run(capsys, "--file", str(off))[1] == (
+    assert run(capsys, "--file", str(flip))[1] == (
         "rules load: ok (0 inserted, 1 unchanged, 0 toggled)\n"
     )
+
+
+def drop_rule_def_keys(conn: Conn, rule_id: str, *keys: str) -> None:
+    """Rewrite a stored rule_def as an older schema wrote it (`rules_guard` bypassed)."""
+    with conn.transaction():
+        conn.execute("SET LOCAL session_replication_role = replica")
+        for key in keys:
+            path = "{" + key.replace(".", ",") + "}"
+            conn.execute(
+                "UPDATE rules SET rule_def = rule_def #- %s::text[] WHERE id = %s",
+                [path, rule_id],
+            )
+
+
+def test_rules_load_row_from_an_older_schema_is_unchanged(
+    cli_env: Path, superuser_conn: Conn, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A row loaded before the schema gained an optional field lacks that key; the current
+    model fills it with its default, so the row is the same content, not a refusal."""
+    path = write(cli_env, rule_set(rule()))
+    assert run(capsys, "--file", str(path))[0] == 0
+    stored = rule()["rule_def"]
+    assert stored["suggestion"] is None and stored["policy_ref"]["url"] is None
+    drop_rule_def_keys(superuser_conn, RULE_ID, "suggestion", "retry_class", "policy_ref.url")
+    before = rows(superuser_conn), len(audits(superuser_conn))
+    assert run(capsys, "--file", str(path)) == (
+        0, "rules load: ok (0 inserted, 1 unchanged, 0 toggled)\n", ""
+    )  # fmt: skip
+    assert (rows(superuser_conn), len(audits(superuser_conn))) == before
+
+
+def test_rules_load_id_of_a_stored_tenant_rule_refused(
+    cli_env: Path, superuser_conn: Conn, capsys: pytest.CaptureFixture[str]
+) -> None:
+    banned = copy.deepcopy(SEED[0]["rules"][2])
+    assert banned["rule_def"]["type"] == "banned_terms" and banned["rule_def"]["match"] != "regex"
+    platform = {**banned, "id": RULE_ID}
+    path = write(cli_env, rule_set(platform))
+    assert run(capsys, "--file", str(path))[0] == 0
+    with superuser_conn.transaction():
+        superuser_conn.execute("SET LOCAL session_replication_role = replica")
+        superuser_conn.execute(
+            "UPDATE rules SET tenant_id = '5eed0000-0000-4000-8000-00000000aaaa' WHERE id = %s",
+            [RULE_ID],
+        )
+    before = rows(superuser_conn)
+    code, out, err = run(capsys, "--file", str(path))
+    assert (code, out) == (1, "")
+    assert err == (
+        f"rules load: refused: rule {RULE_ID} is the id of a stored tenant rule "
+        "(nothing was written)\n"
+    )
+    assert rows(superuser_conn) == before
 
 
 @pytest.mark.parametrize(
@@ -151,14 +205,18 @@ def test_rules_load_enabled_flip(
         pytest.param({"category": "tshirts"}, id="category"),
         pytest.param({"message": "other text"}, id="rule_def message"),
         pytest.param({"limit": 150}, id="rule_def limit"),
+        pytest.param({"pack": "seo"}, id="pack"),
+        pytest.param({"_base": 4, "attribute": "fabric_type"}, id="subject"),
     ],
 )
 def test_rules_load_content_change_refused_nothing_written(
     cli_env: Path, superuser_conn: Conn, capsys: pytest.CaptureFixture[str], change: dict[str, Any]
 ) -> None:
-    assert run(capsys, "--file", str(write(cli_env, rule_set(rule()))))[0] == 0
+    change = dict(change)
+    base = {**copy.deepcopy(SEED[0]["rules"][change.pop("_base", 0)]), "id": RULE_ID}
+    assert run(capsys, "--file", str(write(cli_env, rule_set(base))))[0] == 0
     before = rows(superuser_conn), len(audits(superuser_conn))
-    changed = rule()
+    changed = copy.deepcopy(base)
     for key, value in change.items():
         if key in changed:
             changed[key] = value
@@ -237,6 +295,23 @@ def test_rules_load_not_json_exit_1(
 def test_rules_load_missing_file_exit_2(cli_env: Path, capsys: pytest.CaptureFixture[str]) -> None:
     absent = cli_env / "absent.json"
     assert run(capsys, "--file", str(absent)) == (2, "", "rules load: no such file\n")
+
+
+def test_rules_load_waits_on_the_migration_lock_then_fails_closed(
+    cli_env: Path, superuser_conn: Conn, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The load holds the migration advisory lock for its transaction, with the migrations'
+    lock_timeout: an overlapping migrate job fails fast and writes nothing."""
+    from app.db.migrations import MIGRATION_LOCK_KEY
+
+    superuser_conn.execute("SELECT pg_advisory_lock(%s)", [MIGRATION_LOCK_KEY])
+    try:
+        code, out, err = run(capsys, "--file", str(write(cli_env, rule_set(rule()))))
+    finally:
+        superuser_conn.execute("SELECT pg_advisory_unlock(%s)", [MIGRATION_LOCK_KEY])
+    assert (code, out) == (1, "")
+    assert err.startswith("rules load: failed (") and "55P03" in err
+    assert rows(superuser_conn) == []
 
 
 def test_rules_load_audited_null_tenant_enabled_only(

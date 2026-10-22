@@ -28,13 +28,14 @@ from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorClass, FixAction, Marketplace, RetryClass, Severity
 from mkos_schemas.jobs import CategoryTemplate as CategoryTemplateModel
 from mkos_schemas.paths import is_valid_field_path
-from mkos_schemas.rules import RuleSet
+from mkos_schemas.rules import RuleDef, RuleSet
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
     StringConstraints,
     TypeAdapter,
+    ValidationError,
     model_validator,
 )
 from sqlalchemy import Connection, func, literal_column, select, text, tuple_, update
@@ -202,6 +203,18 @@ def _assume_migrator(connection: Connection) -> None:
     assume_migration_role(connection)
 
 
+async def _hold_migration_lock(connection: AsyncConnection) -> None:
+    """The migrations' advisory lock for this transaction, with their `lock_timeout`: an
+    overlapping migrate job fails closed (55P03) instead of racing this load or waiting out the
+    task timeout. Released at commit or rollback."""
+    from app.db.migrations import LOCK_TIMEOUT, MIGRATION_LOCK_KEY
+
+    await connection.execute(text(f"SET LOCAL lock_timeout = '{LOCK_TIMEOUT}'"))
+    await connection.execute(
+        text("SELECT pg_advisory_xact_lock(:key)"), {"key": MIGRATION_LOCK_KEY}
+    )
+
+
 async def sync_rows(connection: AsyncConnection, dictionary: DictionaryFile) -> SyncCounts:
     """The sync on an open migrator transaction (`sync_dictionary` opens one)."""
     await connection.run_sync(_assume_migrator)
@@ -284,11 +297,24 @@ def load_template_file(path: Path) -> list[TemplateLoad]:
     return TypeAdapter(list[TemplateLoad]).validate_json(path.read_bytes())
 
 
-def _template_content(entry: TemplateLoad) -> dict[str, Any]:
-    body: dict[str, Any] = entry.template.model_dump(
-        mode="json", exclude={"marketplace", "category", "external_category_id"}
-    )
+_TEMPLATE_KEYS: Final = frozenset({"marketplace", "category", "external_category_id"})
+
+
+def _template_content(template: CategoryTemplateModel) -> dict[str, Any]:
+    body: dict[str, Any] = template.model_dump(mode="json", exclude=set(_TEMPLATE_KEYS))
     return body
+
+
+def _stored_template_content(attributes: Mapping[str, Any], marketplace: str, category: str) -> Any:
+    """Stored `attributes` as the current model dumps them, so a version written before
+    `CategoryTemplate` gained a defaulted field is the same content. Unreadable: as stored."""
+    try:
+        template = CategoryTemplateModel.model_validate_json(
+            json.dumps({**attributes, "marketplace": marketplace, "category": category})
+        )
+    except ValidationError:
+        return attributes
+    return _template_content(template)
 
 
 async def promote_template(
@@ -344,6 +370,7 @@ async def load_template_rows(
 ) -> TemplateCounts:
     """The load on an open transaction (`load_templates` opens one, as migrator)."""
     await connection.run_sync(_assume_migrator)
+    await _hold_migration_lock(connection)
     table = CategoryTemplate.__table__
     inserted = unchanged = promoted = 0
     ordered = sorted(
@@ -351,7 +378,7 @@ async def load_template_rows(
     )
     for entry in ordered:
         marketplace, category = entry.template.marketplace.value, entry.template.category
-        content = _template_content(entry)
+        content = _template_content(entry.template)
         stored = (
             await connection.execute(
                 select(table.c.attributes, table.c.external_category_id, table.c.product_type)
@@ -365,7 +392,7 @@ async def load_template_rows(
         ).one_or_none()
         if stored is not None:
             same = (
-                stored.attributes == content
+                _stored_template_content(stored.attributes, marketplace, category) == content
                 and stored.external_category_id == entry.template.external_category_id
                 and stored.product_type == entry.product_type
             )
@@ -591,9 +618,23 @@ async def load_error_map(engine: AsyncEngine, rows: Sequence[ErrorMapIn]) -> Err
 # `id`: the same content (every stored column but `id`, `revision` and the timestamps) is a no-op;
 # a difference in `enabled` alone flips it (the one mutable column, 0004's `rules_guard`, which
 # takes a new revision; the resolver keeps the highest enabled version, so this is the rollback
-# lever); any other difference refuses the whole file ("bump version", nothing written). A new id
-# whose `rules_scope_key` a stored platform rule already holds is refused too. Each write is
-# audited with a NULL tenant and only `{enabled}`.
+# lever); any other difference refuses the whole file ("bump version", nothing written). The
+# stored `rule_def` is read back through the current model first, so a row written before an
+# additive schema field (a new key with a default) is the same content. A new id whose
+# `rules_scope_key` a stored platform rule already holds is refused too, and so is an id a tenant
+# rule holds. A stored platform rule missing from the file is left as stored, enabled or not: to
+# retire one, keep it in the file with `"enabled": false`. Each write is audited with a NULL tenant
+# and only `{enabled}`. The load holds the migration advisory lock for its transaction.
+
+_RULE_DEF: Final[TypeAdapter[RuleDef]] = TypeAdapter(RuleDef)
+
+
+def _stored_rule_def(rule_def: Any) -> Any:
+    """A stored `rule_def` as the current model dumps it. Unreadable: as stored (a refusal)."""
+    try:
+        return _RULE_DEF.validate_json(json.dumps(rule_def)).model_dump(mode="json")
+    except ValidationError:
+        return rule_def
 
 
 def load_rule_sets(path: Path) -> list[RuleSet]:
@@ -706,6 +747,7 @@ def _scope_key(row: Mapping[str, Any]) -> tuple[Any, ...]:
 async def load_rule_rows(connection: AsyncConnection, rule_sets: Sequence[RuleSet]) -> RuleCounts:
     """The load on an open transaction (`load_rules` opens one, as migrator)."""
     await connection.run_sync(_assume_migrator)
+    await _hold_migration_lock(connection)
     table = Rule.__table__
     inserted = unchanged = toggled = 0
     seen_ids: set[uuid.UUID] = set()
@@ -743,7 +785,11 @@ async def load_rule_rows(connection: AsyncConnection, rule_sets: Sequence[RuleSe
             )
             inserted += 1
             continue
-        if any(stored._mapping[name] != row[name] for name in _RULE_CONTENT):
+        if stored.tenant_id is not None:
+            raise RuleConflict(rule_id, "is the id of a stored tenant rule")
+        held = {name: stored._mapping[name] for name in _RULE_CONTENT}
+        held["rule_def"] = _stored_rule_def(held["rule_def"])
+        if any(held[name] != row[name] for name in _RULE_CONTENT):
             raise RuleConflict(rule_id, "already holds other content; bump version")
         if stored.enabled == row["enabled"]:
             unchanged += 1

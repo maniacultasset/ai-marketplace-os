@@ -43,8 +43,9 @@ with a NULL tenant). An invalid file exits 1, a missing one 2. The default file 
 into `rules` as `migrator`, in one transaction. A rule is matched on its fixed `id`: the same
 content is a no-op, a difference in `enabled` alone flips it, any other difference refuses the
 file ("bump version", exit 1, nothing written), and so does a new id on a stored
-`rules_scope_key`. Each write is audited with a NULL tenant. An invalid file exits 1, a missing
-one 2.
+`rules_scope_key` or an id a tenant rule holds. A rule missing from the file is left as stored;
+turn it off with `"enabled": false`. Each write is audited with a NULL tenant. An invalid file
+exits 1, a missing one 2. Both loaders hold the migration advisory lock for their transaction.
 
 The deploy's migrate job (`APP_ROLE=migrate`) runs `db migrate`, `dictionary sync`, `rules load`
 and `templates load`, in that order and with no path: rules before templates, because generation
