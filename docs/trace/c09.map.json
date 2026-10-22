@@ -2553,8 +2553,8 @@
    "id": "R06330a",
    "status": "covered",
    "owner": "shared",
-   "ref": "ENV.md:91",
-   "note": "LLM_MODEL_DEFAULT covers vision too."
+   "ref": "ENV.md:90",
+   "note": "LLM_MODEL_VISION gpt-4o-mini; LLM_PROVIDER_VISION pins vision to OpenAI."
   },
   {
    "id": "R06331",

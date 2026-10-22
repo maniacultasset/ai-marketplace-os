@@ -1223,8 +1223,8 @@
    "id": "R08915",
    "status": "covered",
    "owner": "shared",
-   "ref": "docs/canon/ENV.md:91; docs/architecture/BACKEND-ARCHITECTURE.md:1540",
-   "note": "LLM_MODEL_DEFAULT gpt-4o-mini text+vision; backend makes the vision call"
+   "ref": "docs/canon/ENV.md:90; docs/architecture/BACKEND-ARCHITECTURE.md:1540",
+   "note": "LLM_MODEL_VISION gpt-4o-mini via get_model_credentials(vision); backend makes the vision call"
   },
   {
    "id": "R08915a",
