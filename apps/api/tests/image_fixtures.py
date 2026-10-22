@@ -61,6 +61,10 @@ def jpeg(
         value = exif_orientation.encode("ascii")[:3].ljust(4, b"\x00")
         entry = struct.pack(">HHI", 0x0112, 2, 2) + value
         save["exif"] = b"Exif\x00\x00MM\x00*" + struct.pack(">IH", 8, 1) + entry + b"\x00" * 4
+    elif isinstance(exif_orientation, tuple):  # one SHORT entry per value: a duplicated tag
+        entries = b"".join(struct.pack(">HHIH2x", 0x0112, 3, 1, v) for v in exif_orientation)
+        head = struct.pack(">IH", 8, len(exif_orientation))
+        save["exif"] = b"Exif\x00\x00MM\x00*" + head + entries + b"\x00" * 4
     elif exif_orientation is not None:
         exif = Image.Exif()
         exif[0x0112] = exif_orientation
@@ -125,6 +129,35 @@ def tiff(
         return encode(img, "TIFF")
     rest = [Image.new(img.mode, img.size) for _ in range(frames - 1)]
     return encode(img, "TIFF", save_all=True, append_images=rest)
+
+
+def tiff_orientation_tags(w: int, h: int, tags: Sequence[int]) -> bytes:
+    """An uncompressed RGB TIFF of the canvas whose IFD0 carries one Orientation (0x0112) SHORT
+    entry per value of `tags`, in order (Pillow's writer keeps one entry per tag, so hand-built)."""
+    pixels = canvas(w, h).tobytes()
+    entries: list[tuple[int, int, int]] = [  # (tag, type 3=SHORT 4=LONG, value or offset)
+        (0x0100, 3, w),
+        (0x0101, 3, h),
+        (0x0102, 3, 0),  # BitsPerSample 8,8,8: offset patched below
+        (0x0103, 3, 1),  # no compression
+        (0x0106, 3, 2),  # RGB
+        (0x0111, 4, 0),  # StripOffsets: patched below
+        *((0x0112, 3, v) for v in tags),
+        (0x0115, 3, 3),
+        (0x0116, 4, h),
+        (0x0117, 4, len(pixels)),
+    ]
+    bps_at = 8 + 2 + 12 * len(entries) + 4
+    data_at = bps_at + 8
+    ifd = struct.pack("<H", len(entries))
+    for tag, kind, value in entries:
+        count = 3 if tag == 0x0102 else 1
+        value = {0x0102: bps_at, 0x0111: data_at}.get(tag, value)
+        ifd += struct.pack(
+            "<HHIH2x" if kind == 3 and count == 1 else "<HHII", tag, kind, count, value
+        )
+    bps = struct.pack("<HHH2x", 8, 8, 8)
+    return b"II*\x00" + struct.pack("<I", 8) + ifd + b"\x00" * 4 + bps + pixels
 
 
 def _png_chunk(kind: bytes, payload: bytes) -> bytes:
