@@ -126,7 +126,7 @@ One container image runs every role. The environment variable `APP_ROLE` picks t
 |---|---|---|
 | `api` | One `uvicorn app.main:app` process, port `$PORT` (8080 in the image) | Cloud Run **service** |
 | `worker` | `python -m app.workers.main`: queues `default` and `publish`, no port | Cloud Run **worker pool** |
-| `migrate` | `alembic upgrade head` as the `migrator` role, then `dictionary sync` | Cloud Run **job**, run before each deploy |
+| `migrate` | As the `migrator` role: `db migrate` (Alembic to head), `dictionary sync`, `rules load`, then `templates load` | Cloud Run **job**, run before each deploy |
 | `seed` | Loads demo data; refuses any `APP_ENV` except `local` | Local only |
 | `shell` | `python <args>` for one-off commands | Local or a one-off job |
 
@@ -227,7 +227,7 @@ All backend code is in `apps/api/app`. Each folder has one job.
 | `adapters/` | Everything outside: Amazon and Flipkart clients and mappings, OAuth clients, object storage, the token unseal. |
 | `core/` | Shared plumbing: settings, errors, roles (`rbac.py`), JWTs, sealing, logging, redaction, tracing. |
 | `admin/` | A read-only staff console at `/internal/admin`, mounted only when `ADMIN_ENABLED=true` and never in production. |
-| `cli.py` | Staff commands (`python -m app.cli`): migrate, dictionary sync, seed, create a tenant and add members, set a password, list and requeue dead-letter or failed jobs. |
+| `cli.py` | Staff commands (`python -m app.cli`): migrate, dictionary sync, rules load, templates load, seed, create a tenant and add members, set a password, list and requeue dead-letter or failed jobs. |
 
 Two packages sit outside the app:
 
