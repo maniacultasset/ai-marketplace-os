@@ -8,7 +8,10 @@
   "marketplace": "amazon",
   "category": "ethnic_wear_kurta_sets",
   "product": {
-    "title": "Sample"
+    "title": "Sample",
+    "attributes": {
+      "sleeve_length": "three_quarter"
+    }
   },
   "brand_profile": {
     "tone": "warm"
@@ -66,6 +69,24 @@
     }
   ],
   "answered_keys": [
-    "attributes.fiber_composition"
+    "attributes.sleeve_length"
+  ],
+  "images": [
+    {
+      "image_id": "6f1d2c3b-8a9e-4b70-9c55-2e4f6a8b0d11",
+      "slot": "main",
+      "colourway_id": null,
+      "width": 8,
+      "height": 8,
+      "data_b64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/wAALCAAIAAgBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAABv/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AJv/Z"
+    },
+    {
+      "image_id": "6f1d2c3b-8a9e-4b70-9c55-2e4f6a8b0d13",
+      "slot": "packaging_label",
+      "colourway_id": null,
+      "width": 8,
+      "height": 8,
+      "data_b64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/wAALCAAIAAgBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAABv/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AcP/Z"
+    }
   ]
 }

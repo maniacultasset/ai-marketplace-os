@@ -16,6 +16,8 @@ from .paths import is_valid_field_path
 
 MAX_LISTING_IMAGES: Final = 20
 MAX_LISTING_ATTRIBUTES: Final = 128
+MAX_LISTING_CLAIMS: Final = 64
+MAX_ATTRIBUTE_SOURCE_LENGTH: Final = 192
 MAX_KEYWORD_OR_ATTR_STRING: Final = 256
 _CLAIM_TEXT_PATH: Final = re.compile(r"^content\.(title|description|bullets\[[0-9]{1,3}\])$")
 
@@ -95,9 +97,14 @@ class CanonicalListing(WireModel):
     confidence_score: Annotated[float | None, Field(default=None, ge=0.0, le=1.0)] = None
     generated_by_agent_run_id: UUID | None = None
     created_at: AwareDatetime | None = None
-    claims: list[Claim] = Field(default_factory=list)  # 1.2.0
+    claims: Annotated[list[Claim], Field(max_length=MAX_LISTING_CLAIMS)] = Field(
+        default_factory=list
+    )  # 1.2.0
     # 1.2.0: attribute key -> the fact key or dotted product path its value came from.
-    attribute_sources: dict[str, str] = Field(default_factory=dict)
+    attribute_sources: Annotated[
+        dict[AttrKey, Annotated[NonBlankStr, Field(max_length=MAX_ATTRIBUTE_SOURCE_LENGTH)]],
+        Field(max_length=MAX_LISTING_ATTRIBUTES),
+    ] = Field(default_factory=dict)
 
     @field_validator("attributes")
     @classmethod

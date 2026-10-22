@@ -10,6 +10,7 @@ import pytest
 from mkos_schemas.enums import ImageSlot, Marketplace
 from mkos_schemas.listing import (
     MAX_LISTING_ATTRIBUTES,
+    MAX_LISTING_CLAIMS,
     MAX_LISTING_IMAGES,
     CanonicalListing,
     Claim,
@@ -249,3 +250,26 @@ def test_listing_from_1_1_0_without_claims_still_parses() -> None:
     }
     obj = CanonicalListing.model_validate(raw)
     assert obj.claims == [] and obj.attribute_sources == {}
+
+
+def test_claims_are_capped() -> None:
+    claims = [_claim(id=UUID(int=n)) for n in range(MAX_LISTING_CLAIMS)]
+    assert len(_listing(claims=claims).claims) == MAX_LISTING_CLAIMS
+    with pytest.raises(ValidationError):
+        _listing(claims=[*claims, _claim(id=UUID(int=MAX_LISTING_CLAIMS))])
+
+
+def test_attribute_sources_keys_are_attribute_keys_and_capped() -> None:
+    sources = {f"k{n}": "attributes.color" for n in range(MAX_LISTING_ATTRIBUTES)}
+    assert len(_listing(attribute_sources=sources).attribute_sources) == MAX_LISTING_ATTRIBUTES
+    with pytest.raises(ValidationError):
+        _listing(attribute_sources={**sources, "one_more": "attributes.color"})
+    for bad_key in ("Color", "colour-name", "", "k" * 65):
+        with pytest.raises(ValidationError):
+            _listing(attribute_sources={bad_key: "attributes.color"})
+
+
+@pytest.mark.parametrize("value", ["", "   ", "a" * 193])
+def test_attribute_sources_values_are_short_and_non_blank(value: str) -> None:
+    with pytest.raises(ValidationError):
+        _listing(attribute_sources={"color": value})

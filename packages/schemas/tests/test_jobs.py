@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import math
 from datetime import UTC, datetime
@@ -11,9 +12,14 @@ import pytest
 from mkos_schemas.agent import AgentRunRecord
 from mkos_schemas.enums import JobState
 from mkos_schemas.jobs import (
+    MAX_CONTEXT_IMAGE_B64_CHARS,
+    MAX_CONTEXT_IMAGES,
+    MAX_RESULT_CHANGES,
+    MAX_RESULT_QUESTIONS,
     AttributeSpec,
     BrandChunkDTO,
     CategoryTemplate,
+    ContextImage,
     FactConflict,
     FieldChange,
     GenerateListingRequest,
@@ -483,16 +489,25 @@ def test_question_kind_is_the_three_fact_kinds() -> None:
             Question.model_validate(_question(kind=kind))
 
 
-@pytest.mark.parametrize(
-    "path", ["facts.attributes.fiber_composition", "facts.mrp", "brand.tone", "account.settings"]
-)
+@pytest.mark.parametrize("path", ["facts.attributes.fiber_composition", "facts.mrp", "brand.tone"])
 def test_question_target_path_matches_the_task_check(path: str) -> None:
     assert Question.model_validate(_question(target_path=path)).target_path == path
 
 
 @pytest.mark.parametrize(
     "path",
-    ["attributes.color", "facts", "facts.a.b.c", "facts.Attributes", "facts..x", "facts.x "],
+    [
+        "attributes.color",
+        "facts",
+        "facts.a.b.c",
+        "facts.Attributes",
+        "facts..x",
+        "facts.x ",
+        # Every question kind is a human_tasks fact kind, and ck_human_tasks_fact_target refuses
+        # an account.* target for those, so the insert would fail.
+        "account.settings",
+        "account.amazon.permissions",
+    ],
 )
 def test_question_target_path_refuses_other_paths(path: str) -> None:
     with pytest.raises(ValidationError):
@@ -515,12 +530,47 @@ def test_question_suggestion_caps() -> None:
         Question.model_validate(_question(suggestions=["s"] * 7))
     with pytest.raises(ValidationError):
         Question.model_validate(_question(suggestions=["s" * 121]))
+    for blank in ("", "   "):
+        with pytest.raises(ValidationError):
+            Question.model_validate(_question(suggestions=[blank]))
+
+
+def test_question_evidence_caps() -> None:
+    ref = "agent_run:" + str(_JID)
+    assert len(Question.model_validate(_question(evidence=[ref] * 20)).evidence) == 20
+    for bad in ([ref] * 21, [""], ["  "], ["e" * 129]):
+        with pytest.raises(ValidationError):
+            Question.model_validate(_question(evidence=bad))
+
+
+def test_result_questions_and_changes_are_capped() -> None:
+    assert len(_result(questions=[_question()] * MAX_RESULT_QUESTIONS).questions) == 20
+    with pytest.raises(ValidationError):
+        _result(questions=[_question()] * (MAX_RESULT_QUESTIONS + 1))
+    assert len(_result(changes=[_change()] * MAX_RESULT_CHANGES).changes) == MAX_RESULT_CHANGES
+    with pytest.raises(ValidationError):
+        _result(changes=[_change()] * (MAX_RESULT_CHANGES + 1))
 
 
 @pytest.mark.parametrize("value", ["text", 3, 2.5, True, ["a", "b"], None])
 def test_field_change_values_are_attribute_values(value: object) -> None:
     change = FieldChange.model_validate(_change(before=value, after=value))
     assert change.before == value and change.after == value
+
+
+@pytest.mark.parametrize(
+    "field", ["content.title", "content.bullets[3]", "attributes.color", "keywords.hidden_terms"]
+)
+def test_field_change_field_is_a_field_path(field: str) -> None:
+    assert FieldChange.model_validate(_change(field=field)).field == field
+
+
+@pytest.mark.parametrize(
+    "field", ["", "title", "attributes.Color", "content.bullets[x]", "a" * 200]
+)
+def test_field_change_refuses_other_fields(field: str) -> None:
+    with pytest.raises(ValidationError):
+        FieldChange.model_validate(_change(field=field))
 
 
 def test_field_change_refuses_objects_and_long_reasons() -> None:
@@ -590,8 +640,109 @@ def test_conflict_needs_two_observed_values() -> None:
 
 def test_context_from_1_1_0_still_parses() -> None:
     raw = json.loads(_context().model_dump_json())
-    for key in ("product_provenance", "conflicts", "answered_keys"):
+    for key in ("product_provenance", "conflicts", "answered_keys", "images"):
         del raw[key]
     raw["schema_version"] = "1.1.0"
     ctx = GenerationContext.model_validate(raw)
     assert ctx.schema_version == "1.1.0" and ctx.conflicts == []
+
+
+# ---- 1.2.0: GenerationContext.images (assignment §10.1 ContextImage; plan C11: 6 + label) ----
+
+_JPEG = base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 16 + b"\xff\xd9").decode("ascii")
+
+
+def _image(n: int = 1, **overrides: object) -> dict[str, object]:
+    base: dict[str, object] = {
+        "image_id": UUID(int=n),
+        "slot": "main",
+        "colourway_id": None,
+        "width": 1024,
+        "height": 768,
+        "data_b64": _JPEG,
+    }
+    base.update(overrides)
+    return base
+
+
+def test_context_images_default_empty() -> None:
+    assert _context().images == []
+    assert _context().model_dump(mode="json")["images"] == []
+
+
+def test_context_image_shape() -> None:
+    assert set(ContextImage.model_fields) == {
+        "image_id",
+        "slot",
+        "colourway_id",
+        "width",
+        "height",
+        "data_b64",
+    }
+
+
+def test_context_images_round_trip_with_the_label_slot() -> None:
+    ctx = _context(
+        images=[
+            _image(1),
+            _image(2, slot="packaging_label", colourway_id=_PID, width=600, height=1024),
+        ]
+    )
+    again = GenerationContext.model_validate_json(ctx.model_dump_json())
+    assert again == ctx
+    assert again.images[1].slot == "packaging_label"
+    assert again.images[1].colourway_id == _PID
+
+
+def test_context_images_cap_is_six_products_and_the_label() -> None:
+    assert MAX_CONTEXT_IMAGES == 7
+    seven = [_image(n) for n in range(1, 7)] + [_image(7, slot="packaging_label")]
+    assert len(_context(images=seven).images) == 7
+    with pytest.raises(ValidationError):
+        _context(images=[*seven, _image(8)])
+
+
+def test_context_images_refuse_a_repeated_image() -> None:
+    with pytest.raises(ValidationError):
+        _context(images=[_image(1), _image(1, slot="secondary")])
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"width": 0},
+        {"height": 0},
+        {"width": 1025},
+        {"height": 1025},
+        {"slot": "hero"},
+        {"data_b64": ""},
+        {"data_b64": "not base64!"},
+        {"data_b64": "abc"},
+        {"data_b64": base64.b64encode(b"\x89PNG\r\n\x1a\n").decode("ascii")},
+        {"data_b64": "A" * (MAX_CONTEXT_IMAGE_B64_CHARS + 4)},
+    ],
+)
+def test_context_image_refuses_bad_values(bad: dict[str, object]) -> None:
+    with pytest.raises(ValidationError):
+        ContextImage.model_validate({**_image(), **bad})
+
+
+def test_context_image_has_no_url_field() -> None:
+    img = ContextImage.model_validate(_image(signed_url="https://example.com/x.jpg"))
+    assert "signed_url" not in img.model_dump()
+
+
+def test_context_image_bytes_stay_out_of_repr_and_errors() -> None:
+    img = ContextImage.model_validate(_image())
+    assert _JPEG not in repr(img) and _JPEG not in str(img)
+    png = base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"\x00" * 4096).decode("ascii")
+    with pytest.raises(ValidationError) as err:
+        ContextImage.model_validate(_image(data_b64=png))
+    assert png not in str(err.value)
+
+
+def test_context_image_bytes_stay_out_of_context_errors() -> None:
+    png = base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"\x00" * 4096).decode("ascii")
+    with pytest.raises(ValidationError) as err:
+        _context(images=[_image(data_b64=png)])
+    assert png[:64] not in str(err.value)

@@ -435,6 +435,10 @@ export interface BrandChunkDTO {
  */
 export interface CanonicalListing {
   attribute_sources?: {
+    /**
+     * This interface was referenced by `undefined`'s JSON-Schema definition
+     * via the `patternProperty` "^[a-z0-9_]{1,64}$".
+     */
     [k: string]: string;
   };
   attributes?: {
@@ -445,6 +449,9 @@ export interface CanonicalListing {
     [k: string]: string | number | boolean | string[];
   };
   category: string;
+  /**
+   * @maxItems 64
+   */
   claims?: Claim[];
   confidence_score?: number | null;
   content: ListingContent;
@@ -605,6 +612,24 @@ export interface ConditionalRequired {
   [k: string]: unknown;
 }
 /**
+ * One product or label image the pipeline may look at (1.2.0).
+ *
+ * Not `ImageRef`: that type belongs to the publishable listing and refuses `packaging_label`, and
+ * the label must still reach the extractor. Only base64 bytes for now; no URL field.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "ContextImage".
+ */
+export interface ContextImage {
+  colourway_id?: string | null;
+  data_b64: string;
+  height: number;
+  image_id: string;
+  slot: ImageSlot;
+  width: number;
+  [k: string]: unknown;
+}
+/**
  * This interface was referenced by `MkosContracts`'s JSON-Schema
  * via the `definition` "CrossField".
  */
@@ -734,6 +759,18 @@ export interface GenerationContext {
   category: string;
   category_template: CategoryTemplate;
   conflicts?: FactConflict[];
+  /**
+   * @maxItems 7
+   */
+  images?:
+    | []
+    | [ContextImage]
+    | [ContextImage, ContextImage]
+    | [ContextImage, ContextImage, ContextImage]
+    | [ContextImage, ContextImage, ContextImage, ContextImage]
+    | [ContextImage, ContextImage, ContextImage, ContextImage, ContextImage]
+    | [ContextImage, ContextImage, ContextImage, ContextImage, ContextImage, ContextImage]
+    | [ContextImage, ContextImage, ContextImage, ContextImage, ContextImage, ContextImage, ContextImage];
   job_id: string;
   listing_id: string;
   locale?: "en-IN";
@@ -1002,12 +1039,192 @@ export interface GenerationResult {
   agent_runs?: AgentRunRecord[];
   attempts_used?: number;
   blocks?: AgentBlockStatus[];
+  /**
+   * @maxItems 200
+   */
   changes?: FieldChange[];
   error?: ErrorReport | null;
   image_reports?: ImageReport[];
   job_id: string;
   listing?: CanonicalListing | null;
-  questions?: Question[];
+  /**
+   * @maxItems 20
+   */
+  questions?:
+    | []
+    | [Question]
+    | [Question, Question]
+    | [Question, Question, Question]
+    | [Question, Question, Question, Question]
+    | [Question, Question, Question, Question, Question]
+    | [Question, Question, Question, Question, Question, Question]
+    | [Question, Question, Question, Question, Question, Question, Question]
+    | [Question, Question, Question, Question, Question, Question, Question, Question]
+    | [Question, Question, Question, Question, Question, Question, Question, Question, Question]
+    | [Question, Question, Question, Question, Question, Question, Question, Question, Question, Question]
+    | [Question, Question, Question, Question, Question, Question, Question, Question, Question, Question, Question]
+    | [
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question
+      ]
+    | [
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question
+      ]
+    | [
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question
+      ]
+    | [
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question
+      ]
+    | [
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question
+      ]
+    | [
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question
+      ]
+    | [
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question
+      ]
+    | [
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question
+      ]
+    | [
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question
+      ];
   request_id: string;
   schema_version?: string;
   terminal_state: "generated" | "needs_review" | "blocked" | "failed";
@@ -1083,7 +1300,142 @@ export interface ImageIssue {
  * via the `definition` "Question".
  */
 export interface Question {
-  evidence: string[];
+  /**
+   * @maxItems 20
+   */
+  evidence:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ];
   kind: "missing_fact" | "conflicting_facts" | "unverified_declaration";
   question: string;
   reason: string;

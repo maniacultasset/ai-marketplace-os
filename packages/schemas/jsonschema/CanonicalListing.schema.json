@@ -159,8 +159,13 @@
   "$id": "https://schemas.mkos.internal/CanonicalListing.schema.json",
   "properties": {
     "attribute_sources": {
-      "additionalProperties": {
-        "type": "string"
+      "maxProperties": 128,
+      "patternProperties": {
+        "^[a-z0-9_]{1,64}$": {
+          "maxLength": 192,
+          "minLength": 1,
+          "type": "string"
+        }
       },
       "title": "Attribute Sources",
       "type": "object"
@@ -202,6 +207,7 @@
       "items": {
         "$ref": "#/$defs/Claim"
       },
+      "maxItems": 64,
       "title": "Claims",
       "type": "array"
     },

@@ -342,8 +342,13 @@
     "CanonicalListing": {
       "properties": {
         "attribute_sources": {
-          "additionalProperties": {
-            "type": "string"
+          "maxProperties": 128,
+          "patternProperties": {
+            "^[a-z0-9_]{1,64}$": {
+              "maxLength": 192,
+              "minLength": 1,
+              "type": "string"
+            }
           },
           "title": "Attribute Sources",
           "type": "object"
@@ -385,6 +390,7 @@
           "items": {
             "$ref": "#/$defs/Claim"
           },
+          "maxItems": 64,
           "title": "Claims",
           "type": "array"
         },
@@ -945,6 +951,57 @@
         "when"
       ],
       "title": "ConditionalRequired",
+      "type": "object"
+    },
+    "ContextImage": {
+      "description": "One product or label image the pipeline may look at (1.2.0).\n\nNot `ImageRef`: that type belongs to the publishable listing and refuses `packaging_label`, and\nthe label must still reach the extractor. Only base64 bytes for now; no URL field.",
+      "properties": {
+        "colourway_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Colourway Id"
+        },
+        "data_b64": {
+          "title": "Data B64",
+          "type": "string"
+        },
+        "height": {
+          "maximum": 1024,
+          "minimum": 1,
+          "title": "Height",
+          "type": "integer"
+        },
+        "image_id": {
+          "format": "uuid",
+          "title": "Image Id",
+          "type": "string"
+        },
+        "slot": {
+          "$ref": "#/$defs/ImageSlot"
+        },
+        "width": {
+          "maximum": 1024,
+          "minimum": 1,
+          "title": "Width",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "image_id",
+        "slot",
+        "width",
+        "height",
+        "data_b64"
+      ],
+      "title": "ContextImage",
       "type": "object"
     },
     "CrossField": {
@@ -2802,6 +2859,14 @@
         "$ref": "#/$defs/FactConflict"
       },
       "title": "Conflicts",
+      "type": "array"
+    },
+    "images": {
+      "items": {
+        "$ref": "#/$defs/ContextImage"
+      },
+      "maxItems": 7,
+      "title": "Images",
       "type": "array"
     },
     "job_id": {

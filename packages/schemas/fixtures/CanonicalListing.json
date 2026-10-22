@@ -10,7 +10,7 @@
   "content": {
     "title": "Fabrica Organic Cotton Kurta Set for Women | Indigo | Handloom Weave",
     "bullets": [
-      "Crafted from 100% organic cotton certified by GOTS for breathable comfort",
+      "Crafted from organic cotton for breathable comfort",
       "Traditional handloom weave with a contemporary relaxed silhouette",
       "Set includes full-length kurta and matching palazzo with elasticated waist",
       "Machine washable at 30 degrees C - retains colour wash after wash",
@@ -57,14 +57,13 @@
       "id": "7b0c1e52-3f4a-4c8e-9d21-6a5f0e8b1c01",
       "text_path": "content.bullets[0]",
       "fact_keys": [
-        "attributes.fiber_composition",
-        "compliance.certifications"
+        "attributes.fabric_type"
       ],
       "status": "supported"
     },
     {
       "id": "7b0c1e52-3f4a-4c8e-9d21-6a5f0e8b1c02",
-      "text_path": "content.bullets[3]",
+      "text_path": "content.bullets[5]",
       "fact_keys": [],
       "status": "removed"
     }

@@ -256,8 +256,13 @@
     "CanonicalListing": {
       "properties": {
         "attribute_sources": {
-          "additionalProperties": {
-            "type": "string"
+          "maxProperties": 128,
+          "patternProperties": {
+            "^[a-z0-9_]{1,64}$": {
+              "maxLength": 192,
+              "minLength": 1,
+              "type": "string"
+            }
           },
           "title": "Attribute Sources",
           "type": "object"
@@ -299,6 +304,7 @@
           "items": {
             "$ref": "#/$defs/Claim"
           },
+          "maxItems": 64,
           "title": "Claims",
           "type": "array"
         },
@@ -1203,8 +1209,11 @@
       "properties": {
         "evidence": {
           "items": {
+            "maxLength": 128,
+            "minLength": 1,
             "type": "string"
           },
+          "maxItems": 20,
           "title": "Evidence",
           "type": "array"
         },
@@ -1232,6 +1241,7 @@
         "suggestions": {
           "items": {
             "maxLength": 120,
+            "minLength": 1,
             "type": "string"
           },
           "maxItems": 6,
@@ -1239,7 +1249,7 @@
           "type": "array"
         },
         "target_path": {
-          "pattern": "^(facts|brand|account)(\\.[a-z0-9_]{1,64}){1,2}$",
+          "pattern": "^(facts|brand)(\\.[a-z0-9_]{1,64}){1,2}$",
           "title": "Target Path",
           "type": "string"
         }
@@ -1492,6 +1502,7 @@
       "items": {
         "$ref": "#/$defs/FieldChange"
       },
+      "maxItems": 200,
       "title": "Changes",
       "type": "array"
     },
@@ -1533,6 +1544,7 @@
       "items": {
         "$ref": "#/$defs/Question"
       },
+      "maxItems": 20,
       "title": "Questions",
       "type": "array"
     },
