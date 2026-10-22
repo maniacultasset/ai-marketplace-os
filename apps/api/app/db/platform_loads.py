@@ -1,6 +1,6 @@
 """The migrator's platform loaders (`python -m app.cli dictionary sync`, `templates load`; S13 B5,
-B7; `errors load`, S20 T4; DATABASE.md §5.6 :1152-1179, §5.2 :543, §8.2). The SQL lives here, inside `app/db` (repo rule
-R4); the CLI only orchestrates. Every loader runs as `migrator` in one transaction: the platform
+B7; `errors load`, S20 T4; `rules load`; DATABASE.md §5.6 :1152-1179, §5.2 :543, §8.2). The SQL
+lives here, inside `app/db` (repo rule R4); the CLI only orchestrates. Every loader runs as `migrator` in one transaction: the platform
 tables are SELECT-only for the app roles.
 
 **`sync_dictionary(engine)`** upserts `mkos_schemas/data/attribute_dictionary.json` into
@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Sequence
+import uuid
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 from importlib import resources
@@ -27,6 +28,7 @@ from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorClass, FixAction, Marketplace, RetryClass, Severity
 from mkos_schemas.jobs import CategoryTemplate as CategoryTemplateModel
 from mkos_schemas.paths import is_valid_field_path
+from mkos_schemas.rules import RuleSet
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -46,6 +48,7 @@ from app.db.models.platform import (
     CategoryTemplate,
     MarketplaceErrorMap,
 )
+from app.db.models.rules import Rule
 
 DICTIONARY_RESOURCE: Final = ("mkos_schemas", "data/attribute_dictionary.json")
 Key = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{1,63}$")]
@@ -580,3 +583,185 @@ async def load_error_map_rows(
 async def load_error_map(engine: AsyncEngine, rows: Sequence[ErrorMapIn]) -> ErrorMapCounts:
     async with engine.begin() as connection:
         return await load_error_map_rows(connection, rows)
+
+
+# ---- `rules load` (DATABASE.md §5.2 rules :496-508; the migrate job, after `dictionary sync`) ----
+# The file is a JSON list of `RuleSet` holding platform rules only (`tenant_id` NULL; the
+# committed `packages/schemas/fixtures/rules.seed.json` by default). A rule is matched on its fixed
+# `id`: the same content (every stored column but `id`, `revision` and the timestamps) is a no-op;
+# a difference in `enabled` alone flips it (the one mutable column, 0004's `rules_guard`, which
+# takes a new revision; the resolver keeps the highest enabled version, so this is the rollback
+# lever); any other difference refuses the whole file ("bump version", nothing written). A new id
+# whose `rules_scope_key` a stored platform rule already holds is refused too. Each write is
+# audited with a NULL tenant and only `{enabled}`.
+
+
+def load_rule_sets(path: Path) -> list[RuleSet]:
+    """The file as `list[RuleSet]`; `FileNotFoundError` and `ValidationError` propagate."""
+    adapter: TypeAdapter[list[RuleSet]] = TypeAdapter(list[RuleSet])
+    return adapter.validate_json(path.read_bytes())
+
+
+def _subject(rule_type: str, rule_def: Mapping[str, Any]) -> str:
+    """What S7's `rules_subject_matches` CHECK expects for `rule_type`."""
+    if rule_type == "image_requirement":
+        return f"{rule_def.get('slot')}:{rule_def.get('check')}"
+    key = {
+        "claim_requires_attribute": "claim",
+        "cross_field": "name",
+        "pattern": "name",
+        "required_attribute": "attribute",
+        "allowed_values": "attribute",
+        "conditional_required": "attribute",
+        "fact_source": "attribute",
+        "fact_backed_attribute": "attribute",
+    }.get(rule_type)
+    value = rule_def.get(key) if key else None
+    return str(value) if value is not None else ""
+
+
+def platform_rule_rows(rule_sets: Sequence[RuleSet]) -> list[dict[str, Any]]:
+    """One `rules` row per rule; `ValueError` for a rule that names a tenant."""
+    rows: list[dict[str, Any]] = []
+    for rule_set in rule_sets:
+        for rule in rule_set.rules:
+            data = rule.model_dump(mode="json")
+            if data.get("tenant_id") is not None:
+                raise ValueError("rules.seed.json holds platform rules only")
+            rule_def = data["rule_def"]
+            rows.append(
+                {
+                    "id": uuid.UUID(data["id"]),
+                    "tenant_id": None,
+                    "marketplace": data["marketplace"],
+                    "category": data.get("category"),
+                    "field": data["field"],
+                    "rule_type": rule_def["type"],
+                    "subject": _subject(rule_def["type"], rule_def),
+                    "pack": rule_def.get("pack", "core"),
+                    "severity": data["severity"],
+                    "version": data["version"],
+                    "enabled": data["enabled"],
+                    "rule_def": rule_def,
+                }
+            )
+    return rows
+
+
+_RULE_CONTENT: Final = (
+    "tenant_id",
+    "marketplace",
+    "category",
+    "field",
+    "rule_type",
+    "subject",
+    "pack",
+    "severity",
+    "version",
+    "rule_def",
+)
+_SCOPE: Final = ("marketplace", "category", "field", "rule_type", "subject", "pack", "version")
+
+
+class RuleConflict(Exception):  # noqa: N818 - the CLI names it in its exit line
+    """The file cannot load as it is: nothing is written."""
+
+    def __init__(self, rule_id: uuid.UUID, problem: str) -> None:
+        self.key = f"rule {rule_id} {problem}"
+        super().__init__(self.key)
+
+
+@dataclass(frozen=True, slots=True)
+class RuleCounts:
+    inserted: int
+    unchanged: int
+    toggled: int
+
+
+async def _audit_rule(
+    connection: AsyncConnection,
+    rule_id: uuid.UUID,
+    action: str,
+    before: dict[str, Any] | None,
+    after: dict[str, Any],
+) -> None:
+    await connection.execute(
+        text(
+            "SELECT audit(NULL, 'system', NULL, :action, 'rules', :id, CAST(:before AS jsonb), "
+            "CAST(:after AS jsonb), 'rules load', NULL, NULL, NULL, NULL)"
+        ),
+        {
+            "action": action,
+            "id": rule_id,
+            "before": None if before is None else json.dumps(before),
+            "after": json.dumps(after),
+        },
+    )
+
+
+def _scope_key(row: Mapping[str, Any]) -> tuple[Any, ...]:
+    return tuple("" if name == "category" and row[name] is None else row[name] for name in _SCOPE)
+
+
+async def load_rule_rows(connection: AsyncConnection, rule_sets: Sequence[RuleSet]) -> RuleCounts:
+    """The load on an open transaction (`load_rules` opens one, as migrator)."""
+    await connection.run_sync(_assume_migrator)
+    table = Rule.__table__
+    inserted = unchanged = toggled = 0
+    seen_ids: set[uuid.UUID] = set()
+    seen_scopes: set[tuple[Any, ...]] = set()
+    for row in platform_rule_rows(rule_sets):
+        rule_id, scope = row["id"], _scope_key(row)
+        if rule_id in seen_ids:
+            raise RuleConflict(rule_id, "appears twice in the file")
+        if scope in seen_scopes:
+            raise RuleConflict(rule_id, "repeats another rule's rules_scope_key in the file")
+        seen_ids.add(rule_id)
+        seen_scopes.add(scope)
+        stored = (
+            await connection.execute(
+                select(table.c.enabled, *(table.c[name] for name in _RULE_CONTENT))
+                .where(table.c.id == rule_id)
+                .with_for_update()
+            )
+        ).one_or_none()
+        if stored is None:
+            twin = (
+                await connection.execute(
+                    select(table.c.id).where(
+                        table.c.tenant_id.is_(None),
+                        func.coalesce(table.c.category, "") == scope[1],
+                        *(table.c[name] == row[name] for name in _SCOPE if name != "category"),
+                    )
+                )
+            ).first()
+            if twin is not None:
+                raise RuleConflict(rule_id, "collides with a stored rule on rules_scope_key")
+            await connection.execute(insert(Rule).values(**row))
+            await _audit_rule(
+                connection, rule_id, "rules.loaded", None, {"enabled": row["enabled"]}
+            )
+            inserted += 1
+            continue
+        if any(getattr(stored, name) != row[name] for name in _RULE_CONTENT):
+            raise RuleConflict(rule_id, "already holds other content; bump version")
+        if stored.enabled == row["enabled"]:
+            unchanged += 1
+            continue
+        await connection.execute(
+            update(Rule).where(Rule.id == rule_id).values(enabled=row["enabled"])
+        )
+        await _audit_rule(
+            connection,
+            rule_id,
+            "rules.enabled_changed",
+            {"enabled": stored.enabled},
+            {"enabled": row["enabled"]},
+        )
+        toggled += 1
+    return RuleCounts(inserted=inserted, unchanged=unchanged, toggled=toggled)
+
+
+async def load_rules(engine: AsyncEngine, rule_sets: Sequence[RuleSet]) -> RuleCounts:
+    async with engine.begin() as connection:
+        return await load_rule_rows(connection, rule_sets)

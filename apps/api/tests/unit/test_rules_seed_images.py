@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 
 import pytest
 from app.cli import RULES_SEED_PATH
-from app.db.seed_ops import load_rule_sets
+from app.db.platform_loads import load_rule_sets
 from app.services.image_checks import check_image
 from app.services.rules_engine import RuleRow, resolve_ruleset
 from mkos_schemas.enums import ImageSlot, Marketplace
