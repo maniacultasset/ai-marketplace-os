@@ -213,3 +213,28 @@ def test_templates_load_audited_null_tenant(
         None, "system", "category_template.promoted", "category_template",
     )  # fmt: skip
     assert after == {"marketplace": "amazon", "category": CATEGORY}
+
+
+def test_templates_load_default_file_is_the_platform_templates(
+    cli_env: Path, superuser_conn: Conn, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """With no `--file`, the migrate job's call: `PLATFORM_TEMPLATES_PATH`, the Amazon and
+    Flipkart mappings. On a database without S9's v1 rows (prod) each is promoted over nothing;
+    a rerun writes nothing."""
+    from app.cli import PLATFORM_TEMPLATES_PATH
+
+    count = len(load_template_file(PLATFORM_TEMPLATES_PATH))
+    code = main(["templates", "load"])
+    out = capsys.readouterr()
+    assert (code, out.out, out.err) == (
+        0, f"templates load: ok ({count} inserted, 0 unchanged, {count} promoted)\n", ""
+    )  # fmt: skip
+    current = superuser_conn.execute(
+        "SELECT count(*) FROM category_templates WHERE is_current AND source = 'manual'"
+    ).fetchone()
+    assert current == (count,)
+    code = main(["templates", "load"])
+    out = capsys.readouterr()
+    assert (code, out.out) == (
+        0, f"templates load: ok (0 inserted, {count} unchanged, 0 promoted)\n"
+    )  # fmt: skip

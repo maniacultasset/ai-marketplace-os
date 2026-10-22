@@ -209,6 +209,7 @@ def test_main_block_logs_to_stdout() -> None:
     ("group", "runner", "default"),
     [
         ("rules", "run_rules_load", "RULES_SEED_PATH"),
+        ("templates", "run_templates_load", "PLATFORM_TEMPLATES_PATH"),
     ],
 )
 def test_loader_file_defaults(

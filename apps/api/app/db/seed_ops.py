@@ -17,6 +17,7 @@ Nothing here prints, asserts or logs a password or a DSN.
 from __future__ import annotations
 
 import hashlib
+import json
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -224,6 +225,20 @@ def flipkart_template_loads() -> list[TemplateLoad]:
         TemplateLoad(version=t.version, product_type=t.product_type, template=t.template)
         for t in flipkart_seed_templates()
     ]
+
+
+def platform_template_loads() -> list[TemplateLoad]:
+    """Every platform template the migrate job loads: the Amazon, then the Flipkart mappings.
+    `app/db/seed_data/platform_templates.json` is this list, written by `render_platform_templates`
+    (regenerate it with `uv run --frozen python -m app.db.seed_ops`; a meta test checks it)."""
+    return amazon_template_loads() + flipkart_template_loads()
+
+
+def render_platform_templates() -> str:
+    """`platform_template_loads()` as the `templates load` file: stable JSON, one trailing
+    newline."""
+    body = [entry.model_dump(mode="json") for entry in platform_template_loads()]
+    return json.dumps(body, indent=2, ensure_ascii=False) + "\n"
 
 
 async def seed_flipkart_mappings(connection: AsyncConnection) -> TemplateCounts:
@@ -821,3 +836,8 @@ async def seed_demo_flipkart(session: AsyncSession) -> None:
                 .values(current_version_id=version_id)
             )
         )
+
+
+if __name__ == "__main__":  # pragma: no cover - the regeneration command, run by hand
+    target = Path(__file__).resolve().parent / "seed_data/platform_templates.json"
+    target.write_text(render_platform_templates(), encoding="utf-8")

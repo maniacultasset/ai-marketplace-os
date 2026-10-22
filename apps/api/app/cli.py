@@ -32,11 +32,12 @@ dictionary tables as `migrator` (ALEMBIC_DATABASE_URL), after every `upgrade` (D
 an unchanged file writes no row. It prints one line: `ok (...)` on stdout and exit 0, or
 `failed (<class>[, SQLSTATE])` on stderr and exit 1.
 
-`templates load --file PATH` (S13 B7) loads a JSON list of `{version, product_type, template}`
+`templates load [--file PATH]` (S13 B7) loads a JSON list of `{version, product_type, template}`
 into `category_templates` as `migrator`, in one transaction: a stored version with the same
 content is a no-op, one with other content refuses the file ("bump version", exit 1, nothing
 written), a new version is inserted and promoted when it is newer than the current one (audited
-with a NULL tenant). An invalid file exits 1, a missing one 2.
+with a NULL tenant). An invalid file exits 1, a missing one 2. The default file is
+`PLATFORM_TEMPLATES_PATH`, the Amazon and Flipkart mappings generated from `seed_ops`.
 
 `rules load [--file PATH]` loads a JSON list of platform `RuleSet`s (default `RULES_SEED_PATH`)
 into `rules` as `migrator`, in one transaction. A rule is matched on its fixed `id`: the same
@@ -146,6 +147,11 @@ RULES_SEED_PATH: Final = _rules_seed_path(Path(__file__).resolve())
 # The local fake error map (S20 D7): `FAKE-` codes only; seed and `platform load` read it. It ships
 # in the image (app/db/seed_data), so the image's local-only `seed` role can load it too.
 ERROR_MAP_FAKE_PATH: Final = Path(__file__).resolve().parent / "db/seed_data/error_map.fake.json"
+# The platform templates the migrate job loads (`templates load` with no `--file`); generated from
+# `seed_ops.platform_template_loads()`, and it ships in the image too.
+PLATFORM_TEMPLATES_PATH: Final = (
+    Path(__file__).resolve().parent / "db/seed_data/platform_templates.json"
+)
 _SQLSTATE: Final = re.compile(r"[0-9A-Z]{5}")
 
 
@@ -838,7 +844,7 @@ def build_parser() -> argparse.ArgumentParser:
     templates = groups.add_parser("templates", help="category templates (migrator)")
     templates_commands = templates.add_subparsers(dest="command", required=True)
     load = templates_commands.add_parser("load", help="load versioned category templates")
-    load.add_argument("--file", type=Path, required=True)
+    load.add_argument("--file", type=Path, default=PLATFORM_TEMPLATES_PATH)
     rules = groups.add_parser("rules", help="the platform rules (migrator)")
     rules_commands = rules.add_subparsers(dest="command", required=True)
     rules_load = rules_commands.add_parser("load", help="load versioned platform rules")
