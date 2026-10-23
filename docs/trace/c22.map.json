@@ -152,8 +152,8 @@
    "id": "R13127",
    "status": "covered",
    "owner": "shared",
-   "ref": "docs/canon/ENV.md:91",
-   "note": "LLM_MODEL_DEFAULT gpt-4o-mini (text + vision)"
+   "ref": "docs/canon/ENV.md:87; docs/canon/ENV.md:90",
+   "note": "LLM_MODEL_DEFAULT gpt-4o-mini (text); LLM_MODEL_VISION gpt-4o-mini (vision)"
   },
   {
    "id": "R13127a",
@@ -320,15 +320,15 @@
    "id": "R13169e",
    "status": "covered",
    "owner": "shared",
-   "ref": "docs/canon/ENV.md:91",
-   "note": "LLM_MODEL_DEFAULT gpt-4o-mini covers text + vision"
+   "ref": "docs/canon/ENV.md:87; docs/canon/ENV.md:90",
+   "note": "LLM_MODEL_VISION defaults to gpt-4o-mini, the same as LLM_MODEL_DEFAULT"
   },
   {
    "id": "R13169f",
    "status": "covered",
    "owner": "shared",
-   "ref": "docs/canon/ENV.md:91",
-   "note": "LLM_MODEL_DEFAULT gpt-4o-mini covers text + vision"
+   "ref": "docs/canon/ENV.md:87; docs/canon/ENV.md:90",
+   "note": "LLM_MODEL_VISION defaults to gpt-4o-mini, the same model and price as LLM_MODEL_DEFAULT"
   },
   {
    "id": "R13176",

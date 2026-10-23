@@ -387,6 +387,25 @@ def test_staging_worker_flags_path(toolkit: Path, tmp_path: Path) -> None:
     assert "OPENAI_API_KEY" in _secret_names(line)
 
 
+def test_worker_gets_the_vision_provider_key(toolkit: Path, tmp_path: Path) -> None:
+    """B2 (ai-deps C18): the worker boot refuses a missing vision key, so the toolkit asks for it
+    and hands it to the worker pool, on both deploy paths."""
+    from app.core.config import VISION_PROVIDER_KEY_ENV, Settings
+
+    name = VISION_PROVIDER_KEY_ENV[Settings.model_fields["llm_provider_vision"].default]
+    setup = _run(toolkit, tmp_path, "staging", "setup", "--dry-run", "--sha", SHA).stdout
+    assert f'bash -c \'read -rsp "{name}: " v; echo; printf %s "$v" | ' in setup
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    spec: dict[str, Any] = _worker_spec(out)
+    container = spec["spec"]["template"]["spec"]["containers"][0]
+    assert name in [e["name"] for e in container["env"] if "valueFrom" in e]
+    flags = _run(
+        toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA, worker_deploy=True
+    ).stdout
+    line = next(line for line in flags.splitlines() if "run worker-pools deploy" in line)
+    assert name in _secret_names(line)
+
+
 def test_prod_worker_is_off_because_the_stub_refuses(
     toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -211,6 +211,25 @@ async def test_port_get_model_credentials_embedding_is_openai_under_deepseek(
     assert (embedding.provider, embedding.api_key.get_secret_value()) == ("openai", "sk-openai")
 
 
+async def test_port_get_model_credentials_vision_settings_through_the_builder(
+    products_world: World, auth_db: Conn
+) -> None:
+    """B2 (ai-deps C18): DeepSeek has no vision model, so vision keeps its own OpenAI settings."""
+    cfg = settings(
+        llm_provider="deepseek",
+        openai_api_key="sk-openai",
+        deepseek_api_key="sk-deep",
+        llm_model_vision="gpt-4o",
+    )
+    deps = await build(products_world, auth_db, cfg)
+    vision = await deps.get_model_credentials("vision")
+    assert (vision.provider, vision.model, vision.api_key.get_secret_value()) == (
+        "openai",
+        "gpt-4o",
+        "sk-openai",
+    )
+
+
 SECRET_FIELDS = (
     "jwt_secret",
     "alembic_database_url",

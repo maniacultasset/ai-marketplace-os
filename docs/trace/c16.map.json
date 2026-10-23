@@ -1048,8 +1048,8 @@
    "id": "R09998",
    "status": "covered",
    "owner": "shared",
-   "ref": "ENV.md:91",
-   "note": "LLM_MODEL_DEFAULT gpt-4o-mini for text + vision."
+   "ref": "ENV.md:90",
+   "note": "LLM_MODEL_VISION gpt-4o-mini for vision."
   },
   {
    "id": "R09998a",

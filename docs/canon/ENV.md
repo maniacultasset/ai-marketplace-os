@@ -84,8 +84,10 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | `LLM_PROVIDER` | `openai` | local .env | required | OpenAI only for MVP; ModelRouter reads a per-provider key map. |
 | `OPENAI_API_KEY` | `sk-REPLACE_ME` | both | required | LLM_API_KEY is forbidden. Client-supplied, blocking by Day 10. Outside `APP_ENV=local` a worker refuses to boot without a real key (S16); the placeholder counts as none. Secret Manager in staging/prod; the AI team's GCP group holds secretAccessor on this and on nothing else. |
 | `DEEPSEEK_API_KEY` | `(empty — leave blank)` | local .env | optional | Deferred; do not open a DeepSeek account for MVP. |
-| `LLM_MODEL_DEFAULT` | `gpt-4o-mini` | local .env | required | Text + vision default. |
+| `LLM_MODEL_DEFAULT` | `gpt-4o-mini` | local .env | required | Text (generation) default. Vision has its own row, `LLM_MODEL_VISION`. |
 | `LLM_MODEL_ESCALATION` | `gpt-4o` | local .env | required | Tier-2 on a second JSON failure. |
+| `LLM_PROVIDER_VISION` | `openai` | local .env | optional | The provider `get_model_credentials("vision")` returns; default `openai`. Only `openai` is accepted: DeepSeek has no vision model, so vision stays on OpenAI even when `LLM_PROVIDER=deepseek`. Outside `APP_ENV=local` a worker refuses to boot without this provider's key (`OPENAI_API_KEY`; the placeholder counts as none). |
+| `LLM_MODEL_VISION` | `gpt-4o-mini` | local .env | optional | The model `get_model_credentials("vision")` returns (product-image calls); 1-128 characters. |
 | `EMBEDDING_MODEL` | `text-embedding-3-small` | local .env | required | Pinned in an ADR; brand_chunks.embedding_model records it per row so a mixed-model table is detectable. A worker refuses to boot when the model has no entry in `app/core/model_prices.py` (its `cost_usd` price, S16). |
 | `EMBEDDING_DIMENSIONS` | `1536` | local .env | required | Hard DB constraint — vector(1536). Changing it is a table rewrite and a re-embed. |
 | `LLM_TIMEOUT_SECONDS` | `60` | local .env | required | Per model call, well under the 300s generation job timeout. |
