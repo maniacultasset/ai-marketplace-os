@@ -316,7 +316,7 @@ Rules for using the ports:
 | `content.title` | 1-500 chars (the marketplace rule is usually tighter: Amazon 200). |
 | `content.bullets` | 1-10 items, each 1-1,000 chars. |
 | `content.description` | 1-5,000 chars. |
-| `keywords.search_terms`, `keywords.hidden_terms` | Up to 50 each, each up to 256 chars. |
+| `keywords.search_terms`, `keywords.hidden_terms` | Up to 50 each, each up to 256 chars. On Amazon, `hidden_terms` joined with single spaces must fit in 250 UTF-8 bytes (a seeded rule, `BYTE_BUDGET_EXCEEDED`). |
 | `attributes` | Up to 128 keys matching `^[a-z0-9_]{1,64}$`; values are string, number, boolean or list of strings; strings up to 256 chars; no objects. Use the template's keys and allowed values. |
 | `images` | Up to 20 `{image_id, slot, position}`; slot `main`, `secondary`, `lifestyle` or `size_chart` (`packaging_label` is refused). |
 | `confidence_score` | Optional, 0 to 1. |
@@ -604,9 +604,12 @@ stub. Set a real model key in `.env` for real calls.
 ## 13. Contract versioning
 
 - The Python package `mkos-schemas` and the npm package share one version, released by one
-  `schemas-v<version>` git tag. `schemas-v1.0.0` is tagged. **1.1.0 is the current version in the
-  repo but not tagged yet** (its CHANGELOG heading is "unreleased"); the seam types did not change
-  between 1.0.0 and 1.1.0, but pin 1.1.0 once it is tagged.
+  `schemas-v<version>` git tag. `schemas-v1.0.0` is tagged. **1.1.0 is closed** (its CHANGELOG
+  heading is dated 2026-10-22). Its `schemas-v1.1.0` tag is pushed after the merge, on the owner's go; pin 1.1.0
+  once the tag exists, and until then use the backend branch tip.
+  The seam types did not change between 1.0.0 and 1.1.0. 1.1.0 adds the lamp keys to the attribute
+  dictionary (`lamp_type`, `lamp_material`, `shade_material`, `light_source_type`), and the
+  platform data adds the lamp mappings and Amazon's 250-byte `keywords.hidden_terms` rule.
 - `packages/schemas/CHANGELOG.md` lists every change. An additive change is a MINOR (1.x).
   Adding a member to a closed set (an enum value, a `Literal`, a rule type, an error code, a field
   path) is breaking and waits for a MAJOR window.

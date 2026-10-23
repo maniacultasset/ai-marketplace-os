@@ -50,11 +50,12 @@ def test_platform_load_idempotent_no_tenants(
     code, out, err = run(capsys)
     assert (code, err) == (0, "")
     assert out == (
-        "platform load: ok (4 templates inserted, 4 promoted, 9 error-map rows inserted, "
+        "platform load: ok (6 templates inserted, 6 promoted, 9 error-map rows inserted, "
         "0 toggled)\n"
     )
     first = counts(superuser_conn)
-    # S20: 2 Amazon mappings and 4 error-map rows; S21: 1 row; S22: 2 Flipkart mappings, 4 rows
+    # S20: 2 Amazon mappings and 4 error-map rows; S21: 1 row; S22: 2 Flipkart mappings, 4 rows;
+    # A2: the Amazon and Flipkart lamp mappings
     assert first["tenants"] == 0 and first["marketplace_error_map"] == 9
     code, out, _ = run(capsys)
     assert code == 0 and "0 templates inserted, 0 promoted, 0 error-map rows inserted" in out
@@ -69,6 +70,7 @@ def test_platform_load_idempotent_no_tenants(
         "WHERE marketplace = 'amazon' AND is_current ORDER BY category"
     ).fetchall()
     assert ("tshirts", 1, "SHIRT") in current and ("ethnic_wear_kurta_sets", 2, "KURTA") in current
+    assert ("home_decor_lamps", 2, "LAMP") in current
 
 
 @pytest.mark.parametrize("env", ["staging", "production"])

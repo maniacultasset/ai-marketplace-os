@@ -8,18 +8,18 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 - **Every line of the client spec is traced.** All 13,711 lines of the snapshot are in the register:
   11,167 entries, of which 8,916 are checkable statements. `scripts/trace/check_coverage.py` proves 100% line coverage.
 - **Every statement has a verdict**, with a reference, adversarially verified per chunk (`scripts/trace/check_mapping.py`).
-- **7,043 of 8,916 (79%) are covered by our plan**: 6,089 as written and
+- **7,046 of 8,916 (79%) are covered by our plan**: 6,092 as written and
   954 deliberately changed by an ADR, Canon row or recorded decision.
-- **500 are gaps** (backend/DB 248, shared seams 128, ops 104, AI team 4, FE team 0, client 16).
+- **497 are gaps** (backend/DB 245, shared seams 128, ops 104, AI team 4, FE team 0, client 16).
 - **319 need the team or client** (54 conflicts, 265 questions);
   each points to a row in `TEAM-QUESTIONS.md`.
 - 512 belong to the AI or FE team, and 542 are marked Phase 2/3 by the site itself.
 
 | Status | Statements | Share |
 |---|---:|---:|
-| ✅ covered | 6,089 | 68.3% |
+| ✅ covered | 6,092 | 68.3% |
 | 🔁 covered-changed | 954 | 10.7% |
-| ⚠️ gap | 500 | 5.6% |
+| ⚠️ gap | 497 | 5.6% |
 | ❌ conflict | 54 | 0.6% |
 | ❓ needs-client | 265 | 3.0% |
 | 🧩 other-team | 512 | 5.7% |
@@ -81,7 +81,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [24] Correction Loop | 7 | 1 | 0 | 0 | 0 | 13 | 0 | ✔ |
 | [25] Bounded Retry System | 17 | 2 | 2 | 0 | 0 | 1 | 0 | 2 |
 | [26] Content Agent | 32 | 0 | 7 | 0 | 0 | 56 | 0 | 7 |
-| [27] Keyword Agent | 8 | 4 | 4 | 0 | 0 | 5 | 2 | 4 |
+| [27] Keyword Agent | 9 | 4 | 3 | 0 | 0 | 5 | 2 | 3 |
 | [28] Attribute Agent | 18 | 5 | 1 | 0 | 0 | 0 | 0 | 1 |
 | [29] Image Agent | 31 | 4 | 3 | 0 | 0 | 0 | 0 | 3 |
 | [30] Brand Voice Agent / Retrieval | 18 | 1 | 3 | 6 | 0 | 2 | 0 | 9 |
@@ -93,10 +93,10 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [36] Title Generation | 8 | 1 | 8 | 0 | 1 | 5 | 0 | 9 |
 | [37] Bullet Generation | 7 | 1 | 0 | 0 | 0 | 7 | 0 | ✔ |
 | [38] Description Generation | 1 | 0 | 5 | 0 | 0 | 3 | 0 | 5 |
-| [39] Keyword Generation | 2 | 3 | 1 | 0 | 0 | 4 | 0 | 1 |
+| [39] Keyword Generation | 3 | 3 | 0 | 0 | 0 | 4 | 0 | ✔ |
 | [40] Attribute Generation | 5 | 1 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [41] Category Mapping | 8 | 0 | 0 | 0 | 0 | 0 | 0 | ✔ |
-| [42] Marketplace-specific Content | 7 | 1 | 3 | 0 | 1 | 3 | 0 | 4 |
+| [42] Marketplace-specific Content | 8 | 1 | 2 | 0 | 1 | 3 | 0 | 3 |
 | [43] Listing Versioning | 7 | 0 | 1 | 0 | 0 | 0 | 7 | 1 |
 | [44] Image Compliance Pipeline | 36 | 2 | 2 | 0 | 0 | 0 | 0 | 2 |
 | [45] Image Processing Flow | 20 | 1 | 1 | 0 | 0 | 0 | 0 | 1 |
@@ -1029,7 +1029,7 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 | R13665 | L13665 | Production launch checklist: All Phase 1 features implemented. | T16; VISION Q25 | Phase-1 set per plan scope lock (T16); steps after S14 unsequenced |
 | R13668 | L13668 | Production launch checklist: Marketplace OAuth flows verified with production accounts. | T77 | Prod filings/app approval status unknown (STATE open decision 5); verify step itself unplanned |
 
-## ⚠️ Gaps we own: backend + DB (248)
+## ⚠️ Gaps we own: backend + DB (245)
 
 Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITECTURE.md and the build steps.
 
@@ -1273,7 +1273,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 |---|---|---|---|---|
 | R09220 | L9220 | Keyword validation rule: No keyword stuffing. | docs/architecture/DATABASE.md:1369 | KEYWORD_DUPLICATE code exists (DATABASE.md:1369); no rule type or seed emits it |
 | R09221 | L9221 | Backend keywords must not duplicate visible listing content (Amazon rule). | docs/architecture/DATABASE.md:518; G6 | No rule: hidden_terms must not repeat visible content; cross_field not_contains_value_of unseeded |
-| R09224 | L9224 | Amazon backend keyword limit: 250 bytes total. | docs/architecture/DATABASE.md:514; docs/architecture/DATABASE.md:1369; docs/drafts/BUILD-SEQUENCE.md:235 | BYTE_BUDGET_EXCEEDED code exists; no byte-unit max_length rule, no Amazon hidden_terms 250-byte seed |
 
 ### [28] Attribute Agent
 
@@ -1314,18 +1313,11 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R09760c | L9760 | Amazon supports basic HTML in descriptions. |  | Amazon basic-HTML description rendering/sanitising unplanned |
 | R09760d | L9760 | Flipkart has specific formatting constraints for descriptions. |  | Flipkart description constraints unnamed; verify in adapter step |
 
-### [39] Keyword Generation
-
-| R-id | Lines | The site says | Ref | What is missing / differs |
-|---|---|---|---|---|
-| R09774c | L9774 | Backend keywords fill the 250-byte limit. | DATABASE.md:514; DATABASE.md:1369 | max_length (unit bytes) expressible; no Amazon keywords.hidden_terms 250-byte row seeded. |
-
 ### [42] Marketplace-specific Content
 
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
 | R09834 | L9834–9836 | Amazon description HTML: Basic HTML supported. | CONTRACTS.md:222; SPEC-TRACEABILITY.md:155 | Canonical description is a plain <=5000 string; no HTML subset or adapter formatting defined. |
-| R09840 | L9840–9842 | Amazon backend keywords: 250 bytes. | DATABASE.md:514; DATABASE.md:525 | No 250-byte hidden_terms rule seeded; BYTE_BUDGET_EXCEEDED code exists. |
 
 ### [44] Image Compliance Pipeline
 

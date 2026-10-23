@@ -150,10 +150,10 @@
   },
   {
    "id": "R09224",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "docs/architecture/DATABASE.md:514; docs/architecture/DATABASE.md:1369; docs/drafts/BUILD-SEQUENCE.md:235",
-   "note": "BYTE_BUDGET_EXCEEDED code exists; no byte-unit max_length rule, no Amazon hidden_terms 250-byte seed"
+   "ref": "packages/schemas/fixtures/rules.seed.json; DATABASE.md:514",
+   "note": "A2: one keywords.hidden_terms max_length row per Amazon RuleSet (limit 250, unit bytes, BYTE_BUDGET_EXCEEDED); the terms are joined with one space and counted in UTF-8 bytes after NFC."
   },
   {
    "id": "R09228a",

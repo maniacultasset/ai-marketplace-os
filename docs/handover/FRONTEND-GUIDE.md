@@ -276,10 +276,11 @@ The contract ships as an npm package with generated types for every request and 
 
 - It is on GitHub Packages (`@maniacultasset` scope). Your `.npmrc` needs
   `@maniacultasset:registry=https://npm.pkg.github.com` and a token with `read:packages`.
-- **Version note:** `schemas-v1.0.0` is tagged; **1.1.0 is not tagged yet** (its CHANGELOG heading is
-  still "unreleased"). 1.1.0 adds review, issues, tasks, preview, publish, submissions and
-  analytics. Until it is tagged, copy `packages/schemas/ts/src/*.ts` from the backend repo, or point
-  your build at that folder. Then switch to the package.
+- **Version note:** `schemas-v1.0.0` is tagged; **1.1.0 is closed** (its CHANGELOG heading is dated
+  2026-10-22) and is tagged `schemas-v1.1.0` on its release commit. 1.1.0 adds review, issues,
+  tasks, preview, publish, submissions and analytics. Until the tag exists, copy
+  `packages/schemas/ts/src/*.ts` from the backend repo, or point your build at that folder. Then
+  switch to the package.
 - The package has three files: `api.d.ts` (from `openapi.json`: `paths`, `components`,
   `operations`), `contracts.d.ts` (shared JSON Schemas: `ErrorCode`, `ListingStatus`,
   `CanonicalListing`, ...) and `index.ts` (re-exports both). They are types only: no runtime code.

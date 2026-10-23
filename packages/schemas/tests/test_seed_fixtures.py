@@ -3,12 +3,20 @@ not a golden fixture: it is validated here, and the orphan checks skip the `.see
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import sys
 from pathlib import Path
 
-from mkos_schemas.rules import BannedTerms, ImageRequirement, RequiredAttribute, Rule, RuleSet
+from mkos_schemas.rules import (
+    BannedTerms,
+    ImageRequirement,
+    MaxLength,
+    RequiredAttribute,
+    Rule,
+    RuleSet,
+)
 from pydantic import TypeAdapter
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
@@ -76,7 +84,11 @@ def test_rules_seed_banned_terms_listed() -> None:
         definition = banned[0].rule_def
         assert isinstance(definition, BannedTerms)
         assert set(definition.terms) == BANNED
-        by_type = {r.rule_def.type: r.rule_def for r in rule_set.rules if r.version == 1}
+        by_type = {
+            r.rule_def.type: r.rule_def
+            for r in rule_set.rules
+            if r.version == 1 and r.field == "content.title"
+        }
         title_max = 150 if rule_set.category == "tshirts" and _is_flipkart(rule_set) else 200
         assert by_type["max_length"].limit == title_max  # type: ignore[union-attr]
         assert by_type["min_length"].limit == 5  # type: ignore[union-attr]
@@ -127,7 +139,11 @@ def test_rules_seed_flipkart_title_v2_150() -> None:
     for category in ("ethnic_wear_kurta_sets", "home_decor_lamps"):
         rule_set = _by_scope()[("flipkart", category)]
         title_max = sorted(
-            (r for r in rule_set.rules if r.rule_def.type == "max_length"),
+            (
+                r
+                for r in rule_set.rules
+                if r.rule_def.type == "max_length" and r.field == "content.title"
+            ),
             key=lambda r: r.version,
         )
         assert [(r.version, r.rule_def.limit) for r in title_max] == [(1, 200), (2, 150)]  # type: ignore[union-attr]
@@ -140,7 +156,8 @@ def test_rules_seed_flipkart_title_v2_150() -> None:
         assert v2.enabled and v2.rule_def.policy_ref is not None
     for category in ("ethnic_wear_kurta_sets", "home_decor_lamps"):
         amazon = _by_scope()[("amazon", category)]
-        assert [r.version for r in amazon.rules if r.rule_def.type == "max_length"] == [1]
+        title_rows = [r for r in amazon.rules if r.field == "content.title"]
+        assert [r.version for r in title_rows if r.rule_def.type == "max_length"] == [1]
 
 
 def test_rules_seed_ids_unique() -> None:
@@ -248,3 +265,61 @@ def test_rules_seed_images_no_scope_key_repeats() -> None:
         for _, r in _image_rules()
     ]
     assert len(keys) == len(set(keys))
+
+
+# ---- A2 (ai-deps PLAN C19; spec L9224, L9774, L9840-9842): the Amazon backend-keyword budget ----
+
+BYTE_RULE_IDS = {
+    "ethnic_wear_kurta_sets": "5eed0000-0000-4000-8000-000100010007",
+    "home_decor_lamps": "5eed0000-0000-4000-8000-000100020007",
+    "tshirts": "5eed0000-0000-4000-8000-000100030007",
+}
+APPAREL_RULES_SHA256 = "8a6f6bd465dbb3b049c9e5cc741e4fe49f17349e60ab71d044db700e2507baa0"
+
+
+def test_rules_seed_count_54() -> None:
+    assert sum(len(s.rules) for s in _load()) == 54
+
+
+def test_rules_seed_hidden_terms_byte_rule_amazon_only() -> None:
+    """One `keywords.hidden_terms` row per Amazon RuleSet: 250 UTF-8 bytes, the stored shape
+    `{"type": "max_length", "limit": 250, "unit": "bytes"}` with BYTE_BUDGET_EXCEEDED. Flipkart
+    has no backend keywords (spec L9840-9844), so no Flipkart row."""
+    found: dict[str, Rule] = {}
+    for rule_set in _load():
+        rows = [r for r in rule_set.rules if r.field.startswith("keywords.")]
+        if rule_set.marketplace.value == "flipkart":
+            assert rows == [], rule_set.category
+            continue
+        (row,) = rows
+        found[rule_set.category] = row
+    assert {c: str(r.id) for c, r in found.items()} == BYTE_RULE_IDS
+    for category, row in found.items():
+        definition = row.rule_def
+        assert isinstance(definition, MaxLength)
+        assert row.field == "keywords.hidden_terms" and row.category == category
+        assert (definition.limit, definition.unit) == (250, "bytes")
+        assert definition.error_code.value == "BYTE_BUDGET_EXCEEDED"
+        assert (row.severity.value, row.version, row.enabled, row.tenant_id) == (
+            "error",
+            1,
+            True,
+            None,
+        )
+        assert definition.pack == "core" and definition.suggestion
+        assert definition.policy_ref is not None
+        assert definition.policy_ref.source == "amazon_policy"
+        assert "{limit}" in definition.message and "bytes" in definition.message
+
+
+def test_rules_seed_apparel_unchanged_but_the_byte_rows() -> None:
+    """Kurta and tshirts keep every pre-A2 row exactly; only the byte rows are new."""
+    raw = json.loads(SEED.read_text(encoding="utf-8"))
+    new_ids = set(BYTE_RULE_IDS.values())
+    apparel = [
+        {**s, "rules": [r for r in s["rules"] if r["id"] not in new_ids]}
+        for s in raw
+        if s["category"] != "home_decor_lamps"
+    ]
+    digest = hashlib.sha256(json.dumps(apparel, sort_keys=True).encode()).hexdigest()
+    assert digest == APPAREL_RULES_SHA256

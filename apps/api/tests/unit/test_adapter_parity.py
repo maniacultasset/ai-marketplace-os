@@ -18,6 +18,13 @@ from tests.adapters import flipkart_support as fk
 from tests.adapters.amazon_support import amazon_family, amazon_item, listing, template
 
 CATEGORIES = ("ethnic_wear_kurta_sets", "tshirts")
+# A2: the lamp mappings join the single-item checks (a lamp family varies by colour only).
+ITEM_CATEGORIES = (*CATEGORIES, "home_decor_lamps")
+REQUIRED = {
+    "ethnic_wear_kurta_sets": {"color", "fabric_type"},
+    "tshirts": {"color", "fabric_type"},
+    "home_decor_lamps": {"color", "product_dimensions"},
+}
 
 
 def _ruleset(category: str, marketplace: str = "amazon") -> RuleSet:
@@ -52,10 +59,12 @@ def _vocabulary(category: str, marketplace: str = "amazon") -> dict[str, list[An
 
 
 @st.composite
-def _listings(draw: st.DrawFn, marketplace: str = "amazon") -> tuple[str, CanonicalListing]:
-    category = draw(st.sampled_from(CATEGORIES))
+def _listings(
+    draw: st.DrawFn, marketplace: str = "amazon", categories: tuple[str, ...] = CATEGORIES
+) -> tuple[str, CanonicalListing]:
+    category = draw(st.sampled_from(categories))
     vocab = _vocabulary(category, marketplace)
-    required = {"color", "fabric_type"}
+    required = REQUIRED[category]
     attributes = {k: draw(st.sampled_from(v)) for k, v in vocab.items() if k in required}
     optional = draw(st.sets(st.sampled_from(sorted(set(vocab) - required))))
     attributes |= {k: draw(st.sampled_from(vocab[k])) for k in optional}
@@ -73,7 +82,7 @@ def _listings(draw: st.DrawFn, marketplace: str = "amazon") -> tuple[str, Canoni
 
 
 @settings(max_examples=150, deadline=None)
-@given(_listings())
+@given(_listings(categories=ITEM_CATEGORIES))
 def test_adapter_never_contradicts_engine(case: tuple[str, CanonicalListing]) -> None:
     from app.adapters.amazon.mapping import check
     from app.services.rules_engine import evaluate
@@ -105,7 +114,7 @@ def test_adapter_family_never_contradicts_engine(
 
 
 @settings(max_examples=150, deadline=None)
-@given(_listings("flipkart"))
+@given(_listings("flipkart", ITEM_CATEGORIES))
 def test_adapter_never_contradicts_engine_flipkart(case: tuple[str, CanonicalListing]) -> None:
     """S22 T8: `test_adapter_never_contradicts_engine[flipkart]` over the Flipkart templates."""
     from app.adapters.flipkart.mapping import check
