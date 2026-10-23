@@ -10,8 +10,10 @@ import pytest
 from mkos_schemas.enums import ImageSlot, Marketplace
 from mkos_schemas.listing import (
     MAX_LISTING_ATTRIBUTES,
+    MAX_LISTING_CLAIMS,
     MAX_LISTING_IMAGES,
     CanonicalListing,
+    Claim,
     ImageRef,
     ListingContent,
     ListingKeywords,
@@ -52,7 +54,7 @@ def test_canonical_listing_shape() -> None:
         images=[ImageRef(image_id=lid, slot=ImageSlot.MAIN)],
         generated_by_agent_run_id=run,
     )
-    assert obj.schema_version == "1.1.0"
+    assert obj.schema_version == "1.2.0"
     assert obj.content.title == "Title"
     assert obj.keywords.hidden_terms == ["h"]
     assert obj.images[0].slot is ImageSlot.MAIN
@@ -181,4 +183,93 @@ def test_locale_defaults_en_in() -> None:
 def test_version_is_distinct_from_schema_version() -> None:
     obj = _listing(version=2)
     assert obj.version == 2
-    assert obj.schema_version == "1.1.0"
+    assert obj.schema_version == "1.2.0"
+
+
+_CLAIM_ID = "55555555-5555-5555-5555-555555555555"
+
+
+def _claim(**overrides: object) -> Claim:
+    base: dict[str, object] = {
+        "id": _CLAIM_ID,
+        "text_path": "content.bullets[0]",
+        "fact_keys": ["attributes.fabric_type"],
+        "status": "supported",
+    }
+    base.update(overrides)
+    return Claim.model_validate(base)
+
+
+def test_claims_and_attribute_sources_default_empty() -> None:
+    obj = _listing()
+    assert obj.claims == []
+    assert obj.attribute_sources == {}
+    dumped = obj.model_dump(mode="json")
+    assert dumped["claims"] == []
+    assert dumped["attribute_sources"] == {}
+
+
+def test_claims_and_attribute_sources_round_trip() -> None:
+    obj = _listing(
+        claims=[_claim(), _claim(text_path="content.title", status="removed")],
+        attribute_sources={"color": "attributes.color"},
+    )
+    again = CanonicalListing.model_validate_json(obj.model_dump_json())
+    assert again == obj
+    assert again.claims[1].status == "removed"
+    assert again.attribute_sources == {"color": "attributes.color"}
+
+
+@pytest.mark.parametrize("path", ["content.title", "content.bullets[9]", "content.description"])
+def test_claim_text_path_names_a_content_field(path: str) -> None:
+    assert _claim(text_path=path).text_path == path
+
+
+@pytest.mark.parametrize(
+    "path", ["title", "content.bullets", "attributes.color", "keywords.search_terms", ""]
+)
+def test_claim_text_path_refuses_other_paths(path: str) -> None:
+    with pytest.raises(ValidationError):
+        _claim(text_path=path)
+
+
+def test_claim_status_is_closed() -> None:
+    for status in ("supported", "unsupported", "removed"):
+        assert _claim(status=status).status == status
+    with pytest.raises(ValidationError):
+        _claim(status="verified")
+
+
+def test_listing_from_1_1_0_without_claims_still_parses() -> None:
+    raw: dict[str, Any] = {
+        "schema_version": "1.1.0",
+        "product_id": "11111111-1111-1111-1111-111111111111",
+        "marketplace": "amazon",
+        "category": "ethnic_wear_kurta_sets",
+        "content": {"title": "T", "bullets": ["b"], "description": "d"},
+    }
+    obj = CanonicalListing.model_validate(raw)
+    assert obj.claims == [] and obj.attribute_sources == {}
+
+
+def test_claims_are_capped() -> None:
+    claims = [_claim(id=UUID(int=n)) for n in range(MAX_LISTING_CLAIMS)]
+    assert len(_listing(claims=claims).claims) == MAX_LISTING_CLAIMS
+    with pytest.raises(ValidationError):
+        _listing(claims=[*claims, _claim(id=UUID(int=MAX_LISTING_CLAIMS))])
+
+
+def test_attribute_sources_keys_are_attribute_keys_and_capped() -> None:
+    sources = {f"k{n}": "attributes.color" for n in range(MAX_LISTING_ATTRIBUTES)}
+    assert len(_listing(attribute_sources=sources).attribute_sources) == MAX_LISTING_ATTRIBUTES
+    with pytest.raises(ValidationError):
+        _listing(attribute_sources={**sources, "one_more": "attributes.color"})
+    for bad_key in ("Color", "colour-name", "", "k" * 65):
+        with pytest.raises(ValidationError):
+            _listing(attribute_sources={bad_key: "attributes.color"})
+
+
+@pytest.mark.parametrize("value", ["", "   ", "a" * 193])
+def test_attribute_sources_values_are_short_and_non_blank(value: str) -> None:
+    with pytest.raises(ValidationError):
+        _listing(attribute_sources={"color": value})

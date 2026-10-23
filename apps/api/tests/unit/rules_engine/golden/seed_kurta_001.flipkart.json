@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "status": "failed",
   "error_code": "VALIDATION_FAILED",
   "retryable": true,
@@ -21,7 +21,8 @@
       "error_class": "content_error",
       "retry_class": "ai_correct",
       "auto_fixable": false,
-      "fix_action": null
+      "fix_action": null,
+      "gate": null
     },
     {
       "field": "content.title",
@@ -38,7 +39,8 @@
       "error_class": "content_error",
       "retry_class": "ai_correct",
       "auto_fixable": false,
-      "fix_action": null
+      "fix_action": null,
+      "gate": null
     },
     {
       "field": "content.bullets[1]",
@@ -55,7 +57,8 @@
       "error_class": "content_error",
       "retry_class": "ai_correct",
       "auto_fixable": false,
-      "fix_action": null
+      "fix_action": null,
+      "gate": null
     }
   ],
   "request_id": null,

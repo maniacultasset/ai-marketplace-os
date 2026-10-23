@@ -8,6 +8,7 @@
       "error_code": "FIELD_TOO_LONG",
       "field": "content.title",
       "fix_action": null,
+      "gate": null,
       "marketplace": "amazon",
       "message": "title longer than 200 characters",
       "raw_code": null,
@@ -24,6 +25,6 @@
   "max_attempts": 3,
   "request_id": null,
   "retryable": true,
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "status": "failed"
 }

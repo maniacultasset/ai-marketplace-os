@@ -1,6 +1,6 @@
 {
   "marketplace": "amazon",
-  "category": "apparel",
+  "category": "ethnic_wear_kurta_sets",
   "rules": [
     {
       "id": "00000001-0000-0000-0000-000000000001",
@@ -19,6 +19,7 @@
         "policy_ref": null,
         "error_class": null,
         "retry_class": null,
+        "gate": "content",
         "type": "max_length",
         "limit": 200,
         "unit": "chars"
@@ -41,6 +42,7 @@
         "policy_ref": null,
         "error_class": null,
         "retry_class": null,
+        "gate": null,
         "type": "min_length",
         "limit": 5,
         "unit": "chars"
@@ -63,6 +65,7 @@
         "policy_ref": null,
         "error_class": null,
         "retry_class": null,
+        "gate": null,
         "type": "banned_terms",
         "terms": [
           "sale"
@@ -88,6 +91,7 @@
         "policy_ref": null,
         "error_class": null,
         "retry_class": null,
+        "gate": "attributes",
         "type": "required_attribute",
         "attribute": "fabric",
         "allowed_values": null
@@ -110,6 +114,7 @@
         "policy_ref": null,
         "error_class": null,
         "retry_class": null,
+        "gate": null,
         "type": "max_items",
         "limit": 5,
         "unique": false
@@ -132,6 +137,7 @@
         "policy_ref": null,
         "error_class": null,
         "retry_class": null,
+        "gate": null,
         "type": "min_items",
         "limit": 1
       }
@@ -153,6 +159,7 @@
         "policy_ref": null,
         "error_class": null,
         "retry_class": null,
+        "gate": null,
         "type": "allowed_values",
         "attribute": "color",
         "source": "inline",
@@ -179,6 +186,7 @@
         "policy_ref": null,
         "error_class": null,
         "retry_class": null,
+        "gate": null,
         "type": "conditional_required",
         "attribute": "size",
         "when": [
@@ -208,6 +216,7 @@
         "policy_ref": null,
         "error_class": null,
         "retry_class": null,
+        "gate": null,
         "type": "cross_field",
         "name": "mrp",
         "left": "facts.mrp",
@@ -232,6 +241,7 @@
         "policy_ref": null,
         "error_class": null,
         "retry_class": null,
+        "gate": null,
         "type": "claim_requires_attribute",
         "claim": "cotton",
         "terms": [
@@ -261,6 +271,7 @@
         "policy_ref": null,
         "error_class": null,
         "retry_class": null,
+        "gate": "media",
         "type": "image_requirement",
         "slot": "main",
         "check": "min_resolution",
@@ -294,6 +305,7 @@
         "policy_ref": null,
         "error_class": null,
         "retry_class": null,
+        "gate": null,
         "type": "pattern",
         "name": "t",
         "regex": "^A+$",
@@ -318,6 +330,7 @@
         "policy_ref": null,
         "error_class": null,
         "retry_class": null,
+        "gate": null,
         "type": "fact_source",
         "attribute": "mrp",
         "forbidden_sources": [
@@ -344,6 +357,7 @@
         "policy_ref": null,
         "error_class": null,
         "retry_class": null,
+        "gate": null,
         "type": "fact_backed_attribute",
         "attribute": "price",
         "compare": "normalized"

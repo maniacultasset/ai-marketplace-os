@@ -110,6 +110,22 @@ export type ErrorClass =
  */
 export type FixAction = "remap_value" | "reformat" | "derive_field" | "rebuild_variation";
 /**
+ * The nine quality gates before submission (spec L1388-1424); schemas 1.2.0.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "Gate".
+ */
+export type Gate =
+  | "identity"
+  | "classification"
+  | "attributes"
+  | "variants"
+  | "media"
+  | "content"
+  | "compliance"
+  | "commercial"
+  | "submission";
+/**
  * This interface was referenced by `MkosContracts`'s JSON-Schema
  * via the `definition` "Marketplace".
  */
@@ -250,6 +266,7 @@ export interface ErrorItem {
   error_code: ErrorCode;
   field: string;
   fix_action?: FixAction | null;
+  gate?: Gate | null;
   marketplace?: Marketplace | null;
   message: string;
   raw_code?: string | null;
@@ -311,6 +328,7 @@ export interface AllowedValues {
   attribute: string;
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   message: string;
   normalize?: "casefold_trim";
   pack?: string;
@@ -381,6 +399,7 @@ export interface BannedTerms {
   case_sensitive?: boolean;
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   match?: "word" | "substring" | "regex";
   message: string;
   pack?: string;
@@ -415,6 +434,13 @@ export interface BrandChunkDTO {
  * via the `definition` "CanonicalListing".
  */
 export interface CanonicalListing {
+  attribute_sources?: {
+    /**
+     * This interface was referenced by `undefined`'s JSON-Schema definition
+     * via the `patternProperty` "^[a-z0-9_]{1,64}$".
+     */
+    [k: string]: string;
+  };
   attributes?: {
     /**
      * This interface was referenced by `undefined`'s JSON-Schema definition
@@ -423,6 +449,10 @@ export interface CanonicalListing {
     [k: string]: string | number | boolean | string[];
   };
   category: string;
+  /**
+   * @maxItems 64
+   */
+  claims?: Claim[];
   confidence_score?: number | null;
   content: ListingContent;
   created_at?: string | null;
@@ -436,6 +466,19 @@ export interface CanonicalListing {
   schema_version?: string;
   status?: ListingStatus;
   version?: number;
+  [k: string]: unknown;
+}
+/**
+ * A factual statement kept in the listing text, and the product facts behind it (1.2.0).
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "Claim".
+ */
+export interface Claim {
+  fact_keys: string[];
+  id: string;
+  status: "supported" | "unsupported" | "removed";
+  text_path: string;
   [k: string]: unknown;
 }
 /**
@@ -526,6 +569,7 @@ export interface ClaimRequiresAttribute {
   claim: string;
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   match?: "word" | "substring";
   message: string;
   pack?: string;
@@ -549,6 +593,7 @@ export interface ConditionalRequired {
   attribute: string;
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   message: string;
   pack?: string;
   policy_ref?: PolicyRef | null;
@@ -567,12 +612,31 @@ export interface ConditionalRequired {
   [k: string]: unknown;
 }
 /**
+ * One product or label image the pipeline may look at (1.2.0).
+ *
+ * Not `ImageRef`: that type belongs to the publishable listing and refuses `packaging_label`, and
+ * the label must still reach the extractor. Only base64 bytes for now; no URL field.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "ContextImage".
+ */
+export interface ContextImage {
+  colourway_id?: string | null;
+  data_b64: string;
+  height: number;
+  image_id: string;
+  slot: ImageSlot;
+  width: number;
+  [k: string]: unknown;
+}
+/**
  * This interface was referenced by `MkosContracts`'s JSON-Schema
  * via the `definition` "CrossField".
  */
 export interface CrossField {
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   left: string;
   message: string;
   name: string;
@@ -594,12 +658,39 @@ export interface FactBackedAttribute {
   compare?: "normalized";
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   message: string;
   pack?: string;
   policy_ref?: PolicyRef | null;
   retry_class?: RetryClass | null;
   suggestion?: string | null;
   type: "fact_backed_attribute";
+  [k: string]: unknown;
+}
+/**
+ * Sources that disagree on one product key (1.2.0); the pipeline phrases a question.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "FactConflict".
+ */
+export interface FactConflict {
+  key: string;
+  /**
+   * @minItems 2
+   */
+  values: [ObservedValue, ObservedValue, ...ObservedValue[]];
+  [k: string]: unknown;
+}
+/**
+ * One value a source gave for a fact the conflict scan found disagreeing (1.2.0).
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "ObservedValue".
+ */
+export interface ObservedValue {
+  evidence_ref: string;
+  source: string;
+  value: string | number | boolean | string[];
   [k: string]: unknown;
 }
 /**
@@ -611,6 +702,7 @@ export interface FactSource {
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
   forbidden_sources: string[];
+  gate?: Gate | null;
   message: string;
   min_confidence?: number | null;
   pack?: string;
@@ -619,6 +711,19 @@ export interface FactSource {
   retry_class?: RetryClass | null;
   suggestion?: string | null;
   type: "fact_source";
+  [k: string]: unknown;
+}
+/**
+ * One field a regeneration changed, for the agent log (1.2.0).
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "FieldChange".
+ */
+export interface FieldChange {
+  after: string | number | boolean | string[] | null;
+  before: string | number | boolean | string[] | null;
+  field: string;
+  reason: string;
   [k: string]: unknown;
 }
 /**
@@ -647,11 +752,25 @@ export interface GenerateListingRequest {
  * via the `definition` "GenerationContext".
  */
 export interface GenerationContext {
+  answered_keys?: string[];
   brand_profile: {
     [k: string]: unknown;
   };
   category: string;
   category_template: CategoryTemplate;
+  conflicts?: FactConflict[];
+  /**
+   * @maxItems 7
+   */
+  images?:
+    | []
+    | [ContextImage]
+    | [ContextImage, ContextImage]
+    | [ContextImage, ContextImage, ContextImage]
+    | [ContextImage, ContextImage, ContextImage, ContextImage]
+    | [ContextImage, ContextImage, ContextImage, ContextImage, ContextImage]
+    | [ContextImage, ContextImage, ContextImage, ContextImage, ContextImage, ContextImage]
+    | [ContextImage, ContextImage, ContextImage, ContextImage, ContextImage, ContextImage, ContextImage];
   job_id: string;
   listing_id: string;
   locale?: "en-IN";
@@ -663,6 +782,9 @@ export interface GenerationContext {
     [k: string]: unknown;
   };
   product_id: string;
+  product_provenance?: {
+    [k: string]: Provenance;
+  };
   request_id: string;
   /**
    * @maxItems 5
@@ -737,6 +859,7 @@ export interface Rule {
 export interface MaxLength {
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   limit: number;
   message: string;
   pack?: string;
@@ -754,6 +877,7 @@ export interface MaxLength {
 export interface MinLength {
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   limit: number;
   message: string;
   pack?: string;
@@ -773,6 +897,7 @@ export interface RequiredAttribute {
   attribute: string;
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   message: string;
   pack?: string;
   policy_ref?: PolicyRef | null;
@@ -788,6 +913,7 @@ export interface RequiredAttribute {
 export interface MaxItems {
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   limit: number;
   message: string;
   pack?: string;
@@ -805,6 +931,7 @@ export interface MaxItems {
 export interface MinItems {
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   limit: number;
   message: string;
   pack?: string;
@@ -832,6 +959,7 @@ export interface ImageRequirement {
     | "max_bytes";
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
+  gate?: Gate | null;
   issue_code?: ErrorCode;
   message: string;
   pack?: string;
@@ -877,6 +1005,7 @@ export interface Pattern {
   error_class?: ErrorClass | null;
   error_code?: ErrorCode;
   flags?: "i"[];
+  gate?: Gate | null;
   message: string;
   must: "match" | "not_match";
   name: string;
@@ -889,6 +1018,18 @@ export interface Pattern {
   [k: string]: unknown;
 }
 /**
+ * Where one product value came from (1.2.0). Absent: treat the value as seller-confirmed.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "Provenance".
+ */
+export interface Provenance {
+  confidence: number | null;
+  confirmed: boolean;
+  source: string;
+  [k: string]: unknown;
+}
+/**
  * Return value of run_listing_pipeline (implemented in mkos_pipeline.graph).
  *
  * This interface was referenced by `MkosContracts`'s JSON-Schema
@@ -898,10 +1039,192 @@ export interface GenerationResult {
   agent_runs?: AgentRunRecord[];
   attempts_used?: number;
   blocks?: AgentBlockStatus[];
+  /**
+   * @maxItems 200
+   */
+  changes?: FieldChange[];
   error?: ErrorReport | null;
   image_reports?: ImageReport[];
   job_id: string;
   listing?: CanonicalListing | null;
+  /**
+   * @maxItems 20
+   */
+  questions?:
+    | []
+    | [Question]
+    | [Question, Question]
+    | [Question, Question, Question]
+    | [Question, Question, Question, Question]
+    | [Question, Question, Question, Question, Question]
+    | [Question, Question, Question, Question, Question, Question]
+    | [Question, Question, Question, Question, Question, Question, Question]
+    | [Question, Question, Question, Question, Question, Question, Question, Question]
+    | [Question, Question, Question, Question, Question, Question, Question, Question, Question]
+    | [Question, Question, Question, Question, Question, Question, Question, Question, Question, Question]
+    | [Question, Question, Question, Question, Question, Question, Question, Question, Question, Question, Question]
+    | [
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question
+      ]
+    | [
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question
+      ]
+    | [
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question
+      ]
+    | [
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question
+      ]
+    | [
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question
+      ]
+    | [
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question
+      ]
+    | [
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question
+      ]
+    | [
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question
+      ]
+    | [
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question,
+        Question
+      ];
   request_id: string;
   schema_version?: string;
   terminal_state: "generated" | "needs_review" | "blocked" | "failed";
@@ -968,6 +1291,166 @@ export interface ImageIssue {
     | "product_visibility";
   code: ImageIssueCode;
   suggestion: string;
+  [k: string]: unknown;
+}
+/**
+ * One plain question for the seller about a missing, conflicting or unverified fact (1.2.0).
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "Question".
+ */
+export interface Question {
+  /**
+   * @maxItems 20
+   */
+  evidence:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ];
+  kind: "missing_fact" | "conflicting_facts" | "unverified_declaration";
+  question: string;
+  reason: string;
+  /**
+   * @maxItems 6
+   */
+  suggestions:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string];
+  target_path: string;
   [k: string]: unknown;
 }
 /**

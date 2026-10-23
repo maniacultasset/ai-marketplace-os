@@ -1,0 +1,355 @@
+{
+  "marketplace": "amazon",
+  "category": "apparel",
+  "rules": [
+    {
+      "id": "00000001-0000-0000-0000-000000000001",
+      "tenant_id": null,
+      "marketplace": "amazon",
+      "category": null,
+      "field": "content.title",
+      "severity": "error",
+      "version": 1,
+      "enabled": true,
+      "rule_def": {
+        "message": "too long {limit}",
+        "suggestion": null,
+        "error_code": "FIELD_TOO_LONG",
+        "pack": "core",
+        "policy_ref": null,
+        "error_class": null,
+        "retry_class": null,
+        "type": "max_length",
+        "limit": 200,
+        "unit": "chars"
+      }
+    },
+    {
+      "id": "00000002-0000-0000-0000-000000000001",
+      "tenant_id": null,
+      "marketplace": "amazon",
+      "category": null,
+      "field": "content.title",
+      "severity": "error",
+      "version": 1,
+      "enabled": true,
+      "rule_def": {
+        "message": "too short {limit}",
+        "suggestion": null,
+        "error_code": "FIELD_TOO_SHORT",
+        "pack": "core",
+        "policy_ref": null,
+        "error_class": null,
+        "retry_class": null,
+        "type": "min_length",
+        "limit": 5,
+        "unit": "chars"
+      }
+    },
+    {
+      "id": "00000003-0000-0000-0000-000000000001",
+      "tenant_id": null,
+      "marketplace": "amazon",
+      "category": null,
+      "field": "content.title",
+      "severity": "error",
+      "version": 1,
+      "enabled": true,
+      "rule_def": {
+        "message": "bad {term}",
+        "suggestion": null,
+        "error_code": "BANNED_TERM",
+        "pack": "core",
+        "policy_ref": null,
+        "error_class": null,
+        "retry_class": null,
+        "type": "banned_terms",
+        "terms": [
+          "sale"
+        ],
+        "match": "word",
+        "case_sensitive": false
+      }
+    },
+    {
+      "id": "00000004-0000-0000-0000-000000000001",
+      "tenant_id": null,
+      "marketplace": "amazon",
+      "category": null,
+      "field": "attributes.fabric",
+      "severity": "error",
+      "version": 1,
+      "enabled": true,
+      "rule_def": {
+        "message": "need {attribute}",
+        "suggestion": null,
+        "error_code": "MISSING_ATTRIBUTE",
+        "pack": "core",
+        "policy_ref": null,
+        "error_class": null,
+        "retry_class": null,
+        "type": "required_attribute",
+        "attribute": "fabric",
+        "allowed_values": null
+      }
+    },
+    {
+      "id": "00000005-0000-0000-0000-000000000001",
+      "tenant_id": null,
+      "marketplace": "amazon",
+      "category": null,
+      "field": "content.bullets",
+      "severity": "error",
+      "version": 1,
+      "enabled": true,
+      "rule_def": {
+        "message": "max {limit}",
+        "suggestion": null,
+        "error_code": "FIELD_TOO_LONG",
+        "pack": "core",
+        "policy_ref": null,
+        "error_class": null,
+        "retry_class": null,
+        "type": "max_items",
+        "limit": 5,
+        "unique": false
+      }
+    },
+    {
+      "id": "00000006-0000-0000-0000-000000000001",
+      "tenant_id": null,
+      "marketplace": "amazon",
+      "category": null,
+      "field": "content.bullets",
+      "severity": "error",
+      "version": 1,
+      "enabled": true,
+      "rule_def": {
+        "message": "min {limit}",
+        "suggestion": null,
+        "error_code": "FIELD_TOO_SHORT",
+        "pack": "core",
+        "policy_ref": null,
+        "error_class": null,
+        "retry_class": null,
+        "type": "min_items",
+        "limit": 1
+      }
+    },
+    {
+      "id": "00000007-0000-0000-0000-000000000001",
+      "tenant_id": null,
+      "marketplace": "amazon",
+      "category": null,
+      "field": "attributes.color",
+      "severity": "error",
+      "version": 1,
+      "enabled": true,
+      "rule_def": {
+        "message": "bad",
+        "suggestion": null,
+        "error_code": "VALUE_NOT_ALLOWED",
+        "pack": "core",
+        "policy_ref": null,
+        "error_class": null,
+        "retry_class": null,
+        "type": "allowed_values",
+        "attribute": "color",
+        "source": "inline",
+        "values": [
+          "red"
+        ],
+        "normalize": "casefold_trim"
+      }
+    },
+    {
+      "id": "00000008-0000-0000-0000-000000000001",
+      "tenant_id": null,
+      "marketplace": "amazon",
+      "category": null,
+      "field": "attributes.size",
+      "severity": "error",
+      "version": 1,
+      "enabled": true,
+      "rule_def": {
+        "message": "need size",
+        "suggestion": null,
+        "error_code": "MISSING_ATTRIBUTE",
+        "pack": "core",
+        "policy_ref": null,
+        "error_class": null,
+        "retry_class": null,
+        "type": "conditional_required",
+        "attribute": "size",
+        "when": [
+          {
+            "path": "attributes.color",
+            "op": "present",
+            "value": null,
+            "values": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "00000009-0000-0000-0000-000000000001",
+      "tenant_id": null,
+      "marketplace": "amazon",
+      "category": null,
+      "field": "content.title",
+      "severity": "error",
+      "version": 1,
+      "enabled": true,
+      "rule_def": {
+        "message": "cross",
+        "suggestion": null,
+        "error_code": "CROSS_FIELD_MISMATCH",
+        "pack": "core",
+        "policy_ref": null,
+        "error_class": null,
+        "retry_class": null,
+        "type": "cross_field",
+        "name": "mrp",
+        "left": "facts.mrp",
+        "op": "lte",
+        "right": "attributes.price"
+      }
+    },
+    {
+      "id": "00000010-0000-0000-0000-000000000001",
+      "tenant_id": null,
+      "marketplace": "amazon",
+      "category": null,
+      "field": "content.description",
+      "severity": "error",
+      "version": 1,
+      "enabled": true,
+      "rule_def": {
+        "message": "claim",
+        "suggestion": null,
+        "error_code": "UNSUPPORTED_CLAIM",
+        "pack": "core",
+        "policy_ref": null,
+        "error_class": null,
+        "retry_class": null,
+        "type": "claim_requires_attribute",
+        "claim": "cotton",
+        "terms": [
+          "cotton"
+        ],
+        "match": "word",
+        "requires": {
+          "attribute": "fabric",
+          "any_of": null
+        }
+      }
+    },
+    {
+      "id": "00000011-0000-0000-0000-000000000001",
+      "tenant_id": null,
+      "marketplace": "amazon",
+      "category": null,
+      "field": "images",
+      "severity": "error",
+      "version": 1,
+      "enabled": true,
+      "rule_def": {
+        "message": "img",
+        "suggestion": null,
+        "error_code": "IMAGE_NON_COMPLIANT",
+        "pack": "core",
+        "policy_ref": null,
+        "error_class": null,
+        "retry_class": null,
+        "type": "image_requirement",
+        "slot": "main",
+        "check": "min_resolution",
+        "params": {
+          "min_px": 1000,
+          "max_px": null,
+          "ratio_w": null,
+          "ratio_h": null,
+          "min_fill": null,
+          "max_bytes": null,
+          "allowed_formats": [],
+          "rgb": null
+        },
+        "issue_code": "IMAGE_NON_COMPLIANT"
+      }
+    },
+    {
+      "id": "00000012-0000-0000-0000-000000000001",
+      "tenant_id": null,
+      "marketplace": "amazon",
+      "category": null,
+      "field": "content.title",
+      "severity": "error",
+      "version": 1,
+      "enabled": true,
+      "rule_def": {
+        "message": "pat",
+        "suggestion": null,
+        "error_code": "PATTERN_MISMATCH",
+        "pack": "core",
+        "policy_ref": null,
+        "error_class": null,
+        "retry_class": null,
+        "type": "pattern",
+        "name": "t",
+        "regex": "^A+$",
+        "must": "match",
+        "flags": []
+      }
+    },
+    {
+      "id": "00000013-0000-0000-0000-000000000001",
+      "tenant_id": null,
+      "marketplace": "amazon",
+      "category": null,
+      "field": "attributes.price",
+      "severity": "error",
+      "version": 1,
+      "enabled": true,
+      "rule_def": {
+        "message": "src",
+        "suggestion": null,
+        "error_code": "FACT_SOURCE_FORBIDDEN",
+        "pack": "core",
+        "policy_ref": null,
+        "error_class": null,
+        "retry_class": null,
+        "type": "fact_source",
+        "attribute": "mrp",
+        "forbidden_sources": [
+          "agent"
+        ],
+        "min_confidence": null,
+        "require_confirmation_if_agent_captured": false
+      }
+    },
+    {
+      "id": "00000014-0000-0000-0000-000000000001",
+      "tenant_id": null,
+      "marketplace": "amazon",
+      "category": null,
+      "field": "attributes.price",
+      "severity": "error",
+      "version": 1,
+      "enabled": true,
+      "rule_def": {
+        "message": "fb",
+        "suggestion": null,
+        "error_code": "FACT_MISMATCH",
+        "pack": "core",
+        "policy_ref": null,
+        "error_class": null,
+        "retry_class": null,
+        "type": "fact_backed_attribute",
+        "attribute": "price",
+        "compare": "normalized"
+      }
+    }
+  ],
+  "rules_version": 2,
+  "loaded_at": "2026-09-22T10:29:00Z"
+}

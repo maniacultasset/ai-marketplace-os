@@ -615,6 +615,18 @@
       },
       "CanonicalListing": {
         "properties": {
+          "attribute_sources": {
+            "maxProperties": 128,
+            "patternProperties": {
+              "^[a-z0-9_]{1,64}$": {
+                "maxLength": 192,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "title": "Attribute Sources",
+            "type": "object"
+          },
           "attributes": {
             "patternProperties": {
               "^[a-z0-9_]{1,64}$": {
@@ -647,6 +659,14 @@
             "pattern": "^[a-z0-9_]{2,64}$",
             "title": "Category",
             "type": "string"
+          },
+          "claims": {
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            },
+            "maxItems": 64,
+            "title": "Claims",
+            "type": "array"
           },
           "confidence_score": {
             "anyOf": [
@@ -725,7 +745,7 @@
             "type": "string"
           },
           "schema_version": {
-            "default": "1.1.0",
+            "default": "1.2.0",
             "title": "Schema Version",
             "type": "string"
           },
@@ -747,6 +767,44 @@
           "content"
         ],
         "title": "CanonicalListing",
+        "type": "object"
+      },
+      "Claim": {
+        "description": "A factual statement kept in the listing text, and the product facts behind it (1.2.0).",
+        "properties": {
+          "fact_keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fact Keys",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "supported",
+              "unsupported",
+              "removed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text_path": {
+            "title": "Text Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text_path",
+          "fact_keys",
+          "status"
+        ],
+        "title": "Claim",
         "type": "object"
       },
       "ConnectConfirmRequest": {
@@ -1031,6 +1089,16 @@
               }
             ]
           },
+          "gate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Gate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "marketplace": {
             "anyOf": [
               {
@@ -1192,7 +1260,7 @@
             "type": "boolean"
           },
           "schema_version": {
-            "default": "1.1.0",
+            "default": "1.2.0",
             "title": "Schema Version",
             "type": "string"
           },
@@ -1266,6 +1334,22 @@
           "rebuild_variation"
         ],
         "title": "FixAction",
+        "type": "string"
+      },
+      "Gate": {
+        "description": "The nine quality gates before submission (spec L1388-1424); schemas 1.2.0.",
+        "enum": [
+          "identity",
+          "classification",
+          "attributes",
+          "variants",
+          "media",
+          "content",
+          "compliance",
+          "commercial",
+          "submission"
+        ],
+        "title": "Gate",
         "type": "string"
       },
       "GenerateListingRequest": {
@@ -1537,7 +1621,7 @@
             "type": "string"
           },
           "schema_version": {
-            "default": "1.1.0",
+            "default": "1.2.0",
             "title": "Schema Version",
             "type": "string"
           },
@@ -1694,7 +1778,7 @@
             "type": "array"
           },
           "schema_version": {
-            "default": "1.1.0",
+            "default": "1.2.0",
             "title": "Schema Version",
             "type": "string"
           },
@@ -2217,7 +2301,7 @@
             "title": "Result Url"
           },
           "schema_version": {
-            "default": "1.1.0",
+            "default": "1.2.0",
             "title": "Schema Version",
             "type": "string"
           },
@@ -2974,7 +3058,7 @@
             "$ref": "#/components/schemas/ErrorReport"
           },
           "schema_version": {
-            "default": "1.1.0",
+            "default": "1.2.0",
             "title": "Schema Version",
             "type": "string"
           },
@@ -4821,7 +4905,7 @@
             "title": "Rules Version"
           },
           "schema_version": {
-            "default": "1.1.0",
+            "default": "1.2.0",
             "title": "Schema Version",
             "type": "string"
           },
@@ -4899,7 +4983,7 @@
             "title": "Request Id"
           },
           "schema_version": {
-            "default": "1.1.0",
+            "default": "1.2.0",
             "title": "Schema Version",
             "type": "string"
           },
@@ -4935,7 +5019,7 @@
   },
   "info": {
     "title": "AI Marketplace OS API",
-    "version": "1.1.0"
+    "version": "1.2.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -5055,7 +5139,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -5093,7 +5177,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -5131,7 +5215,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -5169,7 +5253,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -5216,7 +5300,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -5254,7 +5338,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -5302,7 +5386,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -5410,7 +5494,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -5448,7 +5532,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -5486,7 +5570,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -5524,7 +5608,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -5562,7 +5646,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -5600,7 +5684,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -5647,7 +5731,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -5685,7 +5769,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -5733,7 +5817,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -5834,7 +5918,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -5872,7 +5956,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -5910,7 +5994,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -5948,7 +6032,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -5986,7 +6070,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -6024,7 +6108,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -6071,7 +6155,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -6109,7 +6193,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -6157,7 +6241,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -6294,7 +6378,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -6332,7 +6416,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -6370,7 +6454,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -6417,7 +6501,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -6455,7 +6539,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -6503,7 +6587,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -6640,7 +6724,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -6678,7 +6762,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -6716,7 +6800,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -6763,7 +6847,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -6801,7 +6885,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -6849,7 +6933,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -6938,7 +7022,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -6976,7 +7060,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -7014,7 +7098,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -7061,7 +7145,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -7099,7 +7183,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -7147,7 +7231,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -7211,7 +7295,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -7249,7 +7333,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -7296,7 +7380,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -7334,7 +7418,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -7382,7 +7466,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -7458,7 +7542,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -7496,7 +7580,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -7534,7 +7618,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -7572,7 +7656,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -7620,7 +7704,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -7709,7 +7793,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -7747,7 +7831,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -7785,7 +7869,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -7832,7 +7916,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -7870,7 +7954,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -7918,7 +8002,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -8002,7 +8086,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -8040,7 +8124,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -8078,7 +8162,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -8116,7 +8200,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -8163,7 +8247,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -8201,7 +8285,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -8249,7 +8333,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -8366,7 +8450,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -8404,7 +8488,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -8442,7 +8526,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -8489,7 +8573,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -8527,7 +8611,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -8575,7 +8659,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -8669,7 +8753,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -8707,7 +8791,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -8745,7 +8829,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -8783,7 +8867,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -8821,7 +8905,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -8868,7 +8952,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -8906,7 +8990,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -8954,7 +9038,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -9025,7 +9109,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -9063,7 +9147,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -9101,7 +9185,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -9139,7 +9223,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -9177,7 +9261,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -9224,7 +9308,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -9262,7 +9346,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -9310,7 +9394,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -9406,7 +9490,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -9444,7 +9528,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -9482,7 +9566,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -9520,7 +9604,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -9558,7 +9642,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -9596,7 +9680,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -9643,7 +9727,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -9681,7 +9765,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -9729,7 +9813,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -9813,7 +9897,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -9851,7 +9935,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -9889,7 +9973,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -9927,7 +10011,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -9965,7 +10049,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -10012,7 +10096,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -10050,7 +10134,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -10098,7 +10182,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -10163,7 +10247,7 @@
                       "marketplace": "amazon",
                       "pass": true,
                       "processed_at": "2026-10-05T09:31:00Z",
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "slot": "main"
                     }
                   }
@@ -10198,7 +10282,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -10236,7 +10320,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -10274,7 +10358,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -10312,7 +10396,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -10359,7 +10443,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -10397,7 +10481,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -10445,7 +10529,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -10498,7 +10582,7 @@
                   "import_id": "0b1c2d3e-0000-4000-8000-000000000401",
                   "imported": 2,
                   "rows": [],
-                  "schema_version": "1.1.0",
+                  "schema_version": "1.2.0",
                   "total_rows": 3
                 },
                 "schema": {
@@ -10531,7 +10615,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -10569,7 +10653,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -10607,7 +10691,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -10645,7 +10729,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -10692,7 +10776,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -10730,7 +10814,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -10778,7 +10862,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -10933,7 +11017,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -10971,7 +11055,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -11009,7 +11093,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -11047,7 +11131,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -11094,7 +11178,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -11132,7 +11216,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -11180,7 +11264,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -11276,7 +11360,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -11314,7 +11398,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -11352,7 +11436,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -11390,7 +11474,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -11428,7 +11512,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -11466,7 +11550,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -11513,7 +11597,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -11551,7 +11635,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -11599,7 +11683,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -11811,7 +11895,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -11849,7 +11933,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -11887,7 +11971,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -11934,7 +12018,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -11972,7 +12056,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -12020,7 +12104,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -12134,7 +12218,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -12172,7 +12256,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -12210,7 +12294,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -12248,7 +12332,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -12286,7 +12370,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -12324,7 +12408,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -12371,7 +12455,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -12409,7 +12493,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -12457,7 +12541,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -12514,7 +12598,7 @@
                   "progress_pct": 40,
                   "queued_at": "2026-10-05T09:30:00Z",
                   "request_id": "req-example-0001",
-                  "schema_version": "1.1.0",
+                  "schema_version": "1.2.0",
                   "stage": "content_agent",
                   "started_at": "2026-10-05T09:31:00Z",
                   "status": "running"
@@ -12549,7 +12633,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -12587,7 +12671,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -12625,7 +12709,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -12663,7 +12747,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -12710,7 +12794,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -12748,7 +12832,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -12796,7 +12880,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -12866,7 +12950,7 @@
                   "progress_pct": 40,
                   "queued_at": "2026-10-05T09:30:00Z",
                   "request_id": "req-example-0001",
-                  "schema_version": "1.1.0",
+                  "schema_version": "1.2.0",
                   "started_at": "2026-10-05T09:31:00Z",
                   "status": "cancelled"
                 },
@@ -12900,7 +12984,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -12938,7 +13022,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -12976,7 +13060,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -13014,7 +13098,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -13052,7 +13136,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -13090,7 +13174,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -13137,7 +13221,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -13175,7 +13259,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -13223,7 +13307,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -13394,7 +13478,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -13432,7 +13516,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -13470,7 +13554,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -13517,7 +13601,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -13555,7 +13639,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -13603,7 +13687,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -13703,7 +13787,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -13741,7 +13825,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -13779,7 +13863,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -13817,7 +13901,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -13855,7 +13939,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -13893,7 +13977,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -13940,7 +14024,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -13978,7 +14062,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -14026,7 +14110,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -14123,7 +14207,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -14161,7 +14245,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -14199,7 +14283,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -14237,7 +14321,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -14275,7 +14359,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -14313,7 +14397,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -14360,7 +14444,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -14398,7 +14482,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -14446,7 +14530,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -14548,7 +14632,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -14586,7 +14670,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -14624,7 +14708,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -14662,7 +14746,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -14700,7 +14784,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -14738,7 +14822,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -14785,7 +14869,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -14823,7 +14907,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -14871,7 +14955,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -14923,7 +15007,7 @@
                   "listing_version_id": "0b1c2d3e-0000-4000-8000-000000000202",
                   "passed": false,
                   "request_id": "req-example-0001",
-                  "schema_version": "1.1.0",
+                  "schema_version": "1.2.0",
                   "stages": [
                     {
                       "attempt": 1,
@@ -14954,11 +15038,11 @@
                         "max_attempts": 3,
                         "request_id": "req-example-0001",
                         "retryable": true,
-                        "schema_version": "1.1.0",
+                        "schema_version": "1.2.0",
                         "status": "failed"
                       },
                       "rules_version": 3,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "source": "rules_engine",
                       "tenant_id": "0b1c2d3e-0000-4000-8000-000000000001"
                     }
@@ -14995,7 +15079,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -15033,7 +15117,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -15071,7 +15155,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -15109,7 +15193,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -15147,7 +15231,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -15194,7 +15278,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -15232,7 +15316,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -15280,7 +15364,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -15366,7 +15450,7 @@
                     "locale": "en-IN",
                     "marketplace": "amazon",
                     "product_id": "0b1c2d3e-0000-4000-8000-000000000101",
-                    "schema_version": "1.1.0",
+                    "schema_version": "1.2.0",
                     "status": "needs_review",
                     "version": 1
                   },
@@ -15385,7 +15469,7 @@
                     "listing_version_id": "0b1c2d3e-0000-4000-8000-000000000202",
                     "passed": false,
                     "request_id": "req-example-0001",
-                    "schema_version": "1.1.0",
+                    "schema_version": "1.2.0",
                     "stages": [
                       {
                         "attempt": 1,
@@ -15416,11 +15500,11 @@
                           "max_attempts": 3,
                           "request_id": "req-example-0001",
                           "retryable": true,
-                          "schema_version": "1.1.0",
+                          "schema_version": "1.2.0",
                           "status": "failed"
                         },
                         "rules_version": 3,
-                        "schema_version": "1.1.0",
+                        "schema_version": "1.2.0",
                         "source": "rules_engine",
                         "tenant_id": "0b1c2d3e-0000-4000-8000-000000000001"
                       }
@@ -15467,7 +15551,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -15505,7 +15589,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -15543,7 +15627,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -15581,7 +15665,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -15628,7 +15712,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -15666,7 +15750,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -15714,7 +15798,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -15822,7 +15906,7 @@
                     "locale": "en-IN",
                     "marketplace": "amazon",
                     "product_id": "0b1c2d3e-0000-4000-8000-000000000101",
-                    "schema_version": "1.1.0",
+                    "schema_version": "1.2.0",
                     "status": "needs_review",
                     "version": 1
                   },
@@ -15875,7 +15959,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -15913,7 +15997,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -15951,7 +16035,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -15989,7 +16073,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -16027,7 +16111,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -16065,7 +16149,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -16112,7 +16196,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -16150,7 +16234,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -16198,7 +16282,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -16334,7 +16418,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -16372,7 +16456,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -16410,7 +16494,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -16448,7 +16532,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -16495,7 +16579,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -16533,7 +16617,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -16581,7 +16665,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -16665,10 +16749,10 @@
                     "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
                     "max_attempts": 3,
                     "retryable": false,
-                    "schema_version": "1.1.0",
+                    "schema_version": "1.2.0",
                     "status": "passed"
                   },
-                  "schema_version": "1.1.0",
+                  "schema_version": "1.2.0",
                   "version": 1
                 },
                 "schema": {
@@ -16701,7 +16785,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -16739,7 +16823,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -16777,7 +16861,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -16815,7 +16899,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -16853,7 +16937,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -16900,7 +16984,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -16938,7 +17022,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -16986,7 +17070,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not implemented yet.",
@@ -17024,7 +17108,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -17121,7 +17205,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -17159,7 +17243,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -17197,7 +17281,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -17235,7 +17319,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -17273,7 +17357,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -17311,7 +17395,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -17358,7 +17442,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -17396,7 +17480,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -17444,7 +17528,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not implemented yet.",
@@ -17482,7 +17566,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -17579,7 +17663,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -17617,7 +17701,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -17655,7 +17739,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -17693,7 +17777,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -17731,7 +17815,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -17769,7 +17853,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -17816,7 +17900,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -17854,7 +17938,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -17902,7 +17986,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -18016,7 +18100,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -18054,7 +18138,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -18092,7 +18176,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -18130,7 +18214,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -18168,7 +18252,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -18206,7 +18290,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -18253,7 +18337,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -18291,7 +18375,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -18339,7 +18423,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -18423,7 +18507,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -18461,7 +18545,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -18499,7 +18583,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -18537,7 +18621,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -18584,7 +18668,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -18622,7 +18706,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -18670,7 +18754,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -18818,7 +18902,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -18856,7 +18940,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -18894,7 +18978,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -18932,7 +19016,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -18979,7 +19063,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -19017,7 +19101,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -19065,7 +19149,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -19183,7 +19267,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -19221,7 +19305,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -19259,7 +19343,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -19306,7 +19390,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -19344,7 +19428,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -19392,7 +19476,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -19478,7 +19562,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -19516,7 +19600,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -19554,7 +19638,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -19592,7 +19676,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -19630,7 +19714,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -19677,7 +19761,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -19715,7 +19799,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -19763,7 +19847,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -19842,7 +19926,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -19880,7 +19964,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -19918,7 +20002,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -19956,7 +20040,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -20003,7 +20087,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -20041,7 +20125,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -20089,7 +20173,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not implemented yet.",
@@ -20127,7 +20211,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -20211,7 +20295,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -20249,7 +20333,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -20287,7 +20371,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -20325,7 +20409,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -20363,7 +20447,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -20410,7 +20494,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -20448,7 +20532,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -20496,7 +20580,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not implemented yet.",
@@ -20534,7 +20618,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -20676,7 +20760,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -20714,7 +20798,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -20752,7 +20836,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -20799,7 +20883,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -20837,7 +20921,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -20885,7 +20969,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not implemented yet.",
@@ -20923,7 +21007,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The marketplace answered unexpectedly; try again.",
@@ -20961,7 +21045,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The marketplace is unavailable; try again.",
@@ -20999,7 +21083,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -21118,7 +21202,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -21156,7 +21240,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -21194,7 +21278,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -21232,7 +21316,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -21279,7 +21363,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -21317,7 +21401,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -21365,7 +21449,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -21460,7 +21544,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -21498,7 +21582,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -21536,7 +21620,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -21574,7 +21658,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -21612,7 +21696,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -21650,7 +21734,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -21697,7 +21781,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -21735,7 +21819,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -21783,7 +21867,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -21927,7 +22011,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -21965,7 +22049,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -22003,7 +22087,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -22050,7 +22134,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -22088,7 +22172,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -22136,7 +22220,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -22227,7 +22311,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -22265,7 +22349,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -22303,7 +22387,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -22341,7 +22425,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -22379,7 +22463,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -22417,7 +22501,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -22464,7 +22548,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -22502,7 +22586,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -22550,7 +22634,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -22646,7 +22730,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -22684,7 +22768,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -22722,7 +22806,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -22760,7 +22844,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -22798,7 +22882,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -22845,7 +22929,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -22883,7 +22967,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -22931,7 +23015,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -23026,7 +23110,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -23064,7 +23148,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -23102,7 +23186,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Not found.",
@@ -23140,7 +23224,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -23187,7 +23271,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -23225,7 +23309,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -23273,7 +23357,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -23426,7 +23510,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -23464,7 +23548,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -23502,7 +23586,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -23549,7 +23633,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -23587,7 +23671,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -23635,7 +23719,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -23710,11 +23794,11 @@
                     "max_attempts": 3,
                     "request_id": "req-example-0001",
                     "retryable": true,
-                    "schema_version": "1.1.0",
+                    "schema_version": "1.2.0",
                     "status": "failed"
                   },
                   "rules_version": 3,
-                  "schema_version": "1.1.0",
+                  "schema_version": "1.2.0",
                   "source": "rules_engine",
                   "tenant_id": "0b1c2d3e-0000-4000-8000-000000000001"
                 },
@@ -23748,7 +23832,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -23786,7 +23870,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -23824,7 +23908,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -23862,7 +23946,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -23909,7 +23993,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -23947,7 +24031,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -23995,7 +24079,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -24075,7 +24159,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -24113,7 +24197,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -24160,7 +24244,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -24198,7 +24282,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -24246,7 +24330,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -24323,7 +24407,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -24361,7 +24445,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -24399,7 +24483,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -24446,7 +24530,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -24484,7 +24568,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -24532,7 +24616,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -24669,7 +24753,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -24707,7 +24791,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -24745,7 +24829,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -24792,7 +24876,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -24830,7 +24914,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -24878,7 +24962,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -24966,7 +25050,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -25004,7 +25088,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -25042,7 +25126,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -25080,7 +25164,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -25128,7 +25212,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",
@@ -25239,7 +25323,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request could not be parsed.",
@@ -25277,7 +25361,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Authentication required.",
@@ -25315,7 +25399,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Permission denied.",
@@ -25353,7 +25437,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "The request conflicts with the current state.",
@@ -25391,7 +25475,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request body too large.",
@@ -25438,7 +25522,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Request validation failed.",
@@ -25476,7 +25560,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": true,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Too many requests.",
@@ -25524,7 +25608,7 @@
                       "max_attempts": 3,
                       "request_id": "req-example-0001",
                       "retryable": false,
-                      "schema_version": "1.1.0",
+                      "schema_version": "1.2.0",
                       "status": "failed"
                     },
                     "message": "Internal server error.",

@@ -164,7 +164,11 @@ def test_rules_load_row_from_an_older_schema_is_unchanged(
     assert run(capsys, "--file", str(path))[0] == 0
     stored = rule()["rule_def"]
     assert stored["suggestion"] is None and stored["policy_ref"]["url"] is None
-    drop_rule_def_keys(superuser_conn, RULE_ID, "suggestion", "retry_class", "policy_ref.url")
+    # `gate` (schemas 1.2.0) is missing from every rule loaded before 1.2.0, prod R1 included.
+    assert stored["gate"] is None
+    drop_rule_def_keys(
+        superuser_conn, RULE_ID, "suggestion", "retry_class", "gate", "policy_ref.url"
+    )
     before = rows(superuser_conn), len(audits(superuser_conn))
     assert run(capsys, "--file", str(path)) == (
         0, "rules load: ok (0 inserted, 1 unchanged, 0 toggled)\n", ""

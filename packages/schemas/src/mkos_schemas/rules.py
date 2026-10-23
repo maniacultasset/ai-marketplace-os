@@ -13,7 +13,7 @@ from pydantic import AwareDatetime, Field, field_validator, model_validator
 
 from .base import AttrKey, NonBlankStr, Slug, StrictModel, WireModel
 from .codes import ErrorCode
-from .enums import ErrorClass, Marketplace, RetryClass, Severity
+from .enums import ErrorClass, Gate, Marketplace, RetryClass, Severity
 from .paths import is_valid_condition_path, is_valid_field_path, is_valid_rule_field
 
 RuleTerm = Annotated[NonBlankStr, Field(max_length=256)]
@@ -232,6 +232,7 @@ class _RuleBase(WireModel):
     policy_ref: PolicyRef | None = None
     error_class: ErrorClass | None = None
     retry_class: RetryClass | None = None
+    gate: Gate | None = None  # 1.2.0: the engine copies it onto each ErrorItem
 
     @field_validator("message")
     @classmethod

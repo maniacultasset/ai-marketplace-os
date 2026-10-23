@@ -45,7 +45,9 @@ TOKEN_KEYS = frozenset({"access_token", "refresh_token"})
 # The rules dry-run body carries the seam's CanonicalListing (CANON.md:122: every seam model is a
 # WireModel, `extra="ignore"`, so a newer peer's keys are dropped, never stored). The dry-run
 # writes nothing, and its own request model forbids extra keys at the top level.
-SEAM_MODELS = frozenset({"CanonicalListing", "ImageRef", "ListingContent", "ListingKeywords"})
+SEAM_MODELS = frozenset(
+    {"CanonicalListing", "Claim", "ImageRef", "ListingContent", "ListingKeywords"}
+)
 TOKEN_OPS = frozenset({"auth_login", "auth_refresh", "auth_switch_tenant"})
 
 

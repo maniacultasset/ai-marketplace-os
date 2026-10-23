@@ -22,6 +22,17 @@
           "$ref": "#/$defs/ErrorCode",
           "default": "VALUE_NOT_ALLOWED"
         },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "message": {
           "maxLength": 1000,
           "minLength": 1,
@@ -234,6 +245,17 @@
           "$ref": "#/$defs/ErrorCode",
           "default": "BANNED_TERM"
         },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "match": {
           "default": "word",
           "enum": [
@@ -319,6 +341,18 @@
     },
     "CanonicalListing": {
       "properties": {
+        "attribute_sources": {
+          "maxProperties": 128,
+          "patternProperties": {
+            "^[a-z0-9_]{1,64}$": {
+              "maxLength": 192,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "title": "Attribute Sources",
+          "type": "object"
+        },
         "attributes": {
           "patternProperties": {
             "^[a-z0-9_]{1,64}$": {
@@ -351,6 +385,14 @@
           "pattern": "^[a-z0-9_]{2,64}$",
           "title": "Category",
           "type": "string"
+        },
+        "claims": {
+          "items": {
+            "$ref": "#/$defs/Claim"
+          },
+          "maxItems": 64,
+          "title": "Claims",
+          "type": "array"
         },
         "confidence_score": {
           "anyOf": [
@@ -433,7 +475,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "1.1.0",
+          "default": "1.2.0",
           "title": "Schema Version",
           "type": "string"
         },
@@ -539,6 +581,44 @@
       "title": "CategoryTemplate",
       "type": "object"
     },
+    "Claim": {
+      "description": "A factual statement kept in the listing text, and the product facts behind it (1.2.0).",
+      "properties": {
+        "fact_keys": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Fact Keys",
+          "type": "array"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "supported",
+            "unsupported",
+            "removed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "text_path": {
+          "title": "Text Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text_path",
+        "fact_keys",
+        "status"
+      ],
+      "title": "Claim",
+      "type": "object"
+    },
     "ClaimRequirement": {
       "description": "What a claim needs (DATABASE.md claim_requires_attribute row): the attribute must be\npresent and, when ``any_of`` is set, hold one of those values (``organic`` \u2192 certifications\nany_of ``gots``).",
       "properties": {
@@ -594,6 +674,17 @@
         "error_code": {
           "$ref": "#/$defs/ErrorCode",
           "default": "UNSUPPORTED_CLAIM"
+        },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "match": {
           "default": "word",
@@ -779,6 +870,17 @@
           "$ref": "#/$defs/ErrorCode",
           "default": "MISSING_ATTRIBUTE"
         },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "message": {
           "maxLength": 1000,
           "minLength": 1,
@@ -851,6 +953,57 @@
       "title": "ConditionalRequired",
       "type": "object"
     },
+    "ContextImage": {
+      "description": "One product or label image the pipeline may look at (1.2.0).\n\nNot `ImageRef`: that type belongs to the publishable listing and refuses `packaging_label`, and\nthe label must still reach the extractor. Only base64 bytes for now; no URL field.",
+      "properties": {
+        "colourway_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Colourway Id"
+        },
+        "data_b64": {
+          "title": "Data B64",
+          "type": "string"
+        },
+        "height": {
+          "maximum": 1024,
+          "minimum": 1,
+          "title": "Height",
+          "type": "integer"
+        },
+        "image_id": {
+          "format": "uuid",
+          "title": "Image Id",
+          "type": "string"
+        },
+        "slot": {
+          "$ref": "#/$defs/ImageSlot"
+        },
+        "width": {
+          "maximum": 1024,
+          "minimum": 1,
+          "title": "Width",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "image_id",
+        "slot",
+        "width",
+        "height",
+        "data_b64"
+      ],
+      "title": "ContextImage",
+      "type": "object"
+    },
     "CrossField": {
       "properties": {
         "error_class": {
@@ -867,6 +1020,17 @@
         "error_code": {
           "$ref": "#/$defs/ErrorCode",
           "default": "CROSS_FIELD_MISMATCH"
+        },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "left": {
           "title": "Left",
@@ -1096,6 +1260,17 @@
           "$ref": "#/$defs/ErrorCode",
           "default": "FACT_MISMATCH"
         },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "message": {
           "maxLength": 1000,
           "minLength": 1,
@@ -1158,6 +1333,29 @@
       "title": "FactBackedAttribute",
       "type": "object"
     },
+    "FactConflict": {
+      "description": "Sources that disagree on one product key (1.2.0); the pipeline phrases a question.",
+      "properties": {
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "$ref": "#/$defs/ObservedValue"
+          },
+          "minItems": 2,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "values"
+      ],
+      "title": "FactConflict",
+      "type": "object"
+    },
     "FactSource": {
       "properties": {
         "attribute": {
@@ -1194,6 +1392,17 @@
           },
           "title": "Forbidden Sources",
           "type": "array"
+        },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "message": {
           "maxLength": 1000,
@@ -1277,6 +1486,22 @@
       "title": "FactSource",
       "type": "object"
     },
+    "Gate": {
+      "description": "The nine quality gates before submission (spec L1388-1424); schemas 1.2.0.",
+      "enum": [
+        "identity",
+        "classification",
+        "attributes",
+        "variants",
+        "media",
+        "content",
+        "compliance",
+        "commercial",
+        "submission"
+      ],
+      "title": "Gate",
+      "type": "string"
+    },
     "ImageRef": {
       "properties": {
         "image_id": {
@@ -1334,6 +1559,17 @@
         "error_code": {
           "$ref": "#/$defs/ErrorCode",
           "default": "IMAGE_NON_COMPLIANT"
+        },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "issue_code": {
           "$ref": "#/$defs/ErrorCode",
@@ -1652,6 +1888,17 @@
           "$ref": "#/$defs/ErrorCode",
           "default": "FIELD_TOO_LONG"
         },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "limit": {
           "exclusiveMinimum": 0,
           "title": "Limit",
@@ -1740,6 +1987,17 @@
         "error_code": {
           "$ref": "#/$defs/ErrorCode",
           "default": "FIELD_TOO_LONG"
+        },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "limit": {
           "exclusiveMinimum": 0,
@@ -1835,6 +2093,17 @@
           "$ref": "#/$defs/ErrorCode",
           "default": "FIELD_TOO_SHORT"
         },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "limit": {
           "exclusiveMinimum": 0,
           "title": "Limit",
@@ -1919,6 +2188,17 @@
           "$ref": "#/$defs/ErrorCode",
           "default": "FIELD_TOO_SHORT"
         },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "limit": {
           "exclusiveMinimum": 0,
           "title": "Limit",
@@ -1996,6 +2276,49 @@
       "title": "MinLength",
       "type": "object"
     },
+    "ObservedValue": {
+      "description": "One value a source gave for a fact the conflict scan found disagreeing (1.2.0).",
+      "properties": {
+        "evidence_ref": {
+          "title": "Evidence Ref",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": [
+        "source",
+        "value",
+        "evidence_ref"
+      ],
+      "title": "ObservedValue",
+      "type": "object"
+    },
     "Pattern": {
       "properties": {
         "error_class": {
@@ -2020,6 +2343,17 @@
           },
           "title": "Flags",
           "type": "array"
+        },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "message": {
           "maxLength": 1000,
@@ -2166,6 +2500,39 @@
       "title": "PolicyRef",
       "type": "object"
     },
+    "Provenance": {
+      "description": "Where one product value came from (1.2.0). Absent: treat the value as seller-confirmed.",
+      "properties": {
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Confidence"
+        },
+        "confirmed": {
+          "title": "Confirmed",
+          "type": "boolean"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "confidence",
+        "confirmed"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
     "RequiredAttribute": {
       "properties": {
         "allowed_values": {
@@ -2202,6 +2569,17 @@
         "error_code": {
           "$ref": "#/$defs/ErrorCode",
           "default": "MISSING_ATTRIBUTE"
+        },
+        "gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "message": {
           "maxLength": 1000,
@@ -2456,6 +2834,13 @@
   },
   "$id": "https://schemas.mkos.internal/GenerationContext.schema.json",
   "properties": {
+    "answered_keys": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Answered Keys",
+      "type": "array"
+    },
     "brand_profile": {
       "additionalProperties": true,
       "title": "Brand Profile",
@@ -2468,6 +2853,21 @@
     },
     "category_template": {
       "$ref": "#/$defs/CategoryTemplate"
+    },
+    "conflicts": {
+      "items": {
+        "$ref": "#/$defs/FactConflict"
+      },
+      "title": "Conflicts",
+      "type": "array"
+    },
+    "images": {
+      "items": {
+        "$ref": "#/$defs/ContextImage"
+      },
+      "maxItems": 7,
+      "title": "Images",
+      "type": "array"
     },
     "job_id": {
       "format": "uuid",
@@ -2519,6 +2919,13 @@
       "title": "Product Id",
       "type": "string"
     },
+    "product_provenance": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Provenance"
+      },
+      "title": "Product Provenance",
+      "type": "object"
+    },
     "request_id": {
       "maxLength": 128,
       "minLength": 1,
@@ -2535,7 +2942,7 @@
       "type": "array"
     },
     "schema_version": {
-      "default": "1.1.0",
+      "default": "1.2.0",
       "title": "Schema Version",
       "type": "string"
     },

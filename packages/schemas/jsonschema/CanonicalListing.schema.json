@@ -1,5 +1,43 @@
 {
   "$defs": {
+    "Claim": {
+      "description": "A factual statement kept in the listing text, and the product facts behind it (1.2.0).",
+      "properties": {
+        "fact_keys": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Fact Keys",
+          "type": "array"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "supported",
+            "unsupported",
+            "removed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "text_path": {
+          "title": "Text Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text_path",
+        "fact_keys",
+        "status"
+      ],
+      "title": "Claim",
+      "type": "object"
+    },
     "ImageRef": {
       "properties": {
         "image_id": {
@@ -120,6 +158,18 @@
   },
   "$id": "https://schemas.mkos.internal/CanonicalListing.schema.json",
   "properties": {
+    "attribute_sources": {
+      "maxProperties": 128,
+      "patternProperties": {
+        "^[a-z0-9_]{1,64}$": {
+          "maxLength": 192,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "title": "Attribute Sources",
+      "type": "object"
+    },
     "attributes": {
       "patternProperties": {
         "^[a-z0-9_]{1,64}$": {
@@ -152,6 +202,14 @@
       "pattern": "^[a-z0-9_]{2,64}$",
       "title": "Category",
       "type": "string"
+    },
+    "claims": {
+      "items": {
+        "$ref": "#/$defs/Claim"
+      },
+      "maxItems": 64,
+      "title": "Claims",
+      "type": "array"
     },
     "confidence_score": {
       "anyOf": [
@@ -234,7 +292,7 @@
       "type": "string"
     },
     "schema_version": {
-      "default": "1.1.0",
+      "default": "1.2.0",
       "title": "Schema Version",
       "type": "string"
     },

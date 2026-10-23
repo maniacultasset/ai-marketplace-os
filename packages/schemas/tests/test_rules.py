@@ -11,7 +11,7 @@ from uuid import UUID
 
 import pytest
 from mkos_schemas.codes import ErrorCode
-from mkos_schemas.enums import Marketplace
+from mkos_schemas.enums import Gate, Marketplace
 from mkos_schemas.rules import (
     PLACEHOLDERS,
     AllowedValues,
@@ -597,3 +597,14 @@ def test_tenant_rules_limited_to_brand_types() -> None:
             _rule(tenant_id=_TENANT, rule_def=rule_def)
         if rule_def["type"] != "banned_terms":
             _rule(rule_def=rule_def)
+
+
+def test_every_rule_type_takes_an_optional_gate() -> None:
+    plain = _rule()
+    assert plain.rule_def.gate is None
+    gated = _rule(rule_def={"type": "max_length", "message": "m", "limit": 200, "gate": "content"})
+    assert gated.rule_def.gate is Gate.CONTENT
+    for member in get_args(get_args(RuleDef)[0]):
+        assert "gate" in member.model_fields, member.__name__
+    with pytest.raises(ValidationError):
+        _rule(rule_def={"type": "max_length", "message": "m", "limit": 200, "gate": "price"})

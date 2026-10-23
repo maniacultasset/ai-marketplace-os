@@ -1,28 +1,31 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "request_id": "req-golden-1",
   "job_id": "44444444-4444-4444-4444-444444444444",
   "tenant_id": "11111111-1111-1111-1111-111111111111",
   "product_id": "4e8a1b30-77cc-41d9-8f02-5b9c1de3a004",
   "listing_id": "9c1d2f6a-3b84-4f21-9a55-0c6f8b2e77d1",
   "marketplace": "amazon",
-  "category": "apparel",
+  "category": "ethnic_wear_kurta_sets",
   "product": {
-    "title": "Sample"
+    "title": "Sample",
+    "attributes": {
+      "sleeve_length": "three_quarter"
+    }
   },
   "brand_profile": {
     "tone": "warm"
   },
   "marketplace_rules": {
     "marketplace": "amazon",
-    "category": "apparel",
+    "category": "ethnic_wear_kurta_sets",
     "rules": [],
     "rules_version": 1,
     "loaded_at": "2026-09-22T10:29:00Z"
   },
   "category_template": {
     "marketplace": "amazon",
-    "category": "apparel",
+    "category": "ethnic_wear_kurta_sets",
     "external_category_id": null,
     "required_attributes": [],
     "optional_attributes": [],
@@ -35,5 +38,55 @@
   "user_instructions": null,
   "max_attempts": 3,
   "locale": "en-IN",
-  "review_feedback": []
+  "review_feedback": [],
+  "product_provenance": {
+    "attributes.color": {
+      "source": "seller",
+      "confidence": null,
+      "confirmed": true
+    },
+    "attributes.neckline": {
+      "source": "ai",
+      "confidence": 0.82,
+      "confirmed": false
+    }
+  },
+  "conflicts": [
+    {
+      "key": "attributes.color",
+      "values": [
+        {
+          "source": "import",
+          "value": "navy blue",
+          "evidence_ref": "import_row:42"
+        },
+        {
+          "source": "document",
+          "value": "indigo",
+          "evidence_ref": "image:6f1d2c3b-8a9e-4b70-9c55-2e4f6a8b0d13"
+        }
+      ]
+    }
+  ],
+  "answered_keys": [
+    "attributes.sleeve_length"
+  ],
+  "images": [
+    {
+      "image_id": "6f1d2c3b-8a9e-4b70-9c55-2e4f6a8b0d11",
+      "slot": "main",
+      "colourway_id": null,
+      "width": 8,
+      "height": 8,
+      "data_b64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/wAALCAAIAAgBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAABv/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AJv/Z"
+    },
+    {
+      "image_id": "6f1d2c3b-8a9e-4b70-9c55-2e4f6a8b0d13",
+      "slot": "packaging_label",
+      "colourway_id": null,
+      "width": 8,
+      "height": 8,
+      "data_b64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/wAALCAAIAAgBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAABv/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AcP/Z"
+    }
+  ]
 }

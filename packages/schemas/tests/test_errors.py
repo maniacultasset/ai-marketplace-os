@@ -9,7 +9,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from mkos_schemas.codes import ErrorCode
-from mkos_schemas.enums import ErrorSource, FixAction, RetryClass, Severity
+from mkos_schemas.enums import ErrorSource, FixAction, Gate, RetryClass, Severity
 from mkos_schemas.errors import MAX_ERROR_ITEMS, VALUE_SUBMITTED_MAX, ErrorItem, ErrorReport
 from pydantic import ValidationError
 
@@ -215,3 +215,30 @@ def test_error_report_errors_list_cap() -> None:
         ErrorReport.model_validate(
             {"status": "failed", "errors": [one] * (MAX_ERROR_ITEMS + 1), "attempts_used": 0}
         )
+
+
+def test_error_item_gate_is_optional_and_closed() -> None:
+    assert _item().gate is None
+    assert _item(gate="attributes").gate is Gate.ATTRIBUTES
+    assert _item(gate="media").model_dump(mode="json")["gate"] == "media"
+    with pytest.raises(ValidationError):
+        _item(gate="pricing")
+
+
+def test_error_report_from_1_1_0_without_gate_still_parses() -> None:
+    report = ErrorReport.model_validate(
+        {
+            "schema_version": "1.1.0",
+            "status": "failed",
+            "errors": [
+                {
+                    "field": "content.title",
+                    "error_code": "FIELD_TOO_LONG",
+                    "message": "Title too long",
+                    "source": "rules_engine",
+                    "retryable": True,
+                }
+            ],
+        }
+    )
+    assert report.errors[0].gate is None

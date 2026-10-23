@@ -11,6 +11,7 @@ from mkos_schemas.enums import (
     ErrorClass,
     ErrorSource,
     FixAction,
+    Gate,
     ImageSlot,
     ItemMarketplaceState,
     JobKind,
@@ -169,6 +170,7 @@ def test_vocabulary_values_are_lowercase() -> None:
         ErrorClass,
         RetryClass,
         FixAction,
+        Gate,
         MarketplaceState,
         ItemMarketplaceState,
         JobKind,
@@ -180,3 +182,19 @@ def test_vocabulary_values_are_lowercase() -> None:
 def test_publishable_slots_exclude_packaging_label() -> None:
     assert ImageSlot.PACKAGING_LABEL not in PUBLISHABLE_SLOTS
     assert len(PUBLISHABLE_SLOTS) == len(ImageSlot) - 1
+
+
+def test_gate_is_the_nine_quality_gates_in_spec_order() -> None:
+    # Spec "Quality Gates Before Submission" (docs/source/system-arch-llms-full.txt L1388-1424);
+    # a closed set, so it is complete in 1.2.0 (docs/RULES.md §11).
+    assert [g.value for g in Gate] == [
+        "identity",
+        "classification",
+        "attributes",
+        "variants",
+        "media",
+        "content",
+        "compliance",
+        "commercial",
+        "submission",
+    ]

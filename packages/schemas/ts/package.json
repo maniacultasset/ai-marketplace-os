@@ -1,6 +1,6 @@
 {
   "name": "@maniacultasset/schemas",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "AI Marketplace OS contract types: the /api/v1 OpenAPI surface and the shared JSON Schemas. Install as \"@mkos/schemas\": \"npm:@maniacultasset/schemas@<version>\".",
   "license": "UNLICENSED",
   "private": false,
