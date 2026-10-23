@@ -425,6 +425,25 @@ def test_prove_gates_has_s9_legs(repo_root: Path) -> None:
     assert "ISO_DATABASE_URL=postgresql+psycopg://postgres:postgres@" in superuser.group(0)
 
 
+def test_bootstrap_image_migrate_leg_runs_twice_and_loads_nothing_new(repo_root: Path) -> None:
+    """The migrate job's path through the image runs twice after the host seed. The seed already
+    wrote every platform rule and template from the same files, so each run must print each
+    loader's no-op line: a drift between the shipped files and the seeded rows fails here."""
+    text = _code((repo_root / "scripts" / "ci" / "bootstrap.sh").read_text(encoding="utf-8"))
+    assert text.count("APP_ROLE=migrate") == 1
+    leg = text[text.rindex("for migrate_pass in 1 2; do") : text.index("APP_ROLE=seed")]
+    assert "APP_ROLE=migrate" in leg
+    for line in (
+        "migrate: ok (",
+        "dictionary sync: ok (",
+        # whole-line patterns: each loader's own no-op counts, never another line's
+        r"'^rules load: ok \(0 inserted, [0-9]+ unchanged, 0 toggled\)$'",
+        r"'^templates load: ok \(0 inserted, [0-9]+ unchanged, 0 promoted\)$'",
+    ):
+        assert line in leg, line
+    assert 'grep -Eq -- "$want_line"' in leg
+
+
 def test_bootstrap_seeds_after_migrate(repo_root: Path) -> None:
     """S9 T21 (A§7): the host seed runs after Alembic and before the API starts; the image's
     seed role runs after its migrate role and before the Cloud SQL mimic."""

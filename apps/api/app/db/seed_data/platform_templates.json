@@ -1,0 +1,837 @@
+[
+  {
+    "version": 2,
+    "product_type": "KURTA",
+    "template": {
+      "marketplace": "amazon",
+      "category": "ethnic_wear_kurta_sets",
+      "external_category_id": null,
+      "required_attributes": [
+        "color",
+        "fabric_type"
+      ],
+      "optional_attributes": [
+        "country_of_origin",
+        "fit",
+        "kurta_type",
+        "neckline",
+        "number_of_pieces",
+        "pattern",
+        "size",
+        "sleeve_length"
+      ],
+      "conditional_attributes": [],
+      "unsupported_attributes": [],
+      "specs": {
+        "color": {
+          "requirement": "required",
+          "marketplace_field": "color",
+          "value_type": "enum",
+          "allowed_values": [
+            "Black",
+            "Blue",
+            "Green",
+            "Grey",
+            "Indigo",
+            "Maroon",
+            "Navy",
+            "Pink",
+            "Red",
+            "White",
+            "Yellow"
+          ],
+          "value_map": {
+            "navy blue": "Navy",
+            "dark blue": "Navy",
+            "wine": "Maroon",
+            "burgundy": "Maroon",
+            "off white": "White",
+            "gray": "Grey"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "fabric_type": {
+          "requirement": "required",
+          "marketplace_field": "fabric_type",
+          "value_type": "enum",
+          "allowed_values": [
+            "Cotton",
+            "Linen",
+            "Organic Cotton",
+            "Polyester",
+            "Rayon",
+            "Silk",
+            "Viscose"
+          ],
+          "value_map": {
+            "organic cotton blend": "Organic Cotton",
+            "poly": "Polyester"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "size": {
+          "requirement": "optional",
+          "marketplace_field": "size",
+          "value_type": "enum",
+          "allowed_values": [
+            "XS",
+            "S",
+            "M",
+            "L",
+            "XL",
+            "XXL",
+            "3XL"
+          ],
+          "value_map": {
+            "small": "S",
+            "medium": "M",
+            "large": "L",
+            "2xl": "XXL",
+            "xxxl": "3XL"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "sleeve_length": {
+          "requirement": "optional",
+          "marketplace_field": "sleeve_length_description",
+          "value_type": "enum",
+          "allowed_values": [
+            "Long Sleeve",
+            "Short Sleeve",
+            "Sleeveless",
+            "Three-Quarter Sleeve"
+          ],
+          "value_map": {
+            "long": "Long Sleeve",
+            "full": "Long Sleeve",
+            "short": "Short Sleeve",
+            "half": "Short Sleeve",
+            "sleeveless": "Sleeveless",
+            "three_quarter": "Three-Quarter Sleeve",
+            "3/4": "Three-Quarter Sleeve"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "fit": {
+          "requirement": "optional",
+          "marketplace_field": "fit_type",
+          "value_type": "enum",
+          "allowed_values": [
+            "Regular",
+            "Relaxed",
+            "Slim"
+          ],
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "neckline": {
+          "requirement": "optional",
+          "marketplace_field": "neck_style",
+          "value_type": "enum",
+          "allowed_values": [
+            "Crew Neck",
+            "Mandarin Collar",
+            "Polo Collar",
+            "Round Neck",
+            "V-Neck"
+          ],
+          "value_map": {
+            "round": "Round Neck",
+            "crew": "Crew Neck",
+            "v_neck": "V-Neck",
+            "v neck": "V-Neck"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "pattern": {
+          "requirement": "optional",
+          "marketplace_field": "pattern",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "country_of_origin": {
+          "requirement": "optional",
+          "marketplace_field": "country_of_origin",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "number_of_pieces": {
+          "requirement": "optional",
+          "marketplace_field": "number_of_items",
+          "value_type": "number",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "kurta_type": {
+          "requirement": "optional",
+          "marketplace_field": "style",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        }
+      },
+      "variation_themes": [
+        [
+          "size"
+        ],
+        [
+          "color"
+        ],
+        [
+          "size",
+          "color"
+        ]
+      ]
+    }
+  },
+  {
+    "version": 1,
+    "product_type": "SHIRT",
+    "template": {
+      "marketplace": "amazon",
+      "category": "tshirts",
+      "external_category_id": null,
+      "required_attributes": [
+        "color",
+        "fabric_type"
+      ],
+      "optional_attributes": [
+        "country_of_origin",
+        "fit",
+        "neckline",
+        "number_of_pieces",
+        "pattern",
+        "product_weight",
+        "size",
+        "sleeve_length"
+      ],
+      "conditional_attributes": [],
+      "unsupported_attributes": [],
+      "specs": {
+        "color": {
+          "requirement": "required",
+          "marketplace_field": "color",
+          "value_type": "enum",
+          "allowed_values": [
+            "Black",
+            "Blue",
+            "Green",
+            "Grey",
+            "Indigo",
+            "Maroon",
+            "Navy",
+            "Pink",
+            "Red",
+            "White",
+            "Yellow"
+          ],
+          "value_map": {
+            "navy blue": "Navy",
+            "dark blue": "Navy",
+            "wine": "Maroon",
+            "burgundy": "Maroon",
+            "off white": "White",
+            "gray": "Grey"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "fabric_type": {
+          "requirement": "required",
+          "marketplace_field": "fabric_type",
+          "value_type": "enum",
+          "allowed_values": [
+            "Cotton",
+            "Linen",
+            "Organic Cotton",
+            "Polyester",
+            "Rayon",
+            "Silk",
+            "Viscose"
+          ],
+          "value_map": {
+            "organic cotton blend": "Organic Cotton",
+            "poly": "Polyester"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "size": {
+          "requirement": "optional",
+          "marketplace_field": "size",
+          "value_type": "enum",
+          "allowed_values": [
+            "XS",
+            "S",
+            "M",
+            "L",
+            "XL",
+            "XXL",
+            "3XL"
+          ],
+          "value_map": {
+            "small": "S",
+            "medium": "M",
+            "large": "L",
+            "2xl": "XXL",
+            "xxxl": "3XL"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "sleeve_length": {
+          "requirement": "optional",
+          "marketplace_field": "sleeve_length_description",
+          "value_type": "enum",
+          "allowed_values": [
+            "Long Sleeve",
+            "Short Sleeve",
+            "Sleeveless",
+            "Three-Quarter Sleeve"
+          ],
+          "value_map": {
+            "long": "Long Sleeve",
+            "full": "Long Sleeve",
+            "short": "Short Sleeve",
+            "half": "Short Sleeve",
+            "sleeveless": "Sleeveless",
+            "three_quarter": "Three-Quarter Sleeve",
+            "3/4": "Three-Quarter Sleeve"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "fit": {
+          "requirement": "optional",
+          "marketplace_field": "fit_type",
+          "value_type": "enum",
+          "allowed_values": [
+            "Regular",
+            "Relaxed",
+            "Slim"
+          ],
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "neckline": {
+          "requirement": "optional",
+          "marketplace_field": "neck_style",
+          "value_type": "enum",
+          "allowed_values": [
+            "Crew Neck",
+            "Mandarin Collar",
+            "Polo Collar",
+            "Round Neck",
+            "V-Neck"
+          ],
+          "value_map": {
+            "round": "Round Neck",
+            "crew": "Crew Neck",
+            "v_neck": "V-Neck",
+            "v neck": "V-Neck"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "pattern": {
+          "requirement": "optional",
+          "marketplace_field": "pattern",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "country_of_origin": {
+          "requirement": "optional",
+          "marketplace_field": "country_of_origin",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "number_of_pieces": {
+          "requirement": "optional",
+          "marketplace_field": "number_of_items",
+          "value_type": "number",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "product_weight": {
+          "requirement": "optional",
+          "marketplace_field": "item_weight",
+          "value_type": "measurement",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": "grams",
+          "when": []
+        }
+      },
+      "variation_themes": [
+        [
+          "size"
+        ],
+        [
+          "color"
+        ],
+        [
+          "size",
+          "color"
+        ]
+      ]
+    }
+  },
+  {
+    "version": 2,
+    "product_type": "kurta",
+    "template": {
+      "marketplace": "flipkart",
+      "category": "ethnic_wear_kurta_sets",
+      "external_category_id": null,
+      "required_attributes": [
+        "color",
+        "fabric_type"
+      ],
+      "optional_attributes": [
+        "country_of_origin",
+        "fit",
+        "kurta_type",
+        "neckline",
+        "number_of_pieces",
+        "pattern",
+        "size",
+        "sleeve_length"
+      ],
+      "conditional_attributes": [],
+      "unsupported_attributes": [],
+      "specs": {
+        "color": {
+          "requirement": "required",
+          "marketplace_field": "Colour",
+          "value_type": "enum",
+          "allowed_values": [
+            "Black",
+            "Blue",
+            "Green",
+            "Grey",
+            "Indigo",
+            "Maroon",
+            "Navy Blue",
+            "Pink",
+            "Red",
+            "White",
+            "Yellow"
+          ],
+          "value_map": {
+            "navy blue": "Navy Blue",
+            "navy": "Navy Blue",
+            "dark blue": "Navy Blue",
+            "wine": "Maroon",
+            "burgundy": "Maroon",
+            "off white": "White",
+            "gray": "Grey"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "fabric_type": {
+          "requirement": "required",
+          "marketplace_field": "Fabric",
+          "value_type": "enum",
+          "allowed_values": [
+            "Cotton",
+            "Cotton Blend",
+            "Linen",
+            "Polyester",
+            "Rayon",
+            "Silk",
+            "Viscose"
+          ],
+          "value_map": {
+            "organic cotton": "Cotton",
+            "organic cotton blend": "Cotton Blend",
+            "poly": "Polyester"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "size": {
+          "requirement": "optional",
+          "marketplace_field": "Size",
+          "value_type": "enum",
+          "allowed_values": [
+            "XS",
+            "S",
+            "M",
+            "L",
+            "XL",
+            "XXL",
+            "3XL"
+          ],
+          "value_map": {
+            "small": "S",
+            "medium": "M",
+            "large": "L",
+            "2xl": "XXL",
+            "xxxl": "3XL"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "sleeve_length": {
+          "requirement": "optional",
+          "marketplace_field": "Sleeve",
+          "value_type": "enum",
+          "allowed_values": [
+            "3/4 Sleeve",
+            "Full Sleeve",
+            "Half Sleeve",
+            "Sleeveless"
+          ],
+          "value_map": {
+            "long": "Full Sleeve",
+            "full": "Full Sleeve",
+            "short": "Half Sleeve",
+            "half": "Half Sleeve",
+            "sleeveless": "Sleeveless",
+            "three_quarter": "3/4 Sleeve"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "fit": {
+          "requirement": "optional",
+          "marketplace_field": "Fit",
+          "value_type": "enum",
+          "allowed_values": [
+            "Regular",
+            "Relaxed",
+            "Slim"
+          ],
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "neckline": {
+          "requirement": "optional",
+          "marketplace_field": "Neck",
+          "value_type": "enum",
+          "allowed_values": [
+            "Collared Neck",
+            "Mandarin Collar",
+            "Round Neck",
+            "V-Neck"
+          ],
+          "value_map": {
+            "round": "Round Neck",
+            "crew": "Round Neck",
+            "v_neck": "V-Neck",
+            "v neck": "V-Neck",
+            "polo": "Collared Neck"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "pattern": {
+          "requirement": "optional",
+          "marketplace_field": "Pattern",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "country_of_origin": {
+          "requirement": "optional",
+          "marketplace_field": "Country of Origin",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "number_of_pieces": {
+          "requirement": "optional",
+          "marketplace_field": "Number of Contents in Sales Package",
+          "value_type": "number",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "kurta_type": {
+          "requirement": "optional",
+          "marketplace_field": "Type",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        }
+      },
+      "variation_themes": [
+        [
+          "size"
+        ],
+        [
+          "color"
+        ],
+        [
+          "size",
+          "color"
+        ]
+      ]
+    }
+  },
+  {
+    "version": 1,
+    "product_type": "t_shirt",
+    "template": {
+      "marketplace": "flipkart",
+      "category": "tshirts",
+      "external_category_id": null,
+      "required_attributes": [
+        "color",
+        "fabric_type"
+      ],
+      "optional_attributes": [
+        "country_of_origin",
+        "fit",
+        "neckline",
+        "number_of_pieces",
+        "pattern",
+        "size",
+        "sleeve_length"
+      ],
+      "conditional_attributes": [],
+      "unsupported_attributes": [],
+      "specs": {
+        "color": {
+          "requirement": "required",
+          "marketplace_field": "Colour",
+          "value_type": "enum",
+          "allowed_values": [
+            "Black",
+            "Blue",
+            "Green",
+            "Grey",
+            "Indigo",
+            "Maroon",
+            "Navy Blue",
+            "Pink",
+            "Red",
+            "White",
+            "Yellow"
+          ],
+          "value_map": {
+            "navy blue": "Navy Blue",
+            "navy": "Navy Blue",
+            "dark blue": "Navy Blue",
+            "wine": "Maroon",
+            "burgundy": "Maroon",
+            "off white": "White",
+            "gray": "Grey"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "fabric_type": {
+          "requirement": "required",
+          "marketplace_field": "Fabric",
+          "value_type": "enum",
+          "allowed_values": [
+            "Cotton",
+            "Cotton Blend",
+            "Linen",
+            "Polyester",
+            "Rayon",
+            "Silk",
+            "Viscose"
+          ],
+          "value_map": {
+            "organic cotton": "Cotton",
+            "organic cotton blend": "Cotton Blend",
+            "poly": "Polyester"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "size": {
+          "requirement": "optional",
+          "marketplace_field": "Size",
+          "value_type": "enum",
+          "allowed_values": [
+            "XS",
+            "S",
+            "M",
+            "L",
+            "XL",
+            "XXL",
+            "3XL"
+          ],
+          "value_map": {
+            "small": "S",
+            "medium": "M",
+            "large": "L",
+            "2xl": "XXL",
+            "xxxl": "3XL"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "sleeve_length": {
+          "requirement": "optional",
+          "marketplace_field": "Sleeve",
+          "value_type": "enum",
+          "allowed_values": [
+            "3/4 Sleeve",
+            "Full Sleeve",
+            "Half Sleeve",
+            "Sleeveless"
+          ],
+          "value_map": {
+            "long": "Full Sleeve",
+            "full": "Full Sleeve",
+            "short": "Half Sleeve",
+            "half": "Half Sleeve",
+            "sleeveless": "Sleeveless",
+            "three_quarter": "3/4 Sleeve"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "fit": {
+          "requirement": "optional",
+          "marketplace_field": "Fit",
+          "value_type": "enum",
+          "allowed_values": [
+            "Regular",
+            "Relaxed",
+            "Slim"
+          ],
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "neckline": {
+          "requirement": "optional",
+          "marketplace_field": "Neck",
+          "value_type": "enum",
+          "allowed_values": [
+            "Collared Neck",
+            "Mandarin Collar",
+            "Round Neck",
+            "V-Neck"
+          ],
+          "value_map": {
+            "round": "Round Neck",
+            "crew": "Round Neck",
+            "v_neck": "V-Neck",
+            "v neck": "V-Neck",
+            "polo": "Collared Neck"
+          },
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "pattern": {
+          "requirement": "optional",
+          "marketplace_field": "Pattern",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "country_of_origin": {
+          "requirement": "optional",
+          "marketplace_field": "Country of Origin",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "number_of_pieces": {
+          "requirement": "optional",
+          "marketplace_field": "Number of Contents in Sales Package",
+          "value_type": "number",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        }
+      },
+      "variation_themes": [
+        [
+          "size"
+        ],
+        [
+          "color"
+        ],
+        [
+          "size",
+          "color"
+        ]
+      ]
+    }
+  }
+]

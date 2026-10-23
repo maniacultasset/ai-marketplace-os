@@ -53,10 +53,10 @@ def seed_image_rules(conn: Conn) -> None:
     """The platform `images` rows of `rules.seed.json` (the S17b T5 rows), as the seed writes
     them: other rules are not needed by the image job."""
     from app.cli import RULES_SEED_PATH
-    from app.db.seed_ops import _platform_rule_rows, load_rule_sets
+    from app.db.platform_loads import load_rule_sets, platform_rule_rows
 
     rows = [
-        r for r in _platform_rule_rows(load_rule_sets(RULES_SEED_PATH)) if r["field"] == "images"
+        r for r in platform_rule_rows(load_rule_sets(RULES_SEED_PATH)) if r["field"] == "images"
     ]
     for row in rows:
         f.insert(conn, "rules", **row)

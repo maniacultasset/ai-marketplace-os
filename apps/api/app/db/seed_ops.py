@@ -17,6 +17,7 @@ Nothing here prints, asserts or logs a password or a DSN.
 from __future__ import annotations
 
 import hashlib
+import json
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -26,8 +27,6 @@ from typing import Any, Final, get_args
 
 from mkos_schemas.errors import ErrorReport
 from mkos_schemas.jobs import BrandChunkType
-from mkos_schemas.rules import RuleSet
-from pydantic import TypeAdapter
 from sqlalchemy import Connection, delete, func, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession
@@ -51,7 +50,9 @@ from app.db.platform_loads import (
     TemplateLoad,
     load_dictionary,
     load_error_map_rows,
+    load_rule_sets,
     load_template_rows,
+    platform_rule_rows,
     sync_rows,
 )
 from app.db.seed_templates import flipkart_seed_templates, seed_templates
@@ -125,56 +126,6 @@ def _seller_fact(value: object) -> dict[str, object]:
 
 
 # ---- platform rows (migrator) ----
-
-
-def load_rule_sets(path: Path) -> list[RuleSet]:
-    adapter: TypeAdapter[list[RuleSet]] = TypeAdapter(list[RuleSet])
-    return adapter.validate_json(path.read_bytes())
-
-
-def _subject(rule_type: str, rule_def: Mapping[str, Any]) -> str:
-    """What S7's `rules_subject_matches` CHECK expects for `rule_type`."""
-    if rule_type == "image_requirement":
-        return f"{rule_def.get('slot')}:{rule_def.get('check')}"
-    key = {
-        "claim_requires_attribute": "claim",
-        "cross_field": "name",
-        "pattern": "name",
-        "required_attribute": "attribute",
-        "allowed_values": "attribute",
-        "conditional_required": "attribute",
-        "fact_source": "attribute",
-        "fact_backed_attribute": "attribute",
-    }.get(rule_type)
-    value = rule_def.get(key) if key else None
-    return str(value) if value is not None else ""
-
-
-def _platform_rule_rows(rule_sets: Sequence[RuleSet]) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for rule_set in rule_sets:
-        for rule in rule_set.rules:
-            data = rule.model_dump(mode="json")
-            if data.get("tenant_id") is not None:
-                raise ValueError("rules.seed.json holds platform rules only")
-            rule_def = data["rule_def"]
-            rows.append(
-                {
-                    "id": uuid.UUID(data["id"]),
-                    "tenant_id": None,
-                    "marketplace": data["marketplace"],
-                    "category": data.get("category"),
-                    "field": data["field"],
-                    "rule_type": rule_def["type"],
-                    "subject": _subject(rule_def["type"], rule_def),
-                    "pack": rule_def.get("pack", "core"),
-                    "severity": data["severity"],
-                    "version": data["version"],
-                    "enabled": data["enabled"],
-                    "rule_def": rule_def,
-                }
-            )
-    return rows
 
 
 def _template_rows() -> list[dict[str, Any]]:
@@ -251,7 +202,7 @@ async def seed_platform_rows(connection: AsyncConnection, rules_path: Path) -> N
         .values(_template_rows())
         .on_conflict_do_nothing(constraint="ct_version_key")
     )
-    rule_rows = _platform_rule_rows(load_rule_sets(rules_path))
+    rule_rows = platform_rule_rows(load_rule_sets(rules_path))
     if rule_rows:
         # Any unique conflict (the fixed id or `rules_scope_key`) leaves the stored row alone.
         await connection.execute(insert(Rule).values(rule_rows).on_conflict_do_nothing())
@@ -274,6 +225,20 @@ def flipkart_template_loads() -> list[TemplateLoad]:
         TemplateLoad(version=t.version, product_type=t.product_type, template=t.template)
         for t in flipkart_seed_templates()
     ]
+
+
+def platform_template_loads() -> list[TemplateLoad]:
+    """Every platform template the migrate job loads: the Amazon, then the Flipkart mappings.
+    `app/db/seed_data/platform_templates.json` is this list, written by `render_platform_templates`
+    (regenerate it with `uv run --frozen python -m app.db.seed_ops`; a meta test checks it)."""
+    return amazon_template_loads() + flipkart_template_loads()
+
+
+def render_platform_templates() -> str:
+    """`platform_template_loads()` as the `templates load` file: stable JSON, one trailing
+    newline."""
+    body = [entry.model_dump(mode="json") for entry in platform_template_loads()]
+    return json.dumps(body, indent=2, ensure_ascii=False) + "\n"
 
 
 async def seed_flipkart_mappings(connection: AsyncConnection) -> TemplateCounts:
@@ -871,3 +836,8 @@ async def seed_demo_flipkart(session: AsyncSession) -> None:
                 .values(current_version_id=version_id)
             )
         )
+
+
+if __name__ == "__main__":  # pragma: no cover - the regeneration command, run by hand
+    target = Path(__file__).resolve().parent / "seed_data/platform_templates.json"
+    target.write_text(render_platform_templates(), encoding="utf-8")

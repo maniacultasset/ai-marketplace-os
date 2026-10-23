@@ -200,3 +200,33 @@ def test_main_block_logs_to_stdout() -> None:
         if isinstance(n, ast.Call) and ast.unparse(n.func) == "logging.basicConfig"
     ]
     assert everywhere == calls, "logging is configured only in the __main__ block"
+
+
+# ---- the migrate job's loaders take no path: their defaults ship in the image ----
+
+
+@pytest.mark.parametrize(
+    ("group", "runner", "default"),
+    [
+        ("rules", "run_rules_load", "RULES_SEED_PATH"),
+        ("templates", "run_templates_load", "PLATFORM_TEMPLATES_PATH"),
+    ],
+)
+def test_loader_file_defaults(
+    monkeypatch: pytest.MonkeyPatch, group: str, runner: str, default: str
+) -> None:
+    seen: list[Path] = []
+
+    async def fake(path: Path) -> int:
+        seen.append(path)
+        return 0
+
+    monkeypatch.setattr(cli, runner, fake)
+    assert cli.main([group, "load"]) == 0
+    assert seen == [getattr(cli, default)]
+    assert getattr(cli, default).is_file()
+
+
+def test_rules_load_missing_file_exit_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert cli.main(["rules", "load", "--file", str(tmp_path / "absent.json")]) == 2
+    assert capsys.readouterr().err == "rules load: no such file\n"

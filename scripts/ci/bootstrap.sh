@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # The `bootstrap` required check: CANON-ADDENDUM.md §7, reduced per ADR-0013 §4 (since S14b the image
 # import includes mkos_pipeline, the in-repo stub). Alembic runs after bootstrap-db (S5), then the demo seed (S9);
-# the image's `migrate` and `seed` roles run once each on the compose network before the Cloud
-# SQL mimic. The seed refuses any APP_ENV but local, so both runs pass APP_ENV=local.
+# the image's `migrate` role runs twice and its `seed` role once on the compose network before
+# the Cloud SQL mimic. The seed refuses any APP_ENV but local, so both runs pass APP_ENV=local.
 # It never copies .env and never runs `docker compose down -v`.
 # The API port, the compose project and the image tag follow .worktree.env (ADR-0011 amendment).
 # The app logs in as app_rw and Alembic as migrator (ENV.md; CODE-PLAN S10 Q5): the DSNs come from
@@ -269,8 +269,28 @@ if docker logs "$worker_container" 2>&1 | grep -Eq 'postgres(ql)?(\+psycopg)?://
 fi
 docker rm -f "$worker_container" >/dev/null
 echo "bootstrap: worker leg OK (SIGTERM exit 0 in ${worker_took}s)"
-# The Cloud Run migrate job's path through the image, as migrator (local dev-only password).
-docker run --rm --network "$network" -e APP_ENV=local -e APP_ROLE=migrate -e ALEMBIC_DATABASE_URL="$migrator_dsn" "$image"
+# The Cloud Run migrate job's path through the image, as migrator (local dev-only password), run
+# twice. The host seed already wrote every platform rule and template from the same files, so
+# both runs must load nothing new: a drift between the shipped files and the seed fails here.
+for migrate_pass in 1 2; do
+  migrate_out="$(docker run --rm --network "$network" -e APP_ENV=local -e APP_ROLE=migrate -e ALEMBIC_DATABASE_URL="$migrator_dsn" "$image")"
+  printf '%s\n' "$migrate_out"
+  for want in "migrate: ok (" "dictionary sync: ok ("; do
+    if ! grep -qF -- "$want" <<<"$migrate_out"; then
+      echo "bootstrap: image migrate run $migrate_pass printed no '$want' line" >&2
+      exit 1
+    fi
+  done
+  # Whole lines, so each loader's no-op counts come from its own line.
+  for want_line in '^rules load: ok \(0 inserted, [0-9]+ unchanged, 0 toggled\)$' \
+    '^templates load: ok \(0 inserted, [0-9]+ unchanged, 0 promoted\)$'; do
+    if ! grep -Eq -- "$want_line" <<<"$migrate_out"; then
+      echo "bootstrap: image migrate run $migrate_pass printed no line matching $want_line" >&2
+      exit 1
+    fi
+  done
+done
+echo "bootstrap: image migrate leg OK (twice, no new platform rows)"
 # The image's seed role (SEED_PROFILE unset: the entrypoint's demo default); idempotent after the host seed.
 docker run --rm --network "$network" -e APP_ENV=local -e APP_ROLE=seed -e DATABASE_URL="$app_dsn" -e ALEMBIC_DATABASE_URL="$migrator_dsn" "$image"
 make bootstrap-mimic

@@ -9,7 +9,7 @@
 #               database, generated secrets; stops if SENTRY_DSN or OPENAI_API_KEY is missing
 #   build       Cloud Build of apps/api/Dockerfile from a clean HEAD, tagged sha-<12>
 #   db-init     0000_bootstrap.sql and the role passwords, as postgres, in a one-off job
-#   migrate     the migrate job (alembic upgrade head, dictionary sync), waited on
+#   migrate     the migrate job (alembic upgrade head, dictionary sync, rules load, templates load), waited on
 #   deploy      the api service and the worker pool, then smoke
 #   release     build, migrate, deploy
 #   smoke       GET /healthz and /readyz on the service URL

@@ -106,6 +106,39 @@ def test_templates_load_content_change_exit_1_no_rows(
     assert rows(superuser_conn) == [(1, True, "manual", None, "DUPATTA")]
 
 
+def test_templates_load_row_from_an_older_schema_is_unchanged(
+    cli_env: Path, superuser_conn: Conn, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A version stored before `CategoryTemplate` gained a defaulted field lacks that key; the
+    current model fills the default, so it is the same content, not a refusal."""
+    assert run(FIXTURE, capsys)[0] == 0
+    with superuser_conn.transaction():
+        superuser_conn.execute("SET LOCAL session_replication_role = replica")
+        superuser_conn.execute(
+            "UPDATE category_templates SET attributes = attributes - 'conditional_attributes' "
+            "- 'variation_themes' WHERE category = %s",
+            [CATEGORY],
+        )
+    assert run(FIXTURE, capsys) == (
+        0, "templates load: ok (0 inserted, 1 unchanged, 0 promoted)\n", ""
+    )  # fmt: skip
+
+
+def test_templates_load_waits_on_the_migration_lock_then_fails_closed(
+    cli_env: Path, superuser_conn: Conn, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from app.db.migrations import MIGRATION_LOCK_KEY
+
+    superuser_conn.execute("SELECT pg_advisory_lock(%s)", [MIGRATION_LOCK_KEY])
+    try:
+        code, out, err = run(FIXTURE, capsys)
+    finally:
+        superuser_conn.execute("SELECT pg_advisory_unlock(%s)", [MIGRATION_LOCK_KEY])
+    assert (code, out) == (1, "")
+    assert err.startswith("templates load: failed (") and "55P03" in err
+    assert rows(superuser_conn) == []
+
+
 def test_templates_load_new_version_promotes(
     cli_env: Path, superuser_conn: Conn, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -213,3 +246,28 @@ def test_templates_load_audited_null_tenant(
         None, "system", "category_template.promoted", "category_template",
     )  # fmt: skip
     assert after == {"marketplace": "amazon", "category": CATEGORY}
+
+
+def test_templates_load_default_file_is_the_platform_templates(
+    cli_env: Path, superuser_conn: Conn, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """With no `--file`, the migrate job's call: `PLATFORM_TEMPLATES_PATH`, the Amazon and
+    Flipkart mappings. On a database without S9's v1 rows (prod) each is promoted over nothing;
+    a rerun writes nothing."""
+    from app.cli import PLATFORM_TEMPLATES_PATH
+
+    count = len(load_template_file(PLATFORM_TEMPLATES_PATH))
+    code = main(["templates", "load"])
+    out = capsys.readouterr()
+    assert (code, out.out, out.err) == (
+        0, f"templates load: ok ({count} inserted, 0 unchanged, {count} promoted)\n", ""
+    )  # fmt: skip
+    current = superuser_conn.execute(
+        "SELECT count(*) FROM category_templates WHERE is_current AND source = 'manual'"
+    ).fetchone()
+    assert current == (count,)
+    code = main(["templates", "load"])
+    out = capsys.readouterr()
+    assert (code, out.out) == (
+        0, f"templates load: ok (0 inserted, {count} unchanged, 0 promoted)\n"
+    )  # fmt: skip
