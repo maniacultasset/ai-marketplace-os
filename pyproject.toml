@@ -20,7 +20,7 @@ members = ["apps/api", "packages/schemas", "packages/pipeline-stub"]
 
 [dependency-groups]
 dev = [
-  "black==26.5.1",
+  "black==26.10.1",
   "hypothesis==6.168.3",
   "import-linter==2.15",
   "mutmut==3.8.0",
