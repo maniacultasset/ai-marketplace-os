@@ -186,6 +186,31 @@ def test_exif_orientation_malformed() -> None:
     assert codes(report) == ["WRONG_ASPECT"]
 
 
+_DUPLICATE_ORIENTATION: dict[str, Callable[[tuple[int, ...]], bytes]] = {
+    "jpeg-exif": lambda tags: fx.jpeg(1200, 1000, exif_orientation=tags),
+    "tiff-ifd0": lambda tags: fx.tiff_orientation_tags(120, 100, tags),
+}
+
+
+@pytest.mark.parametrize(
+    "build", list(_DUPLICATE_ORIENTATION.values()), ids=list(_DUPLICATE_ORIENTATION)
+)
+@pytest.mark.parametrize(
+    ("tags", "passes"),
+    [((6, 1), True), ((1, 6), False)],
+    ids=["first-swaps", "first-keeps"],
+)
+def test_exif_orientation_duplicate_tag_takes_first(
+    build: Callable[[tuple[int, ...]], bytes], tags: tuple[int, ...], passes: bool
+) -> None:
+    # Pillow 13 keeps the first value of a duplicated TIFF/EXIF tag (12.x kept the last);
+    # pinned so a later bump cannot flip the measured dimensions silently. A TIFF is transposed
+    # by Pillow on load from its IFD0 tag, a JPEG is swapped by `_orientation`: same verdicts.
+    report = run(build(tags), _portrait_rule())
+    assert report.pass_ is passes
+    assert codes(report) == ([] if passes else ["WRONG_ASPECT"])
+
+
 # 7. decoder restriction
 
 

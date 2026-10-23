@@ -71,6 +71,26 @@ def test_exif_orientation_reads_back() -> None:
     assert _open(fx.jpeg(20, 10, exif_orientation=6)).getexif().get(0x0112) == 6
 
 
+def test_exif_orientation_duplicate_tags_written() -> None:
+    exif = _open(fx.jpeg(20, 10, exif_orientation=(6, 1))).info["exif"]
+    assert exif.count(b"\x01\x12\x00\x03") == 2
+
+
+def test_tiff_orientation_tags_decodes() -> None:
+    img = _open(fx.tiff_orientation_tags(20, 10, (1,)))
+    assert (img.format, img.mode, img.size) == ("TIFF", "RGB", (20, 10))
+    assert img.getpixel((0, 0)) == fx.WHITE
+    assert img.getpixel((10, 5)) == fx.DARK
+
+
+def test_tiff_orientation_tags_written_in_order() -> None:
+    raw = fx.tiff_orientation_tags(20, 10, (6, 1))
+    assert raw.count(struct.pack("<HHIH", 0x0112, 3, 1, 6)) == 1
+    assert raw.index(struct.pack("<HHIH", 0x0112, 3, 1, 6)) < raw.index(
+        struct.pack("<HHIH", 0x0112, 3, 1, 1)
+    )
+
+
 def test_truncated() -> None:
     assert fx.truncated(b"abcdef", 3) == b"abc"
 

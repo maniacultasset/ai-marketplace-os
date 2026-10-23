@@ -207,12 +207,12 @@ BACKEND-ARCHITECTURE.md §4.3; ADR-0012 §Decision 1; EXECUTION-PLAN.md
 | procrastinate (the Postgres job queue) | `>=3.10,<3.11` | 3.10.0 (with croniter, psycopg-pool, python-dateutil) | apps/api/pyproject.toml; ADR-0004 §1; schema vendored by revision 0003b |
 | structlog (JSON logs; stdlib routed through it) | `>=26.1,<27` | 26.1.0 | apps/api/pyproject.toml; STEPS S11 |
 | sentry-sdk (explicit integrations, `before_send` redaction) | `>=2.71,<3` | 2.71.0 | same; ENV.md SENTRY_DSN |
-| OpenTelemetry API + SDK (no exporter, no instrumentation package yet) | `>=1.45,<2` each | 1.45.0 (with opentelemetry-semantic-conventions 0.66b0) | same; ENV.md OTEL_* |
+| OpenTelemetry API + SDK (no exporter, no instrumentation package yet) | `>=1.45,<2` each | 1.45.1 (with opentelemetry-semantic-conventions 0.66b1) | same; ENV.md OTEL_* |
 | mkos-schemas | 0.0.0, no dependencies yet | 0.0.0 | packages/schemas/pyproject.toml |
 | pyjwt[crypto] (access and refresh tokens; decoding with exactly `algorithms=["HS256"]`) | `>=2.15,<3` | 2.15.1 (with cryptography 50.0.2) | apps/api/pyproject.toml; ADR-0005:30; ENV.md JWT_ALGORITHM |
 | pwdlib[argon2] (argon2id password hashes) | `==0.3.1` | 0.3.1 | apps/api/pyproject.toml; ENV.md PASSWORD_HASH_SCHEME |
 | Planned, not in the lock yet | sqladmin `>=0.31.1`; uuid-utils `<1.0` | — | ADR-0002/0003/0004/0005; ENV.md |
-| Checks tooling | ruff 0.16.9, black 26.5.1, mypy 2.3.1, pytest 9.1.1, import-linter 2.15, pip-audit 2.10.1, hypothesis 6.168.3, schemathesis 4.28.0, mutmut 3.8.0, squawk-cli 2.65.0 (lint only, report-only until the first prod tag), gitleaks 8.30.1 | same | pyproject.toml [dependency-groups]; scripts/ci/gitleaks.sh:12 |
+| Checks tooling | ruff 0.16.9, black 26.10.1, mypy 2.3.1, pytest 9.1.1, import-linter 2.15, pip-audit 2.10.1, hypothesis 6.168.3, schemathesis 4.28.0, mutmut 3.8.0, squawk-cli 2.65.0 (lint only, report-only until the first prod tag), gitleaks 8.30.1 | same | pyproject.toml [dependency-groups]; scripts/ci/gitleaks.sh:12 |
 
 - Banned imports (ruff TID251): asyncpg, redis, arq, jose, passlib, numpy, and openai/langgraph outside
   app/services/{embeddings,vision}.py. No gunicorn or slowapi (ADR-0005).

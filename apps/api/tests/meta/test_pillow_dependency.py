@@ -25,6 +25,13 @@ def test_pillow_bounded_to_one_major(repo_root: Path) -> None:
     assert upper == major + 1
 
 
+def test_pillow_floor_clears_the_13_0_advisories(repo_root: Path) -> None:
+    """12.x carries the advisories fixed in 13.0.0 (pip-audit, 2026-10-22); the floor stays above."""
+    match = SPEC.fullmatch(_pillow_specs(repo_root)[0])
+    assert match is not None
+    assert (int(match.group(1)), int(match.group(2))) >= (13, 0), match.group(0)
+
+
 def test_pillow_locked(repo_root: Path) -> None:
     match = SPEC.fullmatch(_pillow_specs(repo_root)[0])
     assert match is not None
