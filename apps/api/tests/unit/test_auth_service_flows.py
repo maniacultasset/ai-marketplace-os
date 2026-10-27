@@ -848,3 +848,13 @@ def test_recovery_codes_refusals_use_declared_statuses(
     response = client.post("/api/v1/auth/mfa/recovery-codes", headers={"Authorization": "Bearer x"})
     assert calls == [1], response.text  # the route ran (not the step-up guard)
     assert response.status_code == status and response.json()["error"]["type"] == code
+
+
+async def test_refused_new_password_uses_a_challenge_attempt(world: World) -> None:
+    """Review SEC-5: each refused new password costs up to 11 argon2 operations, so it uses one
+    of the challenge's 5 attempts (the account counter is untouched)."""
+    user = _user(world)
+    raw = _challenge(world, user, "password_change")
+    found = await auth.expired_password(raw, WEAK, ip=None, user_agent=None)
+    assert isinstance(found, auth.Refusal) and found.kind == "policy"
+    assert world.challenge_fails == 1 and world.failures == 0

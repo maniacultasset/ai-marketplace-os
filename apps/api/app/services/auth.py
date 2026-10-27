@@ -571,13 +571,16 @@ async def expired_password(
     """The forced password change: a `password_change` challenge and a new password that meets
     the rules and none of the last 10. Every refresh family is revoked, the challenge consumed,
     and the sign-in ends with the methods (and code time) proven before the change. None is the
-    401; a `Refusal` (policy or reuse) is a 422 and keeps the challenge alive."""
+    401; a `Refusal` (policy or reuse) is a 422 and uses one of the challenge's 5 attempts."""
     async with identity_session() as session:
         opened = await _open_challenge(session, challenge_token, "password_change", ip=ip)
         if opened is None:
             return None
         refusal = await _new_password_refusal(session, opened.user, new_password)
         if refusal is not None:
+            # each refusal costs up to 11 argon2 operations: it uses one of the challenge's
+            # attempts, so one challenge cannot be replayed for its whole life (review SEC-5)
+            await ChallengeRepository(session).fail(opened.challenge.id)
             return refusal
         await _store_password(session, opened.user, new_password)
         await RefreshTokenRepository(session).revoke_user_everywhere(
