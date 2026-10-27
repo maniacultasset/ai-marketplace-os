@@ -195,6 +195,12 @@ INSERT INTO public.tenant_memberships (tenant_id, user_id, role)
 SELECT t.id, u.id, 'reviewer' FROM public.tenants t, public.users u
  WHERE t.slug = 'bharat' AND lower(u.email) = 'operator@acme.test'
 ON CONFLICT (tenant_id, user_id) DO NOTHING;"
+# DPP-1 (ADR-0021): the auth leg's bad logins count toward admin@bharat.test's lockout, and only a
+# later good login clears them, so an aborted run leaves them in the reused database and the next
+# run's probes lock the account (10). Every run starts unlocked (the guard allows the superuser).
+docker compose exec -T postgres psql -U postgres -d marketplace_os -v ON_ERROR_STOP=1 -X -q -c "
+UPDATE public.users SET failed_auth_count = 0, locked_until = NULL
+ WHERE failed_auth_count <> 0 OR locked_until IS NOT NULL;"
 python3 scripts/ci/auth_e2e.py "http://127.0.0.1:${api_port}"
 # S12 walking-skeleton leg (CODE-PLAN S12 T15; Done-when 3): the image, as `api` and app_rw, is
 # ready, then the HTTP e2e runs twice (a rerun must pass on its own fresh SKU). Each run starts
