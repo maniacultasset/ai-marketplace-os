@@ -1,5 +1,6 @@
 """Tenancy models: `tenants`, global `users`, `tenant_memberships`, `invitations`
-(DATABASE.md §5.1; ADR-0006) and the platform `signup_requests` (0010; ADR-0019). Columns, defaults, keys and indexes mirror revision
+(DATABASE.md §5.1; ADR-0006), the platform `signup_requests` (0010; ADR-0019) and the per-user MFA,
+challenge and password-history tables (0011; DPP-1, ADR-0021). Columns, defaults, keys and indexes mirror revision
 0001_core_tenancy under the same names; the CHECK constraints live only in the revision."""
 
 from __future__ import annotations
@@ -9,20 +10,23 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     DateTime,
     ForeignKeyConstraint,
     Index,
+    Integer,
     LargeBinary,
     Numeric,
     PrimaryKeyConstraint,
+    SmallInteger,
     Text,
     UniqueConstraint,
     Uuid,
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, INET, JSONB
 from sqlalchemy.orm import Mapped, deferred, mapped_column
 from sqlalchemy.sql.elements import conv
 
@@ -129,6 +133,123 @@ class User(Base):
     updated_at: Mapped[datetime] = updated_at_column()
     # 0010: set only by staff (`user make-admin`); a trigger refuses any other writer.
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    # 0011 (DPP-1): the lockout counter and lock move only through the definer functions.
+    failed_auth_count: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    mfa_last_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    password_changed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=NOW
+    )
+    password_must_change: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+
+
+def _user_fk(table: str) -> ForeignKeyConstraint:
+    return ForeignKeyConstraint(
+        ["user_id"], ["users.id"], ondelete="CASCADE", name=conv(f"fk_{table}_user_id_users")
+    )
+
+
+class UserMfaFactor(Base):
+    """A TOTP factor (0011): one pending and one active per user. The secret is one sealed
+    envelope blob (`app.core.crypto.seal_bytes`), never loaded unless asked for."""
+
+    __tablename__ = "user_mfa_factors"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_user_mfa_factors")),
+        _user_fk("user_mfa_factors"),
+        Index(
+            conv("uq_user_mfa_factors_active"),
+            "user_id",
+            "kind",
+            unique=True,
+            postgresql_where=text("status = 'active'"),
+        ),
+        Index(
+            conv("uq_user_mfa_factors_pending"),
+            "user_id",
+            "kind",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    kind: Mapped[str] = mapped_column(Text, server_default=text("'totp'"))
+    status: Mapped[str] = mapped_column(Text, server_default=text("'pending'"))
+    secret_blob: Mapped[bytes] = deferred(mapped_column(LargeBinary))
+    key_version: Mapped[str] = mapped_column(Text)
+    last_used_step: Mapped[int | None] = mapped_column(BigInteger)
+    created_at: Mapped[datetime] = created_at_column()
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class UserRecoveryCode(Base):
+    """One recovery code (0011): `sha256(user_id || code)` only, used once."""
+
+    __tablename__ = "user_recovery_codes"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_user_recovery_codes")),
+        _user_fk("user_recovery_codes"),
+        UniqueConstraint("code_hash", name=conv("uq_user_recovery_codes_code_hash")),
+        Index(
+            conv("ix_user_recovery_codes_user_id"),
+            "user_id",
+            postgresql_where=text("used_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    code_hash: Mapped[bytes] = deferred(mapped_column(LargeBinary))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created_at_column()
+
+
+class MfaChallenge(Base):
+    """A sign-in second step (0011), found by the sha256 of its opaque token."""
+
+    __tablename__ = "mfa_challenges"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_mfa_challenges")),
+        _user_fk("mfa_challenges"),
+        UniqueConstraint("challenge_hash", name=conv("uq_mfa_challenges_challenge_hash")),
+        Index(conv("ix_mfa_challenges_user_id"), "user_id"),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    challenge_hash: Mapped[bytes] = deferred(mapped_column(LargeBinary))
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    purpose: Mapped[str] = mapped_column(Text)
+    amr: Mapped[list[str]] = mapped_column(ARRAY(Text))
+    attempts: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    mfa_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ip: Mapped[str | None] = mapped_column(INET)
+    user_agent: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = created_at_column()
+
+
+class UserPasswordHistory(Base):
+    """A previous password hash (0011): the 9 before the current one are kept."""
+
+    __tablename__ = "user_password_history"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_user_password_history")),
+        _user_fk("user_password_history"),
+        Index(
+            conv("ix_user_password_history_user_id_created_at"),
+            "user_id",
+            text("created_at DESC"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    hashed_password: Mapped[str] = deferred(mapped_column(Text))
+    created_at: Mapped[datetime] = created_at_column()
 
 
 class SignupRequest(Base):

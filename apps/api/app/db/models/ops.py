@@ -266,6 +266,9 @@ class RefreshToken(TenantScoped, Base):
     family_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     revoked_reason: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = created_at_column()
+    # 0011 (DPP-1): how the family was proven, copied on every rotation
+    amr: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
+    mfa_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class OAuthState(TenantScoped, Base):

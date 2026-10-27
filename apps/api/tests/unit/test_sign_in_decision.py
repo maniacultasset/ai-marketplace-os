@@ -227,3 +227,19 @@ def test_module_imports_no_db_or_web() -> None:
     ]
     banned = ("sqlalchemy", "fastapi", "starlette", "app.db", "app.repositories", "app.api")
     assert not [m for m in modules if m.startswith(banned)]
+
+
+def test_sql_lock_constants_match_sign_in_policy() -> None:
+    """The threshold and lock length are literals in `app_note_auth_failure` (migration 0011) and
+    constants here; this keeps the two equal without a database."""
+    import re
+    from pathlib import Path
+
+    source = (
+        Path(sp.__file__).resolve().parents[2] / "alembic/versions/0011_mfa_lockout.py"
+    ).read_text(encoding="utf-8")
+    start = source.index("CREATE FUNCTION public.app_note_auth_failure")
+    body = source[start : source.index("$$\n", source.index("AS $$", start) + 5)]
+    thresholds = set(re.findall(r"failed_auth_count \+ 1 >= (\d+)", body))
+    assert thresholds == {str(sp.LOCK_THRESHOLD)}
+    assert set(re.findall(r"interval '(\d+) seconds'", body)) == {str(sp.LOCK_SECONDS)}
