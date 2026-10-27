@@ -177,7 +177,7 @@ class UserMfaFactor(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     kind: Mapped[str] = mapped_column(Text, server_default=text("'totp'"))
     status: Mapped[str] = mapped_column(Text, server_default=text("'pending'"))
-    secret_blob: Mapped[bytes] = deferred(mapped_column(LargeBinary))
+    secret_blob: Mapped[bytes] = deferred(mapped_column(LargeBinary, nullable=False))
     key_version: Mapped[str] = mapped_column(Text)
     last_used_step: Mapped[int | None] = mapped_column(BigInteger)
     created_at: Mapped[datetime] = created_at_column()
@@ -202,7 +202,7 @@ class UserRecoveryCode(Base):
 
     id: Mapped[uuid.UUID] = id_column()
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
-    code_hash: Mapped[bytes] = deferred(mapped_column(LargeBinary))
+    code_hash: Mapped[bytes] = deferred(mapped_column(LargeBinary, nullable=False))
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_column()
 
@@ -219,7 +219,7 @@ class MfaChallenge(Base):
     )
 
     id: Mapped[uuid.UUID] = id_column()
-    challenge_hash: Mapped[bytes] = deferred(mapped_column(LargeBinary))
+    challenge_hash: Mapped[bytes] = deferred(mapped_column(LargeBinary, nullable=False))
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     purpose: Mapped[str] = mapped_column(Text)
     amr: Mapped[list[str]] = mapped_column(ARRAY(Text))
@@ -248,7 +248,7 @@ class UserPasswordHistory(Base):
 
     id: Mapped[uuid.UUID] = id_column()
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
-    hashed_password: Mapped[str] = deferred(mapped_column(Text))
+    hashed_password: Mapped[str] = deferred(mapped_column(Text, nullable=False))
     created_at: Mapped[datetime] = created_at_column()
 
 
