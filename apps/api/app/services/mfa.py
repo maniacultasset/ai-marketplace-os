@@ -109,7 +109,8 @@ async def verify_second_factor(
     session: Any, *, user_id: UUID, code: str | None = None, recovery_code: str | None = None
 ) -> Method | None:
     """`otp` for a TOTP code of the active factor (each step once), `rc` for an unused recovery
-    code (used up here), or None. A malformed recovery code never reaches the database."""
+    code (used up here) while an active factor exists, or None. A malformed recovery code
+    never reaches the database."""
     if code is not None:
         factors = MfaFactorRepository(session)
         active = await factors.active(user_id)
@@ -123,6 +124,8 @@ async def verify_second_factor(
         normalised = recovery_codes.normalise(recovery_code)
         if normalised is None:
             return None
+        if not await MfaFactorRepository(session).has_active(user_id):
+            return None  # codes back up a factor; none count without one (review SEC-3)
         digest = recovery_codes.code_hash(user_id, normalised)
         if await RecoveryCodeRepository(session).consume(user_id, digest):
             return "rc"

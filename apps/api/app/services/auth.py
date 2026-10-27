@@ -132,6 +132,7 @@ RefusalKind = Literal[
     "wrong_code",
     "password_required",
     "step_up_required",
+    "enrollment_required",
     "no_session",
     "too_young",
     "policy",
@@ -723,10 +724,16 @@ async def totp_confirm(
         return codes
 
 
-async def regenerate_codes(principal: Principal, *, ip: str | None) -> list[str]:
-    """A new set of 10 recovery codes (the route requires a step-up in the last 10 minutes)."""
+async def regenerate_codes(principal: Principal, *, ip: str | None) -> list[str] | Refusal:
+    """A new set of 10 recovery codes (the route requires a step-up in the last 10 minutes),
+    behind the per-user gate and only while the user has an active factor (after a staff
+    reset-mfa a recent step-up must not mint codes for an account with no factor)."""
     async with identity_session() as session:
-        await set_gucs(session, tenant_id=principal.tenant_id, user_id=principal.user_id)
+        refused = await _bearer_gate(session, principal, ip=ip)
+        if refused is not None:
+            return refused
+        if not await MfaFactorRepository(session).has_active(principal.user_id):
+            return Refusal("enrollment_required")
         codes = await mfa.regenerate_codes(session, user_id=principal.user_id)
         await auth_events.record(
             session,

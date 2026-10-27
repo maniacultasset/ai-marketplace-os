@@ -114,6 +114,8 @@ def _refused(refusal: auth.Refusal, *, masked_as: auth.RefusalKind | None = None
         return password_rules_error([b.message for b in refusal.breaches], field="new_password")
     if refusal.kind == "step_up_required":
         return ApiError(403, ErrorCode.MFA_STEP_UP_REQUIRED)
+    if refusal.kind == "enrollment_required":
+        return ApiError(403, ErrorCode.MFA_ENROLLMENT_REQUIRED)
     if refusal.kind in ("no_session", "reauth_required"):
         return _unauthenticated()
     message = REFUSAL_MESSAGES.get(refusal.kind, REFUSAL_MESSAGES["not_found"])
@@ -268,6 +270,10 @@ async def auth_mfa_recovery_codes(request: Request, principal: Caller) -> Recove
     in the last 10 minutes (TOTP or recovery code)."""
     _require_mfa_on()
     codes = await auth.regenerate_codes(principal, ip=request_ip(request))
+    if isinstance(codes, auth.Refusal):
+        # the route declares no 422: a locked or busy account is asked for a step-up, which
+        # refuses while locked with the wrong-code body (the lock stays invisible)
+        raise _refused(codes, masked_as="step_up_required")
     return RecoveryCodesOut(recovery_codes=codes)
 
 

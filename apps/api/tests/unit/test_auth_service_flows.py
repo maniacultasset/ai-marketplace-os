@@ -770,3 +770,81 @@ async def test_expired_password_deletes_other_open_challenges(world: World) -> N
     assert isinstance(result, auth.SignInResult)
     assert world.revoked_open == [user.id]
     assert world.events.index("delete_open") < world.events.index("auth.password_changed")
+
+
+# ---- recovery codes need the gate and an active factor (review SEC-3) ----
+
+
+async def test_regenerate_codes_refused_while_locked(world: World) -> None:
+    user = _user(world)
+    world.state = AuthState(0, NOW + timedelta(minutes=5))
+    found = await auth.regenerate_codes(_principal(user), ip=None)
+    assert isinstance(found, auth.Refusal) and found.kind == "locked"
+    assert world.regenerated == 0 and "gate" in world.events
+
+
+async def test_regenerate_codes_refused_without_active_factor(world: World) -> None:
+    user = _user(world)
+    world.has_factor = False  # e.g. staff reset-mfa after the step-up
+    found = await auth.regenerate_codes(_principal(user), ip=None)
+    assert isinstance(found, auth.Refusal) and found.kind == "enrollment_required"
+    assert world.regenerated == 0
+
+
+async def test_recovery_code_refused_without_active_factor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.core import recovery_codes
+
+    consumed: list[bytes] = []
+
+    class Factors:
+        def __init__(self, _: Any) -> None:
+            pass
+
+        async def has_active(self, _: uuid.UUID) -> bool:
+            return False
+
+    class Codes:
+        def __init__(self, _: Any) -> None:
+            pass
+
+        async def consume(self, _: uuid.UUID, digest: bytes) -> bool:
+            consumed.append(digest)
+            return True
+
+    monkeypatch.setattr(mfa_service, "MfaFactorRepository", Factors)
+    monkeypatch.setattr(mfa_service, "RecoveryCodeRepository", Codes)
+    code = recovery_codes.new_codes()[0]
+    found = await mfa_service.verify_second_factor(
+        object(), user_id=uuid.uuid4(), recovery_code=code
+    )
+    assert found is None and consumed == []
+
+
+@pytest.mark.parametrize(
+    ("kind", "status", "code"),
+    [
+        ("locked", 403, "MFA_STEP_UP_REQUIRED"),
+        ("busy", 403, "MFA_STEP_UP_REQUIRED"),
+        ("enrollment_required", 403, "MFA_ENROLLMENT_REQUIRED"),
+    ],
+)
+def test_recovery_codes_refusals_use_declared_statuses(
+    world: World,
+    client: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+    status: int,
+    code: str,
+) -> None:
+    calls: list[int] = []
+
+    async def refused(*_: Any, **__: Any) -> auth.Refusal:
+        calls.append(1)
+        return auth.Refusal(kind)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(auth, "regenerate_codes", refused)
+    response = client.post("/api/v1/auth/mfa/recovery-codes", headers={"Authorization": "Bearer x"})
+    assert calls == [1], response.text  # the route ran (not the step-up guard)
+    assert response.status_code == status and response.json()["error"]["type"] == code
