@@ -23,7 +23,7 @@ from uuid import UUID
 
 from google.cloud import kms
 
-from app.core.crypto import wrap_aad
+from app.core.crypto import DEK_LABEL, wrap_aad
 
 KMS_TIMEOUT_SECONDS: Final = 10.0
 _WRAP_FAILED: Final = "key wrap failed"
@@ -47,9 +47,10 @@ def version_prefix(key_uri: str) -> str:
 class CloudKmsKeyWrapper:
     """Wrap only (the API's grant is encrypt). `client` is for tests; otherwise `kms_client()`."""
 
-    def __init__(self, key_uri: str, *, client: Any = None) -> None:
+    def __init__(self, key_uri: str, *, client: Any = None, label: bytes = DEK_LABEL) -> None:
         self.key_uri = key_uri
         self._client = client
+        self._label = label
 
     def __repr__(self) -> str:
         return f"CloudKmsKeyWrapper({self.key_uri!r})"
@@ -58,7 +59,7 @@ class CloudKmsKeyWrapper:
         request = {
             "name": self.key_uri,
             "plaintext": dek,
-            "additional_authenticated_data": wrap_aad(self.key_uri, tenant_id),
+            "additional_authenticated_data": wrap_aad(self.key_uri, tenant_id, label=self._label),
         }
         wrapped, version = b"", ""
         try:

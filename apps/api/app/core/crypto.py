@@ -13,6 +13,11 @@ The wrapper is chosen at first use, never at import (CANON.md:163): `APP_ENV=loc
 `LocalKmsStub` (AES-256-GCM under `KMS_LOCAL_DEV_KEY`, so a laptop and CI open each other's blobs);
 anything else gets `CloudKmsKeyWrapper` (`app.adapters.kms`, S4) on `KMS_KEY_URI`.
 Errors never carry key, token or blob bytes.
+
+DPP-1 (ADR-0021) adds `seal_bytes`, the same envelope for any bytes under its own magic, AAD and
+data-key label: MFA secrets are sealed with `MFA_BLOB_MAGIC`, `mfa_aad(user_id)` and a wrapper
+built on the separate `mfa-secret-key` (`get_mfa_key_wrapper`). Their unseal half is
+`app.adapters.mfa_secrets`, which only `app.services.mfa` may import.
 """
 
 from __future__ import annotations
@@ -33,6 +38,9 @@ if TYPE_CHECKING:
     from app.core.config import Settings
 
 BLOB_MAGIC: Final = b"MKT1"
+DEK_LABEL: Final = b"mkos-dek|"
+MFA_BLOB_MAGIC: Final = b"MFA1"
+MFA_DEK_LABEL: Final = b"mkos-mfa-dek|"
 NONCE_BYTES: Final = 12
 DATA_KEY_BYTES: Final = 32
 TAG_BYTES: Final = 16
@@ -56,6 +64,12 @@ class SealedTokens:
 
 
 @dataclass(frozen=True, slots=True)
+class SealedBytes:
+    blob: bytes = field(repr=False)
+    key_version: str
+
+
+@dataclass(frozen=True, slots=True)
 class BlobParts:
     wrapped: bytes = field(repr=False)
     nonce: bytes = field(repr=False)
@@ -68,9 +82,15 @@ class KeyWrapper(Protocol):
         ...
 
 
-def wrap_aad(key_version: str, tenant_id: UUID) -> bytes:
-    """The AAD binding a wrapped data key to its key version and tenant."""
-    return b"mkos-dek|" + key_version.encode("ascii") + b"|" + tenant_id.bytes
+def wrap_aad(key_version: str, tenant_id: UUID, *, label: bytes = DEK_LABEL) -> bytes:
+    """The AAD binding a wrapped data key to its label, key version and subject (the tenant for
+    token blobs, the user for MFA secrets). The default label keeps every existing blob opening."""
+    return label + key_version.encode("ascii") + b"|" + tenant_id.bytes
+
+
+def mfa_aad(user_id: UUID) -> bytes:
+    """The AAD of an MFA secret's ciphertext: a blob moved to another user's row never opens."""
+    return b"mfa-totp|" + user_id.bytes
 
 
 def local_key(key_b64: str) -> bytes:
@@ -87,15 +107,17 @@ def local_key(key_b64: str) -> bytes:
 class LocalKmsStub:
     """The local key-encryption key (A§9): wrap only. Never used outside `APP_ENV=local`."""
 
-    def __init__(self, key_b64: str) -> None:
+    def __init__(self, key_b64: str, *, label: bytes = DEK_LABEL) -> None:
         self._aead = AESGCM(local_key(key_b64))
+        self._label = label
 
     def __repr__(self) -> str:
         return "LocalKmsStub()"
 
     async def wrap(self, dek: bytes, *, tenant_id: UUID) -> tuple[bytes, str]:
         nonce = os.urandom(NONCE_BYTES)
-        sealed = self._aead.encrypt(nonce, dek, wrap_aad(LOCAL_KEY_VERSION, tenant_id))
+        aad = wrap_aad(LOCAL_KEY_VERSION, tenant_id, label=self._label)
+        sealed = self._aead.encrypt(nonce, dek, aad)
         return nonce + sealed, LOCAL_KEY_VERSION
 
 
@@ -112,6 +134,23 @@ def kms_key_uri(settings: Settings) -> str:
     if not settings.kms_key_uri:
         raise RuntimeError(f"APP_ENV={settings.app_env} needs KMS_KEY_URI to seal or unseal")
     return settings.kms_key_uri
+
+
+def mfa_kms_key_uri(settings: Settings) -> str:
+    """The deployed MFA secret key; unset is a `RuntimeError` (the api boot under `all` refuses it)."""
+    if not settings.mfa_kms_key_uri:
+        raise RuntimeError(f"APP_ENV={settings.app_env} needs MFA_KMS_KEY_URI to seal MFA secrets")
+    return settings.mfa_kms_key_uri
+
+
+def get_mfa_key_wrapper(settings: Settings | None = None) -> KeyWrapper:
+    """The MFA secret wrapper: the local stub with the MFA label, or Cloud KMS on the MFA key."""
+    resolved = _settings(settings)
+    if resolved.app_env == "local":
+        return LocalKmsStub(resolved.kms_local_dev_key, label=MFA_DEK_LABEL)
+    from app.adapters.kms import CloudKmsKeyWrapper
+
+    return CloudKmsKeyWrapper(mfa_kms_key_uri(resolved), label=MFA_DEK_LABEL)
 
 
 def get_key_wrapper(settings: Settings | None = None) -> KeyWrapper:
@@ -147,16 +186,35 @@ async def seal(tokens: TokenPair, *, tenant_id: UUID, wrapper: KeyWrapper) -> Se
     return SealedTokens(blob=blob, key_version=key_version)
 
 
-def parse_blob(blob: bytes) -> BlobParts:
+async def seal_bytes(
+    plaintext: bytes, *, aad: bytes, subject: UUID, wrapper: KeyWrapper, magic: bytes
+) -> SealedBytes:
+    """`seal()` for any bytes: AES-256-GCM under a fresh data key with `aad`, the data key wrapped
+    for `subject`, in the same layout under `magic` (4 bytes)."""
+    if not isinstance(subject, UUID):
+        raise TypeError("subject must be a UUID")
+    if len(magic) != len(BLOB_MAGIC):
+        raise ValueError("magic must be 4 bytes")
+    dek = os.urandom(DATA_KEY_BYTES)
+    nonce = os.urandom(NONCE_BYTES)
+    ciphertext = AESGCM(dek).encrypt(nonce, plaintext, aad)
+    wrapped, key_version = await wrapper.wrap(dek, tenant_id=subject)
+    if not wrapped or len(wrapped) > 0xFFFF:
+        raise ValueError("wrapped key length out of range")
+    blob = magic + _HEADER.pack(len(wrapped)) + wrapped + nonce + ciphertext
+    return SealedBytes(blob=blob, key_version=key_version)
+
+
+def parse_blob(blob: bytes, *, magic: bytes = BLOB_MAGIC) -> BlobParts:
     """Split a blob into its parts without decrypting. A bad magic, a length that runs past the
     end, or a tail too short for a nonce and a tag is `ValueError("malformed token blob")`."""
-    head = len(BLOB_MAGIC) + _HEADER.size
+    head = len(magic) + _HEADER.size
     if not isinstance(blob, bytes | bytearray | memoryview):
         raise ValueError(_MALFORMED)
     data = bytes(blob)
-    if len(data) < head or data[: len(BLOB_MAGIC)] != BLOB_MAGIC:
+    if len(data) < head or data[: len(magic)] != magic:
         raise ValueError(_MALFORMED)
-    (wrapped_len,) = _HEADER.unpack_from(data, len(BLOB_MAGIC))
+    (wrapped_len,) = _HEADER.unpack_from(data, len(magic))
     wrapped_end = head + wrapped_len
     if wrapped_len == 0 or wrapped_end + NONCE_BYTES + TAG_BYTES + 1 > len(data):
         raise ValueError(_MALFORMED)
