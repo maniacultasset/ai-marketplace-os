@@ -242,6 +242,16 @@ async def test_step_up_refused_while_locked_same_body_as_wrong_code(
         STEP_UP, json={"code": clock.next_code(user.secret)}, headers=user.headers()
     )
     assert locked.status_code == 422
+    assert _body(locked) == _body(wrong)  # review CR2: the lock is not visible
+
+
+def _body(response: httpx.Response) -> dict[str, Any]:
+    error = dict(response.json()["error"])
+    error.pop("correlation_id", None)
+    report = dict(error.get("error_report") or {})
+    report.pop("request_id", None)
+    error["error_report"] = report
+    return error
 
 
 async def test_guarded_route_403_step_up_required_then_passes_within_600s(

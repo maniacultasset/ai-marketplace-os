@@ -689,3 +689,56 @@ def test_off_mfa_routes_501(world: World, client: Any, path: str, body: Any) -> 
     error = response.json()["error"]
     assert error["type"] == "NOT_IMPLEMENTED" and error["message"] == "MFA is not enabled"
     assert "session_exit" not in world.events  # refused before any database work
+
+
+def _shape(response: Any) -> dict[str, Any]:
+    error = dict(response.json()["error"])
+    error.pop("correlation_id", None)
+    report = dict(error.get("error_report") or {})
+    report.pop("request_id", None)
+    error["error_report"] = report
+    return error
+
+
+@pytest.mark.parametrize(
+    ("path", "body", "service", "masked"),
+    [
+        ("/api/v1/auth/mfa/step-up", {"code": "123456"}, "step_up", "wrong_code"),
+        ("/api/v1/auth/mfa/totp/confirm", {"code": "123456"}, "totp_confirm", "wrong_code"),
+        (
+            "/api/v1/auth/mfa/totp/enroll",
+            {"current_password": PASSWORD},
+            "totp_enroll",
+            "wrong_password",
+        ),
+        (
+            "/api/v1/auth/password",
+            {"current_password": PASSWORD, "new_password": "Fresh-Lantern-Path-4821"},
+            "change_password",
+            "wrong_password",
+        ),
+    ],
+)
+def test_locked_or_busy_body_matches_wrong_secret(
+    world: World,
+    client: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+    body: Any,
+    service: str,
+    masked: str,
+) -> None:
+    """Review CR2 (CODE-PLAN :642, :778): a locked or busy account answers the same 422 body as
+    a wrong code (or a wrong current password), so a token holder cannot see the lock."""
+    shapes: dict[str, dict[str, Any]] = {}
+    for kind in (masked, "locked", "busy"):
+
+        async def refused(*_: Any, _kind: str = kind, **__: Any) -> auth.Refusal:
+            return auth.Refusal(_kind)  # type: ignore[arg-type]
+
+        monkeypatch.setattr(auth, service, refused)
+        response = client.post(path, json=body, headers={"Authorization": "Bearer x"})
+        assert response.status_code == 422, response.text
+        shapes[kind] = _shape(response)
+    assert shapes["locked"] == shapes[masked]
+    assert shapes["busy"] == shapes[masked]

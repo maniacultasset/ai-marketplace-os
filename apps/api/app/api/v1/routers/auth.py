@@ -104,8 +104,12 @@ def _require_mfa_on() -> None:
         raise ApiError(501, ErrorCode.NOT_IMPLEMENTED, MFA_OFF_MESSAGE)
 
 
-def _refused(refusal: auth.Refusal) -> ApiError:
-    """The status of a bearer route's refusal (raised only after the service committed)."""
+def _refused(refusal: auth.Refusal, *, masked_as: auth.RefusalKind | None = None) -> ApiError:
+    """The status of a bearer route's refusal (raised only after the service committed). On a
+    route that checks a secret, `masked_as` names its wrong-secret refusal: a locked or busy
+    account answers that same body, so a token holder cannot see the lock (CODE-PLAN :642)."""
+    if masked_as is not None and refusal.kind in ("locked", "busy"):
+        refusal = auth.Refusal(masked_as)
     if refusal.kind == "policy":
         return password_rules_error([b.message for b in refusal.breaches], field="new_password")
     if refusal.kind == "step_up_required":
@@ -224,7 +228,7 @@ async def auth_mfa_totp_enroll(
     current = body.current_password.get_secret_value() if body.current_password else None
     found = await auth.totp_enroll(principal, claims, current, ip=request_ip(request))
     if isinstance(found, auth.Refusal):
-        raise _refused(found)
+        raise _refused(found, masked_as="wrong_password")
     return _enrollment(found)
 
 
@@ -237,7 +241,7 @@ async def auth_mfa_totp_confirm(
     _require_mfa_on()
     found = await auth.totp_confirm(principal, claims, body.code, ip=request_ip(request))
     if isinstance(found, auth.Refusal):
-        raise _refused(found)
+        raise _refused(found, masked_as="wrong_code")
     return TotpConfirmOut(recovery_codes=found)
 
 
@@ -285,7 +289,7 @@ async def auth_mfa_step_up(
         ip=request_ip(request),
     )
     if isinstance(found, auth.Refusal):
-        raise _refused(found)
+        raise _refused(found, masked_as="wrong_code")
     return StepUpOut(access_token=found.access_token, expires_in=found.expires_in)
 
 
@@ -303,7 +307,7 @@ async def auth_password_change(
         ip=request_ip(request),
     )
     if refusal is not None:
-        raise _refused(refusal)
+        raise _refused(refusal, masked_as="wrong_password")
     return Response(status_code=204)
 
 
