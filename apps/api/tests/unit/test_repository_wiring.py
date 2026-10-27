@@ -58,7 +58,14 @@ def test_every_repository_subclasses_tenant_base() -> None:
             "RefreshTokenRepository",
             "SignupRepository",  # ADR-0019: the platform sign-up queue, under its own RLS
             "UserRepository",
-        }
+        },
+        # DPP-1 (0011): per-user platform tables with no tenant_id, narrowed by their own RLS
+        "app.repositories.mfa": {
+            "ChallengeRepository",
+            "MfaFactorRepository",
+            "PasswordHistoryRepository",
+            "RecoveryCodeRepository",
+        },
     }
     found = []
     for module_info in pkgutil.iter_modules(app.repositories.__path__):
@@ -72,6 +79,7 @@ def test_every_repository_subclasses_tenant_base() -> None:
                 assert issubclass(obj, TenantScopedRepository), name
     assert "RuleRepository" in found
     assert identity["app.repositories.identity"] <= set(found)
+    assert identity["app.repositories.mfa"] <= set(found)
     assert set(PLATFORM_READERS) <= set(found)
 
 
@@ -109,3 +117,19 @@ async def test_list_limit_property(limit: int) -> None:
     repo = RuleRepository(_Session(), uuid4())  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="limit"):
         await repo.list(limit=limit)
+
+
+def test_mfa_repositories_name_tables_without_tenant() -> None:
+    """DPP-1: the MFA repositories are exempt from the tenant base only because their tables
+    have no tenant column (they are per-user, under their own RLS)."""
+    from app.db.models._tenant import TenantScoped
+    from app.db.models.tenancy import (
+        MfaChallenge,
+        UserMfaFactor,
+        UserPasswordHistory,
+        UserRecoveryCode,
+    )
+
+    for model in (MfaChallenge, UserMfaFactor, UserPasswordHistory, UserRecoveryCode):
+        assert "tenant_id" not in model.__table__.c, model.__name__
+        assert not issubclass(model, TenantScoped), model.__name__

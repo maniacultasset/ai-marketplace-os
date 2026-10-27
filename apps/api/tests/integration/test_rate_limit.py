@@ -242,7 +242,7 @@ async def test_rate_limit_sixth_login_429(api: httpx.AsyncClient, world: World) 
     _assert_429(await _bad_login(api, "owner@acme.test"))
     # the right password does not get past the limit either
     blocked = await api.post(
-        LOGIN, json={"email": "owner@acme.test", "password": "test-password-0123"}
+        LOGIN, json={"email": "owner@acme.test", "password": "Test-Password-0123"}
     )
     _assert_429(blocked)
 
@@ -288,7 +288,7 @@ async def test_rate_limit_other_email_own_bucket(api: httpx.AsyncClient, world: 
         await _bad_login(api, "owner@acme.test")
     assert (await _bad_login(api, "reviewer@acme.test")).status_code == 401
     ok = await api.post(
-        LOGIN, json={"email": "operator@acme.test", "password": "test-password-0123"}
+        LOGIN, json={"email": "operator@acme.test", "password": "Test-Password-0123"}
     )
     assert ok.status_code == 200
 

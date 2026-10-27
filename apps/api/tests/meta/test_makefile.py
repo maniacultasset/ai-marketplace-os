@@ -222,6 +222,22 @@ def test_api_tests_gates_rules_engine_branch_coverage(repo_root: Path) -> None:
     assert "COV_FAIL_UNDER ?= 70" in makefile
 
 
+def test_api_tests_gates_dpp_auth_branch_coverage(repo_root: Path) -> None:
+    """DPP-1 AC23: 90% branch coverage on the pure sign-in security modules (RULES §8)."""
+    lines = _dry_run(repo_root, "api-tests")
+    at = _first(lines, "--label rules_engine")
+    at = _first(lines, "coverage json", at + 1)
+    for module in (
+        "*/app/core/totp.py",
+        "*/app/core/recovery_codes.py",
+        "*/app/core/password_policy.py",
+        "*/app/services/sign_in_policy.py",
+    ):
+        assert module in lines[at], module
+    at = _first(lines, "branch_coverage.py", at)
+    assert "--min 90 --label dpp_auth" in lines[at]
+
+
 def test_api_tests_runs_pytest_under_xdist(repo_root: Path) -> None:
     """api-tests spreads pytest over at most 4 xdist workers (`auto` by default), xdist_group
     tests stay on one worker, and coverage is still enforced over the combined data."""

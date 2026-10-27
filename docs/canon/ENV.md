@@ -61,6 +61,7 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | `GCP_PROJECT_ID` | `aimos-dev` | local .env | required | GOOGLE_CLOUD_PROJECT and GCP_PROJECT are forbidden. Projects: aimos-dev, aimos-staging, aimos-prod. |
 | `GCP_REGION` | `asia-south1` | local .env | required | Mumbai (D9). Cloud SQL cannot be moved later. |
 | `KMS_KEY_URI` | `(empty — leave blank locally)` | local .env | optional | Empty locally: APP_ENV=local selects LocalKmsStub. staging/prod: projects/<project>/locations/asia-south1/keyRings/marketplace-os/cryptoKeys/oauth-token-key. KMS_KEY_NAME is forbidden. Read through Settings, never os.environ, and construct the KMS client lazily inside the function: `CloudKmsKeyWrapper` (app/adapters/kms.py) and `CloudKmsKeyUnwrapper` (app/adapters/credentials.py) build the async client at first use, on Application Default Credentials. |
+| `MFA_KMS_KEY_URI` | `(empty — leave blank locally)` | local .env | optional (local); **required for a deployed `api` with `MFA_ENFORCEMENT=all`** | DPP-1, ADR-0021. Empty locally: APP_ENV=local seals MFA secrets with LocalKmsStub under its own data-key label. staging/prod: projects/<project>/locations/asia-south1/keyRings/marketplace-os/cryptoKeys/mfa-secret-key, never the same value as KMS_KEY_URI. Set on the api service only; a worker refuses it at boot (it holds no grant on that key). |
 | `KMS_LOCAL_DEV_KEY` | `bG9jYWxfZGV2X29ubHlfMzJfYnl0ZV9rZXlfMDAwMDA=` | local .env | optional | base64 32 bytes; LocalKmsStub only. Never set in staging/prod. |
 | `SECRET_MANAGER_ENABLED` | `false` | local .env | required | true in staging/production, where secrets arrive via `gcloud run deploy --set-secrets`. |
 | `GIT_SHA` | `dev` | local .env | optional (local); **required outside local for `api`/`worker`** (S23: boot refuses unset, empty or `dev`) | Injected by Cloud Build; used as the Sentry release tag. |
@@ -72,10 +73,12 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | `JWT_SECRET` | `dev_only_change_me_at_least_32_characters_long` | both | required | HS256. MUST differ per environment or a staging token works in production. Secret Manager in staging/prod. |
 | `JWT_ALGORITHM` | `HS256` | local .env | required | PyJWT[crypto], never python-jose. |
 | `JWT_ISSUER` | `http://localhost:8000` | local .env | required | staging: https://api-staging.<domain>. |
-| `JWT_AUDIENCE` | `ai-marketplace-os` | local .env | required | Claims frozen as {sub, tid, roles[], email, typ, jti, iss, aud, iat, exp}. |
+| `JWT_AUDIENCE` | `ai-marketplace-os` | local .env | required | Claims frozen as {sub, tid, roles[], email, typ, jti, iss, aud, iat, exp}, plus the optional {amr, mfa_at, sid} (2.0.0, ADR-0021). |
 | `ACCESS_TOKEN_TTL_MINUTES` | `30` | local .env | required | FastAPI is the SOLE issuer (D6); NextAuth holds our tokens as an opaque credential. |
 | `REFRESH_TOKEN_TTL_DAYS` | `14` | local .env | required | Rotation with reuse detection; refresh_tokens in Postgres is the source of truth for logout. |
 | `PASSWORD_HASH_SCHEME` | `argon2id` | local .env | required | pwdlib[argon2], never passlib. |
+| `MFA_ENFORCEMENT` | `off` | local .env | optional | DPP-1, ADR-0021. `off` or `all`. `off`: login and tokens behave as before MFA (the MFA routes answer 501); the lockout and the set-time password rules still apply. `all`: every user needs a TOTP code or a recovery code (platform admins and first logins at once, others after MFA_GRACE_UNTIL). Deployed, set it only in `scripts/deploy/gcp/<env>.env` plus a release: a value set by hand on Cloud Run is wiped by the next deploy. |
+| `MFA_GRACE_UNTIL` | `(empty)` | local .env | optional; **required by deploy.sh when MFA_ENFORCEMENT=all** | DPP-1, ADR-0021. ISO 8601 with an offset, e.g. 2026-11-20T00:00:00+05:30; a naive value is refused at boot. Until then, existing non-admin users with no factor may sign in without one. A past date means no grace. |
 
 ## LLM
 

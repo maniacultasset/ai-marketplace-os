@@ -107,7 +107,15 @@ def test_local_keeps_its_committed_secrets(
     clean_env: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # local and CI are not deployed: the committed literals and the defaults still boot
-    _boot(monkeypatch, {"APP_ENV": "local", "DATABASE_URL": LOCAL_URL, "JWT_SECRET": CI_LITERAL})
+    _boot(
+        monkeypatch,
+        {
+            "APP_ENV": "local",
+            "APP_ROLE": "shell",
+            "DATABASE_URL": LOCAL_URL,
+            "JWT_SECRET": CI_LITERAL,
+        },
+    )
 
 
 def test_forged_token_with_a_blank_key_never_verifies(
@@ -185,7 +193,13 @@ def test_local_keeps_its_loopback_origin_and_issuer(
     clean_env: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     loaded = _boot(
-        monkeypatch, {"APP_ENV": "local", "DATABASE_URL": LOCAL_URL, "JWT_SECRET": CI_LITERAL}
+        monkeypatch,
+        {
+            "APP_ENV": "local",
+            "APP_ROLE": "shell",
+            "DATABASE_URL": LOCAL_URL,
+            "JWT_SECRET": CI_LITERAL,
+        },
     )
     assert loaded.allowed_origins == "http://localhost:3000"  # type: ignore[attr-defined]
     assert loaded.jwt_issuer == "http://localhost:8000"  # type: ignore[attr-defined]
@@ -216,7 +230,13 @@ def test_numeric_setting_below_its_bound_refused(
     env = (
         _deployed(**{name: value})
         if app_env == "production"
-        else {"APP_ENV": "local", "DATABASE_URL": LOCAL_URL, "JWT_SECRET": CI_LITERAL, name: value}
+        else {
+            "APP_ENV": "local",
+            "APP_ROLE": "shell",
+            "DATABASE_URL": LOCAL_URL,
+            "JWT_SECRET": CI_LITERAL,
+            name: value,
+        }
     )
     message = _abort(monkeypatch, env)
     assert f"{name} (greater_than_equal)" in message
@@ -234,5 +254,115 @@ def test_numeric_setting_below_its_bound_refused(
 def test_numeric_setting_at_its_bound_boots(
     clean_env: Path, monkeypatch: pytest.MonkeyPatch, name: str, value: str
 ) -> None:
-    env = {"APP_ENV": "local", "DATABASE_URL": LOCAL_URL, "JWT_SECRET": CI_LITERAL, name: value}
+    env = {
+        "APP_ENV": "local",
+        "APP_ROLE": "shell",
+        "DATABASE_URL": LOCAL_URL,
+        "JWT_SECRET": CI_LITERAL,
+        name: value,
+    }
     _boot(monkeypatch, env)
+
+
+# ---- DPP-1 (ADR-0021): MFA enforcement, grace date and the MFA key ----
+
+MFA_KEY = (
+    "projects/aimos-staging/locations/asia-south1/keyRings/marketplace-os/cryptoKeys/"
+    "mfa-secret-key"
+)
+
+
+def test_mfa_enforcement_defaults_off(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    loaded = _boot(monkeypatch, {"APP_ENV": "local", "APP_ROLE": "shell"})
+    assert loaded.mfa_enforcement == "off"  # type: ignore[attr-defined]
+    assert loaded.mfa_grace_until is None  # type: ignore[attr-defined]
+    assert loaded.mfa_kms_key_uri is None  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize("value", ["ALL", "", "admins", "on"])
+def test_mfa_enforcement_refuses_other_values(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    message = _abort(
+        monkeypatch, {"APP_ENV": "local", "APP_ROLE": "shell", "MFA_ENFORCEMENT": value}
+    )
+    assert "MFA_ENFORCEMENT" in message
+    assert f"={value}" not in message or not value
+
+
+@pytest.mark.parametrize("value", ["2026-11-20T00:00:00", "2026-11-20", "next week"])
+def test_grace_until_naive_refused(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    message = _abort(
+        monkeypatch, {"APP_ENV": "local", "APP_ROLE": "shell", "MFA_GRACE_UNTIL": value}
+    )
+    assert "MFA_GRACE_UNTIL" in message
+    assert value not in message
+
+
+def test_grace_until_aware_ok(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    loaded = _boot(
+        monkeypatch,
+        {"APP_ENV": "local", "APP_ROLE": "shell", "MFA_GRACE_UNTIL": "2026-11-20T00:00:00+05:30"},
+    )
+    grace = loaded.mfa_grace_until  # type: ignore[attr-defined]
+    assert grace is not None and grace.utcoffset() is not None
+    blank = _boot(monkeypatch, {"APP_ENV": "local", "APP_ROLE": "shell", "MFA_GRACE_UNTIL": ""})
+    assert blank.mfa_grace_until is None  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize("app_env", ["staging", "production"])
+def test_deployed_api_all_needs_mfa_key(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, app_env: str
+) -> None:
+    message = _abort(monkeypatch, _deployed(app_env, MFA_ENFORCEMENT="all"))
+    assert f"APP_ENV={app_env} requires MFA_KMS_KEY_URI for MFA_ENFORCEMENT=all" in message
+    loaded = _boot(monkeypatch, _deployed(app_env, MFA_ENFORCEMENT="all", MFA_KMS_KEY_URI=MFA_KEY))
+    assert loaded.mfa_kms_key_uri == MFA_KEY  # type: ignore[attr-defined]
+
+
+def test_deployed_api_all_refuses_token_key_as_mfa_key(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.support.deployed_env import DEPLOYED_S15_ENV
+
+    token_key = DEPLOYED_S15_ENV["KMS_KEY_URI"]
+    # the token key has the wrong key name, so the shape check refuses it first
+    message = _abort(monkeypatch, _deployed(MFA_ENFORCEMENT="all", MFA_KMS_KEY_URI=token_key))
+    assert "MFA_KMS_KEY_URI must be" in message
+    # the same URI in both variables is refused by name, whatever the shape
+    message = _abort(
+        monkeypatch,
+        _deployed(MFA_ENFORCEMENT="all", MFA_KMS_KEY_URI=MFA_KEY, KMS_KEY_URI=MFA_KEY),
+    )
+    assert "MFA_KMS_KEY_URI must differ from KMS_KEY_URI" in message
+
+
+def test_deployed_api_off_needs_no_mfa_key(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    loaded = _boot(monkeypatch, _deployed())
+    assert loaded.mfa_enforcement == "off"  # type: ignore[attr-defined]
+
+
+def test_worker_refuses_mfa_key(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    env = _deployed("staging", APP_ROLE="worker", MFA_KMS_KEY_URI=MFA_KEY)
+    message = _abort(monkeypatch, env)
+    assert "APP_ROLE=worker refuses MFA_KMS_KEY_URI" in message
+    env.pop("MFA_KMS_KEY_URI")
+    monkeypatch.delenv("MFA_KMS_KEY_URI")
+    _boot(monkeypatch, env)
+
+
+def test_local_api_all_needs_no_mfa_key(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    loaded = _boot(monkeypatch, {"APP_ENV": "local", "APP_ROLE": "shell", "MFA_ENFORCEMENT": "all"})
+    assert loaded.mfa_enforcement == "all"  # type: ignore[attr-defined]
+
+
+def test_error_messages_hold_no_values(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    odd = "projects/aimos-staging/locations/asia-south1/keyRings/x/cryptoKeys/Zq9-private"
+    message = _abort(monkeypatch, _deployed(MFA_ENFORCEMENT="all", MFA_KMS_KEY_URI=odd))
+    assert "Zq9-private" not in message
+    message = _abort(monkeypatch, _deployed("staging", APP_ROLE="worker", MFA_KMS_KEY_URI=odd))
+    assert "Zq9-private" not in message

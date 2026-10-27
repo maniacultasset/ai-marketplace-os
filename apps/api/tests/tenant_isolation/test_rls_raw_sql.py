@@ -18,6 +18,9 @@ from sqlalchemy import select
 
 from .factories import World, build_world
 
+# ADR-0021 (migration 0011): user-scoped, not the tenant template.
+MFA_TABLES = ("user_mfa_factors", "user_recovery_codes", "mfa_challenges", "user_password_history")
+
 Conn = psycopg.Connection[tuple[Any, ...]]
 
 # Every table 0005 puts under RLS, with the column that names its tenant. A catalog test below
@@ -112,8 +115,10 @@ def test_rls_table_list_matches_catalog(admin_conn: Conn) -> None:
         "AND relkind IN ('r', 'p') AND relrowsecurity"
     ).fetchall()
     # ADR-0019: `signup_requests` is a platform table under its own policies
-    # (test_signup_isolation.py), not the tenant template.
-    assert {str(r[0]) for r in rows} == set(TENANT_COLUMN) | {"users", "signup_requests"}
+    # (test_signup_isolation.py), not the tenant template. ADR-0021: the four MFA tables are
+    # user-scoped under their own self policies (test_mfa_isolation.py).
+    platform = {"users", "signup_requests", *MFA_TABLES}
+    assert {str(r[0]) for r in rows} == set(TENANT_COLUMN) | platform
 
 
 @pytest.mark.parametrize("table", TABLES)

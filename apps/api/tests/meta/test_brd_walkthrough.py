@@ -196,7 +196,7 @@ def test_brd_walkthrough_run_unique_keys(repo_root: Path) -> None:
     assert keys and all("$run" in k for k in keys), keys
     for email in re.findall(r'^\w+_email="([^"]+)"', text, re.MULTILINE):
         assert "$slug" in email or email == "staff@example.test", email
-    assert "new_password" in text and "secrets.token_hex" in text  # per-run passwords
+    assert "new_password" in text and "secrets.randbits" in text  # per-run passwords
 
 
 def test_brd_walkthrough_no_fixed_sleep(repo_root: Path) -> None:

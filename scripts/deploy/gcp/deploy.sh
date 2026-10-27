@@ -13,7 +13,7 @@
 #   deploy      the api service and the worker pool, then smoke
 #   release     build, migrate, deploy
 #   smoke       GET /healthz and /readyz on the service URL
-#   tenant      create | add-member | set-password through the staff CLI, in a one-off job
+#   tenant      create | add-member | set-password | make-admin | unlock | reset-mfa (staff CLI job)
 #   status      service URL, revisions, job runs, secret names
 #   edge        setup | rules | enforce | lock-ingress | unlock-ingress | alerts | cors | status (prod; needs EDGE_DOMAIN)
 #
@@ -81,11 +81,33 @@ EDGE_APIS="compute.googleapis.com monitoring.googleapis.com"
 SMOKE_TRIES="${SMOKE_TRIES:-10}"
 SMOKE_SLEEP="${SMOKE_SLEEP:-6}"
 
+# ---- DPP-1 (ADR-0021): the MFA switch, refused before any gcloud call ----
+# `MFA_ENFORCEMENT=all` with no grace date would lock every user out at once, and a value set by
+# hand on Cloud Run is wiped by the next deploy (`--env-vars-file` replaces every env var), so the
+# switch lives only in the env file and is checked here for every subcommand.
+MFA_ENFORCEMENT="${MFA_ENFORCEMENT:-off}"
+MFA_GRACE_UNTIL="${MFA_GRACE_UNTIL:-}"
+KMS_MFA_KEY="${KMS_MFA_KEY:-mfa-secret-key}"
+case "$MFA_ENFORCEMENT" in
+  off | all) ;;
+  *) die "MFA_ENFORCEMENT must be off or all (in $ENV_NAME.env)" ;;
+esac
+if [ "$MFA_ENFORCEMENT" = "all" ] && [ -z "$MFA_GRACE_UNTIL" ]; then
+  die "MFA_ENFORCEMENT=all needs MFA_GRACE_UNTIL (a past date means no grace)"
+fi
+if [ -n "$MFA_GRACE_UNTIL" ]; then
+  python3 -c 'import datetime as d, sys; sys.exit(0 if d.datetime.fromisoformat(sys.argv[1]).utcoffset() is not None else 1)' \
+    "$MFA_GRACE_UNTIL" 2>/dev/null ||
+    die "MFA_GRACE_UNTIL must be ISO 8601 with an offset, e.g. 2026-11-20T00:00:00+05:30"
+fi
+
 LABELS="app=aimos,env=$APP_ENV"
 CONN="$PROJECT:$REGION:$SQL_INSTANCE"
 AR_HOST="$REGION-docker.pkg.dev"
 IMAGE="$AR_HOST/$PROJECT/$AR_REPO/$IMAGE_NAME"
 KMS_KEY_URI="projects/$PROJECT/locations/$REGION/keyRings/$KMS_KEYRING/cryptoKeys/$KMS_KEY"
+# DPP-1 (ADR-0021): the MFA secrets' own key, for the api service only.
+MFA_KMS_KEY_URI="projects/$PROJECT/locations/$REGION/keyRings/$KMS_KEYRING/cryptoKeys/$KMS_MFA_KEY"
 S3_ENDPOINT_URL="https://storage.googleapis.com"
 if [ "$AMAZON_USE_SANDBOX" = "true" ]; then
   AMAZON_SPAPI_ENDPOINT="https://sandbox.sellingpartnerapi-eu.amazon.com"
@@ -335,6 +357,18 @@ setup_kms() {
     retry gc kms keys add-iam-policy-binding "$KMS_KEY" --keyring="$KMS_KEYRING" --location="$REGION" \
       --member="serviceAccount:$(sa_email "${pair%%:*}")" --role="${pair#*:}" --format=none
   done
+  # DPP-1 (ADR-0021): the MFA secrets' own key. Only the api seals and opens them (encrypt and
+  # decrypt on this key alone); the worker and the jobs get no binding.
+  if ! gq kms keys describe "$KMS_MFA_KEY" --keyring="$KMS_KEYRING" --location="$REGION" \
+    --format='value(name)' >/dev/null; then
+    local next_mfa
+    next_mfa="$(python3 -c 'import datetime as d; print((d.datetime.now(d.timezone.utc) + d.timedelta(days=90)).strftime("%Y-%m-%dT%H:%M:%SZ"))')"
+    gc kms keys create "$KMS_MFA_KEY" --keyring="$KMS_KEYRING" --location="$REGION" \
+      --purpose=encryption --rotation-period=90d --next-rotation-time="$next_mfa" --labels="$LABELS"
+  fi
+  retry gc kms keys add-iam-policy-binding "$KMS_MFA_KEY" --keyring="$KMS_KEYRING" --location="$REGION" \
+    --member="serviceAccount:$(sa_email "$SA_API")" --role=roles/cloudkms.cryptoKeyEncrypterDecrypter \
+    --format=none
 }
 
 ensure_bucket() {
@@ -642,6 +676,9 @@ app_env() {
     FLIPKART_OAUTH_REDIRECT_URI "$url/api/v1/marketplaces/flipkart/callback" \
     APP_NAME "marketplace-os-$role" OTEL_SERVICE_NAME "marketplace-os-$role"
   [ "$role" != "api" ] || printf 'JWT_ISSUER\t%s\n' "${JWT_ISSUER:-$url}"
+  # DPP-1 (ADR-0021): the MFA switch and its key, on the api only (the worker refuses the key)
+  [ "$role" != "api" ] || printf 'MFA_ENFORCEMENT\t%s\nMFA_GRACE_UNTIL\t%s\nMFA_KMS_KEY_URI\t%s\n' \
+    "$MFA_ENFORCEMENT" "$MFA_GRACE_UNTIL" "$MFA_KMS_KEY_URI"
 }
 
 yaml_quote() { printf '"%s"' "$(printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"; }
@@ -860,32 +897,61 @@ password_secret() {
   printf 'INITIAL_PASSWORD_%s_%s' "$(printf '%s' "$folded" | tr -c 'a-z0-9' '_' | cut -c1-200)" "$digest"
 }
 
+# EMAIL: a generated initial password that meets the DPP 1.4.1 rules (DPP-1): 8 groups of an
+# upper-case letter, a lower-case letter and a digit joined by '-' (31 characters, about 100 bits).
+# No letter run is longer than 2, so it never holds a 3-letter name token; the whole email local
+# part (digits and '-' count too, e.g. "ab1") is also a personal token, so a value that holds it
+# is drawn again. The value goes straight into Secret Manager and is never printed.
+gen_password() {
+  python3 -c '
+import secrets, string as s, sys, unicodedata
+local = unicodedata.normalize("NFKC", sys.argv[1].rpartition("@")[0]).casefold()
+while True:
+    value = "-".join(secrets.choice(s.ascii_uppercase) + secrets.choice(s.ascii_lowercase) + secrets.choice(s.digits) for _ in range(8))
+    if len(local) < 3 or local not in value.casefold():
+        break
+print(value, end="")
+' "$1"
+}
+
 # EMAIL FRESH: the user's initial-password secret; FRESH=1 adds a new version even if one exists.
 ensure_password() {
   local secret
   secret="$(password_secret "$1")"
   ensure_secret "$secret"
   if [ "$2" -eq 1 ] || ! secret_has_version "$secret"; then
-    pipe_note "openssl rand -hex 16 | gcloud secrets versions add $secret --data-file=- --project=$PROJECT"
+    pipe_note "gen_password | gcloud secrets versions add $secret --data-file=- --project=$PROJECT"
     if [ "$DRY_RUN" -eq 0 ]; then
-      openssl rand -hex 16 | tr -d '\n' |
+      gen_password "$1" |
         gcloud secrets versions add "$secret" --data-file=- --project="$PROJECT" --quiet
     fi
   fi
   grant_secret "$secret" "$SA_OPS"
 }
 
-# EMAIL NOTE CLI_ARGS...: run `python -m app.cli CLI_ARGS` with the user's password secret on
-# stdin. The entrypoint's shell role runs `python "$@"`; stdin is the mounted secret file.
+# [--no-password] EMAIL NOTE CLI_ARGS...: run `python -m app.cli CLI_ARGS` with the user's password
+# secret on stdin. The entrypoint's shell role runs `python "$@"`; stdin is the mounted secret
+# file. `--no-password` (DPP-1: `user unlock`) mounts no password secret and reads no stdin.
 ops_job() {
-  local email="$1" note="$2" secret image args arg
+  local with_password=1 email note secret image args arg secrets
+  if [ "$1" = "--no-password" ]; then
+    with_password=0
+    shift
+  fi
+  email="$1" note="$2"
   shift 2
   secret="$(password_secret "$email")"
   image="$(image_ref)"
-  # The password reaches the CLI as an in-memory stdin: a file on the secret volume can report
-  # isatty(), and the CLI would then prompt twice and hit EOF on the repeat.
-  args='-c|import io, runpy, sys; sys.stdin = io.StringIO(open(sys.argv[1], encoding="utf-8").read()); sys.argv = ["app.cli", *sys.argv[2:]]; runpy.run_module("app.cli", run_name="__main__", alter_sys=True)'
-  args="$args|$PW_MOUNT"
+  if [ "$with_password" -eq 1 ]; then
+    # The password reaches the CLI as an in-memory stdin: a file on the secret volume can report
+    # isatty(), and the CLI would then prompt twice and hit EOF on the repeat.
+    args='-c|import io, runpy, sys; sys.stdin = io.StringIO(open(sys.argv[1], encoding="utf-8").read()); sys.argv = ["app.cli", *sys.argv[2:]]; runpy.run_module("app.cli", run_name="__main__", alter_sys=True)'
+    args="$args|$PW_MOUNT"
+    secrets="ALEMBIC_DATABASE_URL=ALEMBIC_DATABASE_URL:latest,$PW_MOUNT=$secret:latest"
+  else
+    args='-m|app.cli'
+    secrets="ALEMBIC_DATABASE_URL=ALEMBIC_DATABASE_URL:latest"
+  fi
   # gcloud refuses a repeated --args value, so `--flag value` pairs travel as `--flag=value`
   # (the same email as --owner-email and --staff-email would otherwise repeat).
   while [ $# -gt 0 ]; do
@@ -901,10 +967,14 @@ ops_job() {
   gc run jobs deploy "$OPS_JOB" --image="$image" --region="$REGION" \
     --service-account="$(sa_email "$SA_OPS")" --set-cloudsql-instances="$CONN" \
     --set-env-vars="APP_ENV=$APP_ENV,APP_ROLE=shell,LOG_FORMAT=json" \
-    --set-secrets="ALEMBIC_DATABASE_URL=ALEMBIC_DATABASE_URL:latest,$PW_MOUNT=$secret:latest" \
+    --set-secrets="$secrets" \
     --args="^|^$args" --tasks=1 --max-retries=0 --task-timeout=300s --cpu=1 --memory=1Gi \
     --labels="$LABELS"
   run_job "$OPS_JOB"
+  if [ "$with_password" -eq 0 ]; then
+    say "$note"
+    return 0
+  fi
   say "$note Read it once with:"
   printf '  gcloud secrets versions access latest --secret=%s --project=%s\n' "$secret" "$PROJECT"
 }
@@ -923,7 +993,7 @@ flag_value() {
 }
 
 cmd_tenant() {
-  [ ${#REST[@]} -ge 1 ] || die "usage: tenant create --name N --slug S --owner-email E --staff-email F [--trial-days D] | add-member --slug S --email E --role owner|operator|reviewer|admin --staff-email F | set-password --email E --staff-email F | make-admin --email E --staff-email F"
+  [ ${#REST[@]} -ge 1 ] || die "usage: tenant create --name N --slug S --owner-email E --staff-email F [--trial-days D] | add-member --slug S --email E --role owner|operator|reviewer|admin --staff-email F | set-password --email E --staff-email F | make-admin --email E --staff-email F | unlock --email E --staff-email F | reset-mfa --email E --staff-email F"
   local action="${REST[0]}" email
   local -a args
   args=("${REST[@]}")
@@ -960,7 +1030,22 @@ cmd_tenant() {
       ops_job "$email" "$email is now a platform admin; its password is unchanged. Its initial password, if this job made one:" \
         user make-admin "${args[@]}"
       ;;
-    *) die "unknown tenant action '$action' (create | add-member | set-password | make-admin)" ;;
+    unlock)
+      # DPP-1 (ADR-0021; docs/runbooks/MFA-STAFF.md: the identity check first): clears a locked
+      # account. No password is generated or mounted.
+      email="$(flag_value email "${args[@]}")"
+      [ -n "$email" ] || die "tenant unlock needs --email"
+      ops_job --no-password "$email" "$email is unlocked." user unlock "${args[@]}"
+      ;;
+    reset-mfa)
+      # DPP-1: a lost authenticator, after the runbook's identity check.
+      email="$(flag_value email "${args[@]}")"
+      [ -n "$email" ] || die "tenant reset-mfa needs --email"
+      ensure_password "$email" 1
+      ops_job "$email" "the new must-change password of $email (its factor and recovery codes are deleted and its sessions revoked)." \
+        user reset-mfa "${args[@]}"
+      ;;
+    *) die "unknown tenant action '$action' (create | add-member | set-password | make-admin | unlock | reset-mfa)" ;;
   esac
 }
 

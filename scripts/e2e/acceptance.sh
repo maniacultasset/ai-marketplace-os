@@ -165,8 +165,10 @@ print(parts.path + ("?" + parts.query if parts.query else ""))
 PY
 }
 
+# A random 128-bit number plus a fixed "-Kq": always meets the DPP 1.4.1 rules (12+ characters,
+# upper, lower, digit, symbol) and, with no 3-letter run, can never hold a part of the user's name.
 new_password() {
-  python3 -c 'import secrets; print("CANARYpw-" + secrets.token_hex(12))'
+  python3 -c 'import secrets; print("%039d-Kq" % secrets.randbits(128))'
 }
 
 # cli PASSWORD_FILE ARGS...: the staff CLI with the password file as its stdin; exit in $cli_exit.

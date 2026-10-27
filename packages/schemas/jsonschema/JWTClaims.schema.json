@@ -2,6 +2,28 @@
   "$id": "https://schemas.mkos.internal/JWTClaims.schema.json",
   "additionalProperties": false,
   "properties": {
+    "amr": {
+      "anyOf": [
+        {
+          "items": {
+            "enum": [
+              "pwd",
+              "otp",
+              "rc"
+            ],
+            "type": "string"
+          },
+          "maxItems": 3,
+          "minItems": 1,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Amr"
+    },
     "aud": {
       "maxLength": 256,
       "minLength": 1,
@@ -36,6 +58,19 @@
       "title": "Jti",
       "type": "string"
     },
+    "mfa_at": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Mfa At"
+    },
     "roles": {
       "items": {
         "enum": [
@@ -50,6 +85,19 @@
       "minItems": 1,
       "title": "Roles",
       "type": "array"
+    },
+    "sid": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sid"
     },
     "sub": {
       "format": "uuid",

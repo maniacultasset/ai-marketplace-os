@@ -61,6 +61,7 @@ GRANTED_FUNCTIONS = [
     "app_login_email()",
     "app_job_id()",
     "app_token_hash()",
+    "app_challenge_hash()",  # 0011 (DPP-1)
     "fact_map_valid(jsonb, boolean)",
     "gtin_valid(text)",
 ]
@@ -180,8 +181,16 @@ def _functions(conn: Conn) -> list[tuple[str, int]]:
 
 
 # 0004's two tenant-scoped definers (DATABASE.md §8.1) and 0010's platform-admin check (ADR-0019)
+# and 0011's three lockout definers (DPP-1, ADR-0021)
 DEFINERS = frozenset(
-    {"set_tenant_lifecycle(uuid,text,text)", "expire_trials()", "app_is_platform_admin()"}
+    {
+        "set_tenant_lifecycle(uuid,text,text)",
+        "expire_trials()",
+        "app_is_platform_admin()",
+        "app_begin_auth_attempt(uuid)",  # 0011 (DPP-1)
+        "app_clear_auth_failures(uuid)",  # 0011 (DPP-1)
+        "app_note_auth_failure(uuid)",  # 0011 (DPP-1)
+    }
 )
 
 

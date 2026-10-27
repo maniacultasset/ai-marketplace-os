@@ -1,8 +1,8 @@
-# AI Marketplace OS API reference (v1.1.0)
+# AI Marketplace OS API reference (v2.0.0)
 
 > Generated from `packages/schemas/jsonschema/openapi.json` by `scripts/docs/gen_api_reference.py`. Do not edit by hand: change the code, export the contract, then run `make docs-handover`.
 
-This is the complete reference of the backend's HTTP API for the frontend and AI teams. It lists all 57 operations: what each one does, who may call it, what to send and what comes back. The same contract ships as generated TypeScript types in the npm package `@maniacultasset/schemas` (GitHub Packages), which the frontend installs under the alias `@mkos/schemas`, so never hand-write a request or response type.
+This is the complete reference of the backend's HTTP API for the frontend and AI teams. It lists all 67 operations: what each one does, who may call it, what to send and what comes back. The same contract ships as generated TypeScript types in the npm package `@maniacultasset/schemas` (GitHub Packages), which the frontend installs under the alias `@mkos/schemas`, so never hand-write a request or response type.
 
 - Read **Conventions** first: auth, tenants, idempotency, concurrency, paging, errors and jobs work the same everywhere.
 - Then use the **summary table** to find an operation, and its section for the details.
@@ -106,7 +106,7 @@ Each operation requires one **action** (shown as "Permission" in every operation
 | `product:import` | yes | - | yes | - | 5 |
 | `settings:manage` | yes | yes | - | - | 3 |
 | `team:manage` | yes | yes | - | - | 2 |
-| `tenant:read` | yes | yes | yes | yes | 20 |
+| `tenant:read` | yes | yes | yes | yes | 26 |
 
 Public operations (`x-mkos-action: public`) need no token. `/healthz` and `/readyz` carry no action at all. A role not in the table holds nothing. The sign-up queue (`x-mkos-action: platform:admin`, ADR-0019) is not in the table: it needs the caller's own `users.is_platform_admin` flag, whatever their role.
 
@@ -230,7 +230,7 @@ Every non-2xx answer on every `/api/v1` route (including 404 for an unknown path
       "max_attempts": 3,
       "request_id": "req-example-0001",
       "retryable": false,
-      "schema_version": "1.1.0",
+      "schema_version": "2.0.0",
       "status": "failed"
     },
     "message": "Request validation failed.",
@@ -374,63 +374,73 @@ Auth: `yes` means a Bearer access token is required. Permission: the action the 
 
 | # | Method | Path | Purpose | Auth | Permission (roles) | Idempotent |
 |---|---|---|---|---|---|---|
-| 1 | POST | [`/api/v1/auth/login`](#post-apiv1authlogin) | Log in with email and password | no | none (public) | no |
-| 2 | POST | [`/api/v1/auth/logout`](#post-apiv1authlogout) | Revoke the refresh token | no | none (public) | yes (always 204; a repeat is a no-op) |
-| 3 | GET | [`/api/v1/auth/me`](#get-apiv1authme) | The current principal and memberships | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 4 | POST | [`/api/v1/auth/refresh`](#post-apiv1authrefresh) | Rotate the refresh token | no | none (public) | no (a repeat counts as token reuse and ends the session) |
-| 5 | POST | [`/api/v1/auth/switch-tenant`](#post-apiv1authswitch-tenant) | Switch the active tenant: a new token pair for another of the caller's tenants | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 6 | GET | [`/api/v1/tenants/me`](#get-apiv1tenantsme) | The brand profile | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 7 | PATCH | [`/api/v1/tenants/me`](#patch-apiv1tenantsme) | Update the brand profile (If-Match: the ETag from GET) | yes | `settings:manage`: owner, admin | no (guarded by If-Match) |
-| 8 | GET | [`/api/v1/members`](#get-apiv1members) | List the tenant's members | yes | `team:manage`: owner, admin | yes (read-only) |
-| 9 | PATCH | [`/api/v1/members/{user_id}`](#patch-apiv1membersuser_id) | Change a member's role or active flag (only an owner grants or removes owner) | yes | `team:manage`: owner, admin | yes (a repeat sets the same values again) |
-| 10 | GET | [`/api/v1/brand/documents`](#get-apiv1branddocuments) | List the brand documents | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 11 | POST | [`/api/v1/brand/documents`](#post-apiv1branddocuments) | Upload a brand document for chunking | yes | `settings:manage`: owner, admin | yes (Idempotency-Key) |
-| 12 | DELETE | [`/api/v1/brand/documents/{document_id}`](#delete-apiv1branddocumentsdocument_id) | Delete a brand document and deactivate its chunks | yes | `settings:manage`: owner, admin | yes (a repeat is 404) |
-| 13 | GET | [`/api/v1/products`](#get-apiv1products) | List products | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 14 | POST | [`/api/v1/products`](#post-apiv1products) | Create one product | yes | `product:import`: owner, operator | no (a repeat with the same SKU is 409 `SKU_CONFLICT`) |
-| 15 | POST | [`/api/v1/products/bulk`](#post-apiv1productsbulk) | Import products from a CSV file | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
-| 16 | GET | [`/api/v1/products/{product_id}`](#get-apiv1productsproduct_id) | Read one product | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 17 | GET | [`/api/v1/imports/{import_id}`](#get-apiv1importsimport_id) | The import report (counts; rows via /rows) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 18 | GET | [`/api/v1/imports/{import_id}/rows`](#get-apiv1importsimport_idrows) | Import rows, optionally only failed ones | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 19 | POST | [`/api/v1/imports/{import_id}/rows/retry`](#post-apiv1importsimport_idrowsretry) | Re-run the failed rows only | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
-| 20 | POST | [`/api/v1/images/upload`](#post-apiv1imagesupload) | Upload an image (or name an uploaded key) and start the checks | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
-| 21 | POST | [`/api/v1/images/upload-url`](#post-apiv1imagesupload-url) | A signed upload URL for one image | yes | `product:import`: owner, operator | no |
-| 22 | GET | [`/api/v1/images/{image_id}/report`](#get-apiv1imagesimage_idreport) | The image compliance reports | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 23 | GET | [`/api/v1/listings`](#get-apiv1listings) | List listings (the review queue) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 24 | POST | [`/api/v1/listings/approve`](#post-apiv1listingsapprove) | Approve or reject a batch (maker-checker enforced) | yes | `listing:approve`: owner, reviewer | yes (Idempotency-Key) |
-| 25 | POST | [`/api/v1/listings/generate`](#post-apiv1listingsgenerate) | Start AI generation | yes | `listing:generate`: owner, operator | yes (Idempotency-Key) |
-| 26 | POST | [`/api/v1/listings/publish`](#post-apiv1listingspublish) | Publish approved listings | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
-| 27 | POST | [`/api/v1/listings/validate`](#post-apiv1listingsvalidate) | Run schema, rules and vision checks (200 with passed=false on a rules failure) | yes | `listing:edit`: owner, operator | yes (a repeat with unchanged rules returns the stored result) |
-| 28 | GET | [`/api/v1/listings/{listing_id}`](#get-apiv1listingslisting_id) | Read one listing with its content and validation | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 29 | PATCH | [`/api/v1/listings/{listing_id}/content`](#patch-apiv1listingslisting_idcontent) | Edit content (creates a new version) | yes | `listing:edit`: owner, operator | no (guarded by If-Match) |
-| 30 | GET | [`/api/v1/listings/{listing_id}/history`](#get-apiv1listingslisting_idhistory) | The listing's audit history, newest first | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 31 | GET | [`/api/v1/listings/{listing_id}/preview`](#get-apiv1listingslisting_idpreview) | Preview the marketplace payload of the current version (sends nothing) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 32 | POST | [`/api/v1/listings/{listing_id}/publish/retry-fields`](#post-apiv1listingslisting_idpublishretry-fields) | Retry only the fields that failed to publish | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
-| 33 | POST | [`/api/v1/listings/{listing_id}/refresh-status`](#post-apiv1listingslisting_idrefresh-status) | Check the marketplace status now (at most once per 5 minutes per listing) | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
-| 34 | POST | [`/api/v1/listings/{listing_id}/regenerate`](#post-apiv1listingslisting_idregenerate) | Regenerate an existing listing | yes | `listing:regenerate`: owner, operator, reviewer | yes (Idempotency-Key) |
-| 35 | GET | [`/api/v1/listings/{listing_id}/status`](#get-apiv1listingslisting_idstatus) | Listing status (a convenience alias; poll jobs instead) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 36 | GET | [`/api/v1/listings/{listing_id}/submissions`](#get-apiv1listingslisting_idsubmissions) | The listing's publish attempts with their per-field results, newest first | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 37 | GET | [`/api/v1/jobs/{job_id}`](#get-apiv1jobsjob_id) | The job envelope, read from job_runs | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 38 | POST | [`/api/v1/jobs/{job_id}/cancel`](#post-apiv1jobsjob_idcancel) | Cancel a queued job | yes | `listing:generate`: owner, operator | yes (Idempotency-Key) |
-| 39 | GET | [`/api/v1/issues`](#get-apiv1issues) | The issue inbox (open issues by default) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 40 | POST | [`/api/v1/issues/{issue_id}/dismiss`](#post-apiv1issuesissue_iddismiss) | Dismiss an open warning (errors cannot be dismissed) | yes | `listing:approve`: owner, reviewer | yes (Idempotency-Key) |
-| 41 | GET | [`/api/v1/tasks`](#get-apiv1tasks) | The human task inbox (open tasks by default) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 42 | GET | [`/api/v1/marketplaces/accounts`](#get-apiv1marketplacesaccounts) | Connected accounts and their health | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 43 | POST | [`/api/v1/marketplaces/accounts/{account_id}/revoke`](#post-apiv1marketplacesaccountsaccount_idrevoke) | Revoke a connection: delete the stored tokens | yes | `marketplace:connect`: owner, admin | yes (a repeat returns the account unchanged) |
-| 44 | POST | [`/api/v1/marketplaces/connect`](#post-apiv1marketplacesconnect) | Start OAuth; returns the consent URL | yes | `marketplace:connect`: owner, admin | no |
-| 45 | POST | [`/api/v1/marketplaces/connect/confirm`](#post-apiv1marketplacesconnectconfirm) | Confirm a pending connection: the account joins the caller's tenant | yes | `marketplace:connect`: owner, admin | no (the pending handle is single-use; a repeat is 409) |
-| 46 | GET | [`/api/v1/marketplaces/{marketplace}/callback`](#get-apiv1marketplacesmarketplacecallback) | OAuth return: 303 to the app with an opaque pending handle | no | none (public) | no (the OAuth state is single-use; a replay is 409) |
-| 47 | GET | [`/api/v1/rules`](#get-apiv1rules) | List rules | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 48 | POST | [`/api/v1/rules/dry-run`](#post-apiv1rulesdry-run) | Run the Rules Engine on a draft listing; saves nothing | yes | `listing:edit`: owner, operator | yes (saves nothing) |
-| 49 | GET | [`/api/v1/analytics`](#get-apiv1analytics) | Operational metrics (alias of /analytics/summary) | yes | `analytics:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 50 | GET | [`/api/v1/analytics/summary`](#get-apiv1analyticssummary) | Operational metrics for a date range | yes | `analytics:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 51 | POST | [`/api/v1/signup`](#post-apiv1signup) | Sign up a brand: a pending request a platform admin approves | no | none (public) | no |
-| 52 | POST | [`/api/v1/signup/status`](#post-apiv1signupstatus) | The caller's latest sign-up request (email and password) | no | none (public) | no |
-| 53 | GET | [`/api/v1/admin/signup-requests`](#get-apiv1adminsignup-requests) | List sign-up requests, oldest first (platform admins) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | yes (read-only) |
-| 54 | POST | [`/api/v1/admin/signup-requests/{request_id}/approve`](#post-apiv1adminsignup-requestsrequest_idapprove) | Approve a sign-up: create the trial tenant and its owner (idempotent) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | no |
-| 55 | POST | [`/api/v1/admin/signup-requests/{request_id}/reject`](#post-apiv1adminsignup-requestsrequest_idreject) | Reject a sign-up with a reason (idempotent) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | no |
-| 56 | GET | [`/healthz`](#get-healthz) | Liveness probe: always 200, never touches the database | no | none (public probe) | yes (read-only) |
-| 57 | GET | [`/readyz`](#get-readyz) | Readiness probe: 200 when the database answers, else 503 | no | none (public probe) | yes (read-only) |
+| 1 | POST | [`/api/v1/auth/login`](#post-apiv1authlogin) | Log in with email and password: tokens, or the next sign-in step | no | none (public) | no |
+| 2 | POST | [`/api/v1/auth/login/mfa`](#post-apiv1authloginmfa) | Sign-in code step: a TOTP code or a recovery code for the login challenge | no | none (public) | no |
+| 3 | POST | [`/api/v1/auth/login/mfa/confirm`](#post-apiv1authloginmfaconfirm) | Forced enrolment at sign-in: confirm with a code; recovery codes and the sign-in result | no | none (public) | no |
+| 4 | POST | [`/api/v1/auth/login/mfa/enroll`](#post-apiv1authloginmfaenroll) | Forced enrolment at sign-in: a new authenticator secret | no | none (public) | no |
+| 5 | POST | [`/api/v1/auth/logout`](#post-apiv1authlogout) | Revoke the refresh token | no | none (public) | yes (always 204; a repeat is a no-op) |
+| 6 | GET | [`/api/v1/auth/me`](#get-apiv1authme) | The current principal and memberships | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 7 | POST | [`/api/v1/auth/mfa/recovery-codes`](#post-apiv1authmfarecovery-codes) | Regenerate the recovery codes (after a step-up) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 8 | POST | [`/api/v1/auth/mfa/step-up`](#post-apiv1authmfastep-up) | Step up with a code: a new access token for sensitive actions | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 9 | POST | [`/api/v1/auth/mfa/totp/confirm`](#post-apiv1authmfatotpconfirm) | Confirm the new authenticator with a code; recovery codes | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 10 | POST | [`/api/v1/auth/mfa/totp/enroll`](#post-apiv1authmfatotpenroll) | Set up or replace the authenticator from account settings | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 11 | POST | [`/api/v1/auth/password`](#post-apiv1authpassword) | Change the password (current password, DPP rules, not one of the last 10) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 12 | POST | [`/api/v1/auth/password/expired`](#post-apiv1authpasswordexpired) | Forced password change at sign-in | no | none (public) | no |
+| 13 | POST | [`/api/v1/auth/refresh`](#post-apiv1authrefresh) | Rotate the refresh token | no | none (public) | no (a repeat counts as token reuse and ends the session) |
+| 14 | GET | [`/api/v1/auth/security`](#get-apiv1authsecurity) | Account security: MFA status, recovery codes left, password expiry | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 15 | POST | [`/api/v1/auth/switch-tenant`](#post-apiv1authswitch-tenant) | Switch the active tenant: a new token pair for another of the caller's tenants | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 16 | GET | [`/api/v1/tenants/me`](#get-apiv1tenantsme) | The brand profile | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 17 | PATCH | [`/api/v1/tenants/me`](#patch-apiv1tenantsme) | Update the brand profile (If-Match: the ETag from GET) | yes | `settings:manage`: owner, admin | no (guarded by If-Match) |
+| 18 | GET | [`/api/v1/members`](#get-apiv1members) | List the tenant's members | yes | `team:manage`: owner, admin | yes (read-only) |
+| 19 | PATCH | [`/api/v1/members/{user_id}`](#patch-apiv1membersuser_id) | Change a member's role or active flag (only an owner grants or removes owner) | yes | `team:manage`: owner, admin | yes (a repeat sets the same values again) |
+| 20 | GET | [`/api/v1/brand/documents`](#get-apiv1branddocuments) | List the brand documents | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 21 | POST | [`/api/v1/brand/documents`](#post-apiv1branddocuments) | Upload a brand document for chunking | yes | `settings:manage`: owner, admin | yes (Idempotency-Key) |
+| 22 | DELETE | [`/api/v1/brand/documents/{document_id}`](#delete-apiv1branddocumentsdocument_id) | Delete a brand document and deactivate its chunks | yes | `settings:manage`: owner, admin | yes (a repeat is 404) |
+| 23 | GET | [`/api/v1/products`](#get-apiv1products) | List products | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 24 | POST | [`/api/v1/products`](#post-apiv1products) | Create one product | yes | `product:import`: owner, operator | no (a repeat with the same SKU is 409 `SKU_CONFLICT`) |
+| 25 | POST | [`/api/v1/products/bulk`](#post-apiv1productsbulk) | Import products from a CSV file | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
+| 26 | GET | [`/api/v1/products/{product_id}`](#get-apiv1productsproduct_id) | Read one product | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 27 | GET | [`/api/v1/imports/{import_id}`](#get-apiv1importsimport_id) | The import report (counts; rows via /rows) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 28 | GET | [`/api/v1/imports/{import_id}/rows`](#get-apiv1importsimport_idrows) | Import rows, optionally only failed ones | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 29 | POST | [`/api/v1/imports/{import_id}/rows/retry`](#post-apiv1importsimport_idrowsretry) | Re-run the failed rows only | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
+| 30 | POST | [`/api/v1/images/upload`](#post-apiv1imagesupload) | Upload an image (or name an uploaded key) and start the checks | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
+| 31 | POST | [`/api/v1/images/upload-url`](#post-apiv1imagesupload-url) | A signed upload URL for one image | yes | `product:import`: owner, operator | no |
+| 32 | GET | [`/api/v1/images/{image_id}/report`](#get-apiv1imagesimage_idreport) | The image compliance reports | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 33 | GET | [`/api/v1/listings`](#get-apiv1listings) | List listings (the review queue) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 34 | POST | [`/api/v1/listings/approve`](#post-apiv1listingsapprove) | Approve or reject a batch (maker-checker enforced) | yes | `listing:approve`: owner, reviewer | yes (Idempotency-Key) |
+| 35 | POST | [`/api/v1/listings/generate`](#post-apiv1listingsgenerate) | Start AI generation | yes | `listing:generate`: owner, operator | yes (Idempotency-Key) |
+| 36 | POST | [`/api/v1/listings/publish`](#post-apiv1listingspublish) | Publish approved listings | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
+| 37 | POST | [`/api/v1/listings/validate`](#post-apiv1listingsvalidate) | Run schema, rules and vision checks (200 with passed=false on a rules failure) | yes | `listing:edit`: owner, operator | yes (a repeat with unchanged rules returns the stored result) |
+| 38 | GET | [`/api/v1/listings/{listing_id}`](#get-apiv1listingslisting_id) | Read one listing with its content and validation | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 39 | PATCH | [`/api/v1/listings/{listing_id}/content`](#patch-apiv1listingslisting_idcontent) | Edit content (creates a new version) | yes | `listing:edit`: owner, operator | no (guarded by If-Match) |
+| 40 | GET | [`/api/v1/listings/{listing_id}/history`](#get-apiv1listingslisting_idhistory) | The listing's audit history, newest first | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 41 | GET | [`/api/v1/listings/{listing_id}/preview`](#get-apiv1listingslisting_idpreview) | Preview the marketplace payload of the current version (sends nothing) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 42 | POST | [`/api/v1/listings/{listing_id}/publish/retry-fields`](#post-apiv1listingslisting_idpublishretry-fields) | Retry only the fields that failed to publish | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
+| 43 | POST | [`/api/v1/listings/{listing_id}/refresh-status`](#post-apiv1listingslisting_idrefresh-status) | Check the marketplace status now (at most once per 5 minutes per listing) | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
+| 44 | POST | [`/api/v1/listings/{listing_id}/regenerate`](#post-apiv1listingslisting_idregenerate) | Regenerate an existing listing | yes | `listing:regenerate`: owner, operator, reviewer | yes (Idempotency-Key) |
+| 45 | GET | [`/api/v1/listings/{listing_id}/status`](#get-apiv1listingslisting_idstatus) | Listing status (a convenience alias; poll jobs instead) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 46 | GET | [`/api/v1/listings/{listing_id}/submissions`](#get-apiv1listingslisting_idsubmissions) | The listing's publish attempts with their per-field results, newest first | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 47 | GET | [`/api/v1/jobs/{job_id}`](#get-apiv1jobsjob_id) | The job envelope, read from job_runs | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 48 | POST | [`/api/v1/jobs/{job_id}/cancel`](#post-apiv1jobsjob_idcancel) | Cancel a queued job | yes | `listing:generate`: owner, operator | yes (Idempotency-Key) |
+| 49 | GET | [`/api/v1/issues`](#get-apiv1issues) | The issue inbox (open issues by default) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 50 | POST | [`/api/v1/issues/{issue_id}/dismiss`](#post-apiv1issuesissue_iddismiss) | Dismiss an open warning (errors cannot be dismissed) | yes | `listing:approve`: owner, reviewer | yes (Idempotency-Key) |
+| 51 | GET | [`/api/v1/tasks`](#get-apiv1tasks) | The human task inbox (open tasks by default) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 52 | GET | [`/api/v1/marketplaces/accounts`](#get-apiv1marketplacesaccounts) | Connected accounts and their health | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 53 | POST | [`/api/v1/marketplaces/accounts/{account_id}/revoke`](#post-apiv1marketplacesaccountsaccount_idrevoke) | Revoke a connection: delete the stored tokens | yes | `marketplace:connect`: owner, admin | yes (a repeat returns the account unchanged) |
+| 54 | POST | [`/api/v1/marketplaces/connect`](#post-apiv1marketplacesconnect) | Start OAuth; returns the consent URL | yes | `marketplace:connect`: owner, admin | no |
+| 55 | POST | [`/api/v1/marketplaces/connect/confirm`](#post-apiv1marketplacesconnectconfirm) | Confirm a pending connection: the account joins the caller's tenant | yes | `marketplace:connect`: owner, admin | no (the pending handle is single-use; a repeat is 409) |
+| 56 | GET | [`/api/v1/marketplaces/{marketplace}/callback`](#get-apiv1marketplacesmarketplacecallback) | OAuth return: 303 to the app with an opaque pending handle | no | none (public) | no (the OAuth state is single-use; a replay is 409) |
+| 57 | GET | [`/api/v1/rules`](#get-apiv1rules) | List rules | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 58 | POST | [`/api/v1/rules/dry-run`](#post-apiv1rulesdry-run) | Run the Rules Engine on a draft listing; saves nothing | yes | `listing:edit`: owner, operator | yes (saves nothing) |
+| 59 | GET | [`/api/v1/analytics`](#get-apiv1analytics) | Operational metrics (alias of /analytics/summary) | yes | `analytics:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 60 | GET | [`/api/v1/analytics/summary`](#get-apiv1analyticssummary) | Operational metrics for a date range | yes | `analytics:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 61 | POST | [`/api/v1/signup`](#post-apiv1signup) | Sign up a brand: a pending request a platform admin approves | no | none (public) | no |
+| 62 | POST | [`/api/v1/signup/status`](#post-apiv1signupstatus) | The caller's latest sign-up request (email and password) | no | none (public) | no |
+| 63 | GET | [`/api/v1/admin/signup-requests`](#get-apiv1adminsignup-requests) | List sign-up requests, oldest first (platform admins) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | yes (read-only) |
+| 64 | POST | [`/api/v1/admin/signup-requests/{request_id}/approve`](#post-apiv1adminsignup-requestsrequest_idapprove) | Approve a sign-up: create the trial tenant and its owner (idempotent) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | no |
+| 65 | POST | [`/api/v1/admin/signup-requests/{request_id}/reject`](#post-apiv1adminsignup-requestsrequest_idreject) | Reject a sign-up with a reason (idempotent) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | no |
+| 66 | GET | [`/healthz`](#get-healthz) | Liveness probe: always 200, never touches the database | no | none (public probe) | yes (read-only) |
+| 67 | GET | [`/readyz`](#get-readyz) | Readiness probe: 200 when the database answers, else 503 | no | none (public probe) | yes (read-only) |
 
 ## Auth
 
@@ -438,17 +448,27 @@ Log in, renew tokens, log out, read who you are, and switch the active tenant. L
 
 | Operation | Purpose |
 |---|---|
-| [`POST /api/v1/auth/login`](#post-apiv1authlogin) | Log in with email and password |
+| [`POST /api/v1/auth/login`](#post-apiv1authlogin) | Log in with email and password: tokens, or the next sign-in step |
+| [`POST /api/v1/auth/login/mfa`](#post-apiv1authloginmfa) | Sign-in code step: a TOTP code or a recovery code for the login challenge |
+| [`POST /api/v1/auth/login/mfa/confirm`](#post-apiv1authloginmfaconfirm) | Forced enrolment at sign-in: confirm with a code; recovery codes and the sign-in result |
+| [`POST /api/v1/auth/login/mfa/enroll`](#post-apiv1authloginmfaenroll) | Forced enrolment at sign-in: a new authenticator secret |
 | [`POST /api/v1/auth/logout`](#post-apiv1authlogout) | Revoke the refresh token |
 | [`GET /api/v1/auth/me`](#get-apiv1authme) | The current principal and memberships |
+| [`POST /api/v1/auth/mfa/recovery-codes`](#post-apiv1authmfarecovery-codes) | Regenerate the recovery codes (after a step-up) |
+| [`POST /api/v1/auth/mfa/step-up`](#post-apiv1authmfastep-up) | Step up with a code: a new access token for sensitive actions |
+| [`POST /api/v1/auth/mfa/totp/confirm`](#post-apiv1authmfatotpconfirm) | Confirm the new authenticator with a code; recovery codes |
+| [`POST /api/v1/auth/mfa/totp/enroll`](#post-apiv1authmfatotpenroll) | Set up or replace the authenticator from account settings |
+| [`POST /api/v1/auth/password`](#post-apiv1authpassword) | Change the password (current password, DPP rules, not one of the last 10) |
+| [`POST /api/v1/auth/password/expired`](#post-apiv1authpasswordexpired) | Forced password change at sign-in |
 | [`POST /api/v1/auth/refresh`](#post-apiv1authrefresh) | Rotate the refresh token |
+| [`GET /api/v1/auth/security`](#get-apiv1authsecurity) | Account security: MFA status, recovery codes left, password expiry |
 | [`POST /api/v1/auth/switch-tenant`](#post-apiv1authswitch-tenant) | Switch the active tenant: a new token pair for another of the caller's tenants |
 
 ### POST /api/v1/auth/login
 
-**Log in with email and password.**
+**Log in with email and password: tokens, or the next sign-in step.**
 
-Email and password in; access and refresh tokens and the user's memberships out. The active tenant is the most recently used one. Every refusal is the same 401.
+Email and password in. `status` says what comes next: `signed_in` carries the access and refresh tokens and the user's memberships (the active tenant is the most recently used one); `mfa_required`, `mfa_enrollment_required` and `password_change_required` carry a `challenge_token` for the next step and no token. Every refusal is the same 401, a locked account included (10 failed passwords or codes lock it for 15 minutes).
 
 | | |
 |---|---|
@@ -456,7 +476,7 @@ Email and password in; access and refresh tokens and the user's memberships out.
 | Auth | none |
 | Permission (roles that hold it) | none (public) |
 | Idempotent | no |
-| Success | 200 `TokenResponse` |
+| Success | 200 `LoginResult` |
 
 #### Parameters
 
@@ -492,7 +512,7 @@ curl -X POST "http://localhost:8000/api/v1/auth/login" \
 
 | Status | Meaning | Body | Headers | Error codes |
 |---|---|---|---|---|
-| 200 | Success. | `TokenResponse` |  |  |
+| 200 | Success. | `LoginResult` |  |  |
 | 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
 | 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
 | 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
@@ -506,14 +526,108 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 
 | Field | Type | Required | Description | Constraints |
 |---|---|---|---|---|
-| `access_token` | string | yes |  | min length 1 |
-| `expires_in` | integer | yes | Access token lifetime in seconds. | min 1 |
-| `memberships` | array of MembershipOut | yes |  |  |
+| `access_token` | string or null | no |  | min length 1 |
+| `challenge_expires_in` | integer or null | no | Seconds the challenge stays valid (900 to enrol, else 300). | min 1 |
+| `challenge_token` | string or null | no | Send it to the next step's route; keep it in memory only. | min length 1 |
+| `expires_in` | integer or null | no | Access token lifetime in seconds. | min 1 |
+| `memberships` | array of MembershipOut or null | no |  |  |
 | `memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |
 | `memberships[].tenant_id` | string (uuid) | yes |  |  |
 | `memberships[].tenant_name` | string | yes |  | min length 1 |
-| `refresh_token` | string | yes |  | min length 1 |
-| `token_type` | const "bearer" | no |  | default `"bearer"` |
+| `mfa_grace_until` | string (date-time) or null | no | Set while the user may still sign in without a factor: show a banner. |  |
+| `refresh_token` | string or null | no |  | min length 1 |
+| `status` | string (enum) | no |  | one of: `signed_in`, `mfa_required`, `mfa_enrollment_required`, `password_change_required`; default `"signed_in"` |
+| `token_type` | const "bearer" or null | no |  |  |
+
+200 example:
+
+```json
+{
+  "challenge_expires_in": 300,
+  "challenge_token": "ch_example_opaque_value",
+  "status": "mfa_required"
+}
+```
+
+[Back to the summary](#all-operations)
+
+### POST /api/v1/auth/login/mfa
+
+**Sign-in code step: a TOTP code or a recovery code for the login challenge.**
+
+The code step: the `challenge_token` of `mfa_required` and exactly one of `code` (6 digits from the authenticator) or `recovery_code`. A wrong code, a used code, an expired or burned challenge (5 attempts) and a locked account are all 401.
+
+| | |
+|---|---|
+| Operation id | `auth_login_mfa` |
+| Auth | none |
+| Permission (roles that hold it) | none (public) |
+| Idempotent | no |
+| Success | 200 `LoginResult` |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+Content type `application/json`, required. Schema: `LoginMfaRequest`.
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `challenge_token` | string (password) | yes | The opaque `challenge_token` of the last sign-in step (keep it in memory only). | min length 1; max length 256; write-only (never returned) |
+| `code` | string or null | no | A 6-digit TOTP code. | pattern `^[0-9]{6}$` |
+| `recovery_code` | string (password) or null | no | A recovery code; case, spaces and dashes are ignored. | min length 1; max length 64; write-only (never returned) |
+
+Example (built from the schema; values are placeholders):
+
+```json
+{
+  "challenge_token": "string",
+  "code": "string",
+  "recovery_code": "string"
+}
+```
+
+#### Example call
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/auth/login/mfa" \
+  -H "Content-Type: application/json" \
+  -d '{"challenge_token":"string","code":"string","recovery_code":"string"}'
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 200 | Success. | `LoginResult` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| 501 | Not implemented yet. | `ErrorEnvelope` |  | `NOT_IMPLEMENTED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**200 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `access_token` | string or null | no |  | min length 1 |
+| `challenge_expires_in` | integer or null | no | Seconds the challenge stays valid (900 to enrol, else 300). | min 1 |
+| `challenge_token` | string or null | no | Send it to the next step's route; keep it in memory only. | min length 1 |
+| `expires_in` | integer or null | no | Access token lifetime in seconds. | min 1 |
+| `memberships` | array of MembershipOut or null | no |  |  |
+| `memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |
+| `memberships[].tenant_id` | string (uuid) | yes |  |  |
+| `memberships[].tenant_name` | string | yes |  | min length 1 |
+| `mfa_grace_until` | string (date-time) or null | no | Set while the user may still sign in without a factor: show a banner. |  |
+| `refresh_token` | string or null | no |  | min length 1 |
+| `status` | string (enum) | no |  | one of: `signed_in`, `mfa_required`, `mfa_enrollment_required`, `password_change_required`; default `"signed_in"` |
+| `token_type` | const "bearer" or null | no |  |  |
 
 200 example:
 
@@ -529,7 +643,196 @@ Every error status above answers with the [error envelope](#the-error-envelope).
     }
   ],
   "refresh_token": "rt_example_opaque_value",
+  "status": "signed_in",
   "token_type": "bearer"
+}
+```
+
+[Back to the summary](#all-operations)
+
+### POST /api/v1/auth/login/mfa/confirm
+
+**Forced enrolment at sign-in: confirm with a code; recovery codes and the sign-in result.**
+
+Forced enrolment: a code from the new authenticator. Answers the 10 recovery codes (shown once) and `result`, the sign-in to continue with. Every other session of the user ends.
+
+| | |
+|---|---|
+| Operation id | `auth_login_mfa_confirm` |
+| Auth | none |
+| Permission (roles that hold it) | none (public) |
+| Idempotent | no |
+| Success | 200 `LoginConfirmOut` |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+Content type `application/json`, required. Schema: `LoginConfirmRequest`.
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `challenge_token` | string (password) | yes | The opaque `challenge_token` of the last sign-in step (keep it in memory only). | min length 1; max length 256; write-only (never returned) |
+| `code` | string | yes | A 6-digit TOTP code. | pattern `^[0-9]{6}$` |
+
+Example (built from the schema; values are placeholders):
+
+```json
+{
+  "challenge_token": "string",
+  "code": "string"
+}
+```
+
+#### Example call
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/auth/login/mfa/confirm" \
+  -H "Content-Type: application/json" \
+  -d '{"challenge_token":"string","code":"string"}'
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 200 | Success. | `LoginConfirmOut` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| 501 | Not implemented yet. | `ErrorEnvelope` |  | `NOT_IMPLEMENTED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**200 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `recovery_codes` | array of string | yes | Shown once: the user must save them. | min items 10; max items 10 |
+| `result` | LoginResult | yes | `signed_in` carries today's token fields; every other status carries a challenge for the next step instead (and no token). |  |
+| `result.access_token` | string or null | no |  | min length 1 |
+| `result.challenge_expires_in` | integer or null | no | Seconds the challenge stays valid (900 to enrol, else 300). | min 1 |
+| `result.challenge_token` | string or null | no | Send it to the next step's route; keep it in memory only. | min length 1 |
+| `result.expires_in` | integer or null | no | Access token lifetime in seconds. | min 1 |
+| `result.memberships` | array of MembershipOut or null | no |  |  |
+| `result.memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |
+| `result.memberships[].tenant_id` | string (uuid) | yes |  |  |
+| `result.memberships[].tenant_name` | string | yes |  | min length 1 |
+| `result.mfa_grace_until` | string (date-time) or null | no | Set while the user may still sign in without a factor: show a banner. |  |
+| `result.refresh_token` | string or null | no |  | min length 1 |
+| `result.status` | string (enum) | no |  | one of: `signed_in`, `mfa_required`, `mfa_enrollment_required`, `password_change_required`; default `"signed_in"` |
+| `result.token_type` | const "bearer" or null | no |  |  |
+
+200 example:
+
+```json
+{
+  "recovery_codes": [
+    "aaaa-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "bbbb-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "cccc-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "dddd-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "eeee-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "ffff-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "gggg-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "hhhh-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "jjjj-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "kkkk-efgh-ijkl-mnop-qrst-uvwx-yz"
+  ],
+  "result": {
+    "access_token": "eyJhbGciOiJIUzI1NiJ9.example.signature",
+    "expires_in": 1800,
+    "memberships": [
+      {
+        "role": "owner",
+        "tenant_id": "0b1c2d3e-0000-4000-8000-000000000001",
+        "tenant_name": "Fabrica"
+      }
+    ],
+    "refresh_token": "rt_example_opaque_value",
+    "status": "signed_in",
+    "token_type": "bearer"
+  }
+}
+```
+
+[Back to the summary](#all-operations)
+
+### POST /api/v1/auth/login/mfa/enroll
+
+**Forced enrolment at sign-in: a new authenticator secret.**
+
+Forced enrolment (`mfa_enrollment_required`): a new authenticator secret as an `otpauth://` URI (render it as a QR code) and as base32 for manual entry. The challenge stays valid for 15 minutes; confirm with `/auth/login/mfa/confirm`.
+
+| | |
+|---|---|
+| Operation id | `auth_login_mfa_enroll` |
+| Auth | none |
+| Permission (roles that hold it) | none (public) |
+| Idempotent | no |
+| Success | 200 `TotpEnrollOut` |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+Content type `application/json`, required. Schema: `LoginEnrollRequest`.
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `challenge_token` | string (password) | yes | The opaque `challenge_token` of the last sign-in step (keep it in memory only). | min length 1; max length 256; write-only (never returned) |
+
+Example (built from the schema; values are placeholders):
+
+```json
+{
+  "challenge_token": "string"
+}
+```
+
+#### Example call
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/auth/login/mfa/enroll" \
+  -H "Content-Type: application/json" \
+  -d '{"challenge_token":"string"}'
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 200 | Success. | `TotpEnrollOut` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| 501 | Not implemented yet. | `ErrorEnvelope` |  | `NOT_IMPLEMENTED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**200 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `otpauth_uri` | string | yes | Render as a QR code on the client. | min length 1 |
+| `secret_b32` | string | yes | The same secret for manual entry. | min length 1 |
+
+200 example:
+
+```json
+{
+  "otpauth_uri": "otpauth://totp/Kuinn:owner%40fabrica.example?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=Kuinn&algorithm=SHA1&digits=6&period=30",
+  "secret_b32": "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP"
 }
 ```
 
@@ -671,11 +974,483 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 
 [Back to the summary](#all-operations)
 
+### POST /api/v1/auth/mfa/recovery-codes
+
+**Regenerate the recovery codes (after a step-up).**
+
+A new set of 10 recovery codes (shown once); the old ones stop working. Needs a step-up in the last 10 minutes (TOTP or recovery code).
+
+| | |
+|---|---|
+| Operation id | `auth_mfa_recovery_codes` |
+| Auth | Bearer access token |
+| Permission (roles that hold it) | `tenant:read`: owner, admin, operator, reviewer |
+| Idempotent | no |
+| Success | 200 `RecoveryCodesOut` |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+None.
+
+#### Example call
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/auth/mfa/recovery-codes" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 200 | Success. | `RecoveryCodesOut` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
+| 403 | Permission denied. | `ErrorEnvelope` |  | `MFA_STEP_UP_REQUIRED`, `MFA_ENROLLMENT_REQUIRED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| 501 | Not implemented yet. | `ErrorEnvelope` |  | `NOT_IMPLEMENTED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**200 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `recovery_codes` | array of string | yes | Shown once: the user must save them. | min items 10; max items 10 |
+
+200 example:
+
+```json
+{
+  "recovery_codes": [
+    "aaaa-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "bbbb-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "cccc-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "dddd-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "eeee-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "ffff-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "gggg-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "hhhh-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "jjjj-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "kkkk-efgh-ijkl-mnop-qrst-uvwx-yz"
+  ]
+}
+```
+
+[Back to the summary](#all-operations)
+
+### POST /api/v1/auth/mfa/step-up
+
+**Step up with a code: a new access token for sensitive actions.**
+
+A code for a sensitive action: a new access token with a fresh code time (keep the stored refresh token). A wrong code is 422; a 401 means the session has no MFA family yet (refresh once, then retry).
+
+| | |
+|---|---|
+| Operation id | `auth_mfa_step_up` |
+| Auth | Bearer access token |
+| Permission (roles that hold it) | `tenant:read`: owner, admin, operator, reviewer |
+| Idempotent | no |
+| Success | 200 `StepUpOut` |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+Content type `application/json`, required. Schema: `StepUpRequest`.
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `code` | string or null | no | A 6-digit TOTP code. | pattern `^[0-9]{6}$` |
+| `recovery_code` | string (password) or null | no | A recovery code; case, spaces and dashes are ignored. | min length 1; max length 64; write-only (never returned) |
+
+Example (built from the schema; values are placeholders):
+
+```json
+{
+  "code": "string",
+  "recovery_code": "string"
+}
+```
+
+#### Example call
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/auth/mfa/step-up" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"code":"string","recovery_code":"string"}'
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 200 | Success. | `StepUpOut` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| 501 | Not implemented yet. | `ErrorEnvelope` |  | `NOT_IMPLEMENTED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**200 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `access_token` | string | yes |  | min length 1 |
+| `expires_in` | integer | yes |  | min 1 |
+| `token_type` | const "bearer" | no |  | default `"bearer"` |
+
+200 example:
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiJ9.example.signature",
+  "expires_in": 1800,
+  "token_type": "bearer"
+}
+```
+
+[Back to the summary](#all-operations)
+
+### POST /api/v1/auth/mfa/totp/confirm
+
+**Confirm the new authenticator with a code; recovery codes.**
+
+Confirm the new authenticator with a code: the 10 recovery codes (shown once). The user's other sessions end; this one records the fresh code.
+
+| | |
+|---|---|
+| Operation id | `auth_mfa_totp_confirm` |
+| Auth | Bearer access token |
+| Permission (roles that hold it) | `tenant:read`: owner, admin, operator, reviewer |
+| Idempotent | no |
+| Success | 200 `TotpConfirmOut` |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+Content type `application/json`, required. Schema: `TotpConfirmRequest`.
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `code` | string | yes | A 6-digit TOTP code. | pattern `^[0-9]{6}$` |
+
+Example (built from the schema; values are placeholders):
+
+```json
+{
+  "code": "string"
+}
+```
+
+#### Example call
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/auth/mfa/totp/confirm" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"code":"string"}'
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 200 | Success. | `TotpConfirmOut` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
+| 403 | Permission denied. | `ErrorEnvelope` |  | `MFA_STEP_UP_REQUIRED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| 501 | Not implemented yet. | `ErrorEnvelope` |  | `NOT_IMPLEMENTED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**200 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `recovery_codes` | array of string | yes | Shown once: the user must save them. | min items 10; max items 10 |
+
+200 example:
+
+```json
+{
+  "recovery_codes": [
+    "aaaa-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "bbbb-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "cccc-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "dddd-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "eeee-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "ffff-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "gggg-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "hhhh-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "jjjj-efgh-ijkl-mnop-qrst-uvwx-yz",
+    "kkkk-efgh-ijkl-mnop-qrst-uvwx-yz"
+  ]
+}
+```
+
+[Back to the summary](#all-operations)
+
+### POST /api/v1/auth/mfa/totp/enroll
+
+**Set up or replace the authenticator from account settings.**
+
+Set up the authenticator from account settings (`current_password` required while there is no factor), or replace it (needs a step-up in the last 10 minutes, done with a TOTP code or a recovery code: 403 `MFA_STEP_UP_REQUIRED` otherwise).
+
+| | |
+|---|---|
+| Operation id | `auth_mfa_totp_enroll` |
+| Auth | Bearer access token |
+| Permission (roles that hold it) | `tenant:read`: owner, admin, operator, reviewer |
+| Idempotent | no |
+| Success | 200 `TotpEnrollOut` |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+Content type `application/json`, required. Schema: `TotpEnrollRequest`.
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `current_password` | string (password) or null | no |  | min length 1; max length 1024; write-only (never returned) |
+
+Example (built from the schema; values are placeholders):
+
+```json
+{
+  "current_password": "<PASSWORD>"
+}
+```
+
+#### Example call
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/auth/mfa/totp/enroll" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"current_password":"<PASSWORD>"}'
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 200 | Success. | `TotpEnrollOut` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
+| 403 | Permission denied. | `ErrorEnvelope` |  | `MFA_STEP_UP_REQUIRED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| 501 | Not implemented yet. | `ErrorEnvelope` |  | `NOT_IMPLEMENTED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**200 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `otpauth_uri` | string | yes | Render as a QR code on the client. | min length 1 |
+| `secret_b32` | string | yes | The same secret for manual entry. | min length 1 |
+
+200 example:
+
+```json
+{
+  "otpauth_uri": "otpauth://totp/Kuinn:owner%40fabrica.example?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=Kuinn&algorithm=SHA1&digits=6&period=30",
+  "secret_b32": "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP"
+}
+```
+
+[Back to the summary](#all-operations)
+
+### POST /api/v1/auth/password
+
+**Change the password (current password, DPP rules, not one of the last 10).**
+
+Change the password: the current one, then a new one that meets the rules (422 names each broken rule), is none of the last 10, at most once a day. The other sessions end.
+
+| | |
+|---|---|
+| Operation id | `auth_password_change` |
+| Auth | Bearer access token |
+| Permission (roles that hold it) | `tenant:read`: owner, admin, operator, reviewer |
+| Idempotent | no |
+| Success | 204 (no body) |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+Content type `application/json`, required. Schema: `PasswordChangeRequest`.
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `current_password` | string (password) | yes |  | min length 1; max length 1024; write-only (never returned) |
+| `new_password` | string (password) | yes | 12+ characters with an upper-case letter, a lower-case letter, a digit and a symbol; not the name or the first part of the email; none of the last 10. | min length 1; max length 1024; write-only (never returned) |
+
+Example (built from the schema; values are placeholders):
+
+```json
+{
+  "current_password": "<PASSWORD>",
+  "new_password": "<PASSWORD>"
+}
+```
+
+#### Example call
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/auth/password" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"current_password":"<PASSWORD>","new_password":"<PASSWORD>"}'
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 204 | Done; no body. |  |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+[Back to the summary](#all-operations)
+
+### POST /api/v1/auth/password/expired
+
+**Forced password change at sign-in.**
+
+The forced password change (`password_change_required`): a new password that meets the rules (422 names each broken rule) and is none of the last 10. Every other session ends.
+
+| | |
+|---|---|
+| Operation id | `auth_password_expired` |
+| Auth | none |
+| Permission (roles that hold it) | none (public) |
+| Idempotent | no |
+| Success | 200 `LoginResult` |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+Content type `application/json`, required. Schema: `PasswordExpiredRequest`.
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `challenge_token` | string (password) | yes | The opaque `challenge_token` of the last sign-in step (keep it in memory only). | min length 1; max length 256; write-only (never returned) |
+| `new_password` | string (password) | yes | 12+ characters with an upper-case letter, a lower-case letter, a digit and a symbol; not the name or the first part of the email; none of the last 10. | min length 1; max length 1024; write-only (never returned) |
+
+Example (built from the schema; values are placeholders):
+
+```json
+{
+  "challenge_token": "string",
+  "new_password": "<PASSWORD>"
+}
+```
+
+#### Example call
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/auth/password/expired" \
+  -H "Content-Type: application/json" \
+  -d '{"challenge_token":"string","new_password":"<PASSWORD>"}'
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 200 | Success. | `LoginResult` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| 501 | Not implemented yet. | `ErrorEnvelope` |  | `NOT_IMPLEMENTED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**200 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `access_token` | string or null | no |  | min length 1 |
+| `challenge_expires_in` | integer or null | no | Seconds the challenge stays valid (900 to enrol, else 300). | min 1 |
+| `challenge_token` | string or null | no | Send it to the next step's route; keep it in memory only. | min length 1 |
+| `expires_in` | integer or null | no | Access token lifetime in seconds. | min 1 |
+| `memberships` | array of MembershipOut or null | no |  |  |
+| `memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |
+| `memberships[].tenant_id` | string (uuid) | yes |  |  |
+| `memberships[].tenant_name` | string | yes |  | min length 1 |
+| `mfa_grace_until` | string (date-time) or null | no | Set while the user may still sign in without a factor: show a banner. |  |
+| `refresh_token` | string or null | no |  | min length 1 |
+| `status` | string (enum) | no |  | one of: `signed_in`, `mfa_required`, `mfa_enrollment_required`, `password_change_required`; default `"signed_in"` |
+| `token_type` | const "bearer" or null | no |  |  |
+
+200 example:
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiJ9.example.signature",
+  "expires_in": 1800,
+  "memberships": [
+    {
+      "role": "owner",
+      "tenant_id": "0b1c2d3e-0000-4000-8000-000000000001",
+      "tenant_name": "Fabrica"
+    }
+  ],
+  "refresh_token": "rt_example_opaque_value",
+  "status": "signed_in",
+  "token_type": "bearer"
+}
+```
+
+[Back to the summary](#all-operations)
+
 ### POST /api/v1/auth/refresh
 
 **Rotate the refresh token.**
 
-Rotate the refresh token; reusing a rotated one revokes the whole chain. Refreshes must be serialised by the client: a concurrent second refresh of one token counts as reuse.
+Rotate the refresh token; reusing a rotated one revokes the whole chain. Refreshes must be serialised by the client: a concurrent second refresh of one token counts as reuse. With MFA enforced, a session whose code is 7 days old is refused: sign in again.
 
 | | |
 |---|---|
@@ -760,11 +1535,78 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 
 [Back to the summary](#all-operations)
 
+### GET /api/v1/auth/security
+
+**Account security: MFA status, recovery codes left, password expiry.**
+
+The account-security card: MFA status, recovery codes left (warn at 3 or fewer), the enforcement mode, the grace date and the password's expiry date.
+
+| | |
+|---|---|
+| Operation id | `auth_security` |
+| Auth | Bearer access token |
+| Permission (roles that hold it) | `tenant:read`: owner, admin, operator, reviewer |
+| Idempotent | yes (read-only) |
+| Success | 200 `SecurityOut` |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+None.
+
+#### Example call
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/auth/security" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 200 | Success. | `SecurityOut` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**200 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `enforcement` | string (enum) | yes |  | one of: `off`, `all` |
+| `mfa_enrolled` | boolean | yes |  |  |
+| `mfa_grace_until` | string (date-time) or null | no |  |  |
+| `password_changed_at` | string (date-time) or null | no |  |  |
+| `password_expires_at` | string (date-time) or null | no |  |  |
+| `recovery_codes_left` | integer | yes |  | min 0; max 10 |
+
+200 example:
+
+```json
+{
+  "enforcement": "all",
+  "mfa_enrolled": true,
+  "password_changed_at": "2026-10-05T09:30:00Z",
+  "password_expires_at": "2027-10-05T09:30:00Z",
+  "recovery_codes_left": 8
+}
+```
+
+[Back to the summary](#all-operations)
+
 ### POST /api/v1/auth/switch-tenant
 
 **Switch the active tenant: a new token pair for another of the caller's tenants.**
 
-A new token pair, in a new family, for another of the caller's active tenants (the one body field naming a tenant: ADR-0006, CODE-PLAN S10 Q9). A tenant the caller is not an active member of, or that is not live, is 404. Tokens already issued keep their `tid`.
+A new token pair, in a new family, for another of the caller's active tenants (the one body field naming a tenant: ADR-0006, CODE-PLAN S10 Q9). A tenant the caller is not an active member of, or that is not live, is 404. Tokens already issued keep their `tid`. With MFA enforced, a session whose code is missing or 7 days old is 401: sign in again.
 
 | | |
 |---|---|
@@ -1195,7 +2037,7 @@ curl -X PATCH "http://localhost:8000/api/v1/members/<user_id>" \
 | 200 | Success. | `MemberOut` |  |  |
 | 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
 | 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
-| 403 | Permission denied. | `ErrorEnvelope` |  | `PERMISSION_DENIED` |
+| 403 | Permission denied. | `ErrorEnvelope` |  | `PERMISSION_DENIED`, `MFA_STEP_UP_REQUIRED`, `MFA_ENROLLMENT_REQUIRED` |
 | 404 | Not found. | `ErrorEnvelope` |  | `NOT_FOUND` |
 | 409 | The request conflicts with the current state. | `ErrorEnvelope` |  | `LAST_OWNER_REQUIRED` |
 | 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
@@ -1920,6 +2762,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `rows[].errors[].error_code` | ErrorCode (enum) | yes |  | one of the [error codes](#error-codes) |
 | `rows[].errors[].field` | string | yes |  |  |
 | `rows[].errors[].fix_action` | FixAction (enum) or null | no |  | one of: `remap_value`, `reformat`, `derive_field`, `rebuild_variation` |
+| `rows[].errors[].gate` | Gate (enum) or null | no |  | one of: `identity`, `classification`, `attributes`, `variants`, `media`, `content`, `compliance`, `commercial`, `submission` |
 | `rows[].errors[].marketplace` | Marketplace (enum) or null | no |  | one of: `amazon`, `flipkart` |
 | `rows[].errors[].message` | string | yes |  | min length 1; max length 1000 |
 | `rows[].errors[].raw_code` | string or null | no |  | max length 128 |
@@ -1934,7 +2777,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `rows[].row_number` | integer | yes |  | min 2 |
 | `rows[].sku` | string or null | no |  |  |
 | `rows[].status` | string (enum) | yes |  | one of: `imported`, `failed` |
-| `schema_version` | string | no |  | default `"1.1.0"` |
+| `schema_version` | string | no |  | default `"2.0.0"` |
 | `total_rows` | integer | yes |  | min 0 |
 
 200 example:
@@ -1945,7 +2788,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
   "import_id": "0b1c2d3e-0000-4000-8000-000000000401",
   "imported": 2,
   "rows": [],
-  "schema_version": "1.1.0",
+  "schema_version": "2.0.0",
   "total_rows": 3
 }
 ```
@@ -2012,6 +2855,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `data[].errors[].error_code` | ErrorCode (enum) | yes |  | one of the [error codes](#error-codes) |
 | `data[].errors[].field` | string | yes |  |  |
 | `data[].errors[].fix_action` | FixAction (enum) or null | no |  | one of: `remap_value`, `reformat`, `derive_field`, `rebuild_variation` |
+| `data[].errors[].gate` | Gate (enum) or null | no |  | one of: `identity`, `classification`, `attributes`, `variants`, `media`, `content`, `compliance`, `commercial`, `submission` |
 | `data[].errors[].marketplace` | Marketplace (enum) or null | no |  | one of: `amazon`, `flipkart` |
 | `data[].errors[].message` | string | yes |  | min length 1; max length 1000 |
 | `data[].errors[].raw_code` | string or null | no |  | max length 128 |
@@ -2386,7 +3230,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `reports.amazon.model_used` | string or null | no |  |  |
 | `reports.amazon.pass` | boolean | yes |  |  |
 | `reports.amazon.processed_at` | string (date-time) | yes |  |  |
-| `reports.amazon.schema_version` | string | no |  | default `"1.1.0"` |
+| `reports.amazon.schema_version` | string | no |  | default `"2.0.0"` |
 | `reports.amazon.slot` | ImageSlot (enum) | yes |  | one of: `main`, `secondary`, `lifestyle`, `size_chart`, `packaging_label` |
 | `reports.flipkart` | ImageReport or null | no |  |  |
 | `reports.flipkart.agent_run_id` | string (uuid) or null | no |  |  |
@@ -2404,7 +3248,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `reports.flipkart.model_used` | string or null | no |  |  |
 | `reports.flipkart.pass` | boolean | yes |  |  |
 | `reports.flipkart.processed_at` | string (date-time) | yes |  |  |
-| `reports.flipkart.schema_version` | string | no |  | default `"1.1.0"` |
+| `reports.flipkart.schema_version` | string | no |  | default `"2.0.0"` |
 | `reports.flipkart.slot` | ImageSlot (enum) | yes |  | one of: `main`, `secondary`, `lifestyle`, `size_chart`, `packaging_label` |
 
 200 example:
@@ -2427,7 +3271,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
       "marketplace": "amazon",
       "pass": true,
       "processed_at": "2026-10-05T09:31:00Z",
-      "schema_version": "1.1.0",
+      "schema_version": "2.0.0",
       "slot": "main"
     }
   }
@@ -2939,7 +3783,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `listing_version_id` | string (uuid) or null | no |  |  |
 | `passed` | boolean | yes |  |  |
 | `request_id` | string or null | no |  |  |
-| `schema_version` | string | no |  | default `"1.1.0"` |
+| `schema_version` | string | no |  | default `"2.0.0"` |
 | `stages` | array of ValidationResult | no |  |  |
 | `stages[].attempt` | integer | no |  | min 1; default `1` |
 | `stages[].created_at` | string (date-time) | yes |  |  |
@@ -2950,7 +3794,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `stages[].passed` | boolean | yes |  |  |
 | `stages[].report` | ErrorReport | yes | Fields: see [ErrorReport](#errorreport). |  |
 | `stages[].rules_version` | integer or null | no |  |  |
-| `stages[].schema_version` | string | no |  | default `"1.1.0"` |
+| `stages[].schema_version` | string | no |  | default `"2.0.0"` |
 | `stages[].source` | ErrorSource (enum) | yes |  | one of: `schema`, `rules_engine`, `vision_model`, `ai_model`, `amazon_adapter`, `flipkart_adapter`, `system` |
 | `stages[].tenant_id` | string (uuid) | yes |  |  |
 | `stages[].validation_run_id` | string (uuid) or null | no |  |  |
@@ -2965,7 +3809,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
   "listing_version_id": "0b1c2d3e-0000-4000-8000-000000000202",
   "passed": false,
   "request_id": "req-example-0001",
-  "schema_version": "1.1.0",
+  "schema_version": "2.0.0",
   "stages": [
     {
       "attempt": 1,
@@ -2996,11 +3840,11 @@ Every error status above answers with the [error envelope](#the-error-envelope).
         "max_attempts": 3,
         "request_id": "req-example-0001",
         "retryable": true,
-        "schema_version": "1.1.0",
+        "schema_version": "2.0.0",
         "status": "failed"
       },
       "rules_version": 3,
-      "schema_version": "1.1.0",
+      "schema_version": "2.0.0",
       "source": "rules_engine",
       "tenant_id": "0b1c2d3e-0000-4000-8000-000000000001"
     }
@@ -3066,8 +3910,14 @@ Header `ETag` on 200: The current version (of the profile or the listing), a quo
 | `approved_version_id` | string (uuid) or null | no |  |  |
 | `category` | string or null | no |  | pattern `^[a-z0-9_]{2,64}$` |
 | `content` | CanonicalListing or null | no |  |  |
+| `content.attribute_sources` | map of string to string | no |  | max keys 128; keys match `^[a-z0-9_]{1,64}$` |
 | `content.attributes` | map of string to array of string or boolean or integer or number or string | no |  | keys match `^[a-z0-9_]{1,64}$` |
 | `content.category` | string | yes |  | pattern `^[a-z0-9_]{2,64}$` |
+| `content.claims` | array of Claim | no |  | max items 64 |
+| `content.claims[].fact_keys` | array of string | yes |  |  |
+| `content.claims[].id` | string (uuid) | yes |  |  |
+| `content.claims[].status` | string (enum) | yes |  | one of: `supported`, `unsupported`, `removed` |
+| `content.claims[].text_path` | string | yes |  |  |
 | `content.confidence_score` | number or null | no |  | min 0; max 1 |
 | `content.content` | ListingContent | yes |  |  |
 | `content.content.bullets` | array of string | yes |  | min items 1; max items 10 |
@@ -3086,7 +3936,7 @@ Header `ETag` on 200: The current version (of the profile or the listing), a quo
 | `content.locale` | const "en-IN" | no |  | default `"en-IN"` |
 | `content.marketplace` | Marketplace (enum) | yes |  | one of: `amazon`, `flipkart` |
 | `content.product_id` | string (uuid) | yes |  |  |
-| `content.schema_version` | string | no |  | default `"1.1.0"` |
+| `content.schema_version` | string | no |  | default `"2.0.0"` |
 | `content.status` | ListingStatus (enum) | no |  | one of: `created`, `generating`, `validated`, `needs_review`, `approved`, `publishing`, `published`, `blocked`, `failed`; default `"created"` |
 | `content.version` | integer | no |  | min 1; default `1` |
 | `created_at` | string (date-time) | yes |  |  |
@@ -3106,7 +3956,7 @@ Header `ETag` on 200: The current version (of the profile or the listing), a quo
 | `validation.listing_version_id` | string (uuid) or null | no |  |  |
 | `validation.passed` | boolean | yes |  |  |
 | `validation.request_id` | string or null | no |  |  |
-| `validation.schema_version` | string | no |  | default `"1.1.0"` |
+| `validation.schema_version` | string | no |  | default `"2.0.0"` |
 | `validation.stages` | array of ValidationResult | no |  |  |
 | `validation.stages[].attempt` | integer | no |  | min 1; default `1` |
 | `validation.stages[].created_at` | string (date-time) | yes |  |  |
@@ -3117,7 +3967,7 @@ Header `ETag` on 200: The current version (of the profile or the listing), a quo
 | `validation.stages[].passed` | boolean | yes |  |  |
 | `validation.stages[].report` | ErrorReport | yes | Fields: see [ErrorReport](#errorreport). |  |
 | `validation.stages[].rules_version` | integer or null | no |  |  |
-| `validation.stages[].schema_version` | string | no |  | default `"1.1.0"` |
+| `validation.stages[].schema_version` | string | no |  | default `"2.0.0"` |
 | `validation.stages[].source` | ErrorSource (enum) | yes |  | one of: `schema`, `rules_engine`, `vision_model`, `ai_model`, `amazon_adapter`, `flipkart_adapter`, `system` |
 | `validation.stages[].tenant_id` | string (uuid) | yes |  |  |
 | `validation.stages[].validation_run_id` | string (uuid) or null | no |  |  |
@@ -3164,7 +4014,7 @@ Header `ETag` on 200: The current version (of the profile or the listing), a quo
     "locale": "en-IN",
     "marketplace": "amazon",
     "product_id": "0b1c2d3e-0000-4000-8000-000000000101",
-    "schema_version": "1.1.0",
+    "schema_version": "2.0.0",
     "status": "needs_review",
     "version": 1
   },
@@ -3183,7 +4033,7 @@ Header `ETag` on 200: The current version (of the profile or the listing), a quo
     "listing_version_id": "0b1c2d3e-0000-4000-8000-000000000202",
     "passed": false,
     "request_id": "req-example-0001",
-    "schema_version": "1.1.0",
+    "schema_version": "2.0.0",
     "stages": [
       {
         "attempt": 1,
@@ -3214,11 +4064,11 @@ Header `ETag` on 200: The current version (of the profile or the listing), a quo
           "max_attempts": 3,
           "request_id": "req-example-0001",
           "retryable": true,
-          "schema_version": "1.1.0",
+          "schema_version": "2.0.0",
           "status": "failed"
         },
         "rules_version": 3,
-        "schema_version": "1.1.0",
+        "schema_version": "2.0.0",
         "source": "rules_engine",
         "tenant_id": "0b1c2d3e-0000-4000-8000-000000000001"
       }
@@ -3327,8 +4177,14 @@ Header `ETag` on 200: The current version (of the profile or the listing), a quo
 | `approved_version_id` | string (uuid) or null | no |  |  |
 | `category` | string or null | no |  | pattern `^[a-z0-9_]{2,64}$` |
 | `content` | CanonicalListing or null | no |  |  |
+| `content.attribute_sources` | map of string to string | no |  | max keys 128; keys match `^[a-z0-9_]{1,64}$` |
 | `content.attributes` | map of string to array of string or boolean or integer or number or string | no |  | keys match `^[a-z0-9_]{1,64}$` |
 | `content.category` | string | yes |  | pattern `^[a-z0-9_]{2,64}$` |
+| `content.claims` | array of Claim | no |  | max items 64 |
+| `content.claims[].fact_keys` | array of string | yes |  |  |
+| `content.claims[].id` | string (uuid) | yes |  |  |
+| `content.claims[].status` | string (enum) | yes |  | one of: `supported`, `unsupported`, `removed` |
+| `content.claims[].text_path` | string | yes |  |  |
 | `content.confidence_score` | number or null | no |  | min 0; max 1 |
 | `content.content` | ListingContent | yes |  |  |
 | `content.content.bullets` | array of string | yes |  | min items 1; max items 10 |
@@ -3347,7 +4203,7 @@ Header `ETag` on 200: The current version (of the profile or the listing), a quo
 | `content.locale` | const "en-IN" | no |  | default `"en-IN"` |
 | `content.marketplace` | Marketplace (enum) | yes |  | one of: `amazon`, `flipkart` |
 | `content.product_id` | string (uuid) | yes |  |  |
-| `content.schema_version` | string | no |  | default `"1.1.0"` |
+| `content.schema_version` | string | no |  | default `"2.0.0"` |
 | `content.status` | ListingStatus (enum) | no |  | one of: `created`, `generating`, `validated`, `needs_review`, `approved`, `publishing`, `published`, `blocked`, `failed`; default `"created"` |
 | `content.version` | integer | no |  | min 1; default `1` |
 | `created_at` | string (date-time) | yes |  |  |
@@ -3367,7 +4223,7 @@ Header `ETag` on 200: The current version (of the profile or the listing), a quo
 | `validation.listing_version_id` | string (uuid) or null | no |  |  |
 | `validation.passed` | boolean | yes |  |  |
 | `validation.request_id` | string or null | no |  |  |
-| `validation.schema_version` | string | no |  | default `"1.1.0"` |
+| `validation.schema_version` | string | no |  | default `"2.0.0"` |
 | `validation.stages` | array of ValidationResult | no |  |  |
 | `validation.stages[].attempt` | integer | no |  | min 1; default `1` |
 | `validation.stages[].created_at` | string (date-time) | yes |  |  |
@@ -3378,7 +4234,7 @@ Header `ETag` on 200: The current version (of the profile or the listing), a quo
 | `validation.stages[].passed` | boolean | yes |  |  |
 | `validation.stages[].report` | ErrorReport | yes | Fields: see [ErrorReport](#errorreport). |  |
 | `validation.stages[].rules_version` | integer or null | no |  |  |
-| `validation.stages[].schema_version` | string | no |  | default `"1.1.0"` |
+| `validation.stages[].schema_version` | string | no |  | default `"2.0.0"` |
 | `validation.stages[].source` | ErrorSource (enum) | yes |  | one of: `schema`, `rules_engine`, `vision_model`, `ai_model`, `amazon_adapter`, `flipkart_adapter`, `system` |
 | `validation.stages[].tenant_id` | string (uuid) | yes |  |  |
 | `validation.stages[].validation_run_id` | string (uuid) or null | no |  |  |
@@ -3425,7 +4281,7 @@ Header `ETag` on 200: The current version (of the profile or the listing), a quo
     "locale": "en-IN",
     "marketplace": "amazon",
     "product_id": "0b1c2d3e-0000-4000-8000-000000000101",
-    "schema_version": "1.1.0",
+    "schema_version": "2.0.0",
     "status": "needs_review",
     "version": 1
   },
@@ -3605,7 +4461,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `marketplace` | Marketplace (enum) | yes |  | one of: `amazon`, `flipkart` |
 | `product_type` | string or null | no |  | max length 128 |
 | `report` | ErrorReport | yes | Fields: see [ErrorReport](#errorreport). |  |
-| `schema_version` | string | no |  | default `"1.1.0"` |
+| `schema_version` | string | no |  | default `"2.0.0"` |
 | `version` | integer | yes |  | min 1 |
 
 200 example:
@@ -3647,10 +4503,10 @@ Every error status above answers with the [error envelope](#the-error-envelope).
     "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
     "max_attempts": 3,
     "retryable": false,
-    "schema_version": "1.1.0",
+    "schema_version": "2.0.0",
     "status": "passed"
   },
-  "schema_version": "1.1.0",
+  "schema_version": "2.0.0",
   "version": 1
 }
 ```
@@ -4037,6 +4893,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `data[].items[].fields[].error.error_code` | ErrorCode (enum) | yes |  | one of the [error codes](#error-codes) |
 | `data[].items[].fields[].error.field` | string | yes |  |  |
 | `data[].items[].fields[].error.fix_action` | FixAction (enum) or null | no |  | one of: `remap_value`, `reformat`, `derive_field`, `rebuild_variation` |
+| `data[].items[].fields[].error.gate` | Gate (enum) or null | no |  | one of: `identity`, `classification`, `attributes`, `variants`, `media`, `content`, `compliance`, `commercial`, `submission` |
 | `data[].items[].fields[].error.marketplace` | Marketplace (enum) or null | no |  | one of: `amazon`, `flipkart` |
 | `data[].items[].fields[].error.message` | string | yes |  | min length 1; max length 1000 |
 | `data[].items[].fields[].error.raw_code` | string or null | no |  | max length 128 |
@@ -4178,7 +5035,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `queued_at` | string (date-time) | yes |  |  |
 | `request_id` | string | yes |  | min length 1; max length 128 |
 | `result_url` | string or null | no |  |  |
-| `schema_version` | string | no |  | default `"1.1.0"` |
+| `schema_version` | string | no |  | default `"2.0.0"` |
 | `stage` | PipelineStage (enum) or null | no |  | one of: `load_context`, `retrieve_brand`, `content_agent`, `keyword_agent`, `attribute_agent`, `image_agent`, `merge_outputs`, `validate_schema`, `validate_rules`, `validate_vision`, `correct`, `quality_check` |
 | `started_at` | string (date-time) or null | no |  |  |
 | `status` | JobState (enum) | yes |  | one of: `queued`, `running`, `succeeded`, `partial`, `failed`, `cancelled`, `dead_letter` |
@@ -4195,7 +5052,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
   "progress_pct": 40,
   "queued_at": "2026-10-05T09:30:00Z",
   "request_id": "req-example-0001",
-  "schema_version": "1.1.0",
+  "schema_version": "2.0.0",
   "stage": "content_agent",
   "started_at": "2026-10-05T09:31:00Z",
   "status": "running"
@@ -4269,7 +5126,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `queued_at` | string (date-time) | yes |  |  |
 | `request_id` | string | yes |  | min length 1; max length 128 |
 | `result_url` | string or null | no |  |  |
-| `schema_version` | string | no |  | default `"1.1.0"` |
+| `schema_version` | string | no |  | default `"2.0.0"` |
 | `stage` | PipelineStage (enum) or null | no |  | one of: `load_context`, `retrieve_brand`, `content_agent`, `keyword_agent`, `attribute_agent`, `image_agent`, `merge_outputs`, `validate_schema`, `validate_rules`, `validate_vision`, `correct`, `quality_check` |
 | `started_at` | string (date-time) or null | no |  |  |
 | `status` | JobState (enum) | yes |  | one of: `queued`, `running`, `succeeded`, `partial`, `failed`, `cancelled`, `dead_letter` |
@@ -4287,7 +5144,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
   "progress_pct": 40,
   "queued_at": "2026-10-05T09:30:00Z",
   "request_id": "req-example-0001",
-  "schema_version": "1.1.0",
+  "schema_version": "2.0.0",
   "started_at": "2026-10-05T09:31:00Z",
   "status": "cancelled"
 }
@@ -4824,7 +5681,7 @@ curl -X POST "http://localhost:8000/api/v1/marketplaces/accounts/<account_id>/re
 | 200 | Success. | `MarketplaceAccountOut` |  |  |
 | 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
 | 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
-| 403 | Permission denied. | `ErrorEnvelope` |  | `PERMISSION_DENIED` |
+| 403 | Permission denied. | `ErrorEnvelope` |  | `PERMISSION_DENIED`, `MFA_STEP_UP_REQUIRED`, `MFA_ENROLLMENT_REQUIRED` |
 | 404 | Not found. | `ErrorEnvelope` |  | `NOT_FOUND` |
 | 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
 | 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
@@ -4911,7 +5768,7 @@ curl -X POST "http://localhost:8000/api/v1/marketplaces/connect" \
 | 200 | Success. | `ConnectOut` |  |  |
 | 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
 | 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
-| 403 | Permission denied. | `ErrorEnvelope` |  | `PERMISSION_DENIED` |
+| 403 | Permission denied. | `ErrorEnvelope` |  | `PERMISSION_DENIED`, `MFA_STEP_UP_REQUIRED`, `MFA_ENROLLMENT_REQUIRED` |
 | 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
 | 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
 | 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
@@ -5207,8 +6064,14 @@ Content type `application/json`, required. Schema: `DryRunRequest`.
 | Field | Type | Required | Description | Constraints |
 |---|---|---|---|---|
 | `listing` | CanonicalListing | yes |  |  |
+| `listing.attribute_sources` | map of string to string | no |  | max keys 128; keys match `^[a-z0-9_]{1,64}$` |
 | `listing.attributes` | map of string to array of string or boolean or integer or number or string | no |  | keys match `^[a-z0-9_]{1,64}$` |
 | `listing.category` | string | yes |  | pattern `^[a-z0-9_]{2,64}$` |
+| `listing.claims` | array of Claim | no |  | max items 64 |
+| `listing.claims[].fact_keys` | array of string | yes |  |  |
+| `listing.claims[].id` | string (uuid) | yes |  |  |
+| `listing.claims[].status` | string (enum) | yes |  | one of: `supported`, `unsupported`, `removed` |
+| `listing.claims[].text_path` | string | yes |  |  |
 | `listing.confidence_score` | number or null | no |  | min 0; max 1 |
 | `listing.content` | ListingContent | yes |  |  |
 | `listing.content.bullets` | array of string | yes |  | min items 1; max items 10 |
@@ -5227,7 +6090,7 @@ Content type `application/json`, required. Schema: `DryRunRequest`.
 | `listing.locale` | const "en-IN" | no |  | default `"en-IN"` |
 | `listing.marketplace` | Marketplace (enum) | yes |  | one of: `amazon`, `flipkart` |
 | `listing.product_id` | string (uuid) | yes |  |  |
-| `listing.schema_version` | string | no |  | default `"1.1.0"` |
+| `listing.schema_version` | string | no |  | default `"2.0.0"` |
 | `listing.status` | ListingStatus (enum) | no |  | one of: `created`, `generating`, `validated`, `needs_review`, `approved`, `publishing`, `published`, `blocked`, `failed`; default `"created"` |
 | `listing.version` | integer | no |  | min 1; default `1` |
 
@@ -5236,10 +6099,23 @@ Example (built from the schema; values are placeholders):
 ```json
 {
   "listing": {
+    "attribute_sources": {
+      "example_key": "string"
+    },
     "attributes": {
       "example_key": "string"
     },
     "category": "string",
+    "claims": [
+      {
+        "fact_keys": [
+          "string"
+        ],
+        "id": "00000000-0000-4000-8000-000000000000",
+        "status": "supported",
+        "text_path": "string"
+      }
+    ],
     "confidence_score": 0.5,
     "content": {
       "bullets": [
@@ -5269,7 +6145,7 @@ Example (built from the schema; values are placeholders):
     "locale": "en-IN",
     "marketplace": "amazon",
     "product_id": "00000000-0000-4000-8000-000000000000",
-    "schema_version": "1.1.0",
+    "schema_version": "2.0.0",
     "status": "created",
     "version": 1
   }
@@ -5282,7 +6158,7 @@ Example (built from the schema; values are placeholders):
 curl -X POST "http://localhost:8000/api/v1/rules/dry-run" \
   -H "Authorization: Bearer <ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{"listing":{"attributes":{"example_key":"string"},"category":"string","confidence_score":0.5,"content":{"bullets":["string"],"description":"string","title":"string"},"created_at":"2026-10-05T09:30:00Z","generated_by_agent_run_id":"00000000-0000-4000-8000-000000000000","images":[{"image_id":"00000000-0000-4000-8000-000000000000","position":0,"slot":"main"}],"keywords":{"hidden_terms":["string"],"search_terms":["string"]},"listing_id":"00000000-0000-4000-8000-000000000000","locale":"en-IN","marketplace":"amazon","product_id":"00000000-0000-4000-8000-000000000000","schema_version":"1.1.0","status":"created","version":1}}'
+  -d '{"listing":{"attribute_sources":{"example_key":"string"},"attributes":{"example_key":"string"},"category":"string","claims":[{"fact_keys":["string"],"id":"00000000-0000-4000-8000-000000000000","status":"supported","text_path":"string"}],"confidence_score":0.5,"content":{"bullets":["string"],"description":"string","title":"string"},"created_at":"2026-10-05T09:30:00Z","generated_by_agent_run_id":"00000000-0000-4000-8000-000000000000","images":[{"image_id":"00000000-0000-4000-8000-000000000000","position":0,"slot":"main"}],"keywords":{"hidden_terms":["string"],"search_terms":["string"]},"listing_id":"00000000-0000-4000-8000-000000000000","locale":"en-IN","marketplace":"amazon","product_id":"00000000-0000-4000-8000-000000000000","schema_version":"2.0.0","status":"created","version":1}}'
 ```
 
 #### Responses
@@ -5313,7 +6189,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `passed` | boolean | yes |  |  |
 | `report` | ErrorReport | yes | Fields: see [ErrorReport](#errorreport). |  |
 | `rules_version` | integer or null | no |  |  |
-| `schema_version` | string | no |  | default `"1.1.0"` |
+| `schema_version` | string | no |  | default `"2.0.0"` |
 | `source` | ErrorSource (enum) | yes |  | one of: `schema`, `rules_engine`, `vision_model`, `ai_model`, `amazon_adapter`, `flipkart_adapter`, `system` |
 | `tenant_id` | string (uuid) | yes |  |  |
 | `validation_run_id` | string (uuid) or null | no |  |  |
@@ -5350,11 +6226,11 @@ Every error status above answers with the [error envelope](#the-error-envelope).
     "max_attempts": 3,
     "request_id": "req-example-0001",
     "retryable": true,
-    "schema_version": "1.1.0",
+    "schema_version": "2.0.0",
     "status": "failed"
   },
   "rules_version": 3,
-  "schema_version": "1.1.0",
+  "schema_version": "2.0.0",
   "source": "rules_engine",
   "tenant_id": "0b1c2d3e-0000-4000-8000-000000000001"
 }
@@ -5626,7 +6502,7 @@ Self-serve brand sign-up (ADR-0019): a pending request a platform admin approves
 
 **Sign up a brand: a pending request a platform admin approves.**
 
-Brand name, owner name, email and password (phone and website optional) in; a pending request out. Always 202 with this shape: the answer never says whether the email already had an account. Re-submitting while a request is pending answers that request. The brand logs in only after a platform admin approves (until then the login is 401; read the status with `POST /signup/status`). The rest of the brand profile is filled in after approval with `PATCH /tenants/me` and `/brand/documents`.
+Brand name, owner name, email and password (phone and website optional) in; a pending request out. Always 202 with this shape: the answer never says whether the email already had an account. Re-submitting while a request is pending answers that request. The brand logs in only after a platform admin approves (until then the login is 401; read the status with `POST /signup/status`). The rest of the brand profile is filled in after approval with `PATCH /tenants/me` and `/brand/documents`. The password must be 12+ characters with an upper-case letter, a lower-case letter, a digit and a symbol, and must not contain the owner name or the first part of the email: otherwise 422 with each broken rule in `details`. The `request_id` is not stable for an email that already has an account: do not store or compare it.
 
 | | |
 |---|---|
@@ -5651,7 +6527,7 @@ Content type `application/json`, required. Schema: `SignupCreate`.
 | `owner_name` | string | yes |  | min length 1; max length 200 |
 | `password` | string (password) | yes |  | min length 12; max length 1024; write-only (never returned) |
 | `phone` | string or null | no |  | max length 32; pattern `^\+?[0-9][0-9 ()-]{5,30}$` |
-| `website` | string or null | no |  | max length 2048; pattern `^https?://[^\s/?#]+\.[^\s]+$` |
+| `website` | string or null | no |  | max length 2048; pattern `^https?://[^\s/?#\x00-\x1f\x7f]+\.[^\s\x00-\x1f\x7f]+$` |
 
 Example (built from the schema; values are placeholders):
 
@@ -5946,7 +6822,7 @@ curl -X POST "http://localhost:8000/api/v1/admin/signup-requests/<request_id>/ap
 | 200 | Success. | `SignupRequestOut` |  |  |
 | 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
 | 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
-| 403 | Permission denied. | `ErrorEnvelope` |  | `PERMISSION_DENIED` |
+| 403 | Permission denied. | `ErrorEnvelope` |  | `PERMISSION_DENIED`, `MFA_STEP_UP_REQUIRED`, `MFA_ENROLLMENT_REQUIRED` |
 | 404 | Not found. | `ErrorEnvelope` |  | `NOT_FOUND` |
 | 409 | The request conflicts with the current state. | `ErrorEnvelope` |  | `INVALID_STATUS_TRANSITION` |
 | 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
@@ -6045,7 +6921,7 @@ curl -X POST "http://localhost:8000/api/v1/admin/signup-requests/<request_id>/re
 | 200 | Success. | `SignupRequestOut` |  |  |
 | 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
 | 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
-| 403 | Permission denied. | `ErrorEnvelope` |  | `PERMISSION_DENIED` |
+| 403 | Permission denied. | `ErrorEnvelope` |  | `PERMISSION_DENIED`, `MFA_STEP_UP_REQUIRED`, `MFA_ENROLLMENT_REQUIRED` |
 | 404 | Not found. | `ErrorEnvelope` |  | `NOT_FOUND` |
 | 409 | The request conflicts with the current state. | `ErrorEnvelope` |  | `INVALID_STATUS_TRANSITION` |
 | 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
@@ -6222,6 +7098,7 @@ Objects that appear inside many answers. Operation tables link here instead of r
 | `errors[].error_code` | ErrorCode (enum) | yes |  | one of the [error codes](#error-codes) |
 | `errors[].field` | string | yes |  |  |
 | `errors[].fix_action` | FixAction (enum) or null | no |  | one of: `remap_value`, `reformat`, `derive_field`, `rebuild_variation` |
+| `errors[].gate` | Gate (enum) or null | no |  | one of: `identity`, `classification`, `attributes`, `variants`, `media`, `content`, `compliance`, `commercial`, `submission` |
 | `errors[].marketplace` | Marketplace (enum) or null | no |  | one of: `amazon`, `flipkart` |
 | `errors[].message` | string | yes |  | min length 1; max length 1000 |
 | `errors[].raw_code` | string or null | no |  | max length 128 |
@@ -6236,7 +7113,7 @@ Objects that appear inside many answers. Operation tables link here instead of r
 | `max_attempts` | integer | no |  | min 1; max 3; default `3` |
 | `request_id` | string or null | no |  | min length 1; max length 128 |
 | `retryable` | boolean | no |  | default `false` |
-| `schema_version` | string | no |  | default `"1.1.0"` |
+| `schema_version` | string | no |  | default `"2.0.0"` |
 | `status` | string (enum) | yes |  | one of: `passed`, `failed`, `partial` |
 
 ## Error codes
@@ -6286,7 +7163,7 @@ How to act on the retry class:
 | `IDENTIFIER_MISSING` | adapter | identifier_error | user_action |  |  |
 | `IMAGE_NON_COMPLIANT` | vision | media_error | user_action |  |  |
 | `IMPORT_FAILED` | summary |  | user_action |  | `products_bulk` |
-| `INTERNAL_ERROR` | system |  | system_failure |  | 55 operations |
+| `INTERNAL_ERROR` | system |  | system_failure |  | 65 operations |
 | `INVALID_STATUS_TRANSITION` | api |  | user_action |  | `admin_signup_requests_approve`, `admin_signup_requests_reject`, `imports_rows_retry`, `issues_dismiss`, `jobs_cancel`, `listings_generate`, `listings_refresh_status`, `listings_regenerate`, `listings_retry_fields` |
 | `JOB_TIMEOUT` | system |  | system_failure |  |  |
 | `JSON_INVALID` | ai |  | auto_retry |  |  |
@@ -6300,18 +7177,20 @@ How to act on the retry class:
 | `MARKETPLACE_UNAVAILABLE` | adapter | marketplace_technical | auto_retry |  | `marketplaces_callback` |
 | `MARKETPLACE_UNCONFIRMED` | adapter | marketplace_technical | auto_retry |  |  |
 | `MARKETPLACE_UNKNOWN_ERROR` | adapter | unknown | user_action |  | `marketplaces_callback` |
-| `METHOD_NOT_ALLOWED` | api |  | user_action |  | 55 operations |
+| `METHOD_NOT_ALLOWED` | api |  | user_action |  | 65 operations |
+| `MFA_ENROLLMENT_REQUIRED` | api (2.0.0, DPP-1, ADR-0021) |  | user_action |  | `admin_signup_requests_approve`, `admin_signup_requests_reject`, `auth_mfa_recovery_codes`, `marketplaces_accounts_revoke`, `marketplaces_connect`, `members_patch` |
+| `MFA_STEP_UP_REQUIRED` | api (2.0.0, DPP-1, ADR-0021) |  | user_action |  | `admin_signup_requests_approve`, `admin_signup_requests_reject`, `auth_mfa_recovery_codes`, `auth_mfa_totp_confirm`, `auth_mfa_totp_enroll`, `marketplaces_accounts_revoke`, `marketplaces_connect`, `members_patch` |
 | `MISSING_ATTRIBUTE` | rules | missing_data | user_action |  |  |
 | `MODEL_UNAVAILABLE` | ai |  | auto_retry |  |  |
 | `NOT_FOUND` | api |  | user_action |  | 30 operations |
-| `NOT_IMPLEMENTED` | api |  | system_failure |  | `listings_preview`, `listings_retry_fields`, `marketplaces_callback`, `marketplaces_connect`, `marketplaces_connect_confirm` |
+| `NOT_IMPLEMENTED` | api |  | system_failure |  | 13 operations |
 | `OAUTH_STATE_INVALID` | api |  | user_action |  | `marketplaces_callback`, `marketplaces_connect_confirm` |
 | `PATTERN_MISMATCH` | rules | content_error | ai_correct |  |  |
-| `PAYLOAD_TOO_LARGE` | api |  | user_action |  | 55 operations |
+| `PAYLOAD_TOO_LARGE` | api |  | user_action |  | 65 operations |
 | `PERMISSION_DENIED` | api |  | user_action |  | 27 operations |
 | `PRICE_ABOVE_MRP` | facts | invalid_value | user_action |  |  |
 | `PUBLISH_FAILED` | summary |  | user_action |  |  |
-| `RATE_LIMITED` | adapter | marketplace_technical | auto_retry |  | 55 operations |
+| `RATE_LIMITED` | adapter | marketplace_technical | auto_retry |  | 65 operations |
 | `REQUIRED_FIELD_MISSING` | schema | missing_data | user_action |  |  |
 | `RETRY_EXHAUSTED` | system |  | system_failure |  |  |
 | `SCHEMA_INVALID` | schema | content_error | ai_correct |  |  |
@@ -6323,10 +7202,10 @@ How to act on the retry class:
 | `SUBMISSION_NOT_APPLIED` | adapter | marketplace_technical | auto_retry |  |  |
 | `TIMEOUT` | ai |  | auto_retry |  |  |
 | `TOKEN_LIMIT` | ai |  | auto_retry |  |  |
-| `UNAUTHENTICATED` | api |  | user_action |  | 52 operations |
+| `UNAUTHENTICATED` | api |  | user_action |  | 62 operations |
 | `UNKNOWN_FACT_KEY` | facts | invalid_value | user_action |  | `products_create` |
 | `UNSUPPORTED_CLAIM` | rules | content_error | ai_correct |  |  |
-| `VALIDATION_FAILED` | summary |  | user_action |  | 55 operations |
+| `VALIDATION_FAILED` | summary |  | user_action |  | 65 operations |
 | `VALUE_NOT_ALLOWED` | rules | invalid_value | user_action |  |  |
 | `VARIANT_MATRIX_INCOMPLETE` | facts | variation_error | user_action |  |  |
 | `VARIATION_INVALID` | adapter | variation_error | user_action | rebuild_variation |  |

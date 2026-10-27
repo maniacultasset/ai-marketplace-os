@@ -344,3 +344,42 @@ def test_redacts_signed_query(url: str) -> None:
     ):
         assert secret not in out
     assert "X-Amz-Algorithm=AWS4-HMAC-SHA256" in out or "X-Goog-Algorithm=GOOG4-RSA-SHA256" in out
+
+
+# ---- DPP-1 (AC11): MFA secrets, codes and challenges never reach a log line ----
+
+MFA_KEYS = (
+    "otpauth_uri",
+    "secret_b32",
+    "secret_blob",
+    "recovery_code",
+    "recovery_codes",
+    "challenge_token",
+    "challenge_hash",
+    "current_password",
+    "new_password",
+)
+
+
+@pytest.mark.parametrize("key", MFA_KEYS)
+def test_mfa_keys_denied(key: str) -> None:
+    from app.core.redaction import REDACTED, is_denied_key, redact
+
+    assert is_denied_key(key)
+    out: Any = redact(
+        {key: "otpauth://totp/Kuinn:a%40b?secret=JBSWY3DPEHPK3PXP", "nested": {key: ["x"]}}
+    )
+    assert out[key] == REDACTED and out["nested"][key] == REDACTED
+
+
+def test_error_code_field_not_redacted() -> None:
+    """`code` collides with the error and rule codes logged across the app, so it stays a
+    query-only key; the error code fields keep their values."""
+    from app.core.redaction import is_denied_key, redact
+
+    assert not is_denied_key("code")
+    assert not is_denied_key("error_code")
+    line = {"error_code": "MFA_STEP_UP_REQUIRED", "code": "RATE_LIMITED", "type": "UNAUTHENTICATED"}
+    assert redact(line) == line
+    # in a URL query it is still the OAuth code and is redacted
+    assert "123456" not in str(redact("https://x.test/cb?code=123456&state=s"))

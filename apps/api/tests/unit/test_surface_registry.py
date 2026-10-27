@@ -19,13 +19,24 @@ from mkos_schemas.codes import ErrorCode
 
 # The frozen list (PLAN D1): 35 operations at S3 plus S10's switch and members (38), no
 # dead-letter path. Later steps add ops as
-# "merged literal + N" (S10 38, S15 40, S16 43, S19 47, S20 48, S21 50, ADR-0019 55).
+# "merged literal + N" (S10 38, S15 40, S16 43, S19 47, S20 48, S21 50, ADR-0019 55, DPP-1 65).
 FROZEN: tuple[tuple[str, str, str], ...] = (
     ("auth_login", "POST", "/auth/login"),
     ("auth_refresh", "POST", "/auth/refresh"),
     ("auth_logout", "POST", "/auth/logout"),
     ("auth_me", "GET", "/auth/me"),
     ("auth_switch_tenant", "POST", "/auth/switch-tenant"),
+    # DPP-1: MFA, step-up and passwords (55 + 10)
+    ("auth_login_mfa", "POST", "/auth/login/mfa"),
+    ("auth_login_mfa_enroll", "POST", "/auth/login/mfa/enroll"),
+    ("auth_login_mfa_confirm", "POST", "/auth/login/mfa/confirm"),
+    ("auth_password_expired", "POST", "/auth/password/expired"),
+    ("auth_mfa_totp_enroll", "POST", "/auth/mfa/totp/enroll"),
+    ("auth_mfa_totp_confirm", "POST", "/auth/mfa/totp/confirm"),
+    ("auth_security", "GET", "/auth/security"),
+    ("auth_mfa_recovery_codes", "POST", "/auth/mfa/recovery-codes"),
+    ("auth_mfa_step_up", "POST", "/auth/mfa/step-up"),
+    ("auth_password_change", "POST", "/auth/password"),
     ("members_list", "GET", "/members"),
     ("members_patch", "PATCH", "/members/{user_id}"),
     ("tenants_me", "GET", "/tenants/me"),
@@ -87,7 +98,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 55
+    assert len(FROZEN) == 65
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -247,7 +258,79 @@ def test_public_ops() -> None:
         # ADR-0019
         "signup_create",
         "signup_status",
+        # DPP-1: the challenge steps (the challenge is checked in the service)
+        "auth_login_mfa",
+        "auth_login_mfa_enroll",
+        "auth_login_mfa_confirm",
+        "auth_password_expired",
     }
+
+
+# DPP-1: the public challenge routes answer 401 for a wrong code or burned challenge, and the
+# MFA routes 501 under MFA_ENFORCEMENT=off
+MFA_PUBLIC = {"auth_login_mfa", "auth_login_mfa_enroll", "auth_login_mfa_confirm"}
+MFA_PUBLIC_401 = MFA_PUBLIC | {"auth_password_expired"}
+MFA_501 = MFA_PUBLIC_401 | {
+    "auth_mfa_totp_enroll",
+    "auth_mfa_totp_confirm",
+    "auth_mfa_recovery_codes",
+    "auth_mfa_step_up",
+}
+STEP_UP = {
+    "members_patch": "any",
+    "marketplaces_connect": "any",
+    "auth_mfa_recovery_codes": "any",
+    "marketplaces_accounts_revoke": "otp",
+    "admin_signup_requests_approve": "otp",
+    "admin_signup_requests_reject": "otp",
+}
+
+
+def test_step_up_marked_on_guarded_ops() -> None:
+    assert {o.op_id: o.step_up for o in OPS.values() if o.step_up} == STEP_UP
+
+
+def test_step_up_ops_declare_403_codes() -> None:
+    for op_id in STEP_UP:
+        codes = OPS[op_id].error_codes[403]
+        assert codes[-2:] == (E.MFA_STEP_UP_REQUIRED, E.MFA_ENROLLMENT_REQUIRED), op_id
+    for op in OPS.values():
+        if op.op_id not in STEP_UP:
+            assert E.MFA_ENROLLMENT_REQUIRED not in op.error_codes.get(403, ()), op.op_id
+
+
+def test_mfa_ops_declare_401_422_501() -> None:
+    for op_id in MFA_501:
+        codes = OPS[op_id].error_codes
+        assert codes[501] == (E.NOT_IMPLEMENTED,), op_id
+        if OPS[op_id].has_input:
+            assert codes[422][0] == E.VALIDATION_FAILED, op_id
+        assert codes[401] == (E.UNAUTHENTICATED,), op_id
+    for op_id in ("auth_mfa_totp_enroll", "auth_mfa_totp_confirm"):
+        assert OPS[op_id].error_codes[403] == (E.MFA_STEP_UP_REQUIRED,), op_id
+    assert 501 not in OPS["auth_security"].error_codes
+    assert 501 not in OPS["auth_password_change"].error_codes
+
+
+def test_public_challenge_ops_vs_bearer_totp_ops() -> None:
+    for op_id in MFA_PUBLIC_401:
+        assert OPS[op_id].public, op_id
+    for op_id in ("auth_mfa_totp_enroll", "auth_mfa_totp_confirm", "auth_mfa_step_up"):
+        assert not OPS[op_id].public and OPS[op_id].action == Action.TENANT_READ, op_id
+
+
+def test_login_response_is_login_result() -> None:
+    from app.api.v1.schemas.auth import LoginResult, TokenResponse
+
+    assert OPS["auth_login"].response_model is LoginResult
+    assert OPS["auth_login_mfa"].response_model is LoginResult
+    assert OPS["auth_password_expired"].response_model is LoginResult
+    assert OPS["auth_refresh"].response_model is TokenResponse
+    assert OPS["auth_switch_tenant"].response_model is TokenResponse
+
+
+def test_65_operations() -> None:
+    assert len(OPS) == 65
 
 
 def test_error_codes_per_d2() -> None:
@@ -284,14 +367,20 @@ def test_error_codes_per_d2() -> None:
         codes = op.error_codes
         c = cases(op)
         assert codes[429] == (E.RATE_LIMITED,)
-        if "missing_auth" in c or op.op_id in {"auth_login", "auth_refresh", "signup_status"}:
+        public_401 = {"auth_login", "auth_refresh", "signup_status"} | MFA_PUBLIC_401
+        if "missing_auth" in c or op.op_id in public_401:
             assert codes[401] == (E.UNAUTHENTICATED,), op.op_id
         else:
             assert 401 not in codes, op.op_id
+        step_up = (E.MFA_STEP_UP_REQUIRED, E.MFA_ENROLLMENT_REQUIRED) if op.step_up else ()
         if op.op_id == "listings_approve":
             assert codes[403] == (E.PERMISSION_DENIED, E.MAKER_CHECKER_VIOLATION)
+        elif op.op_id in ("auth_mfa_totp_enroll", "auth_mfa_totp_confirm"):
+            assert codes[403] == (E.MFA_STEP_UP_REQUIRED,), op.op_id
         elif "wrong_role" in c:
-            assert codes[403] == (E.PERMISSION_DENIED,), op.op_id
+            assert codes[403] == (E.PERMISSION_DENIED, *step_up), op.op_id
+        elif step_up:
+            assert codes[403] == step_up, op.op_id
         else:
             assert 403 not in codes, op.op_id
         # ADR-0019: a platform row's unknown id is 404 too, but it is not tenant-owned, so the
@@ -325,7 +414,7 @@ def test_error_codes_per_d2() -> None:
 def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
-        "ADR-0019",
+        "ADR-0019", "DPP-1",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id

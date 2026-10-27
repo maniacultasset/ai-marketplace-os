@@ -95,6 +95,45 @@ def test_new_operations_registered() -> None:
         assert name in spec["components"]["schemas"], name
 
 
+def test_dpp1_operations_registered() -> None:
+    """DPP-1 (2.0.0): the 10 MFA, step-up and password operations and their models."""
+    paths = {
+        "auth_login_mfa": ("POST", "/auth/login/mfa"),
+        "auth_login_mfa_enroll": ("POST", "/auth/login/mfa/enroll"),
+        "auth_login_mfa_confirm": ("POST", "/auth/login/mfa/confirm"),
+        "auth_password_expired": ("POST", "/auth/password/expired"),
+        "auth_mfa_totp_enroll": ("POST", "/auth/mfa/totp/enroll"),
+        "auth_mfa_totp_confirm": ("POST", "/auth/mfa/totp/confirm"),
+        "auth_security": ("GET", "/auth/security"),
+        "auth_mfa_recovery_codes": ("POST", "/auth/mfa/recovery-codes"),
+        "auth_mfa_step_up": ("POST", "/auth/mfa/step-up"),
+        "auth_password_change": ("POST", "/auth/password"),
+    }
+    for op_id, (method, path) in paths.items():
+        assert (OPS[op_id].method, OPS[op_id].path) == (method, path), op_id
+    spec = _spec()
+    for name in (
+        "LoginResult",
+        "LoginMfaRequest",
+        "LoginEnrollRequest",
+        "LoginConfirmRequest",
+        "TotpEnrollRequest",
+        "TotpConfirmRequest",
+        "StepUpRequest",
+        "PasswordChangeRequest",
+        "PasswordExpiredRequest",
+        "TotpEnrollOut",
+        "LoginConfirmOut",
+        "TotpConfirmOut",
+        "SecurityOut",
+        "RecoveryCodesOut",
+        "StepUpOut",
+    ):
+        assert name in spec["components"]["schemas"], name
+    login = spec["paths"]["/api/v1/auth/login"]["post"]["responses"]["200"]
+    assert login["content"]["application/json"]["schema"]["$ref"].endswith("/LoginResult")
+
+
 def _version(path: str, pattern: str) -> str:
     found = re.search(pattern, (SCHEMAS / path).read_text("utf-8"), re.M)
     assert found is not None, path

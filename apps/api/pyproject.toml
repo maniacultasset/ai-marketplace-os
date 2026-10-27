@@ -69,6 +69,11 @@ only_mutate = [
   "app/services/publish_rules.py",
   "app/services/publish_ledger.py",
   "app/services/publish.py",
+  # DPP-1 (ADR-0021): the pure security modules of the sign-in
+  "app/core/totp.py",
+  "app/core/recovery_codes.py",
+  "app/core/password_policy.py",
+  "app/services/sign_in_policy.py",
 ]
 pytest_add_cli_args_test_selection = [
   "tests/unit/rules_engine",
@@ -91,6 +96,10 @@ pytest_add_cli_args_test_selection = [
   "tests/integration/test_listings_sync_reads_api.py",
   "tests/integration/test_analytics_repository.py",
   "tests/integration/test_periodic_tasks.py",
+  "tests/unit/test_totp.py",
+  "tests/unit/test_recovery_codes.py",
+  "tests/unit/test_password_policy.py",
+  "tests/unit/test_sign_in_decision.py",
 ]
 pytest_add_cli_args = [
   "-c",

@@ -3,8 +3,9 @@
 Mass assignment: every JSON body refuses a server-owned field (`tenant_id`, `status`, the
 approver or creator, `id`) with 422 `VALIDATION_FAILED` and writes nothing, because every request
 model forbids extra keys. Excessive exposure: no response schema and no read answer names a
-secret-shaped key; the one exemption is the top-level `access_token` / `refresh_token` of
-`TokenResponse` on login, refresh and switch-tenant.
+secret-shaped key; the exemptions are the top-level `access_token` / `refresh_token` of
+`TokenResponse` on login, refresh and switch-tenant, and the DPP-1 (ADR-0021) sign-in and MFA
+answers listed op by op in `SECRET_KEYS_BY_OP`, each at its one declared place.
 """
 
 from __future__ import annotations
@@ -48,7 +49,43 @@ TOKEN_KEYS = frozenset({"access_token", "refresh_token"})
 SEAM_MODELS = frozenset(
     {"CanonicalListing", "Claim", "ImageRef", "ListingContent", "ListingKeywords"}
 )
-TOKEN_OPS = frozenset({"auth_login", "auth_refresh", "auth_switch_tenant"})
+TOKEN_OPS = frozenset(
+    {
+        "auth_login",
+        "auth_refresh",
+        "auth_switch_tenant",
+        # DPP-1 (ADR-0021): a `LoginResult` with `status=signed_in` carries the pair at the top
+        "auth_login_mfa",
+        "auth_password_expired",
+    }
+)
+_TOP: dict[str, bool] = {"access_token": True, "refresh_token": True}
+_LOGIN_RESULT_TOP: dict[str, bool] = {**_TOP, "challenge_token": True}
+# The secret-bearing response keys each op answers by design, and whether at the top level of its
+# success body (True) or only nested (False). Any other op, key or placement fails.
+SECRET_KEYS_BY_OP: dict[str, dict[str, bool]] = {
+    "auth_login": _LOGIN_RESULT_TOP,
+    "auth_refresh": _TOP,
+    "auth_switch_tenant": _TOP,
+    # DPP-1 (ADR-0021): `LoginResult` hands out the sign-in challenge or the token pair
+    "auth_login_mfa": _LOGIN_RESULT_TOP,
+    "auth_password_expired": _LOGIN_RESULT_TOP,
+    # DPP-1 (ADR-0021): the recovery codes are shown once at confirm, with the `LoginResult`
+    # nested under `result` only (`test_api3_login_confirm_nests_only_login_result`)
+    "auth_login_mfa_confirm": {
+        "recovery_codes": True,
+        "access_token": False,
+        "refresh_token": False,
+        "challenge_token": False,
+    },
+    # DPP-1 (ADR-0021): the TOTP secret is shown once at enrolment, for the authenticator app
+    "auth_login_mfa_enroll": {"otpauth_uri": True, "secret_b32": True},
+    "auth_mfa_totp_enroll": {"otpauth_uri": True, "secret_b32": True},
+    "auth_mfa_totp_confirm": {"recovery_codes": True},
+    "auth_mfa_recovery_codes": {"recovery_codes": True},
+    # DPP-1 (ADR-0021): a step-up answers a fresh access token only (the refresh token is kept)
+    "auth_mfa_step_up": {"access_token": True},
+}
 
 
 def denied(key: str) -> bool:
@@ -57,8 +94,9 @@ def denied(key: str) -> bool:
 
 
 def allowed_in(op_id: str, key: str, *, top_level: bool) -> bool:
-    if key in TOKEN_KEYS:
-        return op_id in TOKEN_OPS and top_level
+    secret = SECRET_KEYS_BY_OP.get(op_id, {})
+    if key in secret:
+        return secret[key] is top_level
     return key in PERSONAL_KEYS and op_id in PERSONAL_OPS
 
 
@@ -71,6 +109,10 @@ async def test_api3_unknown_fields_422(
     conn = world2.base.conn
     acme = world2.side("acme").tenant_id
     headers = world2.caller_headers(op)
+    if op.op_id == "auth_password_change":
+        # DPP-1 (ADR-0021): the one-change-a-day minimum age is a 422 by design; the seeded
+        # passwords are older than that here, so the valid call passes
+        conn.execute("UPDATE users SET password_changed_at = now() - interval '2 days'")
     # the body without the extra key passes validation, so the 422 below is the extra key's
     base = await send(api, call_for(op, world2, "acme"), headers)
     assert base.status_code != 422, (op.op_id, base.text[:300])
@@ -219,7 +261,29 @@ async def test_api3_token_keys_only_top_level_on_auth_login_refresh(
     spec = openapi_spec()
     for op_id in OPS:
         keys = {key for key, _ in _response_keys(spec, op_id)}
+        top = {key for key, at_top in _response_keys(spec, op_id) if at_top}
         if op_id in TOKEN_OPS:
-            assert keys >= TOKEN_KEYS, op_id
+            assert top >= TOKEN_KEYS, op_id
         else:
-            assert not TOKEN_KEYS & keys, op_id
+            # DPP-1 (ADR-0021): only the ops in SECRET_KEYS_BY_OP name a token key, as declared
+            expected = {k for k in TOKEN_KEYS if k in SECRET_KEYS_BY_OP.get(op_id, {})}
+            assert TOKEN_KEYS & keys == expected, op_id
+
+
+def test_api3_secret_key_allow_list_matches_the_surface(auth_db: Any) -> None:
+    """Every allow-listed op exists and answers each listed key at the listed place: a stale
+    entry cannot quietly widen the exemption for a later op or field."""
+    spec = openapi_spec()
+    assert set(SECRET_KEYS_BY_OP) <= set(OPS)
+    for op_id, allowed in SECRET_KEYS_BY_OP.items():
+        found = {(k, top) for k, top in _response_keys(spec, op_id) if denied(k)}
+        assert found == set(allowed.items()), op_id
+
+
+def test_api3_login_confirm_nests_only_login_result(auth_db: Any) -> None:
+    """DPP-1 (ADR-0021): the confirm answer's nested token keys come from its `result`
+    `LoginResult` alone."""
+    spec = openapi_spec()
+    confirm = _schemas(spec)["LoginConfirmOut"]
+    assert set(confirm["properties"]) == {"recovery_codes", "result"}
+    assert list(_refs(confirm["properties"]["result"])) == ["LoginResult"]

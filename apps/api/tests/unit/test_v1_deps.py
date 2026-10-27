@@ -88,3 +88,135 @@ def test_if_match_rejected(client: TestClient, value: str | None) -> None:
     headers = {} if value is None else {"If-Match": value}
     response = client.patch("/match", headers=headers)
     assert response.status_code == 422
+
+
+# ---- DPP-1: require_recent_mfa (the step-up guard) ----
+
+import time  # noqa: E402
+import uuid  # noqa: E402
+
+from app.api.v1 import deps as deps_module  # noqa: E402
+from app.core.rbac import Principal  # noqa: E402
+from mkos_schemas.auth import JWTClaims  # noqa: E402
+
+USER = uuid.uuid4()
+TENANT = uuid.uuid4()
+
+
+def _claims(*, amr: list[str] | None, age: int | None) -> JWTClaims:
+    now = int(time.time())
+    return JWTClaims(
+        sub=USER,
+        tid=TENANT,
+        roles=["owner"],
+        email="owner@acme.test",
+        typ="access",
+        jti="j",
+        iss="http://localhost:8000",
+        aud="ai-marketplace-os",
+        iat=now,
+        exp=now + 600,
+        amr=amr,
+        mfa_at=None if age is None else now - age,
+        sid=uuid.uuid4(),
+    )
+
+
+def _guard_app(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    enforcement: str,
+    claims: JWTClaims,
+    otp_only: bool,
+    has_factor: bool = True,
+) -> TestClient:
+    from app.core import config
+
+    class _Settings:
+        mfa_enforcement = enforcement
+
+    monkeypatch.setattr(deps_module, "get_settings", lambda: _Settings())
+
+    async def factor(_: uuid.UUID) -> bool:
+        return has_factor
+
+    monkeypatch.setattr(deps_module, "has_active_factor", factor)
+    app = FastAPI()
+    install_error_handlers(app)
+    guard = deps_module.require_recent_mfa(otp_only=otp_only)
+
+    @app.get("/guarded", dependencies=[guard])
+    async def guarded() -> dict[str, str]:
+        return {"ok": "yes"}
+
+    app.dependency_overrides[deps_module.access_claims] = lambda: claims
+    app.dependency_overrides[deps_module.get_current_principal] = lambda: Principal(
+        USER, TENANT, "owner", "owner@acme.test", "j"
+    )
+    assert config  # the real settings are never read here
+    return TestClient(app, raise_server_exceptions=False)
+
+
+def _status(client: TestClient) -> tuple[int, str | None]:
+    response = client.get("/guarded")
+    if response.status_code == 200:
+        return 200, None
+    return response.status_code, response.json()["error"]["type"]
+
+
+def test_require_recent_mfa_off_noop(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _guard_app(
+        monkeypatch, enforcement="off", claims=_claims(amr=None, age=None), otp_only=True
+    )
+    assert _status(client) == (200, None)
+
+
+def test_fresh_passes(monkeypatch: pytest.MonkeyPatch) -> None:
+    claims = _claims(amr=["pwd", "otp"], age=30)
+    assert _status(_guard_app(monkeypatch, enforcement="all", claims=claims, otp_only=True)) == (
+        200,
+        None,
+    )
+
+
+def test_stale_403_step_up(monkeypatch: pytest.MonkeyPatch) -> None:
+    claims = _claims(amr=["pwd", "otp"], age=601)
+    client = _guard_app(monkeypatch, enforcement="all", claims=claims, otp_only=False)
+    assert _status(client) == (403, "MFA_STEP_UP_REQUIRED")
+    pre_mfa = _guard_app(
+        monkeypatch, enforcement="all", claims=_claims(amr=None, age=None), otp_only=False
+    )
+    assert _status(pre_mfa) == (403, "MFA_STEP_UP_REQUIRED")
+
+
+def test_no_factor_403_enrollment(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _guard_app(
+        monkeypatch,
+        enforcement="all",
+        claims=_claims(amr=["pwd"], age=None),
+        otp_only=False,
+        has_factor=False,
+    )
+    assert _status(client) == (403, "MFA_ENROLLMENT_REQUIRED")
+
+
+def test_otp_only_refuses_rc(monkeypatch: pytest.MonkeyPatch) -> None:
+    claims = _claims(amr=["pwd", "rc"], age=10)
+    client = _guard_app(monkeypatch, enforcement="all", claims=claims, otp_only=True)
+    assert _status(client) == (403, "MFA_STEP_UP_REQUIRED")
+
+
+def test_any_accepts_rc(monkeypatch: pytest.MonkeyPatch) -> None:
+    claims = _claims(amr=["pwd", "rc"], age=10)
+    client = _guard_app(monkeypatch, enforcement="all", claims=claims, otp_only=False)
+    assert _status(client) == (200, None)
+
+
+def test_step_up_guard_is_cached_and_marked() -> None:
+    first = deps_module.require_recent_mfa(otp_only=True)
+    assert first is deps_module.require_recent_mfa(otp_only=True)
+    assert getattr(first.dependency, deps_module.STEP_UP_MARK) == "otp"
+    assert (
+        getattr(deps_module.require_recent_mfa(otp_only=False).dependency, deps_module.STEP_UP_MARK)
+        == "any"
+    )

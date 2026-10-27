@@ -90,12 +90,18 @@ def test_catalog_definer_search_path(db: Conn) -> None:
         "WHERE p.pronamespace = 'public'::regnamespace AND p.prosecdef ORDER BY 1"
     ).fetchall()
     assert [r[0] for r in rows] == [
+        "app_begin_auth_attempt(uuid)",  # 0011 (DPP-1)
+        "app_clear_auth_failures(uuid)",  # 0011 (DPP-1)
         "app_is_platform_admin()",  # 0010 (ADR-0019)
+        "app_note_auth_failure(uuid)",  # 0011 (DPP-1)
         "expire_trials()",
         "set_tenant_lifecycle(uuid,text,text)",
     ]
     for name, config in rows:
-        assert config == ["search_path=pg_catalog, public, pg_temp"], name
+        expected = ["search_path=pg_catalog, public, pg_temp"]
+        if name == "app_begin_auth_attempt(uuid)":  # 0011: the row-lock wait is bounded
+            expected.append("lock_timeout=5s")
+        assert config == expected, name
 
 
 def test_catalog_readonly_roles_no_secret_columns(db: Conn) -> None:

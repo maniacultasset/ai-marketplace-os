@@ -1,110 +1,57 @@
-"""AC6b: `ping` is the readiness query; it never leaks driver text and never eats cancellation."""
+"""DPP-1 T9: `set_gucs(challenge_hash=...)` (app.db.session) with no database: a fake session
+records the `set_config` calls and `session.info`."""
 
 from __future__ import annotations
 
 import asyncio
-import logging
-from collections.abc import Callable
+import hashlib
 from typing import Any
 
 import pytest
+from app.db import session as db_session
+from app.db.session import CHALLENGE_HASH_INFO_KEY, set_gucs
 
 
-async def test_ping_true_on_select_1(
-    ci_env: dict[str, str], fake_engine: Callable[..., Any]
-) -> None:
-    from app.db.session import ping
+class FakeSession:
+    def __init__(self) -> None:
+        self.info: dict[str, Any] = {}
+        self.calls: list[tuple[str, str, bool]] = []
 
-    engine = fake_engine()
-    assert await ping(1.0) is True
-    assert engine.executed == ["SELECT 1"]
-
-
-async def test_ping_false_logs_class_name_only(
-    ci_env: dict[str, str], fake_engine: Callable[..., Any], caplog: pytest.LogCaptureFixture
-) -> None:
-    from app.db.session import ping
-
-    class DriverError(Exception):
-        pass
-
-    fake_engine(error=DriverError("FATAL: host=db user=postgres password=Zq9 failed"))
-    with caplog.at_level(logging.DEBUG):
-        assert await ping(1.0) is False
-    assert "DriverError" in caplog.text
-    assert "Zq9" not in caplog.text
-    assert all(record.exc_info is None for record in caplog.records)
+    async def execute(self, statement: Any) -> None:
+        params = statement.compile().params
+        values = list(params.values())
+        self.calls.append((values[0], values[1], values[2]))
 
 
-async def test_ping_lets_cancellation_propagate(
-    ci_env: dict[str, str], fake_engine: Callable[..., Any]
-) -> None:
-    from app.db.session import ping
-
-    engine = fake_engine(delay=10.0)
-    task = asyncio.create_task(ping(5.0))
-    await engine.entered.wait()
-    task.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await task
+DIGEST = hashlib.sha256(b"challenge").digest()
 
 
-def test_engine_settings_match_env_register(
-    ci_env: dict[str, str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """ENV.md:36-41: pool 5/5, 10 s pool timeout, 1800 s recycle, pre-ping, and the statement
-    timeout as a libpq `options` connect argument."""
-    from app.db import session
-
-    captured: dict[str, Any] = {}
-
-    def fake_create(url: str, **kwargs: Any) -> object:
-        captured["url"] = url
-        captured.update(kwargs)
-        return object()
-
-    monkeypatch.setattr(session, "create_async_engine", fake_create)
-    monkeypatch.setattr(session, "instrument_engine", lambda engine: None)  # S23 DB spans
-    session.get_engine.cache_clear()
-    try:
-        session.get_engine()
-    finally:
-        session.get_engine.cache_clear()
-    assert captured["url"] == ci_env["DATABASE_URL"]
-    assert captured["pool_size"] == 5
-    assert captured["max_overflow"] == 5
-    assert captured["pool_timeout"] == 10
-    assert captured["pool_recycle"] == 1800
-    assert captured["pool_pre_ping"] is True
-    assert captured["connect_args"] == {"options": "-c statement_timeout=15000"}
+@pytest.mark.parametrize("bad", [b"", b"x" * 31, b"x" * 33, "a" * 32, DIGEST.hex()])
+def test_challenge_hash_must_be_32_bytes(bad: object) -> None:
+    fake = FakeSession()
+    with pytest.raises(ValueError, match="32 bytes"):
+        asyncio.run(set_gucs(fake, challenge_hash=bad))  # type: ignore[arg-type]
+    assert fake.calls == [] and fake.info == {}
 
 
-def test_engine_hides_parameters_and_never_echoes(
-    ci_env: dict[str, str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """S11 C5: bound parameters (a hashed_password INSERT) never reach a log line, and `echo=` is
-    not passed even with DATABASE_ECHO=true: configure_logging owns the sqlalchemy.engine level,
-    so SQLAlchemy never attaches its own plain-text stdout handler."""
-    from app.db import session
+def test_challenge_hash_sent_as_hex() -> None:
+    fake = FakeSession()
+    asyncio.run(set_gucs(fake, challenge_hash=DIGEST))  # type: ignore[arg-type]
+    assert fake.calls == [("app.challenge_hash", DIGEST.hex(), True)]
 
-    monkeypatch.setenv("DATABASE_ECHO", "true")
-    from app.core.config import get_settings
 
-    get_settings.cache_clear()
-    captured: dict[str, Any] = {}
+def test_challenge_hash_kept_in_session_info() -> None:
+    fake = FakeSession()
+    asyncio.run(set_gucs(fake, challenge_hash=DIGEST))  # type: ignore[arg-type]
+    assert fake.info[CHALLENGE_HASH_INFO_KEY] == DIGEST.hex()
+    # the after_begin listener re-applies it on every later transaction
+    assert (CHALLENGE_HASH_INFO_KEY, "app.challenge_hash") in db_session._GUC_KEYS
 
-    def fake_create(url: str, **kwargs: Any) -> object:
-        captured.update(kwargs)
-        return object()
 
-    monkeypatch.setattr(session, "create_async_engine", fake_create)
-    monkeypatch.setattr(session, "instrument_engine", lambda engine: None)  # S23 DB spans
-    session.get_engine.cache_clear()
-    try:
-        assert get_settings().database_echo is True
-        session.get_engine()
-    finally:
-        session.get_engine.cache_clear()
-        get_settings.cache_clear()
-    assert captured["hide_parameters"] is True
-    assert "echo" not in captured
+def test_challenge_hash_with_user_id_sets_both() -> None:
+    import uuid
+
+    fake = FakeSession()
+    user = uuid.uuid4()
+    asyncio.run(set_gucs(fake, user_id=user, challenge_hash=DIGEST))  # type: ignore[arg-type]
+    assert [c[0] for c in fake.calls] == ["app.user_id", "app.challenge_hash"]

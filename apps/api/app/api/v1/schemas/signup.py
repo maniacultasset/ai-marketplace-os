@@ -20,7 +20,7 @@ from pydantic_core import PydanticCustomError
 from app.api.pagination import Page
 from app.api.v1.schemas.auth import Email, LoginEmail
 from app.api.v1.schemas.tenants import ProfileName
-from app.core.passwords import PASSWORD_MAX, PASSWORD_MIN  # the staff CLI's rule
+from app.core.password_policy import PASSWORD_MAX, PASSWORD_MIN  # the staff CLI's rule
 
 EMAIL_OCTETS_MAX: Final = 254  # ck_users_email
 REASON_MAX: Final = 1000

@@ -37,3 +37,51 @@ def test_admin_contract_present(repo_root: Path) -> None:
         "app.admin"
         in parser["importlinter:contract:only-workers-import-pipeline"]["source_modules"].split()
     )
+
+
+def test_mfa_contract_present(repo_root: Path) -> None:
+    """DPP-1 AC9: only `app.services.mfa` imports the MFA secret unseal."""
+    parser = configparser.ConfigParser()
+    parser.read(repo_root / ".importlinter", encoding="utf-8")
+    mfa = parser["importlinter:contract:mfa-secret-unseal-only-in-mfa-service"]
+    assert mfa["type"] == "forbidden"
+    assert mfa["forbidden_modules"].split() == ["app.adapters.mfa_secrets"]
+    sources = set(mfa["source_modules"].split())
+    assert {
+        "app.api",
+        "app.services",
+        "app.repositories",
+        "app.cli",
+        "app.core",
+        "app.db",
+        "app.main",
+        "app.workers",
+        "app.admin",
+    } == sources
+    assert [line.strip() for line in mfa["ignore_imports"].strip().splitlines()] == [
+        "app.services.mfa -> app.adapters.mfa_secrets"
+    ]
+    assert "allow_indirect_imports" not in mfa
+
+
+def test_probe_import_from_api_fails(repo_root: Path) -> None:
+    """DPP-1 AC9: a router importing the MFA unseal turns `lint-imports` red."""
+    import os
+    import subprocess
+
+    probe = repo_root / "apps/api/app/api/_probe_mfa.py"
+    probe.write_text("import app.adapters.mfa_secrets  # noqa: F401\n", encoding="utf-8")
+    try:
+        result = subprocess.run(
+            ["uv", "run", "--frozen", "lint-imports", "--config", ".importlinter"],
+            cwd=repo_root,
+            env={**os.environ, "PYTHONPATH": str(repo_root / "apps/api")},
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+    finally:
+        probe.unlink()
+    assert result.returncode != 0
+    assert "mfa_secrets" in result.stdout + result.stderr

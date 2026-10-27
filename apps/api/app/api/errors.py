@@ -136,6 +136,20 @@ class ApiError(Exception):
         super().__init__(f"{status} {code.value}")
 
 
+PASSWORD_RULES_MESSAGE: Final = "The password does not meet the password rules."  # noqa: S105
+
+
+def password_rules_error(messages: Sequence[str], *, field: str = "password") -> ApiError:
+    """DPP-1: a 422 `VALIDATION_FAILED` naming each broken password rule in `details` (fixed
+    rule sentences from `app.core.password_policy`, never the password or the name)."""
+    return ApiError(
+        422,
+        ErrorCode.VALIDATION_FAILED,
+        PASSWORD_RULES_MESSAGE,
+        details=[{"loc": ["body", field], "msg": message} for message in messages],
+    )
+
+
 class NotImplementedYet(Exception):  # noqa: N818 - CODE-PLAN s3 T3 name
     """A frozen `/api/v1` operation whose owner step has not landed yet: 501 NOT_IMPLEMENTED."""
 

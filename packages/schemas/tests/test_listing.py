@@ -54,7 +54,7 @@ def test_canonical_listing_shape() -> None:
         images=[ImageRef(image_id=lid, slot=ImageSlot.MAIN)],
         generated_by_agent_run_id=run,
     )
-    assert obj.schema_version == "1.2.0"
+    assert obj.schema_version == "2.0.0"
     assert obj.content.title == "Title"
     assert obj.keywords.hidden_terms == ["h"]
     assert obj.images[0].slot is ImageSlot.MAIN
@@ -183,7 +183,7 @@ def test_locale_defaults_en_in() -> None:
 def test_version_is_distinct_from_schema_version() -> None:
     obj = _listing(version=2)
     assert obj.version == 2
-    assert obj.schema_version == "1.2.0"
+    assert obj.schema_version == "2.0.0"
 
 
 _CLAIM_ID = "55555555-5555-5555-5555-555555555555"

@@ -4,7 +4,8 @@
 connect confirm and account revoke, 43 with S16's profile update and document list and delete,
 44 with S20's listing preview, 48 with S19's listing history, issues, issue dismiss and tasks,
 50 with S21's listing submissions and refresh-status, 55 with ADR-0019's sign-up, sign-up status
-and the platform admin's list, approve and reject; no
+and the platform admin's list, approve and reject, 65 with DPP-1's MFA, step-up and password
+routes (ADR-0021); no
 dead-letter path,
 which is staff tooling per T82). It
 drives the routers (`route()`), the declared OpenAPI responses (`declared_responses()`), the
@@ -15,6 +16,11 @@ Each operation names the one action it requires (`action`, CODE-PLAN S10 Q7; Non
 op), and `roles` is derived from it through the role x action matrix (`app/core/rbac.py`), so the
 registry, the runtime `require()` check and the declared 403s cannot drift apart. `cases()` and
 `declared_responses()` read only `op.roles`. Every operation carries `x-mkos-action` in OpenAPI.
+
+DPP-1 (ADR-0021): `step_up` marks the sensitive operations that need a code entered in the last
+10 minutes under `MFA_ENFORCEMENT=all` (`any`: a TOTP or a recovery code; `otp`: a TOTP code
+only). `route()` adds `require_recent_mfa` after the op's policy, and the op declares the two 403
+codes, `MFA_STEP_UP_REQUIRED` and `MFA_ENROLLMENT_REQUIRED`.
 """
 
 from __future__ import annotations
@@ -35,10 +41,22 @@ from mkos_schemas.validation import ValidationResult, ValidationSummary
 from pydantic import BaseModel
 
 from app.api.errors import STATUS_MESSAGES, ErrorEnvelope, envelope_body
-from app.api.v1.deps import public, require, require_platform_admin
+from app.api.v1.deps import public, require, require_platform_admin, require_recent_mfa
 from app.api.v1.examples import CALLBACK_LOCATION, ETAG_EXAMPLE, SUCCESS_EXAMPLES
 from app.api.v1.schemas.analytics import AnalyticsSummary
-from app.api.v1.schemas.auth import MemberOut, MemberPage, MeOut, TokenResponse
+from app.api.v1.schemas.auth import (
+    LoginConfirmOut,
+    LoginResult,
+    MemberOut,
+    MemberPage,
+    MeOut,
+    RecoveryCodesOut,
+    SecurityOut,
+    StepUpOut,
+    TokenResponse,
+    TotpConfirmOut,
+    TotpEnrollOut,
+)
 from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.brand import BrandDocumentPage
 from app.api.v1.schemas.images import ImageAccepted, ImageReportOut, UploadUrlOut
@@ -127,6 +145,8 @@ class Operation:
     )
     """Codes beyond the D2 default for a status (login's 401, products_create's UNKNOWN_FACT_KEY),
     or a status of the op's own (listings_preview's 501 for a marketplace with no adapter)."""
+    step_up: Literal["any", "otp"] | None = None
+    """DPP-1: a code entered in the last 600 s is required under `MFA_ENFORCEMENT=all`."""
 
     def __post_init__(self) -> None:
         if self.public and self.platform_admin:
@@ -209,6 +229,8 @@ def _error_codes(op: Operation) -> Mapping[int, tuple[ErrorCode, ...]]:
     if conflicts:
         out[409] = tuple(conflicts)
     out[429] = (E.RATE_LIMITED,)
+    if op.step_up is not None:
+        out[403] = (*out.get(403, ()), *STEP_UP_CODES)
     for status, codes in extra.items():
         # an op's own codes join the default ones for a status the cases already declare
         out[status] = (*out.get(status, ()), *(c for c in codes if c not in out.get(status, ())))
@@ -231,6 +253,8 @@ def case_status(op: Operation, case: Case) -> int:
         return 404 if "not_found" in cases(op) else op.status
     return statuses.get(case, op.status)
 
+
+STEP_UP_CODES: Final = (E.MFA_STEP_UP_REQUIRED, E.MFA_ENROLLMENT_REQUIRED)
 
 _EXAMPLE_DETAILS: Final = ({"loc": ["body", "field"], "msg": "Field required"},)
 
@@ -337,6 +361,14 @@ def _policy(op: Operation) -> Any:
     return require(op.action)
 
 
+def _dependencies(op: Operation) -> list[Any]:
+    """The op's policy, then (DPP-1) the step-up guard of a sensitive op."""
+    deps = [_policy(op)]
+    if op.step_up is not None:
+        deps.append(require_recent_mfa(otp_only=op.step_up == "otp"))
+    return deps
+
+
 def route(
     router: APIRouter, op: Operation, **extra: Any
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
@@ -359,7 +391,7 @@ def route(
             operation_id=op.op_id,
             summary=op.summary,
             tags=[op.group],
-            dependencies=[_policy(op)],
+            dependencies=_dependencies(op),
             openapi_extra={"x-mkos-action": op.policy},
             **kwargs,
         )
@@ -372,11 +404,16 @@ A = Action
 _401: Final = MappingProxyType({401: (E.UNAUTHENTICATED,)})
 # S22 D2: a marketplace that is not configured or is switched off (FLIPKART_ENABLED=false).
 _501: Final = MappingProxyType({501: (E.NOT_IMPLEMENTED,)})
+# DPP-1: the public challenge routes (a wrong code or burned challenge is 401; 501 under `off`)
+_MFA_PUBLIC: Final = MappingProxyType({401: (E.UNAUTHENTICATED,), 501: (E.NOT_IMPLEMENTED,)})
+# DPP-1: the bearer enrolment pair (403 when replacing without a fresh step-up; 501 under `off`)
+_MFA_BEARER: Final = MappingProxyType({403: (E.MFA_STEP_UP_REQUIRED,), 501: (E.NOT_IMPLEMENTED,)})
 
 _ROWS: Final[tuple[Operation, ...]] = (
     # ---- auth (S10) ----
-    Operation("auth_login", "POST", "/auth/login", 200, TokenResponse, "auth",
-              "Log in with email and password", "S10", public=True, has_body=True, extra_codes=_401),
+    Operation("auth_login", "POST", "/auth/login", 200, LoginResult, "auth",
+              "Log in with email and password: tokens, or the next sign-in step", "S10",
+              public=True, has_body=True, extra_codes=_401),
     Operation("auth_refresh", "POST", "/auth/refresh", 200, TokenResponse, "auth",
               "Rotate the refresh token", "S10", public=True, has_body=True,
               extra_codes=_401),
@@ -387,6 +424,39 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("auth_switch_tenant", "POST", "/auth/switch-tenant", 200, TokenResponse, "auth",
               "Switch the active tenant: a new token pair for another of the caller's tenants",
               "S10", has_body=True, body_ids=("target_tenant_id",), action=A.TENANT_READ),
+    # ---- MFA, step-up and passwords (DPP-1, ADR-0021) ----
+    Operation("auth_login_mfa", "POST", "/auth/login/mfa", 200, LoginResult, "auth",
+              "Sign-in code step: a TOTP code or a recovery code for the login challenge",
+              "DPP-1", public=True, has_body=True, extra_codes=_MFA_PUBLIC),
+    Operation("auth_login_mfa_enroll", "POST", "/auth/login/mfa/enroll", 200, TotpEnrollOut,
+              "auth", "Forced enrolment at sign-in: a new authenticator secret", "DPP-1",
+              public=True, has_body=True, extra_codes=_MFA_PUBLIC),
+    Operation("auth_login_mfa_confirm", "POST", "/auth/login/mfa/confirm", 200,
+              LoginConfirmOut, "auth",
+              "Forced enrolment at sign-in: confirm with a code; recovery codes and the sign-in "
+              "result", "DPP-1", public=True, has_body=True, extra_codes=_MFA_PUBLIC),
+    Operation("auth_password_expired", "POST", "/auth/password/expired", 200, LoginResult,
+              "auth", "Forced password change at sign-in", "DPP-1", public=True, has_body=True,
+              extra_codes=_MFA_PUBLIC),
+    Operation("auth_mfa_totp_enroll", "POST", "/auth/mfa/totp/enroll", 200, TotpEnrollOut,
+              "auth", "Set up or replace the authenticator from account settings", "DPP-1",
+              has_body=True, action=A.TENANT_READ, extra_codes=_MFA_BEARER),
+    Operation("auth_mfa_totp_confirm", "POST", "/auth/mfa/totp/confirm", 200, TotpConfirmOut,
+              "auth", "Confirm the new authenticator with a code; recovery codes", "DPP-1",
+              has_body=True, action=A.TENANT_READ, extra_codes=_MFA_BEARER),
+    Operation("auth_security", "GET", "/auth/security", 200, SecurityOut, "auth",
+              "Account security: MFA status, recovery codes left, password expiry", "DPP-1",
+              action=A.TENANT_READ),
+    Operation("auth_mfa_recovery_codes", "POST", "/auth/mfa/recovery-codes", 200,
+              RecoveryCodesOut, "auth", "Regenerate the recovery codes (after a step-up)",
+              "DPP-1", action=A.TENANT_READ, step_up="any", extra_codes=_501),
+    Operation("auth_mfa_step_up", "POST", "/auth/mfa/step-up", 200, StepUpOut, "auth",
+              "Step up with a code: a new access token for sensitive actions", "DPP-1",
+              has_body=True, action=A.TENANT_READ,
+              extra_codes=MappingProxyType({**_401, **_501})),
+    Operation("auth_password_change", "POST", "/auth/password", 204, None, "auth",
+              "Change the password (current password, DPP rules, not one of the last 10)",
+              "DPP-1", has_body=True, action=A.TENANT_READ),
     # ---- members (S10) ----
     Operation("members_list", "GET", "/members", 200, MemberPage, "members",
               "List the tenant's members", "S10", query=("limit", "cursor"),
@@ -394,7 +464,7 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("members_patch", "PATCH", "/members/{user_id}", 200, MemberOut, "members",
               "Change a member's role or active flag (only an owner grants or removes owner)",
               "S10", path_id="user_id", has_body=True, conflict_code=E.LAST_OWNER_REQUIRED,
-              action=A.TEAM_MANAGE),
+              action=A.TEAM_MANAGE, step_up="any"),
     # ---- tenants and brand (S16) ----
     Operation("tenants_me", "GET", "/tenants/me", 200, TenantOut, "tenants",
               "The brand profile", "S16", etag=True, action=A.TENANT_READ),
@@ -487,7 +557,7 @@ _ROWS: Final[tuple[Operation, ...]] = (
     # ---- marketplaces (S15) ----
     Operation("marketplaces_connect", "POST", "/marketplaces/connect", 200, ConnectOut,
               "marketplaces", "Start OAuth; returns the consent URL", "S15", has_body=True,
-              extra_codes=_501, action=A.MARKETPLACE_CONNECT),
+              extra_codes=_501, action=A.MARKETPLACE_CONNECT, step_up="any"),
     Operation("marketplaces_callback", "GET", "/marketplaces/{marketplace}/callback", 303, None,
               "marketplaces", "OAuth return: 303 to the app with an opaque pending handle",
               "S15", public=True,
@@ -509,7 +579,7 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("marketplaces_accounts_revoke", "POST", "/marketplaces/accounts/{account_id}/revoke",
               200, MarketplaceAccountOut, "marketplaces",
               "Revoke a connection: delete the stored tokens", "S15", path_id="account_id",
-              action=A.MARKETPLACE_CONNECT),
+              action=A.MARKETPLACE_CONNECT, step_up="otp"),
     # ---- images (S17b) ----
     Operation("images_upload_url", "POST", "/images/upload-url", 200, UploadUrlOut, "images",
               "A signed upload URL for one image", "S17b", has_body=True,
@@ -561,12 +631,14 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "/admin/signup-requests/{request_id}/approve", 200, SignupRequestOut, "admin",
               "Approve a sign-up: create the trial tenant and its owner (idempotent)", "ADR-0019",
               has_body=True, conflict_code=E.INVALID_STATUS_TRANSITION,
-              extra_codes=MappingProxyType({404: (E.NOT_FOUND,)}), platform_admin=True),
+              extra_codes=MappingProxyType({404: (E.NOT_FOUND,)}), platform_admin=True,
+              step_up="otp"),
     Operation("admin_signup_requests_reject", "POST",
               "/admin/signup-requests/{request_id}/reject", 200, SignupRequestOut, "admin",
               "Reject a sign-up with a reason (idempotent)", "ADR-0019", has_body=True,
               conflict_code=E.INVALID_STATUS_TRANSITION,
-              extra_codes=MappingProxyType({404: (E.NOT_FOUND,)}), platform_admin=True),
+              extra_codes=MappingProxyType({404: (E.NOT_FOUND,)}), platform_admin=True,
+              step_up="otp"),
 )  # fmt: skip
 
 OPS: Final[Mapping[str, Operation]] = MappingProxyType({op.op_id: op for op in _ROWS})
