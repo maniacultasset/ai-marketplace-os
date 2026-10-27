@@ -46,9 +46,10 @@ exit 99
 """
 
 # Logs every call, then answers from the first matching rule of $FAKE_GCLOUD_RULES:
-# {"match": substring (or a list, all must match), "stdout": str, "rc": int, "file": str written
-# to --file-name=, "max": calls this rule answers, "unless_log": substring of earlier calls}.
-# With no rule: describe/list/export fail (absent), everything else succeeds.
+# {"match": substring (or a list, all must match), "stdout": str, "stderr": str, "rc": int,
+# "file": str written to --file-name=, "max": calls this rule answers, "unless_log": substring of
+# earlier calls}. With no rule: describe/list/export fail as absent (NOT_FOUND on stderr), everything
+# else succeeds. The file named by any --source= is appended to $FAKE_GCLOUD_SOURCES.
 LIVE_GCLOUD = r"""#!/usr/bin/env python3
 import json, os, sys
 argv = sys.argv[1:]
@@ -57,6 +58,10 @@ log = os.environ["FAKE_GCLOUD_LOG"]
 before = open(log, encoding="utf-8").read() if os.path.exists(log) else ""
 with open(log, "a", encoding="utf-8") as handle:
     handle.write(line + "\n")
+for arg in argv:
+    if arg.startswith("--source=") and os.path.exists(arg[9:]):
+        with open(os.environ["FAKE_GCLOUD_SOURCES"], "a", encoding="utf-8") as handle:
+            handle.write(open(arg[9:], encoding="utf-8").read() + "---\n")
 state_path = os.environ["FAKE_GCLOUD_STATE"]
 state = json.load(open(state_path)) if os.path.exists(state_path) else {}
 for index, rule in enumerate(json.load(open(os.environ["FAKE_GCLOUD_RULES"]))):
@@ -79,9 +84,13 @@ for index, rule in enumerate(json.load(open(os.environ["FAKE_GCLOUD_RULES"]))):
         else:
             open(name, "w", encoding="utf-8").write(rule["file"])
     sys.stdout.write(rule.get("stdout", ""))
+    sys.stderr.write(rule.get("stderr", ""))
     sys.exit(rule.get("rc", 0))
 words = set(argv)
-sys.exit(1 if words & {"describe", "list", "export", "list-configs"} else 0)
+if words & {"describe", "list", "export", "list-configs"}:
+    sys.stderr.write("ERROR: (gcloud) NOT_FOUND: the resource was not found\n")
+    sys.exit(1)
+sys.exit(0)
 """
 
 # Logs every call, then answers from the first rule of $FAKE_CURL_RULES whose "url" the request URL
@@ -170,6 +179,7 @@ def _env(tmp_path: Path, bin_dir: Path, extra: dict[str, str] | None) -> dict[st
         "FAKE_GCLOUD_LOG": str(tmp_path / "gcloud.log"),
         "FAKE_GCLOUD_STATE": str(tmp_path / "gcloud.state"),
         "FAKE_GCLOUD_RULES": str(tmp_path / "gcloud.json"),
+        "FAKE_GCLOUD_SOURCES": str(tmp_path / "gcloud.sources"),
         "FAKE_CURL_LOG": str(tmp_path / "curl.log"),
         "FAKE_CURL_RULES": str(tmp_path / "curl.json"),
         "SMOKE_TRIES": "1",
@@ -416,8 +426,37 @@ def test_edge_url_map_routes_candidate(toolkit: Path, tmp_path: Path) -> None:
     assert route["service"].endswith("/aimos-api-edge-candidate-be")
     (rule,) = route["matchRules"]
     assert rule["prefixMatch"] == "/"
-    assert rule["headerMatches"] == [{"headerName": "x-aimos-candidate", "exactMatch": "1"}]
+    assert rule["headerMatches"] == [
+        {"headerName": "x-aimos-candidate", "exactMatch": "<redacted>"}
+    ]
     assert url_map["defaultService"].startswith("projects/aimos-prod/global/backendServices/")
+
+
+def _imported_values(tmp_path: Path) -> list[str]:
+    sources = (tmp_path / "gcloud.sources").read_text(encoding="utf-8")
+    maps = [yaml.safe_load(doc) for doc in sources.split("---\n") if doc.strip()]
+    return [
+        m["pathMatchers"][0]["routeRules"][0]["matchRules"][0]["headerMatches"][0]["exactMatch"]
+        for m in maps
+    ]
+
+
+def test_edge_setup_candidate_value_is_random_and_never_printed(
+    toolkit: Path, tmp_path: Path
+) -> None:
+    """The candidate route matches only a fresh 128-bit value per `edge setup` (rotated on each
+    run), so the public cannot reach the candidate backend; the value is never printed."""
+    values = []
+    for _ in range(2):
+        for name in ("gcloud.log", "gcloud.state", "gcloud.sources"):
+            (tmp_path / name).unlink(missing_ok=True)
+        live = run_live(toolkit, tmp_path, "prod", "edge", "setup")
+        assert live.result.returncode == 0, live.out
+        (value,) = _imported_values(tmp_path)
+        assert re.fullmatch(r"[0-9a-f]{32}", value), value
+        assert value not in live.out
+        values.append(value)
+    assert values[0] != values[1]
 
 
 NEG_URLS = (
@@ -649,7 +688,25 @@ def test_edge_rules_verify_catches_unchanged(
 # ---- T5: deploy under INGRESS; T6: the JWT_ISSUER pin ----
 
 OK_BODY = '{"status":"ok","checks":{"postgres":"ok"}}'
-HEADER = "x-aimos-candidate: 1"
+CANDIDATE_VALUE = "0f1e2d3c4b5a69788796a5b4c3d2e1f0"
+HEADER = f"x-aimos-candidate: {CANDIDATE_VALUE}"
+
+
+def url_map_doc(value: str = CANDIDATE_VALUE) -> str:
+    """`url-maps describe --format=json` of the edge map, its candidate route matching VALUE."""
+    route = {
+        "priority": 1,
+        "matchRules": [
+            {
+                "prefixMatch": "/",
+                "headerMatches": [{"headerName": "x-aimos-candidate", "exactMatch": value}],
+            }
+        ],
+        "service": "projects/aimos-prod/global/backendServices/aimos-api-edge-candidate-be",
+    }
+    return json.dumps(
+        {"name": "aimos-api-edge-map", "pathMatchers": [{"name": "edge", "routeRules": [route]}]}
+    )
 
 
 def service_doc(
@@ -674,11 +731,12 @@ def service_doc(
     )
 
 
-def existing_service(doc: str) -> list[dict[str, Any]]:
+def existing_service(doc: str, *, url_map: str | None = None) -> list[dict[str, Any]]:
     return [
         {"match": "value(status.url)", "stdout": RUN_APP + "\n"},
         {"match": ["run services describe", "--format=json"], "stdout": doc},
         {"match": "images describe", "stdout": "sha256:" + "a" * 64 + "\n"},
+        {"match": "url-maps describe aimos-api-edge-map", "stdout": url_map or url_map_doc()},
     ]
 
 
@@ -737,8 +795,48 @@ def test_deploy_locked_smoke_pass_then_shift(toolkit: Path, tmp_path: Path) -> N
     assert "--no-traffic" in deploy and "--tag=candidate" in deploy
     assert f"-H {HEADER} " in live.curls[0] and live.curls[0].endswith(f"{EDGE}/api/v1/auth/me")
     assert live.curls[1].endswith(f"-H {HEADER} {EDGE}/readyz")
-    assert live.index("update-traffic", "--to-latest") >= 0
-    assert live.index("--remove-tags") == -1
+    shift = live.index("update-traffic", "--to-latest")
+    assert shift >= 0
+    # The tag does not outlive the deploy: removed after the shift.
+    assert live.index("update-traffic", "--remove-tags=candidate") > shift
+    assert CANDIDATE_VALUE not in live.out
+
+
+def test_deploy_locked_refuses_url_map_without_random_value(toolkit: Path, tmp_path: Path) -> None:
+    """A URL map from before the random value (`exactMatch: '1'`) is refused before any deploy."""
+    edge_ready(toolkit)
+    live = run_live(
+        toolkit,
+        tmp_path,
+        "prod",
+        "deploy",
+        responses=existing_service(
+            service_doc(ingress=LOCKED, issuer=EDGE), url_map=url_map_doc("1")
+        ),
+        curl=[*healthy(EDGE, header="x-aimos-candidate: 1"), *healthy(EDGE)],
+    )
+    assert live.result.returncode != 0
+    assert "edge setup" in live.out
+    assert live.index("run deploy") == -1
+
+
+def test_deploy_locked_failed_shift_still_removes_tag(toolkit: Path, tmp_path: Path) -> None:
+    """Any exit after the candidate is tagged (here a failed traffic shift, an errexit, not a
+    handled failure) removes the tag through the EXIT trap."""
+    edge_ready(toolkit)
+    live = run_live(
+        toolkit,
+        tmp_path,
+        "prod",
+        "deploy",
+        responses=[
+            {"match": "--to-latest", "rc": 1},
+            *existing_service(service_doc(ingress=LOCKED, issuer=EDGE)),
+        ],
+        curl=[*healthy(EDGE, header=HEADER), *healthy(EDGE)],
+    )
+    assert live.result.returncode != 0
+    assert live.index("update-traffic", "--remove-tags=candidate") > live.index("--to-latest")
 
 
 def test_deploy_locked_smoke_fail_keeps_traffic(toolkit: Path, tmp_path: Path) -> None:
@@ -807,6 +905,104 @@ def test_deploy_refuses_unlock_of_locked_service(toolkit: Path, tmp_path: Path) 
         extra={"DEPLOY_ALLOW_UNLOCK": "1"},
     )
     assert allowed.result.returncode == 0, allowed.out
+
+
+@pytest.mark.parametrize("live_ingress", ["all", ""], ids=["all", "no-annotation"])
+def test_deploy_refuses_to_lock_a_live_unlocked_service(
+    toolkit: Path, tmp_path: Path, live_ingress: str
+) -> None:
+    """prod.env already says locked (runbook: edit prod.env, then `edge lock-ingress`) but the live
+    service is still open. A plain deploy must not lock it around lock-ingress's SPA check,
+    run.app probes and auto-unlock."""
+    edge_ready(toolkit)
+    responses = existing_service(service_doc(ingress=live_ingress, issuer=EDGE))
+    curl = [*healthy(EDGE, header=HEADER), *healthy(EDGE)]
+    refused = run_live(toolkit, tmp_path, "prod", "deploy", responses=responses, curl=curl)
+    assert refused.result.returncode != 0
+    assert "lock-ingress first" in refused.out
+    assert refused.index("run deploy") == -1
+    for name in ("gcloud.log", "gcloud.state", "curl.log"):
+        (tmp_path / name).unlink(missing_ok=True)
+    allowed = run_live(
+        toolkit,
+        tmp_path,
+        "prod",
+        "deploy",
+        responses=responses,
+        curl=curl,
+        extra={"DEPLOY_ALLOW_LOCK": "1"},
+    )
+    assert allowed.result.returncode == 0, allowed.out
+    assert f"--ingress={LOCKED}" in allowed.calls[allowed.index("run deploy aimos-api")]
+
+
+@pytest.mark.parametrize(
+    "stderr",
+    [
+        "ERROR: (gcloud.run.services.describe) PERMISSION_DENIED: Permission denied\n",
+        "ERROR: (gcloud.run.services.describe) There was a problem refreshing your credentials\n",
+        "",
+    ],
+    ids=["permission", "auth", "silent"],
+)
+def test_deploy_stops_when_live_service_unreadable(
+    toolkit: Path, tmp_path: Path, stderr: str
+) -> None:
+    """The live-state guard fails closed: only NOT_FOUND means "no service"."""
+    edge_ready(toolkit)
+    live = run_live(
+        toolkit,
+        tmp_path,
+        "prod",
+        "deploy",
+        responses=[
+            {"match": ["run services describe", "--format=json"], "rc": 1, "stderr": stderr},
+            *existing_service(service_doc(ingress=LOCKED, issuer=EDGE)),
+        ],
+        curl=[*healthy(EDGE, header=HEADER), *healthy(EDGE)],
+    )
+    assert live.result.returncode != 0
+    assert "cannot read the live service" in live.out
+    assert "live-state guard: skipped" not in live.out
+    assert live.index("run deploy") == -1
+
+
+def test_deploy_live_guard_skips_on_real_not_found(toolkit: Path, tmp_path: Path) -> None:
+    live = run_live(
+        toolkit,
+        tmp_path,
+        "prod",
+        "deploy",
+        responses=[
+            {
+                "match": ["run services describe", "--format=json"],
+                "rc": 1,
+                "stderr": "ERROR: (gcloud.run.services.describe) Cannot find service [aimos-api]\n",
+            },
+            {"match": "images describe", "stdout": "sha256:" + "a" * 64 + "\n"},
+        ],
+        curl=healthy(RUN_APP),
+    )
+    assert "live-state guard: skipped" in live.out
+    assert live.index("run deploy aimos-api") >= 0
+
+
+def test_lock_stops_when_live_service_unreadable(toolkit: Path, tmp_path: Path) -> None:
+    edge_ready(toolkit)
+    live = run_live(
+        toolkit,
+        tmp_path,
+        "prod",
+        "edge",
+        "lock-ingress",
+        responses=[
+            {"match": ["run services describe", "--format=json"], "rc": 1, "stderr": "boom\n"}
+        ],
+        curl=[*healthy(EDGE, no_header=True), *spa()],
+    )
+    assert live.result.returncode != 0
+    assert "cannot read the live service" in live.out
+    assert live.index("services update") == -1
 
 
 def test_deploy_refuses_issuer_change(toolkit: Path, tmp_path: Path) -> None:
@@ -1106,6 +1302,45 @@ def test_lock_tag_url_still_open(toolkit: Path, tmp_path: Path) -> None:
     assert CANDIDATE_URL in live.result.stderr
 
 
+@pytest.mark.parametrize(
+    "probe",
+    [[], [{"url": f"{RUN_APP}/api/v1/auth/me", "code": "502"}]],
+    ids=["unreachable-000", "502"],
+)
+def test_lock_rolls_back_when_run_app_not_refused(
+    toolkit: Path, tmp_path: Path, probe: list[dict[str, Any]]
+) -> None:
+    """Only the ingress refusal (403/404) proves the lock; a network failure from the operator's
+    machine (curl 000) or another code rolls the lock back."""
+    live = lock(
+        toolkit,
+        tmp_path,
+        [*healthy(EDGE, no_header=True), *spa(), *probe, *direct(CANDIDATE_URL)],
+    )
+    assert live.result.returncode != 0
+    assert live.index("--ingress=all") > live.index(LOCK)
+    assert "rolled back" in live.result.stderr and "403/404" in live.result.stderr
+
+
+def test_lock_rolls_back_when_service_has_no_url(toolkit: Path, tmp_path: Path) -> None:
+    edge_ready(toolkit)
+    doc = json.loads(LOCK_DOC)
+    doc["status"]["url"] = ""
+    live = run_live(
+        toolkit,
+        tmp_path,
+        "prod",
+        "edge",
+        "lock-ingress",
+        responses=[
+            {"match": ["run services describe", "--format=json"], "stdout": json.dumps(doc)}
+        ],
+        curl=[*healthy(EDGE, no_header=True), *spa(), *direct(CANDIDATE_URL)],
+    )
+    assert live.result.returncode != 0
+    assert live.index("--ingress=all") > live.index(LOCK)
+
+
 def test_lock_spa_broken_after_lock(toolkit: Path, tmp_path: Path) -> None:
     broken = {
         "url": f"{EDGE}/readyz",
@@ -1256,6 +1491,7 @@ def test_alerts_rerun_creates_nothing(toolkit: Path, tmp_path: Path) -> None:
             },
             {"match": "thresholdValue", "stdout": "50.0\n"},
             {"match": "sinks describe _Default", "stdout": "edge-callback-urls\n"},
+            {"match": "channels describe", "stdout": "ops@kuinn.in\n"},
             {"match": "describe", "stdout": "present\n"},
         ],
     )
@@ -1263,6 +1499,29 @@ def test_alerts_rerun_creates_nothing(toolkit: Path, tmp_path: Path) -> None:
     assert not [c for c in live.calls if " create " in c and "--help" not in c]
     assert live.index("policies update") == -1
     assert live.index("sinks update _Default") == -1
+    assert live.index("channels update") == -1
+
+
+def test_alerts_rerun_applies_new_email(toolkit: Path, tmp_path: Path) -> None:
+    """The channel is found by name; when ALERT_EMAIL changed, its email label is updated."""
+    set_env(toolkit, "prod", ALERT_EMAIL="new-ops@kuinn.in")
+    live = run_live(
+        toolkit,
+        tmp_path,
+        "prod",
+        "edge",
+        "alerts",
+        responses=[
+            *ALERT_BASE,
+            {"match": "uptime list-configs", "stdout": "aimos-edge-readyz-a1b2c3\n"},
+            {"match": "channels describe", "stdout": "ops@kuinn.in\n"},
+        ],
+    )
+    assert live.result.returncode == 0, live.out
+    update = live.calls[live.index("beta monitoring channels update")]
+    assert "projects/aimos-prod/notificationChannels/9" in update
+    assert "--update-channel-labels=email_address=new-ops@kuinn.in" in update
+    assert not [c for c in live.calls if "channels create" in c and "--help" not in c]
 
 
 def test_alerts_deny_threshold_updated_in_place(toolkit: Path, tmp_path: Path) -> None:

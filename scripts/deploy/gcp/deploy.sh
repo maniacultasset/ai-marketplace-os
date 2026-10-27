@@ -96,7 +96,20 @@ sa_email() { printf '%s@%s.iam.gserviceaccount.com' "$1" "$PROJECT"; }
 
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/aimos-deploy.XXXXXX")"
 chmod 0700 "$WORK"
-trap 'rm -rf "$WORK"' EXIT
+# On every exit (success, die, error, Ctrl-C): a locked deploy's `candidate` tag is removed
+# (candidate_close, ADR-0022), then the work dir.
+CANDIDATE_ARMED=0
+on_exit() {
+  local rc=$?
+  set +e
+  [ "$CANDIDATE_ARMED" -eq 0 ] || candidate_close
+  rm -rf "$WORK"
+  exit "$rc"
+}
+trap on_exit EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 # ---- printing and running ----
 show() {
@@ -655,7 +668,7 @@ tag_url() {
 }
 
 deploy_api() {
-  local image="$1" url="$2" tag existed=0 now
+  local image="$1" url="$2" tag existed=0 now value
   local -a args
   tag="sha-$(git_sha)"
   env_file api "$url" "$WORK/api-env.yaml"
@@ -669,14 +682,18 @@ deploy_api() {
     --labels="$LABELS")
   if [ "$existed" -eq 1 ] && [ "$INGRESS" = "$EDGE_LOCKED" ]; then
     # ADR-0022: run.app is refused, so the zero-traffic revision carries the `candidate` tag and is
-    # smoked through the load balancer's header route. A failed revision loses the tag, so the
-    # header reaches only the revision about to ship or the live one.
+    # smoked through the load balancer's header route, which matches only the random value
+    # `edge setup` wrote into the URL map. The tag exists only for this deploy: it is removed on
+    # every exit (on_exit), so between deploys the candidate backend has no target.
+    value="$(candidate_value)" || exit 1
+    CANDIDATE_ARMED=1
     gc "${args[@]}" --no-traffic --tag=candidate
-    if [ "$DRY_RUN" -eq 0 ] && ! smoke "https://$EDGE_DOMAIN" "$CANDIDATE_HEADER"; then
-      gc run services update-traffic "$API_SERVICE" --region="$REGION" --remove-tags=candidate
+    if [ "$DRY_RUN" -eq 0 ] && ! smoke "https://$EDGE_DOMAIN" "$CANDIDATE_HEADER_NAME: $value"; then
+      candidate_close
       die "revision candidate failed smoke; traffic stays on the previous revision"
     fi
     gc run services update-traffic "$API_SERVICE" --region="$REGION" --to-latest
+    candidate_close
   elif [ "$existed" -eq 1 ]; then
     # ADR-0001: the new revision takes no traffic until its tagged URL passes the smoke test.
     gc "${args[@]}" --no-traffic --tag="$tag"
@@ -779,7 +796,7 @@ smoke_curl() {
 
 # URL [HEADER]: /healthz 200, then /readyz 200 with postgres ok (retried: staging scales to zero).
 smoke() {
-  local url="$1" header="${2:-}" code body n=0 live="/healthz" want="200" host
+  local url="$1" header="${2:-}" code body n=0 live="/healthz" want="200" host shown
   host="${url#*://}"
   host="${host%%/*}"
   # A *.run.app front end answers /healthz itself with a 404 that never reaches the container,
@@ -790,8 +807,10 @@ smoke() {
     live="/api/v1/auth/me" want="401"
   fi
   if [ -n "$header" ]; then
-    show curl -sS -o /dev/null -w '%{http_code}' -H "$header" "$url$live"
-    show curl -sS -H "$header" "$url/readyz"
+    # The candidate route value is a credential for the unsmoked revision: never printed.
+    shown="${header%%:*}: <redacted>"
+    show curl -sS -o /dev/null -w '%{http_code}' -H "$shown" "$url$live"
+    show curl -sS -H "$shown" "$url/readyz"
   else
     show curl -sS -o /dev/null -w '%{http_code}' "$url$live"
     show curl -sS "$url/readyz"
@@ -951,7 +970,7 @@ cmd_tenant() {
 # two serverless NEGs to the api service (the service, and its `candidate` tag), and the Cloud
 # Armor policy whose rules come from armor-rules.yaml. Prod only: staging has no EDGE_DOMAIN.
 EDGE_LOCKED="internal-and-cloud-load-balancing"
-CANDIDATE_HEADER="x-aimos-candidate: 1"
+CANDIDATE_HEADER_NAME="x-aimos-candidate"
 EDGE_POLICY="kuinn-api-waf"
 EDGE_IP="aimos-api-edge-ip"
 EDGE_NEG="aimos-api-edge-neg"
@@ -994,13 +1013,65 @@ check_ingress() {
   esac
 }
 
-# The live api service as JSON; empty when it does not exist (and on a dry run).
-service_json() { gq run services describe "$API_SERVICE" --region="$REGION" --format=json || true; }
+# The live api service as JSON; empty only when it does not exist (and on a dry run). Any other
+# describe failure (auth, permission, network, quota) stops: the live-state guard and the lock's
+# tag inventory must not read an unreadable service as "no service".
+service_json() {
+  local out
+  show gcloud run services describe "$API_SERVICE" --region="$REGION" --format=json --project="$PROJECT" >&2
+  [ "$DRY_RUN" -eq 0 ] || return 0
+  if out="$(gcloud run services describe "$API_SERVICE" --region="$REGION" --format=json \
+    --project="$PROJECT" --quiet 2>"$WORK/describe.err")"; then
+    printf '%s' "$out"
+    return 0
+  fi
+  if grep -qiE 'NOT_FOUND|Cannot find service' "$WORK/describe.err"; then
+    return 0
+  fi
+  sed 's/^/    /' "$WORK/describe.err" >&2
+  die "cannot read the live service $API_SERVICE (the error above is not NOT_FOUND); stopping"
+}
+
+# The candidate route's header value, read back from the live URL map: the 32-hex-digit random
+# value `edge setup` wrote. Dies when the map is unreadable or predates the random value.
+candidate_value() {
+  local json value
+  if [ "$DRY_RUN" -eq 1 ]; then
+    printf '<candidate-value>'
+    return 0
+  fi
+  json="$(gq compute url-maps describe "$EDGE_MAP" --global --format=json)" ||
+    die "cannot read the URL map $EDGE_MAP for the candidate route; run edge setup"
+  value="$(printf '%s' "$json" | python3 -c '
+import json, sys
+doc = json.load(sys.stdin)
+for matcher in doc.get("pathMatchers") or []:
+    for route in matcher.get("routeRules") or []:
+        for rule in route.get("matchRules") or []:
+            for header in rule.get("headerMatches") or []:
+                if header.get("headerName") == sys.argv[1] and header.get("exactMatch"):
+                    print(header["exactMatch"])
+                    sys.exit(0)' "$CANDIDATE_HEADER_NAME")" || value=""
+  case "$value" in
+    "" | *[!0-9a-f]*) value="" ;;
+  esac
+  [ "${#value}" -eq 32 ] ||
+    die "the URL map $EDGE_MAP has no random candidate route value; rerun scripts/deploy/gcp/deploy.sh $ENV_NAME edge setup"
+  printf '%s' "$value"
+}
+
+# Remove the `candidate` tag (best effort, reported): its revision is either about to take all
+# traffic or failed its smoke, and neither must stay reachable through the candidate backend.
+candidate_close() {
+  CANDIDATE_ARMED=0
+  gc run services update-traffic "$API_SERVICE" --region="$REGION" --remove-tags=candidate ||
+    say "WARNING: the candidate tag is still set; remove it: gcloud run services update-traffic $API_SERVICE --region=$REGION --remove-tags=candidate --project=$PROJECT"
+}
 
 # URL: refuse a deploy that would reopen run.app around the WAF or change the live JWT issuer.
 live_guard() {
   local want="${JWT_ISSUER:-$1}" json live live_ingress live_issuer
-  json="$(service_json)"
+  json="$(service_json)" || exit 1
   if [ -z "$json" ]; then
     say "live-state guard: skipped (no live service to compare$([ "$DRY_RUN" -eq 0 ] || printf '; dry run'))"
     return 0
@@ -1019,6 +1090,11 @@ print(ingress + "\t" + issuer)')"
   live_issuer="${live#*	}"
   if [ "$live_ingress" = "$EDGE_LOCKED" ] && [ "$INGRESS" = "all" ] && [ "${DEPLOY_ALLOW_UNLOCK:-}" != "1" ]; then
     die "live ingress is locked; run edge unlock-ingress first, or this deploy reopens run.app around the WAF (DEPLOY_ALLOW_UNLOCK=1 overrides)"
+  fi
+  # Locking belongs to edge lock-ingress: it checks the SPA moved, probes run.app and every tag URL
+  # and unlocks again on failure. A plain deploy must not lock a live service around those checks.
+  if [ "$INGRESS" = "$EDGE_LOCKED" ] && [ "${live_ingress:-all}" != "$EDGE_LOCKED" ] && [ "${DEPLOY_ALLOW_LOCK:-}" != "1" ]; then
+    die "live ingress is ${live_ingress:-all} but INGRESS=$EDGE_LOCKED: run edge lock-ingress first, or this deploy locks run.app without its checks (DEPLOY_ALLOW_LOCK=1 overrides)"
   fi
   if [ -n "$live_issuer" ] && [ "$live_issuer" != "$want" ] && [ "${DEPLOY_ALLOW_ISSUER_CHANGE:-}" != "1" ]; then
     die "this deploy changes JWT_ISSUER from $live_issuer to $want and signs every user out: pin JWT_ISSUER=$live_issuer in scripts/deploy/gcp/$ENV_NAME.env (DEPLOY_ALLOW_ISSUER_CHANGE=1 overrides)"
@@ -1041,8 +1117,9 @@ edge_backend() {
     --enable-logging --logging-sample-rate=1
 }
 
-# FILE: the URL map. Route rules live only inside a path matcher a host rule points to; the
-# candidate header goes to the candidate backend, everything else to the main one.
+# FILE VALUE: the URL map. Route rules live only inside a path matcher a host rule points to. Only
+# the header `x-aimos-candidate: VALUE` goes to the candidate backend, everything else to the main
+# one. VALUE is random and never printed (ADR-0022): a deploy reads it back from the URL map.
 edge_url_map() {
   local be="projects/$PROJECT/global/backendServices"
   cat >"$1" <<YAML
@@ -1059,16 +1136,16 @@ pathMatchers:
     matchRules:
     - prefixMatch: /
       headerMatches:
-      - headerName: ${CANDIDATE_HEADER%%:*}
-        exactMatch: '1'
+      - headerName: $CANDIDATE_HEADER_NAME
+        exactMatch: '$2'
     service: $be/$EDGE_CANDIDATE_BE
 YAML
-  say "url map $1:"
-  sed 's/^/    /' "$1"
+  say "url map $1 (candidate value redacted):"
+  sed -e "s/'$2'/'<redacted>'/" -e 's/^/    /' "$1"
 }
 
 edge_setup() {
-  local neg ip
+  local neg ip value
   # shellcheck disable=SC2086
   gc services enable $EDGE_APIS
   gq compute addresses describe "$EDGE_IP" --global --format='value(address)' >/dev/null ||
@@ -1087,7 +1164,10 @@ edge_setup() {
   for neg in "$EDGE_BE:$EDGE_NEG" "$EDGE_CANDIDATE_BE:$EDGE_CANDIDATE_NEG"; do
     edge_backend "${neg%%:*}" "${neg#*:}"
   done
-  edge_url_map "$WORK/url-map.yaml"
+  # A fresh random candidate route value on every run (rerun edge setup to rotate it).
+  value="$(od -An -tx1 -N16 /dev/urandom | tr -d ' \n')"
+  [ "${#value}" -eq 32 ] || die "cannot read 16 random bytes for the candidate route"
+  edge_url_map "$WORK/url-map.yaml" "$value"
   gc compute url-maps import "$EDGE_MAP" --global --source="$WORK/url-map.yaml"
   if gq compute ssl-policies describe "$EDGE_SSL" --global --format='value(name)' >/dev/null; then
     gc compute ssl-policies update "$EDGE_SSL" --global --profile=MODERN --min-tls-version=1.2
@@ -1207,16 +1287,25 @@ spa_moved() {
   done
 }
 
-# URL...: each answers /api/v1/auth/me with anything but 401 (refused by ingress).
+# URL...: each answers /api/v1/auth/me with the front end's ingress refusal, 403 or 404. A 401
+# (the API), a network failure (000), an empty URL or anything else is not proof: LOCK_FAIL.
 refused_direct() {
   local url code n
   for url in "$@"; do
+    [ -n "$url" ] || { LOCK_FAIL="the service has no run.app URL to probe"; return 1; }
     n=0
     while :; do
       code="$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' "$url/api/v1/auth/me" || true)"
-      [ "$code" = "401" ] || break
+      case "$code" in 403 | 404) break ;; esac
       n=$((n + 1))
-      [ "$n" -lt "$SMOKE_TRIES" ] || { LOCK_FAIL="$url still answers the API directly"; return 1; }
+      if [ "$n" -ge "$SMOKE_TRIES" ]; then
+        if [ "$code" = "401" ]; then
+          LOCK_FAIL="$url still answers the API directly"
+        else
+          LOCK_FAIL="$url answered '${code:-nothing}', not the ingress refusal (403/404)"
+        fi
+        return 1
+      fi
       sleep "$SMOKE_SLEEP"
     done
   done
@@ -1230,7 +1319,7 @@ edge_lock() {
   smoke "https://$EDGE_DOMAIN" || die "lock refused: the load balancer smoke failed for https://$EDGE_DOMAIN"
   LOCK_FAIL=""
   spa_moved || die "lock refused: $LOCK_FAIL"
-  json="$(service_json)"
+  json="$(service_json)" || exit 1
   if [ -n "$json" ]; then
     inventory="$(printf '%s' "$json" | python3 -c '
 import json, sys
@@ -1282,7 +1371,7 @@ policy_name() {
 }
 
 edge_alerts() {
-  local channel uptime count file name existing threshold metric
+  local channel uptime count file name existing threshold metric current
   case "$ALERT_EMAIL" in
     "") die "alerts: set ALERT_EMAIL in scripts/deploy/gcp/$ENV_NAME.env (one address)" ;;
     *[,\ ]* | *@*@*) die "alerts: ALERT_EMAIL must be one address, not '$ALERT_EMAIL'" ;;
@@ -1305,6 +1394,13 @@ edge_alerts() {
     gc beta monitoring channels create --type=email --channel-labels=email_address="$ALERT_EMAIL" \
       --display-name="$EDGE_CHANNEL"
     channel="$(gq beta monitoring channels list --filter="displayName=\"$EDGE_CHANNEL\"" --format='value(name)' || true)"
+  else
+    # The channel exists: make it send to today's ALERT_EMAIL, not the address it was made with.
+    channel="$(printf '%s\n' "$channel" | head -n 1)"
+    current="$(gq beta monitoring channels describe "$channel" --format='value(labels.email_address)' || true)"
+    if [ "$current" != "$ALERT_EMAIL" ]; then
+      gc beta monitoring channels update "$channel" --update-channel-labels=email_address="$ALERT_EMAIL"
+    fi
   fi
   [ -n "$channel" ] || [ "$DRY_RUN" -eq 0 ] || channel="projects/$PROJECT/notificationChannels/<channel-id>"
   [ -n "$channel" ] || die "alerts: cannot find the $EDGE_CHANNEL channel after creating it"
