@@ -650,12 +650,12 @@ def test_bad_enforcement_value_refused(toolkit: Path, tmp_path: Path) -> None:
     assert result.returncode != 0 and "MFA_ENFORCEMENT must be off or all" in result.stderr
 
 
-def _gen_passwords(toolkit: Path, n: int) -> list[str]:
+def _gen_passwords(toolkit: Path, n: int, email: str = "owner@acme.test") -> list[str]:
     script = toolkit / "deploy.sh"
     source = script.read_text(encoding="utf-8")
     start = source.index("gen_password() {")
     body = source[start : source.index("\n}\n", start) + 3]
-    loop = f'for _ in $(seq {n}); do gen_password; printf "\\n"; done'
+    loop = f'for _ in $(seq {n}); do gen_password "{email}"; printf "\\n"; done'
     result = subprocess.run(
         ["bash", "-c", body + "\n" + loop], capture_output=True, text=True, timeout=120, check=True
     )
@@ -674,6 +674,17 @@ def test_generated_password_passes_policy(toolkit: Path) -> None:
         )
         for email, name in samples:
             assert check(password, email=email, display_name=name) == [], (password, email)
+
+
+def test_generated_password_avoids_the_email_local_part(toolkit: Path) -> None:
+    """Review E2E-3: the whole local part (digits and '-' included) is a personal token. "1-a"
+    sits in about 2.7% of raw values (500 samples: ~13 hits), so a generator that ignores the
+    email fails here; gen_password draws again on a hit."""
+    from app.core.password_policy import check
+
+    for email in ("1-a@x.in", "ab1@x.in"):
+        for password in _gen_passwords(toolkit, 500, email):
+            assert check(password, email=email, display_name=None) == [], (password, email)
 
 
 def test_ensure_password_no_longer_uses_hex(toolkit: Path, tmp_path: Path) -> None:

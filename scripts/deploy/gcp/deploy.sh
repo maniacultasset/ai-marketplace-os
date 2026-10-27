@@ -811,12 +811,21 @@ password_secret() {
   printf 'INITIAL_PASSWORD_%s_%s' "$(printf '%s' "$folded" | tr -c 'a-z0-9' '_' | cut -c1-200)" "$digest"
 }
 
-# A generated initial password that meets the DPP 1.4.1 rules (DPP-1): 8 groups of an upper-case
-# letter, a lower-case letter and a digit joined by '-' (31 characters, about 100 bits). No letter
-# run is longer than 2, so it never holds a 3-letter name or email token. The value goes straight
-# into Secret Manager and is never printed.
+# EMAIL: a generated initial password that meets the DPP 1.4.1 rules (DPP-1): 8 groups of an
+# upper-case letter, a lower-case letter and a digit joined by '-' (31 characters, about 100 bits).
+# No letter run is longer than 2, so it never holds a 3-letter name token; the whole email local
+# part (digits and '-' count too, e.g. "ab1") is also a personal token, so a value that holds it
+# is drawn again. The value goes straight into Secret Manager and is never printed.
 gen_password() {
-  python3 -c 'import secrets, string as s; print("-".join(secrets.choice(s.ascii_uppercase) + secrets.choice(s.ascii_lowercase) + secrets.choice(s.digits) for _ in range(8)), end="")'
+  python3 -c '
+import secrets, string as s, sys, unicodedata
+local = unicodedata.normalize("NFKC", sys.argv[1].rpartition("@")[0]).casefold()
+while True:
+    value = "-".join(secrets.choice(s.ascii_uppercase) + secrets.choice(s.ascii_lowercase) + secrets.choice(s.digits) for _ in range(8))
+    if len(local) < 3 or local not in value.casefold():
+        break
+print(value, end="")
+' "$1"
 }
 
 # EMAIL FRESH: the user's initial-password secret; FRESH=1 adds a new version even if one exists.
@@ -827,7 +836,7 @@ ensure_password() {
   if [ "$2" -eq 1 ] || ! secret_has_version "$secret"; then
     pipe_note "gen_password | gcloud secrets versions add $secret --data-file=- --project=$PROJECT"
     if [ "$DRY_RUN" -eq 0 ]; then
-      gen_password |
+      gen_password "$1" |
         gcloud secrets versions add "$secret" --data-file=- --project="$PROJECT" --quiet
     fi
   fi
