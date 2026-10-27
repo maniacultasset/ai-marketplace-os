@@ -31,6 +31,8 @@ from .mfa_support import (
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
 
 EMAIL = "owner@acme.test"
+# the membership tests deactivate a non-owner: `last_owner_guard` keeps acme's only owner active
+MEMBER = "operator@acme.test"
 
 
 @pytest.fixture
@@ -181,20 +183,20 @@ async def test_inactive_or_membershipless_right_password_401_not_mfa_required(
     change: str,
 ) -> None:
     mfa_on(monkeypatch)
-    await enrol(api, auth_db, EMAIL, clock)
+    await enrol(api, auth_db, MEMBER, clock)
     if change == "inactive":
-        auth_db.execute("UPDATE users SET is_active = false WHERE email = %s", [EMAIL])
+        auth_db.execute("UPDATE users SET is_active = false WHERE email = %s", [MEMBER])
     else:
         auth_db.execute(
             "UPDATE tenant_memberships SET is_active = false, deactivated_at = now() "
             "WHERE user_id = %s",
-            [user_id(auth_db, EMAIL)],
+            [user_id(auth_db, MEMBER)],
         )
     before = count(auth_db, "SELECT count(*) FROM mfa_challenges")
-    response = await login(api, EMAIL)
+    response = await login(api, MEMBER)
     assert response.status_code == 401
     assert response.json()["error"]["type"] == "UNAUTHENTICATED"
-    assert lock_state(auth_db, EMAIL) == (0, False)
+    assert lock_state(auth_db, MEMBER) == (0, False)
     assert count(auth_db, "SELECT count(*) FROM mfa_challenges") == before
 
 

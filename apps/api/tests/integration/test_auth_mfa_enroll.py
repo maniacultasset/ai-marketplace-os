@@ -40,6 +40,8 @@ from .mfa_support import (
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
 
 EMAIL = "owner@acme.test"
+# the membership tests deactivate a non-owner: `last_owner_guard` keeps acme's only owner active
+MEMBER = "operator@acme.test"
 
 
 @pytest.fixture
@@ -47,8 +49,8 @@ def world(auth_db: Conn) -> World:
     return build_world(auth_db)
 
 
-async def _enroll_challenge(api: httpx.AsyncClient) -> str:
-    body = (await login(api, EMAIL)).json()
+async def _enroll_challenge(api: httpx.AsyncClient, email: str = EMAIL) -> str:
+    body = (await login(api, email)).json()
     assert body["status"] == "mfa_enrollment_required", body
     assert body["challenge_expires_in"] == 900
     return str(body["challenge_token"])
@@ -201,11 +203,11 @@ async def test_confirm_rechecks_membership(
     clock: TotpClock,  # noqa: F811
 ) -> None:
     mfa_on(monkeypatch)
-    challenge = await _enroll_challenge(api)
+    challenge = await _enroll_challenge(api, MEMBER)
     secret = secret_of((await api.post(LOGIN_ENROLL, json={"challenge_token": challenge})).json())
     auth_db.execute(
         "UPDATE tenant_memberships SET is_active = false, deactivated_at = now() WHERE user_id = %s",
-        [user_id(auth_db, EMAIL)],
+        [user_id(auth_db, MEMBER)],
     )
     response = await api.post(
         LOGIN_CONFIRM, json={"challenge_token": challenge, "code": clock.next_code(secret)}
@@ -233,8 +235,11 @@ async def test_enroll_challenge_works_at_14_minutes_and_fails_at_15(
 ) -> None:
     mfa_on(monkeypatch)
     challenge = await _enroll_challenge(api)
+    # `created_at` is the database's transaction start and `expires_at` the app clock at the
+    # insert, a few milliseconds later: the lifetime is 15 minutes to within that gap
     expires = auth_db.execute("SELECT expires_at - created_at FROM mfa_challenges").fetchone()
-    assert expires is not None and expires[0] == timedelta(minutes=15)
+    assert expires is not None
+    assert abs(expires[0] - timedelta(minutes=15)) < timedelta(seconds=2), expires[0]
     # 14 minutes in: still open
     auth_db.execute("UPDATE mfa_challenges SET expires_at = now() + interval '1 minute'")
     assert (await api.post(LOGIN_ENROLL, json={"challenge_token": challenge})).status_code == 200
