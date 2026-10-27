@@ -24,7 +24,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from tests.integration.auth_support import ROLES, World, bearer, build_world, tokens_for
+from tests.integration.auth_support import (
+    PASSWORD,
+    ROLES,
+    World,
+    bearer,
+    build_world,
+    tokens_for,
+)
 
 # The integration fixtures, re-exported for this folder (a conftest's fixtures reach only the
 # tests below it).
@@ -228,6 +235,10 @@ def call_for(op: Operation, world: World2, slug: str) -> Call:
             body["category"] = CATEGORY
         if op.op_id == "rules_dry_run":
             body["listing"] = {**body["listing"], "category": CATEGORY}
+        if op.op_id == "auth_password_change":
+            # DPP-1 (ADR-0021): a wrong current password is a 422 by design, so the valid call
+            # carries the seeded caller's real one
+            body["current_password"] = PASSWORD
         for name in ("product_id", "listing_id", "target_tenant_id"):
             if name in body:
                 body[name] = str(side.ids[name])

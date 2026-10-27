@@ -107,9 +107,17 @@ def build_world(conn: Conn) -> World:
 
 
 def tokens_for(
-    world: World, email: str, slug: str, role: str | None = None, *, typ: str = "access"
+    world: World,
+    email: str,
+    slug: str,
+    role: str | None = None,
+    *,
+    typ: str = "access",
+    amr: list[str] | None = None,
+    mfa_at: int | None = None,
 ) -> str:
-    """A signed token for `email` in `slug`; `role` defaults to the seeded one."""
+    """A signed token for `email` in `slug`; `role` defaults to the seeded one. `amr` and
+    `mfa_at` add the DPP-1 step-up claims (ADR-0021)."""
     from app.core.security import encode, issue_claims
 
     claims = issue_claims(
@@ -118,6 +126,8 @@ def tokens_for(
         role=(role or email.split("@", 1)[0]),  # type: ignore[arg-type]
         email=email,
         typ=typ,  # type: ignore[arg-type]
+        amr=amr,  # type: ignore[arg-type]
+        mfa_at=mfa_at,
     )
     return encode(claims)
 

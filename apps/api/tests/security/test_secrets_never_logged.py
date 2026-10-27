@@ -230,9 +230,12 @@ def test_token_enc_has_no_canary_bytes(flow: dict[str, Any]) -> None:
 
 
 def test_token_enc_decrypts_only_via_adapter_path() -> None:
-    """Only `app.adapters.credentials` calls a key unwrapper's `unwrap`, and `unseal` is
-    called only by the two worker paths that need a live token (the adapter session and the
-    refresh job)."""
+    """Only `app.adapters.credentials` calls a key unwrapper's `unwrap` for seller tokens, and
+    `unseal` is called only by the two worker paths that need a live token (the adapter session
+    and the refresh job). DPP-1 (ADR-0021): `app.adapters.mfa_secrets` is the one other unwrapper,
+    for the MFA data-key label only; the import-linter contract
+    `mfa-secret-unseal-only-in-mfa-service` keeps it behind `app.services.mfa`, and it never
+    imports the token path."""
     unwrap_callers: set[str] = set()
     unseal_callers: set[str] = set()
     for path in sorted(APP.rglob("*.py")):
@@ -246,7 +249,12 @@ def test_token_enc_decrypts_only_via_adapter_path() -> None:
                 unwrap_callers.add(rel)
             if name == "unseal":
                 unseal_callers.add(rel)
-    assert unwrap_callers == {"adapters/credentials.py"}, unwrap_callers
+    assert unwrap_callers == {"adapters/credentials.py", "adapters/mfa_secrets.py"}, unwrap_callers
+    mfa_tree = ast.parse((APP / "adapters" / "mfa_secrets.py").read_text(encoding="utf-8"))
+    mfa_imports = {
+        alias.name for n in ast.walk(mfa_tree) if isinstance(n, ast.Import) for alias in n.names
+    } | {n.module or "" for n in ast.walk(mfa_tree) if isinstance(n, ast.ImportFrom)}
+    assert not any(m.startswith("app.adapters.credentials") for m in mfa_imports), mfa_imports
     assert unseal_callers <= {"workers/adapters.py", "workers/token_refresh.py"}, unseal_callers
 
 
