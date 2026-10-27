@@ -174,6 +174,32 @@ class UserRepository:
         user = (await self.db.execute(stmt)).scalar_one_or_none()
         return None if user is None else _user_row(user)
 
+    async def lock_login_email(self, email: str) -> bool:
+        """Review E2E-2: a transaction-scoped advisory lock on the lower-cased email, taken on
+        every public password path before the lookup and the verify. Parallel attempts for one
+        email queue the same way whether or not it has an account (the users row lock alone
+        queued only known emails: a timing oracle). False after a 5 s wait (55P03, rolled back
+        to a savepoint, like `begin_auth_attempt`); the session's lock_timeout is put back."""
+        previous = (
+            await self.db.execute(text("SELECT current_setting('lock_timeout')"))
+        ).scalar_one()
+        try:
+            async with self.db.begin_nested():
+                await self.db.execute(text("SELECT set_config('lock_timeout', '5s', true)"))
+                await self.db.execute(
+                    text("SELECT pg_advisory_xact_lock(hashtextextended('login:' || :e, 0))"),
+                    {"e": email.strip().lower()},
+                )
+        except DBAPIError as exc:
+            if getattr(exc.orig, "sqlstate", None) == LOCK_NOT_AVAILABLE:
+                return False
+            raise
+        finally:
+            await self.db.execute(
+                text("SELECT set_config('lock_timeout', :v, true)"), {"v": previous}
+            )
+        return True
+
     async def begin_auth_attempt(self, user_id: uuid.UUID) -> AuthState | AuthBusy | None:
         """DPP-1: take the user row FOR UPDATE through `app_begin_auth_attempt` and return its
         current counter and lock (None for no such user). The row lock serialises this user's

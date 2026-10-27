@@ -144,6 +144,9 @@ async def signup(
         await set_gucs(session, login_email=email)
         users = UserRepository(session)
         requests = SignupRepository(session)
+        if not await users.lock_login_email(email):  # every email queues the same way
+            await off_loop(verify_password, password, dummy_hash())
+            return SignupAccepted(uuid.uuid4())
         user = await users.by_email(email)
         if user is None:
             user_id = uuid.uuid4()
@@ -228,7 +231,11 @@ async def signup_status(email: str, password: str, *, ip: str | None = None) -> 
     account, an inactive user or no request (one argon2 verify each)."""
     async with identity_session() as session:
         await set_gucs(session, login_email=email)
-        user = await UserRepository(session).by_email(email)
+        users = UserRepository(session)
+        if not await users.lock_login_email(email):  # every email queues the same way
+            await off_loop(verify_password, password, dummy_hash())
+            return None
+        user = await users.by_email(email)
         if user is None:
             await off_loop(verify_password, password, dummy_hash())
             return None

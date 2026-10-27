@@ -374,6 +374,8 @@ class World:
     locked: bool = False
     failures: list[uuid.UUID] = field(default_factory=list)
     lookups: int = 0
+    email_locks: list[str] = field(default_factory=list)
+    email_busy: bool = False
 
 
 def _install(monkeypatch: pytest.MonkeyPatch, world: World) -> None:
@@ -387,6 +389,10 @@ def _install(monkeypatch: pytest.MonkeyPatch, world: World) -> None:
     class Users:
         def __init__(self, _: object) -> None:
             pass
+
+        async def lock_login_email(self, email: str) -> bool:
+            world.email_locks.append(email)
+            return not world.email_busy
 
         async def by_email(self, email: str) -> UserRow | None:
             world.lookups += 1
@@ -815,3 +821,32 @@ def test_signup_website_refuses_control_characters(website: str) -> None:
     with pytest.raises(ValidationError):
         SignupCreate.model_validate(body)
     assert SignupCreate.model_validate({**body, "website": "https://acme.test/shop"}).website
+
+
+# ---- every email queues the same way (review E2E-2 / SEC-2) ----
+
+
+@pytest.mark.parametrize("known", [True, False])
+async def test_signup_and_status_take_the_email_lock(
+    monkeypatch: pytest.MonkeyPatch, known: bool
+) -> None:
+    world = World()
+    _install(monkeypatch, world)
+    if known:
+        _user(world)
+    await _signup()
+    await svc.signup_status("founder@kalakar.example", "Brass-Lantern-Path-0123")
+    assert world.email_locks == ["founder@kalakar.example"] * 2
+
+
+@pytest.mark.parametrize("known", [True, False])
+async def test_busy_email_lock_writes_nothing(monkeypatch: pytest.MonkeyPatch, known: bool) -> None:
+    world = World(email_busy=True)
+    _install(monkeypatch, world)
+    if known:
+        _user(world)
+    accepted = await _signup()
+    assert accepted.status == "pending" and accepted.request_id not in world.requests
+    assert not world.inserted_users and not world.requests and world.lookups == 0
+    assert await svc.signup_status("founder@kalakar.example", "Brass-Lantern-Path-0123") is None
+    assert world.lookups == 0

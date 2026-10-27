@@ -60,6 +60,7 @@ class World:
     revoked_open: list[uuid.UUID] = field(default_factory=list)
     passwords_set: list[str] = field(default_factory=list)
     regenerated: int = 0
+    email_lock_free: bool = True
 
 
 def _user(world: World, **changes: Any) -> UserRow:
@@ -105,7 +106,12 @@ def world(monkeypatch: pytest.MonkeyPatch) -> World:
         def __init__(self, _: Any) -> None:
             pass
 
+        async def lock_login_email(self, _: str) -> bool:
+            w.events.append("email_lock")
+            return w.email_lock_free
+
         async def by_email(self, email: str) -> UserRow | None:
+            w.events.append("by_email")
             return w.users.get(email)
 
         async def self_row(self, user_id: uuid.UUID) -> UserRow | None:
@@ -858,3 +864,28 @@ async def test_refused_new_password_uses_a_challenge_attempt(world: World) -> No
     found = await auth.expired_password(raw, WEAK, ip=None, user_agent=None)
     assert isinstance(found, auth.Refusal) and found.kind == "policy"
     assert world.challenge_fails == 1 and world.failures == 0
+
+
+# ---- every email queues the same way (review E2E-2 / SEC-2) ----
+
+
+@pytest.mark.parametrize("known", [True, False])
+async def test_login_takes_the_email_lock_first(world: World, known: bool) -> None:
+    """Known and unknown emails both queue on the per-email lock before the lookup and the
+    verify, so parallel requests cannot tell an account from no account by timing."""
+    if known:
+        _user(world)
+    await _login(world, "Wrong-Password-0000")
+    assert world.events[0] == "email_lock"
+    assert world.events.index("email_lock") < world.events.index("verify_password")
+
+
+@pytest.mark.parametrize("known", [True, False])
+async def test_login_busy_email_lock_same_401_one_verify(world: World, known: bool) -> None:
+    if known:
+        _user(world)
+    world.email_lock_free = False
+    assert await _login(world) is None
+    assert world.verifies == 1 and world.failures == 0
+    assert "gate" not in world.events and "by_email" not in world.events
+    assert "auth.login_failed" in world.events

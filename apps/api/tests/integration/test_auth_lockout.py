@@ -465,3 +465,32 @@ async def test_busy_attempt_returns_generic_401(
         holder.rollback()
         holder.close()
     assert lock_state(auth_db, EMAIL) == (0, False)
+
+
+@pytest.mark.parametrize("email", [EMAIL, "nobody@acme.test"])
+async def test_known_and_unknown_email_queue_the_same_way(
+    api: httpx.AsyncClient, world: World, auth_db: Conn, email: str
+) -> None:
+    """Review E2E-2: a second connection holds the per-email lock; a login for a known and for
+    an unknown email both wait for it (no timing oracle), then answer the same 401."""
+    import os
+
+    import psycopg
+
+    from .conftest import libpq_url
+
+    holder = psycopg.connect(libpq_url(os.environ["ALEMBIC_DATABASE_URL"]))
+    try:
+        holder.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended('login:' || lower(%s), 0))", [email]
+        )
+        reset_rate_limits(auth_db)
+        attempt = asyncio.ensure_future(login(api, email, WRONG))
+        await asyncio.sleep(1.0)
+        assert not attempt.done()  # queued behind the holder
+        holder.rollback()
+        response = await asyncio.wait_for(attempt, timeout=10)
+        assert response.status_code == 401
+    finally:
+        holder.rollback()
+        holder.close()

@@ -12,7 +12,9 @@ DPP-1 rules every sign-in path here follows:
   `app.user_id`, then calls `UserRepository.begin_auth_attempt` before any verify. The row lock
   serialises that user's attempts until commit, so the lock check, the verify and the counter
   write never interleave across parallel requests. A lock wait past 5 s is `AUTH_BUSY`: nothing
-  is verified or counted, and the caller answers its usual refusal.
+  is verified or counted, and the caller answers its usual refusal. The public password paths
+  first take a per-email advisory lock (`lock_login_email`), so an unknown email queues exactly
+  like a known one and parallel timing does not reveal which emails have accounts.
 - **Commit before refusing.** A service returns a result value (None, a `Refusal`, or the
   success payload) and never raises a refusal inside its `identity_session()` block, which rolls
   back on any exception and would undo the counter and the challenge's attempt. The route raises
@@ -371,6 +373,10 @@ async def login(
     async with identity_session() as session:
         await set_gucs(session, login_email=email)
         users = UserRepository(session)
+        if not await users.lock_login_email(email):  # every email queues the same way
+            await off_loop(verify_password, password, dummy_hash())
+            await _login_failed(session, None, "busy", ip)
+            return None
         user = await users.by_email(email)
         state: AuthState | AuthBusy | None = None
         if user is not None:
