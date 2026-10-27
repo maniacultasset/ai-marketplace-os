@@ -226,7 +226,11 @@ def test_setup_generates_secrets_without_values(toolkit: Path, tmp_path: Path) -
         assert f'bash -c \'read -rsp "{name}: " v; echo; printf %s "$v" | ' in out
     # least privilege (ADR-0018): the api encrypts only, the worker encrypts and decrypts; no
     # other account touches the token key; secrets granted one by one
-    kms = [line for line in out.splitlines() if "kms keys add-iam-policy-binding" in line]
+    kms = [
+        line
+        for line in out.splitlines()
+        if "kms keys add-iam-policy-binding oauth-token-key " in line
+    ]
     assert len(kms) == 2
     (api,) = [line for line in kms if "aimos-api@" in line]
     (worker,) = [line for line in kms if "aimos-worker@" in line]
@@ -526,3 +530,183 @@ def test_runner_bad_file_exits_2_without_connecting(
     assert runner.main([*args, "--password-file", str(bad)]) == 2
     err = capsys.readouterr().err
     assert "a password file is unreadable" in err and "secret" not in err
+
+
+# ---- DPP-1 (ADR-0021): the MFA key, the MFA switch, generated passwords, unlock and reset-mfa ----
+
+
+def _set_env(toolkit: Path, env_name: str, **values: str) -> None:
+    path = toolkit / f"{env_name}.env"
+    text = path.read_text(encoding="utf-8")
+    for key, value in values.items():
+        text = re.sub(rf"^{key}=.*$", f"{key}={value}", text, flags=re.MULTILINE)
+    path.write_text(text, encoding="utf-8")
+
+
+def _kms_bindings(out: str, key: str) -> list[str]:
+    return [line for line in out.splitlines() if f"kms keys add-iam-policy-binding {key} " in line]
+
+
+def test_mfa_key_created_with_rotation(toolkit: Path, tmp_path: Path) -> None:
+    out = _run(toolkit, tmp_path, "staging", "setup", "--dry-run", "--sha", SHA).stdout
+    create = next(
+        line for line in out.splitlines() if "kms keys create mfa-secret-key " in line
+    ).replace("\\", "")
+    for flag in ("--rotation-period=90d", "--purpose=encryption", "--next-rotation-time=",
+                 "--labels=app=aimos,env=staging", "--keyring=marketplace-os"):  # fmt: skip
+        assert flag in create, flag
+
+
+def test_only_api_sa_has_mfa_key_role(toolkit: Path, tmp_path: Path) -> None:
+    out = _run(toolkit, tmp_path, "staging", "setup", "--dry-run", "--sha", SHA).stdout
+    (binding,) = _kms_bindings(out, "mfa-secret-key")
+    assert "aimos-api@" in binding
+    assert "--role=roles/cloudkms.cryptoKeyEncrypterDecrypter " in binding
+
+
+def test_worker_has_no_mfa_binding(toolkit: Path, tmp_path: Path) -> None:
+    out = _run(toolkit, tmp_path, "staging", "setup", "--dry-run", "--sha", SHA).stdout
+    for line in _kms_bindings(out, "mfa-secret-key"):
+        for account in ("aimos-worker@", "aimos-ops@", "aimos-migrate@", "aimos-build@"):
+            assert account not in line, account
+
+
+def test_oauth_key_bindings_unchanged(toolkit: Path, tmp_path: Path) -> None:
+    out = _run(toolkit, tmp_path, "staging", "setup", "--dry-run", "--sha", SHA).stdout
+    bindings = _kms_bindings(out, "oauth-token-key")
+    assert len(bindings) == 2
+    (api,) = [line for line in bindings if "aimos-api@" in line]
+    assert "--role=roles/cloudkms.cryptoKeyEncrypter " in api  # still encrypt only
+
+
+def test_mfa_key_uri_only_in_api_env(toolkit: Path, tmp_path: Path) -> None:
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    env = _api_env(out)
+    assert env["MFA_KMS_KEY_URI"] == (
+        "projects/aimos-staging/locations/asia-south1/keyRings/marketplace-os/cryptoKeys/"
+        "mfa-secret-key"
+    )
+    spec: dict[str, Any] = _worker_spec(out)
+    container = spec["spec"]["template"]["spec"]["containers"][0]
+    names = {e["name"] for e in container["env"]}
+    assert not {"MFA_KMS_KEY_URI", "MFA_ENFORCEMENT", "MFA_GRACE_UNTIL"} & names
+    tenant = _run(
+        toolkit, tmp_path, "staging", "tenant", "unlock", "--email", "a@b.test",
+        "--staff-email", "s@b.test", "--dry-run", "--sha", SHA,
+    ).stdout  # fmt: skip
+    assert "MFA_KMS_KEY_URI" not in tenant
+
+
+@pytest.mark.parametrize("env_name", ["staging", "prod"])
+def test_env_files_carry_mfa_keys(repo_root: Path, env_name: str) -> None:
+    text = (repo_root / DEPLOY / f"{env_name}.env").read_text(encoding="utf-8")
+    values = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
+    assert values["MFA_ENFORCEMENT"] == "off"
+    assert values["MFA_GRACE_UNTIL"] == ""
+    assert values["KMS_MFA_KEY"] == "mfa-secret-key"
+
+
+def test_api_env_carries_mfa_enforcement_and_grace(toolkit: Path, tmp_path: Path) -> None:
+    grace = "2026-11-20T00:00:00+05:30"
+    _set_env(toolkit, "staging", MFA_ENFORCEMENT="all", MFA_GRACE_UNTIL=grace)
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    env = _api_env(out)
+    assert env["MFA_ENFORCEMENT"] == "all" and env["MFA_GRACE_UNTIL"] == grace
+
+
+@pytest.mark.parametrize("env_name", ["staging", "prod"])
+def test_api_env_boots_under_all(
+    toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch, env_name: str
+) -> None:
+    _set_env(toolkit, env_name, MFA_ENFORCEMENT="all", MFA_GRACE_UNTIL="2026-11-20T00:00:00+05:30")
+    out = _run(toolkit, tmp_path, env_name, "deploy", "--dry-run", "--sha", SHA).stdout
+    env = _api_env(out)
+    deploy = next(line for line in out.splitlines() if line.startswith("+ gcloud run deploy "))
+    _boot(monkeypatch, env, _secret_names(deploy))
+
+
+@pytest.mark.parametrize("command", ["release", "deploy", "tenant"])
+def test_all_without_grace_refused(toolkit: Path, tmp_path: Path, command: str) -> None:
+    _set_env(toolkit, "staging", MFA_ENFORCEMENT="all", MFA_GRACE_UNTIL="")
+    result = _run(toolkit, tmp_path, "staging", command, "--dry-run", "--sha", SHA)
+    assert result.returncode != 0
+    assert "MFA_ENFORCEMENT=all needs MFA_GRACE_UNTIL" in result.stderr
+
+
+@pytest.mark.parametrize(
+    "grace", ["2026-11-20", "2026-11-20T00:00:00", "soon", "2026-13-01T00:00:00+05:30"]
+)
+def test_bad_grace_date_refused(toolkit: Path, tmp_path: Path, grace: str) -> None:
+    _set_env(toolkit, "staging", MFA_ENFORCEMENT="all", MFA_GRACE_UNTIL=grace)
+    for command in ("release", "deploy"):
+        result = _run(toolkit, tmp_path, "staging", command, "--dry-run", "--sha", SHA)
+        assert result.returncode != 0
+        assert "MFA_GRACE_UNTIL must be ISO 8601 with an offset" in result.stderr
+
+
+def test_bad_enforcement_value_refused(toolkit: Path, tmp_path: Path) -> None:
+    _set_env(toolkit, "staging", MFA_ENFORCEMENT="admins")
+    result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
+    assert result.returncode != 0 and "MFA_ENFORCEMENT must be off or all" in result.stderr
+
+
+def _gen_passwords(toolkit: Path, n: int) -> list[str]:
+    script = toolkit / "deploy.sh"
+    source = script.read_text(encoding="utf-8")
+    start = source.index("gen_password() {")
+    body = source[start : source.index("\n}\n", start) + 3]
+    loop = f'for _ in $(seq {n}); do gen_password; printf "\\n"; done'
+    result = subprocess.run(
+        ["bash", "-c", body + "\n" + loop], capture_output=True, text=True, timeout=120, check=True
+    )
+    return result.stdout.splitlines()
+
+
+def test_generated_password_passes_policy(toolkit: Path) -> None:
+    from app.core.password_policy import check
+
+    passwords = _gen_passwords(toolkit, 500)
+    assert len(passwords) == 500 and len(set(passwords)) == 500
+    samples = [("asha.rao@x.in", "Asha Rao"), ("ab@x.in", None), ("owner@acme.test", "Owner")]
+    for password in passwords:
+        assert len(password) == 31 and re.fullmatch(
+            r"([A-Z][a-z][0-9]-){7}[A-Z][a-z][0-9]", password
+        )
+        for email, name in samples:
+            assert check(password, email=email, display_name=name) == [], (password, email)
+
+
+def test_ensure_password_no_longer_uses_hex(toolkit: Path, tmp_path: Path) -> None:
+    out = _run(
+        toolkit, tmp_path, "staging", "tenant", "set-password", "--email", "a@b.test",
+        "--staff-email", "s@b.test", "--dry-run", "--sha", SHA,
+    ).stdout  # fmt: skip
+    note = next(
+        line for line in out.splitlines() if "secrets versions add INITIAL_PASSWORD_" in line
+    )
+    assert note.startswith("+ gen_password | gcloud secrets versions add")
+    assert "openssl rand -hex 16" not in out
+
+
+def test_tenant_unlock_has_no_password_mount(toolkit: Path, tmp_path: Path) -> None:
+    out = _run(
+        toolkit, tmp_path, "staging", "tenant", "unlock", "--email", "a@b.test",
+        "--staff-email", "s@b.test", "--dry-run", "--sha", SHA,
+    ).stdout  # fmt: skip
+    job = next(line for line in out.splitlines() if "run jobs deploy aimos-ops" in line)
+    assert "/secrets/initial-password/value" not in job
+    assert _secret_names(job) == ["ALEMBIC_DATABASE_URL"]
+    args = job.replace("\\", "")  # the printed command is shell-quoted (printf %q)
+    assert "--args=^|^-m|app.cli|user|unlock|--email=a@b.test|--staff-email=s@b.test" in args
+    assert "INITIAL_PASSWORD_" not in out
+
+
+def test_tenant_reset_mfa_mounts_fresh_password(toolkit: Path, tmp_path: Path) -> None:
+    out = _run(
+        toolkit, tmp_path, "staging", "tenant", "reset-mfa", "--email", "a@b.test",
+        "--staff-email", "s@b.test", "--dry-run", "--sha", SHA,
+    ).stdout  # fmt: skip
+    assert "+ gen_password | gcloud secrets versions add INITIAL_PASSWORD_" in out
+    job = next(line for line in out.splitlines() if "run jobs deploy aimos-ops" in line)
+    assert "/secrets/initial-password/value=INITIAL_PASSWORD_" in job
+    assert "|user|reset-mfa|--email=a@b.test|--staff-email=s@b.test" in job.replace("\\", "")
