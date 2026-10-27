@@ -430,6 +430,16 @@ async def test_counted_failure_survives_the_error_response(
         response = await api.post(TOTP_CONFIRM, json={"code": "000000"}, headers=headers)
     assert response.status_code in (401, 422)
     assert lock_state(auth_db, EMAIL) == (1, False)
+    # review CR1: a bearer refusal's audit row carries the caller's tenant and commits (it was
+    # refused by `audit_insert` while `app.tenant_id` was unset: 500 and the counter rolled back)
+    bearer_action = {
+        "step_up": "auth.mfa_failed",
+        "totp_confirm": "auth.mfa_failed",
+        "password_change": "auth.password_failed",
+    }.get(path)
+    if bearer_action is not None:
+        rows = audit_rows(auth_db, bearer_action)
+        assert rows and rows[-1][0] == world.tenant("acme")
 
 
 async def test_busy_attempt_returns_generic_401(

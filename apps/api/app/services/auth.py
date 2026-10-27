@@ -630,6 +630,10 @@ async def _store_password(session: Any, user: UserRow, new_password: str) -> Non
 
 
 async def _bearer_gate(session: Any, principal: Principal, *, ip: str | None) -> Refusal | None:
+    """`app.tenant_id` = the caller's tenant first: every audit row these routes write (a counted
+    failure included) carries it, and the `audit_insert` policy refuses it under any other
+    tenant GUC (the 42501 would roll the counter back). Then the per-user gate."""
+    await set_gucs(session, tenant_id=principal.tenant_id)
     state = await _gate(session, principal.user_id, ip=ip)
     if isinstance(state, AuthBusy):
         return Refusal("busy")
@@ -697,7 +701,6 @@ async def totp_confirm(
         await UserRepository(session).touch_mfa_changed(principal.user_id)
         tokens = RefreshTokenRepository(session)
         if claims.sid is not None:
-            await set_gucs(session, tenant_id=principal.tenant_id)
             await tokens.step_up_family(
                 principal.tenant_id,
                 claims.sid,
@@ -721,7 +724,7 @@ async def totp_confirm(
 async def regenerate_codes(principal: Principal, *, ip: str | None) -> list[str]:
     """A new set of 10 recovery codes (the route requires a step-up in the last 10 minutes)."""
     async with identity_session() as session:
-        await set_gucs(session, user_id=principal.user_id)
+        await set_gucs(session, tenant_id=principal.tenant_id, user_id=principal.user_id)
         codes = await mfa.regenerate_codes(session, user_id=principal.user_id)
         await auth_events.record(
             session,
@@ -764,7 +767,6 @@ async def step_up(
         refused = await _bearer_gate(session, principal, ip=ip)
         if refused is not None:
             return refused
-        await set_gucs(session, tenant_id=principal.tenant_id)
         now = _now()
         method: mfa.Method | None = None
         try:

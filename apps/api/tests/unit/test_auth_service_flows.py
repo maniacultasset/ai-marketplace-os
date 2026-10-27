@@ -56,6 +56,10 @@ class World:
     must_change_set: int = 0
     new_challenges: list[dict[str, Any]] = field(default_factory=list)
     stepped: int = 1
+    tenant: uuid.UUID | None = None
+    revoked_open: list[uuid.UUID] = field(default_factory=list)
+    passwords_set: list[str] = field(default_factory=list)
+    regenerated: int = 0
 
 
 def _user(world: World, **changes: Any) -> UserRow:
@@ -87,13 +91,15 @@ def world(monkeypatch: pytest.MonkeyPatch) -> World:
             async def begin_nested(self) -> AsyncIterator[None]:
                 yield
 
+        w.tenant = None  # a new session starts with no GUCs
         try:
             yield _Session()
         finally:
             w.events.append("session_exit")
 
     async def set_gucs(_: Any, **kw: Any) -> None:
-        return None
+        if kw.get("tenant_id") is not None:
+            w.tenant = kw["tenant_id"]
 
     class Users:
         def __init__(self, _: Any) -> None:
@@ -124,6 +130,26 @@ def world(monkeypatch: pytest.MonkeyPatch) -> World:
 
         async def is_platform_admin(self, _: uuid.UUID) -> bool:
             return False
+
+        async def password_hashes(self, user_id: uuid.UUID) -> list[str]:
+            user = await self.self_row(user_id)
+            return [user.hashed_password] if user and user.hashed_password else []
+
+        async def set_password(self, _: uuid.UUID, password_hash: str, **__: Any) -> None:
+            w.passwords_set.append(password_hash)
+
+        async def touch_mfa_changed(self, _: uuid.UUID) -> None:
+            return None
+
+    class History:
+        def __init__(self, _: Any) -> None:
+            pass
+
+        async def push(self, *_: Any) -> None:
+            return None
+
+        async def prune(self, *_: Any) -> None:
+            return None
 
     class Memberships:
         def __init__(self, _: Any) -> None:
@@ -175,8 +201,26 @@ def world(monkeypatch: pytest.MonkeyPatch) -> World:
         async def consume(self, challenge_id: uuid.UUID) -> None:
             w.consumed.append(challenge_id)
 
-    async def record(_: Any, *, action: str, **__: Any) -> None:
+        async def revoke_open(self, user_id: uuid.UUID) -> int:
+            w.events.append("revoke_open")
+            w.revoked_open.append(user_id)
+            return 1
+
+    async def record(_: Any, *, action: str, tenant_id: uuid.UUID | None = None, **__: Any) -> None:
+        # the audit_insert policy: a tenant row only under that tenant's GUC (else 42501)
+        if tenant_id is not None and tenant_id != w.tenant:
+            raise RuntimeError(f"42501: audit row for {tenant_id} under app.tenant_id={w.tenant}")
         w.events.append(action)
+
+    async def regenerate_codes(_: Any, **__: Any) -> list[str]:
+        w.regenerated += 1
+        return ["rc"] * 10
+
+    async def confirm_enrollment(_: Any, **__: Any) -> list[str] | None:
+        return ["rc"] * 10 if w.second_factor else None
+
+    def fake_hash(plain: str) -> str:
+        return f"hash:{plain}"
 
     async def verify_second_factor(_: Any, **__: Any) -> str | None:
         w.events.append("verify_code")
@@ -203,6 +247,10 @@ def world(monkeypatch: pytest.MonkeyPatch) -> World:
     monkeypatch.setattr(auth, "RefreshTokenRepository", Tokens)
     monkeypatch.setattr(auth, "MfaFactorRepository", Factors)
     monkeypatch.setattr(auth, "ChallengeRepository", Challenges)
+    monkeypatch.setattr(auth, "PasswordHistoryRepository", History)
+    monkeypatch.setattr(mfa_service, "regenerate_codes", regenerate_codes)
+    monkeypatch.setattr(mfa_service, "confirm_enrollment", confirm_enrollment)
+    monkeypatch.setattr(auth, "hash_password", fake_hash)
     monkeypatch.setattr(auth_events, "record", record)
     monkeypatch.setattr(mfa_service, "verify_second_factor", verify_second_factor)
     monkeypatch.setattr(mfa_service, "new_challenge", new_challenge)
@@ -500,6 +548,64 @@ async def test_step_up_issues_fresh_token(world: World) -> None:
     )
     assert isinstance(found, auth.StepUp) and found.access_token == "jwt-access"
     assert "auth.step_up" in world.events
+
+
+# ---- the bearer routes audit under the caller's tenant (review CR1) ----
+# The fake `record` refuses a tenant audit row whose tenant is not `app.tenant_id`, as the
+# `audit_insert` RLS policy does (42501, the 500 that also rolled back the counter).
+
+NEW_PASSWORD = "Fresh-Lantern-Path-4821"
+
+
+async def test_change_password_wrong_current_counts_under_tenant(world: World) -> None:
+    user = _user(world)
+    found = await auth.change_password(
+        _principal(user),
+        _claims(user, sid=uuid.uuid4()),
+        "Wrong-Password-0000",
+        NEW_PASSWORD,
+        ip=None,
+    )
+    assert isinstance(found, auth.Refusal) and found.kind == "wrong_password"
+    assert world.failures == 1 and "auth.password_failed" in world.events
+
+
+async def test_change_password_success_audits_under_tenant(world: World) -> None:
+    user = _user(world)
+    found = await auth.change_password(
+        _principal(user), _claims(user, sid=uuid.uuid4()), PASSWORD, NEW_PASSWORD, ip=None
+    )
+    assert found is None and "auth.password_changed" in world.events
+    assert world.passwords_set == [f"hash:{NEW_PASSWORD}"]
+
+
+async def test_totp_enroll_wrong_password_counts_under_tenant(world: World) -> None:
+    user = _user(world)
+    world.has_factor = False
+    found = await auth.totp_enroll(
+        _principal(user), _claims(user, sid=uuid.uuid4()), "Wrong-Password-0000", ip=None
+    )
+    assert isinstance(found, auth.Refusal) and found.kind == "wrong_password"
+    assert world.failures == 1
+
+
+@pytest.mark.parametrize("sid", [uuid.uuid4(), None])
+async def test_totp_confirm_audits_under_tenant(world: World, sid: uuid.UUID | None) -> None:
+    user = _user(world)
+    world.has_factor = False
+    world.second_factor = None
+    wrong = await auth.totp_confirm(_principal(user), _claims(user, sid=sid), "000000", ip=None)
+    assert isinstance(wrong, auth.Refusal) and wrong.kind == "wrong_code"
+    assert world.failures == 1
+    world.second_factor = "otp"
+    right = await auth.totp_confirm(_principal(user), _claims(user, sid=sid), "123456", ip=None)
+    assert right == ["rc"] * 10 and "auth.mfa_enrolled" in world.events
+
+
+async def test_regenerate_codes_audits_under_tenant(world: World) -> None:
+    user = _user(world)
+    found = await auth.regenerate_codes(_principal(user), ip=None)
+    assert found == ["rc"] * 10 and "auth.mfa_codes_regenerated" in world.events
 
 
 # ---- the routes raise only after the service's session exited ----
