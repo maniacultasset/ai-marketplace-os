@@ -19,8 +19,9 @@ browser (SPA on Vercel, VITE_API_ORIGIN=https://api.kuinn.in)
 aimos-api-edge-ip  ->  forwarding rule aimos-api-edge-https (:443 only, no :80)
    -> target HTTPS proxy aimos-api-edge-proxy (cert aimos-api-edge-cert, Google-managed)
    -> URL map aimos-api-edge-map
-        header x-aimos-candidate: 1 -> backend aimos-api-edge-candidate-be -> NEG aimos-api-edge-candidate-neg
-                                        (Cloud Run tag `candidate`: the revision a deploy is smoking)
+        header x-aimos-candidate: <random value from edge setup>
+                                    -> backend aimos-api-edge-candidate-be -> NEG aimos-api-edge-candidate-neg
+                                        (Cloud Run tag `candidate`: set only while a deploy smokes)
         everything else             -> backend aimos-api-edge-be           -> NEG aimos-api-edge-neg
                                         (Cloud Run service aimos-api, asia-south1)
    both backends: EXTERNAL_MANAGED, request logging 100 %, Cloud Armor policy kuinn-api-waf
@@ -43,8 +44,9 @@ Answer DPP 1.1.1 "yes" only after `path`, `rate` and every CRS group, sqli and x
 enforced and `edge status` prints `preview rules left: 0`. Until then the answer is "WAF
 deployed, in tuning (preview)". The claim covers the API; the SPA counts only behind the Vercel
 platform firewall on Pro. State the inspection limit: the preconfigured rules read the first
-64 kB of a body while the app accepts up to 10 MiB, and the upload routes and the auth paths whose
-body carries a password, a code or a refresh token skip CRS; app validation covers both. The
+64 kB of a body while the app accepts up to 10 MiB, and POSTs to the upload routes and to the auth
+paths whose body carries a password, a code or a refresh token skip CRS; app validation covers
+both. The
 IDS/IPS line is "Cloud Armor CRS plus Adaptive Protection (Standard, basic alerts to email)";
 Amazon judges whether that is equivalent. DPP 1.5: the SSL policy refuses TLS 1.0 and 1.1 at the
 load balancer.
@@ -138,9 +140,12 @@ load balancer.
    `sha-*` tags, locks, probes run.app and every remaining tag URL (`candidate`), rechecks
    `/readyz`, and unlocks again by itself if anything still answers directly or the SPA breaks. Do
    not end the window unlocked; if the lock cannot be done, revert the HOPS PR and redeploy before
-   ending it. From now on `prod deploy` smokes a new revision through the load balancer with the
-   header `x-aimos-candidate: 1`, and refuses to run with `INGRESS=all` while the live service is
-   locked.
+   ending it. From now on `prod deploy` tags a new revision `candidate`, smokes it through the
+   load balancer with the header `x-aimos-candidate` set to the random value `edge setup` wrote
+   into the URL map (never printed; rerun `edge setup` to rotate it), and removes the tag on every
+   exit. It refuses to run with `INGRESS=all` while the live service is locked, and refuses to
+   lock a live open service itself (`run edge lock-ingress first`; `DEPLOY_ALLOW_LOCK=1`
+   overrides). A deploy that cannot read the live service for any reason but NOT_FOUND stops.
 
    Rollback: `prod edge unlock-ingress`, and `INGRESS=all` in `prod.env`.
 10. 48 hours later, remove the frontend rewrites. Until then every Vercel deployment can reach the

@@ -24,7 +24,8 @@ DPP 1.5.
    (the service, and its `candidate` tag), two `EXTERNAL_MANAGED` backend services with request
    logging at 100 %, both carrying the Cloud Armor Standard policy `kuinn-api-waf`
    (`--json-parsing=STANDARD`, `--log-level=NORMAL`, Layer 7 DDoS defense). A URL map sends the
-   header `x-aimos-candidate: 1` to the candidate backend and everything else to the main one.
+   header `x-aimos-candidate: <value>` to the candidate backend and everything else to the main
+   one; the value is 128 random bits written by each `edge setup` run (decision 8).
 2. **TLS:** SSL policy MODERN with minimum TLS 1.2 (meets DPP 1.5). RESTRICTED with minimum 1.3
    is possible (a 1.3 minimum must use the RESTRICTED profile) and would meet R06584 ("TLS 1.3
    enforced everywhere"), but drops TLS 1.2 clients; TEAM-QUESTIONS T133.
@@ -40,9 +41,12 @@ DPP 1.5.
 5. **No CRS method enforcement.** `methodenforcement-v422-stable` allows only GET, HEAD, POST and
    OPTIONS, and the API serves PATCH and DELETE. Rule 110 is a method allow-list of what the API
    serves plus HEAD and OPTIONS.
-6. **CRS skip:** every CRS set skips the three multipart upload routes and the auth paths whose
-   JSON body carries a password, a TOTP/recovery code or a refresh token (Armor exclusions cannot
-   target JSON body fields). Rate rules and the skip match the decoded path.
+6. **CRS skip:** every CRS set skips POSTs to the three multipart upload routes and to the auth
+   paths whose JSON body carries a password, a TOTP/recovery code or a refresh token, logout
+   included (Armor exclusions cannot target JSON body fields). Other methods on those paths stay
+   CRS-inspected. Rate rules and the skip match the decoded path. `edge rules` compares every
+   exclusion kind (headers, cookies, query parameters, URIs, rule-id scope), so an exclusion added
+   out of band is drift.
 7. **Locked ingress:** after the cutover, Cloud Run ingress is `internal-and-cloud-load-balancing`,
    set from `INGRESS` in `prod.env` so a redeploy keeps it. `edge lock-ingress` refuses until the
    SPA calls the edge, removes stale `sha-*` tags, probes run.app and every tag URL after locking,
@@ -50,8 +54,17 @@ DPP 1.5.
    or to change the live `JWT_ISSUER` (pinnable with `JWT_ISSUER`).
 8. **Candidate smoke through the load balancer:** with ingress locked, a deploy tags the
    zero-traffic revision `candidate`, smokes `https://api.kuinn.in` with the candidate header,
-   then shifts traffic. A failed smoke removes the tag first, so the header reaches only the
-   revision about to ship or the live one.
+   then shifts traffic. The header route matches only a random value: `edge setup` writes 128
+   random bits into the URL map on each run (rotation is a rerun), and a deploy reads it back
+   with `url-maps describe` and never prints it. The `candidate` tag lives only for the deploy:
+   it is removed after the shift, after a failed smoke and on any other exit (an EXIT trap,
+   including Ctrl-C), so between deploys the candidate backend has no target. Only someone who
+   can read the URL map (project viewers) can reach an unsmoked revision, and only while a deploy
+   runs; the public cannot use the second backend's separate Armor rate counters to double the
+   auth throttle. A per-deploy value written into the URL map was rejected: a URL map change takes
+   time to propagate, and until it does the header falls through to the live revision, so the
+   smoke could pass against the wrong revision. A plain deploy never moves a live open service to
+   the locked ingress: that is `edge lock-ingress` (`DEPLOY_ALLOW_LOCK=1` overrides).
 9. **Logging and alerts:** a 400-day `security-logs` bucket fed by a sink of Armor denies (preview
    and enforced), auth/signup failures and Adaptive Protection alerts, never OAuth callback URLs;
    alert policies for deny spikes, 429 spikes, load balancer 5xx, a failing uptime check and
@@ -60,8 +73,9 @@ DPP 1.5.
 
 ## Accepted risks
 
-- Anyone can send the candidate header; it reaches only the revision about to ship or the live
-  one, because a failed smoke removes the tag.
+- Project members who can read the URL map can reach the revision being smoked during a deploy
+  (with its own Armor rate counters); the public cannot, since the route matches only a random
+  value, and the tag is removed when the deploy ends.
 - Between the deploy that changes `HOPS` and the lock, a direct run.app caller could pick its app
   rate-limit bucket with a forged `X-Forwarded-For`; EDGE-CUTOVER steps 5, 8 and 9 bound this to
   one cutover window.
