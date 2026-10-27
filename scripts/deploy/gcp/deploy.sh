@@ -15,6 +15,7 @@
 #   smoke       GET /healthz and /readyz on the service URL
 #   tenant      create | add-member | set-password through the staff CLI, in a one-off job
 #   status      service URL, revisions, job runs, secret names
+#   edge        setup | rules | enforce | lock-ingress | unlock-ingress | alerts | cors | status (prod; needs EDGE_DOMAIN)
 #
 # Every subcommand describes before it creates, so a rerun is safe. Each gcloud command is printed
 # before it runs; --dry-run prints them and runs none (its only gcloud call is a local `--help`
@@ -38,7 +39,7 @@ OPS_SECRETS="ALEMBIC_DATABASE_URL"
 PW_MOUNT="/secrets/initial-password/value"
 
 usage() {
-  sed -n '5,17p' "$0" | sed 's/^# \{0,1\}//' >&2
+  sed -n '5,18p' "$0" | sed 's/^# \{0,1\}//' >&2
   exit 2
 }
 
@@ -66,6 +67,19 @@ while [ $# -gt 0 ]; do
 done
 # shellcheck disable=SC1090
 . "$HERE/$ENV_NAME.env"
+# The DPP-2 edge keys (docs/runbooks/EDGE-CUTOVER.md); an env file older than DPP-2 has none.
+EDGE_DOMAIN="${EDGE_DOMAIN-}"
+INGRESS="${INGRESS-all}"
+EDGE_ENFORCE="${EDGE_ENFORCE-}"
+JWT_ISSUER="${JWT_ISSUER-}"
+ALERT_EMAIL="${ALERT_EMAIL-}"
+# Only an environment with an edge domain gets the load balancer and monitoring APIs, so staging
+# never gets an auto-created default VPC.
+EDGE_APIS="compute.googleapis.com monitoring.googleapis.com"
+[ -z "$EDGE_DOMAIN" ] || REQUIRED_APIS="$REQUIRED_APIS $EDGE_APIS"
+# Process env, not env-file keys: how often and how far apart a smoke retries.
+SMOKE_TRIES="${SMOKE_TRIES:-10}"
+SMOKE_SLEEP="${SMOKE_SLEEP:-6}"
 
 LABELS="app=aimos,env=$APP_ENV"
 CONN="$PROJECT:$REGION:$SQL_INSTANCE"
@@ -197,6 +211,10 @@ check_filled() {
       *) die "$name must be https origins (scripts/deploy/gcp/$ENV_NAME.env)" ;;
     esac
   done
+  case "$JWT_ISSUER" in
+    "" | https://*) ;;
+    *) die "JWT_ISSUER, when set, must be https (scripts/deploy/gcp/$ENV_NAME.env)" ;;
+  esac
 }
 
 cmd_preflight() {
@@ -232,6 +250,24 @@ cmd_preflight() {
 }
 
 # ---- setup ----
+# The dashboard PUTs to and GETs from V4 signed URLs straight from the browser (S17b); `setup` and
+# `edge cors` both set this.
+bucket_cors() {
+  local bucket
+  ALLOWED_ORIGINS="$ALLOWED_ORIGINS" python3 -c '
+import json, os
+origins = [o.strip() for o in os.environ["ALLOWED_ORIGINS"].split(",") if o.strip()]
+print(json.dumps([{"origin": origins, "method": ["GET", "HEAD", "PUT"],
+                   "responseHeader": ["Content-Type", "If-None-Match"], "maxAgeSeconds": 3600}]))' >"$WORK/cors.json"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "cors $WORK/cors.json:"
+    sed 's/^/    /' "$WORK/cors.json"
+  fi
+  for bucket in "$BUCKET_IMAGES" "$BUCKET_CSV"; do
+    gc storage buckets update "gs://$bucket" --cors-file="$WORK/cors.json"
+  done
+}
+
 setup_apis() {
   # shellcheck disable=SC2086
   gc services enable $REQUIRED_APIS
@@ -303,15 +339,7 @@ setup_buckets() {
   gc storage buckets update "gs://$BUCKET_CSV" --lifecycle-file="$WORK/csv-lifecycle.json"
   printf '{"rule":[{"action":{"type":"Delete"},"condition":{"age":7}}]}\n' >"$WORK/build-lifecycle.json"
   gc storage buckets update "gs://$BUILD_BUCKET" --lifecycle-file="$WORK/build-lifecycle.json"
-  # The dashboard PUTs to and GETs from V4 signed URLs straight from the browser (S17b).
-  ALLOWED_ORIGINS="$ALLOWED_ORIGINS" python3 -c '
-import json, os
-origins = [o.strip() for o in os.environ["ALLOWED_ORIGINS"].split(",") if o.strip()]
-print(json.dumps([{"origin": origins, "method": ["GET", "HEAD", "PUT"],
-                   "responseHeader": ["Content-Type", "If-None-Match"], "maxAgeSeconds": 3600}]))' >"$WORK/cors.json"
-  for bucket in "$BUCKET_IMAGES" "$BUCKET_CSV"; do
-    gc storage buckets update "gs://$bucket" --cors-file="$WORK/cors.json"
-  done
+  bucket_cors
   for bucket in "$BUCKET_IMAGES" "$BUCKET_CSV" "$BUCKET_SUBMISSIONS"; do
     retry gc storage buckets add-iam-policy-binding "gs://$bucket" \
       --member="serviceAccount:$(sa_email "$SA_STORAGE")" --role=roles/storage.objectAdmin --format=none
@@ -600,7 +628,7 @@ app_env() {
     FLIPKART_ENABLED "$FLIPKART_ENABLED" \
     FLIPKART_OAUTH_REDIRECT_URI "$url/api/v1/marketplaces/flipkart/callback" \
     APP_NAME "marketplace-os-$role" OTEL_SERVICE_NAME "marketplace-os-$role"
-  [ "$role" != "api" ] || printf 'JWT_ISSUER\t%s\n' "$url"
+  [ "$role" != "api" ] || printf 'JWT_ISSUER\t%s\n' "${JWT_ISSUER:-$url}"
 }
 
 yaml_quote() { printf '"%s"' "$(printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"; }
@@ -633,13 +661,23 @@ deploy_api() {
   env_file api "$url" "$WORK/api-env.yaml"
   if service_url >/dev/null; then existed=1; fi
   args=(run deploy "$API_SERVICE" --image="$image" --region="$REGION"
-    --service-account="$(sa_email "$SA_API")" --allow-unauthenticated --ingress=all --port=8080
+    --service-account="$(sa_email "$SA_API")" --allow-unauthenticated --ingress="$INGRESS" --port=8080
     --cpu="$API_CPU" --memory="$API_MEMORY" --min-instances="$API_MIN_INSTANCES"
     --max-instances="$API_MAX_INSTANCES" --concurrency="$API_CONCURRENCY" --cpu-boost
     --execution-environment=gen2 --set-cloudsql-instances="$CONN"
     --env-vars-file="$WORK/api-env.yaml" --set-secrets="$(secret_refs "$API_SECRETS")"
     --labels="$LABELS")
-  if [ "$existed" -eq 1 ]; then
+  if [ "$existed" -eq 1 ] && [ "$INGRESS" = "$EDGE_LOCKED" ]; then
+    # ADR-0022: run.app is refused, so the zero-traffic revision carries the `candidate` tag and is
+    # smoked through the load balancer's header route. A failed revision loses the tag, so the
+    # header reaches only the revision about to ship or the live one.
+    gc "${args[@]}" --no-traffic --tag=candidate
+    if [ "$DRY_RUN" -eq 0 ] && ! smoke "https://$EDGE_DOMAIN" "$CANDIDATE_HEADER"; then
+      gc run services update-traffic "$API_SERVICE" --region="$REGION" --remove-tags=candidate
+      die "revision candidate failed smoke; traffic stays on the previous revision"
+    fi
+    gc run services update-traffic "$API_SERVICE" --region="$REGION" --to-latest
+  elif [ "$existed" -eq 1 ]; then
     # ADR-0001: the new revision takes no traffic until its tagged URL passes the smoke test.
     gc "${args[@]}" --no-traffic --tag="$tag"
     if [ "$DRY_RUN" -eq 0 ]; then
@@ -652,9 +690,12 @@ deploy_api() {
     if [ "$DRY_RUN" -eq 0 ] && [ -z "$API_PUBLIC_URL" ]; then
       now="$(service_url || true)"
       if [ -n "$now" ] && [ "$now" != "$url" ]; then
-        say "service URL is $now (not $url): updating JWT_ISSUER and the redirect URIs"
+        local issuer="JWT_ISSUER=$now|"
+        # A pinned issuer stays as set; only the redirect URIs follow the service URL.
+        [ -z "$JWT_ISSUER" ] || issuer=""
+        say "service URL is $now (not $url): updating ${issuer:+JWT_ISSUER and }the redirect URIs"
         gc run services update "$API_SERVICE" --region="$REGION" \
-          --update-env-vars="^|^JWT_ISSUER=$now|AMAZON_OAUTH_REDIRECT_URI=$now/api/v1/marketplaces/amazon/callback|FLIPKART_OAUTH_REDIRECT_URI=$now/api/v1/marketplaces/flipkart/callback"
+          --update-env-vars="^|^${issuer}AMAZON_OAUTH_REDIRECT_URI=$now/api/v1/marketplaces/amazon/callback|FLIPKART_OAUTH_REDIRECT_URI=$now/api/v1/marketplaces/flipkart/callback"
       fi
     fi
   fi
@@ -713,9 +754,11 @@ deploy_worker() {
 
 cmd_deploy() {
   check_filled
+  check_ingress
   local image url
-  image="$(image_ref)"
   url="$(api_url)"
+  live_guard "$url"
+  image="$(image_ref)"
   deploy_api "$image" "$url"
   [ "$DRY_RUN" -eq 1 ] || [ -n "$API_PUBLIC_URL" ] || url="$(service_url)"
   deploy_worker "$image" "$url"
@@ -723,25 +766,47 @@ cmd_deploy() {
 }
 
 # ---- smoke ----
-# URL: /healthz 200, then /readyz 200 with postgres ok (retried: staging scales to zero).
+# HEADER ARGS...: curl with the optional extra header (no possibly empty array under set -u).
+smoke_curl() {
+  local header="$1"
+  shift
+  if [ -n "$header" ]; then
+    curl -sS --max-time 30 -H "$header" "$@"
+  else
+    curl -sS --max-time 30 "$@"
+  fi
+}
+
+# URL [HEADER]: /healthz 200, then /readyz 200 with postgres ok (retried: staging scales to zero).
 smoke() {
-  local url="$1" code body n=0 live="/healthz" want="200"
+  local url="$1" header="${2:-}" code body n=0 live="/healthz" want="200" host
+  host="${url#*://}"
+  host="${host%%/*}"
   # A *.run.app front end answers /healthz itself with a 404 that never reaches the container,
-  # so there liveness is an API route that must answer 401 without a token.
+  # and the edge's Armor path rule denies it, so there liveness is an API route that must answer
+  # 401 without a token.
   case "$url" in *.run.app) live="/api/v1/auth/me" want="401" ;; esac
-  show curl -sS -o /dev/null -w '%{http_code}' "$url$live"
-  show curl -sS "$url/readyz"
+  if [ -n "$EDGE_DOMAIN" ] && [ "$host" = "$EDGE_DOMAIN" ]; then
+    live="/api/v1/auth/me" want="401"
+  fi
+  if [ -n "$header" ]; then
+    show curl -sS -o /dev/null -w '%{http_code}' -H "$header" "$url$live"
+    show curl -sS -H "$header" "$url/readyz"
+  else
+    show curl -sS -o /dev/null -w '%{http_code}' "$url$live"
+    show curl -sS "$url/readyz"
+  fi
   [ "$DRY_RUN" -eq 0 ] || return 0
-  until code="$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' "$url$live")" && [ "$code" = "$want" ]; do
+  until code="$(smoke_curl "$header" -o /dev/null -w '%{http_code}' "$url$live")" && [ "$code" = "$want" ]; do
     n=$((n + 1))
-    [ "$n" -lt 10 ] || { say "smoke: $live answered '$code', want $want"; return 1; }
-    sleep 6
+    [ "$n" -lt "$SMOKE_TRIES" ] || { say "smoke: $live answered '$code', want $want"; return 1; }
+    sleep "$SMOKE_SLEEP"
   done
   n=0
-  until body="$(curl -sS --max-time 30 "$url/readyz")" && case "$body" in *'"postgres":"ok"'*) true ;; *) false ;; esac; do
+  until body="$(smoke_curl "$header" "$url/readyz")" && case "$body" in *'"postgres":"ok"'*) true ;; *) false ;; esac; do
     n=$((n + 1))
-    [ "$n" -lt 10 ] || { say "smoke: /readyz answered '$body'"; return 1; }
-    sleep 6
+    [ "$n" -lt "$SMOKE_TRIES" ] || { say "smoke: /readyz answered '$body'"; return 1; }
+    sleep "$SMOKE_SLEEP"
   done
   say "smoke OK: $url ($live $want, /readyz postgres ok)"
 }
@@ -758,6 +823,8 @@ cmd_smoke() {
 }
 
 cmd_release() {
+  check_ingress
+  live_guard "$(api_url)"
   cmd_build
   cmd_migrate
   cmd_deploy
@@ -878,6 +945,505 @@ cmd_tenant() {
   esac
 }
 
+# ---- edge (DPP-2) ----
+# The API edge (ADR-0022; docs/runbooks/EDGE-CUTOVER.md): a global external Application Load
+# Balancer for EDGE_DOMAIN with a Google-managed certificate and an SSL policy MODERN / TLS 1.2,
+# two serverless NEGs to the api service (the service, and its `candidate` tag), and the Cloud
+# Armor policy whose rules come from armor-rules.yaml. Prod only: staging has no EDGE_DOMAIN.
+EDGE_LOCKED="internal-and-cloud-load-balancing"
+CANDIDATE_HEADER="x-aimos-candidate: 1"
+EDGE_POLICY="kuinn-api-waf"
+EDGE_IP="aimos-api-edge-ip"
+EDGE_NEG="aimos-api-edge-neg"
+EDGE_CANDIDATE_NEG="aimos-api-edge-candidate-neg"
+EDGE_BE="aimos-api-edge-be"
+EDGE_CANDIDATE_BE="aimos-api-edge-candidate-be"
+EDGE_MAP="aimos-api-edge-map"
+EDGE_SSL="aimos-api-edge-ssl"
+EDGE_CERT="aimos-api-edge-cert"
+EDGE_PROXY="aimos-api-edge-proxy"
+EDGE_RULE="aimos-api-edge-https"
+EDGE_RULES="$HERE/armor-rules.yaml"
+EDGE_UPTIME="aimos-edge-readyz"
+EDGE_CHANNEL="aimos-edge-alerts"
+EDGE_SINK="edge-security"
+EDGE_LOG_BUCKET="security-logs"
+EDGE_DENY_ALERT="${EDGE_DENY_ALERT:-50}"
+EDGE_429_ALERT=100
+EDGE_5XX_RATIO=0.05
+
+# The helper armor_rules.py needs PyYAML: the repo's locked environment, or DEPLOY_PYTHON.
+py() {
+  if [ -n "${DEPLOY_PYTHON:-}" ]; then
+    "$DEPLOY_PYTHON" "$@"
+  else
+    uv run --frozen --project "$ROOT" python "$@"
+  fi
+}
+
+check_ingress() {
+  case "$INGRESS" in
+    all) ;;
+    "$EDGE_LOCKED")
+      [ -n "$EDGE_DOMAIN" ] ||
+        die "INGRESS=$EDGE_LOCKED needs EDGE_DOMAIN (scripts/deploy/gcp/$ENV_NAME.env)"
+      [ "$API_PUBLIC_URL" = "https://$EDGE_DOMAIN" ] ||
+        die "locked ingress needs API_PUBLIC_URL=https://$EDGE_DOMAIN; run.app is refused"
+      ;;
+    *) die "INGRESS must be all or $EDGE_LOCKED, not '$INGRESS' (scripts/deploy/gcp/$ENV_NAME.env)" ;;
+  esac
+}
+
+# The live api service as JSON; empty when it does not exist (and on a dry run).
+service_json() { gq run services describe "$API_SERVICE" --region="$REGION" --format=json || true; }
+
+# URL: refuse a deploy that would reopen run.app around the WAF or change the live JWT issuer.
+live_guard() {
+  local want="${JWT_ISSUER:-$1}" json live live_ingress live_issuer
+  json="$(service_json)"
+  if [ -z "$json" ]; then
+    say "live-state guard: skipped (no live service to compare$([ "$DRY_RUN" -eq 0 ] || printf '; dry run'))"
+    return 0
+  fi
+  live="$(printf '%s' "$json" | python3 -c '
+import json, sys
+doc = json.load(sys.stdin)
+ingress = doc.get("metadata", {}).get("annotations", {}).get("run.googleapis.com/ingress", "")
+issuer = ""
+for container in doc.get("spec", {}).get("template", {}).get("spec", {}).get("containers", []):
+    for item in container.get("env") or []:
+        if item.get("name") == "JWT_ISSUER":
+            issuer = item.get("value", "")
+print(ingress + "\t" + issuer)')"
+  live_ingress="${live%%	*}"
+  live_issuer="${live#*	}"
+  if [ "$live_ingress" = "$EDGE_LOCKED" ] && [ "$INGRESS" = "all" ] && [ "${DEPLOY_ALLOW_UNLOCK:-}" != "1" ]; then
+    die "live ingress is locked; run edge unlock-ingress first, or this deploy reopens run.app around the WAF (DEPLOY_ALLOW_UNLOCK=1 overrides)"
+  fi
+  if [ -n "$live_issuer" ] && [ "$live_issuer" != "$want" ] && [ "${DEPLOY_ALLOW_ISSUER_CHANGE:-}" != "1" ]; then
+    die "this deploy changes JWT_ISSUER from $live_issuer to $want and signs every user out: pin JWT_ISSUER=$live_issuer in scripts/deploy/gcp/$ENV_NAME.env (DEPLOY_ALLOW_ISSUER_CHANGE=1 overrides)"
+  fi
+  say "live-state guard: OK (ingress ${live_ingress:-unknown}, issuer unchanged)"
+}
+
+# NAME NEG: a logged EXTERNAL_MANAGED backend service with the NEG and the Armor policy.
+edge_backend() {
+  local name="$1" neg="$2" groups
+  gq compute backend-services describe "$name" --global --format='value(name)' >/dev/null ||
+    gc compute backend-services create "$name" --global --load-balancing-scheme=EXTERNAL_MANAGED \
+      --enable-logging --logging-sample-rate=1
+  groups="$(gq compute backend-services describe "$name" --global --format='value(backends[].group)' || true)"
+  if ! printf '%s\n' "$groups" | tr ';' '\n' | grep -q "/networkEndpointGroups/$neg\$"; then
+    gc compute backend-services add-backend "$name" --global --network-endpoint-group="$neg" \
+      --network-endpoint-group-region="$REGION"
+  fi
+  gc compute backend-services update "$name" --global --security-policy="$EDGE_POLICY" \
+    --enable-logging --logging-sample-rate=1
+}
+
+# FILE: the URL map. Route rules live only inside a path matcher a host rule points to; the
+# candidate header goes to the candidate backend, everything else to the main one.
+edge_url_map() {
+  local be="projects/$PROJECT/global/backendServices"
+  cat >"$1" <<YAML
+name: $EDGE_MAP
+defaultService: $be/$EDGE_BE
+hostRules:
+- hosts: ['*']
+  pathMatcher: edge
+pathMatchers:
+- name: edge
+  defaultService: $be/$EDGE_BE
+  routeRules:
+  - priority: 1
+    matchRules:
+    - prefixMatch: /
+      headerMatches:
+      - headerName: ${CANDIDATE_HEADER%%:*}
+        exactMatch: '1'
+    service: $be/$EDGE_CANDIDATE_BE
+YAML
+  say "url map $1:"
+  sed 's/^/    /' "$1"
+}
+
+edge_setup() {
+  local neg ip
+  # shellcheck disable=SC2086
+  gc services enable $EDGE_APIS
+  gq compute addresses describe "$EDGE_IP" --global --format='value(address)' >/dev/null ||
+    gc compute addresses create "$EDGE_IP" --global --ip-version=IPV4 --network-tier=PREMIUM
+  gq compute network-endpoint-groups describe "$EDGE_NEG" --region="$REGION" --format='value(name)' >/dev/null ||
+    gc compute network-endpoint-groups create "$EDGE_NEG" --region="$REGION" \
+      --network-endpoint-type=serverless --cloud-run-service="$API_SERVICE"
+  gq compute network-endpoint-groups describe "$EDGE_CANDIDATE_NEG" --region="$REGION" --format='value(name)' >/dev/null ||
+    gc compute network-endpoint-groups create "$EDGE_CANDIDATE_NEG" --region="$REGION" \
+      --network-endpoint-type=serverless --cloud-run-service="$API_SERVICE" --cloud-run-tag=candidate
+  gq compute security-policies describe "$EDGE_POLICY" --format='value(name)' >/dev/null ||
+    gc compute security-policies create "$EDGE_POLICY" --type=CLOUD_ARMOR \
+      --description="API edge WAF (armor-rules.yaml)"
+  gc compute security-policies update "$EDGE_POLICY" --json-parsing=STANDARD --log-level=NORMAL \
+    --enable-layer7-ddos-defense
+  for neg in "$EDGE_BE:$EDGE_NEG" "$EDGE_CANDIDATE_BE:$EDGE_CANDIDATE_NEG"; do
+    edge_backend "${neg%%:*}" "${neg#*:}"
+  done
+  edge_url_map "$WORK/url-map.yaml"
+  gc compute url-maps import "$EDGE_MAP" --global --source="$WORK/url-map.yaml"
+  if gq compute ssl-policies describe "$EDGE_SSL" --global --format='value(name)' >/dev/null; then
+    gc compute ssl-policies update "$EDGE_SSL" --global --profile=MODERN --min-tls-version=1.2
+  else
+    gc compute ssl-policies create "$EDGE_SSL" --global --profile=MODERN --min-tls-version=1.2
+  fi
+  gq compute ssl-certificates describe "$EDGE_CERT" --global --format='value(name)' >/dev/null ||
+    gc compute ssl-certificates create "$EDGE_CERT" --global --domains="$EDGE_DOMAIN"
+  if gq compute target-https-proxies describe "$EDGE_PROXY" --global --format='value(name)' >/dev/null; then
+    gc compute target-https-proxies update "$EDGE_PROXY" --global --ssl-policy="$EDGE_SSL"
+  else
+    gc compute target-https-proxies create "$EDGE_PROXY" --global --url-map="$EDGE_MAP" \
+      --ssl-certificates="$EDGE_CERT" --ssl-policy="$EDGE_SSL"
+  fi
+  gq compute forwarding-rules describe "$EDGE_RULE" --global --format='value(name)' >/dev/null ||
+    gc compute forwarding-rules create "$EDGE_RULE" --global --load-balancing-scheme=EXTERNAL_MANAGED \
+      --network-tier=PREMIUM --address="$EDGE_IP" --target-https-proxy="$EDGE_PROXY" --ports=443
+  ip="$(gq compute addresses describe "$EDGE_IP" --global --format='value(address)' || true)"
+  say "point an A record for $EDGE_DOMAIN at ${ip:-<IP>}; the name carries only that A record, and any"
+  say "CAA record on the apex must allow pki.goog or letsencrypt.org (Google-managed certificate)."
+  say "next: scripts/deploy/gcp/deploy.sh $ENV_NAME edge rules (every rule in preview)"
+}
+
+# MODE (rules | enforce): converge kuinn-api-waf to armor-rules.yaml rule by rule, then check it.
+edge_rules() {
+  local mode="$1" rc=0 line
+  py "$HERE/armor_rules.py" check "$EDGE_RULES" --enforce "$EDGE_ENFORCE" ||
+    die "rules: armor-rules.yaml or EDGE_ENFORCE='$EDGE_ENFORCE' is invalid (see above)"
+  if [ "$mode" = "enforce" ]; then
+    py "$HERE/armor_rules.py" summary "$EDGE_RULES" --enforce "$EDGE_ENFORCE"
+  fi
+  if gq compute security-policies export "$EDGE_POLICY" --file-name="$WORK/live.json" \
+    --file-format=json >/dev/null; then
+    py "$HERE/armor_rules.py" plan "$EDGE_RULES" --enforce "$EDGE_ENFORCE" \
+      --live "$WORK/live.json" --out "$WORK/argv.txt" || rc=$?
+  elif [ "$DRY_RUN" -eq 1 ]; then
+    say "rules: dry run, planned from an empty policy"
+    py "$HERE/armor_rules.py" plan "$EDGE_RULES" --enforce "$EDGE_ENFORCE" \
+      --out "$WORK/argv.txt" || rc=$?
+  else
+    die "rules: cannot export $EDGE_POLICY; run scripts/deploy/gcp/deploy.sh $ENV_NAME edge setup first"
+  fi
+  if [ "$rc" -eq 3 ]; then
+    say "rules: $EDGE_POLICY already matches armor-rules.yaml"
+    return 0
+  fi
+  [ "$rc" -eq 0 ] || die "rules: the plan failed (exit $rc)"
+  while IFS= read -r line <&3; do
+    # One shell-quoted argv per line, written by armor_rules.py (shlex.join).
+    eval "set -- $line"
+    gc "$@" || die "rules: partial apply at priority $5; rerun edge rules to converge"
+  done 3<"$WORK/argv.txt"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "rules: dry run, nothing was changed"
+    return 0
+  fi
+  gq compute security-policies export "$EDGE_POLICY" --file-name="$WORK/after.json" \
+    --file-format=json >/dev/null || die "rules: cannot export $EDGE_POLICY after the apply"
+  py "$HERE/armor_rules.py" verify "$EDGE_RULES" --enforce "$EDGE_ENFORCE" --live "$WORK/after.json" ||
+    die "rules: $EDGE_POLICY does not match armor-rules.yaml after the apply (priorities above); rerun edge $mode"
+  say "rules: $EDGE_POLICY matches armor-rules.yaml (enforced: ${EDGE_ENFORCE:-none})"
+}
+
+# The prod SPA origins (ALLOWED_ORIGINS), one per line.
+spa_origins() { printf '%s\n' "$ALLOWED_ORIGINS" | tr ',' '\n' | sed 's/^ *//; s/ *$//' | grep -v '^$' || true; }
+
+# ORIGIN: the edge /readyz answers that origin with postgres ok and its CORS grant; a grace
+# rewrite on the origin that still answers JSON answers postgres ok too. Sets LOCK_FAIL.
+spa_readyz() {
+  local origin="$1" body
+  show curl -sS -D "$WORK/edge-h" -H "Origin: $origin" "https://$EDGE_DOMAIN/readyz"
+  show curl -sS -D "$WORK/spa-h" "$origin/readyz"
+  [ "$DRY_RUN" -eq 0 ] || return 0
+  : >"$WORK/edge-h"
+  body="$(curl -sS --max-time 30 -D "$WORK/edge-h" -H "Origin: $origin" "https://$EDGE_DOMAIN/readyz" || true)"
+  case "$body" in
+    *'"postgres":"ok"'*) ;;
+    *) LOCK_FAIL="$origin: https://$EDGE_DOMAIN/readyz did not answer postgres ok"; return 1 ;;
+  esac
+  if ! tr -d '\r' <"$WORK/edge-h" | grep -qixF "access-control-allow-origin: $origin"; then
+    LOCK_FAIL="$origin: https://$EDGE_DOMAIN/readyz sent no Access-Control-Allow-Origin for it"
+    return 1
+  fi
+  : >"$WORK/spa-h"
+  body="$(curl -sS --max-time 30 -D "$WORK/spa-h" "$origin/readyz" || true)"
+  if tr -d '\r' <"$WORK/spa-h" | grep -qi '^content-type: *application/json'; then
+    case "$body" in
+      *'"postgres":"ok"'*) ;;
+      *) LOCK_FAIL="$origin: the grace rewrite $origin/readyz did not answer postgres ok"; return 1 ;;
+    esac
+  fi
+}
+
+# Every SPA origin serves a bundle built for the edge and a CSP that allows it. Sets LOCK_FAIL.
+spa_moved() {
+  local origin page bundle csp code
+  for origin in $(spa_origins); do
+    show curl -sS -D "$WORK/spa-h" "$origin/"
+    if [ "$DRY_RUN" -eq 0 ]; then
+      : >"$WORK/spa-h"
+      page="$(curl -sS --max-time 30 -D "$WORK/spa-h" "$origin/" || true)"
+      bundle="$(printf '%s' "$page" | grep -o '/assets/[A-Za-z0-9._-]*\.js' | head -n 1 || true)"
+      [ -n "$bundle" ] || { LOCK_FAIL="$origin: no /assets/*.js bundle in $origin/"; return 1; }
+      csp="$(tr -d '\r' <"$WORK/spa-h" | grep -i '^content-security-policy:' | head -n 1 |
+        sed 's/^[^:]*://' | tr ';' '\n' | grep -i '^ *connect-src ' || true)"
+      case " $csp " in
+        *" https://$EDGE_DOMAIN "* | *" https://$EDGE_DOMAIN/ "*) ;;
+        *) LOCK_FAIL="$origin: the Content-Security-Policy connect-src lacks https://$EDGE_DOMAIN"; return 1 ;;
+      esac
+      code="$(curl -sS --max-time 30 "$origin$bundle" || true)"
+      case "$code" in
+        *"https://$EDGE_DOMAIN"*) ;;
+        *) LOCK_FAIL="$origin: the bundle $bundle does not call https://$EDGE_DOMAIN (VITE_API_ORIGIN)"; return 1 ;;
+      esac
+    fi
+    spa_readyz "$origin" || return 1
+  done
+}
+
+# URL...: each answers /api/v1/auth/me with anything but 401 (refused by ingress).
+refused_direct() {
+  local url code n
+  for url in "$@"; do
+    n=0
+    while :; do
+      code="$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' "$url/api/v1/auth/me" || true)"
+      [ "$code" = "401" ] || break
+      n=$((n + 1))
+      [ "$n" -lt "$SMOKE_TRIES" ] || { LOCK_FAIL="$url still answers the API directly"; return 1; }
+      sleep "$SMOKE_SLEEP"
+    done
+  done
+}
+
+edge_lock() {
+  local json inventory stale="" urls="" direct tag url origin
+  [ "$INGRESS" = "$EDGE_LOCKED" ] ||
+    die "set INGRESS=$EDGE_LOCKED in scripts/deploy/gcp/$ENV_NAME.env first, or the next deploy unlocks it"
+  check_ingress
+  smoke "https://$EDGE_DOMAIN" || die "lock refused: the load balancer smoke failed for https://$EDGE_DOMAIN"
+  LOCK_FAIL=""
+  spa_moved || die "lock refused: $LOCK_FAIL"
+  json="$(service_json)"
+  if [ -n "$json" ]; then
+    inventory="$(printf '%s' "$json" | python3 -c '
+import json, sys
+doc = json.load(sys.stdin)
+print("url\t" + doc.get("status", {}).get("url", ""))
+for item in doc.get("status", {}).get("traffic", []):
+    if item.get("tag"):
+        print(item["tag"] + "\t" + item.get("url", ""))')"
+    direct="$(printf '%s\n' "$inventory" | sed -n 's/^url	//p')"
+    while IFS='	' read -r tag url; do
+      case "$tag" in
+        url | "") ;;
+        sha-*) stale="${stale:+$stale,}$tag" ;;
+        *) urls="$urls $url" ;;
+      esac
+    done <<EOF
+$inventory
+EOF
+  elif [ "$DRY_RUN" -eq 0 ]; then
+    die "lock refused: no service $API_SERVICE in $PROJECT"
+  fi
+  [ -z "$stale" ] || gc run services update-traffic "$API_SERVICE" --region="$REGION" --remove-tags="$stale"
+  gc run services update "$API_SERVICE" --region="$REGION" --ingress="$EDGE_LOCKED"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "lock: dry run; a real run then probes run.app and every tag URL and rechecks /readyz"
+    return 0
+  fi
+  # shellcheck disable=SC2086
+  if refused_direct "$direct" $urls; then
+    for origin in $(spa_origins); do
+      spa_readyz "$origin" || break
+    done
+  fi
+  if [ -n "$LOCK_FAIL" ]; then
+    gc run services update "$API_SERVICE" --region="$REGION" --ingress=all
+    die "lock rolled back: $LOCK_FAIL; INGRESS is still locked in scripts/deploy/gcp/$ENV_NAME.env, set it back to all"
+  fi
+  say "lock: $API_SERVICE takes traffic only through the load balancer; run.app and tag URLs are refused"
+}
+
+edge_unlock() {
+  gc run services update "$API_SERVICE" --region="$REGION" --ingress=all
+  say "unlocked: set INGRESS=all in scripts/deploy/gcp/$ENV_NAME.env too"
+}
+
+# DISPLAY_NAME: the alert policy's resource name, or empty.
+policy_name() {
+  gq monitoring policies list --filter="displayName=\"$1\"" --format='value(name)' || true
+}
+
+edge_alerts() {
+  local channel uptime count file name existing threshold metric
+  case "$ALERT_EMAIL" in
+    "") die "alerts: set ALERT_EMAIL in scripts/deploy/gcp/$ENV_NAME.env (one address)" ;;
+    *[,\ ]* | *@*@*) die "alerts: ALERT_EMAIL must be one address, not '$ALERT_EMAIL'" ;;
+    ?*@?*.?*) ;;
+    *) die "alerts: ALERT_EMAIL must be an address (x@y.z), not '$ALERT_EMAIL'" ;;
+  esac
+  if [ "$DRY_RUN" -eq 0 ] && ! gcloud beta monitoring channels create --help >/dev/null 2>&1; then
+    die "alerts: this gcloud has no beta monitoring commands; run: gcloud components install beta"
+  fi
+  # Logs-based metrics.
+  for metric in \
+    "edge_armor_deny|resource.type=\"http_load_balancer\" AND jsonPayload.enforcedSecurityPolicy.outcome=\"DENY\"" \
+    "edge_rate_429|resource.type=\"http_load_balancer\" AND httpRequest.status=429"; do
+    gq logging metrics describe "${metric%%|*}" --format='value(name)' >/dev/null ||
+      gc logging metrics create "${metric%%|*}" --description="API edge (DPP-2)" --log-filter="${metric#*|}"
+  done
+  # The email channel (no GA create command).
+  channel="$(gq beta monitoring channels list --filter="displayName=\"$EDGE_CHANNEL\"" --format='value(name)' || true)"
+  if [ -z "$channel" ]; then
+    gc beta monitoring channels create --type=email --channel-labels=email_address="$ALERT_EMAIL" \
+      --display-name="$EDGE_CHANNEL"
+    channel="$(gq beta monitoring channels list --filter="displayName=\"$EDGE_CHANNEL\"" --format='value(name)' || true)"
+  fi
+  [ -n "$channel" ] || [ "$DRY_RUN" -eq 0 ] || channel="projects/$PROJECT/notificationChannels/<channel-id>"
+  [ -n "$channel" ] || die "alerts: cannot find the $EDGE_CHANNEL channel after creating it"
+  channel="$(printf '%s\n' "$channel" | head -n 1)"
+  # The uptime check first: its alert policy filters on the id Google assigns, not the name.
+  uptime="$(gq monitoring uptime list-configs --filter="displayName=$EDGE_UPTIME" --format='value(name.basename())' || true)"
+  if [ -z "$uptime" ]; then
+    gc monitoring uptime create "$EDGE_UPTIME" --resource-type=uptime-url \
+      --resource-labels="host=$EDGE_DOMAIN,project_id=$PROJECT" --path=/readyz --protocol=https --period=5
+    uptime="$(gq monitoring uptime list-configs --filter="displayName=$EDGE_UPTIME" --format='value(name.basename())' || true)"
+  fi
+  if [ "$DRY_RUN" -eq 1 ]; then
+    uptime="<uptime-check-id>"
+  else
+    count="$(printf '%s' "$uptime" | grep -c . || true)"
+    [ "$count" -eq 1 ] || die "alerts: want exactly one uptime check named $EDGE_UPTIME, found $count"
+  fi
+  CHANNEL="$channel" UPTIME="$uptime" DENY="$EDGE_DENY_ALERT" R429="$EDGE_429_ALERT" \
+    RATIO="$EDGE_5XX_RATIO" RULE="$EDGE_RULE" OUT="$WORK" python3 -c '
+import json, os
+e = os.environ
+def threshold(name, flt, value, denominator=None):
+    cond = {"filter": flt, "comparison": "COMPARISON_GT", "thresholdValue": value, "duration": "0s",
+            "aggregations": [{"alignmentPeriod": "300s", "perSeriesAligner": "ALIGN_SUM",
+                              "crossSeriesReducer": "REDUCE_SUM"}]}
+    if denominator:
+        cond["denominatorFilter"] = denominator
+        cond["denominatorAggregations"] = cond["aggregations"]
+    return {"displayName": name, "conditionThreshold": cond}
+lb = "metric.type=\"loadbalancing.googleapis.com/https/request_count\" AND resource.type=\"https_lb_rule\" AND resource.labels.forwarding_rule_name=\"%s\"" % e["RULE"]
+policies = {
+  "deny": ("aimos-edge armor deny spike", threshold("Armor denies over %s in 5 min" % e["DENY"],
+           "metric.type=\"logging.googleapis.com/user/edge_armor_deny\"", float(e["DENY"]))),
+  "429": ("aimos-edge 429 spike", threshold("429s over %s in 5 min" % e["R429"],
+          "metric.type=\"logging.googleapis.com/user/edge_rate_429\"", float(e["R429"]))),
+  "5xx": ("aimos-edge lb 5xx", threshold("5xx over %s of requests in 5 min" % e["RATIO"],
+          lb + " AND metric.labels.response_code_class=500", float(e["RATIO"]), lb)),
+  "uptime": ("aimos-edge uptime failing", {"displayName": "/readyz failing from 2+ regions for 5 min",
+    "conditionThreshold": {
+      "filter": "metric.type=\"monitoring.googleapis.com/uptime_check/check_passed\" AND resource.type=\"uptime_url\" AND metric.labels.check_id=\"%s\"" % e["UPTIME"],
+      "comparison": "COMPARISON_GT", "thresholdValue": 1, "duration": "300s",
+      "aggregations": [{"alignmentPeriod": "300s", "perSeriesAligner": "ALIGN_NEXT_OLDER",
+                        "crossSeriesReducer": "REDUCE_COUNT_FALSE", "groupByFields": ["resource.label.*"]}]}}),
+  "ddos": ("aimos-edge adaptive protection", {"displayName": "Adaptive Protection attack alert",
+    "conditionMatchedLog": {"filter": "resource.type=\"network_security_policy\" AND logName:\"networksecurity.googleapis.com%2Fdos_attack\""}}),
+}
+for key, (name, condition) in policies.items():
+    doc = {"displayName": name, "combiner": "OR", "enabled": True, "conditions": [condition],
+           "notificationChannels": [e["CHANNEL"]]}
+    if "conditionMatchedLog" in condition:
+        doc["alertStrategy"] = {"notificationRateLimit": {"period": "300s"}}
+    with open(os.path.join(e["OUT"], "policy-%s.json" % key), "w") as handle:
+        json.dump(doc, handle, indent=2)
+        handle.write("\n")'
+  for name in deny 429 5xx uptime ddos; do
+    file="$WORK/policy-$name.json"
+    say "policy $file:"
+    sed 's/^/    /' "$file"
+    existing="$(policy_name "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["displayName"])' "$file")")"
+    if [ -z "$existing" ]; then
+      gc monitoring policies create --policy-from-file="$file"
+    elif [ "$name" = "deny" ]; then
+      threshold="$(gq monitoring policies describe "$existing" \
+        --format='value(conditions[0].conditionThreshold.thresholdValue)' || true)"
+      if [ "${threshold%.0}" != "$EDGE_DENY_ALERT" ]; then
+        gc monitoring policies update "$existing" --policy-from-file="$file"
+      fi
+    fi
+  done
+  # The 400-day security bucket and its sink. OAuth callback URLs carry code/state: never sunk.
+  if gq logging buckets describe "$EDGE_LOG_BUCKET" --location=global --format='value(name)' >/dev/null; then
+    gc logging buckets update "$EDGE_LOG_BUCKET" --location=global --retention-days=400
+  else
+    gc logging buckets create "$EDGE_LOG_BUCKET" --location=global --retention-days=400
+  fi
+  local filter dest
+  filter='(resource.type="http_load_balancer" AND (jsonPayload.enforcedSecurityPolicy.outcome="DENY" OR jsonPayload.previewSecurityPolicy.outcome="DENY" OR (httpRequest.requestUrl=~"/api/v1/(auth|signup)" AND httpRequest.status>=400)) AND NOT httpRequest.requestUrl:"/callback") OR (resource.type="network_security_policy" AND logName:"networksecurity.googleapis.com%2Fdos_attack")'
+  dest="logging.googleapis.com/projects/$PROJECT/locations/global/buckets/$EDGE_LOG_BUCKET"
+  if gq logging sinks describe "$EDGE_SINK" --format='value(name)' >/dev/null; then
+    gc logging sinks update "$EDGE_SINK" "$dest" --log-filter="$filter"
+  else
+    gc logging sinks create "$EDGE_SINK" "$dest" --log-filter="$filter"
+  fi
+  existing="$(gq logging sinks describe _Default --format='value(exclusions[].name)' || true)"
+  case ";$existing;" in
+    *";edge-callback-urls;"*) ;;
+    *) gc logging sinks update _Default \
+      --add-exclusion='name=edge-callback-urls,filter=resource.type="http_load_balancer" AND httpRequest.requestUrl:"/callback"' ;;
+  esac
+  say "alerts: metrics, channel, uptime check, 5 policies, $EDGE_LOG_BUCKET (400 days) and its sink are in place"
+}
+
+edge_status() {
+  local export left code
+  gq compute addresses describe "$EDGE_IP" --global --format='value(address)' || true
+  gq compute ssl-certificates describe "$EDGE_CERT" --global \
+    --format='value(managed.status,managed.domainStatus)' || true
+  gq run services describe "$API_SERVICE" --region="$REGION" \
+    --format='value(metadata.annotations."run.googleapis.com/ingress")' || true
+  gq compute security-policies describe "$EDGE_POLICY" \
+    --format='table(rules[].priority,rules[].preview,rules[].action)' || true
+  if export="$(gq compute security-policies export "$EDGE_POLICY" --file-name=/dev/stdout --file-format=yaml)"; then
+    say "policy export (DPP 1.1.3 evidence):"
+    printf '%s\n' "$export" | sed 's/^/    /'
+    left="$(printf '%s\n' "$export" | grep -c '^ *preview: true' || true)"
+    say "preview rules left: $left"
+  else
+    say "preview rules left: unknown (no export)"
+  fi
+  show curl -sS -o /dev/null -w '%{http_code}' "https://$EDGE_DOMAIN/api/v1/auth/me"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "edge serving: unknown (dry run)"
+    return 0
+  fi
+  code="$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' "https://$EDGE_DOMAIN/api/v1/auth/me" || true)"
+  if [ "$code" = "401" ]; then
+    say "edge serving: yes (a 401 from https://$EDGE_DOMAIN with a valid certificate)"
+  else
+    say "edge serving: no ('$code')"
+  fi
+}
+
+cmd_edge() {
+  [ ${#REST[@]} -ge 1 ] || usage
+  local sub="${REST[0]}"
+  [ -n "$EDGE_DOMAIN" ] || die "edge needs EDGE_DOMAIN (scripts/deploy/gcp/$ENV_NAME.env); staging has no domain"
+  case "$sub" in
+    setup) edge_setup ;;
+    rules) edge_rules rules ;;
+    enforce) edge_rules enforce ;;
+    lock-ingress) edge_lock ;;
+    unlock-ingress) edge_unlock ;;
+    alerts) edge_alerts ;;
+    cors) check_filled; bucket_cors ;;
+    status) edge_status ;;
+    *) usage ;;
+  esac
+}
+
 # ---- status ----
 cmd_status() {
   local url job
@@ -907,5 +1473,6 @@ case "$CMD" in
   smoke) cmd_smoke ;;
   tenant) cmd_tenant ;;
   status) cmd_status ;;
+  edge) cmd_edge ;;
   *) usage ;;
 esac
