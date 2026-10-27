@@ -109,6 +109,7 @@ def test_crs_skip_covers_every_upload_and_secret_body_route(rules: list[Any]) ->
     allowed = {
         "auth_login",
         "auth_refresh",
+        "auth_logout",
         "brand_documents_upload",
         "products_bulk",
         "images_upload",
@@ -116,7 +117,8 @@ def test_crs_skip_covers_every_upload_and_secret_body_route(rules: list[Any]) ->
         "signup_status",
     }
     assert allowed <= skipped, allowed - skipped
-    # Path-only skip also covers GET /brand/documents: docs/plans/dpp-2/repro (R7).
+    # The regex is path-only and also names GET /brand/documents; the CRS match pairs it with
+    # `request.method == 'POST'`, so that list call stays CRS-inspected (test_armor_rules.py).
     for rule in rules:
         if rule.waf is not None:
             assert regex(rules, rule.priority) == skip, rule.priority

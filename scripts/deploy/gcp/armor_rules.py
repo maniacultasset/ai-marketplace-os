@@ -96,6 +96,18 @@ RATE_KEYS: Final = frozenset(
     {"count", "interval_sec", "ban_count", "ban_interval_sec", "ban_duration_sec"}
 )
 WAF_KEYS: Final = frozenset({"rule_set", "sensitivity", "exclude_headers", "opt_out_rule_ids"})
+# The only rateLimitThreshold / banThreshold intervalSec values Cloud Armor accepts
+# (https://docs.cloud.google.com/armor/docs/rate-limiting-overview): anything else fails mid-apply.
+INTERVALS: Final = frozenset({10, 30, 60, 120, 180, 240, 300, 600, 900, 1200, 1800, 2700, 3600})
+# Exclusion kind -> (export field, gcloud flag). Every kind is compared, so an exclusion added out
+# of band (a URI, a cookie, a query parameter, or a header scoped to rule ids) is drift.
+EXCLUSION_KINDS: Final[Mapping[str, tuple[str, str]]] = {
+    "header": ("requestHeadersToExclude", "--request-header-to-exclude"),
+    "cookie": ("requestCookiesToExclude", "--request-cookie-to-exclude"),
+    "query": ("requestQueryParamsToExclude", "--request-query-param-to-exclude"),
+    "uri": ("requestUrisToExclude", "--request-uri-to-exclude"),
+}
+BAN_FIELDS: Final = ("ban_count", "ban_interval_sec", "ban_duration_sec")
 
 
 class RulesError(ValueError):
@@ -132,8 +144,14 @@ class Rule:
 
 @dataclass(frozen=True, order=True)
 class Exclusion:
+    """One request field excluded from a preconfigured rule set (or from some of its rule ids).
+    `kind` "" with empty op and val is an exclusion item that names no request field."""
+
     target_rule_set: str
-    request_header: str
+    val: str
+    kind: str = "header"
+    op: str = "EQUALS"
+    target_rule_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -195,6 +213,13 @@ def _expand(match: str, patterns: Mapping[str, str], what: str) -> str:
     return expanded
 
 
+def _interval(value: object, what: str) -> int:
+    seconds = _int(value, what)
+    if seconds not in INTERVALS:
+        raise RulesError(f"{what} {seconds} is not a Cloud Armor interval {sorted(INTERVALS)}")
+    return seconds
+
+
 def _rate(raw: object, action: str, what: str) -> Rate:
     if not isinstance(raw, dict):
         raise RulesError(f"{what}: {action} needs a rate mapping")
@@ -208,12 +233,12 @@ def _rate(raw: object, action: str, what: str) -> Rate:
         raise RulesError(f"{what}: ban_count and ban_interval_sec go together")
     return Rate(
         count=_int(raw.get("count"), f"{what} rate count"),
-        interval_sec=_int(raw.get("interval_sec"), f"{what} rate interval_sec"),
+        interval_sec=_interval(raw.get("interval_sec"), f"{what} rate interval_sec"),
         ban_count=None if ban["ban_count"] is None else _int(ban["ban_count"], f"{what} ban_count"),
         ban_interval_sec=(
             None
             if ban["ban_interval_sec"] is None
-            else _int(ban["ban_interval_sec"], f"{what} ban_interval_sec")
+            else _interval(ban["ban_interval_sec"], f"{what} ban_interval_sec")
         ),
         ban_duration_sec=(
             None
@@ -373,7 +398,8 @@ def _expression(rule: Rule) -> str:
     if rule.waf.opt_out_rule_ids:
         ids = ", ".join(f"'{i}'" for i in rule.waf.opt_out_rule_ids)
         options += f", 'opt_out_rule_ids': [{ids}]"
-    return f"{rule.match} && evaluatePreconfiguredWaf('{rule.waf.rule_set}', {{{options}}})"
+    # The match is parenthesised: a match holding `||` must not swallow the WAF call.
+    return f"({rule.match}) && evaluatePreconfiguredWaf('{rule.waf.rule_set}', {{{options}}})"
 
 
 def default_spec() -> RuleSpec:
@@ -434,11 +460,7 @@ def normalise_live(export: Mapping[str, Any]) -> list[RuleSpec]:
         options = raw.get("rateLimitOptions") or {}
         threshold = options.get("rateLimitThreshold") or {}
         ban = options.get("banThreshold") or {}
-        exclusions = sorted(
-            Exclusion(item.get("targetRuleSet", ""), header.get("val", ""))
-            for item in (raw.get("preconfiguredWafConfig") or {}).get("exclusions") or []
-            for header in item.get("requestHeadersToExclude") or []
-        )
+        exclusions = _live_exclusions(raw)
         action = API_ACTIONS.get(raw.get("action", ""), raw.get("action", ""))
         rate: dict[str, Any] = {}
         if action in RATE_ACTIONS:
@@ -464,6 +486,21 @@ def normalise_live(export: Mapping[str, Any]) -> list[RuleSpec]:
             )
         )
     return specs
+
+
+def _live_exclusions(raw: Mapping[str, Any]) -> list[Exclusion]:
+    """Every request field of every exclusion item, with its op and rule-id scope."""
+    found: list[Exclusion] = []
+    for item in (raw.get("preconfiguredWafConfig") or {}).get("exclusions") or []:
+        rule_set = str(item.get("targetRuleSet", ""))
+        ids = tuple(sorted(str(i) for i in item.get("targetRuleIds") or []))
+        fields = [
+            Exclusion(rule_set, str(entry.get("val", "")), kind, str(entry.get("op", "")), ids)
+            for kind, (key, _flag) in EXCLUSION_KINDS.items()
+            for entry in item.get(key) or []
+        ]
+        found += fields or [Exclusion(rule_set, "", "", "", ids)]
+    return sorted(found)
 
 
 def _opt_int(value: object) -> int | None:
@@ -508,11 +545,13 @@ def _flags(spec: RuleSpec) -> list[str]:
 
 
 def _exclusion(op: str, priority: int, item: Exclusion) -> list[str]:
-    return [
-        *_base(op, priority),
-        f"--target-rule-set={item.target_rule_set}",
-        f"--request-header-to-exclude=op=EQUALS,val={item.request_header}",
-    ]
+    argv = [*_base(op, priority), f"--target-rule-set={item.target_rule_set}"]
+    if item.target_rule_ids:
+        argv.append(f"--target-rule-ids={','.join(item.target_rule_ids)}")
+    if item.kind:
+        field_value = f"op={item.op}" + (f",val={item.val}" if item.val else "")
+        argv.append(f"{EXCLUSION_KINDS[item.kind][1]}={field_value}")
+    return argv
 
 
 def _create(spec: RuleSpec) -> list[list[str]]:
@@ -530,6 +569,16 @@ def _core(spec: RuleSpec) -> RuleSpec:
     return RuleSpec(**{**spec.__dict__, "exclusions": (), "opt_out": ()})
 
 
+def _needs_recreate(old: RuleSpec, spec: RuleSpec) -> bool:
+    """An update cannot change a rule's kind or clear a ban field (a ban turned throttle keeps
+    its ban threshold and never converges), so those are a delete and a create."""
+    if old.action != spec.action and RATE_ACTIONS & {old.action, spec.action}:
+        return True
+    return spec.action in RATE_ACTIONS and any(
+        getattr(old, name) is not None and getattr(spec, name) is None for name in BAN_FIELDS
+    )
+
+
 def plan(live: Sequence[RuleSpec], rendered: Sequence[RuleSpec]) -> list[list[str]]:
     """The gcloud argv list that converges LIVE to RENDERED: creates, then updates, then deletes."""
     have = {s.priority: s for s in live}
@@ -543,7 +592,7 @@ def plan(live: Sequence[RuleSpec], rendered: Sequence[RuleSpec]) -> list[list[st
         if old is None:
             creates += _create(spec)
             continue
-        if (old.action in RATE_ACTIONS) != (spec.action in RATE_ACTIONS):
+        if _needs_recreate(old, spec):
             updates.append(_base("delete", priority))
             updates += _create(spec)
             continue

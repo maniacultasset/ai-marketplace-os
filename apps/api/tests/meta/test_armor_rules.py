@@ -47,12 +47,14 @@ def regex_of(match: str) -> str:
     return found.group(1)
 
 
-# ---- a tiny CEL subset: request.path[.urlDecode()], request.method, matches, !=, ==, !, && ----
+# ---- a tiny CEL subset: request.path[.urlDecode()], request.method, matches, !=, ==, !, &&, ||,
+# parentheses ----
 
 
 def cel(expression: str, method: str, path: str) -> bool:
     tokens: list[str] = re.findall(
-        r"&&|!=|==|!|'[^']*'|request\.\w+(?:\.urlDecode\(\))?|\.matches\(|\)", expression
+        r"&&|\|\||!=|==|!|'[^']*'|request\.\w+(?:\.urlDecode\(\))?|\.matches\(|\(|\)",
+        expression,
     )
     assert "".join(tokens).replace(" ", "") == expression.replace(" ", ""), expression
     position = 0
@@ -77,6 +79,11 @@ def cel(expression: str, method: str, path: str) -> bool:
         if peek() == "!":
             take()
             return not unary()
+        if peek() == "(":
+            take()
+            inner = disjunction()
+            assert take() == ")"
+            return inner
         value = subject()
         op = take()
         if op == ".matches(":
@@ -86,11 +93,23 @@ def cel(expression: str, method: str, path: str) -> bool:
         literal = take()[1:-1]
         return value != literal if op == "!=" else value == literal
 
-    result = unary()
-    while peek() == "&&":
-        take()
-        right = unary()
-        result = result and right
+    def conjunction() -> bool:
+        result = unary()
+        while peek() == "&&":
+            take()
+            right = unary()
+            result = result and right
+        return result
+
+    def disjunction() -> bool:
+        result = conjunction()
+        while peek() == "||":
+            take()
+            right = conjunction()
+            result = result or right
+        return result
+
+    result = disjunction()
     assert peek() is None, expression
     return result
 
@@ -181,6 +200,7 @@ AUTH_MATCH = [
     "/auth/login/mfa/confirm",
     "/auth/password",
     "/auth/password/expired",
+    "/auth/mfa/totp/enroll",
     "/auth/mfa/totp/confirm",
     "/auth/mfa/step-up",
     "/signup",
@@ -191,8 +211,8 @@ AUTH_NO_MATCH = [
     "/auth/refresh",
     "/auth/logout",
     "/auth/security",
-    "/auth/mfa/totp/enroll",
     "/auth/mfa/recovery-codes",
+    "/auth/mfa/totp/x",
     "/auth/login/a/b/c",
     "/auth/password/x",
     "/signupx",
@@ -211,6 +231,69 @@ def test_auth_regex_match(rules: list[Any], path: str) -> None:
 @pytest.mark.parametrize("path", AUTH_NO_MATCH)
 def test_auth_regex_no_match(rules: list[Any], path: str) -> None:
     assert not cel(by_priority(rules, 300).match, "POST", f"/api/v1{path}")
+
+
+# Every route whose JSON body carries a password, a TOTP/recovery code, a challenge or a refresh
+# token, as of DPP-1 (contract 2.0.0): (path, field). Each must skip CRS on POST; the password and
+# code checks are also auth-throttled (rule 300), the refresh-token ones rule 320.
+SECRET_BODIES = [
+    ("/auth/login", "password"),
+    ("/auth/login/mfa", "code, recovery_code, challenge_token"),
+    ("/auth/login/mfa/enroll", "challenge_token"),
+    ("/auth/login/mfa/confirm", "code, challenge_token"),
+    ("/auth/password", "current_password, new_password"),
+    ("/auth/password/expired", "new_password, challenge_token"),
+    ("/auth/mfa/totp/enroll", "current_password"),
+    ("/auth/mfa/totp/confirm", "code"),
+    ("/auth/mfa/step-up", "code, recovery_code"),
+    ("/signup", "password"),
+    ("/signup/status", "password"),
+    ("/auth/refresh", "refresh_token"),
+    ("/auth/logout", "refresh_token"),
+]
+REFRESH_TOKEN_BODIES = {"/auth/refresh", "/auth/logout"}
+
+
+@pytest.mark.parametrize("path", [p for p, _ in SECRET_BODIES], ids=[p for p, _ in SECRET_BODIES])
+def test_secret_body_routes_skip_crs_and_are_throttled(rules: list[Any], path: str) -> None:
+    full = f"/api/v1{path}"
+    for rule in rules:
+        if rule.waf is not None:
+            assert not cel(rule.match, "POST", full), (rule.priority, path)
+    rule = 320 if path in REFRESH_TOKEN_BODIES else 300
+    assert cel(by_priority(rules, rule).match, "POST", full), (rule, path)
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("GET", "/api/v1/brand/documents"),
+        ("GET", "/api/v1/products/bulk"),
+        ("PATCH", "/api/v1/auth/login"),
+        ("DELETE", "/api/v1/signup"),
+        ("HEAD", "/api/v1/auth/logout"),
+    ],
+)
+def test_crs_skip_is_post_only(rules: list[Any], method: str, path: str) -> None:
+    """The skip exists for upload bytes and secret JSON bodies, both POST; any other method on
+    those paths (GET /brand/documents?limit=..&cursor=.. above all) is CRS-inspected."""
+    for rule in rules:
+        if rule.waf is not None:
+            assert cel(rule.match, method, path), (rule.priority, method, path)
+
+
+def test_crs_skip_exactly_the_post_upload_and_secret_operations(rules: list[Any]) -> None:
+    from app.api.v1.surface import OPS
+
+    skipped = {
+        op.op_id
+        for op in OPS.values()
+        if not cel(
+            by_priority(rules, 200).match, op.method, "/api/v1" + re.sub(r"\{[^}]+\}", "x", op.path)
+        )
+    }
+    assert all(OPS[o].method == "POST" for o in skipped), skipped
+    assert "brand_documents_list" not in skipped
 
 
 def test_rate_and_crs_rules_use_decoded_path(rules: list[Any]) -> None:
@@ -256,7 +339,8 @@ def test_crs_exclusions(ar: ModuleType, rules: list[Any]) -> None:
         rule = next((r for r in rules if r.priority == spec.priority), None)
         if rule is None or not rule.group.startswith("crs-"):
             continue
-        assert f"!request.path.urlDecode().matches('{skip}')" in spec.expression
+        want = f"(!(request.method == 'POST' && request.path.urlDecode().matches('{skip}'))) && "
+        assert spec.expression.startswith(want), spec.expression
         assert spec.exclusions == (ar.Exclusion(ar.CRS_SETS[rule.group], "authorization"),)
 
 
@@ -328,6 +412,14 @@ BAD = {
     "count-inf": ("count: 5", "count: .inf"),
     "count-string": ("count: 5", 'count: "5"'),
     "count-bool": ("count: 5", "count: true"),
+    "interval-45": ("interval_sec: 60", "interval_sec: 45"),
+    "interval-7": ("interval_sec: 60", "interval_sec: 7"),
+    "interval-5000": ("interval_sec: 60", "interval_sec: 5000"),
+    "ban-interval-61": (
+        "action: throttle\n    rate: {count: 5, interval_sec: 60}",
+        "action: ban\n    rate: {count: 5, interval_sec: 60, ban_count: 9, ban_interval_sec: 61,"
+        " ban_duration_sec: 300}",
+    ),
     "unknown-pattern": ("${p}", "${q}"),
     "unknown-key": ("action: throttle", "action: throttle\n    extra: 1"),
 }
@@ -596,6 +688,89 @@ def test_plan_action_kind_change_is_delete_then_create(ar: ModuleType, rules: li
     assert [(a[3], a[4]) for a in argv] == [("delete", "300"), ("create", "300")]
 
 
+def _with(ar: ModuleType, rendered: list[Any], priority: int, **fields: Any) -> list[Any]:
+    return [
+        ar.RuleSpec(**{**s.__dict__, **fields}) if s.priority == priority else s for s in rendered
+    ]
+
+
+def test_plan_ban_to_throttle_is_delete_then_create(ar: ModuleType, rules: list[Any]) -> None:
+    """An in-place update cannot clear a ban threshold, so a live ban that the file now wants as a
+    throttle (or a ban field the file dropped) is recreated, and the next plan is empty."""
+    rendered = ar.render(rules, [])
+    live_ban = _with(
+        ar,
+        rendered,
+        320,
+        action="rate-based-ban",
+        ban_count=9,
+        ban_interval_sec=600,
+        ban_duration_sec=300,
+    )
+    argv = ar.plan(ar.normalise_live(export_of(ar, live_ban)), rendered)
+    assert [(a[3], a[4]) for a in argv] == [("delete", "320"), ("create", "320")]
+    assert not any(a.startswith("--ban-") for a in argv[1])
+    dropped = _with(ar, rendered, 300, ban_count=None, ban_interval_sec=None)
+    argv = ar.plan(ar.normalise_live(export_of(ar, rendered)), dropped)
+    assert [(a[3], a[4]) for a in argv] == [("delete", "300"), ("create", "300")]
+
+
+def test_plan_deny_code_change_is_in_place(ar: ModuleType, rules: list[Any]) -> None:
+    rendered = ar.render(rules, [])
+    live = _with(ar, rendered, 100, action="deny-403")
+    argv = ar.plan(ar.normalise_live(export_of(ar, live)), rendered)
+    assert [(a[3], a[4]) for a in argv] == [("update", "100")]
+
+
+STRAY = {
+    "uri-slash": {"requestUrisToExclude": [{"op": "STARTS_WITH", "val": "/"}]},
+    "all-cookies": {"requestCookiesToExclude": [{"op": "EQUALS_ANY"}]},
+    "all-query-params": {"requestQueryParamsToExclude": [{"op": "EQUALS_ANY", "val": ""}]},
+    "header-other-op": {"requestHeadersToExclude": [{"op": "STARTS_WITH", "val": "a"}]},
+    "no-field": {},
+}
+
+
+@pytest.mark.parametrize("case", sorted(STRAY))
+def test_out_of_band_exclusion_is_drift_and_removed(
+    ar: ModuleType, rules: list[Any], case: str
+) -> None:
+    """A console exclusion of any kind on a CRS rule is drift for verify, and plan removes it with
+    the matching gcloud flag; after that model apply, the plan is empty."""
+    rendered = ar.render(rules, [])
+    doc = export_of(ar, rendered)
+    rule = next(r for r in doc["rules"] if int(r["priority"]) == 250)
+    rule["preconfiguredWafConfig"]["exclusions"].append(
+        {"targetRuleSet": "sqli-v422-stable", **STRAY[case]}
+    )
+    live = ar.normalise_live(doc)
+    assert ar.differences(live, rendered) == ["250: differs from armor-rules.yaml"]
+    argv = ar.plan(live, rendered)
+    assert [(a[3], a[4]) for a in argv] == [("remove-preconfig-waf-exclusion", "250")]
+    state = apply(ar, {s.priority: s for s in live}, argv)
+    assert ar.plan(list(state.values()), rendered) == []
+
+
+def test_header_exclusion_scoped_to_rule_ids_is_drift(ar: ModuleType, rules: list[Any]) -> None:
+    """The file excludes `authorization` from the whole set; the same header excluded only for some
+    rule ids is a different policy."""
+    rendered = ar.render(rules, [])
+    doc = export_of(ar, rendered)
+    rule = next(r for r in doc["rules"] if int(r["priority"]) == 250)
+    rule["preconfiguredWafConfig"]["exclusions"][0]["targetRuleIds"] = [
+        "owasp-crs-v042200-id942100-sqli"
+    ]
+    live = ar.normalise_live(doc)
+    assert ar.differences(live, rendered) == ["250: differs from armor-rules.yaml"]
+    argv = ar.plan(live, rendered)
+    assert [(a[3], a[4]) for a in argv] == [
+        ("remove-preconfig-waf-exclusion", "250"),
+        ("add-preconfig-waf-exclusion", "250"),
+    ]
+    assert "--target-rule-ids=owasp-crs-v042200-id942100-sqli" in argv[0]
+    assert not any(a.startswith("--target-rule-ids") for a in argv[1])
+
+
 def test_plan_exclusion_change(ar: ModuleType, rules: list[Any]) -> None:
     rendered = ar.render(rules, [])
     changed = [
@@ -710,9 +885,7 @@ def apply(ar: ModuleType, state: dict[int, Any], argv_list: list[list[str]]) -> 
             del state[priority]
             continue
         if op in ("add-preconfig-waf-exclusion", "remove-preconfig-waf-exclusion"):
-            header = flag(argv, "request-header-to-exclude")
-            assert header is not None
-            item = ar.Exclusion(flag(argv, "target-rule-set"), header.split("val=", 1)[1])
+            item = exclusion_from_argv(ar, argv)
             spec = state[priority]
             if op.startswith("add"):
                 excl = (*spec.exclusions, item)
@@ -745,18 +918,78 @@ def apply(ar: ModuleType, state: dict[int, Any], argv_list: list[list[str]]) -> 
         if "--no-preview" in argv:
             fields["preview"] = False
         if fields["action"] in ("throttle", "rate-based-ban"):
-            fields.update(
-                rate_count=_int(flag(argv, "rate-limit-threshold-count")),
-                rate_interval_sec=_int(flag(argv, "rate-limit-threshold-interval-sec")),
-                ban_count=_int(flag(argv, "ban-threshold-count")),
-                ban_interval_sec=_int(flag(argv, "ban-threshold-interval-sec")),
-                ban_duration_sec=_int(flag(argv, "ban-duration-sec")),
-                conform_action=flag(argv, "conform-action"),
-                exceed_action=flag(argv, "exceed-action"),
-                enforce_on_key=flag(argv, "enforce-on-key"),
-            )
+            # Like gcloud: an update changes only the flags it is given, so it cannot clear a
+            # ban threshold; a create starts from nothing.
+            for key, name in (
+                ("rate_count", "rate-limit-threshold-count"),
+                ("rate_interval_sec", "rate-limit-threshold-interval-sec"),
+                ("ban_count", "ban-threshold-count"),
+                ("ban_interval_sec", "ban-threshold-interval-sec"),
+                ("ban_duration_sec", "ban-duration-sec"),
+            ):
+                if flag(argv, name) is not None or op == "create":
+                    fields[key] = _int(flag(argv, name))
+            for key, name in (
+                ("conform_action", "conform-action"),
+                ("exceed_action", "exceed-action"),
+                ("enforce_on_key", "enforce-on-key"),
+            ):
+                if flag(argv, name) is not None or op == "create":
+                    fields[key] = flag(argv, name)
         state[priority] = ar.RuleSpec(**fields)
     return state
+
+
+def exclusion_from_argv(ar: ModuleType, argv: list[str]) -> Any:
+    """The Exclusion an add/remove-preconfig-waf-exclusion argv names."""
+    ids = flag(argv, "target-rule-ids")
+    scope = tuple(sorted(ids.split(","))) if ids else ()
+    for kind, (_key, gflag) in ar.EXCLUSION_KINDS.items():
+        value = flag(argv, gflag[2:])
+        if value is not None:
+            parts = dict(p.split("=", 1) for p in value.split(","))
+            return ar.Exclusion(
+                flag(argv, "target-rule-set"), parts.get("val", ""), kind, parts["op"], scope
+            )
+    return ar.Exclusion(flag(argv, "target-rule-set"), "", "", "", scope)
+
+
+def STRAY_EXCLUSIONS(ar: ModuleType) -> tuple[Any, ...]:  # noqa: N802 - a table, not a verb
+    return (
+        ar.Exclusion("sqli-v422-stable", "/", "uri", "STARTS_WITH"),
+        ar.Exclusion("sqli-v422-stable", "", "cookie", "EQUALS_ANY"),
+        ar.Exclusion("sqli-v422-stable", "q", "query", "EQUALS"),
+        ar.Exclusion(
+            "sqli-v422-stable",
+            "authorization",
+            target_rule_ids=("owasp-crs-v042200-id942100-sqli",),
+        ),
+    )
+
+
+def rekinded(ar: ModuleType, spec: Any) -> Any:
+    """SPEC as the other rate kind (ban <-> throttle), or a ban for a non-rate rule."""
+    rate = {
+        "rate_count": 5,
+        "rate_interval_sec": 60,
+        "conform_action": "allow",
+        "exceed_action": "deny-429",
+        "enforce_on_key": "ip",
+    }
+    if spec.action == "rate-based-ban":
+        return ar.RuleSpec(
+            **{**spec.__dict__, "action": "throttle", **dict.fromkeys(ar.BAN_FIELDS)}
+        )
+    return ar.RuleSpec(
+        **{
+            **spec.__dict__,
+            **rate,
+            "action": "rate-based-ban",
+            "ban_count": 9,
+            "ban_interval_sec": 600,
+            "ban_duration_sec": 300,
+        }
+    )
 
 
 @given(data=st.data())
@@ -766,7 +999,9 @@ def test_plan_idempotent(ar: ModuleType, rules: list[Any], data: st.DataObject) 
     rendered = ar.render(rules, enforce)
     live: dict[int, Any] = {}
     for spec in ar.render(rules, data.draw(st.sampled_from([[], ["path"], FULL]))):
-        choice = data.draw(st.sampled_from(["keep", "drop", "flip", "renumber", "describe"]))
+        choice = data.draw(
+            st.sampled_from(["keep", "drop", "flip", "renumber", "describe", "rekind", "exclude"])
+        )
         if spec.priority == DEFAULT or choice == "keep":
             live[spec.priority] = spec
         elif choice == "flip":
@@ -777,6 +1012,12 @@ def test_plan_idempotent(ar: ModuleType, rules: list[Any], data: st.DataObject) 
             )
         elif choice == "describe":
             live[spec.priority] = ar.RuleSpec(**{**spec.__dict__, "description": "old"})
+        elif choice == "rekind":
+            live[spec.priority] = rekinded(ar, spec)
+        elif choice == "exclude":
+            live[spec.priority] = ar.RuleSpec(
+                **{**spec.__dict__, "exclusions": (*spec.exclusions, *STRAY_EXCLUSIONS(ar))}
+            )
     if data.draw(st.booleans()):
         live[300] = ar.RuleSpec(
             priority=300, description="x", expression="true", action="deny-403", preview=True

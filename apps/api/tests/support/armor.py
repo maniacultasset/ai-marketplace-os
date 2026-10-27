@@ -52,13 +52,7 @@ def export_of(
             rule["rateLimitOptions"] = options
         if spec.exclusions:
             rule["preconfiguredWafConfig"] = {
-                "exclusions": [
-                    {
-                        "targetRuleSet": e.target_rule_set,
-                        "requestHeadersToExclude": [{"op": "EQUALS", "val": e.request_header}],
-                    }
-                    for e in spec.exclusions
-                ]
+                "exclusions": [exclusion_item(ar, e) for e in spec.exclusions]
             }
         rules.append(rule)
     return {
@@ -67,3 +61,16 @@ def export_of(
         "fingerprint": "x",
         "rules": rules,
     }
+
+
+def exclusion_item(ar: ModuleType, exclusion: Any) -> dict[str, Any]:
+    """The export form of one Exclusion: its rule set, rule-id scope and one request field."""
+    item: dict[str, Any] = {"targetRuleSet": exclusion.target_rule_set}
+    if exclusion.target_rule_ids:
+        item["targetRuleIds"] = list(exclusion.target_rule_ids)
+    if exclusion.kind:
+        entry = {"op": exclusion.op}
+        if exclusion.val:
+            entry["val"] = exclusion.val
+        item[ar.EXCLUSION_KINDS[exclusion.kind][0]] = [entry]
+    return item
