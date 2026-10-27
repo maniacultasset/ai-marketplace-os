@@ -1350,3 +1350,48 @@ def test_edge_status_serving_gate(
     )
     assert "edge serving: no" in down.out
     assert "preview rules left: 11" in down.out
+
+
+# ---- T11: docs ----
+
+
+def test_edge_runbook_covers_subcommands(repo_root: Path) -> None:
+    text = (repo_root / "docs/runbooks/EDGE-CUTOVER.md").read_text(encoding="utf-8")
+    for sub in EDGE_SUBS:
+        assert f"`{sub}`" in text or f"edge {sub}`" in text, sub
+    lines = text.splitlines()
+    steps = [i for i, line in enumerate(lines) if re.match(r"^\d+\. ", line)]
+    assert len(steps) >= 15
+    for n, start in enumerate(steps):
+        end = steps[n + 1] if n + 1 < len(steps) else len(lines)
+        assert any("Rollback:" in line for line in lines[start:end]), lines[start]
+    for needle in (
+        "x-aimos-candidate",
+        "xff_entries",
+        "JWT_ISSUER",
+        "not merged",
+        "same window",
+        "unlock-ingress",
+        "preview rules left: 0",
+        "mkos-lanes/gcp",
+        "Production",
+    ):
+        assert needle in text, needle
+
+
+def test_deploy_runbook_lists_edge(repo_root: Path) -> None:
+    text = (repo_root / "docs/runbooks/DEPLOY-GCP.md").read_text(encoding="utf-8")
+    for needle in (
+        "`edge`",
+        "INGRESS",
+        "DEPLOY_ALLOW_UNLOCK",
+        "DEPLOY_ALLOW_ISSUER_CHANGE",
+        "EDGE-CUTOVER.md",
+    ):
+        assert needle in text, needle
+
+
+def test_adr_0022_ledger(repo_root: Path) -> None:
+    (adr,) = (repo_root / "docs/adr").glob("0022-*.md")
+    assert "Status:** proposed" in adr.read_text(encoding="utf-8").splitlines()[2]
+    assert "| 0022 |" in (repo_root / "docs/adr/README.md").read_text(encoding="utf-8")

@@ -61,7 +61,7 @@ editor-specific detail.
 | `drafts/` | 8: pre-Canon, intent only | `BUILD-SEQUENCE.md` (45 KB, build steps S1–S14; its S2–S14 "Done when" lines are replaced by `../STEPS.md`), `CONTRACTS.md` (53 KB), `CHECKLISTS.md` (183 KB, grep only), `ARCHITECTURE.md`, `DECISIONS.md`, `BLOCKERS.md`, `DELEGATE-GATE.md`. Never copy a value without checking ranks 1–7 | For a step's scope and "Done when"; for intent behind a rule |
 | `research/` | Background | `stack-2026-09.md`, `hosting-2026-09.md`, `catalogus.md` (competitor) | When revisiting a stack or hosting choice |
 | `plans/` | Loop state | `README.md` (loop rules and file formats; the only committed file here). Per step, `docs/plans/<id>/` holds CONTEXT, PLAN, CODE-PLAN, LOOP, DEVIATIONS, `repro/` and REPORT: **local-only** (`.git/info/exclude`), never committed; the PR description carries the scope, criteria and results | During each build step |
-| `runbooks/` | Operations, below the Canon and ADRs | `DEPLOY-GCP.md`: the by-hand GCP deploy toolkit (`../scripts/deploy/gcp/deploy.sh`), the first-deploy order, rollback, PITR restore, costs and known limits | Before deploying to staging or prod |
+| `runbooks/` | Operations, below the Canon and ADRs | `DEPLOY-GCP.md`: the by-hand GCP deploy toolkit (`../scripts/deploy/gcp/deploy.sh`), the first-deploy order, rollback, PITR restore, costs and known limits; `EDGE-CUTOVER.md`: the prod API edge (load balancer, Cloud Armor, locked ingress) cutover with a rollback per step (DPP-2, ADR-0022) | Before deploying to staging or prod |
 | `archive/` | None | Retired files (the v0 rules file) and `STATE-log.md` (older STATE session-log entries), frozen. Do not follow | Never, unless asked |
 
 **Outside `docs/`:**
