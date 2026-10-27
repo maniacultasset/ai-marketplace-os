@@ -2,19 +2,24 @@
 line each.
 
 The log line's `message` is the action (`auth.locked`, `auth.mfa_failed`, ...) and it carries the
-user and tenant ids and `ip_hash` (the first 16 hex characters of the address's sha256), so a
-log-based alert can count events per account or address without the address itself. It never
-carries the email, a code, a token or a password.
+user and tenant ids and `ip_hash` (the first 16 hex characters of an HMAC-SHA256 of the address
+under a key derived from the server's JWT secret: an unkeyed hash of an IPv4 address is reversed
+by hashing all 2^32), so a log-based alert can count events per account or address without the
+address itself. It never carries the email, a code, a token or a password.
 """
 
 from __future__ import annotations
 
 import hashlib
+import hmac
+import secrets
+from functools import cache
 from typing import Any, Final
 from uuid import UUID
 
 from structlog import get_logger
 
+from app.core.config import get_settings
 from app.repositories.identity import AuditRepository
 
 log = get_logger(__name__)
@@ -22,8 +27,26 @@ log = get_logger(__name__)
 IP_HASH_CHARS: Final = 16
 
 
+IP_HASH_CONTEXT: Final = b"mkos-ip-hash\x00"
+
+
+@cache
+def _process_key() -> bytes:
+    """A key for a process with no JWT secret (no tokens are issued there): unlinkable still."""
+    return secrets.token_bytes(32)
+
+
+def _ip_key() -> bytes:
+    secret = get_settings().jwt_secret
+    if secret is None:
+        return _process_key()
+    return hashlib.sha256(IP_HASH_CONTEXT + secret.encode("utf-8")).digest()
+
+
 def ip_hash(ip: str | None) -> str | None:
-    return None if ip is None else hashlib.sha256(ip.encode("utf-8")).hexdigest()[:IP_HASH_CHARS]
+    if ip is None:
+        return None
+    return hmac.new(_ip_key(), ip.encode("utf-8"), hashlib.sha256).hexdigest()[:IP_HASH_CHARS]
 
 
 def log_event(
