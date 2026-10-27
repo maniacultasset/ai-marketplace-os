@@ -14,7 +14,7 @@ from .conftest import LOCAL_HOSTS
 from .jobs_support import count
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
-NEW = "a-brand-new-password-9"
+NEW = "Brand-New-Lantern-9"  # DPP-1: meets the DPP 1.4.1 rules
 SET = ["user", "set-password", "--email", "owner@acme.test", "--staff-email", "staff@ops.test"]
 
 

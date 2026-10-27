@@ -26,7 +26,7 @@ MAX_AGE: Final = timedelta(days=365)
 HISTORY: Final = 10
 PERSONAL_MIN: Final = 3
 
-Rule = Literal["length", "upper", "lower", "digit", "symbol", "personal"]
+Rule = Literal["length", "upper", "lower", "digit", "symbol", "personal", "reused"]
 
 MESSAGES: Final[dict[Rule, str]] = {
     "length": f"The password must be {PASSWORD_MIN} to {PASSWORD_MAX} characters long.",
@@ -35,6 +35,8 @@ MESSAGES: Final[dict[Rule, str]] = {
     "digit": "The password must contain a digit.",
     "symbol": "The password must contain a symbol or a space.",
     "personal": "The password must not contain your name or the first part of your email.",
+    # checked by the callers, which hold the hashes (`check` never returns it)
+    "reused": "The password must not be one of the last 10.",
 }
 
 
@@ -50,6 +52,11 @@ class PolicyError(ValueError):
     def __init__(self, breaches: list[Breach]) -> None:
         self.breaches = breaches
         super().__init__("; ".join(b.message for b in breaches))
+
+
+def reused() -> PolicyError:
+    """The history rule's refusal: the new password is one of the last 10."""
+    return PolicyError([Breach("reused", MESSAGES["reused"])])
 
 
 def _fold(text: str) -> str:

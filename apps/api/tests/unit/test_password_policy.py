@@ -73,7 +73,10 @@ def test_breach_order_is_stable() -> None:
 def test_messages_are_fixed_strings() -> None:
     for breach in pp.check("", email=EMAIL, display_name=None):
         assert breach.message == pp.MESSAGES[breach.rule]
-    assert set(pp.MESSAGES) == {"length", "upper", "lower", "digit", "symbol", "personal"}
+    assert set(pp.MESSAGES) == {
+        "length", "upper", "lower", "digit", "symbol", "personal", "reused"
+    }  # fmt: skip
+    assert pp.reused().breaches == [pp.Breach("reused", pp.MESSAGES["reused"])]
 
 
 @settings(max_examples=200)

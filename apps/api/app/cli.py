@@ -87,11 +87,18 @@ DATABASE.md:312): each is one migrator transaction on `ALEMBIC_DATABASE_URL` (th
 stdin (asked twice on a terminal), never from argv or the environment. Emails are trimmed,
 lower-cased and must be what the contract's login email accepts (visible ASCII, one `@`).
 
+DPP-1 (ADR-0021; runbook `docs/runbooks/MFA-STAFF.md`, identity check first): `user unlock --email
+E --staff-email F` clears a locked account; `user reset-mfa --email E --staff-email F` deletes the
+authenticator and recovery codes, sets a new must-change password from stdin and ends every
+session. Every password staff set (a new user, `set-password`, `reset-mfa`) must meet the DPP
+1.4.1 rules (exit 2 with the rule only) and is must-change; `set-password` and `reset-mfa` also
+refuse any of the last 10.
+
 | outcome                              | stream | exit |
 |--------------------------------------|--------|------|
-| created / added / set                | stdout | 0    |
+| created / added / set / unlocked / reset | stdout | 0 |
 | any other failure                    | stderr | 1    |
-| bad arguments or password            | stderr | 2    |
+| bad arguments, or a password that breaks the rules | stderr | 2 |
 | slug taken, unknown or stopped tenant or user, membership exists | stderr | 4 |
 """
 
@@ -715,13 +722,17 @@ def _admin_engine() -> AsyncEngine:
 
 async def _new_user(engine: AsyncEngine, email: str, stdin: TextIO) -> NewUser:
     """The owner or member: an existing user (no password asked), or a new one whose password
-    is read from stdin and hashed here."""
+    is read from stdin, checked against the DPP rules (`PolicyError`, exit 2) and hashed here."""
+    from app.core import password_policy
     from app.core.passwords import hash_password, read_password
     from app.db import staff_ops
 
     if await staff_ops.user_exists(engine, email):
         return staff_ops.NewUser(email=email, password_hash=None)
     secret = read_password(stdin)
+    breaches = password_policy.check(secret.get_secret_value(), email=email, display_name=None)
+    if breaches:
+        raise password_policy.PolicyError(breaches)
     return staff_ops.NewUser(email=email, password_hash=hash_password(secret.get_secret_value()))
 
 
@@ -746,14 +757,34 @@ async def run_tenant_command(args: argparse.Namespace, stdin: TextIO) -> int:
                     request_id=ctx.request_id,
                 )
                 sys.stdout.write(f"user_id={user_id} platform_admin=true\n")
+            elif args.group == "user" and args.command == "unlock":
+                user_id = await staff_ops.unlock_user(
+                    engine,
+                    email=args.email,
+                    staff_email=args.staff_email,
+                    request_id=ctx.request_id,
+                )
+                sys.stdout.write(f"user_id={user_id} unlocked=true\n")
+            elif args.group == "user" and args.command == "reset-mfa":
+                from app.core.passwords import read_password
+
+                secret = read_password(stdin)
+                user_id, revoked = await staff_ops.reset_mfa(
+                    engine,
+                    email=args.email,
+                    password=secret,
+                    staff_email=args.staff_email,
+                    request_id=ctx.request_id,
+                )
+                sys.stdout.write(f"user_id={user_id} mfa_reset=true revoked={revoked}\n")
             elif args.group == "user":
-                from app.core.passwords import hash_password, read_password
+                from app.core.passwords import read_password
 
                 secret = read_password(stdin)
                 user_id, revoked = await staff_ops.set_password(
                     engine,
                     email=args.email,
-                    password_hash=hash_password(secret.get_secret_value()),
+                    password=secret,
                     staff_email=args.staff_email,
                     request_id=ctx.request_id,
                 )
@@ -781,7 +812,7 @@ async def run_tenant_command(args: argparse.Namespace, stdin: TextIO) -> int:
                     request_id=ctx.request_id,
                 )
                 sys.stdout.write(f"tenant_id={tenant_id} user_id={user_id}\n")
-    except ValueError as exc:  # the password reader: a fixed phrase, never the password
+    except ValueError as exc:  # the password reader and rules: fixed phrases, never the password
         sys.stderr.write(f"{command}: refused ({exc})\n")
         return EXIT_BAD_INPUT
     except staff_ops.SlugTakenError:
@@ -820,6 +851,15 @@ def _add_onboarding(groups: Any) -> None:
     admin = user_commands.add_parser("make-admin", help="a platform admin (sign-up approvals)")
     admin.add_argument("--email", type=_member_email, required=True)
     admin.add_argument("--staff-email", type=_member_email, required=True)
+    # DPP-1 (ADR-0021): after the runbook's identity check
+    unlock = user_commands.add_parser("unlock", help="clear a locked account (DPP-1)")
+    unlock.add_argument("--email", type=_member_email, required=True)
+    unlock.add_argument("--staff-email", type=_member_email, required=True)
+    reset_mfa = user_commands.add_parser(
+        "reset-mfa", help="delete the authenticator; a new must-change password from stdin"
+    )
+    reset_mfa.add_argument("--email", type=_member_email, required=True)
+    reset_mfa.add_argument("--staff-email", type=_member_email, required=True)
 
 
 def build_parser() -> argparse.ArgumentParser:

@@ -230,3 +230,122 @@ def test_loader_file_defaults(
 def test_rules_load_missing_file_exit_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main(["rules", "load", "--file", str(tmp_path / "absent.json")]) == 2
     assert capsys.readouterr().err == "rules load: no such file\n"
+
+
+# ---- DPP-1 (ADR-0021): user unlock, user reset-mfa and the password rules ----
+
+UNLOCK = ["user", "unlock", "--email", "m@acme.test", "--staff-email", "s@ops.test"]
+RESET = ["user", "reset-mfa", "--email", "m@acme.test", "--staff-email", "s@ops.test"]
+
+
+def test_user_unlock_args(capsys: pytest.CaptureFixture[str]) -> None:
+    args = cli.build_parser().parse_args(UNLOCK)
+    assert (args.group, args.command, args.email, args.staff_email) == (
+        "user",
+        "unlock",
+        "m@acme.test",
+        "s@ops.test",
+    )
+    with pytest.raises(SystemExit) as info:
+        cli.main(UNLOCK[:-2])
+    assert info.value.code == 2
+
+
+def test_user_reset_mfa_args(capsys: pytest.CaptureFixture[str]) -> None:
+    args = cli.build_parser().parse_args(RESET)
+    assert (args.command, args.email) == ("reset-mfa", "m@acme.test")
+    with pytest.raises(SystemExit) as info:
+        cli.main([*RESET[:3], "m" + chr(0xFEFF) + "@acme.test", *RESET[4:]])
+    assert info.value.code == 2
+
+
+def test_reset_mfa_password_never_from_argv(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as info:
+        cli.build_parser().parse_args([*RESET, "--password", "Long-enough-Pass-0123"])
+    assert info.value.code == 2
+
+
+class _Engine:
+    async def dispose(self) -> None:
+        return None
+
+
+@pytest.mark.parametrize("argv", [RESET, ["user", "set-password", *RESET[2:]]])
+async def test_policy_error_exit_2_no_password_in_stderr(
+    argv: list[str], monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import io
+
+    from app.core import password_policy
+    from app.db import staff_ops
+
+    weak = "mmmmmmmmmmmmmm-weak"
+
+    async def refuse(*_: Any, password: Any, **__: Any) -> Any:
+        plain = password.get_secret_value()
+        raise password_policy.PolicyError(
+            password_policy.check(plain, email="m@acme.test", display_name=None)
+        )
+
+    monkeypatch.setattr(cli, "_admin_engine", lambda: _Engine())
+    monkeypatch.setattr(staff_ops, "reset_mfa", refuse)
+    monkeypatch.setattr(staff_ops, "set_password", refuse)
+    code = await cli.run_tenant_command(
+        cli.build_parser().parse_args(argv), io.StringIO(weak + "\n")
+    )
+    out = capsys.readouterr()
+    assert code == 2
+    assert weak not in out.err and weak not in out.out
+    assert "upper-case" in out.err
+
+
+async def test_new_user_password_checked_before_any_write(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import io
+
+    from app.db import staff_ops
+
+    async def no_user(*_: Any) -> bool:
+        return False
+
+    created: list[Any] = []
+
+    async def create(*_: Any, **kw: Any) -> Any:
+        created.append(kw)
+        raise AssertionError("no write for a weak password")
+
+    monkeypatch.setattr(cli, "_admin_engine", lambda: _Engine())
+    monkeypatch.setattr(staff_ops, "user_exists", no_user)
+    monkeypatch.setattr(staff_ops, "create_tenant_with_owner", create)
+    argv = [
+        "tenant", "create", "--name", "Acme", "--slug", "acme-co",
+        "--owner-email", "owner@acme.test", "--staff-email", "s@ops.test",
+    ]  # fmt: skip
+    code = await cli.run_tenant_command(
+        cli.build_parser().parse_args(argv), io.StringIO("owner-password-01\n")
+    )
+    assert code == 2 and created == []
+    assert "owner-password-01" not in capsys.readouterr().err
+
+
+async def test_unlock_reads_no_password(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import io
+    import uuid
+
+    from app.db import staff_ops
+
+    found = uuid.uuid4()
+
+    async def unlock(*_: Any, **kw: Any) -> uuid.UUID:
+        assert set(kw) == {"email", "staff_email", "request_id"}
+        return found
+
+    monkeypatch.setattr(cli, "_admin_engine", lambda: _Engine())
+    monkeypatch.setattr(staff_ops, "unlock_user", unlock)
+    stdin = io.StringIO("never-read\n")
+    code = await cli.run_tenant_command(cli.build_parser().parse_args(UNLOCK), stdin)
+    assert code == 0 and stdin.read() == "never-read\n"
+    assert capsys.readouterr().out == f"user_id={found} unlocked=true\n"
