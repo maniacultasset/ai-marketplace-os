@@ -201,8 +201,8 @@ def world(monkeypatch: pytest.MonkeyPatch) -> World:
         async def consume(self, challenge_id: uuid.UUID) -> None:
             w.consumed.append(challenge_id)
 
-        async def revoke_open(self, user_id: uuid.UUID) -> int:
-            w.events.append("revoke_open")
+        async def delete_open(self, user_id: uuid.UUID) -> int:
+            w.events.append("delete_open")
             w.revoked_open.append(user_id)
             return 1
 
@@ -742,3 +742,31 @@ def test_locked_or_busy_body_matches_wrong_secret(
         shapes[kind] = _shape(response)
     assert shapes["locked"] == shapes[masked]
     assert shapes["busy"] == shapes[masked]
+
+
+# ---- a password change ends every open sign-in challenge (review E2E-1) ----
+
+
+async def test_change_password_deletes_open_challenges(world: World) -> None:
+    user = _user(world)
+    found = await auth.change_password(
+        _principal(user), _claims(user, sid=uuid.uuid4()), PASSWORD, NEW_PASSWORD, ip=None
+    )
+    assert found is None and world.revoked_open == [user.id]
+
+
+async def test_refused_change_password_keeps_challenges(world: World) -> None:
+    user = _user(world)
+    await auth.change_password(
+        _principal(user), _claims(user, sid=uuid.uuid4()), PASSWORD, WEAK, ip=None
+    )
+    assert world.revoked_open == []
+
+
+async def test_expired_password_deletes_other_open_challenges(world: World) -> None:
+    user = _user(world)
+    raw = _challenge(world, user, "password_change")
+    result = await auth.expired_password(raw, NEW_PASSWORD, ip=None, user_agent=None)
+    assert isinstance(result, auth.SignInResult)
+    assert world.revoked_open == [user.id]
+    assert world.events.index("delete_open") < world.events.index("auth.password_changed")

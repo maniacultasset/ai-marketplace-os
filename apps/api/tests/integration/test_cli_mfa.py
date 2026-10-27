@@ -10,7 +10,7 @@ import pytest
 
 from .cli_support import PASSWORD, cli, login, staff_audit
 from .conftest import LOCAL_HOSTS
-from .mfa_support import count, lock, lock_state, user_id
+from .mfa_support import LOGIN_CONFIRM, LOGIN_ENROLL, count, lock, lock_state, mfa_on, user_id
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
 
@@ -113,6 +113,31 @@ async def test_set_password_history_and_policy(
     assert (
         count(auth_db, "SELECT count(*) FROM user_password_history WHERE user_id = %s", [uid]) == 1
     )
+
+
+@pytest.mark.parametrize("command", [SET, RESET])
+async def test_staff_password_ends_open_sign_in_challenges(
+    world: Any,
+    auth_db: Any,
+    api: httpx.AsyncClient,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    command: list[str],
+) -> None:
+    """Review E2E-1: an attacker holding the leaked password has an `enroll` challenge; staff
+    then set a new password. The old challenge must not bind a factor or reach the follow-on
+    password change."""
+    mfa_on(monkeypatch)
+    first = (await login(api, EMAIL)).json()
+    assert first["status"] == "mfa_enrollment_required", first
+    challenge = first["challenge_token"]
+    assert (await cli(command, capsys, FRESH + "\n"))[0] == 0
+    uid = user_id(auth_db, EMAIL)
+    assert count(auth_db, "SELECT count(*) FROM mfa_challenges WHERE user_id = %s", [uid]) == 0
+    enroll = await api.post(LOGIN_ENROLL, json={"challenge_token": challenge})
+    assert enroll.status_code == 401
+    confirm = await api.post(LOGIN_CONFIRM, json={"challenge_token": challenge, "code": "000000"})
+    assert confirm.status_code == 401
 
 
 async def test_unknown_email_exit_code(

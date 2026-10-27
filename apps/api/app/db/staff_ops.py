@@ -318,7 +318,7 @@ async def _locked_user(conn: AsyncConnection, email: str) -> Any:
 
 async def _store_staff_password(conn: AsyncConnection, user: Any, password: SecretStr) -> None:
     """DPP-1: the rules, none of the last 10, then the new must-change hash; the old one joins
-    the history (9 kept)."""
+    the history (9 kept), and every sign-in challenge of the user is deleted."""
     plain = password.get_secret_value()
     breaches = password_policy.check(plain, email=user.email, display_name=user.display_name)
     if breaches:
@@ -355,6 +355,9 @@ async def _store_staff_password(conn: AsyncConnection, user: Any, password: Secr
         ),
         {"h": hash_password(plain), "u": user.id},
     )
+    # Review E2E-1: a sign-in begun under the old password (an enroll or password_change
+    # challenge) must not outlive it, or a leaked password survives the staff reset.
+    await conn.execute(text("DELETE FROM public.mfa_challenges WHERE user_id = :u"), {"u": user.id})
 
 
 async def _revoke_everywhere(
@@ -460,7 +463,7 @@ async def reset_mfa(
     async with engine.begin() as conn:
         user = await _locked_user(conn, email)
         await _store_staff_password(conn, user, password)
-        for table in ("user_mfa_factors", "user_recovery_codes", "mfa_challenges"):
+        for table in ("user_mfa_factors", "user_recovery_codes"):  # challenges: above
             await conn.execute(
                 text(f"DELETE FROM public.{table} WHERE user_id = :u"),  # noqa: S608 - constants
                 {"u": user.id},

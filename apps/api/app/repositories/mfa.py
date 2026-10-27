@@ -292,6 +292,16 @@ class ChallengeRepository:
         found = (await self.db.execute(stmt)).scalar_one_or_none()
         return CHALLENGE_MAX_ATTEMPTS if found is None else int(found)
 
+    async def delete_open(self, user_id: uuid.UUID) -> int:
+        """Every unconsumed challenge of the user deleted (a password change ends the sign-ins
+        begun under the old password; needs `app.user_id` = `user_id`). The count."""
+        result = await self.db.execute(
+            delete(MfaChallenge)
+            .where(MfaChallenge.user_id == user_id, MfaChallenge.consumed_at.is_(None))
+            .execution_options(synchronize_session=False)
+        )
+        return _rowcount(result)
+
     async def consume(self, challenge_id: uuid.UUID) -> None:
         result = await self.db.execute(
             update(MfaChallenge)

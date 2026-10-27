@@ -582,7 +582,9 @@ async def expired_password(
         await RefreshTokenRepository(session).revoke_user_everywhere(
             opened.user.id, keep_family=None, reason="password_changed"
         )
-        await ChallengeRepository(session).consume(opened.challenge.id)
+        challenges = ChallengeRepository(session)
+        await challenges.consume(opened.challenge.id)
+        await challenges.delete_open(opened.user.id)  # review E2E-1: no old challenge survives
         await auth_events.record(
             session,
             action="auth.password_changed",
@@ -856,6 +858,7 @@ async def change_password(
         await RefreshTokenRepository(session).revoke_user_everywhere(
             principal.user_id, keep_family=claims.sid, reason="password_changed"
         )
+        await ChallengeRepository(session).delete_open(principal.user_id)  # review E2E-1
         await auth_events.record(
             session,
             action="auth.password_changed",

@@ -302,3 +302,27 @@ async def test_change_refresh_token_401(api: httpx.AsyncClient, world: World) ->
 async def test_change_foreign_tenant_401(api: httpx.AsyncClient, world: World) -> None:
     response = await _change(api, bearer(foreign_tenant_token(world, EMAIL)), NEW_PASSWORD)
     assert response.status_code == 401
+
+
+async def test_change_ends_open_sign_in_challenges(
+    api: httpx.AsyncClient,
+    world: World,
+    auth_db: Conn,
+    monkeypatch: pytest.MonkeyPatch,
+    clock: TotpClock,  # noqa: F811
+) -> None:
+    """Review E2E-1: a `login` challenge made with the old password dies with it."""
+    from tests.support.rate_limits import reset_rate_limits
+
+    mfa_on(monkeypatch)
+    user = await enrol(api, auth_db, EMAIL, clock)
+    stale = (await login(api, EMAIL)).json()
+    assert stale["status"] == "mfa_required", stale
+    _age(auth_db, 2)
+    assert (await _change(api, user.headers(), NEW_PASSWORD)).status_code == 204
+    reset_rate_limits(auth_db)
+    response = await api.post(
+        LOGIN_MFA,
+        json={"challenge_token": stale["challenge_token"], "code": clock.next_code(user.secret)},
+    )
+    assert response.status_code == 401
