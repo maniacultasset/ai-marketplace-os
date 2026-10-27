@@ -320,7 +320,12 @@ class PasswordHistoryRepository:
     async def push(self, user_id: uuid.UUID, old_hash: str) -> None:
         await self.db.execute(
             insert(UserPasswordHistory).values(
-                id=uuid.uuid4(), user_id=user_id, hashed_password=old_hash
+                id=uuid.uuid4(),
+                user_id=user_id,
+                hashed_password=old_hash,
+                # the wall clock, not the column's `now()` (the transaction start): two pushes in
+                # one transaction still order newest first, so `prune` keeps the right nine
+                created_at=func.clock_timestamp(),
             )
         )
 
