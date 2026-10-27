@@ -127,9 +127,23 @@ def test_codes_match_sources() -> None:
         | _database_merged_codes()
         | {"BUDGET_EXCEEDED"}
         | canon_sources.ba_api_codes()
+        | DPP_1_CODES
     )
     assert {m.name for m in ErrorCode} == expected
-    assert len(ErrorCode) == 76
+    assert len(ErrorCode) == 78
+
+
+# 2.0.0 (DPP-1, ADR-0021; Tech Lead OK 2026-10-27): the two step-up and enrolment refusals (403).
+DPP_1_CODES = frozenset({"MFA_ENROLLMENT_REQUIRED", "MFA_STEP_UP_REQUIRED"})
+
+
+def test_mfa_codes_are_listed_with_meta() -> None:
+    for name in DPP_1_CODES:
+        code = ErrorCode(name)
+        assert code.name == name
+        assert _meta_tuple(ERROR_CODE_META[code]) == (None, "user_action", None)
+    assert ErrorCode.MFA_STEP_UP_REQUIRED.value == "MFA_STEP_UP_REQUIRED"
+    assert ErrorCode.MFA_ENROLLMENT_REQUIRED.value == "MFA_ENROLLMENT_REQUIRED"
 
 
 def test_ba_api_codes_line_names_the_eleven() -> None:

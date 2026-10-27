@@ -176,3 +176,57 @@ def test_lock_pins_pyjwt() -> None:
     assert '\nname = "cryptography"\n' in lock
     for banned in ('name = "python-jose"', 'name = "passlib"', 'name = "authlib"'):
         assert banned not in lock
+
+
+# ---- DPP-1 (contract 2.0.0): the optional amr, mfa_at and sid claims ----
+
+FROZEN_CLAIMS = {"sub", "tid", "roles", "email", "typ", "jti", "iss", "aud", "iat", "exp"}
+
+
+def _raw_payload(token: str) -> dict[str, Any]:
+    return jwt.decode(token, options={"verify_signature": False})
+
+
+def test_off_tokens_carry_no_new_keys() -> None:
+    from app.core.security import encode, issue_claims
+
+    claims = issue_claims(
+        sub=uuid.uuid4(), tid=uuid.uuid4(), role="owner", email="o@acme.test", typ="access"
+    )
+    assert set(_raw_payload(encode(claims))) == FROZEN_CLAIMS
+
+
+def test_all_tokens_round_trip_amr_mfa_at_sid() -> None:
+    from app.core.security import decode, encode, issue_claims
+
+    sid = uuid.uuid4()
+    now = int(time.time())
+    claims = issue_claims(
+        sub=uuid.uuid4(),
+        tid=uuid.uuid4(),
+        role="owner",
+        email="o@acme.test",
+        typ="access",
+        amr=["pwd", "otp"],
+        mfa_at=now - 5,
+        sid=sid,
+    )
+    token = encode(claims)
+    assert set(_raw_payload(token)) == FROZEN_CLAIMS | {"amr", "mfa_at", "sid"}
+    decoded = decode(token, typ="access")
+    assert (decoded.amr, decoded.mfa_at, decoded.sid) == (["pwd", "otp"], now - 5, sid)
+
+
+def test_mfa_at_is_never_after_iat() -> None:
+    from app.core.security import issue_claims
+
+    claims = issue_claims(
+        sub=uuid.uuid4(),
+        tid=uuid.uuid4(),
+        role="owner",
+        email="o@acme.test",
+        typ="refresh",
+        amr=["pwd", "rc"],
+        mfa_at=int(time.time()) + 60,
+    )
+    assert claims.mfa_at is not None and claims.mfa_at <= claims.iat

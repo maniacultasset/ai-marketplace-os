@@ -7,6 +7,9 @@
   the one `InvalidToken("invalid token")`, raised with no cause, so neither the token, a claim
   nor the secret can reach a log line or a response through it.
 - Refresh tokens are signed JWTs too (PLAN Decision 8); the database keeps only `token_hash`.
+- DPP-1 (contract 2.0.0, ADR-0021): `amr`, `mfa_at` and `sid` are optional claims. `encode` drops
+  the unset ones, so a token minted under `MFA_ENFORCEMENT=off` has exactly the 10 frozen claims
+  and an older API (whose `JWTClaims` forbids extra keys) still accepts it.
 """
 
 from __future__ import annotations
@@ -17,7 +20,7 @@ import uuid
 from typing import Final, Literal
 
 import jwt
-from mkos_schemas.auth import JWTClaims, Role
+from mkos_schemas.auth import AuthMethod, JWTClaims, Role
 from pydantic import ValidationError
 
 from app.core.config import get_settings
@@ -52,7 +55,15 @@ def token_hash(raw: str) -> bytes:
 
 
 def issue_claims(
-    *, sub: uuid.UUID, tid: uuid.UUID, role: Role, email: str, typ: TokenType
+    *,
+    sub: uuid.UUID,
+    tid: uuid.UUID,
+    role: Role,
+    email: str,
+    typ: TokenType,
+    amr: list[AuthMethod] | None = None,
+    mfa_at: int | None = None,
+    sid: uuid.UUID | None = None,
 ) -> JWTClaims:
     """Fresh claims with the configured issuer, audience and lifetime for `typ`."""
     settings = get_settings()
@@ -73,11 +84,16 @@ def issue_claims(
         aud=settings.jwt_audience,
         iat=now,
         exp=now + ttl,
+        amr=amr,
+        # never after `iat` (a code entered within this same second, or a clock a step ahead)
+        mfa_at=None if mfa_at is None else min(mfa_at, now),
+        sid=sid,
     )
 
 
 def encode(claims: JWTClaims) -> str:
-    return jwt.encode(claims.model_dump(mode="json"), _secret(), algorithm=ALGORITHM)
+    payload = claims.model_dump(mode="json", exclude_none=True)
+    return jwt.encode(payload, _secret(), algorithm=ALGORITHM)
 
 
 def _verified_payload(token: str) -> object:
