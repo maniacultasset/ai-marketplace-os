@@ -31,7 +31,7 @@ from app.api.v1.schemas.signup import (
 from app.api.v1.surface import NO_ROLES, OPS, cases, declared_responses
 from app.core.errors import ConflictError, NotFoundError
 from app.core.rbac import PLATFORM_ADMIN, Action, Principal, route_policy
-from app.repositories.identity import SignupRow, SlugTakenError, UserRow
+from app.repositories.identity import AuthState, SignupRow, SlugTakenError, UserRow
 from app.services import signup as svc
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
@@ -44,7 +44,7 @@ GOOD: dict[str, Any] = {
     "brand_name": "Kalakar Weaves",
     "owner_name": "Meera Iyer",
     "email": "Founder@Kalakar.Example",
-    "password": "a-long-enough-pass",
+    "password": "Long-enough-Pass-0123",
 }
 
 
@@ -55,7 +55,7 @@ def test_signup_minimal_body_valid_and_email_lowered() -> None:
     body = SignupCreate.model_validate(GOOD)
     assert body.email == "founder@kalakar.example"
     assert body.phone is None and body.website is None
-    assert body.password.get_secret_value() == "a-long-enough-pass"
+    assert body.password.get_secret_value() == "Long-enough-Pass-0123"
 
 
 def test_signup_optional_fields_valid() -> None:
@@ -244,6 +244,8 @@ def test_no_new_error_codes() -> None:
     assert {c.value for c in used} <= {
         "VALIDATION_FAILED", "PAYLOAD_TOO_LARGE", "UNAUTHENTICATED", "PERMISSION_DENIED",
         "NOT_FOUND", "INVALID_STATUS_TRANSITION", "RATE_LIMITED",
+        # DPP-1 (2.0.0): approve and reject need a TOTP step-up under MFA_ENFORCEMENT=all
+        "MFA_STEP_UP_REQUIRED", "MFA_ENROLLMENT_REQUIRED",
     }  # fmt: skip
 
 
@@ -369,6 +371,9 @@ class World:
     taken: set[str] = field(default_factory=set)
     race: bool = False
     email_race: bool = False
+    locked: bool = False
+    failures: list[uuid.UUID] = field(default_factory=list)
+    lookups: int = 0
 
 
 def _install(monkeypatch: pytest.MonkeyPatch, world: World) -> None:
@@ -384,7 +389,16 @@ def _install(monkeypatch: pytest.MonkeyPatch, world: World) -> None:
             pass
 
         async def by_email(self, email: str) -> UserRow | None:
+            world.lookups += 1
             return world.users.get(email)
+
+        async def begin_auth_attempt(self, _: uuid.UUID) -> AuthState:
+            locked_until = NOW.replace(year=2099) if world.locked else None
+            return AuthState(0, locked_until)
+
+        async def note_auth_failure(self, user_id: uuid.UUID) -> bool:
+            world.failures.append(user_id)
+            return False
 
         async def insert_signup_user(self, **kw: Any) -> bool:
             if world.email_race:  # a concurrent first sign-up took the email
@@ -447,6 +461,7 @@ def _install(monkeypatch: pytest.MonkeyPatch, world: World) -> None:
     monkeypatch.setattr(svc, "UserRepository", Users)
     monkeypatch.setattr(svc, "SignupRepository", Requests)
     monkeypatch.setattr(svc, "AuditRepository", Audit)
+    monkeypatch.setattr("app.services.auth_events.AuditRepository", Audit)
     monkeypatch.setattr(svc, "hash_password", lambda p: f"hash:{p}")
     monkeypatch.setattr(svc, "verify_password", lambda p, h: h == f"hash:{p}")
 
@@ -454,7 +469,7 @@ def _install(monkeypatch: pytest.MonkeyPatch, world: World) -> None:
 async def _signup(**changes: Any) -> svc.SignupAccepted:
     kwargs: dict[str, Any] = {
         "email": "founder@kalakar.example",
-        "password": "a-long-enough-pass",
+        "password": "Long-enough-Pass-0123",
         "brand_name": "Kalakar Weaves",
         "owner_name": "Meera Iyer",
         "phone": None,
@@ -465,7 +480,9 @@ async def _signup(**changes: Any) -> svc.SignupAccepted:
 
 
 def _user(world: World, *, active: bool = True) -> UserRow:
-    user = UserRow(uuid.uuid4(), "founder@kalakar.example", "hash:a-long-enough-pass", active, None)
+    user = UserRow(
+        uuid.uuid4(), "founder@kalakar.example", "hash:Long-enough-Pass-0123", active, None
+    )
     world.users[user.email] = user
     return user
 
@@ -477,7 +494,7 @@ async def test_signup_new_email_creates_user_and_pending(monkeypatch: pytest.Mon
     assert accepted.status == "pending"
     [made] = world.inserted_users
     assert made["email"] == "founder@kalakar.example"
-    assert made["password_hash"] == "hash:a-long-enough-pass"
+    assert made["password_hash"] == "hash:Long-enough-Pass-0123"
     assert made["display_name"] == "Meera Iyer"
     assert "is_platform_admin" not in made
     assert world.requests[accepted.request_id].user_id == made["user_id"]
@@ -502,7 +519,7 @@ async def test_signup_existing_email_wrong_password_writes_nothing(
     world = World()
     _install(monkeypatch, world)
     _user(world)
-    accepted = await _signup(password="not-the-password!")
+    accepted = await _signup(password="Not-the-Password-0123")
     assert accepted.status == "pending"
     assert accepted.request_id not in world.requests
     assert not world.requests and not world.inserted_users and not world.audits
@@ -523,19 +540,23 @@ async def test_signup_existing_user_right_password_new_request(
     _install(monkeypatch, world)
     user = _user(world)
     accepted = await _signup()
-    assert world.requests[accepted.request_id].user_id == user.id
+    [pending] = world.requests.values()
+    assert pending.user_id == user.id and accepted.request_id not in world.requests
     assert not world.inserted_users
 
 
 async def test_signup_while_pending_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
+    # DPP-1: one pending row, but every answer for an existing email is a fresh random id
     world = World()
     _install(monkeypatch, world)
     user = _user(world)
     first = await _signup()
     second = await _signup(brand_name="Another Name")
-    assert second.request_id == first.request_id
+    assert first.request_id != second.request_id
     assert len(world.requests) == 1 and len(world.audits) == 1
-    assert world.requests[first.request_id].user_id == user.id
+    [pending] = world.requests.values()
+    assert pending.user_id == user.id
+    assert first.request_id not in world.requests and second.request_id not in world.requests
 
 
 async def test_signup_after_rejection_opens_a_new_request(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -545,17 +566,50 @@ async def test_signup_after_rejection_opens_a_new_request(monkeypatch: pytest.Mo
     old = _row(user_id=user.id, status="rejected", reason="no", decided_at=NOW)
     world.requests[old.id] = old
     accepted = await _signup()
-    assert accepted.request_id != old.id
-    assert world.requests[accepted.request_id].status == "pending"
+    assert accepted.request_id != old.id and accepted.request_id not in world.requests
+    pending = [r for r in world.requests.values() if r.status == "pending"]
+    assert len(pending) == 1 and pending[0].user_id == user.id
 
 
 async def test_signup_pending_race_answers_the_winner(monkeypatch: pytest.MonkeyPatch) -> None:
+    # DPP-1: the race still leaves one pending row; the answer is a fresh id, not the winner's
     world = World(race=True)
     _install(monkeypatch, world)
     _user(world)
     accepted = await _signup()
-    assert world.requests[accepted.request_id].status == "pending"
+    [pending] = world.requests.values()
+    assert pending.status == "pending" and accepted.request_id != pending.id
     assert not world.audits
+
+
+async def test_policy_runs_before_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.password_policy import PolicyError
+
+    world = World()
+    _install(monkeypatch, world)
+    _user(world)
+    for weak in ("short-1A", "all-lower-case-0123", "Meera-Iyer-0123!", "Founder-Pass-0123"):
+        with pytest.raises(PolicyError):
+            await _signup(password=weak)
+    assert world.lookups == 0 and not world.failures and not world.requests
+
+
+async def test_signup_existing_email_response_independent_of_password(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    world = World()
+    _install(monkeypatch, world)
+    user = _user(world)
+    right = await _signup()
+    wrong = await _signup(password="Wrong-but-Valid-0123")
+    world.locked = True
+    locked = await _signup()
+    answers = {right.request_id, wrong.request_id, locked.request_id}
+    assert len(answers) == 3
+    assert not answers & set(world.requests)
+    [pending] = world.requests.values()
+    assert pending.user_id == user.id
+    assert world.failures == [user.id]  # only the wrong password counted
 
 
 async def test_signup_status_refusals_none(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -564,10 +618,13 @@ async def test_signup_status_refusals_none(monkeypatch: pytest.MonkeyPatch) -> N
     assert await svc.signup_status("nobody@x.example", "whatever-pass") is None
     user = _user(world)
     assert await svc.signup_status(user.email, "wrong-password!!") is None
-    assert await svc.signup_status(user.email, "a-long-enough-pass") is None  # no request
+    assert world.failures == [user.id]
+    assert await svc.signup_status(user.email, "Long-enough-Pass-0123") is None  # no request
     row = _row(user_id=user.id)
     world.requests[row.id] = row
-    assert await svc.signup_status(user.email, "a-long-enough-pass") == row
+    assert await svc.signup_status(user.email, "Long-enough-Pass-0123") == row
+    world.locked = True
+    assert await svc.signup_status(user.email, "Long-enough-Pass-0123") is None
 
 
 def _admin() -> Principal:
@@ -752,7 +809,7 @@ def test_signup_website_refuses_control_characters(website: str) -> None:
         "brand_name": "Acme",
         "owner_name": "Owner",
         "email": "owner@acme.test",
-        "password": "a-long-enough-password",
+        "password": "Long-enough-Pass-0123",
         "website": website,
     }
     with pytest.raises(ValidationError):

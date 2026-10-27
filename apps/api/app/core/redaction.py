@@ -76,6 +76,19 @@ DENY_KEYS: Final[frozenset[str]] = frozenset(
         "x_forwarded_for",
         "x_real_ip",
         "forwarded",
+        # DPP-1 (ADR-0021): MFA secrets, codes and the sign-in challenge. `code` itself stays
+        # query-only (below): as a dict key it is an error or rule code across the app. A TOTP
+        # code travels only in request bodies, which nothing logs (the access line has no body,
+        # Sentry sends none: `max_request_body_size="never"`).
+        "otpauth_uri",
+        "secret_b32",
+        "secret_blob",
+        "recovery_code",
+        "recovery_codes",
+        "challenge_token",
+        "challenge_hash",
+        "current_password",
+        "new_password",
     }
 )
 DENY_SUFFIXES: Final[tuple[str, ...]] = (

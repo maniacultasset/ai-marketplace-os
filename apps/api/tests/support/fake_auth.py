@@ -45,8 +45,35 @@ async def presence_admin(
     return principal
 
 
+async def presence_claims(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Security(deps._bearer)],
+) -> Any:
+    """DPP-1: the access claims the step-up guard and the bearer MFA routes read, without a
+    signed token (MFA is off in these suites, so nothing reads `amr` or `mfa_at`)."""
+    import time
+
+    from mkos_schemas.auth import JWTClaims
+
+    if credentials is None or not credentials.credentials.strip():
+        raise ApiError(401, ErrorCode.UNAUTHENTICATED)
+    now = int(time.time())
+    return JWTClaims(
+        sub=FAKE_USER,
+        tid=FAKE_TENANT,
+        roles=["owner"],
+        email="owner@fabrica.example",
+        typ="access",
+        jti="fake-jti",
+        iss="http://localhost:8000",
+        aud="ai-marketplace-os",
+        iat=now,
+        exp=now + 600,
+    )
+
+
 def install_fake_auth(app: Any) -> Any:
     app.dependency_overrides[deps.get_current_principal] = presence_only
+    app.dependency_overrides[deps.access_claims] = presence_claims
     app.dependency_overrides[limit_ip] = no_limit
     app.dependency_overrides[deps._platform_admin] = presence_admin
     return app

@@ -8,6 +8,7 @@ two in step.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Final, Literal
@@ -110,7 +111,7 @@ def refresh_allowed(
 
 
 def step_up_fresh(
-    mfa_at: int | None, amr: list[str] | None, now: datetime, *, otp_only: bool
+    mfa_at: int | None, amr: Sequence[str] | None, now: datetime, *, otp_only: bool
 ) -> bool:
     """True when a code was entered in the last 600 seconds (a TOTP code only, when `otp_only`)."""
     if mfa_at is None or not amr:

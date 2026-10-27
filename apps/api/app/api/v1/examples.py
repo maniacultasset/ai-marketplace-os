@@ -44,6 +44,15 @@ _TOKENS: Final = {
     "memberships": _MEMBERSHIPS,
 }
 
+_SIGNED_IN: Final = {
+    "status": "signed_in",
+    **_TOKENS,
+    "challenge_token": None,
+    "challenge_expires_in": None,
+    "mfa_grace_until": None,
+}
+_RECOVERY_CODES: Final = [f"{a}{a}{a}{a}-efgh-ijkl-mnop-qrst-uvwx-yz" for a in "abcdefghjk"]
+
 _MEMBER: Final = {
     "user_id": USER,
     "email": "owner@fabrica.example",
@@ -356,7 +365,44 @@ _SIGNUP_REQUEST: Final = {
 
 SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
     {
-        "auth_login": _TOKENS,
+        "auth_login": {
+            "status": "mfa_required",
+            "access_token": None,
+            "refresh_token": None,
+            "token_type": None,
+            "expires_in": None,
+            "memberships": None,
+            "challenge_token": "ch_example_opaque_value",
+            "challenge_expires_in": 300,
+            "mfa_grace_until": None,
+        },
+        "auth_login_mfa": _SIGNED_IN,
+        "auth_login_mfa_enroll": {
+            "otpauth_uri": "otpauth://totp/Kuinn:owner%40fabrica.example?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=Kuinn&algorithm=SHA1&digits=6&period=30",
+            "secret_b32": "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP",
+        },
+        "auth_login_mfa_confirm": {"recovery_codes": _RECOVERY_CODES, "result": _SIGNED_IN},
+        "auth_password_expired": _SIGNED_IN,
+        "auth_mfa_totp_enroll": {
+            "otpauth_uri": "otpauth://totp/Kuinn:owner%40fabrica.example?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=Kuinn&algorithm=SHA1&digits=6&period=30",
+            "secret_b32": "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP",
+        },
+        "auth_mfa_totp_confirm": {"recovery_codes": _RECOVERY_CODES},
+        "auth_security": {
+            "mfa_enrolled": True,
+            "recovery_codes_left": 8,
+            "enforcement": "all",
+            "mfa_grace_until": None,
+            "password_changed_at": T0,
+            "password_expires_at": "2027-10-05T09:30:00Z",
+        },
+        "auth_mfa_recovery_codes": {"recovery_codes": _RECOVERY_CODES},
+        "auth_mfa_step_up": {
+            "access_token": "eyJhbGciOiJIUzI1NiJ9.example.signature",
+            "token_type": "bearer",
+            "expires_in": 1800,
+        },
+        "auth_password_change": None,
         "auth_refresh": _TOKENS,
         "auth_logout": None,
         "auth_me": {

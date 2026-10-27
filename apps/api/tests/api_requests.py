@@ -19,6 +19,8 @@ ID = str(uuid.UUID("0b1c2d3e-0000-4000-8000-00000000abcd"))
 VERSION_ID = str(uuid.UUID("0b1c2d3e-0000-4000-8000-00000000abce"))
 ETAG = f'"{VERSION_ID}"'
 IDEMPOTENCY = {"Idempotency-Key": "test-key-0001"}
+# DPP-1: meets the DPP 1.4.1 rules (12+ characters, four classes, no name or email part)
+COMPLIANT_PASSWORD = "Long-enough-Pass-0123"
 
 _LISTING_JSON = {
     k: v for k, v in SUCCESS_EXAMPLES["listings_get"]["content"].items() if k != "listing_id"
@@ -29,6 +31,15 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
     "auth_refresh": {"refresh_token": "rt"},
     "auth_logout": {"refresh_token": "rt"},
     "auth_switch_tenant": {"target_tenant_id": ID},
+    # DPP-1
+    "auth_login_mfa": {"challenge_token": "ch", "code": "123456"},
+    "auth_login_mfa_enroll": {"challenge_token": "ch"},
+    "auth_login_mfa_confirm": {"challenge_token": "ch", "code": "123456"},
+    "auth_password_expired": {"challenge_token": "ch", "new_password": COMPLIANT_PASSWORD},
+    "auth_mfa_totp_enroll": {"current_password": "pw"},
+    "auth_mfa_totp_confirm": {"code": "123456"},
+    "auth_mfa_step_up": {"code": "123456"},
+    "auth_password_change": {"current_password": "pw", "new_password": COMPLIANT_PASSWORD},
     "members_patch": {"role": "operator"},
     "tenants_me_update": {"tone": "Warm and plain."},
     "products_create": {"sku": "FAB-1", "title": "Kurta"},
@@ -54,12 +65,14 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
         "brand_name": "Kalakar Weaves",
         "owner_name": "Meera Iyer",
         "email": "founder@kalakar.example",
-        "password": "a-long-enough-pass",
+        "password": COMPLIANT_PASSWORD,
     },
     "signup_status": {"email": "founder@kalakar.example", "password": "pw"},
     "admin_signup_requests_approve": {"trial_days": 14},
     "admin_signup_requests_reject": {"reason": "Could not verify the brand."},
 }
+# Ops whose every body field is optional: `{}` is valid, so break a field instead.
+_INVALID_JSON: dict[str, dict[str, Any]] = {"auth_mfa_totp_enroll": {"current_password": ""}}
 _FORM_OPS = {"brand_documents_upload", "products_bulk", "images_upload"}
 _QUERY: dict[str, dict[str, str]] = {
     "marketplaces_callback": {"code": "auth-code", "state": "st_0123456789"},
@@ -124,6 +137,8 @@ def invalid_request(op: Operation) -> Call:
         call.params = {"code": "auth-code"}
     elif op.op_id in _QUERY:
         call.params = {**call.params, "from": "not-a-date"}
+    elif op.op_id in _INVALID_JSON:
+        call.json = _INVALID_JSON[op.op_id]
     elif op.op_id in _JSON_BODIES:
         call.json = {}
     elif op.op_id in _FORM_OPS:

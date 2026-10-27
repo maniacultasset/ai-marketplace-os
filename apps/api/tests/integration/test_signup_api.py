@@ -28,7 +28,7 @@ SIGNUP = f"{PREFIX}/signup"
 STATUS = f"{PREFIX}/signup/status"
 QUEUE = f"{PREFIX}/admin/signup-requests"
 ADMIN = "operator@acme.test"
-PASSWORD = "kalakar-pass-0123"
+PASSWORD = "Loom-Weave-Pass-0123"  # DPP-1: meets the DPP 1.4.1 rules
 FORM: dict[str, Any] = {
     "brand_name": "Kalakar Weaves",
     "owner_name": "Meera Iyer",
@@ -164,20 +164,22 @@ async def test_signup_mass_assignment_cannot_make_an_admin(
     assert flag == (False,)
 
 
-async def test_signup_twice_while_pending_answers_the_same_request(
+async def test_signup_twice_while_pending_keeps_one_request(
     api: httpx.AsyncClient, world: World, auth_db: Conn
 ) -> None:
+    # DPP-1: an existing email always gets a fresh random id (a stable one was an oracle)
     first = await _pending(api)
     second = await _pending(api, brand_name="Another Brand")
-    assert second == first
+    assert second != first
     assert _count(auth_db, "SELECT count(*) FROM signup_requests") == 1
+    assert _count(auth_db, "SELECT count(*) FROM signup_requests WHERE id = %s", [second]) == 0
     assert len(audit_rows(auth_db, "signup.requested")) == 1
 
 
 async def test_signup_existing_email_wrong_password_reveals_nothing(
     api: httpx.AsyncClient, world: World, auth_db: Conn
 ) -> None:
-    response = await _signup(api, email="owner@acme.test", password="not-the-password-0")
+    response = await _signup(api, email="owner@acme.test", password="Not-the-Password-0123")
     assert response.status_code == 202
     assert set(response.json()) == {"request_id", "status"}
     assert _count(auth_db, "SELECT count(*) FROM signup_requests") == 0
@@ -193,10 +195,13 @@ async def test_signup_existing_member_right_password_opens_a_request(
         api, email="owner@acme.test", password=WORLD_PASSWORD, brand_name="Acme Two"
     )
     assert response.status_code == 202
-    row = auth_db.execute(
-        "SELECT user_id FROM signup_requests WHERE id = %s", [response.json()["request_id"]]
-    ).fetchone()
-    assert row == (world.user("owner@acme.test"),)
+    # DPP-1: the answer is a fresh id; the request is read by its user
+    rows = auth_db.execute(
+        "SELECT id, status FROM signup_requests WHERE user_id = %s",
+        [world.user("owner@acme.test")],
+    ).fetchall()
+    assert len(rows) == 1 and rows[0][1] == "pending"
+    assert str(rows[0][0]) != response.json()["request_id"]
 
 
 async def test_signup_ip_rate_limited(api: httpx.AsyncClient, world: World) -> None:
@@ -239,7 +244,7 @@ async def test_signup_status_validation_422(
     [
         {"email": FORM["email"], "password": "wrong-password-00"},
         {"email": "nobody@kalakar.test", "password": PASSWORD},
-        {"email": "owner@acme.test", "password": "test-password-0123"},  # a member, no request
+        {"email": "owner@acme.test", "password": "Test-Password-0123"},  # a member, no request
     ],
 )
 async def test_signup_status_refusals_are_one_401(
@@ -572,6 +577,7 @@ async def test_reject_stores_reason_and_the_applicant_reads_it(
     # the brand may apply again: a new pending request
     again = await _pending(api)
     assert again != request_id
+    assert _count(auth_db, "SELECT count(*) FROM signup_requests WHERE status = 'pending'") == 1
     assert (await _reject(api, world, request_id, "other")).json()["reason"] == reason
 
 

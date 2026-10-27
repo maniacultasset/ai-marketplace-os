@@ -14,4 +14,7 @@ regexes = [
   '''^local_only_minio_root_user$''',
   '''^local_only_minio_root_password_32_chars$''',
   '''^parent/child$''',
+  # DPP-1: test passwords that meet the DPP 1.4.1 rules (not credentials of any system)
+  '''^Long-enough-Pass-0123$''',
+  '''^Loom-Weave-Pass-0123$''',
 ]

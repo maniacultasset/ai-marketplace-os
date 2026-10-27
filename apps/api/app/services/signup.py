@@ -1,14 +1,18 @@
 """Self-serve brand sign-up with platform-admin approval (ADR-0019).
 
-- `signup()`: the public form. A new email gets a global `users` row (argon2id) and a pending
-  `signup_requests` row; an existing email with the right password gets a pending request too
-  (or its current one: re-submitting is idempotent); an existing email with a wrong password
-  gets the same 202 with a fresh id and nothing is written, so one answer never reveals whether
-  the email had an account (a pair can, until email verification: ADR-0019 decision 2). Each
-  path costs one argon2 operation.
+- `signup()`: the public form. The DPP 1.4.1 password rules run first, before any lookup, so
+  a 422 (`PolicyError`) says nothing about the account. A new email gets a global `users` row
+  (argon2id) and a pending `signup_requests` row; an existing email with the right password gets
+  a pending request too (or keeps its current one: re-submitting is idempotent). For an existing
+  email the 202 always carries a fresh random id, whatever the password (DPP-1: a stable id was a
+  password oracle); the applicant reads the real request through `signup_status()`. An existing
+  email takes the per-user lockout gate: a wrong password counts, and a locked account writes
+  nothing. Each path costs one argon2 operation.
 - `signup_status()`: the applicant's latest request, behind email and password (None for any
-  refusal: the caller answers 401 like the login). A pending applicant has no membership, so the
-  login keeps answering 401 and no token, tenant or tenant data exists for them.
+  refusal: the caller answers 401 like the login). It takes the lockout gate: a wrong password
+  counts, a locked account answers None whatever the password, and a success does not clear the
+  counter. A pending applicant has no membership, so the login keeps answering 401 and no token,
+  tenant or tenant data exists for them.
 - `is_platform_admin()`, `list_requests()`, `approve()`, `reject()`: the platform admin's queue.
   The admin is a normal principal (a member of some tenant, e.g. the staff tenant) whose own
   `users.is_platform_admin` is true; RLS on `signup_requests` checks the same flag
@@ -26,23 +30,28 @@ import unicodedata
 import uuid
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Final, Literal
+from datetime import UTC, datetime
+from typing import Any, Final, Literal
 
 from mkos_schemas.codes import ErrorCode
 
+from app.core import password_policy
 from app.core.errors import ConflictError, NotFoundError
 from app.core.passwords import hash_password, off_loop, verify_password
 from app.core.rbac import Principal
 from app.repositories.identity import (
     AuditRepository,
+    AuthState,
     SignupRepository,
     SignupRow,
     SlugTakenError,
     UserRepository,
+    UserRow,
 )
 from app.repositories.transactions import identity_session, set_gucs
+from app.services import auth_events
 from app.services.auth import dummy_hash, inet
+from app.services.sign_in_policy import is_locked
 
 DEFAULT_TRIAL_DAYS: Final = 14
 SLUG_BASE_MAX: Final = 32  # leaves room for "-xxxx" within ck_tenants_slug's 40
@@ -126,6 +135,11 @@ async def signup(
     website: str | None,
     ip: str | None,
 ) -> SignupAccepted:
+    """Raises `password_policy.PolicyError` (a 422) for a password that breaks the DPP rules,
+    before any lookup."""
+    breaches = password_policy.check(password, email=email, display_name=owner_name)
+    if breaches:
+        raise password_policy.PolicyError(breaches)
     async with identity_session() as session:
         await set_gucs(session, login_email=email)
         users = UserRepository(session)
@@ -143,50 +157,83 @@ async def signup(
                 return SignupAccepted(uuid.uuid4())
             await set_gucs(session, user_id=user_id)
         else:
-            stored = user.hashed_password
-            verified = await off_loop(verify_password, password, stored or dummy_hash())
-            if not (verified and stored is not None and user.is_active):
-                return SignupAccepted(uuid.uuid4())  # names nothing; nothing written
-            user_id = user.id
-            await set_gucs(session, user_id=user_id)
-            current = await requests.latest_for(user_id, pending_only=True)
-            if current is not None:
-                return SignupAccepted(current.id)
-        request_id = await requests.insert_pending(
-            user_id=user_id,
-            brand_name=brand_name,
-            owner_name=owner_name,
-            phone=phone,
-            website=website,
-        )
-        if request_id is None:  # a concurrent sign-up of the same user won the index
-            raced = await requests.latest_for(user_id, pending_only=True)
-            if raced is None:
-                raise RuntimeError("no pending sign-up after a pending-index conflict")
-            return SignupAccepted(raced.id)
-        await AuditRepository(session).write(
-            tenant_id=None,
-            actor_type="system",
-            actor_user_id=None,
-            action="signup.requested",
-            entity_type="user",
-            entity_id=user_id,
-            ip=inet(ip),
-        )
+            # every answer for an existing email is a fresh id (right, wrong or locked password)
+            if await _existing_user_verified(session, user, password, ip=ip):
+                await set_gucs(session, user_id=user.id)
+                if await requests.latest_for(user.id, pending_only=True) is None:
+                    await _request(session, user.id, brand_name, owner_name, phone, website, ip)
+            return SignupAccepted(uuid.uuid4())
+        request_id = await _request(session, user_id, brand_name, owner_name, phone, website, ip)
     return SignupAccepted(request_id)
 
 
-async def signup_status(email: str, password: str) -> SignupRow | None:
-    """The applicant's newest request; None for an unknown email, a wrong password, an
-    inactive user or no request (one argon2 verify each)."""
+async def _existing_user_verified(
+    session: Any, user: UserRow, password: str, *, ip: str | None
+) -> bool:
+    """The lockout gate, then one argon2 verify (always, for timing parity). True only for the
+    right password of an active, unlocked user; a wrong password counts a failure."""
+    users = UserRepository(session)
+    await set_gucs(session, user_id=user.id)
+    state = await users.begin_auth_attempt(user.id)
+    stored = user.hashed_password
+    verified = await off_loop(verify_password, password, stored or dummy_hash())
+    if not isinstance(state, AuthState) or is_locked(state.locked_until, datetime.now(UTC)):
+        return False
+    if not verified or stored is None:
+        if await users.note_auth_failure(user.id):
+            await auth_events.record(
+                session, action="auth.locked", user_id=user.id, tenant_id=None, ip=inet(ip)
+            )
+        return False
+    return user.is_active
+
+
+async def _request(
+    session: Any,
+    user_id: uuid.UUID,
+    brand_name: str,
+    owner_name: str,
+    phone: str | None,
+    website: str | None,
+    ip: str | None,
+) -> uuid.UUID:
+    """A pending request (or the one a concurrent sign-up of the same user just stored)."""
+    requests = SignupRepository(session)
+    request_id = await requests.insert_pending(
+        user_id=user_id,
+        brand_name=brand_name,
+        owner_name=owner_name,
+        phone=phone,
+        website=website,
+    )
+    if request_id is None:  # a concurrent sign-up of the same user won the index
+        raced = await requests.latest_for(user_id, pending_only=True)
+        if raced is None:
+            raise RuntimeError("no pending sign-up after a pending-index conflict")
+        return raced.id
+    await AuditRepository(session).write(
+        tenant_id=None,
+        actor_type="system",
+        actor_user_id=None,
+        action="signup.requested",
+        entity_type="user",
+        entity_id=user_id,
+        ip=inet(ip),
+    )
+    return request_id
+
+
+async def signup_status(email: str, password: str, *, ip: str | None = None) -> SignupRow | None:
+    """The applicant's newest request; None for an unknown email, a wrong password, a locked
+    account, an inactive user or no request (one argon2 verify each)."""
     async with identity_session() as session:
         await set_gucs(session, login_email=email)
         user = await UserRepository(session).by_email(email)
-        stored = user.hashed_password if user is not None and user.hashed_password else None
-        verified = await off_loop(verify_password, password, stored or dummy_hash())
-        if user is None or stored is None or not verified or not user.is_active:
+        if user is None:
+            await off_loop(verify_password, password, dummy_hash())
             return None
-        await set_gucs(session, user_id=user.id)
+        if not await _existing_user_verified(session, user, password, ip=ip):
+            return None
         return await SignupRepository(session).latest_for(user.id)
 
 

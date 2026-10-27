@@ -17,7 +17,8 @@ from typing import Any
 import psycopg
 
 Conn = psycopg.Connection[tuple[Any, ...]]
-PASSWORD = "test-password-0123"
+# DPP-1: meets the DPP 1.4.1 rules, since /signup now checks them (the hash is written directly)
+PASSWORD = "Test-Password-0123"
 PREFIX = "/api/v1"
 
 
