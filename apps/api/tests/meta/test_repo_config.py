@@ -173,6 +173,11 @@ def test_mutmut_scoped_to_core_modules(repo_root: Path) -> None:
         "app/services/publish_rules.py",
         "app/services/publish_ledger.py",
         "app/services/publish.py",
+        # DPP-1: the pure security modules of the sign-in
+        "app/core/totp.py",
+        "app/core/recovery_codes.py",
+        "app/core/password_policy.py",
+        "app/services/sign_in_policy.py",
     ]
     api = repo_root / "apps/api"
     for entry in mutmut["only_mutate"]:

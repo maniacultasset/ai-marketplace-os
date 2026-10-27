@@ -4,3 +4,13 @@
 # meaningful. Never add paths or values.
 be02277054e319009eee09390040f8ca0da8d940:docs/trace/c02.json:generic-api-key:2253
 be02277054e319009eee09390040f8ca0da8d940:docs/review/REQUIREMENTS-TRACE.md:generic-api-key:520
+# DPP-1 (branch feat/dpp-1-mfa): test passwords that meet the DPP 1.4.1 rules, committed in two of
+# the branch's commits and replaced in a later one with values the rule does not flag (the tree
+# holds none of them). Not credentials of any system. Exact fingerprints only.
+d03e78e83dd2728aaf01d98a771c1011cb773000:apps/api/tests/api_requests.py:generic-api-key:23
+d03e78e83dd2728aaf01d98a771c1011cb773000:apps/api/tests/integration/test_signup_api.py:generic-api-key:31
+d03e78e83dd2728aaf01d98a771c1011cb773000:apps/api/tests/unit/test_signup.py:generic-api-key:47
+d03e78e83dd2728aaf01d98a771c1011cb773000:apps/api/tests/unit/test_signup.py:generic-api-key:472
+d03e78e83dd2728aaf01d98a771c1011cb773000:apps/api/tests/unit/test_signup.py:generic-api-key:812
+d03e78e83dd2728aaf01d98a771c1011cb773000:apps/api/tests/unit/test_auth_service_flows.py:generic-api-key:28
+ffaa897db28819d6763f6da5b199041da632bed5:apps/api/tests/unit/test_cli.py:generic-api-key:264

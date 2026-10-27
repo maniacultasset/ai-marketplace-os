@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from mkos_schemas.codes import ErrorCode
 
-from app.api.errors import ApiError
+from app.api.errors import ApiError, password_rules_error
 from app.api.rate_limit import enforce_login_limit, enforce_signup_limit, request_ip
 from app.api.v1.schemas.signup import (
     SignupAccepted,
@@ -14,6 +14,7 @@ from app.api.v1.schemas.signup import (
     SignupStatusRequest,
 )
 from app.api.v1.surface import OPS, route
+from app.core.password_policy import PolicyError
 from app.services import signup
 
 router = APIRouter()
@@ -26,17 +27,24 @@ async def signup_create(body: SignupCreate, request: Request) -> SignupAccepted:
     had an account. Re-submitting while a request is pending answers that request. The brand
     logs in only after a platform admin approves (until then the login is 401; read the
     status with `POST /signup/status`). The rest of the brand profile is filled in after
-    approval with `PATCH /tenants/me` and `/brand/documents`."""
+    approval with `PATCH /tenants/me` and `/brand/documents`. The password must be 12+
+    characters with an upper-case letter, a lower-case letter, a digit and a symbol, and must
+    not contain the owner name or the first part of the email: otherwise 422 with each broken
+    rule in `details`. The `request_id` is not stable for an email that already has an account:
+    do not store or compare it."""
     await enforce_signup_limit(request)
-    accepted = await signup.signup(
-        email=body.email,
-        password=body.password.get_secret_value(),
-        brand_name=body.brand_name,
-        owner_name=body.owner_name,
-        phone=body.phone,
-        website=body.website,
-        ip=request_ip(request),
-    )
+    try:
+        accepted = await signup.signup(
+            email=body.email,
+            password=body.password.get_secret_value(),
+            brand_name=body.brand_name,
+            owner_name=body.owner_name,
+            phone=body.phone,
+            website=body.website,
+            ip=request_ip(request),
+        )
+    except PolicyError as exc:
+        raise password_rules_error([b.message for b in exc.breaches]) from None
     return SignupAccepted(request_id=accepted.request_id, status=accepted.status)
 
 
@@ -46,7 +54,9 @@ async def signup_status(body: SignupStatusRequest, request: Request) -> SignupSt
     `rejected` (with the admin's `reason`; the brand may sign up again) or `approved` (log in).
     Every refusal (unknown email, wrong password, no request) is the same 401 as the login."""
     await enforce_login_limit(request, body.email)
-    row = await signup.signup_status(body.email, body.password.get_secret_value())
+    row = await signup.signup_status(
+        body.email, body.password.get_secret_value(), ip=request_ip(request)
+    )
     if row is None:
         raise ApiError(401, ErrorCode.UNAUTHENTICATED)
     return SignupStatusOut.model_validate(

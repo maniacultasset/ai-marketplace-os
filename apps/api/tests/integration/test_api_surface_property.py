@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import time
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -105,6 +106,10 @@ def surface(
     for key, value in MKT_ENV.items():
         monkeypatch.setenv(key, value)
     install_fake(monkeypatch, build_fake(CFG))
+    # DPP-1 (ADR-0021): MFA is on, so the MFA ops answer for real instead of the dormant 501
+    # NOT_IMPLEMENTED of `MFA_ENFORCEMENT=off`, which `not_a_server_error` would flag
+    monkeypatch.setenv("MFA_ENFORCEMENT", "all")
+    monkeypatch.delenv("MFA_GRACE_UNTIL", raising=False)
     monkeypatch.chdir(tmp_path)
     get_settings.cache_clear()
     get_sessionmaker.cache_clear()
@@ -151,7 +156,10 @@ def _property_for(role: str) -> Any:
         if op_id in EXCLUDED_OPS:
             pytest.skip(EXCLUDED_OPS[op_id])
         reset_rate_limits(surface.admin)
-        token = tokens_for(surface.world, f"{role}@acme.test", "acme")
+        # a fresh TOTP step-up (ADR-0021), so the step-up ops run their own logic, not only 403
+        token = tokens_for(
+            surface.world, f"{role}@acme.test", "acme", amr=["pwd", "otp"], mfa_at=int(time.time())
+        )
         kwargs = case.as_transport_kwargs(
             base_url=BASE_URL, headers={"Authorization": f"Bearer {token}"}
         )

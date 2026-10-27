@@ -19,6 +19,18 @@ Q7: dict[str, str] = {
     "auth_logout": PUBLIC,
     "auth_me": "tenant:read",
     "auth_switch_tenant": "tenant:read",
+    # DPP-1: the challenge steps are public (the challenge is checked in the service); the
+    # bearer MFA and password routes need only a live membership
+    "auth_login_mfa": PUBLIC,
+    "auth_login_mfa_enroll": PUBLIC,
+    "auth_login_mfa_confirm": PUBLIC,
+    "auth_password_expired": PUBLIC,
+    "auth_mfa_totp_enroll": "tenant:read",
+    "auth_mfa_totp_confirm": "tenant:read",
+    "auth_security": "tenant:read",
+    "auth_mfa_recovery_codes": "tenant:read",
+    "auth_mfa_step_up": "tenant:read",
+    "auth_password_change": "tenant:read",
     "tenants_me": "tenant:read",
     "tenants_me_update": "settings:manage",
     "brand_documents_upload": "settings:manage",
@@ -95,7 +107,7 @@ def _operation(spec: dict[str, Any], op_id: str) -> dict[str, Any]:
 
 def test_ops_are_the_q7_list() -> None:
     # S10 38 + S15 two + S16 three + S20 preview + S19 four + S21 two + ADR-0019 five
-    assert len(OPS) == 55
+    assert len(OPS) == 65
     assert set(OPS) == set(Q7)
 
 
@@ -132,11 +144,20 @@ def test_restricted_ops_declare_403(op_id: str) -> None:
     assert example["error"]["type"] == "PERMISSION_DENIED"
 
 
+# DPP-1: every role may call them, but a step-up refusal is a 403 of its own (no PERMISSION_DENIED)
+MFA_403 = frozenset({"auth_mfa_totp_enroll", "auth_mfa_totp_confirm", "auth_mfa_recovery_codes"})
+
+
 @pytest.mark.parametrize(
     "op_id", sorted(op for op, a in Q7.items() if a in {"tenant:read", "analytics:read"})
 )
 def test_every_role_ops_declare_no_403(op_id: str) -> None:
-    assert "403" not in _operation(_spec(), op_id)["responses"], op_id
+    responses = _operation(_spec(), op_id)["responses"]
+    if op_id in MFA_403:
+        example = responses["403"]["content"]["application/json"]["example"]
+        assert example["error"]["type"] == "MFA_STEP_UP_REQUIRED", op_id
+        return
+    assert "403" not in responses, op_id
 
 
 @pytest.mark.parametrize("op_id", RESTRICTED)

@@ -17,6 +17,10 @@ from pwdlib.exceptions import UnknownHashError
 from pwdlib.hashers.argon2 import Argon2Hasher
 from pydantic import SecretStr
 
+# The length limits live with the rest of the DPP rules (DPP-1); used here by the staff CLI.
+from app.core.password_policy import PASSWORD_MAX as PASSWORD_MAX
+from app.core.password_policy import PASSWORD_MIN as PASSWORD_MIN
+
 
 @lru_cache(maxsize=1)
 def _hasher() -> PasswordHash:
@@ -56,10 +60,6 @@ async def off_loop[**P, R](fn: Callable[P, R], *args: P.args, **kwargs: P.kwargs
     return await anyio.to_thread.run_sync(
         functools.partial(fn, *args, **kwargs), limiter=_argon2_limiter()
     )
-
-
-PASSWORD_MIN: Final = 12
-PASSWORD_MAX: Final = 1024
 
 
 def read_password(stdin: TextIO) -> SecretStr:

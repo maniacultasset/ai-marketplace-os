@@ -35,7 +35,15 @@ POLICIES: dict[str, frozenset[str]] = {
     "job_runs": TEMPLATE | {"jr_by_id"},
     "rules": frozenset({"rules_read", "rules_write", "rules_toggle", "t_platform", "t_migrator"}),
     "audit_log": frozenset({"audit_read", "audit_insert", "t_platform", "t_migrator"}),
+    # 0011 (DPP-1): the per-user MFA tables have no tenant_id; own rows through app.user_id
+    "user_mfa_factors": frozenset({"umf_self", "t_platform", "t_migrator"}),
+    "user_recovery_codes": frozenset({"urc_self", "t_platform", "t_migrator"}),
+    "mfa_challenges": frozenset({"mc_self", "mc_hash", "t_platform", "t_migrator"}),
+    "user_password_history": frozenset({"uph_self", "t_platform", "t_migrator"}),
 }
+MFA_TABLES = frozenset(
+    {"user_mfa_factors", "user_recovery_codes", "mfa_challenges", "user_password_history"}
+)
 # Platform-global (DATABASE.md:160), the limiter (no tenant_id, DATABASE.md:1023) and the queue
 # (it holds only job_run_id, DATABASE.md:952): the exact set without RLS.
 NO_RLS = frozenset(
@@ -83,7 +91,7 @@ def _policies(conn: Conn) -> dict[str, dict[str, tuple[str, frozenset[str]]]]:
 
 def test_rls_forced_everywhere(db: Conn) -> None:
     tables = _tables(db)
-    expected = _tenant_tables(db) | {"users", "tenants"}
+    expected = _tenant_tables(db) | {"users", "tenants"} | MFA_TABLES
     assert len(expected) > 30, "is the database at head?"
     policies = _policies(db)
     for table in sorted(expected):
@@ -133,6 +141,7 @@ GUCS = {
     "login_email": "someone@x.test",
     "job_id": "00000000-0000-0000-0000-00000000000c",
     "token_hash": "00" * 32,
+    "challenge_hash": "00" * 32,  # 0011 (DPP-1)
 }
 
 

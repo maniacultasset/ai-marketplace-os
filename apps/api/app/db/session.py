@@ -8,8 +8,8 @@ with the tenant guard, the tenant transaction boundary and `platform_scope()` (S
 - `platform_scope()` is the one cross-tenant bypass: read-only, as `app_platform_ro`, and always
   rolled back (DATABASE.md:154-158). It is the only writer of `session.info[SCOPE_OK]`.
 - `identity_session()` is the transaction of the public auth flows (login, refresh, logout), which
-  start with no tenant: `set_gucs()` sets `app.login_email`, `app.token_hash`, `app.user_id` and
-  `app.tenant_id` as the flow learns them (DATABASE.md:306-312), each in `session.info` too, so the
+  start with no tenant: `set_gucs()` sets `app.login_email`, `app.token_hash`,
+  `app.challenge_hash` (DPP-1), `app.user_id` and `app.tenant_id` as the flow learns them (DATABASE.md:306-312), each in `session.info` too, so the
   `after_begin` listener re-applies them on the next transaction.
 - `identity_scope(stmt)` stamps `SCOPE_OK` on one identity statement only (the BACKEND-ARCHITECTURE
   §9 named exception: login, refresh and switch read the caller's own memberships and tokens across
@@ -78,12 +78,14 @@ async def dispose_engine() -> None:
 USER_INFO_KEY = "user_id"
 LOGIN_EMAIL_INFO_KEY = "login_email"
 TOKEN_HASH_INFO_KEY = "token_hash"  # noqa: S105 - a session.info key
+CHALLENGE_HASH_INFO_KEY = "challenge_hash"  # DPP-1: the MFA challenge token's sha256
 # session.info key -> the transaction-local GUC the listener re-applies (DATABASE.md:131-132).
 _GUC_KEYS: tuple[tuple[str, str], ...] = (
     (TENANT_INFO_KEY, "app.tenant_id"),
     (USER_INFO_KEY, "app.user_id"),
     (LOGIN_EMAIL_INFO_KEY, "app.login_email"),
     (TOKEN_HASH_INFO_KEY, "app.token_hash"),
+    (CHALLENGE_HASH_INFO_KEY, "app.challenge_hash"),
 )
 
 
@@ -183,10 +185,12 @@ async def set_gucs(
     user_id: UUID | None = None,
     login_email: str | None = None,
     token_hash: bytes | None = None,
+    challenge_hash: bytes | None = None,
 ) -> None:
     """Set the given GUCs now (transaction-local) and for every later transaction of `session`.
     `login_email` is lower-cased (the users_login policy compares `lower(email)`); `token_hash`
-    is the raw sha256, sent as hex (`app_token_hash()` decodes it). There is deliberately no
+    and `challenge_hash` (DPP-1, the `mc_hash` policy) are raw sha256 digests, sent as hex
+    (`app_token_hash()` and `app_challenge_hash()` decode them). There is deliberately no
     `job_id`: only the worker names a job (CODE-PLAN S10 L10)."""
     values: list[tuple[str, str]] = []
     if tenant_id is not None:
@@ -206,6 +210,11 @@ async def set_gucs(
             raise ValueError("token_hash must be 32 bytes (sha256)")
         session.info[TOKEN_HASH_INFO_KEY] = token_hash.hex()
         values.append(("app.token_hash", token_hash.hex()))
+    if challenge_hash is not None:
+        if not isinstance(challenge_hash, bytes) or len(challenge_hash) != 32:
+            raise ValueError("challenge_hash must be 32 bytes (sha256)")
+        session.info[CHALLENGE_HASH_INFO_KEY] = challenge_hash.hex()
+        values.append(("app.challenge_hash", challenge_hash.hex()))
     for guc, value in values:
         await session.execute(select(func.set_config(guc, value, True)))
 

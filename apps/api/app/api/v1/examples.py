@@ -44,6 +44,15 @@ _TOKENS: Final = {
     "memberships": _MEMBERSHIPS,
 }
 
+_SIGNED_IN: Final = {
+    "status": "signed_in",
+    **_TOKENS,
+    "challenge_token": None,
+    "challenge_expires_in": None,
+    "mfa_grace_until": None,
+}
+_RECOVERY_CODES: Final = [f"{a}{a}{a}{a}-efgh-ijkl-mnop-qrst-uvwx-yz" for a in "abcdefghjk"]
+
 _MEMBER: Final = {
     "user_id": USER,
     "email": "owner@fabrica.example",
@@ -80,7 +89,7 @@ _JOB_ACCEPTED: Final = {
     "poll_url": f"/api/v1/jobs/{JOB}",
 }
 _JOB_ENVELOPE: Final = {
-    "schema_version": "1.2.0",
+    "schema_version": "2.0.0",
     "job_id": JOB,
     "kind": "listing_generate",
     "status": "running",
@@ -219,7 +228,7 @@ _TASK: Final[dict[str, Any]] = {
     "updated_at": T0,
 }
 _CONTENT: Final = {
-    "schema_version": "1.2.0",
+    "schema_version": "2.0.0",
     "listing_id": LISTING,
     "product_id": PRODUCT_1,
     "marketplace": "amazon",
@@ -261,7 +270,7 @@ def _report(passed: bool) -> dict[str, Any]:
         ]
     )
     return {
-        "schema_version": "1.2.0",
+        "schema_version": "2.0.0",
         "status": "passed" if passed else "failed",
         "error_code": None if passed else "VALIDATION_FAILED",
         "retryable": not passed,
@@ -275,7 +284,7 @@ def _report(passed: bool) -> dict[str, Any]:
 
 def _validation_result(passed: bool) -> dict[str, Any]:
     return {
-        "schema_version": "1.2.0",
+        "schema_version": "2.0.0",
         "validation_run_id": None,
         "tenant_id": TENANT,
         "listing_id": LISTING,
@@ -292,7 +301,7 @@ def _validation_result(passed: bool) -> dict[str, Any]:
 
 
 _VALIDATION_FAILED_SUMMARY: Final = {
-    "schema_version": "1.2.0",
+    "schema_version": "2.0.0",
     "listing_id": LISTING,
     "listing_version_id": VERSION,
     "passed": False,
@@ -356,7 +365,44 @@ _SIGNUP_REQUEST: Final = {
 
 SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
     {
-        "auth_login": _TOKENS,
+        "auth_login": {
+            "status": "mfa_required",
+            "access_token": None,
+            "refresh_token": None,
+            "token_type": None,
+            "expires_in": None,
+            "memberships": None,
+            "challenge_token": "ch_example_opaque_value",
+            "challenge_expires_in": 300,
+            "mfa_grace_until": None,
+        },
+        "auth_login_mfa": _SIGNED_IN,
+        "auth_login_mfa_enroll": {
+            "otpauth_uri": "otpauth://totp/Kuinn:owner%40fabrica.example?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=Kuinn&algorithm=SHA1&digits=6&period=30",
+            "secret_b32": "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP",
+        },
+        "auth_login_mfa_confirm": {"recovery_codes": _RECOVERY_CODES, "result": _SIGNED_IN},
+        "auth_password_expired": _SIGNED_IN,
+        "auth_mfa_totp_enroll": {
+            "otpauth_uri": "otpauth://totp/Kuinn:owner%40fabrica.example?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=Kuinn&algorithm=SHA1&digits=6&period=30",
+            "secret_b32": "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP",
+        },
+        "auth_mfa_totp_confirm": {"recovery_codes": _RECOVERY_CODES},
+        "auth_security": {
+            "mfa_enrolled": True,
+            "recovery_codes_left": 8,
+            "enforcement": "all",
+            "mfa_grace_until": None,
+            "password_changed_at": T0,
+            "password_expires_at": "2027-10-05T09:30:00Z",
+        },
+        "auth_mfa_recovery_codes": {"recovery_codes": _RECOVERY_CODES},
+        "auth_mfa_step_up": {
+            "access_token": "eyJhbGciOiJIUzI1NiJ9.example.signature",
+            "token_type": "bearer",
+            "expires_in": 1800,
+        },
+        "auth_password_change": None,
         "auth_refresh": _TOKENS,
         "auth_logout": None,
         "auth_me": {
@@ -435,7 +481,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "poll_url": f"/api/v1/imports/{IMPORT}",
         },
         "imports_get": {
-            "schema_version": "1.2.0",
+            "schema_version": "2.0.0",
             "import_id": IMPORT,
             "total_rows": 3,
             "imported": 2,
@@ -482,7 +528,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
         "listings_list": _page([_LISTING]),
         "listings_get": {**_LISTING, "content": _CONTENT, "validation": _VALIDATION_FAILED_SUMMARY},
         "listings_preview": {
-            "schema_version": "1.2.0",
+            "schema_version": "2.0.0",
             "listing_id": LISTING,
             "version": 1,
             "marketplace": "amazon",
@@ -556,7 +602,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "compliance_status": "passed",
             "reports": {
                 "amazon": {
-                    "schema_version": "1.2.0",
+                    "schema_version": "2.0.0",
                     "image_id": IMAGE,
                     "marketplace": "amazon",
                     "slot": "main",

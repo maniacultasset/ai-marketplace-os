@@ -8,7 +8,7 @@ from typing import Any
 import httpx
 import pytest
 
-PASSWORD = "correct-horse-battery-1"
+PASSWORD = "Correct-Horse-Battery-1"  # DPP-1: the CLI now checks the DPP rules
 
 
 async def cli(

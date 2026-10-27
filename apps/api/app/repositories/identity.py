@@ -10,6 +10,11 @@ RLS (0005) narrows every read to the caller's own rows through the GUCs the serv
 read and an UPDATE against the UPDATE policy, so a write with no tenant GUC finds 0 rows).
 
 Writes that must touch rows raise `RowCountError` when they do not (DATABASE.md:133).
+
+DPP-1 (ADR-0021) adds the lockout calls (`begin_auth_attempt`, `note_auth_failure`,
+`clear_auth_failures`: the 0011 SECURITY DEFINER functions), the password writes and history read,
+the session proof (`amr`, `mfa_at`) on refresh rows, the step-up update of one family and the
+revocation of every family of a user.
 """
 
 from __future__ import annotations
@@ -22,20 +27,31 @@ from typing import Any, Final
 
 from sqlalchemy import and_, delete, func, insert, literal, select, text, tuple_, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import undefer
 
 from app.core.errors import RowCountError
 from app.core.request_context import current_request_id
 from app.db import staff_ops
+from app.db.guard import TENANT_INFO_KEY
 from app.db.models.ops import OAuthState, RefreshToken
-from app.db.models.tenancy import SignupRequest, Tenant, TenantMembership, User
+from app.db.models.tenancy import (
+    SignupRequest,
+    Tenant,
+    TenantMembership,
+    User,
+    UserPasswordHistory,
+)
 from app.db.session import identity_scope, set_gucs
 from app.repositories.audit import AUDITED_ENTITIES
 
 __all__ = [
     "AUDITED_ENTITIES",
+    "AUTH_BUSY",
     "AuditRepository",
+    "AuthBusy",
+    "AuthState",
     "ConsumedState",
     "MembershipRepository",
     "MembershipRow",
@@ -45,6 +61,7 @@ __all__ = [
     "SignupRow",
     "SlugTakenError",
     "UserRepository",
+    "UserRow",
     "consume_oauth_state",
 ]
 
@@ -56,9 +73,35 @@ SlugTakenError = staff_ops.SlugTakenError
 class UserRow:
     id: uuid.UUID
     email: str
-    hashed_password: str | None
+    hashed_password: str | None = field(repr=False)
     is_active: bool
     display_name: str | None
+    # DPP-1 (0011): read for the sign-in decision; the lock decision uses `AuthState` instead
+    failed_auth_count: int = 0
+    locked_until: datetime | None = None
+    password_changed_at: datetime | None = None
+    password_must_change: bool = False
+    is_platform_admin: bool = False
+    last_login_at: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AuthState:
+    """The row-locked lockout state `app_begin_auth_attempt` returns (DPP-1)."""
+
+    failed_auth_count: int
+    locked_until: datetime | None
+
+
+class AuthBusy:
+    """`app_begin_auth_attempt` waited past its 5 s lock_timeout (55P03): count nothing."""
+
+    def __repr__(self) -> str:
+        return "AUTH_BUSY"
+
+
+AUTH_BUSY: Final = AuthBusy()
+LOCK_NOT_AVAILABLE: Final = "55P03"
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,10 +123,33 @@ class RefreshRow:
     family_id: uuid.UUID
     revoked_at: datetime | None
     expires_at: datetime
+    # DPP-1 (0011): how the family was proven; None for a family minted with MFA off
+    amr: builtins.list[str] | None = None
+    mfa_at: datetime | None = None
+
+
+# the history rows kept beside the current hash: current + 9 = the last 10 (DPP 1.4.1)
+PASSWORD_HISTORY_KEPT: Final = 9
 
 
 def _rowcount(result: Any) -> int:
     return int(getattr(result, "rowcount", -1))
+
+
+def _user_row(user: User) -> UserRow:
+    return UserRow(
+        id=user.id,
+        email=user.email,
+        hashed_password=user.hashed_password,
+        is_active=user.is_active,
+        display_name=user.display_name,
+        failed_auth_count=user.failed_auth_count,
+        locked_until=user.locked_until,
+        password_changed_at=user.password_changed_at,
+        password_must_change=user.password_must_change,
+        is_platform_admin=user.is_platform_admin,
+        last_login_at=user.last_login_at,
+    )
 
 
 class UserRepository:
@@ -98,9 +164,115 @@ class UserRepository:
             .where(func.lower(User.email) == email.strip().lower())
         )
         user = (await self.db.execute(stmt)).scalar_one_or_none()
-        if user is None:
-            return None
-        return UserRow(user.id, user.email, user.hashed_password, user.is_active, user.display_name)
+        return None if user is None else _user_row(user)
+
+    async def self_row(self, user_id: uuid.UUID) -> UserRow | None:
+        """The caller's own row with its password hash (users_self needs `app.user_id`)."""
+        stmt = identity_scope(
+            select(User).options(undefer(User.hashed_password)).where(User.id == user_id)
+        )
+        user = (await self.db.execute(stmt)).scalar_one_or_none()
+        return None if user is None else _user_row(user)
+
+    async def lock_login_email(self, email: str) -> bool:
+        """Review E2E-2: a transaction-scoped advisory lock on the lower-cased email, taken on
+        every public password path before the lookup and the verify. Parallel attempts for one
+        email queue the same way whether or not it has an account (the users row lock alone
+        queued only known emails: a timing oracle). False after a 5 s wait (55P03, rolled back
+        to a savepoint, like `begin_auth_attempt`); the session's lock_timeout is put back."""
+        previous = (
+            await self.db.execute(text("SELECT current_setting('lock_timeout')"))
+        ).scalar_one()
+        try:
+            async with self.db.begin_nested():
+                await self.db.execute(text("SELECT set_config('lock_timeout', '5s', true)"))
+                await self.db.execute(
+                    text("SELECT pg_advisory_xact_lock(hashtextextended('login:' || :e, 0))"),
+                    {"e": email.strip().lower()},
+                )
+        except DBAPIError as exc:
+            if getattr(exc.orig, "sqlstate", None) == LOCK_NOT_AVAILABLE:
+                return False
+            raise
+        finally:
+            await self.db.execute(
+                text("SELECT set_config('lock_timeout', :v, true)"), {"v": previous}
+            )
+        return True
+
+    async def begin_auth_attempt(self, user_id: uuid.UUID) -> AuthState | AuthBusy | None:
+        """DPP-1: take the user row FOR UPDATE through `app_begin_auth_attempt` and return its
+        current counter and lock (None for no such user). The row lock serialises this user's
+        sign-in attempts until the session's transaction ends. The call runs in a SAVEPOINT, so
+        a 55P03 from the function's 5 s lock_timeout rolls back only the savepoint, leaves the
+        outer transaction usable and returns `AUTH_BUSY`."""
+        stmt = text("SELECT failed_auth_count, locked_until FROM public.app_begin_auth_attempt(:u)")
+        try:
+            async with self.db.begin_nested():
+                row = (await self.db.execute(stmt, {"u": user_id})).one_or_none()
+        except DBAPIError as exc:
+            if getattr(exc.orig, "sqlstate", None) == LOCK_NOT_AVAILABLE:
+                return AUTH_BUSY
+            raise
+        return None if row is None else AuthState(int(row[0]), row[1])
+
+    async def note_auth_failure(self, user_id: uuid.UUID) -> bool:
+        """Count one failed password or code; True when this failure locked the account."""
+        stmt = text("SELECT public.app_note_auth_failure(:u)")
+        return bool((await self.db.execute(stmt, {"u": user_id})).scalar_one())
+
+    async def clear_auth_failures(self, user_id: uuid.UUID) -> None:
+        """Reset the counter and lock after a full sign-in (only for `app.user_id`)."""
+        await self.db.execute(text("SELECT public.app_clear_auth_failures(:u)"), {"u": user_id})
+
+    async def set_password(
+        self, user_id: uuid.UUID, password_hash: str, *, must_change: bool
+    ) -> None:
+        """A new password on the caller's own row (users_self), its age restarted."""
+        stmt = identity_scope(
+            update(User)
+            .where(User.id == user_id)
+            .values(
+                hashed_password=password_hash,
+                password_changed_at=func.now(),
+                password_must_change=must_change,
+            )
+        ).execution_options(synchronize_session=False)
+        result = await self.db.execute(stmt)
+        if _rowcount(result) != 1:
+            raise RowCountError(1, _rowcount(result))
+
+    async def set_must_change(self, user_id: uuid.UUID) -> None:
+        """`password_must_change = true` on the caller's own row (the password step under `all`
+        with a password that breaks the current rules, before a code step answers)."""
+        stmt = identity_scope(
+            update(User).where(User.id == user_id).values(password_must_change=True)
+        ).execution_options(synchronize_session=False)
+        result = await self.db.execute(stmt)
+        if _rowcount(result) != 1:
+            raise RowCountError(1, _rowcount(result))
+
+    async def touch_mfa_changed(self, user_id: uuid.UUID) -> None:
+        """`mfa_last_changed_at = now()` on the caller's own row (a factor bound or replaced)."""
+        stmt = identity_scope(
+            update(User).where(User.id == user_id).values(mfa_last_changed_at=func.now())
+        ).execution_options(synchronize_session=False)
+        result = await self.db.execute(stmt)
+        if _rowcount(result) != 1:
+            raise RowCountError(1, _rowcount(result))
+
+    async def password_hashes(self, user_id: uuid.UUID) -> builtins.list[str]:
+        """The current hash, then the kept history newest first: at most 10 (DPP 1.4.1)."""
+        current = await self.self_row(user_id)
+        hashes = [current.hashed_password] if current and current.hashed_password else []
+        stmt = (
+            select(UserPasswordHistory.hashed_password)
+            .where(UserPasswordHistory.user_id == user_id)
+            .order_by(UserPasswordHistory.created_at.desc(), UserPasswordHistory.id.desc())
+            .limit(PASSWORD_HISTORY_KEPT)
+        )
+        hashes += [str(h) for h in (await self.db.execute(stmt)).scalars().all()]
+        return hashes
 
     async def is_platform_admin(self, user_id: uuid.UUID) -> bool:
         """The caller's own flag (users_self needs `app.user_id` = `user_id`); False for an
@@ -228,6 +400,8 @@ class RefreshTokenRepository:
         expires_at: datetime,
         ip: str | None = None,
         user_agent: str | None = None,
+        amr: builtins.list[str] | None = None,
+        mfa_at: datetime | None = None,
     ) -> uuid.UUID:
         """A new refresh row (id chosen here, so no RETURNING has to pass a SELECT policy)."""
         row_id = uuid.uuid4()
@@ -241,6 +415,8 @@ class RefreshTokenRepository:
                 expires_at=expires_at,
                 ip=ip,
                 user_agent=user_agent,
+                amr=amr,
+                mfa_at=mfa_at,
             )
         )
         await self.db.execute(stmt)
@@ -257,6 +433,8 @@ class RefreshTokenRepository:
                 RefreshToken.family_id,
                 RefreshToken.revoked_at,
                 RefreshToken.expires_at,
+                RefreshToken.amr,
+                RefreshToken.mfa_at,
             )
             .where(RefreshToken.token_hash == token_hash)
             .with_for_update()
@@ -298,6 +476,78 @@ class RefreshTokenRepository:
             expect_live=False,
         )
 
+    async def step_up_family(
+        self,
+        tenant_id: uuid.UUID,
+        family_id: uuid.UUID,
+        user_id: uuid.UUID,
+        *,
+        amr: builtins.list[str],
+        mfa_at: datetime,
+    ) -> int:
+        """DPP-1: record a fresh code on the live rows of one family of `user_id` (the step-up
+        and a bearer enrolment); the count. AUTH-3's two statements: a locking read waits for a
+        concurrent refresh holding the predecessor, then the UPDATE (a fresh snapshot) sees the
+        committed successor, so a rotation in flight never makes the step-up answer 401."""
+        where = and_(
+            RefreshToken.tenant_id == tenant_id,
+            RefreshToken.family_id == family_id,
+            RefreshToken.user_id == user_id,
+            RefreshToken.revoked_at.is_(None),
+        )
+        await self.db.execute(
+            identity_scope(select(RefreshToken.id).where(where).with_for_update())
+        )
+        stmt = identity_scope(
+            update(RefreshToken).where(where).values(amr=amr, mfa_at=mfa_at)
+        ).execution_options(synchronize_session=False)
+        return _rowcount(await self.db.execute(stmt))
+
+    async def revoke_user_everywhere(
+        self, user_id: uuid.UUID, *, keep_family: uuid.UUID | None, reason: str
+    ) -> int:
+        """DPP-1: revoke every live refresh family of `user_id` in every tenant it belongs to,
+        except `keep_family`; the count. Needs `app.user_id` = `user_id` (memberships_own). Each
+        tenant is written under its own `app.tenant_id` with AUTH-3's locking read then UPDATE;
+        the caller's tenant GUC is put back afterwards."""
+        tenants = (
+            (
+                await self.db.execute(
+                    identity_scope(
+                        select(TenantMembership.tenant_id).where(
+                            TenantMembership.user_id == user_id
+                        )
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        previous = self.db.info.get(TENANT_INFO_KEY)
+        total = 0
+        try:
+            for tenant_id in tenants:
+                await set_gucs(self.db, tenant_id=tenant_id)
+                where = and_(
+                    RefreshToken.tenant_id == tenant_id,
+                    RefreshToken.user_id == user_id,
+                    RefreshToken.revoked_at.is_(None),
+                )
+                if keep_family is not None:
+                    where = and_(where, RefreshToken.family_id != keep_family)
+                await self.db.execute(
+                    identity_scope(select(RefreshToken.id).where(where).with_for_update())
+                )
+                stmt = identity_scope(
+                    update(RefreshToken)
+                    .where(where)
+                    .values(revoked_at=func.now(), revoked_reason=reason)
+                ).execution_options(synchronize_session=False)
+                total += _rowcount(await self.db.execute(stmt))
+        finally:
+            await _restore_tenant(self.db, previous)
+        return total
+
     async def _revoke(self, where: Any, reason: str, *, expect_live: bool) -> int:
         stmt = identity_scope(
             update(RefreshToken)
@@ -308,6 +558,15 @@ class RefreshTokenRepository:
         if expect_live and count < 1:
             raise RowCountError(1, count)
         return count
+
+
+async def _restore_tenant(session: AsyncSession, previous: Any) -> None:
+    """Put the caller's `app.tenant_id` back (unset when it had none)."""
+    if previous is not None:
+        await set_gucs(session, tenant_id=previous)
+        return
+    session.info.pop(TENANT_INFO_KEY, None)
+    await session.execute(select(func.set_config("app.tenant_id", "", True)))
 
 
 @dataclass(frozen=True, slots=True)

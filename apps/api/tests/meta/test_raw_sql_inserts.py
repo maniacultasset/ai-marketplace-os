@@ -17,7 +17,12 @@ RAW_INSERT = re.compile(
 # purge_tenant (0004/18) records its own run: a system actor with no request (it runs from the
 # migrator, never inside an HTTP request, so request_id is rightly NULL), and its `after` carries
 # mode and row counts, which audit()'s tenant allow-list would strip.
-ALLOWED = {"apps/api/alembic/sql/0004/18_purge_tenant.up.sql: INSERT INTO public.audit_log"}
+# 0011 (DPP-1) redefines purge_tenant with the same tombstone; its down file restores 0004's body.
+ALLOWED = {
+    "apps/api/alembic/sql/0004/18_purge_tenant.up.sql: INSERT INTO public.audit_log",
+    "apps/api/alembic/sql/0011/01_erasure.up.sql: INSERT INTO public.audit_log",
+    "apps/api/alembic/sql/0011/01_erasure.down.sql: INSERT INTO public.audit_log",
+}
 DEFINES_AUDIT = re.compile(r"CREATE\s+(OR\s+REPLACE\s+)?FUNCTION\s+(public\.)?audit\s*\(", re.I)
 
 

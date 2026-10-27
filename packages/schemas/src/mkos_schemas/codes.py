@@ -136,6 +136,11 @@ class ErrorCode(StrEnum):
     # --- rules ---
     MISSING_ATTRIBUTE = "MISSING_ATTRIBUTE"
 
+    # --- api (2.0.0, DPP-1, ADR-0021) ---
+    MFA_ENROLLMENT_REQUIRED = "MFA_ENROLLMENT_REQUIRED"
+
+    MFA_STEP_UP_REQUIRED = "MFA_STEP_UP_REQUIRED"
+
     # --- ai ---
     MODEL_UNAVAILABLE = "MODEL_UNAVAILABLE"
 
@@ -306,6 +311,8 @@ def _meta() -> dict[ErrorCode, CodeMeta]:
         ),
         ErrorCode.MARKETPLACE_UNKNOWN_ERROR: CodeMeta(ErrorClass.UNKNOWN, RetryClass.USER_ACTION),
         ErrorCode.METHOD_NOT_ALLOWED: CodeMeta(None, RetryClass.USER_ACTION),
+        ErrorCode.MFA_ENROLLMENT_REQUIRED: CodeMeta(None, RetryClass.USER_ACTION),
+        ErrorCode.MFA_STEP_UP_REQUIRED: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.MISSING_ATTRIBUTE: CodeMeta(ErrorClass.MISSING_DATA, RetryClass.USER_ACTION),
         ErrorCode.MODEL_UNAVAILABLE: CodeMeta(None, RetryClass.AUTO_RETRY),
         ErrorCode.NOT_FOUND: CodeMeta(None, RetryClass.USER_ACTION),

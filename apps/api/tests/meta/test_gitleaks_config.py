@@ -89,6 +89,20 @@ def test_parent_child_allowlist_rejects_prefix_and_suffix(config: dict[str, Any]
     assert compiled.fullmatch(" parent/child") is None
 
 
+# DPP-1: test passwords in two branch commits, replaced in a later one (the tree holds none)
+DPP1_TEST_PASSWORD_FINGERPRINTS = [
+    f"d03e78e83dd2728aaf01d98a771c1011cb773000:apps/api/tests/{path}:generic-api-key:{line}"
+    for path, line in (
+        ("api_requests.py", 23),
+        ("integration/test_signup_api.py", 31),
+        ("unit/test_signup.py", 47),
+        ("unit/test_signup.py", 472),
+        ("unit/test_signup.py", 812),
+        ("unit/test_auth_service_flows.py", 28),
+    )
+] + ["ffaa897db28819d6763f6da5b199041da632bed5:apps/api/tests/unit/test_cli.py:generic-api-key:264"]
+
+
 def test_gitleaksignore_pins_only_the_known_history_false_positives(repo_root: Path) -> None:
     entries = [
         line
@@ -99,4 +113,5 @@ def test_gitleaksignore_pins_only_the_known_history_false_positives(repo_root: P
         "be02277054e319009eee09390040f8ca0da8d940:docs/trace/c02.json:generic-api-key:2253",
         "be02277054e319009eee09390040f8ca0da8d940:docs/review/REQUIREMENTS-TRACE.md:"
         "generic-api-key:520",
+        *DPP1_TEST_PASSWORD_FINGERPRINTS,
     ]

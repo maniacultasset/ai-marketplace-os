@@ -94,6 +94,17 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "admin_signup_requests_list",
         "admin_signup_requests_approve",
         "admin_signup_requests_reject",
+        # DPP-1
+        "auth_login_mfa",
+        "auth_login_mfa_enroll",
+        "auth_login_mfa_confirm",
+        "auth_password_expired",
+        "auth_mfa_totp_enroll",
+        "auth_mfa_totp_confirm",
+        "auth_security",
+        "auth_mfa_recovery_codes",
+        "auth_mfa_step_up",
+        "auth_password_change",
     }
 )
 

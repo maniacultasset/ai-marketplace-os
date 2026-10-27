@@ -30,7 +30,7 @@ from types import MappingProxyType
 from typing import Final, Literal
 from urllib.parse import urlsplit
 
-from pydantic import Field, ValidationError, field_validator
+from pydantic import AwareDatetime, Field, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.model_prices import EMBEDDING_PRICE_USD_PER_MTOK, is_usable_openai_key
@@ -64,6 +64,11 @@ PIPELINE_STUB_DISTRIBUTION: Final[str] = "mkos-pipeline-stub"
 KMS_KEY_URI_RE: Final = re.compile(
     r"^projects/[a-z][a-z0-9-]{4,28}[a-z0-9]/locations/asia-south1/"
     r"keyRings/marketplace-os/cryptoKeys/oauth-token-key$"
+)
+# DPP-1 (ADR-0021): the separate key for MFA secrets, which only the api may use.
+MFA_KMS_KEY_URI_RE: Final = re.compile(
+    r"^projects/[a-z][a-z0-9-]{4,28}[a-z0-9]/locations/asia-south1/"
+    r"keyRings/marketplace-os/cryptoKeys/mfa-secret-key$"
 )
 FORBIDDEN_KMS_PARTS: Final[tuple[str, ...]] = ("keyRings/aimos", "cryptoKeys/marketplace-tokens")
 # Settings field -> env-var name: the marketplace, OAuth redirect and dashboard URLs a deployed
@@ -148,6 +153,7 @@ class Settings(BaseSettings):
     gcp_project_id: str | None = None
     gcp_region: str = "asia-south1"
     kms_key_uri: str | None = None  # .../keyRings/marketplace-os/cryptoKeys/oauth-token-key
+    mfa_kms_key_uri: str | None = None  # .../keyRings/marketplace-os/cryptoKeys/mfa-secret-key
     kms_local_dev_key: str = Field(
         default="bG9jYWxfZGV2X29ubHlfMzJfYnl0ZV9rZXlfMDAwMDA=", repr=False  # LocalKmsStub only
     )
@@ -162,6 +168,8 @@ class Settings(BaseSettings):
     access_token_ttl_minutes: int = Field(default=30, ge=1)
     refresh_token_ttl_days: int = Field(default=14, ge=1)
     password_hash_scheme: Literal["argon2id"] = "argon2id"  # noqa: S105 - a scheme name
+    mfa_enforcement: Literal["off", "all"] = "off"  # DPP-1: `off` keeps today's login and tokens
+    mfa_grace_until: AwareDatetime | None = None  # ISO 8601 with an offset; naive is refused
 
     # ---- models: per-provider keys ----
     llm_provider: Literal["openai", "deepseek"] = "openai"
@@ -211,6 +219,8 @@ class Settings(BaseSettings):
         "sentry_dsn",
         "gcp_project_id",
         "kms_key_uri",
+        "mfa_kms_key_uri",
+        "mfa_grace_until",
         "amazon_app_id",
         "amazon_authorize_url",
         "flipkart_authorize_url",
@@ -307,6 +317,34 @@ def _kms_errors(s: Settings) -> list[str]:
             "marketplace-os/cryptoKeys/oauth-token-key"
         )
     return errors
+
+
+def _mfa_errors(s: Settings) -> list[str]:
+    """DPP-1 (ADR-0021): a deployed api under `MFA_ENFORCEMENT=all` seals MFA secrets with its own
+    key, never the token key; the worker has no grant on it and refuses the variable."""
+    if s.app_env == "local":
+        return []
+    uri = s.mfa_kms_key_uri
+    if s.app_role == "worker":
+        return (
+            ["APP_ROLE=worker refuses MFA_KMS_KEY_URI (the api alone holds that key)"]
+            if uri
+            else []
+        )
+    if s.app_role != "api":
+        return []
+    if uri is None:
+        if s.mfa_enforcement == "all":
+            return [f"APP_ENV={s.app_env} requires MFA_KMS_KEY_URI for MFA_ENFORCEMENT=all"]
+        return []
+    if not MFA_KMS_KEY_URI_RE.fullmatch(uri):
+        return [
+            "MFA_KMS_KEY_URI must be projects/<project>/locations/asia-south1/keyRings/"
+            "marketplace-os/cryptoKeys/mfa-secret-key"
+        ]
+    if uri == s.kms_key_uri:
+        return ["MFA_KMS_KEY_URI must differ from KMS_KEY_URI"]
+    return []
 
 
 def _storage_errors(s: Settings) -> list[str]:
@@ -411,6 +449,7 @@ def _boot_errors(s: Settings) -> list[str]:
     if s.log_level.upper() not in logging.getLevelNamesMapping():
         errors.append("LOG_LEVEL is not a logging level")
     errors += _kms_errors(s)
+    errors += _mfa_errors(s)
     errors += _url_errors(s)
     errors += _storage_errors(s)
     errors += _embedding_errors(s)

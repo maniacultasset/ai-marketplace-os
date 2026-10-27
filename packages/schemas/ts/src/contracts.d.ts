@@ -60,6 +60,8 @@ export type ErrorCode =
   | "MARKETPLACE_ACCOUNT_CONFLICT"
   | "METHOD_NOT_ALLOWED"
   | "MISSING_ATTRIBUTE"
+  | "MFA_ENROLLMENT_REQUIRED"
+  | "MFA_STEP_UP_REQUIRED"
   | "MODEL_UNAVAILABLE"
   | "NOT_FOUND"
   | "NOT_IMPLEMENTED"
@@ -1535,12 +1537,18 @@ export interface ItemResult {
  * via the `definition` "JWTClaims".
  */
 export interface JWTClaims {
+  amr?:
+    | ["pwd" | "otp" | "rc"]
+    | ["pwd" | "otp" | "rc", "pwd" | "otp" | "rc"]
+    | ["pwd" | "otp" | "rc", "pwd" | "otp" | "rc", "pwd" | "otp" | "rc"]
+    | null;
   aud: string;
   email: string;
   exp: number;
   iat: number;
   iss: string;
   jti: string;
+  mfa_at?: number | null;
   /**
    * @minItems 1
    * @maxItems 4
@@ -1559,6 +1567,7 @@ export interface JWTClaims {
         "owner" | "operator" | "reviewer" | "admin",
         "owner" | "operator" | "reviewer" | "admin"
       ];
+  sid?: string | null;
   sub: string;
   tid: string;
   typ: "access" | "refresh";

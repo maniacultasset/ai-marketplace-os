@@ -148,6 +148,27 @@ source_modules =
 forbidden_modules =
     app.adapters.credentials
 
+# The MFA secret decrypt path (DPP-1, ADR-0021): only the MFA service opens a sealed TOTP
+# secret. Indirect imports count, so no router, service or repository reaches the unseal through
+# a helper; the one sanctioned edge is ignored, which also removes the chains through it.
+[importlinter:contract:mfa-secret-unseal-only-in-mfa-service]
+name = only app.services.mfa imports the MFA secret unseal
+type = forbidden
+source_modules =
+    app.api
+    app.services
+    app.repositories
+    app.cli
+    app.core
+    app.db
+    app.main
+    app.workers
+    app.admin
+forbidden_modules =
+    app.adapters.mfa_secrets
+ignore_imports =
+    app.services.mfa -> app.adapters.mfa_secrets
+
 # The AI seam (CANON.md:125; S14b T2): the pipeline (the in-repo stub now, the tagged
 # `mkos-pipeline` later) imports no app, web, DB or queue framework. Only installed packages can be
 # named; the stub's AST allowlist test covers openai, langgraph and boto3 (S14b C3).

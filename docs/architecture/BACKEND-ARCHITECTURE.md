@@ -2023,8 +2023,37 @@ sequenceDiagram
 - **Issuer:** FastAPI is the only issuer. NextAuth keeps our tokens inside its own encrypted session cookie and signs nothing for the API. **This departs from the site's "JWT via NextAuth" (L11517, L12380, L4948): T7, open.**
 - **Signing:** HS256 through PyJWT, decoded with exactly `algorithms=["HS256"]`. `JWT_SECRET` must differ per environment, so a staging token is useless in production.
 - **Lifetimes:** access token 30 minutes. Refresh token 14 days, rotated on every use, with reuse detection. Postgres `refresh_tokens` is the source of truth for logout. The optional Redis fast path is dropped (ADR-0004).
-- **Claims (frozen):** `{sub, tid, roles[], email, typ, jti, iss, aud, iat, exp}`, where `sub` is the user id and `tid` is the active brand.
+- **Claims (frozen):** `{sub, tid, roles[], email, typ, jti, iss, aud, iat, exp}`, where `sub` is the user id and `tid` is the active brand. Contract 2.0.0 (DPP-1, ADR-0021) adds the optional `{amr, mfa_at, sid}`, minted only under `MFA_ENFORCEMENT=all`.
 - **Passwords:** argon2id (pwdlib). Login is limited to 5 attempts per minute (§9.6).
+
+**MFA, lockout and password policy** [Decided by the user, 2026-10-27; ADR-0021 proposed] (Amazon DPP 1.2.2, 1.4.1; migration `0011_mfa_lockout`):
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant W as Web app
+  participant A as FastAPI
+  participant D as Postgres
+  U->>W: email and password
+  W->>A: POST /auth/login
+  A->>D: user row FOR UPDATE (app_begin_auth_attempt)
+  A->>A: one argon2id verify, lock check
+  A-->>W: status mfa_required + challenge_token
+  U->>W: 6-digit code
+  W->>A: POST /auth/login/mfa
+  A->>D: user row, then the challenge, FOR UPDATE
+  A->>A: unseal the TOTP secret (mfa-secret-key), match the step once
+  A-->>W: status signed_in, tokens with amr and mfa_at and sid
+```
+
+- **The sign-in states.** `POST /auth/login` answers a `LoginResult` whose `status` is `signed_in` (tokens) or the next step: `mfa_required` (`/auth/login/mfa`, a TOTP or a recovery code), `mfa_enrollment_required` (`/auth/login/mfa/enroll` then `/confirm`, 10 recovery codes) or `password_change_required` (`/auth/password/expired`). One shared `_sign_in()` in `app/services/auth.py` decides. The challenge is an opaque token (sha256 stored), 5 attempts, 5 minutes (15 to enrol), bound to its purpose.
+- **Enforcement.** `MFA_ENFORCEMENT=off|all` and `MFA_GRACE_UNTIL` (ENV.md). Under `off` the login and tokens behave as before; the MFA routes answer 501. Under `all`, platform admins and first logins enrol at once, others after the grace date; a refresh or tenant switch is refused once the session's code is 7 days old (no grace for admins).
+- **Step-up.** `require_recent_mfa` guards `members_patch` and `marketplaces_connect` (TOTP or recovery code) and `marketplaces_accounts_revoke` and the sign-up approve/reject (TOTP only): a code from the last 600 s, else 403 `MFA_STEP_UP_REQUIRED` (or `MFA_ENROLLMENT_REQUIRED` with no factor). `POST /auth/mfa/step-up` mints a fresh access token and records the code on the session's refresh family (`sid`).
+- **Lockout.** One counter (`users.failed_auth_count`) for wrong passwords and codes on 11 verify paths; at 10 the account locks for 15 minutes (`locked_until`) behind the same 401. Each path takes the user row lock first, so parallel guesses are serialised; the counter commits before the refusal is raised; it clears only after a full sign-in or `user unlock`.
+- **Passwords.** DPP 1.4.1 read literally (`app/core/password_policy.py`): 12-1024 characters, upper, lower, digit and symbol, no email local part or name token, none of the last 10, at most one self-service change a day, a forced change after 365 days or after a staff-set password. Signup, both change routes and the staff CLI apply them.
+- **Secrets.** TOTP secrets are sealed with `seal_bytes` under `mfa-secret-key` (AAD bound to the user) and opened only in `app.services.mfa` (import contract `mfa-secret-unseal-only-in-mfa-service`). Recovery codes and challenges are stored as sha256 only.
+- **Staff.** `user unlock` and `user reset-mfa` (audited migrator transactions; production through `deploy.sh tenant unlock|reset-mfa`) after the identity check in `docs/runbooks/MFA-STAFF.md`.
 
 **Memberships and onboarding** [Decided] (ADR-0006; provisional under T23, because it departs from the site's per-tenant `users`, L5885–5892):
 - **Identity:** global users with a unique lower-cased email, plus a `tenant_memberships` table (user × brand × role).

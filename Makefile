@@ -193,6 +193,9 @@ api-tests:
 	cov="$$(mktemp)"; trap 'rm -f "$$cov"' EXIT; \
 	  uv run --frozen coverage json -q --include='*/app/services/rules_engine/*' -o "$$cov" && \
 	  uv run --frozen python scripts/ci/branch_coverage.py "$$cov" --min 90 --label rules_engine
+	cov="$$(mktemp)"; trap 'rm -f "$$cov"' EXIT; \
+	  uv run --frozen coverage json -q --include='*/app/core/totp.py,*/app/core/recovery_codes.py,*/app/core/password_policy.py,*/app/services/sign_in_policy.py' -o "$$cov" && \
+	  uv run --frozen python scripts/ci/branch_coverage.py "$$cov" --min 90 --label dpp_auth
 
 # The second api-tests shard (S26): mos_test at head with the dictionary synced, then shard 2.
 .PHONY: api-tests-integration
