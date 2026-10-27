@@ -25,7 +25,7 @@ from app.services import mfa as mfa_service
 from mkos_schemas.auth import JWTClaims
 
 NOW = datetime.now(UTC)
-PASSWORD = "Long-enough-Pass-0123"
+PASSWORD = "Brass-Lantern-Path-0123"
 WEAK = "weakpassword"
 
 

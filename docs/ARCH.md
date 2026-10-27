@@ -109,6 +109,15 @@ EXECUTION-PLAN.md §6.2.
 
 Source: BACKEND-ARCHITECTURE.md §9.1; CANON.md migration ledger; EXECUTION-PLAN.md §6.2-6.3; ADR-0013 §Decision 4.
 
+**Sign-in and account security (DPP-1, ADR-0021, proposed).** Email and password (argon2id), then,
+under `MFA_ENFORCEMENT=all`, a TOTP code or a recovery code through an opaque challenge before any
+token; a forced enrolment, a forced password change and a 600-second step-up for sensitive
+routes. Ten failed passwords or codes lock an account for 15 minutes on every verify path, behind
+the same 401 (DPP 1.2.2), whatever the enforcement mode. Passwords follow DPP 1.4.1 literally (12+
+characters, four classes, no name, a day's minimum age, 365 days' maximum, none of the last 10).
+TOTP secrets are sealed under their own KMS key, `mfa-secret-key`, which only the api may open.
+Detail: BACKEND-ARCHITECTURE.md §9.2; staff unlock and MFA reset: `docs/runbooks/MFA-STAFF.md`.
+
 ## 5. Environments
 
 | | Local | Staging | Production |

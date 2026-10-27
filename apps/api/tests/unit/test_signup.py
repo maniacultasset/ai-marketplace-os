@@ -44,7 +44,7 @@ GOOD: dict[str, Any] = {
     "brand_name": "Kalakar Weaves",
     "owner_name": "Meera Iyer",
     "email": "Founder@Kalakar.Example",
-    "password": "Long-enough-Pass-0123",
+    "password": "Brass-Lantern-Path-0123",
 }
 
 
@@ -55,7 +55,7 @@ def test_signup_minimal_body_valid_and_email_lowered() -> None:
     body = SignupCreate.model_validate(GOOD)
     assert body.email == "founder@kalakar.example"
     assert body.phone is None and body.website is None
-    assert body.password.get_secret_value() == "Long-enough-Pass-0123"
+    assert body.password.get_secret_value() == "Brass-Lantern-Path-0123"
 
 
 def test_signup_optional_fields_valid() -> None:
@@ -469,7 +469,7 @@ def _install(monkeypatch: pytest.MonkeyPatch, world: World) -> None:
 async def _signup(**changes: Any) -> svc.SignupAccepted:
     kwargs: dict[str, Any] = {
         "email": "founder@kalakar.example",
-        "password": "Long-enough-Pass-0123",
+        "password": "Brass-Lantern-Path-0123",
         "brand_name": "Kalakar Weaves",
         "owner_name": "Meera Iyer",
         "phone": None,
@@ -481,7 +481,7 @@ async def _signup(**changes: Any) -> svc.SignupAccepted:
 
 def _user(world: World, *, active: bool = True) -> UserRow:
     user = UserRow(
-        uuid.uuid4(), "founder@kalakar.example", "hash:Long-enough-Pass-0123", active, None
+        uuid.uuid4(), "founder@kalakar.example", "hash:Brass-Lantern-Path-0123", active, None
     )
     world.users[user.email] = user
     return user
@@ -494,7 +494,7 @@ async def test_signup_new_email_creates_user_and_pending(monkeypatch: pytest.Mon
     assert accepted.status == "pending"
     [made] = world.inserted_users
     assert made["email"] == "founder@kalakar.example"
-    assert made["password_hash"] == "hash:Long-enough-Pass-0123"
+    assert made["password_hash"] == "hash:Brass-Lantern-Path-0123"
     assert made["display_name"] == "Meera Iyer"
     assert "is_platform_admin" not in made
     assert world.requests[accepted.request_id].user_id == made["user_id"]
@@ -619,12 +619,12 @@ async def test_signup_status_refusals_none(monkeypatch: pytest.MonkeyPatch) -> N
     user = _user(world)
     assert await svc.signup_status(user.email, "wrong-password!!") is None
     assert world.failures == [user.id]
-    assert await svc.signup_status(user.email, "Long-enough-Pass-0123") is None  # no request
+    assert await svc.signup_status(user.email, "Brass-Lantern-Path-0123") is None  # no request
     row = _row(user_id=user.id)
     world.requests[row.id] = row
-    assert await svc.signup_status(user.email, "Long-enough-Pass-0123") == row
+    assert await svc.signup_status(user.email, "Brass-Lantern-Path-0123") == row
     world.locked = True
-    assert await svc.signup_status(user.email, "Long-enough-Pass-0123") is None
+    assert await svc.signup_status(user.email, "Brass-Lantern-Path-0123") is None
 
 
 def _admin() -> Principal:
@@ -809,7 +809,7 @@ def test_signup_website_refuses_control_characters(website: str) -> None:
         "brand_name": "Acme",
         "owner_name": "Owner",
         "email": "owner@acme.test",
-        "password": "Long-enough-Pass-0123",
+        "password": "Brass-Lantern-Path-0123",
         "website": website,
     }
     with pytest.raises(ValidationError):

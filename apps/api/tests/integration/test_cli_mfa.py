@@ -18,7 +18,7 @@ EMAIL = "owner@acme.test"
 UNLOCK = ["user", "unlock", "--email", EMAIL, "--staff-email", "staff@ops.test"]
 RESET = ["user", "reset-mfa", "--email", EMAIL, "--staff-email", "staff@ops.test"]
 SET = ["user", "set-password", "--email", EMAIL, "--staff-email", "staff@ops.test"]
-FRESH = "Staff-Given-Lantern-42"
+FRESH = "Brass-Harbour-Path-4400"
 
 
 @pytest.fixture

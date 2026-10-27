@@ -28,7 +28,7 @@ SIGNUP = f"{PREFIX}/signup"
 STATUS = f"{PREFIX}/signup/status"
 QUEUE = f"{PREFIX}/admin/signup-requests"
 ADMIN = "operator@acme.test"
-PASSWORD = "Loom-Weave-Pass-0123"  # DPP-1: meets the DPP 1.4.1 rules
+PASSWORD = "Quiet-Harbour-Lamp-7305"  # DPP-1: meets the DPP 1.4.1 rules
 FORM: dict[str, Any] = {
     "brand_name": "Kalakar Weaves",
     "owner_name": "Meera Iyer",

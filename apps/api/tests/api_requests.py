@@ -20,7 +20,7 @@ VERSION_ID = str(uuid.UUID("0b1c2d3e-0000-4000-8000-00000000abce"))
 ETAG = f'"{VERSION_ID}"'
 IDEMPOTENCY = {"Idempotency-Key": "test-key-0001"}
 # DPP-1: meets the DPP 1.4.1 rules (12+ characters, four classes, no name or email part)
-COMPLIANT_PASSWORD = "Long-enough-Pass-0123"
+COMPLIANT_PASSWORD = "Brass-Lantern-Path-0123"
 
 _LISTING_JSON = {
     k: v for k, v in SUCCESS_EXAMPLES["listings_get"]["content"].items() if k != "listing_id"

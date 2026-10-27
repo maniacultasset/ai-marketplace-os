@@ -56,3 +56,57 @@ Until a backend step ships, its operations answer **501** on the real API, but t
 1. The owner clicks "Connect Amazon" or "Connect Flipkart". Call `marketplaces_connect`, then send the browser to the consent URL it returns.
 2. The marketplace sends the browser back to the backend's callback. The backend validates the state, exchanges the code, seals the tokens, and redirects to the dashboard with a one-time handle.
 3. The dashboard calls `marketplaces_connect_confirm` with that handle. The account appears in `marketplaces_accounts`. Its status is `active`, or later `needs_reconnect`, which means you should show a "Reconnect" button.
+
+## 6. MFA, lockout and passwords (contract 2.0.0; DPP-1, ADR-0021)
+
+The backend ships with `MFA_ENFORCEMENT=off`: the login answers `status: "signed_in"` with today's
+token fields, the MFA routes answer 501 "MFA is not enabled", and only the lockout and the
+password rules are live. Build every screen below before the backend switches to `all`.
+
+1. **Login second step.** Read `status` before storing tokens; only `signed_in` carries them. Any
+   other status carries a `challenge_token`: keep it in memory only, never in localStorage. The code
+   input uses `inputMode="numeric"` and `autocomplete="one-time-code"`, with a "Use a recovery code"
+   link (`recovery_code`). POST `/api/v1/auth/login/mfa`. Add exactly the four challenge routes
+   `/auth/login/mfa`, `/auth/login/mfa/enroll`, `/auth/login/mfa/confirm` and
+   `/auth/password/expired` to the no-refresh public paths with **exact** matching, so a 401 there
+   never triggers a refresh or a logout. The bearer routes `/auth/mfa/totp/enroll` and
+   `/auth/mfa/totp/confirm` must **not** be on that list (they need the bearer).
+2. **Enrolment.** At login (`mfa_enrollment_required`): POST `/auth/login/mfa/enroll
+   {challenge_token}`, then `/auth/login/mfa/confirm {challenge_token, code}`; the answer carries
+   `recovery_codes` and `result` (a `LoginResult`). In settings: POST `/auth/mfa/totp/enroll` (with
+   `current_password` while there is no factor), then `/auth/mfa/totp/confirm {code}`; the answer
+   carries `recovery_codes` only. Render `otpauth_uri` as a QR code on the client as a `data:` URL
+   and show `secret_b32` grouped for manual entry. The `enroll` challenge lives 15 minutes.
+3. **Recovery codes screen.** Show the 10 codes once, with copy and download, and an "I saved these"
+   checkbox that gates Continue. `result` (when present) is the `LoginResult` to continue with. Warn
+   when `GET /auth/security` shows `recovery_codes_left <= 3`.
+4. **Account security settings.** `GET /auth/security` gives the MFA status, codes left,
+   enforcement, grace date and password expiry date. Replace the authenticator with the
+   `/auth/mfa/totp/*` pair; when a factor exists it needs a step-up done with a TOTP **or a recovery
+   code** (lost phone). Regenerate codes with `POST /auth/mfa/recovery-codes` under a step-up.
+   Change the password with `POST /auth/password`. Show a grace banner while `mfa_grace_until` is
+   set and no factor exists.
+5. **Password change and expiry.** On `password_change_required`, show the new-password screen and
+   POST `/auth/password/expired` with the challenge. Forms show the 422 rule messages from
+   `error.message` and `error.details`. Rules: 12+ characters, upper, lower, digit and symbol, no
+   name or email part, not one of the last 10; a change is allowed once a day; a password expires
+   after 365 days.
+6. **Step-up dialog.** On 403 `MFA_STEP_UP_REQUIRED`, ask for a code (or a recovery code, except on
+   admin actions: account revoke and the sign-up approve/reject take a TOTP only), POST
+   `/auth/mfa/step-up`, swap the access token, and retry the request once. `StepUpOut` has no
+   `refresh_token`: swap only the access token and never pass it through the code that stores both
+   tokens (it would wipe the stored refresh token). A 401 from step-up means the session has no MFA
+   family yet: refresh once, then retry. On 403 `MFA_ENROLLMENT_REQUIRED`, route to enrolment.
+7. **Under `off`** the MFA routes answer 501; hide the MFA card when `GET /auth/security` shows
+   `enforcement: "off"`.
+8. **Signup form (live now).** `POST /signup` answers 422 `VALIDATION_FAILED` for a password that
+   breaks the rules (the name rule checks the email local part and `owner_name`); show the
+   `details` messages under the password field and list the rules as helper text. The `request_id`
+   in the 202 is not stable for an existing email: do not store or compare it; read the request
+   through `POST /signup/status`.
+9. **Deploy order.** The backend release (still `off`) goes out before the FE change. If the FE
+   ships first, treat a login answer with no `status` as `signed_in`. `/auth/switch-tenant` and
+   `/auth/refresh` can answer 401 under `all` for a session whose code is 7 days old: treat it as an
+   expired session.
+10. **Lockout.** 10 failed passwords or codes lock the account for 15 minutes; the login keeps
+    answering the same 401 (there is no "locked" message). Staff unlock it on request.

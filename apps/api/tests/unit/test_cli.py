@@ -261,7 +261,7 @@ def test_user_reset_mfa_args(capsys: pytest.CaptureFixture[str]) -> None:
 
 def test_reset_mfa_password_never_from_argv(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as info:
-        cli.build_parser().parse_args([*RESET, "--password", "Long-enough-Pass-0123"])
+        cli.build_parser().parse_args([*RESET, "--password", "Brass-Lantern-Path-0123"])
     assert info.value.code == 2
 
 
