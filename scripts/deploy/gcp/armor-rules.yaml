@@ -1,0 +1,114 @@
+# The Cloud Armor rules of the `kuinn-api-waf` policy (DPP-2; ADR-0022; docs/runbooks/EDGE-CUTOVER.md).
+# `deploy.sh prod edge rules` converges the live policy to this file rule by rule
+# (scripts/deploy/gcp/armor_rules.py validates and renders it). Every rule stays in preview until
+# its group is listed in EDGE_ENFORCE (prod.env); `edge enforce` takes the listed groups out of
+# preview. The default rule (2147483647, allow) is rendered by the helper, never written here.
+#
+# Order matters: Cloud Armor applies the first matching rule, and a throttle or rate-based-ban
+# rule whose conform action is allow lets the request through. So the CRS rules (200-260, in the
+# enforce order) come before every rate rule (300+), or the rate rules would make them dead.
+#
+# Matches are CEL. `${name}` expands to the pattern of that name below. Rate rules and the CRS
+# skip read the decoded path (`request.path.urlDecode()`): `request.path` is the raw path, and the
+# app routes on the decoded one. RE2 only: no lookaround, no backreferences.
+version: 1
+
+patterns:
+  # Every route that checks a password or a TOTP/recovery code, by path (DPP-1 routes included;
+  # /auth/mfa/totp/enroll takes current_password while the account has no factor).
+  auth: "^/api/v1/(auth/(login(/[a-z-]+){0,2}|password(/expired)?|mfa/(step-up|totp/(enroll|confirm)))|signup(/status)?)$"
+  # Skipped by every CRS set, for POST only: the three multipart upload routes (Armor reads raw
+  # multipart bytes, first 64 kB only; the app validates file content) and the auth paths whose
+  # JSON body carries a password, a code or a refresh token (refresh and logout), since exclusions
+  # cannot target JSON body fields. Every other method on these paths is CRS-inspected.
+  crs_skip: "^/api/v1/(brand/documents|products/bulk|images/upload|auth/(login(/[a-z-]+){0,2}|password(/expired)?|mfa/(step-up|totp/(enroll|confirm))|refresh|logout)|signup(/status)?)$"
+
+rules:
+  - priority: 100
+    group: path
+    description: only /api/v1/* and /readyz reach the API (raw path; fails closed on encoding)
+    match: "!request.path.matches('^/(api/v1/|readyz$)')"
+    action: deny-404
+
+  - priority: 110
+    group: path
+    description: methods the API serves, plus HEAD and OPTIONS
+    match: "!request.method.matches('^(GET|HEAD|POST|PATCH|DELETE|OPTIONS)$')"
+    action: deny-403
+
+  - priority: 200
+    group: crs-lfi
+    description: OWASP CRS 4.22 local file inclusion
+    match: "!(request.method == 'POST' && request.path.urlDecode().matches('${crs_skip}'))"
+    action: deny-403
+    waf: {rule_set: lfi-v422-stable, sensitivity: 1, exclude_headers: [authorization]}
+
+  - priority: 210
+    group: crs-rfi
+    description: OWASP CRS 4.22 remote file inclusion
+    match: "!(request.method == 'POST' && request.path.urlDecode().matches('${crs_skip}'))"
+    action: deny-403
+    waf: {rule_set: rfi-v422-stable, sensitivity: 1, exclude_headers: [authorization]}
+
+  - priority: 220
+    group: crs-rce
+    description: OWASP CRS 4.22 remote code execution
+    match: "!(request.method == 'POST' && request.path.urlDecode().matches('${crs_skip}'))"
+    action: deny-403
+    waf: {rule_set: rce-v422-stable, sensitivity: 1, exclude_headers: [authorization]}
+
+  - priority: 230
+    group: crs-protocolattack
+    description: OWASP CRS 4.22 protocol attack
+    match: "!(request.method == 'POST' && request.path.urlDecode().matches('${crs_skip}'))"
+    action: deny-403
+    waf: {rule_set: protocolattack-v422-stable, sensitivity: 1, exclude_headers: [authorization]}
+
+  - priority: 240
+    group: crs-scannerdetection
+    description: OWASP CRS 4.22 scanner detection
+    match: "!(request.method == 'POST' && request.path.urlDecode().matches('${crs_skip}'))"
+    action: deny-403
+    waf: {rule_set: scannerdetection-v422-stable, sensitivity: 1, exclude_headers: [authorization]}
+
+  - priority: 250
+    group: crs-sqli
+    description: OWASP CRS 4.22 SQL injection
+    match: "!(request.method == 'POST' && request.path.urlDecode().matches('${crs_skip}'))"
+    action: deny-403
+    waf: {rule_set: sqli-v422-stable, sensitivity: 1, exclude_headers: [authorization]}
+
+  - priority: 260
+    group: crs-xss
+    description: OWASP CRS 4.22 cross-site scripting
+    match: "!(request.method == 'POST' && request.path.urlDecode().matches('${crs_skip}'))"
+    action: deny-403
+    waf: {rule_set: xss-v422-stable, sensitivity: 1, exclude_headers: [authorization]}
+
+  - priority: 300
+    group: rate
+    description: password and code checks per IP; throttle 20/60 s, ban 15 min over 60/10 min
+    match: "request.path.urlDecode().matches('${auth}') && request.method != 'OPTIONS'"
+    action: ban
+    rate: {count: 20, interval_sec: 60, ban_count: 60, ban_interval_sec: 600, ban_duration_sec: 900}
+
+  - priority: 320
+    group: rate
+    description: refresh-token checks (refresh, logout) per IP, 60/60 s
+    match: "request.path.urlDecode().matches('^/api/v1/auth/(refresh|logout)$') && request.method != 'OPTIONS'"
+    action: throttle
+    rate: {count: 60, interval_sec: 60}
+
+  - priority: 330
+    group: rate
+    description: readiness probe per IP, 30/60 s
+    match: "request.path.urlDecode().matches('^/readyz$') && request.method != 'OPTIONS'"
+    action: throttle
+    rate: {count: 30, interval_sec: 60}
+
+  - priority: 400
+    group: rate
+    description: every request per IP; ban 5 min over 1200/60 s
+    match: "request.method != 'OPTIONS'"
+    action: ban
+    rate: {count: 1200, interval_sec: 60, ban_duration_sec: 300}

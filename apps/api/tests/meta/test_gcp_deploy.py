@@ -30,6 +30,7 @@ SUBCOMMANDS = (
     "smoke",
     "tenant",
     "status",
+    "edge",
 )
 # Dummy secret values a deployed process would get from Secret Manager (never real ones).
 SECRET_VALUES = {
@@ -58,6 +59,8 @@ def toolkit(repo_root: Path, tmp_path: Path) -> Iterator[Path]:
     target = tmp_path / "repo" / DEPLOY
     target.mkdir(parents=True)
     for source in (repo_root / DEPLOY).iterdir():
+        if not source.is_file():
+            continue
         text = source.read_text(encoding="utf-8")
         if source.suffix == ".env":
             text = text.replace("__FILL_ME__", ORIGIN).replace(

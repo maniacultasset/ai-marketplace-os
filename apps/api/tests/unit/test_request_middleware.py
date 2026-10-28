@@ -189,9 +189,45 @@ def test_access_line_fields(app: FastAPI, log_lines: Start) -> None:
     assert access["status"] == 200
     assert isinstance(access["duration_ms"], float)
     assert access["severity"] == "INFO"
+    assert access["xff_entries"] == 1
     text = "\n".join(map(str, _server_lines(capture)))
     for leak in ("Zq9", "testclient", "203.0.113.9", "/items/42"):
         assert leak not in text
+
+
+@pytest.mark.parametrize(
+    ("headers", "count"),
+    [
+        ([], 0),
+        ([("X-Forwarded-For", "198.51.100.1")], 1),
+        ([("X-Forwarded-For", "198.51.100.1, 198.51.100.2, 198.51.100.3")], 3),
+        (
+            [
+                ("X-Forwarded-For", "198.51.100.1, 198.51.100.2"),
+                ("X-Forwarded-For", "198.51.100.3"),
+            ],
+            3,
+        ),
+        ([("X-Forwarded-For", ", ,198.51.100.1")], 1),
+        ([("X-Forwarded-For", "")], 0),
+        ([("X-Forwarded-For", ",".join(f"198.51.100.{i % 250}" for i in range(200)))], 200),
+        ([("X-Forwarded-For", "198.51.100.\xe9".encode("latin-1"))], 1),
+    ],
+    ids=["none", "one", "three", "two-headers", "blanks", "empty", "two-hundred", "non-ascii"],
+)
+def test_access_line_xff_counts(
+    app: FastAPI, log_lines: Start, headers: list[tuple[str, str | bytes]], count: int
+) -> None:
+    """DPP-2: the access line counts X-Forwarded-For entries (to measure HOPS through the load
+    balancer) and never logs an address."""
+    capture = log_lines()
+    raw = [(k.encode(), v if isinstance(v, bytes) else v.encode()) for k, v in headers]
+    _client(app).get("/items/1", headers=raw)
+    [access] = _access_lines(capture)
+    assert type(access["xff_entries"]) is int
+    assert access["xff_entries"] == count
+    text = "\n".join(map(str, _server_lines(capture)))
+    assert "198.51.100" not in text
 
 
 def test_access_line_unmatched_route(app: FastAPI, log_lines: Start) -> None:

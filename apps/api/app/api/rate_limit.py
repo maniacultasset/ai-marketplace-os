@@ -20,7 +20,9 @@ raw header: local has no proxy (0: the ASGI peer); staging and production take t
 on the `run.app` URL, where Google's front end appends only the client address (1: the right-most
 entry; a caller-written entry is always to its left). Put a load balancer in front and this becomes
 2 (`<client>,<lb>`) in the same change. With fewer entries than `hops`, the left-most present entry
-is used.
+is used. The access log carries the entry count as `xff_entries` (never the values), which is how
+the cutover measures it; `HOPS["production"]` changes only in the cutover PR
+(docs/runbooks/EDGE-CUTOVER.md steps 4-5; KNOWN-ISSUES.md S25 hop counts).
 """
 
 from __future__ import annotations

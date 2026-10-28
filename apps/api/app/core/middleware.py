@@ -62,6 +62,16 @@ def _inbound_request_id(scope: Scope) -> str | None:
     return raw.decode("latin-1") if isinstance(raw, bytes) else None
 
 
+def _xff_entries(scope: Scope) -> int:
+    """How many non-blank entries every X-Forwarded-For header holds (DPP-2: measures the proxy
+    hops in front of the app; the same parse as `app.api.rate_limit.client_ip`). Never a value."""
+    count = 0
+    for name, value in scope.get("headers") or ():
+        if name.lower() == b"x-forwarded-for":
+            count += sum(1 for entry in value.decode("latin-1").split(",") if entry.strip())
+    return count
+
+
 def _route_template(scope: Scope) -> str:
     route = scope.get("route")
     path = getattr(route, "path", None)
@@ -165,7 +175,12 @@ class RequestContextMiddleware:
                 )
             if not probe:
                 _access_log.info(
-                    "request", method=method, route=route, status=status, duration_ms=duration_ms
+                    "request",
+                    method=method,
+                    route=route,
+                    status=status,
+                    duration_ms=duration_ms,
+                    xff_entries=_xff_entries(scope),
                 )
             if span is not None:
                 _finish_span(span, method, route, status, request_id, failure)
