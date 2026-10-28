@@ -39,6 +39,12 @@ queue entry carries only `{"timestamp"}`, never tenant data.
   through `refresh_account` (its own lock and short transactions), one after another. One
   account's failure is logged and the pass goes on.
 - `prune_oauth_states` (hourly, S15): expired OAuth state and pending rows, tenant by tenant.
+- `purge_disconnected_accounts` (daily, in the maintenance job only, Amazon DPP 1.7): every
+  account revoked or disconnected for 25 days goes through `purge_marketplace_account` (migration
+  0011b) as `migrator`, one account per transaction; its submission objects are deleted before
+  that transaction commits. One account's failure is logged and the pass goes on. Not a worker
+  slot: the worker has no migrator URL, and `app.workers.maintenance` runs it with the other
+  daily steps.
 - `schedule_status_sync` (every minute, S21 T22; DATABASE.md:770): the due listings through
   `platform_scope()` (ids only), then per listing in its tenant's `unit_of_work`: re-check under
   `FOR UPDATE SKIP LOCKED`, enqueue a `listing_status_sync` job (no user) and set `next_sync_at`
@@ -50,7 +56,7 @@ from __future__ import annotations
 
 import random
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -60,7 +66,7 @@ from uuid import UUID
 import procrastinate
 from mkos_schemas.codes import ErrorCode
 
-from app.adapters.storage import get_storage, images_bucket
+from app.adapters.storage import get_storage, images_bucket, submissions_bucket
 from app.core.alerts import (
     DEAD_LETTER_CAP,
     DEAD_LETTER_CAP_WINDOW,
@@ -73,7 +79,7 @@ from app.core.flags import enabled_marketplaces
 from app.core.logging import get_logger
 from app.core.request_context import new_request_id, request_context
 from app.db.session import platform_scope, unit_of_work
-from app.repositories import rate_limits, retention
+from app.repositories import account_purge, rate_limits, retention
 from app.repositories.idempotency import IdempotencyKeyRepository
 from app.repositories.images import ImageRepository
 from app.repositories.jobs import (
@@ -475,6 +481,53 @@ async def retention_daily(job_manager: Any | None = None) -> dict[str, int]:
         totals["image_orphans"] = 0
     log.info("periodic.retention", **totals)
     return totals
+
+
+ACCOUNT_PURGE_BATCH: Final = 100
+
+
+async def purge_disconnected_accounts() -> dict[str, int]:
+    """Purge every account revoked or disconnected for 25 days (DPP 1.7); counts per outcome.
+    Logs carry ids and counts only, never a seller id or an object key."""
+    async with platform_scope() as session:
+        due = await account_purge.due_accounts(session, limit=ACCOUNT_PURGE_BATCH)
+    counts = {"purged": 0, "failed": 0, "objects": 0}
+    if not due:
+        log.info("periodic.accounts_purged", **counts)
+        return counts
+    storage = get_storage()
+    bucket = submissions_bucket()
+
+    async def delete_objects(keys: Sequence[str]) -> None:
+        for key in keys:
+            await storage.delete(bucket, key)
+
+    async with account_purge.purger() as purger:
+        for tenant_id, account_id in due:
+            try:
+                result = await purger.purge(tenant_id, account_id, delete_objects)
+            except Exception as exc:
+                # this account's transaction rolled back alone (rows and objects stay together);
+                # the next daily run retries it, and one bad account never blocks another
+                log.exception(
+                    "marketplace.account_purge_failed",
+                    tenant_id=str(tenant_id),
+                    account_id=str(account_id),
+                    error_class=type(exc).__name__,
+                )
+                counts["failed"] += 1
+                continue
+            counts["purged"] += 1
+            counts["objects"] += result.objects
+            log.info(
+                "marketplace.account_purged",
+                tenant_id=str(tenant_id),
+                account_id=str(account_id),
+                rows=sum(result.row_counts.values()),
+                objects=result.objects,
+            )
+    log.info("periodic.accounts_purged", **counts)
+    return counts
 
 
 # ---- S23 T24: the alert checks (AC11; D7, C8, C9) ----

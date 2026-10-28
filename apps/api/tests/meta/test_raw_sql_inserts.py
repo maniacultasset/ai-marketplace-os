@@ -22,6 +22,9 @@ ALLOWED = {
     "apps/api/alembic/sql/0004/18_purge_tenant.up.sql: INSERT INTO public.audit_log",
     "apps/api/alembic/sql/0011/01_erasure.up.sql: INSERT INTO public.audit_log",
     "apps/api/alembic/sql/0011/01_erasure.down.sql: INSERT INTO public.audit_log",
+    # 0011b (DPP 1.7): purge_marketplace_account writes its tombstone the same way (row counts,
+    # which the marketplace_account allow-list would strip; no request)
+    "apps/api/alembic/sql/0011b/01_account_purge.up.sql: INSERT INTO public.audit_log",
 }
 DEFINES_AUDIT = re.compile(r"CREATE\s+(OR\s+REPLACE\s+)?FUNCTION\s+(public\.)?audit\s*\(", re.I)
 
