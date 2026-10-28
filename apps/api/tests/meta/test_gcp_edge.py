@@ -264,7 +264,13 @@ def run_live(
     bin_dir = tmp_path / "bin"
     _fake(bin_dir, "gcloud", LIVE_GCLOUD)
     _fake(bin_dir, "curl", FAKE_CURL)
-    (tmp_path / "gcloud.json").write_text(json.dumps(responses or []), encoding="utf-8")
+    # The KMS keys exist unless a test's own rule (matched first) says otherwise: a deploy checks
+    # them before `run deploy` (the kms guard).
+    rules = [
+        *(responses or []),
+        {"match": "kms keys describe", "stdout": "projects/p/cryptoKeys/k\n"},
+    ]
+    (tmp_path / "gcloud.json").write_text(json.dumps(rules), encoding="utf-8")
     (tmp_path / "curl.json").write_text(json.dumps(curl or []), encoding="utf-8")
     env = _env(tmp_path, bin_dir, extra)
     result = _exec(toolkit, tmp_path, env, (*args, "--sha", SHA), "bash")

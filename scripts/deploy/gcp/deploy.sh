@@ -88,6 +88,9 @@ SMOKE_SLEEP="${SMOKE_SLEEP:-6}"
 MFA_ENFORCEMENT="${MFA_ENFORCEMENT:-off}"
 MFA_GRACE_UNTIL="${MFA_GRACE_UNTIL:-}"
 KMS_MFA_KEY="${KMS_MFA_KEY:-mfa-secret-key}"
+# DPP 2.7.4: where Cloud SQL keeps its automated backups; an env file without the key keeps them in
+# the instance's region, as before.
+SQL_BACKUP_LOCATION="${SQL_BACKUP_LOCATION:-$REGION}"
 case "$MFA_ENFORCEMENT" in
   off | all) ;;
   *) die "MFA_ENFORCEMENT must be off or all (in $ENV_NAME.env)" ;;
@@ -309,6 +312,32 @@ setup_apis() {
   gc logging buckets update _Default --location=global --retention-days="$LOG_RETENTION_DAYS"
 }
 
+# The 400-day security-logs bucket (DPP 2.6.1: security logs kept at least 12 months). Shared by
+# `setup` (the api's own events) and `edge alerts` (the load balancer's).
+ensure_security_bucket() {
+  if gq logging buckets describe "$EDGE_LOG_BUCKET" --location=global --format='value(name)' >/dev/null; then
+    gc logging buckets update "$EDGE_LOG_BUCKET" --location=global --retention-days=400
+  else
+    gc logging buckets create "$EDGE_LOG_BUCKET" --location=global --retention-days=400
+  fi
+}
+
+# DPP 2.6.1: the api's security events outlive the 30-day _Default bucket. The sink copies the
+# sign-in events (`auth.*` log lines: ids and an ip hash only, app/services/auth_events.py) and the
+# refused requests (401, 403, 429) from Cloud Run's request log into security-logs. OAuth callback
+# URLs carry code and state, so they are never copied.
+setup_security_logs() {
+  local filter dest
+  ensure_security_bucket
+  filter="resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"$API_SERVICE\" AND (jsonPayload.message=~\"^auth\\\\.\" OR (logName:\"run.googleapis.com%2Frequests\" AND (httpRequest.status=401 OR httpRequest.status=403 OR httpRequest.status=429) AND NOT httpRequest.requestUrl:\"/callback\"))"
+  dest="logging.googleapis.com/projects/$PROJECT/locations/global/buckets/$EDGE_LOG_BUCKET"
+  if gq logging sinks describe "$APP_SECURITY_SINK" --format='value(name)' >/dev/null; then
+    gc logging sinks update "$APP_SECURITY_SINK" "$dest" --log-filter="$filter"
+  else
+    gc logging sinks create "$APP_SECURITY_SINK" "$dest" --log-filter="$filter"
+  fi
+}
+
 setup_registry() {
   gq artifacts repositories describe "$AR_REPO" --location="$REGION" --format='value(name)' >/dev/null ||
     gc artifacts repositories create "$AR_REPO" --location="$REGION" --repository-format=docker \
@@ -454,11 +483,17 @@ setup_sql() {
       say "Cloud SQL flags differ ('$current'); patching to '$want' (this may restart the instance)"
       gc sql instances patch "$SQL_INSTANCE" --database-flags="$(sql_flags)"
     fi
+    # DPP 2.7.4: new backups go to SQL_BACKUP_LOCATION; existing backups stay where they were taken.
+    current="$(gq sql instances describe "$SQL_INSTANCE" --format='value(settings.backupConfiguration.location)')"
+    if [ "$current" != "$SQL_BACKUP_LOCATION" ]; then
+      say "Cloud SQL backups are in '$current'; moving new backups to $SQL_BACKUP_LOCATION"
+      gc sql instances patch "$SQL_INSTANCE" --backup-location="$SQL_BACKUP_LOCATION"
+    fi
   else
     gc sql instances create "$SQL_INSTANCE" --database-version=POSTGRES_17 --edition=ENTERPRISE \
       --tier="$SQL_TIER" --region="$REGION" --availability-type=zonal --storage-type=SSD \
       --storage-size="${SQL_STORAGE_GB}GB" --storage-auto-increase \
-      --backup-start-time=20:30 --backup-location="$REGION" --retained-backups-count=7 \
+      --backup-start-time=20:30 --backup-location="$SQL_BACKUP_LOCATION" --retained-backups-count=7 \
       --enable-point-in-time-recovery --retained-transaction-log-days="$SQL_PITR_DAYS" \
       --retain-backups-on-delete --maintenance-window-day=SUN --maintenance-window-hour=21 \
       --database-flags="$(sql_flags)" --insights-config-query-insights-enabled \
@@ -531,6 +566,7 @@ cmd_setup() {
   check_filled
   cmd_preflight
   setup_apis
+  setup_security_logs
   setup_registry
   setup_accounts
   setup_kms
@@ -806,12 +842,30 @@ deploy_worker() {
     --labels="$LABELS"
 }
 
+# ADR-0018 and ADR-0021: the api reads both keys at run time. A key that `setup` never created (a
+# release that added a key, deployed without `setup`) would fail every MFA enrolment or token seal
+# after traffic moved, so the deploy refuses first.
+kms_guard() {
+  local key
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "kms guard: skipped (dry run)"
+    return 0
+  fi
+  for key in "$KMS_KEY" "$KMS_MFA_KEY"; do
+    gq kms keys describe "$key" --keyring="$KMS_KEYRING" --location="$REGION" \
+      --format='value(name)' >/dev/null ||
+      die "KMS key $key is missing or unreadable in $PROJECT: run scripts/deploy/gcp/deploy.sh $ENV_NAME setup first"
+  done
+  say "kms guard: OK ($KMS_KEY, $KMS_MFA_KEY)"
+}
+
 cmd_deploy() {
   check_filled
   check_ingress
   local image url
   url="$(api_url)"
   live_guard "$url"
+  kms_guard
   image="$(image_ref)"
   deploy_api "$image" "$url"
   [ "$DRY_RUN" -eq 1 ] || [ -n "$API_PUBLIC_URL" ] || url="$(service_url)"
@@ -881,6 +935,7 @@ cmd_smoke() {
 cmd_release() {
   check_ingress
   live_guard "$(api_url)"
+  kms_guard
   cmd_build
   cmd_migrate
   cmd_deploy
@@ -1072,6 +1127,7 @@ EDGE_UPTIME="aimos-edge-readyz"
 EDGE_CHANNEL="aimos-edge-alerts"
 EDGE_SINK="edge-security"
 EDGE_LOG_BUCKET="security-logs"
+APP_SECURITY_SINK="app-security"
 EDGE_DENY_ALERT="${EDGE_DENY_ALERT:-50}"
 EDGE_429_ALERT=100
 EDGE_5XX_RATIO=0.05
@@ -1556,11 +1612,7 @@ for key, (name, condition) in policies.items():
     fi
   done
   # The 400-day security bucket and its sink. OAuth callback URLs carry code/state: never sunk.
-  if gq logging buckets describe "$EDGE_LOG_BUCKET" --location=global --format='value(name)' >/dev/null; then
-    gc logging buckets update "$EDGE_LOG_BUCKET" --location=global --retention-days=400
-  else
-    gc logging buckets create "$EDGE_LOG_BUCKET" --location=global --retention-days=400
-  fi
+  ensure_security_bucket
   local filter dest
   filter='(resource.type="http_load_balancer" AND (jsonPayload.enforcedSecurityPolicy.outcome="DENY" OR jsonPayload.previewSecurityPolicy.outcome="DENY" OR (httpRequest.requestUrl=~"/api/v1/(auth|signup)" AND httpRequest.status>=400)) AND NOT httpRequest.requestUrl:"/callback") OR (resource.type="network_security_policy" AND logName:"networksecurity.googleapis.com%2Fdos_attack")'
   dest="logging.googleapis.com/projects/$PROJECT/locations/global/buckets/$EDGE_LOG_BUCKET"

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import subprocess
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -724,3 +725,110 @@ def test_tenant_reset_mfa_mounts_fresh_password(toolkit: Path, tmp_path: Path) -
     job = next(line for line in out.splitlines() if "run jobs deploy aimos-ops" in line)
     assert "/secrets/initial-password/value=INITIAL_PASSWORD_" in job
     assert "|user|reset-mfa|--email=a@b.test|--staff-email=s@b.test" in job.replace("\\", "")
+
+
+# ---- Amazon DPP: security logs, backup location, the KMS guard ----
+
+# A gcloud that answers like a project whose MFA key was never created: no live service, the OAuth
+# key present, the MFA key absent. Any other call is recorded and fails.
+FAKE_GCLOUD_NO_MFA_KEY = """#!/bin/sh
+case " $* " in
+  *" --help "*) exit 0 ;;
+  *"run services describe"*) echo "ERROR: NOT_FOUND" >&2; exit 1 ;;
+  *"kms keys describe oauth-token-key "*) echo "projects/p/cryptoKeys/oauth-token-key"; exit 0 ;;
+  *"kms keys describe mfa-secret-key "*) echo "ERROR: NOT_FOUND" >&2; exit 1 ;;
+esac
+echo "$*" >> "$FAKE_GCLOUD_LOG"
+exit 98
+"""
+
+
+def test_setup_keeps_api_security_events_400_days(toolkit: Path, tmp_path: Path) -> None:
+    """DPP 2.6.1: the api's sign-in events and refused requests go to the 400-day bucket."""
+    out = _run(toolkit, tmp_path, "prod", "setup", "--dry-run", "--sha", SHA).stdout
+    lines = out.splitlines()
+    bucket = next(x for x in lines if "logging buckets create security-logs" in x)
+    assert "--retention-days=400" in bucket and "--location=global" in bucket
+    sink = shlex.split(next(x for x in lines if "logging sinks create app-security" in x))
+    assert (
+        "logging.googleapis.com/projects/aimos-prod/locations/global/buckets/security-logs" in sink
+    )
+    (log_filter,) = [a.split("=", 1)[1] for a in sink if a.startswith("--log-filter=")]
+    assert 'resource.labels.service_name="aimos-api"' in log_filter
+    assert 'jsonPayload.message=~"^auth\\\\."' in log_filter
+    for status in ("401", "403", "429"):
+        assert f"httpRequest.status={status}" in log_filter, status
+    assert 'NOT httpRequest.requestUrl:"/callback"' in log_filter
+    # the bucket comes before the sink that writes into it
+    assert lines.index(bucket) < next(i for i, x in enumerate(lines) if "app-security" in x)
+
+
+def test_backup_location_follows_the_env_file(toolkit: Path, tmp_path: Path) -> None:
+    """DPP 2.7.4: SQL_BACKUP_LOCATION moves the backups; staging (no key) keeps its region."""
+
+    def create_line(env_name: str) -> str:
+        out = _run(toolkit, tmp_path, env_name, "setup", "--dry-run", "--sha", SHA).stdout
+        return next(line for line in out.splitlines() if "sql instances create" in line)
+
+    assert "--backup-location=asia-south1" in create_line("prod")
+    assert "--backup-location=asia-south1" in create_line("staging")
+    env = toolkit / "prod.env"
+    text = env.read_text(encoding="utf-8")
+    assert "SQL_BACKUP_LOCATION=asia-south1\n" in text
+    env.write_text(
+        text.replace("SQL_BACKUP_LOCATION=asia-south1\n", "SQL_BACKUP_LOCATION=asia-south2\n"),
+        encoding="utf-8",
+    )
+    assert "--backup-location=asia-south2" in create_line("prod")
+
+
+def test_existing_instance_backup_location_is_patched(repo_root: Path) -> None:
+    """The live instance path compares the backups' location and patches only that flag."""
+    script = (repo_root / DEPLOY / "deploy.sh").read_text(encoding="utf-8")
+    body = script[
+        script.index("setup_sql() {") : script.index("wait_sql_runnable\n  gq sql databases")
+    ]
+    assert "settings.backupConfiguration.location" in body
+    assert 'gc sql instances patch "$SQL_INSTANCE" --backup-location="$SQL_BACKUP_LOCATION"' in body
+
+
+def test_dry_run_deploy_reports_the_kms_guard(toolkit: Path, tmp_path: Path) -> None:
+    out = _run(toolkit, tmp_path, "prod", "deploy", "--dry-run", "--sha", SHA).stdout
+    lines = out.splitlines()
+    guard = lines.index("deploy: kms guard: skipped (dry run)")
+    assert guard < next(i for i, x in enumerate(lines) if "gcloud run deploy aimos-api" in x)
+
+
+def test_release_runs_the_kms_guard_before_building(repo_root: Path) -> None:
+    script = (repo_root / DEPLOY / "deploy.sh").read_text(encoding="utf-8")
+    release = script[script.index("cmd_release() {") :]
+    release = release[: release.index("\n}\n")]
+    assert release.index("kms_guard") < release.index("cmd_build")
+
+
+def test_deploy_refuses_when_the_mfa_key_is_missing(toolkit: Path, tmp_path: Path) -> None:
+    """A release that skipped `setup` stops before `run deploy`, naming the key and the fix."""
+    bin_dir = tmp_path / "bin-no-mfa"
+    bin_dir.mkdir()
+    fake = bin_dir / "gcloud"
+    fake.write_text(FAKE_GCLOUD_NO_MFA_KEY, encoding="utf-8")
+    fake.chmod(0o755)
+    log = tmp_path / "gcloud-no-mfa.log"
+    result = subprocess.run(
+        ["bash", str(toolkit / "deploy.sh"), "prod", "deploy", "--sha", SHA],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+        env={
+            "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+            "HOME": str(tmp_path),
+            "TMPDIR": str(tmp_path),
+            "FAKE_GCLOUD_LOG": str(log),
+        },
+        cwd=tmp_path,
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "KMS key mfa-secret-key is missing or unreadable in aimos-prod" in result.stderr
+    assert "deploy.sh prod setup first" in result.stderr
+    assert not log.exists(), log.read_text(encoding="utf-8")
