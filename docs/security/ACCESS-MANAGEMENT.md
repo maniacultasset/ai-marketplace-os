@@ -59,7 +59,7 @@ every commit) and never in env files (`scripts/deploy/gcp/prod.env` header).
 | Database role passwords (`APP_RW_PASSWORD`, `APP_RO_PASSWORD`, `MIGRATOR_PASSWORD`, `POSTGRES_PASSWORD`) and the URLs built from them | Yearly, or on suspicion | 2027-10-12 |
 | `S3_ACCESS_KEY` / `S3_SECRET_KEY` (Cloud Storage HMAC) | Yearly, or on suspicion | 2027-10-12 |
 | `OPENAI_API_KEY`, `SENTRY_DSN` | Yearly, or on suspicion | 2027-10-12 |
-| Amazon LWA client secret, Flipkart application secret | Yearly (Amazon also rotates LWA secrets on its own schedule), or on suspicion | One year after creation |
+| Amazon LWA client secret, Flipkart application secret | Yearly, or on suspicion (follow any rotation date Amazon or Flipkart sets in its portal) | One year after creation |
 | KMS keys `oauth-token-key`, `mfa-secret-key` | Automatically every 90 days | Automatic |
 
 Rotation: add a new secret version, redeploy (`deploy.sh prod deploy`), confirm the smoke test,
