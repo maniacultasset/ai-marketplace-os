@@ -30,12 +30,15 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../../.." && pwd)"
 PLACEHOLDER="__FILL_ME__"
 USER_SECRETS="SENTRY_DSN OPENAI_API_KEY"
-REQUIRED_APIS="run.googleapis.com sqladmin.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com cloudkms.googleapis.com storage.googleapis.com iam.googleapis.com logging.googleapis.com cloudresourcemanager.googleapis.com serviceusage.googleapis.com"
+REQUIRED_APIS="run.googleapis.com sqladmin.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com cloudkms.googleapis.com storage.googleapis.com iam.googleapis.com logging.googleapis.com cloudresourcemanager.googleapis.com serviceusage.googleapis.com cloudscheduler.googleapis.com"
 API_SECRETS="DATABASE_URL JWT_SECRET ADMIN_SESSION_SECRET S3_ACCESS_KEY S3_SECRET_KEY SENTRY_DSN"
 WORKER_SECRETS="DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY SENTRY_DSN OPENAI_API_KEY"
 MIGRATE_SECRETS="ALEMBIC_DATABASE_URL"
 DB_INIT_SECRETS="POSTGRES_PASSWORD APP_RW_PASSWORD APP_RO_PASSWORD MIGRATOR_PASSWORD"
 OPS_SECRETS="ALEMBIC_DATABASE_URL"
+# The daily maintenance job (DPP 1.7): app_rw for retention, migrator for the account purge, the
+# HMAC pair for the submission and image object deletes.
+MAINT_SECRETS="DATABASE_URL ALEMBIC_DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY"
 PW_MOUNT="/secrets/initial-password/value"
 
 usage() {
@@ -88,6 +91,14 @@ SMOKE_SLEEP="${SMOKE_SLEEP:-6}"
 MFA_ENFORCEMENT="${MFA_ENFORCEMENT:-off}"
 MFA_GRACE_UNTIL="${MFA_GRACE_UNTIL:-}"
 KMS_MFA_KEY="${KMS_MFA_KEY:-mfa-secret-key}"
+# DPP 1.7: the daily maintenance job (retention and the account purge, app.workers.maintenance),
+# its runtime and scheduler identities and its Cloud Scheduler trigger. An env file older than
+# these keys gets the defaults.
+MAINT_JOB="${MAINT_JOB:-aimos-maintenance}"
+SA_MAINT="${SA_MAINT:-aimos-maint}"
+SA_SCHED="${SA_SCHED:-aimos-sched}"
+MAINT_SCHEDULE="${MAINT_SCHEDULE:-0 3 * * *}"
+MAINT_TIME_ZONE="${MAINT_TIME_ZONE:-Asia/Kolkata}"
 # DPP 2.7.4: where Cloud SQL keeps its automated backups; an env file without the key keeps them in
 # the instance's region, as before.
 SQL_BACKUP_LOCATION="${SQL_BACKUP_LOCATION:-$REGION}"
@@ -354,12 +365,13 @@ JSON
 setup_accounts() {
   local pair name
   for pair in "$SA_API:API runtime" "$SA_WORKER:worker runtime" "$SA_MIGRATE:migrate job" \
-    "$SA_OPS:one-off staff jobs" "$SA_STORAGE:GCS HMAC identity" "$SA_BUILD:Cloud Build"; do
+    "$SA_OPS:one-off staff jobs" "$SA_STORAGE:GCS HMAC identity" "$SA_BUILD:Cloud Build" \
+    "$SA_MAINT:daily maintenance job" "$SA_SCHED:maintenance scheduler"; do
     name="${pair%%:*}"
     gq iam service-accounts describe "$(sa_email "$name")" --format='value(email)' >/dev/null ||
       gc iam service-accounts create "$name" --display-name="aimos ${pair#*:}"
   done
-  for name in "$SA_API" "$SA_WORKER" "$SA_MIGRATE" "$SA_OPS"; do
+  for name in "$SA_API" "$SA_WORKER" "$SA_MIGRATE" "$SA_OPS" "$SA_MAINT"; do
     retry gc projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$(sa_email "$name")" \
       --role=roles/cloudsql.client --condition=None --format=none
   done
@@ -538,6 +550,7 @@ setup_secrets() {
   for name in $WORKER_SECRETS; do grant_secret "$name" "$SA_WORKER"; done
   for name in $MIGRATE_SECRETS; do grant_secret "$name" "$SA_MIGRATE"; done
   for name in $DB_INIT_SECRETS $OPS_SECRETS; do grant_secret "$name" "$SA_OPS"; done
+  for name in $MAINT_SECRETS; do grant_secret "$name" "$SA_MAINT"; done
 }
 
 # The two values only a person can supply. Each missing one gets a command for the user's OWN
@@ -859,6 +872,31 @@ kms_guard() {
   say "kms guard: OK ($KMS_KEY, $KMS_MFA_KEY)"
 }
 
+# IMAGE URL: the daily maintenance job on this release's image, and its Cloud Scheduler trigger
+# (DPP 1.7, 2.1). The job runs `python -m app.workers.maintenance` as SA_MAINT (Cloud SQL client and
+# its four secrets only) under the shell role, so it needs no worker. SA_SCHED may only run this
+# one job (roles/run.invoker on the job). The run is idempotent: a retry or a second run deletes
+# nothing twice. `setup` enables the Cloud Scheduler API and creates both accounts.
+deploy_maintenance() {
+  local image="$1" url="$2" uri verb
+  env_file shell "$url" "$WORK/maintenance-env.yaml"
+  gc run jobs deploy "$MAINT_JOB" --image="$image" --region="$REGION" \
+    --service-account="$(sa_email "$SA_MAINT")" --set-cloudsql-instances="$CONN" \
+    --env-vars-file="$WORK/maintenance-env.yaml" --set-secrets="$(secret_refs "$MAINT_SECRETS")" \
+    --args="-m,app.workers.maintenance" --tasks=1 --parallelism=1 --max-retries=1 \
+    --task-timeout=1800s --cpu=1 --memory=1Gi --labels="$LABELS"
+  retry gc run jobs add-iam-policy-binding "$MAINT_JOB" --region="$REGION" \
+    --member="serviceAccount:$(sa_email "$SA_SCHED")" --role=roles/run.invoker --format=none
+  uri="https://run.googleapis.com/v2/projects/$PROJECT/locations/$REGION/jobs/$MAINT_JOB:run"
+  verb=create
+  if gq scheduler jobs describe "$MAINT_JOB-daily" --location="$REGION" --format='value(name)' >/dev/null; then
+    verb=update
+  fi
+  gc scheduler jobs "$verb" http "$MAINT_JOB-daily" --location="$REGION" \
+    --schedule="$MAINT_SCHEDULE" --time-zone="$MAINT_TIME_ZONE" --uri="$uri" --http-method=POST \
+    --oauth-service-account-email="$(sa_email "$SA_SCHED")"
+}
+
 cmd_deploy() {
   check_filled
   check_ingress
@@ -870,6 +908,7 @@ cmd_deploy() {
   deploy_api "$image" "$url"
   [ "$DRY_RUN" -eq 1 ] || [ -n "$API_PUBLIC_URL" ] || url="$(service_url)"
   deploy_worker "$image" "$url"
+  deploy_maintenance "$image" "$url"
   cmd_smoke
 }
 
@@ -1687,7 +1726,7 @@ cmd_status() {
   gq run revisions list --service="$API_SERVICE" --region="$REGION" --limit=5 \
     --format='table(metadata.name,status.conditions[0].status,metadata.creationTimestamp)' || true
   gq run worker-pools describe "$WORKER_POOL" --region="$REGION" --format='value(name)' || true
-  for job in "$DB_INIT_JOB" "$MIGRATE_JOB" "$OPS_JOB"; do
+  for job in "$DB_INIT_JOB" "$MIGRATE_JOB" "$OPS_JOB" "$MAINT_JOB"; do
     gq run jobs executions list --job="$job" --region="$REGION" --limit=3 \
       --format='table(metadata.name,status.succeededCount,status.failedCount,status.completionTime)' || true
   done

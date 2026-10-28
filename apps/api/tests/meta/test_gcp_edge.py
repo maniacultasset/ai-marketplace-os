@@ -1660,3 +1660,26 @@ def test_adr_0022_ledger(repo_root: Path) -> None:
     (adr,) = (repo_root / "docs/adr").glob("0022-*.md")
     assert "Status:** proposed" in adr.read_text(encoding="utf-8").splitlines()[2]
     assert "| 0022 |" in (repo_root / "docs/adr/README.md").read_text(encoding="utf-8")
+
+
+# ---- DPP 1.7: a live deploy updates the existing maintenance trigger, never a second one ----
+
+
+def test_live_deploy_updates_the_maintenance_trigger(toolkit: Path, tmp_path: Path) -> None:
+    trigger = "projects/aimos-prod/locations/asia-south1/jobs/aimos-maintenance-daily\n"
+    live = run_live(
+        toolkit,
+        tmp_path,
+        "prod",
+        "deploy",
+        responses=[
+            *existing_service(service_doc(tags={"sha-0123456789ab": TAG_URL})),
+            {"match": "scheduler jobs describe aimos-maintenance-daily", "stdout": trigger},
+        ],
+        curl=[*healthy(TAG_URL, no_header=True), *healthy(RUN_APP, no_header=True)],
+    )
+    assert live.result.returncode == 0, live.out
+    assert live.index("scheduler jobs update http aimos-maintenance-daily") > live.index(
+        "run jobs deploy aimos-maintenance"
+    )
+    assert live.index("scheduler jobs create") == -1
