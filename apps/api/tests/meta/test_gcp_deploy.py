@@ -919,3 +919,84 @@ def test_env_files_carry_the_maintenance_keys(repo_root: Path, env_name: str) ->
     assert values["MAINT_JOB"] == "aimos-maintenance"
     assert values["SA_MAINT"] == "aimos-maint" and values["SA_SCHED"] == "aimos-sched"
     assert values["MAINT_SCHEDULE"] == '"0 3 * * *"'
+
+
+# ---- the setup guard: a release refuses before the build when `setup` predates the job ----
+
+FAKE_GCLOUD_OLD_SETUP = """#!/bin/sh
+case " $* " in
+  *" --help "*) exit 0 ;;
+  *"run services describe"*) echo "ERROR: NOT_FOUND" >&2; exit 1 ;;
+  *"kms keys describe"*) echo "projects/p/cryptoKeys/k"; exit 0 ;;
+  *"iam service-accounts describe aimos-maint@"*) echo "aimos-maint@p"; exit 0 ;;
+  *"iam service-accounts describe aimos-sched@"*) [ -n "$HAS_SCHED" ] && { echo "aimos-sched@p"; exit 0; }
+    echo "ERROR: NOT_FOUND" >&2; exit 1 ;;
+  *"services list"*) [ -n "$HAS_SCHEDULER_API" ] && echo "cloudscheduler.googleapis.com"; exit 0 ;;
+esac
+echo "$*" >> "$FAKE_GCLOUD_LOG"
+exit 98
+"""
+
+
+def _run_old_setup(
+    toolkit: Path, tmp_path: Path, *, sched: bool, api: bool
+) -> tuple[subprocess.CompletedProcess[str], Path]:
+    bin_dir = tmp_path / f"bin-old-{sched}-{api}"
+    bin_dir.mkdir()
+    fake = bin_dir / "gcloud"
+    fake.write_text(FAKE_GCLOUD_OLD_SETUP, encoding="utf-8")
+    fake.chmod(0o755)
+    log = tmp_path / f"gcloud-old-{sched}-{api}.log"
+    result = subprocess.run(
+        ["bash", str(toolkit / "deploy.sh"), "prod", "deploy", "--sha", SHA],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+        env={
+            "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+            "HOME": str(tmp_path),
+            "TMPDIR": str(tmp_path),
+            "FAKE_GCLOUD_LOG": str(log),
+            "HAS_SCHED": "1" if sched else "",
+            "HAS_SCHEDULER_API": "1" if api else "",
+        },
+        cwd=tmp_path,
+    )
+    return result, log
+
+
+def test_deploy_refuses_without_the_maintenance_accounts(toolkit: Path, tmp_path: Path) -> None:
+    result, log = _run_old_setup(toolkit, tmp_path, sched=False, api=True)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "service account aimos-sched is missing or unreadable in aimos-prod" in result.stderr
+    assert "deploy.sh prod setup first" in result.stderr
+    assert not log.exists(), log.read_text(encoding="utf-8")  # nothing deployed
+
+
+def test_deploy_refuses_without_cloud_scheduler(toolkit: Path, tmp_path: Path) -> None:
+    result, log = _run_old_setup(toolkit, tmp_path, sched=True, api=False)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "cloudscheduler.googleapis.com is not enabled in aimos-prod" in result.stderr
+    assert "deploy.sh prod setup first" in result.stderr
+    assert not log.exists(), log.read_text(encoding="utf-8")
+
+
+def test_dry_run_deploy_reports_the_setup_guard(toolkit: Path, tmp_path: Path) -> None:
+    out = _run(toolkit, tmp_path, "prod", "deploy", "--dry-run", "--sha", SHA).stdout
+    lines = out.splitlines()
+    guard = lines.index("deploy: setup guard: skipped (dry run)")
+    assert lines.index("deploy: kms guard: skipped (dry run)") < guard
+    assert guard < next(i for i, x in enumerate(lines) if "gcloud run deploy aimos-api" in x)
+
+
+def test_release_runs_the_setup_guard_before_building(repo_root: Path) -> None:
+    script = (repo_root / DEPLOY / "deploy.sh").read_text(encoding="utf-8")
+    release = script[script.index("cmd_release() {") :]
+    release = release[: release.index("\n}\n")]
+    assert release.index("kms_guard") < release.index("setup_guard") < release.index("cmd_build")
+
+
+def test_runbook_names_the_setup_guard(repo_root: Path) -> None:
+    text = (repo_root / "docs/runbooks/DEPLOY-GCP.md").read_text(encoding="utf-8")
+    assert "setup guard" in text and "aimos-maint" in text and "run setup first" in text

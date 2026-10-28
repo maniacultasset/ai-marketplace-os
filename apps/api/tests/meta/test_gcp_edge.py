@@ -264,11 +264,14 @@ def run_live(
     bin_dir = tmp_path / "bin"
     _fake(bin_dir, "gcloud", LIVE_GCLOUD)
     _fake(bin_dir, "curl", FAKE_CURL)
-    # The KMS keys exist unless a test's own rule (matched first) says otherwise: a deploy checks
-    # them before `run deploy` (the kms guard).
+    # The KMS keys, the maintenance accounts and Cloud Scheduler exist unless a test's own rule
+    # (matched first) says otherwise: a deploy checks them before `run deploy` (kms, setup guards).
     rules = [
         *(responses or []),
         {"match": "kms keys describe", "stdout": "projects/p/cryptoKeys/k\n"},
+        # the setup guard: both maintenance accounts exist and Cloud Scheduler is on
+        {"match": "iam service-accounts describe", "stdout": "sa@p.iam.gserviceaccount.com\n"},
+        {"match": ["services list", "cloudscheduler"], "stdout": "cloudscheduler.googleapis.com\n"},
     ]
     (tmp_path / "gcloud.json").write_text(json.dumps(rules), encoding="utf-8")
     (tmp_path / "curl.json").write_text(json.dumps(curl or []), encoding="utf-8")

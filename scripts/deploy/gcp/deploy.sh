@@ -897,6 +897,26 @@ deploy_maintenance() {
     --oauth-service-account-email="$(sa_email "$SA_SCHED")"
 }
 
+# The release ships the maintenance job and its trigger after traffic has moved, so a project whose
+# `setup` predates them (no aimos-maint or aimos-sched account, Cloud Scheduler off) would fail
+# half-released. Checked before the build, next to kms_guard.
+setup_guard() {
+  local name enabled
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "setup guard: skipped (dry run)"
+    return 0
+  fi
+  for name in "$SA_MAINT" "$SA_SCHED"; do
+    gq iam service-accounts describe "$(sa_email "$name")" --format='value(email)' >/dev/null ||
+      die "service account $name is missing or unreadable in $PROJECT: run scripts/deploy/gcp/deploy.sh $ENV_NAME setup first"
+  done
+  enabled="$(gq services list --enabled --filter=config.name=cloudscheduler.googleapis.com \
+    --format='value(config.name)' || true)"
+  [ "$enabled" = "cloudscheduler.googleapis.com" ] ||
+    die "cloudscheduler.googleapis.com is not enabled in $PROJECT: run scripts/deploy/gcp/deploy.sh $ENV_NAME setup first"
+  say "setup guard: OK ($SA_MAINT, $SA_SCHED, Cloud Scheduler)"
+}
+
 cmd_deploy() {
   check_filled
   check_ingress
@@ -904,6 +924,7 @@ cmd_deploy() {
   url="$(api_url)"
   live_guard "$url"
   kms_guard
+  setup_guard
   image="$(image_ref)"
   deploy_api "$image" "$url"
   [ "$DRY_RUN" -eq 1 ] || [ -n "$API_PUBLIC_URL" ] || url="$(service_url)"
@@ -975,6 +996,7 @@ cmd_release() {
   check_ingress
   live_guard "$(api_url)"
   kms_guard
+  setup_guard
   cmd_build
   cmd_migrate
   cmd_deploy
