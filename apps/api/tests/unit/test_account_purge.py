@@ -23,11 +23,13 @@ SQL = (
 
 
 def test_window_matches_the_sql_literal() -> None:
-    """25 days in Python and in `purge_marketplace_account`, both statuses (DPP 1.7: 30 days)."""
+    """20 days in Python and in `purge_marketplace_account`, both statuses; with the 7-day
+    backups the last copy is gone inside DPP 1.7's 30 days, and the tombstone says 7 days."""
     text = SQL.read_text(encoding="utf-8")
-    assert re.findall(r"interval '(\d+) days'", text)[:2] == ["25", "25"]
-    assert account_purge.PURGE_AFTER_DAYS == 25
-    assert account_purge.PURGE_AFTER_DAYS < 30
+    assert re.findall(r"interval '(\d+) days'", text) == ["20", "20", "7"]
+    assert account_purge.PURGE_AFTER_DAYS == 20 and account_purge.BACKUP_DAYS == 7
+    assert account_purge.PURGE_AFTER_DAYS + account_purge.BACKUP_DAYS < 30
+    assert "'backups_expire_by', now() + interval '7 days'" in text
 
 
 def test_due_query_covers_revoked_and_disconnected_only() -> None:
@@ -239,3 +241,39 @@ def test_run_order_ends_with_the_purge() -> None:
         "account_purge",
     ]
     assert maintenance.STEPS[-1][1] is periodic.purge_disconnected_accounts
+
+
+def test_purge_scope_is_the_account_listings_only() -> None:
+    """Submissions are chosen by listing alone: a listing a reconnect moved to the new account
+    keeps its history, and a stale `running` job (lease expired) never blocks the purge."""
+    text = SQL.read_text(encoding="utf-8")
+    assert "s.marketplace_account_id = a OR" not in text
+    assert "WHERE s.tenant_id = t AND s.listing_id = ANY (doomed);" in text
+    assert "WHERE r.tenant_id = t AND r.listing_id = ANY (doomed);" in text
+    assert "j.status = 'running'\n                AND j.lease_expires_at > now()" in text
+
+
+def test_reconnect_repoints_submission_history() -> None:
+    """`_adopt_revoked` moves the listings' submissions with them, and ls_guard allows only that
+    move (0011b/02, with the one-column grant)."""
+    from app.services import marketplaces
+
+    source = Path(marketplaces.__file__).read_text(encoding="utf-8")
+    adopt = source[source.index("async def _adopt_revoked") :]
+    adopt = adopt[: adopt.index("\nasync def ")]
+    assert adopt.index("uow.listings.repoint_account") < adopt.index(
+        "uow.submissions.repoint_account(moved, revoked, account_id)"
+    )
+    guard = (SQL.parent / "02_ls_guard_repoint.up.sql").read_text(encoding="utf-8")
+    assert "GRANT UPDATE (marketplace_account_id) ON public.listing_submissions TO app_rw;" in guard
+    assert guard.index("NEW.marketplace_account_id IS DISTINCT FROM") < guard.index(
+        "submission % is terminal"
+    )
+
+
+def test_backup_days_match_the_deploy_settings() -> None:
+    root = SQL.parents[5]
+    env = (root / "scripts/deploy/gcp/prod.env").read_text(encoding="utf-8")
+    assert f"SQL_PITR_DAYS={account_purge.BACKUP_DAYS}\n" in env
+    deploy = (root / "scripts/deploy/gcp/deploy.sh").read_text(encoding="utf-8")
+    assert f"--retained-backups-count={account_purge.BACKUP_DAYS} " in deploy

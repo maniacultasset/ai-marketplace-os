@@ -40,9 +40,9 @@ queue entry carries only `{"timestamp"}`, never tenant data.
   account's failure is logged and the pass goes on.
 - `prune_oauth_states` (hourly, S15): expired OAuth state and pending rows, tenant by tenant.
 - `purge_disconnected_accounts` (daily, in the maintenance job only, Amazon DPP 1.7): every
-  account revoked or disconnected for 25 days goes through `purge_marketplace_account` (migration
+  account revoked or disconnected for 20 days goes through `purge_marketplace_account` (migration
   0011b) as `migrator`, one account per transaction; its submission objects are deleted before
-  that transaction commits. One account's failure is logged and the pass goes on. Not a worker
+  that transaction commits (a retry is safe: a missing key counts as deleted). One account's failure is logged and the pass goes on. Not a worker
   slot: the worker has no migrator URL, and `app.workers.maintenance` runs it with the other
   daily steps.
 - `schedule_status_sync` (every minute, S21 T22; DATABASE.md:770): the due listings through
@@ -487,7 +487,7 @@ ACCOUNT_PURGE_BATCH: Final = 100
 
 
 async def purge_disconnected_accounts() -> dict[str, int]:
-    """Purge every account revoked or disconnected for 25 days (DPP 1.7); counts per outcome.
+    """Purge every account revoked or disconnected for 20 days (DPP 1.7); counts per outcome.
     Logs carry ids and counts only, never a seller id or an object key."""
     async with platform_scope() as session:
         due = await account_purge.due_accounts(session, limit=ACCOUNT_PURGE_BATCH)
@@ -507,8 +507,9 @@ async def purge_disconnected_accounts() -> dict[str, int]:
             try:
                 result = await purger.purge(tenant_id, account_id, delete_objects)
             except Exception as exc:
-                # this account's transaction rolled back alone (rows and objects stay together);
-                # the next daily run retries it, and one bad account never blocks another
+                # this account's rows rolled back alone; objects already deleted stay deleted,
+                # and the retry counts their missing keys as deleted. The next daily run retries
+                # it, and one bad account never blocks another
                 log.exception(
                     "marketplace.account_purge_failed",
                     tenant_id=str(tenant_id),

@@ -13,8 +13,10 @@ import psycopg
 import pytest
 from psycopg import sql
 
+from . import factories as f
 from .conftest import expect_sqlstate
 from .integrity_support import as_app_rw, as_migrator
+from .ops_support import job_run
 from .test_0003_attacks import ALL_TENANT_TABLES, _counts, _full_tenant
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
@@ -125,7 +127,7 @@ def test_purge_removes_only_the_account_side(db: Conn) -> None:
     assert "seller" not in str(tomb[0][3]).lower()
 
 
-def test_purge_waits_25_days_unless_forced(db: Conn) -> None:
+def test_purge_waits_20_days_unless_forced(db: Conn) -> None:
     a, _ = _two_tenants(db)
     with as_migrator(db):
         expect_sqlstate(db, "GRD01", PURGE, (a.tenant_id, a.account_id))  # still active
@@ -159,3 +161,121 @@ def test_purge_refused_for_app_rw(db: Conn) -> None:
     a, _ = _two_tenants(db)
     with as_app_rw(db, a.tenant_id):
         expect_sqlstate(db, "42501", PURGE, (a.tenant_id, a.account_id))
+
+
+def test_reconnect_moves_history_and_the_purge_leaves_it(db: Conn) -> None:
+    """Revoke, reconnect the same seller (a new account B), the listing and its submissions move
+    to B through the app's own path (app_rw, ls_guard 0011b), a retry on B names the moved attempt
+    as its previous one; purging the old account then succeeds, B keeps the full history and
+    nothing of A is left."""
+    a, _ = _two_tenants(db)
+    seller = db.execute(
+        "SELECT seller_id FROM marketplace_accounts WHERE id = %s", (a.account_id,)
+    ).fetchone()
+    assert seller is not None
+    _revoke(db, a.account_id, 21)
+    new = f.marketplace_account(
+        db, a.tenant_id, marketplace="flipkart", seller_id=seller[0], connected_by_user_id=a.user_id
+    )
+    first = db.execute(
+        "SELECT id FROM listing_submissions WHERE listing_id = %s ORDER BY attempt LIMIT 1",
+        (a.listing_id,),
+    ).fetchone()
+    assert first is not None
+    with as_app_rw(db, a.tenant_id):
+        db.execute(
+            "UPDATE listings SET marketplace_account_id = %s "
+            "WHERE marketplace_account_id = %s AND marketplace = 'flipkart'",
+            (new, a.account_id),
+        )
+        moved = db.execute(
+            "UPDATE listing_submissions SET marketplace_account_id = %s "
+            "WHERE listing_id = %s AND marketplace_account_id = %s",
+            (new, a.listing_id, a.account_id),
+        ).rowcount
+    assert moved >= 1
+    # the retry on B (placed directly: the publish guards are not under test here)
+    db.execute("SET LOCAL session_replication_role = replica")
+    db.execute(
+        "INSERT INTO listing_submissions (tenant_id, listing_id, listing_version_id, marketplace, "
+        "marketplace_account_id, job_id, attempt, operation, payload_sha256, payload_storage_key, "
+        "facts_digest, idempotency_key, requested_by_user_id, actor_type, previous_submission_id) "
+        "SELECT tenant_id, listing_id, listing_version_id, marketplace, %s, job_id, attempt + 1, "
+        "operation, payload_sha256, payload_storage_key || '.retry', facts_digest, "
+        "idempotency_key || '-retry', requested_by_user_id, actor_type, id "
+        "FROM listing_submissions WHERE id = %s",
+        (new, first[0]),
+    )
+    db.execute("SET LOCAL session_replication_role = origin")
+    history = _count(
+        db, "SELECT count(*) FROM listing_submissions WHERE listing_id = %s", a.listing_id
+    )
+    with as_migrator(db):
+        db.execute(PURGE, (a.tenant_id, a.account_id))
+    assert (
+        _count(
+            db,
+            "SELECT count(*) FROM listing_submissions WHERE listing_id = %s "
+            "AND marketplace_account_id = %s",
+            a.listing_id,
+            new,
+        )
+        == history
+    )
+    assert _count(db, "SELECT count(*) FROM marketplace_accounts WHERE id = %s", a.account_id) == 0
+    for table in ("listings", "listing_submissions", "human_tasks"):
+        assert (
+            _count(
+                db,
+                sql.SQL("SELECT count(*) FROM {} WHERE marketplace_account_id = %s")
+                .format(sql.Identifier(table))
+                .as_string(db),
+                a.account_id,
+            )
+            == 0
+        ), table
+
+
+def test_submission_moves_only_to_the_same_seller(db: Conn) -> None:
+    """ls_guard 0011b: an account of another seller is refused (SUB03)."""
+    a, _ = _two_tenants(db)
+    _revoke(db, a.account_id, 21)
+    other = f.marketplace_account(
+        db, a.tenant_id, marketplace="flipkart", connected_by_user_id=a.user_id
+    )
+    with as_app_rw(db, a.tenant_id):
+        db.execute(
+            "UPDATE listings SET marketplace_account_id = %s WHERE id = %s", (other, a.listing_id)
+        )
+        expect_sqlstate(
+            db,
+            "SUB03",
+            "UPDATE listing_submissions SET marketplace_account_id = %s WHERE listing_id = %s",
+            (other, a.listing_id),
+        )
+
+
+def test_a_stale_running_job_never_blocks_the_purge(db: Conn) -> None:
+    a, _ = _two_tenants(db)
+    _revoke(db, a.account_id, 21)
+    fields = {
+        "kind": "listing_status_sync",
+        "entity_type": "listing",
+        "entity_id": a.listing_id,
+        "listing_id": a.listing_id,
+        "status": "running",
+        "attempt": 1,
+        "started_at": "2026-10-01T00:00:00Z",
+    }
+    live = job_run(db, a.tenant_id, lease_expires_at="2099-01-01T00:00:00Z", **fields)
+    with as_migrator(db):
+        expect_sqlstate(db, "GRD01", PURGE, (a.tenant_id, a.account_id))  # a live lease blocks
+    db.execute("SET LOCAL session_replication_role = replica")  # past the job guard, set-up only
+    db.execute(
+        "UPDATE job_runs SET lease_expires_at = now() - interval '10 minutes' WHERE id = %s",
+        (live,),
+    )
+    db.execute("SET LOCAL session_replication_role = origin")
+    with as_migrator(db):
+        db.execute(PURGE, (a.tenant_id, a.account_id))  # the expired lease does not
+    assert _count(db, "SELECT count(*) FROM marketplace_accounts WHERE id = %s", a.account_id) == 0

@@ -25,7 +25,7 @@ account, token or response (`apps/api/app/services/generation_context.py`).
 |---|---|---|---|
 | Marketplace tokens | Until the brand revokes, the tenant is offboarded or purged | `revoke` sets `token_enc` to NULL at once (`apps/api/app/services/marketplaces.py`) | Live |
 | Pending OAuth rows (state, handle, sealed pending tokens) | 10 minutes valid; deleted daily once expired (hourly when a worker runs) | `prune_oauth_states` in the daily maintenance job (below) | Built: live after the next `setup` and `deploy` |
-| Listing state, submissions, raw answers | Life of the listing; deleted 25 days after its marketplace account is revoked or disconnected; otherwise with the tenant purge | `purge_marketplace_account` (migration 0011b) in the daily maintenance job; `purge_tenant` (ADR-0014) | Built: live after the next `release` |
+| Listing state, submissions, raw answers | Life of the listing; deleted 20 days after its marketplace account is revoked or disconnected (the last backup copy is gone by about day 27); otherwise with the tenant purge | `purge_marketplace_account` (migration 0011b) in the daily maintenance job; `purge_tenant` (ADR-0014) | Built: live after the next `release` |
 | Brand business data (products, listings, images, brand documents) | Life of the tenant | `purge_tenant` | Live |
 | CSV uploads (objects) | 30 days | Bucket lifecycle rule on `aimos-csv-prod` (`CSV_RETENTION_DAYS=30`) | Live |
 | Import rows and job history | 90 days (180 for failed jobs) | `retention_daily` (`apps/api/app/repositories/retention.py`) in the daily maintenance job | Built: live after the next `setup` and `deploy` |
@@ -58,6 +58,9 @@ does not stop the next; the execution is marked failed and Cloud Run retries it 
   deletes). No other role.
 - Scheduler identity `aimos-sched`: `roles/run.invoker` on this one job, nothing else.
 - `setup` enables `cloudscheduler.googleapis.com` and creates both identities.
+- Files and rows: the purge deletes the stored submission files before its database transaction
+  commits. If a delete fails, the rows roll back and the next run retries; files already deleted
+  stay deleted, which is safe because the retry counts a missing key as deleted.
 - Check it: `gcloud run jobs executions list --job=aimos-maintenance --region=asia-south1` (also
   in `deploy.sh prod status`), and the `maintenance.done` and `periodic.accounts_purged` log lines.
 
@@ -67,10 +70,10 @@ All marketplace data must be deleted within **30 days** of the earliest trigger.
 
 | Trigger | What happens | Status |
 |---|---|---|
-| A brand revokes Kuinn inside Kuinn | Tokens deleted at once. 25 days later the daily job deletes the account's listings (with their items, issues, versions, decisions, runs and jobs), its submissions and their stored payloads and raw answers, its tasks and the account row. A reconnect within the 25 days keeps everything | Tokens: Live. Rest: Built |
-| A brand removes Kuinn in Seller Central or the Flipkart seller dashboard | The next token refresh fails and the account goes `needs_reconnect`; 25 days later the same purge runs | Built (the refresh itself runs in the worker; until it is on, staff revoke the account in Kuinn when a brand says so) |
+| A brand revokes Kuinn inside Kuinn | Tokens deleted at once. 20 days later the daily job deletes every listing still on that account (with its submissions, stored payloads and raw answers, items, issues, versions, decisions, runs and jobs), the account's tasks and the account row; backups and soft-deleted objects expire 7 days after that, so the last copy is gone by about day 27. If the same seller reconnects first, the reconnect moves the listings and their full submission history to the new account, and the later purge of the old account deletes only what stayed on it (its tasks and the account row) | Tokens: Live. Rest: Built |
+| A brand removes Kuinn in Seller Central or the Flipkart seller dashboard | The next token refresh fails and the account goes `needs_reconnect`; 20 days later the same purge runs | Built (the refresh itself runs in the worker; until it is on, staff revoke the account in Kuinn when a brand says so) |
 | A tenant leaves (contract ends, erasure request) | Staff run the tenant deletion below; everything of the tenant is gone within 8 days (7-day backups and object soft delete) | Live (manual) |
-| Amazon or Flipkart asks for deletion, or Kuinn leaves a programme | Revoke every account of that marketplace; the daily job purges them after 25 days, or staff purge at once with `force` (below) | Built |
+| Amazon or Flipkart asks for deletion, or Kuinn leaves a programme | Revoke every account of that marketplace; the daily job purges them after 20 days, or staff purge at once with `force` (below) | Built |
 
 What stays after an account purge: the brand's products, colourways, images and facts (the brand's
 own data, not marketplace data), the audit rows (ids and allow-listed status values only) and one

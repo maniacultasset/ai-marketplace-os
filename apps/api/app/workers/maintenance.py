@@ -10,7 +10,7 @@ in this order, each in its own transactions:
 3. `retention_daily`: import rows, imports and job chains past their cutoffs, old refresh tokens,
    closed invitations, inactive brand chunks, then the image orphan sweep. The queue's own entries
    are the worker's (no queue app here).
-4. `purge_disconnected_accounts`: every marketplace account revoked or disconnected for 25 days,
+4. `purge_disconnected_accounts`: every marketplace account revoked or disconnected for 20 days,
    as `migrator` (ALEMBIC_DATABASE_URL).
 
 Every step is idempotent, so a second run the same day, or a run beside a worker, deletes nothing

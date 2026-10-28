@@ -6,11 +6,13 @@ the migrator call that deletes one of them.
   only in `platform_scope()` (the daily maintenance job). Reads no credential column.
 - `purger()`: a migrator engine (ALEMBIC_DATABASE_URL, one connection) for the run. `purge()`
   calls `purge_marketplace_account(t, a)` in one transaction and, before that transaction
-  commits, hands the returned submission object keys to `delete_objects`: a failed delete rolls
-  the purge back, so no row is gone while its objects stay, and the next run retries.
+  commits, hands the returned submission object keys to `delete_objects`. A failed delete rolls
+  the rows back and the next run retries; objects deleted before the failure stay deleted, which
+  is safe because a missing key counts as deleted on the retry.
 
-`PURGE_AFTER_DAYS` is also a literal in the SQL function (`interval '25 days'`); a unit test keeps
-the two equal. 25 days leaves a daily job five tries inside DPP 1.7's 30 days.
+`PURGE_AFTER_DAYS` is also a literal in the SQL function (`interval '20 days'`); a unit test keeps
+the two equal. DPP 1.7's 30 days include the backups: 20 days, then 7-day backups and PITR logs and
+the 7-day bucket soft delete, puts the last copy at about day 27, with daily retries to spare.
 """
 
 from __future__ import annotations
@@ -28,7 +30,9 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from app.core.config import get_settings
 from app.db.models.catalog_assets import MarketplaceAccount
 
-PURGE_AFTER_DAYS: Final = 25
+PURGE_AFTER_DAYS: Final = 20
+# Cloud SQL backups and PITR logs, and the buckets' soft delete (scripts/deploy/gcp/deploy.sh)
+BACKUP_DAYS: Final = 7
 PURGE_AFTER: Final = timedelta(days=PURGE_AFTER_DAYS)
 _PURGE: Final = text("SELECT public.purge_marketplace_account(:t, :a)")
 
