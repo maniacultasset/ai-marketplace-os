@@ -753,6 +753,21 @@ tag_url() {
     python3 -c 'import json,sys; t=sys.argv[1]; print(next(x["url"] for x in json.load(sys.stdin)["status"]["traffic"] if x.get("tag")==t))' "$1"
 }
 
+# Every `sha-*` revision tag is a public URL straight to that revision, which bypasses settings a
+# later revision changed (an old revision answers with MFA off or without the lockout). Once the new
+# revision takes all traffic, every such tag goes, its own included; a rollback goes by revision name.
+drop_revision_tags() {
+  local stale
+  if [ "$DRY_RUN" -eq 1 ]; then
+    show gcloud run services update-traffic "$API_SERVICE" --region="$REGION" --remove-tags="<every sha-* tag>" --project="$PROJECT" --quiet
+    return 0
+  fi
+  stale="$(gq run services describe "$API_SERVICE" --region="$REGION" --format=json |
+    python3 -c 'import json,sys; print(",".join(x["tag"] for x in json.load(sys.stdin)["status"].get("traffic", []) if x.get("tag", "").startswith("sha-")))')" ||
+    die "could not list the revision tags of $API_SERVICE"
+  [ -z "$stale" ] || gc run services update-traffic "$API_SERVICE" --region="$REGION" --remove-tags="$stale"
+}
+
 deploy_api() {
   local image="$1" url="$2" tag existed=0 now value
   local -a args
@@ -787,6 +802,7 @@ deploy_api() {
       smoke "$(tag_url "$tag")" || die "revision $tag failed smoke; traffic stays on the previous revision"
     fi
     gc run services update-traffic "$API_SERVICE" --region="$REGION" --to-latest
+    drop_revision_tags
   else
     gc "${args[@]}"
     # JWT_ISSUER and the OAuth redirect URIs must be the URL the service actually got.
