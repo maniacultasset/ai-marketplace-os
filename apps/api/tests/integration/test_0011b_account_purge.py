@@ -196,13 +196,20 @@ def test_reconnect_moves_history_and_the_purge_leaves_it(db: Conn) -> None:
     assert moved >= 1
     # the retry on B (placed directly: the publish guards are not under test here)
     db.execute("SET LOCAL session_replication_role = replica")
+    # the first attempt ended before the retry (one open submission per listing, ux_ls_open)
+    db.execute(
+        "UPDATE listing_submissions SET outcome = 'rejected', responded_at = now(), resolved_at = now(), "
+        "error_report_json = '{}'::jsonb WHERE id = %s",
+        (first[0],),
+    )
     db.execute(
         "INSERT INTO listing_submissions (tenant_id, listing_id, listing_version_id, marketplace, "
         "marketplace_account_id, job_id, attempt, operation, payload_sha256, payload_storage_key, "
-        "facts_digest, idempotency_key, requested_by_user_id, actor_type, previous_submission_id) "
+        "facts_digest, idempotency_key, requested_by_user_id, actor_type, previous_submission_id, "
+        "retry_justification) "
         "SELECT tenant_id, listing_id, listing_version_id, marketplace, %s, job_id, attempt + 1, "
         "operation, payload_sha256, payload_storage_key || '.retry', facts_digest, "
-        "idempotency_key || '-retry', requested_by_user_id, actor_type, id "
+        "idempotency_key || '-retry', requested_by_user_id, actor_type, id, 'retryable_condition' "
         "FROM listing_submissions WHERE id = %s",
         (new, first[0]),
     )
