@@ -783,9 +783,33 @@ def test_deploy_unlocked_existing_unchanged(toolkit: Path, tmp_path: Path) -> No
     assert "--tag=sha-0123456789ab" in deploy and "candidate" not in deploy
     shift = live.index("update-traffic", "--to-latest")
     assert shift > live.index("run deploy aimos-api")
+    # every sha-* tag URL bypasses later settings (MFA, lockout), so all go after the shift
+    assert live.index("update-traffic", "--remove-tags=sha-0123456789ab") > shift
     assert live.curls[0].endswith(f"{TAG_URL}/api/v1/auth/me")
     assert live.curls[1].endswith(f"{TAG_URL}/readyz")
     assert not [c for c in live.curls if HEADER in c]
+
+
+def test_deploy_drops_every_old_revision_tag(toolkit: Path, tmp_path: Path) -> None:
+    tags = {
+        "sha-0123456789ab": TAG_URL,
+        "sha-aaaaaaaaaaaa": "https://old-a",
+        "keep-me": "https://k",
+    }
+    live = run_live(
+        toolkit,
+        tmp_path,
+        "prod",
+        "deploy",
+        responses=existing_service(service_doc(tags=tags)),
+        curl=[*healthy(TAG_URL, no_header=True), *healthy(RUN_APP, no_header=True)],
+    )
+    assert live.result.returncode == 0, live.out
+    drop = live.calls[live.index("update-traffic", "--remove-tags=")]
+    assert "--remove-tags=sha-0123456789ab,sha-aaaaaaaaaaaa" in drop and "keep-me" not in drop
+    assert live.index("update-traffic", "--remove-tags=") > live.index(
+        "update-traffic", "--to-latest"
+    )
 
 
 def test_deploy_locked_smoke_pass_then_shift(toolkit: Path, tmp_path: Path) -> None:
