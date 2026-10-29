@@ -9,6 +9,7 @@ import re
 import shlex
 import subprocess
 from collections.abc import Callable, Iterator
+from datetime import datetime
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -605,9 +606,15 @@ def test_mfa_key_uri_only_in_api_env(toolkit: Path, tmp_path: Path) -> None:
 def test_env_files_carry_mfa_keys(repo_root: Path, env_name: str) -> None:
     text = (repo_root / DEPLOY / f"{env_name}.env").read_text(encoding="utf-8")
     values = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
-    assert values["MFA_ENFORCEMENT"] == "off"
-    assert values["MFA_GRACE_UNTIL"] == ""
     assert values["KMS_MFA_KEY"] == "mfa-secret-key"
+    if env_name == "prod":
+        # MFA-STAFF §3 step 5: prod enforces, with a grace date in ISO 8601 with an offset
+        assert values["MFA_ENFORCEMENT"] == "all"
+        grace = datetime.fromisoformat(values["MFA_GRACE_UNTIL"])
+        assert grace.utcoffset() is not None
+    else:
+        assert values["MFA_ENFORCEMENT"] == "off"
+        assert values["MFA_GRACE_UNTIL"] == ""
 
 
 def test_api_env_carries_mfa_enforcement_and_grace(toolkit: Path, tmp_path: Path) -> None:
