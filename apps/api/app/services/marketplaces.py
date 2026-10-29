@@ -218,7 +218,7 @@ async def _adopt_revoked(
     """A new live account replaces the tenant's revoked ones for `marketplace` of the SAME seller
     (DATABASE.md:760; a revoked account of another seller keeps its listings, whose SKUs belong
     to that seller):
-    their listings are re-pointed to it, any reconnect task still live on them is cancelled
+    their listings are re-pointed to it with their submission history, any reconnect task still live on them is cancelled
     (`superseded`), and the AUTH_EXPIRED issues a revoke stranded mid-publish are linked to one
     `reconnect_account` task on the new account, applied by this connect, so the publish gate
     and `human_resolution` let the listing publish again."""
@@ -228,6 +228,9 @@ async def _adopt_revoked(
     for old in revoked:
         await uow.human_tasks.cancel_reconnect(old)
     moved = await uow.listings.repoint_account(marketplace, revoked, account_id)
+    # the moved listings take their submission history along (ls_guard 0011b), so the revoked
+    # account's purge (DPP 1.7) never deletes it and the publish guards still see every attempt
+    history = await uow.submissions.repoint_account(moved, revoked, account_id)
     stranded = await uow.listing_issues.unresolved_auth(moved)
     linked = 0
     if stranded:
@@ -238,6 +241,7 @@ async def _adopt_revoked(
         "marketplace_account.adopted_listings",
         account_id=str(account_id),
         listings=len(moved),
+        submissions=history,
         issues_linked=linked,
     )
 

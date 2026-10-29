@@ -81,6 +81,33 @@ class ListingSubmissionRepository(TenantScopedRepository[ListingSubmission]):
         if self.db.info.get(TENANT_INFO_KEY) != self.tenant_id:
             raise CrossTenantQueryError("listing_submissions write for another tenant's session")
 
+    async def repoint_account(
+        self,
+        listing_ids: Sequence[uuid.UUID],
+        from_ids: Sequence[uuid.UUID],
+        to_id: uuid.UUID,
+    ) -> int:
+        """Move the submissions of `listing_ids` from the revoked `from_ids` to their listings' new
+        account `to_id` (a reconnect of the same seller, `_adopt_revoked`), terminal rows
+        included; the rows moved. ls_guard (0011b) allows exactly this move, so the attempt cap,
+        the pending check and the previous-attempt FK keep working, and the old account's purge
+        (Amazon DPP 1.7) never deletes this history."""
+        self._own_session()
+        if not listing_ids or not from_ids:
+            return 0
+        criterion = self._tenant_criterion(include_platform=False)
+        stmt = self._scoped_write(
+            update(ListingSubmission)
+            .where(
+                criterion,
+                ListingSubmission.listing_id.in_(tuple(listing_ids)),
+                ListingSubmission.marketplace_account_id.in_(tuple(from_ids)),
+            )
+            .values(marketplace_account_id=to_id)
+        )
+        result = await self.db.execute(stmt)
+        return int(getattr(result, "rowcount", 0) or 0)
+
     async def insert_pending(self, new: NewSubmission) -> ListingSubmission:
         self._own_session()
         stmt = (

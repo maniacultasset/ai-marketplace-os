@@ -84,7 +84,8 @@ MATRIX: dict[str, tuple[frozenset[str], frozenset[str], frozenset[str]]] = {
     "business_parties": (RW, frozenset(), frozenset()),
     "listing_versions": (READ, frozenset({"approved_by_user_id", "approved_at"}), VERSION_INSERT),
     "listing_items": (RW, frozenset(), frozenset()),
-    "listing_submissions": (APPEND, OUTCOME, frozenset()),
+    # 0011b: a reconnect moves a listing's submissions to the new account (ls_guard checks the move)
+    "listing_submissions": (APPEND, OUTCOME | {"marketplace_account_id"}, frozenset()),
     "publish_field_results": (APPEND, frozenset(), frozenset()),
     "listing_issues": (RW, frozenset(), frozenset()),
     "human_tasks": (RW, frozenset(), frozenset()),

@@ -7,5 +7,8 @@
     "@mermaid-js/mermaid-cli": "11.17.0",
     "docx": "9.7.2",
     "marked": "14.1.4"
+  },
+  "overrides": {
+    "dompurify": "3.4.17"
   }
 }

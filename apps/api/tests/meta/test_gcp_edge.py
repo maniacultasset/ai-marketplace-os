@@ -264,7 +264,16 @@ def run_live(
     bin_dir = tmp_path / "bin"
     _fake(bin_dir, "gcloud", LIVE_GCLOUD)
     _fake(bin_dir, "curl", FAKE_CURL)
-    (tmp_path / "gcloud.json").write_text(json.dumps(responses or []), encoding="utf-8")
+    # The KMS keys, the maintenance accounts and Cloud Scheduler exist unless a test's own rule
+    # (matched first) says otherwise: a deploy checks them before `run deploy` (kms, setup guards).
+    rules = [
+        *(responses or []),
+        {"match": "kms keys describe", "stdout": "projects/p/cryptoKeys/k\n"},
+        # the setup guard: both maintenance accounts exist and Cloud Scheduler is on
+        {"match": "iam service-accounts describe", "stdout": "sa@p.iam.gserviceaccount.com\n"},
+        {"match": ["services list", "cloudscheduler"], "stdout": "cloudscheduler.googleapis.com\n"},
+    ]
+    (tmp_path / "gcloud.json").write_text(json.dumps(rules), encoding="utf-8")
     (tmp_path / "curl.json").write_text(json.dumps(curl or []), encoding="utf-8")
     env = _env(tmp_path, bin_dir, extra)
     result = _exec(toolkit, tmp_path, env, (*args, "--sha", SHA), "bash")
@@ -1654,3 +1663,26 @@ def test_adr_0022_ledger(repo_root: Path) -> None:
     (adr,) = (repo_root / "docs/adr").glob("0022-*.md")
     assert "Status:** proposed" in adr.read_text(encoding="utf-8").splitlines()[2]
     assert "| 0022 |" in (repo_root / "docs/adr/README.md").read_text(encoding="utf-8")
+
+
+# ---- DPP 1.7: a live deploy updates the existing maintenance trigger, never a second one ----
+
+
+def test_live_deploy_updates_the_maintenance_trigger(toolkit: Path, tmp_path: Path) -> None:
+    trigger = "projects/aimos-prod/locations/asia-south1/jobs/aimos-maintenance-daily\n"
+    live = run_live(
+        toolkit,
+        tmp_path,
+        "prod",
+        "deploy",
+        responses=[
+            *existing_service(service_doc(tags={"sha-0123456789ab": TAG_URL})),
+            {"match": "scheduler jobs describe aimos-maintenance-daily", "stdout": trigger},
+        ],
+        curl=[*healthy(TAG_URL, no_header=True), *healthy(RUN_APP, no_header=True)],
+    )
+    assert live.result.returncode == 0, live.out
+    assert live.index("scheduler jobs update http aimos-maintenance-daily") > live.index(
+        "run jobs deploy aimos-maintenance"
+    )
+    assert live.index("scheduler jobs create") == -1

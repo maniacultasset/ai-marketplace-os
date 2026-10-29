@@ -30,12 +30,15 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../../.." && pwd)"
 PLACEHOLDER="__FILL_ME__"
 USER_SECRETS="SENTRY_DSN OPENAI_API_KEY"
-REQUIRED_APIS="run.googleapis.com sqladmin.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com cloudkms.googleapis.com storage.googleapis.com iam.googleapis.com logging.googleapis.com cloudresourcemanager.googleapis.com serviceusage.googleapis.com"
+REQUIRED_APIS="run.googleapis.com sqladmin.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com cloudkms.googleapis.com storage.googleapis.com iam.googleapis.com logging.googleapis.com cloudresourcemanager.googleapis.com serviceusage.googleapis.com cloudscheduler.googleapis.com"
 API_SECRETS="DATABASE_URL JWT_SECRET ADMIN_SESSION_SECRET S3_ACCESS_KEY S3_SECRET_KEY SENTRY_DSN"
 WORKER_SECRETS="DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY SENTRY_DSN OPENAI_API_KEY"
 MIGRATE_SECRETS="ALEMBIC_DATABASE_URL"
 DB_INIT_SECRETS="POSTGRES_PASSWORD APP_RW_PASSWORD APP_RO_PASSWORD MIGRATOR_PASSWORD"
 OPS_SECRETS="ALEMBIC_DATABASE_URL"
+# The daily maintenance job (DPP 1.7): app_rw for retention, migrator for the account purge, the
+# HMAC pair for the submission and image object deletes.
+MAINT_SECRETS="DATABASE_URL ALEMBIC_DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY"
 PW_MOUNT="/secrets/initial-password/value"
 
 usage() {
@@ -88,6 +91,17 @@ SMOKE_SLEEP="${SMOKE_SLEEP:-6}"
 MFA_ENFORCEMENT="${MFA_ENFORCEMENT:-off}"
 MFA_GRACE_UNTIL="${MFA_GRACE_UNTIL:-}"
 KMS_MFA_KEY="${KMS_MFA_KEY:-mfa-secret-key}"
+# DPP 1.7: the daily maintenance job (retention and the account purge, app.workers.maintenance),
+# its runtime and scheduler identities and its Cloud Scheduler trigger. An env file older than
+# these keys gets the defaults.
+MAINT_JOB="${MAINT_JOB:-aimos-maintenance}"
+SA_MAINT="${SA_MAINT:-aimos-maint}"
+SA_SCHED="${SA_SCHED:-aimos-sched}"
+MAINT_SCHEDULE="${MAINT_SCHEDULE:-0 3 * * *}"
+MAINT_TIME_ZONE="${MAINT_TIME_ZONE:-Asia/Kolkata}"
+# DPP 2.7.4: where Cloud SQL keeps its automated backups; an env file without the key keeps them in
+# the instance's region, as before.
+SQL_BACKUP_LOCATION="${SQL_BACKUP_LOCATION:-$REGION}"
 case "$MFA_ENFORCEMENT" in
   off | all) ;;
   *) die "MFA_ENFORCEMENT must be off or all (in $ENV_NAME.env)" ;;
@@ -309,6 +323,32 @@ setup_apis() {
   gc logging buckets update _Default --location=global --retention-days="$LOG_RETENTION_DAYS"
 }
 
+# The 400-day security-logs bucket (DPP 2.6.1: security logs kept at least 12 months). Shared by
+# `setup` (the api's own events) and `edge alerts` (the load balancer's).
+ensure_security_bucket() {
+  if gq logging buckets describe "$EDGE_LOG_BUCKET" --location=global --format='value(name)' >/dev/null; then
+    gc logging buckets update "$EDGE_LOG_BUCKET" --location=global --retention-days=400
+  else
+    gc logging buckets create "$EDGE_LOG_BUCKET" --location=global --retention-days=400
+  fi
+}
+
+# DPP 2.6.1: the api's security events outlive the 30-day _Default bucket. The sink copies the
+# sign-in events (`auth.*` log lines: ids and an ip hash only, app/services/auth_events.py) and the
+# refused requests (401, 403, 429) from Cloud Run's request log into security-logs. OAuth callback
+# URLs carry code and state, so they are never copied.
+setup_security_logs() {
+  local filter dest
+  ensure_security_bucket
+  filter="resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"$API_SERVICE\" AND (jsonPayload.message=~\"^auth\\\\.\" OR (logName:\"run.googleapis.com%2Frequests\" AND (httpRequest.status=401 OR httpRequest.status=403 OR httpRequest.status=429) AND NOT httpRequest.requestUrl:\"/callback\"))"
+  dest="logging.googleapis.com/projects/$PROJECT/locations/global/buckets/$EDGE_LOG_BUCKET"
+  if gq logging sinks describe "$APP_SECURITY_SINK" --format='value(name)' >/dev/null; then
+    gc logging sinks update "$APP_SECURITY_SINK" "$dest" --log-filter="$filter"
+  else
+    gc logging sinks create "$APP_SECURITY_SINK" "$dest" --log-filter="$filter"
+  fi
+}
+
 setup_registry() {
   gq artifacts repositories describe "$AR_REPO" --location="$REGION" --format='value(name)' >/dev/null ||
     gc artifacts repositories create "$AR_REPO" --location="$REGION" --repository-format=docker \
@@ -325,12 +365,13 @@ JSON
 setup_accounts() {
   local pair name
   for pair in "$SA_API:API runtime" "$SA_WORKER:worker runtime" "$SA_MIGRATE:migrate job" \
-    "$SA_OPS:one-off staff jobs" "$SA_STORAGE:GCS HMAC identity" "$SA_BUILD:Cloud Build"; do
+    "$SA_OPS:one-off staff jobs" "$SA_STORAGE:GCS HMAC identity" "$SA_BUILD:Cloud Build" \
+    "$SA_MAINT:daily maintenance job" "$SA_SCHED:maintenance scheduler"; do
     name="${pair%%:*}"
     gq iam service-accounts describe "$(sa_email "$name")" --format='value(email)' >/dev/null ||
       gc iam service-accounts create "$name" --display-name="aimos ${pair#*:}"
   done
-  for name in "$SA_API" "$SA_WORKER" "$SA_MIGRATE" "$SA_OPS"; do
+  for name in "$SA_API" "$SA_WORKER" "$SA_MIGRATE" "$SA_OPS" "$SA_MAINT"; do
     retry gc projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$(sa_email "$name")" \
       --role=roles/cloudsql.client --condition=None --format=none
   done
@@ -454,11 +495,17 @@ setup_sql() {
       say "Cloud SQL flags differ ('$current'); patching to '$want' (this may restart the instance)"
       gc sql instances patch "$SQL_INSTANCE" --database-flags="$(sql_flags)"
     fi
+    # DPP 2.7.4: new backups go to SQL_BACKUP_LOCATION; existing backups stay where they were taken.
+    current="$(gq sql instances describe "$SQL_INSTANCE" --format='value(settings.backupConfiguration.location)')"
+    if [ "$current" != "$SQL_BACKUP_LOCATION" ]; then
+      say "Cloud SQL backups are in '$current'; moving new backups to $SQL_BACKUP_LOCATION"
+      gc sql instances patch "$SQL_INSTANCE" --backup-location="$SQL_BACKUP_LOCATION"
+    fi
   else
     gc sql instances create "$SQL_INSTANCE" --database-version=POSTGRES_17 --edition=ENTERPRISE \
       --tier="$SQL_TIER" --region="$REGION" --availability-type=zonal --storage-type=SSD \
       --storage-size="${SQL_STORAGE_GB}GB" --storage-auto-increase \
-      --backup-start-time=20:30 --backup-location="$REGION" --retained-backups-count=7 \
+      --backup-start-time=20:30 --backup-location="$SQL_BACKUP_LOCATION" --retained-backups-count=7 \
       --enable-point-in-time-recovery --retained-transaction-log-days="$SQL_PITR_DAYS" \
       --retain-backups-on-delete --maintenance-window-day=SUN --maintenance-window-hour=21 \
       --database-flags="$(sql_flags)" --insights-config-query-insights-enabled \
@@ -503,6 +550,7 @@ setup_secrets() {
   for name in $WORKER_SECRETS; do grant_secret "$name" "$SA_WORKER"; done
   for name in $MIGRATE_SECRETS; do grant_secret "$name" "$SA_MIGRATE"; done
   for name in $DB_INIT_SECRETS $OPS_SECRETS; do grant_secret "$name" "$SA_OPS"; done
+  for name in $MAINT_SECRETS; do grant_secret "$name" "$SA_MAINT"; done
 }
 
 # The two values only a person can supply. Each missing one gets a command for the user's OWN
@@ -531,6 +579,7 @@ cmd_setup() {
   check_filled
   cmd_preflight
   setup_apis
+  setup_security_logs
   setup_registry
   setup_accounts
   setup_kms
@@ -806,16 +855,81 @@ deploy_worker() {
     --labels="$LABELS"
 }
 
+# ADR-0018 and ADR-0021: the api reads both keys at run time. A key that `setup` never created (a
+# release that added a key, deployed without `setup`) would fail every MFA enrolment or token seal
+# after traffic moved, so the deploy refuses first.
+kms_guard() {
+  local key
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "kms guard: skipped (dry run)"
+    return 0
+  fi
+  for key in "$KMS_KEY" "$KMS_MFA_KEY"; do
+    gq kms keys describe "$key" --keyring="$KMS_KEYRING" --location="$REGION" \
+      --format='value(name)' >/dev/null ||
+      die "KMS key $key is missing or unreadable in $PROJECT: run scripts/deploy/gcp/deploy.sh $ENV_NAME setup first"
+  done
+  say "kms guard: OK ($KMS_KEY, $KMS_MFA_KEY)"
+}
+
+# IMAGE URL: the daily maintenance job on this release's image, and its Cloud Scheduler trigger
+# (DPP 1.7, 2.1). The job runs `python -m app.workers.maintenance` as SA_MAINT (Cloud SQL client and
+# its four secrets only) under the shell role, so it needs no worker. SA_SCHED may only run this
+# one job (roles/run.invoker on the job). The run is idempotent: a retry or a second run deletes
+# nothing twice. `setup` enables the Cloud Scheduler API and creates both accounts.
+deploy_maintenance() {
+  local image="$1" url="$2" uri verb
+  env_file shell "$url" "$WORK/maintenance-env.yaml"
+  gc run jobs deploy "$MAINT_JOB" --image="$image" --region="$REGION" \
+    --service-account="$(sa_email "$SA_MAINT")" --set-cloudsql-instances="$CONN" \
+    --env-vars-file="$WORK/maintenance-env.yaml" --set-secrets="$(secret_refs "$MAINT_SECRETS")" \
+    --args="-m,app.workers.maintenance" --tasks=1 --parallelism=1 --max-retries=1 \
+    --task-timeout=1800s --cpu=1 --memory=1Gi --labels="$LABELS"
+  retry gc run jobs add-iam-policy-binding "$MAINT_JOB" --region="$REGION" \
+    --member="serviceAccount:$(sa_email "$SA_SCHED")" --role=roles/run.invoker --format=none
+  uri="https://run.googleapis.com/v2/projects/$PROJECT/locations/$REGION/jobs/$MAINT_JOB:run"
+  verb=create
+  if gq scheduler jobs describe "$MAINT_JOB-daily" --location="$REGION" --format='value(name)' >/dev/null; then
+    verb=update
+  fi
+  gc scheduler jobs "$verb" http "$MAINT_JOB-daily" --location="$REGION" \
+    --schedule="$MAINT_SCHEDULE" --time-zone="$MAINT_TIME_ZONE" --uri="$uri" --http-method=POST \
+    --oauth-service-account-email="$(sa_email "$SA_SCHED")"
+}
+
+# The release ships the maintenance job and its trigger after traffic has moved, so a project whose
+# `setup` predates them (no aimos-maint or aimos-sched account, Cloud Scheduler off) would fail
+# half-released. Checked before the build, next to kms_guard.
+setup_guard() {
+  local name enabled
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "setup guard: skipped (dry run)"
+    return 0
+  fi
+  for name in "$SA_MAINT" "$SA_SCHED"; do
+    gq iam service-accounts describe "$(sa_email "$name")" --format='value(email)' >/dev/null ||
+      die "service account $name is missing or unreadable in $PROJECT: run scripts/deploy/gcp/deploy.sh $ENV_NAME setup first"
+  done
+  enabled="$(gq services list --enabled --filter=config.name=cloudscheduler.googleapis.com \
+    --format='value(config.name)' || true)"
+  [ "$enabled" = "cloudscheduler.googleapis.com" ] ||
+    die "cloudscheduler.googleapis.com is not enabled in $PROJECT: run scripts/deploy/gcp/deploy.sh $ENV_NAME setup first"
+  say "setup guard: OK ($SA_MAINT, $SA_SCHED, Cloud Scheduler)"
+}
+
 cmd_deploy() {
   check_filled
   check_ingress
   local image url
   url="$(api_url)"
   live_guard "$url"
+  kms_guard
+  setup_guard
   image="$(image_ref)"
   deploy_api "$image" "$url"
   [ "$DRY_RUN" -eq 1 ] || [ -n "$API_PUBLIC_URL" ] || url="$(service_url)"
   deploy_worker "$image" "$url"
+  deploy_maintenance "$image" "$url"
   cmd_smoke
 }
 
@@ -881,6 +995,8 @@ cmd_smoke() {
 cmd_release() {
   check_ingress
   live_guard "$(api_url)"
+  kms_guard
+  setup_guard
   cmd_build
   cmd_migrate
   cmd_deploy
@@ -1072,6 +1188,7 @@ EDGE_UPTIME="aimos-edge-readyz"
 EDGE_CHANNEL="aimos-edge-alerts"
 EDGE_SINK="edge-security"
 EDGE_LOG_BUCKET="security-logs"
+APP_SECURITY_SINK="app-security"
 EDGE_DENY_ALERT="${EDGE_DENY_ALERT:-50}"
 EDGE_429_ALERT=100
 EDGE_5XX_RATIO=0.05
@@ -1556,11 +1673,7 @@ for key, (name, condition) in policies.items():
     fi
   done
   # The 400-day security bucket and its sink. OAuth callback URLs carry code/state: never sunk.
-  if gq logging buckets describe "$EDGE_LOG_BUCKET" --location=global --format='value(name)' >/dev/null; then
-    gc logging buckets update "$EDGE_LOG_BUCKET" --location=global --retention-days=400
-  else
-    gc logging buckets create "$EDGE_LOG_BUCKET" --location=global --retention-days=400
-  fi
+  ensure_security_bucket
   local filter dest
   filter='(resource.type="http_load_balancer" AND (jsonPayload.enforcedSecurityPolicy.outcome="DENY" OR jsonPayload.previewSecurityPolicy.outcome="DENY" OR (httpRequest.requestUrl=~"/api/v1/(auth|signup)" AND httpRequest.status>=400)) AND NOT httpRequest.requestUrl:"/callback") OR (resource.type="network_security_policy" AND logName:"networksecurity.googleapis.com%2Fdos_attack")'
   dest="logging.googleapis.com/projects/$PROJECT/locations/global/buckets/$EDGE_LOG_BUCKET"
@@ -1635,7 +1748,7 @@ cmd_status() {
   gq run revisions list --service="$API_SERVICE" --region="$REGION" --limit=5 \
     --format='table(metadata.name,status.conditions[0].status,metadata.creationTimestamp)' || true
   gq run worker-pools describe "$WORKER_POOL" --region="$REGION" --format='value(name)' || true
-  for job in "$DB_INIT_JOB" "$MIGRATE_JOB" "$OPS_JOB"; do
+  for job in "$DB_INIT_JOB" "$MIGRATE_JOB" "$OPS_JOB" "$MAINT_JOB"; do
     gq run jobs executions list --job="$job" --region="$REGION" --limit=3 \
       --format='table(metadata.name,status.succeededCount,status.failedCount,status.completionTime)' || true
   done

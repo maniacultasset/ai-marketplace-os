@@ -788,7 +788,7 @@ def test_0010_chain_and_shape() -> None:
     assert "phone" not in readable and "owner_name" not in readable
 
 
-def test_0011_is_the_single_head() -> None:
+def test_0011b_is_the_single_head() -> None:
     parents = set()
     revisions = set()
     for path in VERSIONS.glob("0*.py"):
@@ -797,7 +797,8 @@ def test_0011_is_the_single_head() -> None:
         down = re.search(r'^down_revision: .*= "([^"]+)"', text, re.M)
         if down:
             parents.add(down.group(1))
-    assert revisions - parents == {"0011_mfa_lockout"}  # DPP-1 sits on top of 0010
+    # DPP-1 sits on top of 0010, the account purge on top of DPP-1
+    assert revisions - parents == {"0011b_account_purge"}
 
 
 @pytest.mark.parametrize(

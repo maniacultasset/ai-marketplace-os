@@ -75,12 +75,15 @@ def test_round_trip_up_down_up(alembic_env: MakeConfig, scratch_db: ScratchDb) -
     at_head = _fingerprint(scratch_db)
     assert len(at_head["tables"]) == 4 and len(at_head["columns"]) == 5
     assert at_head["bodies"] != before["bodies"]
+    # `alembic check` needs the head; 0011b adds no table or column
+    command.upgrade(cfg, "head")
     command.check(cfg)
     command.downgrade(cfg, PREVIOUS)
     # test_downgrade_restores_0004_erasure_bodies: the downgrade puts back the 0004 bodies
     assert _fingerprint(scratch_db) == before
     command.upgrade(cfg, REVISION)
     assert _fingerprint(scratch_db) == at_head
+    command.upgrade(cfg, "head")
     command.check(cfg)
 
 

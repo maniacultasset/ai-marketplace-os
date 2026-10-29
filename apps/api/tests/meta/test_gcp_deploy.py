@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import subprocess
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -724,3 +725,278 @@ def test_tenant_reset_mfa_mounts_fresh_password(toolkit: Path, tmp_path: Path) -
     job = next(line for line in out.splitlines() if "run jobs deploy aimos-ops" in line)
     assert "/secrets/initial-password/value=INITIAL_PASSWORD_" in job
     assert "|user|reset-mfa|--email=a@b.test|--staff-email=s@b.test" in job.replace("\\", "")
+
+
+# ---- Amazon DPP: security logs, backup location, the KMS guard ----
+
+# A gcloud that answers like a project whose MFA key was never created: no live service, the OAuth
+# key present, the MFA key absent. Any other call is recorded and fails.
+FAKE_GCLOUD_NO_MFA_KEY = """#!/bin/sh
+case " $* " in
+  *" --help "*) exit 0 ;;
+  *"run services describe"*) echo "ERROR: NOT_FOUND" >&2; exit 1 ;;
+  *"kms keys describe oauth-token-key "*) echo "projects/p/cryptoKeys/oauth-token-key"; exit 0 ;;
+  *"kms keys describe mfa-secret-key "*) echo "ERROR: NOT_FOUND" >&2; exit 1 ;;
+esac
+echo "$*" >> "$FAKE_GCLOUD_LOG"
+exit 98
+"""
+
+
+def test_setup_keeps_api_security_events_400_days(toolkit: Path, tmp_path: Path) -> None:
+    """DPP 2.6.1: the api's sign-in events and refused requests go to the 400-day bucket."""
+    out = _run(toolkit, tmp_path, "prod", "setup", "--dry-run", "--sha", SHA).stdout
+    lines = out.splitlines()
+    bucket = next(x for x in lines if "logging buckets create security-logs" in x)
+    assert "--retention-days=400" in bucket and "--location=global" in bucket
+    sink = shlex.split(next(x for x in lines if "logging sinks create app-security" in x))
+    assert (
+        "logging.googleapis.com/projects/aimos-prod/locations/global/buckets/security-logs" in sink
+    )
+    (log_filter,) = [a.split("=", 1)[1] for a in sink if a.startswith("--log-filter=")]
+    assert 'resource.labels.service_name="aimos-api"' in log_filter
+    assert 'jsonPayload.message=~"^auth\\\\."' in log_filter
+    for status in ("401", "403", "429"):
+        assert f"httpRequest.status={status}" in log_filter, status
+    assert 'NOT httpRequest.requestUrl:"/callback"' in log_filter
+    # the bucket comes before the sink that writes into it
+    assert lines.index(bucket) < next(i for i, x in enumerate(lines) if "app-security" in x)
+
+
+def test_backup_location_follows_the_env_file(toolkit: Path, tmp_path: Path) -> None:
+    """DPP 2.7.4: SQL_BACKUP_LOCATION moves the backups; staging (no key) keeps its region."""
+
+    def create_line(env_name: str) -> str:
+        out = _run(toolkit, tmp_path, env_name, "setup", "--dry-run", "--sha", SHA).stdout
+        return next(line for line in out.splitlines() if "sql instances create" in line)
+
+    assert "--backup-location=asia-south1" in create_line("prod")
+    assert "--backup-location=asia-south1" in create_line("staging")
+    env = toolkit / "prod.env"
+    text = env.read_text(encoding="utf-8")
+    assert "SQL_BACKUP_LOCATION=asia-south1\n" in text
+    env.write_text(
+        text.replace("SQL_BACKUP_LOCATION=asia-south1\n", "SQL_BACKUP_LOCATION=asia-south2\n"),
+        encoding="utf-8",
+    )
+    assert "--backup-location=asia-south2" in create_line("prod")
+
+
+def test_existing_instance_backup_location_is_patched(repo_root: Path) -> None:
+    """The live instance path compares the backups' location and patches only that flag."""
+    script = (repo_root / DEPLOY / "deploy.sh").read_text(encoding="utf-8")
+    body = script[
+        script.index("setup_sql() {") : script.index("wait_sql_runnable\n  gq sql databases")
+    ]
+    assert "settings.backupConfiguration.location" in body
+    assert 'gc sql instances patch "$SQL_INSTANCE" --backup-location="$SQL_BACKUP_LOCATION"' in body
+
+
+def test_dry_run_deploy_reports_the_kms_guard(toolkit: Path, tmp_path: Path) -> None:
+    out = _run(toolkit, tmp_path, "prod", "deploy", "--dry-run", "--sha", SHA).stdout
+    lines = out.splitlines()
+    guard = lines.index("deploy: kms guard: skipped (dry run)")
+    assert guard < next(i for i, x in enumerate(lines) if "gcloud run deploy aimos-api" in x)
+
+
+def test_release_runs_the_kms_guard_before_building(repo_root: Path) -> None:
+    script = (repo_root / DEPLOY / "deploy.sh").read_text(encoding="utf-8")
+    release = script[script.index("cmd_release() {") :]
+    release = release[: release.index("\n}\n")]
+    assert release.index("kms_guard") < release.index("cmd_build")
+
+
+def test_deploy_refuses_when_the_mfa_key_is_missing(toolkit: Path, tmp_path: Path) -> None:
+    """A release that skipped `setup` stops before `run deploy`, naming the key and the fix."""
+    bin_dir = tmp_path / "bin-no-mfa"
+    bin_dir.mkdir()
+    fake = bin_dir / "gcloud"
+    fake.write_text(FAKE_GCLOUD_NO_MFA_KEY, encoding="utf-8")
+    fake.chmod(0o755)
+    log = tmp_path / "gcloud-no-mfa.log"
+    result = subprocess.run(
+        ["bash", str(toolkit / "deploy.sh"), "prod", "deploy", "--sha", SHA],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+        env={
+            "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+            "HOME": str(tmp_path),
+            "TMPDIR": str(tmp_path),
+            "FAKE_GCLOUD_LOG": str(log),
+        },
+        cwd=tmp_path,
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "KMS key mfa-secret-key is missing or unreadable in aimos-prod" in result.stderr
+    assert "deploy.sh prod setup first" in result.stderr
+    assert not log.exists(), log.read_text(encoding="utf-8")
+
+
+# ---- DPP 1.7: the daily maintenance job and its scheduler ----
+
+MAINT_SECRET_NAMES = {"DATABASE_URL", "ALEMBIC_DATABASE_URL", "S3_ACCESS_KEY", "S3_SECRET_KEY"}
+
+
+def _secret_grants(out: str, account: str) -> set[str]:
+    grants = set()
+    for line in out.splitlines():
+        if "secrets add-iam-policy-binding" in line and f"serviceAccount:{account}@" in line:
+            grants.add(shlex.split(line)[4])
+    return grants
+
+
+@pytest.mark.parametrize("env_name", ["staging", "prod"])
+def test_setup_prepares_the_maintenance_job(toolkit: Path, tmp_path: Path, env_name: str) -> None:
+    """`setup` enables Cloud Scheduler and creates the two identities: the job's (Cloud SQL client
+    and its four secrets only) and the scheduler's (no project role, no secret)."""
+    out = _run(toolkit, tmp_path, env_name, "setup", "--dry-run", "--sha", SHA).stdout
+    lines = out.splitlines()
+    enable = next(x for x in lines if "gcloud services enable" in x)
+    assert "cloudscheduler.googleapis.com" in enable
+    for name in ("aimos-maint", "aimos-sched"):
+        assert any(f"iam service-accounts create {name} " in x for x in lines), name
+    project_roles = [x for x in lines if "projects add-iam-policy-binding" in x]
+    maint_roles = [x for x in project_roles if "serviceAccount:aimos-maint@" in x]
+    assert len(maint_roles) == 1 and "--role=roles/cloudsql.client" in maint_roles[0]
+    assert not [x for x in project_roles if "serviceAccount:aimos-sched@" in x]
+    assert _secret_grants(out, "aimos-maint") == MAINT_SECRET_NAMES
+    assert _secret_grants(out, "aimos-sched") == set()
+
+
+def test_deploy_ships_the_maintenance_job_and_its_trigger(toolkit: Path, tmp_path: Path) -> None:
+    out = _run(toolkit, tmp_path, "prod", "deploy", "--dry-run", "--sha", SHA).stdout
+    lines = out.splitlines()
+    job_at = next(i for i, x in enumerate(lines) if "run jobs deploy aimos-maintenance " in x)
+    job = shlex.split(lines[job_at])
+    assert "--service-account=aimos-maint@aimos-prod.iam.gserviceaccount.com" in job
+    assert "--args=-m,app.workers.maintenance" in job
+    assert "--set-cloudsql-instances=aimos-prod:asia-south1:aimos-db" in job
+    assert "--tasks=1" in job and "--parallelism=1" in job
+    (secrets,) = [a for a in job if a.startswith("--set-secrets=")]
+    assert set(_secret_names(secrets)) == MAINT_SECRET_NAMES
+    env = yaml.safe_load(_blocks(out, "env file")[-1])
+    assert env["APP_ROLE"] == "shell"  # no worker boot checks: the job needs no pipeline
+    assert "MFA_KMS_KEY_URI" not in env and "JWT_ISSUER" not in env
+    invoker_at = next(
+        i for i, x in enumerate(lines) if "run jobs add-iam-policy-binding aimos-maintenance " in x
+    )
+    invoker = shlex.split(lines[invoker_at])
+    assert "--member=serviceAccount:aimos-sched@aimos-prod.iam.gserviceaccount.com" in invoker
+    assert "--role=roles/run.invoker" in invoker
+    trigger_at = next(
+        i for i, x in enumerate(lines) if "scheduler jobs create http aimos-maintenance-daily" in x
+    )
+    trigger = shlex.split(lines[trigger_at])
+    assert "--schedule=0 3 * * *" in trigger and "--time-zone=Asia/Kolkata" in trigger
+    assert (
+        "--uri=https://run.googleapis.com/v2/projects/aimos-prod/locations/asia-south1/jobs/"
+        "aimos-maintenance:run"
+    ) in trigger
+    assert "--http-method=POST" in trigger
+    assert "--oauth-service-account-email=aimos-sched@aimos-prod.iam.gserviceaccount.com" in trigger
+    assert job_at < invoker_at < trigger_at
+
+
+def test_maintenance_job_runs_a_real_module(repo_root: Path) -> None:
+    """The job's `-m` target exists and runs every retention step plus the account purge."""
+    module = repo_root / "apps/api/app/workers/maintenance.py"
+    text = module.read_text(encoding="utf-8")
+    for step in (
+        "prune_oauth_states",
+        "prune_idempotency_keys",
+        "retention_daily",
+        "purge_disconnected_accounts",
+    ):
+        assert f"periodic.{step}" in text, step
+
+
+@pytest.mark.parametrize("env_name", ["staging", "prod"])
+def test_env_files_carry_the_maintenance_keys(repo_root: Path, env_name: str) -> None:
+    text = (repo_root / DEPLOY / f"{env_name}.env").read_text(encoding="utf-8")
+    values = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
+    assert values["MAINT_JOB"] == "aimos-maintenance"
+    assert values["SA_MAINT"] == "aimos-maint" and values["SA_SCHED"] == "aimos-sched"
+    assert values["MAINT_SCHEDULE"] == '"0 3 * * *"'
+
+
+# ---- the setup guard: a release refuses before the build when `setup` predates the job ----
+
+FAKE_GCLOUD_OLD_SETUP = """#!/bin/sh
+case " $* " in
+  *" --help "*) exit 0 ;;
+  *"run services describe"*) echo "ERROR: NOT_FOUND" >&2; exit 1 ;;
+  *"kms keys describe"*) echo "projects/p/cryptoKeys/k"; exit 0 ;;
+  *"iam service-accounts describe aimos-maint@"*) echo "aimos-maint@p"; exit 0 ;;
+  *"iam service-accounts describe aimos-sched@"*) [ -n "$HAS_SCHED" ] && { echo "aimos-sched@p"; exit 0; }
+    echo "ERROR: NOT_FOUND" >&2; exit 1 ;;
+  *"services list"*) [ -n "$HAS_SCHEDULER_API" ] && echo "cloudscheduler.googleapis.com"; exit 0 ;;
+esac
+echo "$*" >> "$FAKE_GCLOUD_LOG"
+exit 98
+"""
+
+
+def _run_old_setup(
+    toolkit: Path, tmp_path: Path, *, sched: bool, api: bool
+) -> tuple[subprocess.CompletedProcess[str], Path]:
+    bin_dir = tmp_path / f"bin-old-{sched}-{api}"
+    bin_dir.mkdir()
+    fake = bin_dir / "gcloud"
+    fake.write_text(FAKE_GCLOUD_OLD_SETUP, encoding="utf-8")
+    fake.chmod(0o755)
+    log = tmp_path / f"gcloud-old-{sched}-{api}.log"
+    result = subprocess.run(
+        ["bash", str(toolkit / "deploy.sh"), "prod", "deploy", "--sha", SHA],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+        env={
+            "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+            "HOME": str(tmp_path),
+            "TMPDIR": str(tmp_path),
+            "FAKE_GCLOUD_LOG": str(log),
+            "HAS_SCHED": "1" if sched else "",
+            "HAS_SCHEDULER_API": "1" if api else "",
+        },
+        cwd=tmp_path,
+    )
+    return result, log
+
+
+def test_deploy_refuses_without_the_maintenance_accounts(toolkit: Path, tmp_path: Path) -> None:
+    result, log = _run_old_setup(toolkit, tmp_path, sched=False, api=True)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "service account aimos-sched is missing or unreadable in aimos-prod" in result.stderr
+    assert "deploy.sh prod setup first" in result.stderr
+    assert not log.exists(), log.read_text(encoding="utf-8")  # nothing deployed
+
+
+def test_deploy_refuses_without_cloud_scheduler(toolkit: Path, tmp_path: Path) -> None:
+    result, log = _run_old_setup(toolkit, tmp_path, sched=True, api=False)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "cloudscheduler.googleapis.com is not enabled in aimos-prod" in result.stderr
+    assert "deploy.sh prod setup first" in result.stderr
+    assert not log.exists(), log.read_text(encoding="utf-8")
+
+
+def test_dry_run_deploy_reports_the_setup_guard(toolkit: Path, tmp_path: Path) -> None:
+    out = _run(toolkit, tmp_path, "prod", "deploy", "--dry-run", "--sha", SHA).stdout
+    lines = out.splitlines()
+    guard = lines.index("deploy: setup guard: skipped (dry run)")
+    assert lines.index("deploy: kms guard: skipped (dry run)") < guard
+    assert guard < next(i for i, x in enumerate(lines) if "gcloud run deploy aimos-api" in x)
+
+
+def test_release_runs_the_setup_guard_before_building(repo_root: Path) -> None:
+    script = (repo_root / DEPLOY / "deploy.sh").read_text(encoding="utf-8")
+    release = script[script.index("cmd_release() {") :]
+    release = release[: release.index("\n}\n")]
+    assert release.index("kms_guard") < release.index("setup_guard") < release.index("cmd_build")
+
+
+def test_runbook_names_the_setup_guard(repo_root: Path) -> None:
+    text = (repo_root / "docs/runbooks/DEPLOY-GCP.md").read_text(encoding="utf-8")
+    assert "setup guard" in text and "aimos-maint" in text and "run setup first" in text
