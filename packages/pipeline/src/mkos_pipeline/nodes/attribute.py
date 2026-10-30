@@ -1,9 +1,6 @@
 from typing import Any
 
-from mkos_schemas.agent import AgentBlockStatus
-from mkos_schemas.enums import AgentTrigger
 from mkos_schemas.pipeline import ModelCredentials
-from mkos_schemas.rules import CategoryTemplate
 
 from mkos_pipeline.exceptions import DeadlineExceeded, ModelCallError
 from mkos_pipeline.llm.client import complete_json
@@ -12,6 +9,7 @@ from mkos_pipeline.nodes.events import emit
 from mkos_pipeline.nodes.fact_backed import canonical_attribute_value
 from mkos_pipeline.product import lookup_fact, product_attributes, spec_for
 from mkos_pipeline.prompts import load_prompt, prompt_version
+from mkos_pipeline.schema_compat import AgentBlockStatus, AgentTrigger, CategoryTemplate
 from mkos_pipeline.schemas_local import AttributeDraft, AttributePick
 from mkos_pipeline.state import GraphState
 
@@ -48,7 +46,9 @@ def extracted_candidates(state: GraphState) -> list[AttributePick]:
     for key, value in product_attributes(state.ctx.product).items():
         if key in seen or key in state.ctx.category_template.unsupported_attributes:
             continue
-        if _template_keys(state.ctx.category_template) and key not in _template_keys(state.ctx.category_template):
+        if _template_keys(state.ctx.category_template) and key not in _template_keys(
+            state.ctx.category_template
+        ):
             continue
         spec = spec_for(state.ctx.category_template, key)
         kept = canonical_attribute_value(key, value, state.ctx.product, spec)
@@ -64,10 +64,7 @@ def _attribute_data(state: GraphState) -> dict[str, Any]:
         "candidates": [pick.model_dump() for pick in extracted_candidates(state)],
         "required_attributes": template.required_attributes,
         "optional_attributes": template.optional_attributes,
-        "specs": {
-            key: spec.model_dump()
-            for key, spec in template.specs.items()
-        },
+        "specs": {key: spec.model_dump() for key, spec in template.specs.items()},
         "product_attributes": product_attributes(state.ctx.product),
     }
 

@@ -1,6 +1,14 @@
 from typing import Any
 
-from mkos_schemas.rules import AttributeSpec, CategoryTemplate, Rule, RuleSet
+from mkos_schemas.rules import Rule, RuleSet
+
+from mkos_pipeline.schema_compat import (
+    AttributeSpec,
+    CategoryTemplate,
+    rule_def_map,
+    rule_limit,
+    rule_type_of,
+)
 
 ATTRIBUTE_ALIASES: dict[str, tuple[str, ...]] = {
     "color": ("color", "color_name", "colour", "colour_name"),
@@ -65,27 +73,27 @@ def enabled_rules(rule_set: RuleSet, field: str | None = None) -> list[Rule]:
 
 def max_length_for(rule_set: RuleSet, field: str, default: int) -> int:
     lengths = [
-        int(rule.rule_def["max_length"])
+        int(rule_limit(rule, "max_length"))
         for rule in enabled_rules(rule_set, field)
-        if rule.rule_type == "max_length" and "max_length" in rule.rule_def
+        if rule_type_of(rule) == "max_length" and rule_limit(rule, "max_length") is not None
     ]
     return min(lengths) if lengths else default
 
 
 def min_length_for(rule_set: RuleSet, field: str, default: int = 1) -> int:
     lengths = [
-        int(rule.rule_def["min_length"])
+        int(rule_limit(rule, "min_length"))
         for rule in enabled_rules(rule_set, field)
-        if rule.rule_type == "min_length" and "min_length" in rule.rule_def
+        if rule_type_of(rule) == "min_length" and rule_limit(rule, "min_length") is not None
     ]
     return max(lengths) if lengths else default
 
 
 def max_items_for(rule_set: RuleSet, field: str, default: int) -> int:
     counts = [
-        int(rule.rule_def["max_items"])
+        int(rule_limit(rule, "max_items"))
         for rule in enabled_rules(rule_set, field)
-        if rule.rule_type == "max_items" and "max_items" in rule.rule_def
+        if rule_type_of(rule) == "max_items" and rule_limit(rule, "max_items") is not None
     ]
     return min(counts) if counts else default
 
@@ -93,9 +101,10 @@ def max_items_for(rule_set: RuleSet, field: str, default: int) -> int:
 def banned_terms(rule_set: RuleSet) -> tuple[str, ...]:
     terms: list[str] = list(DEFAULT_BANNED)
     for rule in enabled_rules(rule_set):
-        if rule.rule_type != "banned_terms":
+        if rule_type_of(rule) != "banned_terms":
             continue
-        extra = rule.rule_def.get("terms") or rule.rule_def.get("banned_terms") or []
+        dumped = rule_def_map(rule)
+        extra = dumped.get("terms") or dumped.get("banned_terms") or []
         terms.extend(str(term) for term in extra)
     seen: set[str] = set()
     unique: list[str] = []
@@ -122,14 +131,14 @@ def spec_for(template: CategoryTemplate, key: str) -> AttributeSpec | None:
 def compact_rules(rule_set: RuleSet) -> dict[str, Any]:
     return {
         "max_lengths": {
-            rule.field: rule.rule_def.get("max_length")
+            rule.field: rule_limit(rule, "max_length")
             for rule in enabled_rules(rule_set)
-            if rule.rule_type == "max_length"
+            if rule_type_of(rule) == "max_length"
         },
         "banned_terms": list(banned_terms(rule_set)),
         "max_items": {
-            rule.field: rule.rule_def.get("max_items")
+            rule.field: rule_limit(rule, "max_items")
             for rule in enabled_rules(rule_set)
-            if rule.rule_type == "max_items"
+            if rule_type_of(rule) == "max_items"
         },
     }

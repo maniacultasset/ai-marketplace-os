@@ -2,10 +2,11 @@ from datetime import UTC, datetime
 from hashlib import sha256
 from uuid import UUID, uuid4
 
-from mkos_schemas.agent import AgentRunRecord, TokenCounts
-from mkos_schemas.enums import AgentName, AgentTrigger, RunStatus
+from mkos_schemas.agent import AgentRunRecord
 from mkos_schemas.errors import ErrorReport
 from mkos_schemas.jobs import GenerationContext
+
+from mkos_pipeline.schema_compat import AgentName, AgentTrigger, RunStatus, TokenCounts
 
 
 def digest_prompt(rendered: str) -> str:

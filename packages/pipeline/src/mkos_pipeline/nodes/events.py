@@ -1,8 +1,9 @@
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from mkos_schemas.enums import NodeStatus, PipelineStage
+from mkos_schemas.enums import PipelineStage
 
+from mkos_pipeline.schema_compat import NodeStatus
 from mkos_pipeline.state import GraphState
 
 

@@ -32,21 +32,24 @@ async def _call(transport, *, deadline_at=None, attempt=1):
     token = set_transport(transport)
     records: list[AgentRunRecord] = []
     try:
-        return await complete_json(
-            credentials=_credentials(),
-            purpose="generation",
-            prompt_version="content/v1+test",
-            system=SHARED_SYSTEM_PREFIX,
-            developer="Return JSON.",
-            data={"user_instructions": "write a title"},
-            response_model=TinyDraft,
-            deadline_at=deadline_at or (datetime.now(UTC) + timedelta(seconds=120)),
-            agent_name="content",
-            trigger="generate",
-            attempt=attempt,
-            records=records,
-            ctx=make_context(),
-        ), records
+        return (
+            await complete_json(
+                credentials=_credentials(),
+                purpose="generation",
+                prompt_version="content/v1+test",
+                system=SHARED_SYSTEM_PREFIX,
+                developer="Return JSON.",
+                data={"user_instructions": "write a title"},
+                response_model=TinyDraft,
+                deadline_at=deadline_at or (datetime.now(UTC) + timedelta(seconds=120)),
+                agent_name="content",
+                trigger="generate",
+                attempt=attempt,
+                records=records,
+                ctx=make_context(),
+            ),
+            records,
+        )
     finally:
         reset_transport(token)
 
@@ -160,9 +163,15 @@ def test_cost_quantize_million_tokens() -> None:
     original = PRICES[("deepseek", "deepseek-chat")]
     PRICES[("deepseek", "deepseek-chat")] = (Decimal("0.30"), Decimal("0"), Decimal("0"))
     try:
-        assert compute_cost("deepseek", "deepseek-chat", input_tokens=1_000_000, output_tokens=0) == "0.300000"
+        assert (
+            compute_cost("deepseek", "deepseek-chat", input_tokens=1_000_000, output_tokens=0)
+            == "0.300000"
+        )
     finally:
         PRICES[("deepseek", "deepseek-chat")] = original
+    assert compute_cost(
+        "deepseek", "deepseek/deepseek-chat", input_tokens=1_000_000, output_tokens=0
+    ) == compute_cost("deepseek", "deepseek-chat", input_tokens=1_000_000, output_tokens=0)
     assert quantize_cost("0.1234567") == "0.123457"
 
 

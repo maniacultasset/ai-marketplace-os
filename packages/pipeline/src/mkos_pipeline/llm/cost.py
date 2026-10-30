@@ -7,6 +7,7 @@ PRICES: dict[tuple[str, str], tuple[Decimal, Decimal, Decimal]] = {
     ("openai", "gpt-4.1-mini"): (Decimal("0.40"), Decimal("1.60"), Decimal("0.10")),
     ("openai", "gpt-4.1"): (Decimal("2.00"), Decimal("8.00"), Decimal("0.50")),
     ("deepseek", "deepseek-chat"): (Decimal("0.27"), Decimal("1.10"), Decimal("0.07")),
+    ("deepseek", "deepseek/deepseek-chat"): (Decimal("0.27"), Decimal("1.10"), Decimal("0.07")),
     ("deepseek", "deepseek-v3.2"): (Decimal("0.27"), Decimal("1.10"), Decimal("0.07")),
     ("deepseek", "deepseek-reasoner"): (Decimal("0.55"), Decimal("2.19"), Decimal("0.14")),
 }

@@ -1,8 +1,7 @@
 from typing import Any
 
-from mkos_schemas.rules import AttributeSpec
-
 from mkos_pipeline.product import lookup_fact
+from mkos_pipeline.schema_compat import AttributeSpec
 
 
 def _normalise(value: Any) -> str:
@@ -21,7 +20,9 @@ def _canonical_from_spec(value: Any, spec: AttributeSpec | None) -> Any | None:
     return None
 
 
-def keep_attribute(key: str, value: Any, product: dict[str, Any], spec: AttributeSpec | None) -> bool:
+def keep_attribute(
+    key: str, value: Any, product: dict[str, Any], spec: AttributeSpec | None
+) -> bool:
     """True only when value equals a fact or its normalised form."""
     if value in (None, "", [], {}):
         return False

@@ -1,7 +1,5 @@
 from typing import Any
 
-from mkos_schemas.agent import AgentBlockStatus
-from mkos_schemas.enums import AgentTrigger
 from mkos_schemas.pipeline import ModelCredentials
 
 from mkos_pipeline.exceptions import DeadlineExceeded, ModelCallError
@@ -17,6 +15,7 @@ from mkos_pipeline.product import (
     product_attributes,
 )
 from mkos_pipeline.prompts import load_prompt, prompt_version
+from mkos_pipeline.schema_compat import AgentBlockStatus, AgentTrigger
 from mkos_pipeline.schemas_local import ContentDraft
 from mkos_pipeline.state import GraphState
 

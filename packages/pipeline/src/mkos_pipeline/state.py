@@ -2,13 +2,14 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from mkos_schemas.agent import AgentBlockStatus, AgentRunRecord
+from mkos_schemas.agent import AgentRunRecord
 from mkos_schemas.errors import ErrorReport
 from mkos_schemas.images import ImageReport
 from mkos_schemas.jobs import GenerationContext
 from mkos_schemas.listing import CanonicalListing
 from mkos_schemas.pipeline import BrandChunkDTO, PipelineDeps
 
+from mkos_pipeline.schema_compat import AgentBlockStatus
 from mkos_pipeline.schemas_local import AttributeDraft, ContentDraft, KeywordDraft
 
 

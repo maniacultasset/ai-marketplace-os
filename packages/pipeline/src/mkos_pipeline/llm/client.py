@@ -7,9 +7,8 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 import httpx
-from mkos_schemas.agent import AgentRunRecord, TokenCounts
+from mkos_schemas.agent import AgentRunRecord
 from mkos_schemas.codes import ErrorCode
-from mkos_schemas.enums import AgentName, AgentTrigger, ModelPurpose
 from mkos_schemas.errors import ErrorItem, ErrorReport
 from mkos_schemas.jobs import GenerationContext
 from mkos_schemas.pipeline import ModelCredentials
@@ -20,6 +19,7 @@ from mkos_pipeline.llm.cost import UnknownModelPricing, compute_cost
 from mkos_pipeline.llm.deadline import MAX_MODEL_TIMEOUT, SKIP_MODEL_WHEN, seconds_left
 from mkos_pipeline.llm.records import append_record, digest_prompt
 from mkos_pipeline.llm.safety import render_user_message
+from mkos_pipeline.schema_compat import AgentName, AgentTrigger, ModelPurpose, TokenCounts
 
 logger = logging.getLogger("mkos_pipeline.llm")
 
@@ -68,7 +68,7 @@ def _failed_report(code: ErrorCode, message: str) -> ErrorReport:
         },
         errors=[
             ErrorItem(
-                field="*",
+                field="listing",
                 error_code=code,
                 message=message,
                 retryable=True,
@@ -158,7 +158,9 @@ async def complete_json(
             model_used=credentials.model,
             prompt_version=prompt_version,
             input_digest=prompt_digest,
-            error_report=_failed_report(ErrorCode.TIMEOUT, "Deadline too close to start a model call."),
+            error_report=_failed_report(
+                ErrorCode.TIMEOUT, "Deadline too close to start a model call."
+            ),
         )
         raise DeadlineExceeded("deadline within 5 seconds")
 
@@ -227,7 +229,11 @@ async def complete_json(
                 input_digest=prompt_digest,
                 error_report=_failed_report(code, f"Provider returned HTTP {status_code}."),
             )
-            if retryable and http_attempt == 1 and seconds_left(deadline_at) > SKIP_MODEL_WHEN.total_seconds():
+            if (
+                retryable
+                and http_attempt == 1
+                and seconds_left(deadline_at) > SKIP_MODEL_WHEN.total_seconds()
+            ):
                 continue
             raise ModelCallError(f"provider HTTP {status_code}") from None
         except Exception as exc:
@@ -269,7 +275,11 @@ async def complete_json(
                     cached_input_tokens=tokens.cached_input,
                 )
             except UnknownModelPricing:
-                logger.error("unknown model pricing provider=%s model=%s", credentials.provider, credentials.model)
+                logger.error(
+                    "unknown model pricing provider=%s model=%s",
+                    credentials.provider,
+                    credentials.model,
+                )
                 raise
 
         try:
@@ -309,7 +319,9 @@ async def complete_json(
                 model_used=credentials.model,
                 prompt_version=prompt_version,
                 input_digest=prompt_digest,
-                error_report=_failed_report(ErrorCode.GENERATION_FAILED, "Provider omitted token usage."),
+                error_report=_failed_report(
+                    ErrorCode.GENERATION_FAILED, "Provider omitted token usage."
+                ),
             )
             raise ModelCallError("provider omitted usage")
 

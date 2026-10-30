@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from mkos_schemas.agent import AgentBlockStatus
 from mkos_schemas.codes import ErrorCode
-from mkos_schemas.enums import BlockAgent, TerminalState
 from mkos_schemas.errors import ErrorItem, ErrorReport
 from mkos_schemas.jobs import GenerationContext, GenerationResult
 from mkos_schemas.pipeline import PipelineDeps
@@ -22,6 +20,7 @@ from mkos_pipeline.nodes.merge import merge_outputs
 from mkos_pipeline.nodes.quality import run_claim_check
 from mkos_pipeline.nodes.retrieve_brand import retrieve_brand
 from mkos_pipeline.nodes.validate import validate_rules, validate_schema, validate_vision
+from mkos_pipeline.schema_compat import AgentBlockStatus, BlockAgent, TerminalState
 from mkos_pipeline.state import GraphState
 
 _BLOCK_AGENTS: tuple[BlockAgent, ...] = ("content", "keyword", "attribute", "image")
@@ -34,7 +33,7 @@ def _generation_failed(message: str, request_id: str) -> ErrorReport:
         request_id=request_id,
         errors=[
             ErrorItem(
-                field="*",
+                field="listing",
                 error_code=ErrorCode.GENERATION_FAILED,
                 message=message[:1000],
                 retryable=False,

@@ -1,18 +1,14 @@
-from mkos_schemas.agent import AgentBlockStatus
 from mkos_schemas.listing import CanonicalListing, ImageRef, ListingContent
 
 from mkos_pipeline.nodes.events import emit
+from mkos_pipeline.schema_compat import AgentBlockStatus
 from mkos_pipeline.state import GraphState
 
 
 def image_ids_from_context(state: GraphState) -> list[ImageRef]:
     if state.ctx.previous_version is None:
         return []
-    return [
-        ref
-        for ref in state.ctx.previous_version.images
-        if ref.slot != "packaging_label"
-    ]
+    return [ref for ref in state.ctx.previous_version.images if ref.slot != "packaging_label"]
 
 
 async def image_agent(state: GraphState) -> None:
@@ -28,7 +24,9 @@ async def image_agent(state: GraphState) -> None:
         category=state.ctx.category,
         listing_id=state.ctx.listing_id,
         locale=state.ctx.locale,
-        content=ListingContent(title="placeholder", bullets=["placeholder"], description="placeholder"),
+        content=ListingContent(
+            title="placeholder", bullets=["placeholder"], description="placeholder"
+        ),
         images=refs,
     )
     reports = await state.deps.validate_images(listing)

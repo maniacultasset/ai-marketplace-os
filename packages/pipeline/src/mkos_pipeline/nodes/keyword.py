@@ -1,8 +1,6 @@
 import re
 from typing import Any
 
-from mkos_schemas.agent import AgentBlockStatus
-from mkos_schemas.enums import AgentTrigger
 from mkos_schemas.pipeline import ModelCredentials
 
 from mkos_pipeline.exceptions import DeadlineExceeded, ModelCallError
@@ -20,6 +18,7 @@ from mkos_pipeline.product import (
     product_attributes,
 )
 from mkos_pipeline.prompts import load_prompt, prompt_version
+from mkos_pipeline.schema_compat import AgentBlockStatus, AgentTrigger
 from mkos_pipeline.schemas_local import KeywordDraft
 from mkos_pipeline.state import GraphState
 
@@ -35,8 +34,12 @@ def _keyword_data(state: GraphState) -> dict[str, Any]:
         "brand_names": state.ctx.brand_profile.get("brand_names") or [],
         "rules": compact_rules(state.ctx.marketplace_rules),
         "caps": {
-            "search_terms": max_items_for(state.ctx.marketplace_rules, "keywords.search_terms", CONTRACT_TERM_LIMIT),
-            "hidden_terms": max_items_for(state.ctx.marketplace_rules, "keywords.hidden_terms", CONTRACT_TERM_LIMIT),
+            "search_terms": max_items_for(
+                state.ctx.marketplace_rules, "keywords.search_terms", CONTRACT_TERM_LIMIT
+            ),
+            "hidden_terms": max_items_for(
+                state.ctx.marketplace_rules, "keywords.hidden_terms", CONTRACT_TERM_LIMIT
+            ),
             "term_chars": CONTRACT_CHAR_LIMIT,
         },
         "banned_terms": list(banned_terms(state.ctx.marketplace_rules)),
@@ -62,8 +65,12 @@ def _term_supported(term: str, product: dict[str, Any]) -> bool:
 
 def sanitise_keywords(draft: KeywordDraft, state: GraphState) -> KeywordDraft:
     banned = banned_terms(state.ctx.marketplace_rules)
-    search_cap = max_items_for(state.ctx.marketplace_rules, "keywords.search_terms", CONTRACT_TERM_LIMIT)
-    hidden_cap = max_items_for(state.ctx.marketplace_rules, "keywords.hidden_terms", CONTRACT_TERM_LIMIT)
+    search_cap = max_items_for(
+        state.ctx.marketplace_rules, "keywords.search_terms", CONTRACT_TERM_LIMIT
+    )
+    hidden_cap = max_items_for(
+        state.ctx.marketplace_rules, "keywords.hidden_terms", CONTRACT_TERM_LIMIT
+    )
     brand = str(identity(state.ctx.product).get("brand_name") or "").casefold()
 
     def accept(term: str, seen: set[str]) -> str | None:
@@ -98,7 +105,11 @@ def sanitise_keywords(draft: KeywordDraft, state: GraphState) -> KeywordDraft:
         hidden.append(kept)
         if len(hidden) >= hidden_cap:
             break
-    if len(search) == 1 and state.content_draft and search[0] == _clean_term(state.content_draft.title):
+    if (
+        len(search) == 1
+        and state.content_draft
+        and search[0] == _clean_term(state.content_draft.title)
+    ):
         search = []
     return KeywordDraft(search_terms=search, hidden_terms=hidden)
 
