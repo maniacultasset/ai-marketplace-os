@@ -83,7 +83,15 @@ import httpx
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
-from starlette.routing import Route
+from starlette.routing import Mount, Route
+
+try:  # the script form (`python apps/api/tests/support/fake_marketplace.py`) has no package
+    from tests.support.fake_google import FakeGoogleConfig, build_fake_google
+except ModuleNotFoundError:  # pragma: no cover - the e2e server
+    from fake_google import (  # type: ignore[no-redef,import-not-found]
+        FakeGoogleConfig,
+        build_fake_google,
+    )
 
 CANARY: Final = "CANARYzq9"
 CONTROL_PARAMS: Final = frozenset({"seller", "deny"})
@@ -123,6 +131,8 @@ class FakeConfig:
         "http://localhost:8000/api/v1/marketplaces/flipkart/callback",
     )
     amazon_application_id: str = "amzn1.sp.solution.REPLACE_ME"
+    # ADR-0020: the fake Google, mounted under /google
+    google: FakeGoogleConfig = field(default_factory=FakeGoogleConfig)
     default_seller: str = "A1FAKESELLER"
     expires_in: int = 3600
     timeout_s: float = 15.0
@@ -372,6 +382,7 @@ def build_fake(config: FakeConfig | None = None) -> Starlette:
     app = Starlette(
         routes=[
             Route("/healthz", healthz, methods=["GET"]),
+            Mount("/google", app=build_fake_google(cfg.google)),
             Route("/__control", control, methods=["POST"]),
             Route("/__control/reset", reset, methods=["POST"]),
             Route("/__calls", calls, methods=["GET"]),
@@ -862,6 +873,11 @@ CONFIG_KEYS: Final = (
     "FLIPKART_CLIENT_ID",
     "FLIPKART_CLIENT_SECRET",
     "FLIPKART_OAUTH_REDIRECT_URI",
+    # ADR-0020: the fake Google accepts the local API's client and redirect URI
+    "GOOGLE_OAUTH_CLIENT_ID",
+    "GOOGLE_OAUTH_CLIENT_SECRET",
+    "GOOGLE_ISSUER",
+    "DASHBOARD_BASE_URL",
 )
 
 
@@ -901,6 +917,16 @@ def config_from_env(environ: Mapping[str, str], dotenv: Path) -> FakeConfig:
             pick("FLIPKART_OAUTH_REDIRECT_URI", base.flipkart.redirect_uri),
         ),
         amazon_application_id=pick("AMAZON_APP_ID", base.amazon_application_id),
+        google=FakeGoogleConfig(
+            client_id=pick("GOOGLE_OAUTH_CLIENT_ID", base.google.client_id),
+            client_secret=pick("GOOGLE_OAUTH_CLIENT_SECRET", base.google.client_secret),
+            redirect_uri=(
+                f"{values['DASHBOARD_BASE_URL'].rstrip('/')}/api/v1/auth/google/callback"
+                if values["DASHBOARD_BASE_URL"]
+                else base.google.redirect_uri
+            ),
+            issuer=pick("GOOGLE_ISSUER", base.google.issuer),
+        ),
     )
 
 
