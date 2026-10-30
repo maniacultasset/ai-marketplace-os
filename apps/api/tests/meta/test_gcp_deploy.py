@@ -44,6 +44,7 @@ SECRET_VALUES = {
     "S3_SECRET_KEY": "d" * 40,
     "SENTRY_DSN": "https://key@o0.ingest.sentry.io/0",
     "OPENAI_API_KEY": "sk-test-" + "e" * 32,
+    "GOOGLE_OAUTH_CLIENT_SECRET": "test-only-google-client-secret-" + "f" * 8,
 }
 
 FAKE_GCLOUD = """#!/bin/sh
@@ -1007,3 +1008,105 @@ def test_release_runs_the_setup_guard_before_building(repo_root: Path) -> None:
 def test_runbook_names_the_setup_guard(repo_root: Path) -> None:
     text = (repo_root / "docs/runbooks/DEPLOY-GCP.md").read_text(encoding="utf-8")
     assert "setup guard" in text and "aimos-maint" in text and "run setup first" in text
+
+
+# ---- ADR-0020: the Google sign-in switch ----
+
+GOOGLE_CLIENT = "1039991710726-74ijetqns5m41m2m3c6piso02j3vub2p.apps.googleusercontent.com"
+
+
+@pytest.mark.parametrize("env_name", ["staging", "prod"])
+def test_env_files_ship_google_off(repo_root: Path, env_name: str) -> None:
+    text = (repo_root / DEPLOY / f"{env_name}.env").read_text(encoding="utf-8")
+    values = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
+    assert values["GOOGLE_OAUTH_ENABLED"] == "false"
+    if env_name == "prod":
+        assert values["GOOGLE_OAUTH_CLIENT_ID"] == GOOGLE_CLIENT
+    assert "GOOGLE_OAUTH_CLIENT_SECRET" not in values
+
+
+@pytest.mark.parametrize("env_name", ["staging", "prod"])
+def test_google_off_binds_no_secret(
+    toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch, env_name: str
+) -> None:
+    out = _run(toolkit, tmp_path, env_name, "deploy", "--dry-run", "--sha", SHA).stdout
+    env = _api_env(out)
+    assert env["GOOGLE_OAUTH_ENABLED"] == "false"
+    assert "deploy: google guard: sign-in with Google is off" in out
+    deploy = next(line for line in out.splitlines() if line.startswith("+ gcloud run deploy "))
+    secrets = _secret_names(deploy)
+    assert "GOOGLE_OAUTH_CLIENT_SECRET" not in secrets
+    _boot(monkeypatch, env, secrets)
+    setup = _run(toolkit, tmp_path, env_name, "setup", "--dry-run", "--sha", SHA).stdout
+    assert "GOOGLE_OAUTH_CLIENT_SECRET" not in _secret_grants(setup, "aimos-api")
+    assert 'read -rsp "GOOGLE_OAUTH_CLIENT_SECRET: "' not in setup
+
+
+def test_google_on_binds_the_secret_and_boots(
+    toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _set_env(toolkit, "prod", GOOGLE_OAUTH_ENABLED="true")
+    out = _run(toolkit, tmp_path, "prod", "deploy", "--dry-run", "--sha", SHA).stdout
+    env = _api_env(out)
+    assert env["GOOGLE_OAUTH_ENABLED"] == "true"
+    assert env["GOOGLE_OAUTH_CLIENT_ID"] == GOOGLE_CLIENT
+    assert "deploy: google guard: skipped (dry run)" in out
+    deploy = next(line for line in out.splitlines() if line.startswith("+ gcloud run deploy "))
+    secrets = _secret_names(deploy)
+    assert "GOOGLE_OAUTH_CLIENT_SECRET" in secrets
+    _boot(monkeypatch, env, secrets)
+    from app.core.config import get_settings
+
+    assert get_settings().google_redirect_uri == (
+        "https://kuinn-web.vercel.app/api/v1/auth/google/callback"
+    )
+    setup = _run(toolkit, tmp_path, "prod", "setup", "--dry-run", "--sha", SHA).stdout
+    assert "GOOGLE_OAUTH_CLIENT_SECRET" in _secret_grants(setup, "aimos-api")
+    assert 'bash -c \'read -rsp "GOOGLE_OAUTH_CLIENT_SECRET: " v; echo; printf %s "$v" | ' in setup
+    for account in ("aimos-worker", "aimos-ops", "aimos-maint", "aimos-migrate"):
+        assert "GOOGLE_OAUTH_CLIENT_SECRET" not in _secret_grants(setup, account), account
+
+
+def test_google_worker_and_jobs_never_get_the_switch(toolkit: Path, tmp_path: Path) -> None:
+    _set_env(toolkit, "staging", GOOGLE_OAUTH_ENABLED="true", GOOGLE_OAUTH_CLIENT_ID=GOOGLE_CLIENT)
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    for block in _blocks(out, "env file")[1:]:
+        assert "GOOGLE_OAUTH" not in block
+    spec: dict[str, Any] = _worker_spec(out)
+    container = spec["spec"]["template"]["spec"]["containers"][0]
+    assert not [e for e in container["env"] if e["name"].startswith("GOOGLE_")]
+
+
+@pytest.mark.parametrize(
+    ("values", "message"),
+    [
+        ({"GOOGLE_OAUTH_ENABLED": "yes"}, "GOOGLE_OAUTH_ENABLED must be true or false"),
+        (
+            {"GOOGLE_OAUTH_ENABLED": "true", "GOOGLE_OAUTH_CLIENT_ID": ""},
+            "GOOGLE_OAUTH_ENABLED=true needs GOOGLE_OAUTH_CLIENT_ID",
+        ),
+        (
+            {"GOOGLE_OAUTH_ENABLED": "true", "GOOGLE_OAUTH_CLIENT_ID": "not-a-google-client"},
+            "GOOGLE_OAUTH_ENABLED=true needs GOOGLE_OAUTH_CLIENT_ID",
+        ),
+    ],
+)
+def test_bad_google_switch_refused(
+    toolkit: Path, tmp_path: Path, values: dict[str, str], message: str
+) -> None:
+    _set_env(toolkit, "staging", **values)
+    for command in ("release", "deploy", "setup"):
+        result = _run(toolkit, tmp_path, "staging", command, "--dry-run", "--sha", SHA)
+        assert result.returncode != 0, command
+        assert message in result.stderr, command
+
+
+def test_release_runs_the_google_guard_before_building(repo_root: Path) -> None:
+    script = (repo_root / DEPLOY / "deploy.sh").read_text(encoding="utf-8")
+    for name in ("cmd_release() {", "cmd_deploy() {"):
+        body = script[script.index(name) :]
+        body = body[: body.index("\n}\n")]
+        assert "google_guard" in body, name
+    release = script[script.index("cmd_release() {") :]
+    release = release[: release.index("\n}\n")]
+    assert release.index("google_guard") < release.index("cmd_build")

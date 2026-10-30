@@ -29,7 +29,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../../.." && pwd)"
 PLACEHOLDER="__FILL_ME__"
-USER_SECRETS="SENTRY_DSN OPENAI_API_KEY"
+USER_SECRETS="SENTRY_DSN OPENAI_API_KEY GOOGLE_OAUTH_CLIENT_SECRET"
 REQUIRED_APIS="run.googleapis.com sqladmin.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com cloudkms.googleapis.com storage.googleapis.com iam.googleapis.com logging.googleapis.com cloudresourcemanager.googleapis.com serviceusage.googleapis.com cloudscheduler.googleapis.com"
 API_SECRETS="DATABASE_URL JWT_SECRET ADMIN_SESSION_SECRET S3_ACCESS_KEY S3_SECRET_KEY SENTRY_DSN"
 WORKER_SECRETS="DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY SENTRY_DSN OPENAI_API_KEY"
@@ -113,6 +113,24 @@ if [ -n "$MFA_GRACE_UNTIL" ]; then
   python3 -c 'import datetime as d, sys; sys.exit(0 if d.datetime.fromisoformat(sys.argv[1]).utcoffset() is not None else 1)' \
     "$MFA_GRACE_UNTIL" 2>/dev/null ||
     die "MFA_GRACE_UNTIL must be ISO 8601 with an offset, e.g. 2026-11-20T00:00:00+05:30"
+fi
+
+# ---- ADR-0020: the Google sign-in switch, refused before any gcloud call ----
+# Off by default. Its client secret is bound to the api (and required by `setup`) only while the
+# switch is on, so a hotfix with the switch off never needs the secret. Switch it only in the env
+# file plus a same-image redeploy (docs/runbooks/GOOGLE-SIGNIN.md).
+GOOGLE_OAUTH_ENABLED="${GOOGLE_OAUTH_ENABLED:-false}"
+GOOGLE_OAUTH_CLIENT_ID="${GOOGLE_OAUTH_CLIENT_ID:-}"
+case "$GOOGLE_OAUTH_ENABLED" in
+  true | false) ;;
+  *) die "GOOGLE_OAUTH_ENABLED must be true or false (in $ENV_NAME.env)" ;;
+esac
+if [ "$GOOGLE_OAUTH_ENABLED" = "true" ]; then
+  case "$GOOGLE_OAUTH_CLIENT_ID" in
+    ?*.apps.googleusercontent.com) ;;
+    *) die "GOOGLE_OAUTH_ENABLED=true needs GOOGLE_OAUTH_CLIENT_ID (<id>.apps.googleusercontent.com, in $ENV_NAME.env)" ;;
+  esac
+  API_SECRETS="$API_SECRETS GOOGLE_OAUTH_CLIENT_SECRET"
 fi
 
 LABELS="app=aimos,env=$APP_ENV"
@@ -559,6 +577,8 @@ check_user_secrets() {
   local name missing=0 wanted="SENTRY_DSN"
   # Only the worker embeds (S16): a deployment without the worker pool needs no OpenAI key yet.
   [ "$WORKER_ENABLED" != "true" ] || wanted="$wanted OPENAI_API_KEY"
+  # ADR-0020: the Google client secret, only while Google sign-in is switched on
+  [ "$GOOGLE_OAUTH_ENABLED" != "true" ] || wanted="$wanted GOOGLE_OAUTH_CLIENT_SECRET"
   for name in $wanted; do
     if secret_has_version "$name"; then
       say "secret $name: present"
@@ -728,6 +748,10 @@ app_env() {
   # DPP-1 (ADR-0021): the MFA switch and its key, on the api only (the worker refuses the key)
   [ "$role" != "api" ] || printf 'MFA_ENFORCEMENT\t%s\nMFA_GRACE_UNTIL\t%s\nMFA_KMS_KEY_URI\t%s\n' \
     "$MFA_ENFORCEMENT" "$MFA_GRACE_UNTIL" "$MFA_KMS_KEY_URI"
+  # ADR-0020: the Google sign-in switch and its public client id, on the api only (the redirect
+  # URI is derived from DASHBOARD_BASE_URL by the api itself)
+  [ "$role" != "api" ] || printf 'GOOGLE_OAUTH_ENABLED\t%s\nGOOGLE_OAUTH_CLIENT_ID\t%s\n' \
+    "$GOOGLE_OAUTH_ENABLED" "$GOOGLE_OAUTH_CLIENT_ID"
 }
 
 yaml_quote() { printf '"%s"' "$(printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"; }
@@ -933,6 +957,22 @@ setup_guard() {
   say "setup guard: OK ($SA_MAINT, $SA_SCHED, Cloud Scheduler)"
 }
 
+# ADR-0020: with Google sign-in switched on, its client secret must have a value before the api
+# is deployed (Cloud Run refuses a secret reference with no version, mid-release).
+google_guard() {
+  if [ "$GOOGLE_OAUTH_ENABLED" != "true" ]; then
+    say "google guard: sign-in with Google is off"
+    return 0
+  fi
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "google guard: skipped (dry run)"
+    return 0
+  fi
+  secret_has_version GOOGLE_OAUTH_CLIENT_SECRET ||
+    die "secret GOOGLE_OAUTH_CLIENT_SECRET has no value in $PROJECT: run scripts/deploy/gcp/deploy.sh $ENV_NAME setup first"
+  say "google guard: OK (GOOGLE_OAUTH_CLIENT_SECRET)"
+}
+
 cmd_deploy() {
   check_filled
   check_ingress
@@ -941,6 +981,7 @@ cmd_deploy() {
   live_guard "$url"
   kms_guard
   setup_guard
+  google_guard
   image="$(image_ref)"
   deploy_api "$image" "$url"
   [ "$DRY_RUN" -eq 1 ] || [ -n "$API_PUBLIC_URL" ] || url="$(service_url)"
@@ -1013,6 +1054,7 @@ cmd_release() {
   live_guard "$(api_url)"
   kms_guard
   setup_guard
+  google_guard
   cmd_build
   cmd_migrate
   cmd_deploy

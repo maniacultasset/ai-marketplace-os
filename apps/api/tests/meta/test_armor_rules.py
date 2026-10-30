@@ -205,6 +205,10 @@ AUTH_MATCH = [
     "/auth/mfa/step-up",
     "/signup",
     "/signup/status",
+    # ADR-0020: the Google steps that redeem a handle (and the link step's password)
+    "/auth/google/complete",
+    "/auth/google/link",
+    "/signup/google",
 ]
 AUTH_NO_MATCH = [
     "/auth/me",
@@ -217,6 +221,9 @@ AUTH_NO_MATCH = [
     "/auth/password/x",
     "/signupx",
     "/admin/signup-requests",
+    "/auth/google/start",
+    "/auth/google/callback",
+    "/auth/google/unlink",
 ]
 
 
@@ -248,6 +255,10 @@ SECRET_BODIES = [
     ("/auth/mfa/step-up", "code, recovery_code"),
     ("/signup", "password"),
     ("/signup/status", "password"),
+    # ADR-0020: Google sign-in's handles and the browser binding (and the link step's password)
+    ("/auth/google/complete", "handle, binding"),
+    ("/auth/google/link", "link_handle, binding, password"),
+    ("/signup/google", "details_handle, binding"),
     ("/auth/refresh", "refresh_token"),
     ("/auth/logout", "refresh_token"),
 ]
