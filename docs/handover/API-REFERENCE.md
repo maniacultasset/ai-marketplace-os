@@ -1,8 +1,8 @@
-# AI Marketplace OS API reference (v2.0.0)
+# AI Marketplace OS API reference (v2.1.0)
 
 > Generated from `packages/schemas/jsonschema/openapi.json` by `scripts/docs/gen_api_reference.py`. Do not edit by hand: change the code, export the contract, then run `make docs-handover`.
 
-This is the complete reference of the backend's HTTP API for the frontend and AI teams. It lists all 67 operations: what each one does, who may call it, what to send and what comes back. The same contract ships as generated TypeScript types in the npm package `@maniacultasset/schemas` (GitHub Packages), which the frontend installs under the alias `@mkos/schemas`, so never hand-write a request or response type.
+This is the complete reference of the backend's HTTP API for the frontend and AI teams. It lists all 73 operations: what each one does, who may call it, what to send and what comes back. The same contract ships as generated TypeScript types in the npm package `@maniacultasset/schemas` (GitHub Packages), which the frontend installs under the alias `@mkos/schemas`, so never hand-write a request or response type.
 
 - Read **Conventions** first: auth, tenants, idempotency, concurrency, paging, errors and jobs work the same everywhere.
 - Then use the **summary table** to find an operation, and its section for the details.
@@ -106,7 +106,7 @@ Each operation requires one **action** (shown as "Permission" in every operation
 | `product:import` | yes | - | yes | - | 5 |
 | `settings:manage` | yes | yes | - | - | 3 |
 | `team:manage` | yes | yes | - | - | 2 |
-| `tenant:read` | yes | yes | yes | yes | 26 |
+| `tenant:read` | yes | yes | yes | yes | 27 |
 
 Public operations (`x-mkos-action: public`) need no token. `/healthz` and `/readyz` carry no action at all. A role not in the table holds nothing. The sign-up queue (`x-mkos-action: platform:admin`, ADR-0019) is not in the table: it needs the caller's own `users.is_platform_admin` flag, whatever their role.
 
@@ -230,7 +230,7 @@ Every non-2xx answer on every `/api/v1` route (including 404 for an unknown path
       "max_attempts": 3,
       "request_id": "req-example-0001",
       "retryable": false,
-      "schema_version": "2.0.0",
+      "schema_version": "2.1.0",
       "status": "failed"
     },
     "message": "Request validation failed.",
@@ -374,73 +374,79 @@ Auth: `yes` means a Bearer access token is required. Permission: the action the 
 
 | # | Method | Path | Purpose | Auth | Permission (roles) | Idempotent |
 |---|---|---|---|---|---|---|
-| 1 | POST | [`/api/v1/auth/login`](#post-apiv1authlogin) | Log in with email and password: tokens, or the next sign-in step | no | none (public) | no |
-| 2 | POST | [`/api/v1/auth/login/mfa`](#post-apiv1authloginmfa) | Sign-in code step: a TOTP code or a recovery code for the login challenge | no | none (public) | no |
-| 3 | POST | [`/api/v1/auth/login/mfa/confirm`](#post-apiv1authloginmfaconfirm) | Forced enrolment at sign-in: confirm with a code; recovery codes and the sign-in result | no | none (public) | no |
-| 4 | POST | [`/api/v1/auth/login/mfa/enroll`](#post-apiv1authloginmfaenroll) | Forced enrolment at sign-in: a new authenticator secret | no | none (public) | no |
-| 5 | POST | [`/api/v1/auth/logout`](#post-apiv1authlogout) | Revoke the refresh token | no | none (public) | yes (always 204; a repeat is a no-op) |
-| 6 | GET | [`/api/v1/auth/me`](#get-apiv1authme) | The current principal and memberships | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 7 | POST | [`/api/v1/auth/mfa/recovery-codes`](#post-apiv1authmfarecovery-codes) | Regenerate the recovery codes (after a step-up) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 8 | POST | [`/api/v1/auth/mfa/step-up`](#post-apiv1authmfastep-up) | Step up with a code: a new access token for sensitive actions | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 9 | POST | [`/api/v1/auth/mfa/totp/confirm`](#post-apiv1authmfatotpconfirm) | Confirm the new authenticator with a code; recovery codes | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 10 | POST | [`/api/v1/auth/mfa/totp/enroll`](#post-apiv1authmfatotpenroll) | Set up or replace the authenticator from account settings | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 11 | POST | [`/api/v1/auth/password`](#post-apiv1authpassword) | Change the password (current password, DPP rules, not one of the last 10) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 12 | POST | [`/api/v1/auth/password/expired`](#post-apiv1authpasswordexpired) | Forced password change at sign-in | no | none (public) | no |
-| 13 | POST | [`/api/v1/auth/refresh`](#post-apiv1authrefresh) | Rotate the refresh token | no | none (public) | no (a repeat counts as token reuse and ends the session) |
-| 14 | GET | [`/api/v1/auth/security`](#get-apiv1authsecurity) | Account security: MFA status, recovery codes left, password expiry | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 15 | POST | [`/api/v1/auth/switch-tenant`](#post-apiv1authswitch-tenant) | Switch the active tenant: a new token pair for another of the caller's tenants | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 16 | GET | [`/api/v1/tenants/me`](#get-apiv1tenantsme) | The brand profile | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 17 | PATCH | [`/api/v1/tenants/me`](#patch-apiv1tenantsme) | Update the brand profile (If-Match: the ETag from GET) | yes | `settings:manage`: owner, admin | no (guarded by If-Match) |
-| 18 | GET | [`/api/v1/members`](#get-apiv1members) | List the tenant's members | yes | `team:manage`: owner, admin | yes (read-only) |
-| 19 | PATCH | [`/api/v1/members/{user_id}`](#patch-apiv1membersuser_id) | Change a member's role or active flag (only an owner grants or removes owner) | yes | `team:manage`: owner, admin | yes (a repeat sets the same values again) |
-| 20 | GET | [`/api/v1/brand/documents`](#get-apiv1branddocuments) | List the brand documents | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 21 | POST | [`/api/v1/brand/documents`](#post-apiv1branddocuments) | Upload a brand document for chunking | yes | `settings:manage`: owner, admin | yes (Idempotency-Key) |
-| 22 | DELETE | [`/api/v1/brand/documents/{document_id}`](#delete-apiv1branddocumentsdocument_id) | Delete a brand document and deactivate its chunks | yes | `settings:manage`: owner, admin | yes (a repeat is 404) |
-| 23 | GET | [`/api/v1/products`](#get-apiv1products) | List products | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 24 | POST | [`/api/v1/products`](#post-apiv1products) | Create one product | yes | `product:import`: owner, operator | no (a repeat with the same SKU is 409 `SKU_CONFLICT`) |
-| 25 | POST | [`/api/v1/products/bulk`](#post-apiv1productsbulk) | Import products from a CSV file | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
-| 26 | GET | [`/api/v1/products/{product_id}`](#get-apiv1productsproduct_id) | Read one product | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 27 | GET | [`/api/v1/imports/{import_id}`](#get-apiv1importsimport_id) | The import report (counts; rows via /rows) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 28 | GET | [`/api/v1/imports/{import_id}/rows`](#get-apiv1importsimport_idrows) | Import rows, optionally only failed ones | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 29 | POST | [`/api/v1/imports/{import_id}/rows/retry`](#post-apiv1importsimport_idrowsretry) | Re-run the failed rows only | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
-| 30 | POST | [`/api/v1/images/upload`](#post-apiv1imagesupload) | Upload an image (or name an uploaded key) and start the checks | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
-| 31 | POST | [`/api/v1/images/upload-url`](#post-apiv1imagesupload-url) | A signed upload URL for one image | yes | `product:import`: owner, operator | no |
-| 32 | GET | [`/api/v1/images/{image_id}/report`](#get-apiv1imagesimage_idreport) | The image compliance reports | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 33 | GET | [`/api/v1/listings`](#get-apiv1listings) | List listings (the review queue) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 34 | POST | [`/api/v1/listings/approve`](#post-apiv1listingsapprove) | Approve or reject a batch (maker-checker enforced) | yes | `listing:approve`: owner, reviewer | yes (Idempotency-Key) |
-| 35 | POST | [`/api/v1/listings/generate`](#post-apiv1listingsgenerate) | Start AI generation | yes | `listing:generate`: owner, operator | yes (Idempotency-Key) |
-| 36 | POST | [`/api/v1/listings/publish`](#post-apiv1listingspublish) | Publish approved listings | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
-| 37 | POST | [`/api/v1/listings/validate`](#post-apiv1listingsvalidate) | Run schema, rules and vision checks (200 with passed=false on a rules failure) | yes | `listing:edit`: owner, operator | yes (a repeat with unchanged rules returns the stored result) |
-| 38 | GET | [`/api/v1/listings/{listing_id}`](#get-apiv1listingslisting_id) | Read one listing with its content and validation | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 39 | PATCH | [`/api/v1/listings/{listing_id}/content`](#patch-apiv1listingslisting_idcontent) | Edit content (creates a new version) | yes | `listing:edit`: owner, operator | no (guarded by If-Match) |
-| 40 | GET | [`/api/v1/listings/{listing_id}/history`](#get-apiv1listingslisting_idhistory) | The listing's audit history, newest first | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 41 | GET | [`/api/v1/listings/{listing_id}/preview`](#get-apiv1listingslisting_idpreview) | Preview the marketplace payload of the current version (sends nothing) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 42 | POST | [`/api/v1/listings/{listing_id}/publish/retry-fields`](#post-apiv1listingslisting_idpublishretry-fields) | Retry only the fields that failed to publish | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
-| 43 | POST | [`/api/v1/listings/{listing_id}/refresh-status`](#post-apiv1listingslisting_idrefresh-status) | Check the marketplace status now (at most once per 5 minutes per listing) | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
-| 44 | POST | [`/api/v1/listings/{listing_id}/regenerate`](#post-apiv1listingslisting_idregenerate) | Regenerate an existing listing | yes | `listing:regenerate`: owner, operator, reviewer | yes (Idempotency-Key) |
-| 45 | GET | [`/api/v1/listings/{listing_id}/status`](#get-apiv1listingslisting_idstatus) | Listing status (a convenience alias; poll jobs instead) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 46 | GET | [`/api/v1/listings/{listing_id}/submissions`](#get-apiv1listingslisting_idsubmissions) | The listing's publish attempts with their per-field results, newest first | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 47 | GET | [`/api/v1/jobs/{job_id}`](#get-apiv1jobsjob_id) | The job envelope, read from job_runs | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 48 | POST | [`/api/v1/jobs/{job_id}/cancel`](#post-apiv1jobsjob_idcancel) | Cancel a queued job | yes | `listing:generate`: owner, operator | yes (Idempotency-Key) |
-| 49 | GET | [`/api/v1/issues`](#get-apiv1issues) | The issue inbox (open issues by default) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 50 | POST | [`/api/v1/issues/{issue_id}/dismiss`](#post-apiv1issuesissue_iddismiss) | Dismiss an open warning (errors cannot be dismissed) | yes | `listing:approve`: owner, reviewer | yes (Idempotency-Key) |
-| 51 | GET | [`/api/v1/tasks`](#get-apiv1tasks) | The human task inbox (open tasks by default) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 52 | GET | [`/api/v1/marketplaces/accounts`](#get-apiv1marketplacesaccounts) | Connected accounts and their health | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 53 | POST | [`/api/v1/marketplaces/accounts/{account_id}/revoke`](#post-apiv1marketplacesaccountsaccount_idrevoke) | Revoke a connection: delete the stored tokens | yes | `marketplace:connect`: owner, admin | yes (a repeat returns the account unchanged) |
-| 54 | POST | [`/api/v1/marketplaces/connect`](#post-apiv1marketplacesconnect) | Start OAuth; returns the consent URL | yes | `marketplace:connect`: owner, admin | no |
-| 55 | POST | [`/api/v1/marketplaces/connect/confirm`](#post-apiv1marketplacesconnectconfirm) | Confirm a pending connection: the account joins the caller's tenant | yes | `marketplace:connect`: owner, admin | no (the pending handle is single-use; a repeat is 409) |
-| 56 | GET | [`/api/v1/marketplaces/{marketplace}/callback`](#get-apiv1marketplacesmarketplacecallback) | OAuth return: 303 to the app with an opaque pending handle | no | none (public) | no (the OAuth state is single-use; a replay is 409) |
-| 57 | GET | [`/api/v1/rules`](#get-apiv1rules) | List rules | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 58 | POST | [`/api/v1/rules/dry-run`](#post-apiv1rulesdry-run) | Run the Rules Engine on a draft listing; saves nothing | yes | `listing:edit`: owner, operator | yes (saves nothing) |
-| 59 | GET | [`/api/v1/analytics`](#get-apiv1analytics) | Operational metrics (alias of /analytics/summary) | yes | `analytics:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 60 | GET | [`/api/v1/analytics/summary`](#get-apiv1analyticssummary) | Operational metrics for a date range | yes | `analytics:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 61 | POST | [`/api/v1/signup`](#post-apiv1signup) | Sign up a brand: a pending request a platform admin approves | no | none (public) | no |
-| 62 | POST | [`/api/v1/signup/status`](#post-apiv1signupstatus) | The caller's latest sign-up request (email and password) | no | none (public) | no |
-| 63 | GET | [`/api/v1/admin/signup-requests`](#get-apiv1adminsignup-requests) | List sign-up requests, oldest first (platform admins) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | yes (read-only) |
-| 64 | POST | [`/api/v1/admin/signup-requests/{request_id}/approve`](#post-apiv1adminsignup-requestsrequest_idapprove) | Approve a sign-up: create the trial tenant and its owner (idempotent) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | no |
-| 65 | POST | [`/api/v1/admin/signup-requests/{request_id}/reject`](#post-apiv1adminsignup-requestsrequest_idreject) | Reject a sign-up with a reason (idempotent) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | no |
-| 66 | GET | [`/healthz`](#get-healthz) | Liveness probe: always 200, never touches the database | no | none (public probe) | yes (read-only) |
-| 67 | GET | [`/readyz`](#get-readyz) | Readiness probe: 200 when the database answers, else 503 | no | none (public probe) | yes (read-only) |
+| 1 | GET | [`/api/v1/auth/google/callback`](#get-apiv1authgooglecallback) | Google's return: 303 to the app with an opaque single-use handle | no | none (public) | yes (read-only) |
+| 2 | POST | [`/api/v1/auth/google/complete`](#post-apiv1authgooglecomplete) | Finish the Google step: sign in (or the code step), pending, the prefilled sign-up, or the password step that links Google | no | none (public) | no |
+| 3 | POST | [`/api/v1/auth/google/link`](#post-apiv1authgooglelink) | Link Google to an existing account: its password, then the usual code steps | no | none (public) | no |
+| 4 | GET | [`/api/v1/auth/google/start`](#get-apiv1authgooglestart) | Sign in or sign up with Google: redirect to Google's consent page | no | none (public) | yes (read-only) |
+| 5 | POST | [`/api/v1/auth/google/unlink`](#post-apiv1authgoogleunlink) | Remove the linked Google account (after a step-up; needs a password) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 6 | POST | [`/api/v1/auth/login`](#post-apiv1authlogin) | Log in with email and password: tokens, or the next sign-in step | no | none (public) | no |
+| 7 | POST | [`/api/v1/auth/login/mfa`](#post-apiv1authloginmfa) | Sign-in code step: a TOTP code or a recovery code for the login challenge | no | none (public) | no |
+| 8 | POST | [`/api/v1/auth/login/mfa/confirm`](#post-apiv1authloginmfaconfirm) | Forced enrolment at sign-in: confirm with a code; recovery codes and the sign-in result | no | none (public) | no |
+| 9 | POST | [`/api/v1/auth/login/mfa/enroll`](#post-apiv1authloginmfaenroll) | Forced enrolment at sign-in: a new authenticator secret | no | none (public) | no |
+| 10 | POST | [`/api/v1/auth/logout`](#post-apiv1authlogout) | Revoke the refresh token | no | none (public) | yes (always 204; a repeat is a no-op) |
+| 11 | GET | [`/api/v1/auth/me`](#get-apiv1authme) | The current principal and memberships | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 12 | POST | [`/api/v1/auth/mfa/recovery-codes`](#post-apiv1authmfarecovery-codes) | Regenerate the recovery codes (after a step-up) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 13 | POST | [`/api/v1/auth/mfa/step-up`](#post-apiv1authmfastep-up) | Step up with a code: a new access token for sensitive actions | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 14 | POST | [`/api/v1/auth/mfa/totp/confirm`](#post-apiv1authmfatotpconfirm) | Confirm the new authenticator with a code; recovery codes | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 15 | POST | [`/api/v1/auth/mfa/totp/enroll`](#post-apiv1authmfatotpenroll) | Set up or replace the authenticator from account settings | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 16 | POST | [`/api/v1/auth/password`](#post-apiv1authpassword) | Change the password (current password, DPP rules, not one of the last 10) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 17 | POST | [`/api/v1/auth/password/expired`](#post-apiv1authpasswordexpired) | Forced password change at sign-in | no | none (public) | no |
+| 18 | POST | [`/api/v1/auth/refresh`](#post-apiv1authrefresh) | Rotate the refresh token | no | none (public) | no (a repeat counts as token reuse and ends the session) |
+| 19 | GET | [`/api/v1/auth/security`](#get-apiv1authsecurity) | Account security: MFA status, recovery codes left, password expiry | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 20 | POST | [`/api/v1/auth/switch-tenant`](#post-apiv1authswitch-tenant) | Switch the active tenant: a new token pair for another of the caller's tenants | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 21 | GET | [`/api/v1/tenants/me`](#get-apiv1tenantsme) | The brand profile | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 22 | PATCH | [`/api/v1/tenants/me`](#patch-apiv1tenantsme) | Update the brand profile (If-Match: the ETag from GET) | yes | `settings:manage`: owner, admin | no (guarded by If-Match) |
+| 23 | GET | [`/api/v1/members`](#get-apiv1members) | List the tenant's members | yes | `team:manage`: owner, admin | yes (read-only) |
+| 24 | PATCH | [`/api/v1/members/{user_id}`](#patch-apiv1membersuser_id) | Change a member's role or active flag (only an owner grants or removes owner) | yes | `team:manage`: owner, admin | yes (a repeat sets the same values again) |
+| 25 | GET | [`/api/v1/brand/documents`](#get-apiv1branddocuments) | List the brand documents | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 26 | POST | [`/api/v1/brand/documents`](#post-apiv1branddocuments) | Upload a brand document for chunking | yes | `settings:manage`: owner, admin | yes (Idempotency-Key) |
+| 27 | DELETE | [`/api/v1/brand/documents/{document_id}`](#delete-apiv1branddocumentsdocument_id) | Delete a brand document and deactivate its chunks | yes | `settings:manage`: owner, admin | yes (a repeat is 404) |
+| 28 | GET | [`/api/v1/products`](#get-apiv1products) | List products | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 29 | POST | [`/api/v1/products`](#post-apiv1products) | Create one product | yes | `product:import`: owner, operator | no (a repeat with the same SKU is 409 `SKU_CONFLICT`) |
+| 30 | POST | [`/api/v1/products/bulk`](#post-apiv1productsbulk) | Import products from a CSV file | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
+| 31 | GET | [`/api/v1/products/{product_id}`](#get-apiv1productsproduct_id) | Read one product | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 32 | GET | [`/api/v1/imports/{import_id}`](#get-apiv1importsimport_id) | The import report (counts; rows via /rows) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 33 | GET | [`/api/v1/imports/{import_id}/rows`](#get-apiv1importsimport_idrows) | Import rows, optionally only failed ones | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 34 | POST | [`/api/v1/imports/{import_id}/rows/retry`](#post-apiv1importsimport_idrowsretry) | Re-run the failed rows only | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
+| 35 | POST | [`/api/v1/images/upload`](#post-apiv1imagesupload) | Upload an image (or name an uploaded key) and start the checks | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
+| 36 | POST | [`/api/v1/images/upload-url`](#post-apiv1imagesupload-url) | A signed upload URL for one image | yes | `product:import`: owner, operator | no |
+| 37 | GET | [`/api/v1/images/{image_id}/report`](#get-apiv1imagesimage_idreport) | The image compliance reports | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 38 | GET | [`/api/v1/listings`](#get-apiv1listings) | List listings (the review queue) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 39 | POST | [`/api/v1/listings/approve`](#post-apiv1listingsapprove) | Approve or reject a batch (maker-checker enforced) | yes | `listing:approve`: owner, reviewer | yes (Idempotency-Key) |
+| 40 | POST | [`/api/v1/listings/generate`](#post-apiv1listingsgenerate) | Start AI generation | yes | `listing:generate`: owner, operator | yes (Idempotency-Key) |
+| 41 | POST | [`/api/v1/listings/publish`](#post-apiv1listingspublish) | Publish approved listings | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
+| 42 | POST | [`/api/v1/listings/validate`](#post-apiv1listingsvalidate) | Run schema, rules and vision checks (200 with passed=false on a rules failure) | yes | `listing:edit`: owner, operator | yes (a repeat with unchanged rules returns the stored result) |
+| 43 | GET | [`/api/v1/listings/{listing_id}`](#get-apiv1listingslisting_id) | Read one listing with its content and validation | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 44 | PATCH | [`/api/v1/listings/{listing_id}/content`](#patch-apiv1listingslisting_idcontent) | Edit content (creates a new version) | yes | `listing:edit`: owner, operator | no (guarded by If-Match) |
+| 45 | GET | [`/api/v1/listings/{listing_id}/history`](#get-apiv1listingslisting_idhistory) | The listing's audit history, newest first | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 46 | GET | [`/api/v1/listings/{listing_id}/preview`](#get-apiv1listingslisting_idpreview) | Preview the marketplace payload of the current version (sends nothing) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 47 | POST | [`/api/v1/listings/{listing_id}/publish/retry-fields`](#post-apiv1listingslisting_idpublishretry-fields) | Retry only the fields that failed to publish | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
+| 48 | POST | [`/api/v1/listings/{listing_id}/refresh-status`](#post-apiv1listingslisting_idrefresh-status) | Check the marketplace status now (at most once per 5 minutes per listing) | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
+| 49 | POST | [`/api/v1/listings/{listing_id}/regenerate`](#post-apiv1listingslisting_idregenerate) | Regenerate an existing listing | yes | `listing:regenerate`: owner, operator, reviewer | yes (Idempotency-Key) |
+| 50 | GET | [`/api/v1/listings/{listing_id}/status`](#get-apiv1listingslisting_idstatus) | Listing status (a convenience alias; poll jobs instead) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 51 | GET | [`/api/v1/listings/{listing_id}/submissions`](#get-apiv1listingslisting_idsubmissions) | The listing's publish attempts with their per-field results, newest first | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 52 | GET | [`/api/v1/jobs/{job_id}`](#get-apiv1jobsjob_id) | The job envelope, read from job_runs | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 53 | POST | [`/api/v1/jobs/{job_id}/cancel`](#post-apiv1jobsjob_idcancel) | Cancel a queued job | yes | `listing:generate`: owner, operator | yes (Idempotency-Key) |
+| 54 | GET | [`/api/v1/issues`](#get-apiv1issues) | The issue inbox (open issues by default) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 55 | POST | [`/api/v1/issues/{issue_id}/dismiss`](#post-apiv1issuesissue_iddismiss) | Dismiss an open warning (errors cannot be dismissed) | yes | `listing:approve`: owner, reviewer | yes (Idempotency-Key) |
+| 56 | GET | [`/api/v1/tasks`](#get-apiv1tasks) | The human task inbox (open tasks by default) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 57 | GET | [`/api/v1/marketplaces/accounts`](#get-apiv1marketplacesaccounts) | Connected accounts and their health | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 58 | POST | [`/api/v1/marketplaces/accounts/{account_id}/revoke`](#post-apiv1marketplacesaccountsaccount_idrevoke) | Revoke a connection: delete the stored tokens | yes | `marketplace:connect`: owner, admin | yes (a repeat returns the account unchanged) |
+| 59 | POST | [`/api/v1/marketplaces/connect`](#post-apiv1marketplacesconnect) | Start OAuth; returns the consent URL | yes | `marketplace:connect`: owner, admin | no |
+| 60 | POST | [`/api/v1/marketplaces/connect/confirm`](#post-apiv1marketplacesconnectconfirm) | Confirm a pending connection: the account joins the caller's tenant | yes | `marketplace:connect`: owner, admin | no (the pending handle is single-use; a repeat is 409) |
+| 61 | GET | [`/api/v1/marketplaces/{marketplace}/callback`](#get-apiv1marketplacesmarketplacecallback) | OAuth return: 303 to the app with an opaque pending handle | no | none (public) | no (the OAuth state is single-use; a replay is 409) |
+| 62 | GET | [`/api/v1/rules`](#get-apiv1rules) | List rules | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 63 | POST | [`/api/v1/rules/dry-run`](#post-apiv1rulesdry-run) | Run the Rules Engine on a draft listing; saves nothing | yes | `listing:edit`: owner, operator | yes (saves nothing) |
+| 64 | GET | [`/api/v1/analytics`](#get-apiv1analytics) | Operational metrics (alias of /analytics/summary) | yes | `analytics:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 65 | GET | [`/api/v1/analytics/summary`](#get-apiv1analyticssummary) | Operational metrics for a date range | yes | `analytics:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 66 | POST | [`/api/v1/signup`](#post-apiv1signup) | Sign up a brand: a pending request a platform admin approves | no | none (public) | no |
+| 67 | POST | [`/api/v1/signup/google`](#post-apiv1signupgoogle) | Sign up with the Google identity: a pending request a platform admin approves | no | none (public) | no |
+| 68 | POST | [`/api/v1/signup/status`](#post-apiv1signupstatus) | The caller's latest sign-up request (email and password) | no | none (public) | no |
+| 69 | GET | [`/api/v1/admin/signup-requests`](#get-apiv1adminsignup-requests) | List sign-up requests, oldest first (platform admins) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | yes (read-only) |
+| 70 | POST | [`/api/v1/admin/signup-requests/{request_id}/approve`](#post-apiv1adminsignup-requestsrequest_idapprove) | Approve a sign-up: create the trial tenant and its owner (idempotent) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | no |
+| 71 | POST | [`/api/v1/admin/signup-requests/{request_id}/reject`](#post-apiv1adminsignup-requestsrequest_idreject) | Reject a sign-up with a reason (idempotent) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | no |
+| 72 | GET | [`/healthz`](#get-healthz) | Liveness probe: always 200, never touches the database | no | none (public probe) | yes (read-only) |
+| 73 | GET | [`/readyz`](#get-readyz) | Readiness probe: 200 when the database answers, else 503 | no | none (public probe) | yes (read-only) |
 
 ## Auth
 
@@ -448,6 +454,11 @@ Log in, renew tokens, log out, read who you are, and switch the active tenant. L
 
 | Operation | Purpose |
 |---|---|
+| [`GET /api/v1/auth/google/callback`](#get-apiv1authgooglecallback) | Google's return: 303 to the app with an opaque single-use handle |
+| [`POST /api/v1/auth/google/complete`](#post-apiv1authgooglecomplete) | Finish the Google step: sign in (or the code step), pending, the prefilled sign-up, or the password step that links Google |
+| [`POST /api/v1/auth/google/link`](#post-apiv1authgooglelink) | Link Google to an existing account: its password, then the usual code steps |
+| [`GET /api/v1/auth/google/start`](#get-apiv1authgooglestart) | Sign in or sign up with Google: redirect to Google's consent page |
+| [`POST /api/v1/auth/google/unlink`](#post-apiv1authgoogleunlink) | Remove the linked Google account (after a step-up; needs a password) |
 | [`POST /api/v1/auth/login`](#post-apiv1authlogin) | Log in with email and password: tokens, or the next sign-in step |
 | [`POST /api/v1/auth/login/mfa`](#post-apiv1authloginmfa) | Sign-in code step: a TOTP code or a recovery code for the login challenge |
 | [`POST /api/v1/auth/login/mfa/confirm`](#post-apiv1authloginmfaconfirm) | Forced enrolment at sign-in: confirm with a code; recovery codes and the sign-in result |
@@ -463,6 +474,357 @@ Log in, renew tokens, log out, read who you are, and switch the active tenant. L
 | [`POST /api/v1/auth/refresh`](#post-apiv1authrefresh) | Rotate the refresh token |
 | [`GET /api/v1/auth/security`](#get-apiv1authsecurity) | Account security: MFA status, recovery codes left, password expiry |
 | [`POST /api/v1/auth/switch-tenant`](#post-apiv1authswitch-tenant) | Switch the active tenant: a new token pair for another of the caller's tenants |
+
+### GET /api/v1/auth/google/callback
+
+**Google's return: 303 to the app with an opaque single-use handle.**
+
+Google's return (registered as the OAuth client's redirect URI). Always a 303 to the app's `/auth/google` route: `?handle=` (60 seconds, bound to the browser that started) or `?error=cancelled|failed|unavailable`. Not for direct use.
+
+| | |
+|---|---|
+| Operation id | `auth_google_callback` |
+| Auth | none |
+| Permission (roles that hold it) | none (public) |
+| Idempotent | yes (read-only) |
+| Success | 303 (no body) |
+
+#### Parameters
+
+| Name | In | Type | Required | Description | Constraints |
+|---|---|---|---|---|---|
+| `code` | query | string or null | no |  | min length 1; max length 2048 |
+| `error` | query | string or null | no |  | min length 1; max length 2048 |
+| `state` | query | string or null | no |  | min length 1; max length 2048 |
+
+#### Request body
+
+None.
+
+#### Example call
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/auth/google/callback"
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 303 | Redirect to the app's `/auth/google` route with an opaque single-use `handle` (60 seconds, bound to the browser), or `?error=cancelled` (the user backed out at Google), `?error=failed` or `?error=unavailable`: no code, token or account data. |  | `Location` |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+Header `Location` on 303: `{dashboard}/auth/google?handle=<opaque>` or `?error=cancelled|failed|unavailable`.
+
+[Back to the summary](#all-operations)
+
+### POST /api/v1/auth/google/complete
+
+**Finish the Google step: sign in (or the code step), pending, the prefilled sign-up, or the password step that links Google.**
+
+The app's `/auth/google` route posts the `handle` and the browser's binding secret, then acts on `outcome`: `sign_in` (store tokens, or continue with `login.challenge_token` at the usual code, enrolment or password step), `pending` (show the request status), `needs_details` (the prefilled sign-up form, then `/signup/google`) or `link_required` (ask the existing account's password, then `/auth/google/link`). A Google sign-in always asks for the Kuinn code when MFA is enforced. Every refusal is the same 401 with a generic message.
+
+| | |
+|---|---|
+| Operation id | `auth_google_complete` |
+| Auth | none |
+| Permission (roles that hold it) | none (public) |
+| Idempotent | no |
+| Success | 200 `GoogleCompleteOut` |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+Content type `application/json`, required. Schema: `GoogleCompleteRequest`.
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `binding` | string (password) | yes | The browser's binding secret (43 base64url characters) whose sha256 was sent to `/auth/google/start` as `b`. | min length 43; max length 43; write-only (never returned) |
+| `handle` | string (password) | yes | The `handle` of the `/auth/google?handle=` redirect. | min length 1; max length 128; write-only (never returned) |
+
+Example (built from the schema; values are placeholders):
+
+```json
+{
+  "binding": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "handle": "string"
+}
+```
+
+#### Example call
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/auth/google/complete" \
+  -H "Content-Type: application/json" \
+  -d '{"binding":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","handle":"string"}'
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 200 | Success. | `GoogleCompleteOut` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED`, `OAUTH_STATE_INVALID` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| 501 | Not implemented yet. | `ErrorEnvelope` |  | `NOT_IMPLEMENTED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**200 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `details` | GoogleDetailsOut or null | no | `needs_details`: no Kuinn account uses this Google email yet. Prefill the sign-up form. |  |
+| `details.details_expires_in` | integer | yes | Seconds the handle stays valid. | min 1 |
+| `details.details_handle` | string | yes |  | min length 1 |
+| `details.email` | string | yes | Google's verified email: show it read-only. | min length 3; max length 320; pattern `^[^@\s]+@[^@\s]+$` |
+| `details.email_verified` | const true | no | Always true: show "Verified by Google". | default `true` |
+| `details.family_name` | string or null | no |  |  |
+| `details.given_name` | string or null | no |  |  |
+| `details.owner_name` | string or null | no | Google's full name, editable. |  |
+| `details.suggested_brand_name` | string or null | no | From a company email's domain (never a mailbox provider's); editable. |  |
+| `link` | GoogleLinkOut or null | no | `link_required`: a Kuinn account already uses this email. Ask for its password once (`/auth/google/link`), then the usual code steps; Google is linked when they pass. |  |
+| `link.email` | string | yes |  | min length 3; max length 320; pattern `^[^@\s]+@[^@\s]+$` |
+| `link.link_expires_in` | integer | yes | Seconds the handle stays valid. | min 1 |
+| `link.link_handle` | string | yes |  | min length 1 |
+| `login` | LoginResult or null | no | `signed_in` carries today's token fields; every other status carries a challenge for the next step instead (and no token). |  |
+| `login.access_token` | string or null | no |  | min length 1 |
+| `login.challenge_expires_in` | integer or null | no | Seconds the challenge stays valid (900 to enrol, else 300). | min 1 |
+| `login.challenge_token` | string or null | no | Send it to the next step's route; keep it in memory only. | min length 1 |
+| `login.expires_in` | integer or null | no | Access token lifetime in seconds. | min 1 |
+| `login.memberships` | array of MembershipOut or null | no |  |  |
+| `login.memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |
+| `login.memberships[].tenant_id` | string (uuid) | yes |  |  |
+| `login.memberships[].tenant_name` | string | yes |  | min length 1 |
+| `login.mfa_grace_until` | string (date-time) or null | no | Set while the user may still sign in without a factor: show a banner. |  |
+| `login.refresh_token` | string or null | no |  | min length 1 |
+| `login.status` | string (enum) | no |  | one of: `signed_in`, `mfa_required`, `mfa_enrollment_required`, `password_change_required`; default `"signed_in"` |
+| `login.token_type` | const "bearer" or null | no |  |  |
+| `outcome` | string (enum) | yes |  | one of: `sign_in`, `pending`, `needs_details`, `link_required` |
+| `signup` | SignupStatusOut or null | no |  |  |
+| `signup.brand_name` | string | yes |  | min length 1 |
+| `signup.created_at` | string (date-time) | yes |  |  |
+| `signup.decided_at` | string (date-time) or null | no |  |  |
+| `signup.reason` | string or null | no |  |  |
+| `signup.request_id` | string (uuid) | yes |  |  |
+| `signup.status` | string (enum) | yes |  | one of: `pending`, `approved`, `rejected` |
+| `signup.tenant_id` | string (uuid) or null | no |  |  |
+
+200 example:
+
+```json
+{
+  "details": {
+    "details_expires_in": 900,
+    "details_handle": "gd_example_opaque_value",
+    "email": "asha@acmenaturals.example",
+    "email_verified": true,
+    "family_name": "Rao",
+    "given_name": "Asha",
+    "owner_name": "Asha Rao",
+    "suggested_brand_name": "Acmenaturals"
+  },
+  "outcome": "needs_details"
+}
+```
+
+[Back to the summary](#all-operations)
+
+### POST /api/v1/auth/google/link
+
+**Link Google to an existing account: its password, then the usual code steps.**
+
+`link_required`: the existing account's Kuinn password. The answer is the usual login step (tokens, or the code, enrolment or password-change challenge); Google is linked only when that sign-in finishes. A wrong password counts toward the lockout and answers the same 401 as the login; retry with the same handle until it expires (15 minutes).
+
+| | |
+|---|---|
+| Operation id | `auth_google_link` |
+| Auth | none |
+| Permission (roles that hold it) | none (public) |
+| Idempotent | no |
+| Success | 200 `LoginResult` |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+Content type `application/json`, required. Schema: `GoogleLinkRequest`.
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `binding` | string (password) | yes | The browser's binding secret (43 base64url characters) whose sha256 was sent to `/auth/google/start` as `b`. | min length 43; max length 43; write-only (never returned) |
+| `link_handle` | string (password) | yes | An opaque single-use handle. | min length 1; max length 128; write-only (never returned) |
+| `password` | string (password) | yes |  | min length 1; max length 1024; write-only (never returned) |
+
+Example (built from the schema; values are placeholders):
+
+```json
+{
+  "binding": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "link_handle": "string",
+  "password": "<PASSWORD>"
+}
+```
+
+#### Example call
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/auth/google/link" \
+  -H "Content-Type: application/json" \
+  -d '{"binding":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","link_handle":"string","password":"<PASSWORD>"}'
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 200 | Success. | `LoginResult` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED`, `OAUTH_STATE_INVALID` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| 501 | Not implemented yet. | `ErrorEnvelope` |  | `NOT_IMPLEMENTED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**200 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `access_token` | string or null | no |  | min length 1 |
+| `challenge_expires_in` | integer or null | no | Seconds the challenge stays valid (900 to enrol, else 300). | min 1 |
+| `challenge_token` | string or null | no | Send it to the next step's route; keep it in memory only. | min length 1 |
+| `expires_in` | integer or null | no | Access token lifetime in seconds. | min 1 |
+| `memberships` | array of MembershipOut or null | no |  |  |
+| `memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |
+| `memberships[].tenant_id` | string (uuid) | yes |  |  |
+| `memberships[].tenant_name` | string | yes |  | min length 1 |
+| `mfa_grace_until` | string (date-time) or null | no | Set while the user may still sign in without a factor: show a banner. |  |
+| `refresh_token` | string or null | no |  | min length 1 |
+| `status` | string (enum) | no |  | one of: `signed_in`, `mfa_required`, `mfa_enrollment_required`, `password_change_required`; default `"signed_in"` |
+| `token_type` | const "bearer" or null | no |  |  |
+
+200 example:
+
+```json
+{
+  "challenge_expires_in": 300,
+  "challenge_token": "ch_example_opaque_value",
+  "status": "mfa_required"
+}
+```
+
+[Back to the summary](#all-operations)
+
+### GET /api/v1/auth/google/start
+
+**Sign in or sign up with Google: redirect to Google's consent page.**
+
+Navigate here (same origin, through the dashboard's `/api` proxy) from both the login and the sign-up page. `b` is base64url(sha256(secret)) of a fresh 32-byte random secret the browser keeps in sessionStorage for `/auth/google/complete`. 302 to Google; with Google sign-in off, 303 to `/login?error=google_unavailable`.
+
+| | |
+|---|---|
+| Operation id | `auth_google_start` |
+| Auth | none |
+| Permission (roles that hold it) | none (public) |
+| Idempotent | yes (read-only) |
+| Success | 302 (no body) |
+
+#### Parameters
+
+| Name | In | Type | Required | Description | Constraints |
+|---|---|---|---|---|---|
+| `b` | query | string | yes |  | min length 43; max length 43; pattern `^[A-Za-z0-9_-]{43}$` |
+
+#### Request body
+
+None.
+
+#### Example call
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/auth/google/start?b=<b>"
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 302 | Redirect to Google's consent page (authorization code with PKCE S256, `state`, `nonce`, `prompt=select_account`, scopes `openid email profile`). With Google sign-in switched off the answer is 303 to `/login?error=google_unavailable`. |  | `Location` |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+Header `Location` on 302: Google's authorize URL (or `/login?error=google_unavailable`).
+
+[Back to the summary](#all-operations)
+
+### POST /api/v1/auth/google/unlink
+
+**Remove the linked Google account (after a step-up; needs a password).**
+
+Remove the Google account linked to the caller (needs a step-up code from the last 10 minutes when MFA is enforced). Refused with 422 while the account has no password, since Google is then its only way in. 204 also when nothing is linked.
+
+| | |
+|---|---|
+| Operation id | `auth_google_unlink` |
+| Auth | Bearer access token |
+| Permission (roles that hold it) | `tenant:read`: owner, admin, operator, reviewer |
+| Idempotent | no |
+| Success | 204 (no body) |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+None.
+
+#### Example call
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/auth/google/unlink" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 204 | Done; no body. |  |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
+| 403 | Permission denied. | `ErrorEnvelope` |  | `MFA_STEP_UP_REQUIRED`, `MFA_ENROLLMENT_REQUIRED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+[Back to the summary](#all-operations)
 
 ### POST /api/v1/auth/login
 
@@ -1582,6 +1944,8 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | Field | Type | Required | Description | Constraints |
 |---|---|---|---|---|
 | `enforcement` | string (enum) | yes |  | one of: `off`, `all` |
+| `google_linked` | boolean or null | no | True when a Google account can sign in to this account (ADR-0020); `POST /auth/google/unlink` removes it. |  |
+| `has_password` | boolean or null | no | False for an account created with Google (ADR-0020): hide "Change password" and the password dates. |  |
 | `mfa_enrolled` | boolean | yes |  |  |
 | `mfa_grace_until` | string (date-time) or null | no |  |  |
 | `password_changed_at` | string (date-time) or null | no |  |  |
@@ -1593,6 +1957,8 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 ```json
 {
   "enforcement": "all",
+  "google_linked": false,
+  "has_password": true,
   "mfa_enrolled": true,
   "password_changed_at": "2026-10-05T09:30:00Z",
   "password_expires_at": "2027-10-05T09:30:00Z",
@@ -2777,7 +3143,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `rows[].row_number` | integer | yes |  | min 2 |
 | `rows[].sku` | string or null | no |  |  |
 | `rows[].status` | string (enum) | yes |  | one of: `imported`, `failed` |
-| `schema_version` | string | no |  | default `"2.0.0"` |
+| `schema_version` | string | no |  | default `"2.1.0"` |
 | `total_rows` | integer | yes |  | min 0 |
 
 200 example:
@@ -3230,7 +3596,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `reports.amazon.model_used` | string or null | no |  |  |
 | `reports.amazon.pass` | boolean | yes |  |  |
 | `reports.amazon.processed_at` | string (date-time) | yes |  |  |
-| `reports.amazon.schema_version` | string | no |  | default `"2.0.0"` |
+| `reports.amazon.schema_version` | string | no |  | default `"2.1.0"` |
 | `reports.amazon.slot` | ImageSlot (enum) | yes |  | one of: `main`, `secondary`, `lifestyle`, `size_chart`, `packaging_label` |
 | `reports.flipkart` | ImageReport or null | no |  |  |
 | `reports.flipkart.agent_run_id` | string (uuid) or null | no |  |  |
@@ -3248,7 +3614,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `reports.flipkart.model_used` | string or null | no |  |  |
 | `reports.flipkart.pass` | boolean | yes |  |  |
 | `reports.flipkart.processed_at` | string (date-time) | yes |  |  |
-| `reports.flipkart.schema_version` | string | no |  | default `"2.0.0"` |
+| `reports.flipkart.schema_version` | string | no |  | default `"2.1.0"` |
 | `reports.flipkart.slot` | ImageSlot (enum) | yes |  | one of: `main`, `secondary`, `lifestyle`, `size_chart`, `packaging_label` |
 
 200 example:
@@ -3783,7 +4149,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `listing_version_id` | string (uuid) or null | no |  |  |
 | `passed` | boolean | yes |  |  |
 | `request_id` | string or null | no |  |  |
-| `schema_version` | string | no |  | default `"2.0.0"` |
+| `schema_version` | string | no |  | default `"2.1.0"` |
 | `stages` | array of ValidationResult | no |  |  |
 | `stages[].attempt` | integer | no |  | min 1; default `1` |
 | `stages[].created_at` | string (date-time) | yes |  |  |
@@ -3794,7 +4160,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `stages[].passed` | boolean | yes |  |  |
 | `stages[].report` | ErrorReport | yes | Fields: see [ErrorReport](#errorreport). |  |
 | `stages[].rules_version` | integer or null | no |  |  |
-| `stages[].schema_version` | string | no |  | default `"2.0.0"` |
+| `stages[].schema_version` | string | no |  | default `"2.1.0"` |
 | `stages[].source` | ErrorSource (enum) | yes |  | one of: `schema`, `rules_engine`, `vision_model`, `ai_model`, `amazon_adapter`, `flipkart_adapter`, `system` |
 | `stages[].tenant_id` | string (uuid) | yes |  |  |
 | `stages[].validation_run_id` | string (uuid) or null | no |  |  |
@@ -3936,7 +4302,7 @@ Header `ETag` on 200: The current version (of the profile or the listing), a quo
 | `content.locale` | const "en-IN" | no |  | default `"en-IN"` |
 | `content.marketplace` | Marketplace (enum) | yes |  | one of: `amazon`, `flipkart` |
 | `content.product_id` | string (uuid) | yes |  |  |
-| `content.schema_version` | string | no |  | default `"2.0.0"` |
+| `content.schema_version` | string | no |  | default `"2.1.0"` |
 | `content.status` | ListingStatus (enum) | no |  | one of: `created`, `generating`, `validated`, `needs_review`, `approved`, `publishing`, `published`, `blocked`, `failed`; default `"created"` |
 | `content.version` | integer | no |  | min 1; default `1` |
 | `created_at` | string (date-time) | yes |  |  |
@@ -3956,7 +4322,7 @@ Header `ETag` on 200: The current version (of the profile or the listing), a quo
 | `validation.listing_version_id` | string (uuid) or null | no |  |  |
 | `validation.passed` | boolean | yes |  |  |
 | `validation.request_id` | string or null | no |  |  |
-| `validation.schema_version` | string | no |  | default `"2.0.0"` |
+| `validation.schema_version` | string | no |  | default `"2.1.0"` |
 | `validation.stages` | array of ValidationResult | no |  |  |
 | `validation.stages[].attempt` | integer | no |  | min 1; default `1` |
 | `validation.stages[].created_at` | string (date-time) | yes |  |  |
@@ -3967,7 +4333,7 @@ Header `ETag` on 200: The current version (of the profile or the listing), a quo
 | `validation.stages[].passed` | boolean | yes |  |  |
 | `validation.stages[].report` | ErrorReport | yes | Fields: see [ErrorReport](#errorreport). |  |
 | `validation.stages[].rules_version` | integer or null | no |  |  |
-| `validation.stages[].schema_version` | string | no |  | default `"2.0.0"` |
+| `validation.stages[].schema_version` | string | no |  | default `"2.1.0"` |
 | `validation.stages[].source` | ErrorSource (enum) | yes |  | one of: `schema`, `rules_engine`, `vision_model`, `ai_model`, `amazon_adapter`, `flipkart_adapter`, `system` |
 | `validation.stages[].tenant_id` | string (uuid) | yes |  |  |
 | `validation.stages[].validation_run_id` | string (uuid) or null | no |  |  |
@@ -4203,7 +4569,7 @@ Header `ETag` on 200: The current version (of the profile or the listing), a quo
 | `content.locale` | const "en-IN" | no |  | default `"en-IN"` |
 | `content.marketplace` | Marketplace (enum) | yes |  | one of: `amazon`, `flipkart` |
 | `content.product_id` | string (uuid) | yes |  |  |
-| `content.schema_version` | string | no |  | default `"2.0.0"` |
+| `content.schema_version` | string | no |  | default `"2.1.0"` |
 | `content.status` | ListingStatus (enum) | no |  | one of: `created`, `generating`, `validated`, `needs_review`, `approved`, `publishing`, `published`, `blocked`, `failed`; default `"created"` |
 | `content.version` | integer | no |  | min 1; default `1` |
 | `created_at` | string (date-time) | yes |  |  |
@@ -4223,7 +4589,7 @@ Header `ETag` on 200: The current version (of the profile or the listing), a quo
 | `validation.listing_version_id` | string (uuid) or null | no |  |  |
 | `validation.passed` | boolean | yes |  |  |
 | `validation.request_id` | string or null | no |  |  |
-| `validation.schema_version` | string | no |  | default `"2.0.0"` |
+| `validation.schema_version` | string | no |  | default `"2.1.0"` |
 | `validation.stages` | array of ValidationResult | no |  |  |
 | `validation.stages[].attempt` | integer | no |  | min 1; default `1` |
 | `validation.stages[].created_at` | string (date-time) | yes |  |  |
@@ -4234,7 +4600,7 @@ Header `ETag` on 200: The current version (of the profile or the listing), a quo
 | `validation.stages[].passed` | boolean | yes |  |  |
 | `validation.stages[].report` | ErrorReport | yes | Fields: see [ErrorReport](#errorreport). |  |
 | `validation.stages[].rules_version` | integer or null | no |  |  |
-| `validation.stages[].schema_version` | string | no |  | default `"2.0.0"` |
+| `validation.stages[].schema_version` | string | no |  | default `"2.1.0"` |
 | `validation.stages[].source` | ErrorSource (enum) | yes |  | one of: `schema`, `rules_engine`, `vision_model`, `ai_model`, `amazon_adapter`, `flipkart_adapter`, `system` |
 | `validation.stages[].tenant_id` | string (uuid) | yes |  |  |
 | `validation.stages[].validation_run_id` | string (uuid) or null | no |  |  |
@@ -4461,7 +4827,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `marketplace` | Marketplace (enum) | yes |  | one of: `amazon`, `flipkart` |
 | `product_type` | string or null | no |  | max length 128 |
 | `report` | ErrorReport | yes | Fields: see [ErrorReport](#errorreport). |  |
-| `schema_version` | string | no |  | default `"2.0.0"` |
+| `schema_version` | string | no |  | default `"2.1.0"` |
 | `version` | integer | yes |  | min 1 |
 
 200 example:
@@ -5035,7 +5401,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `queued_at` | string (date-time) | yes |  |  |
 | `request_id` | string | yes |  | min length 1; max length 128 |
 | `result_url` | string or null | no |  |  |
-| `schema_version` | string | no |  | default `"2.0.0"` |
+| `schema_version` | string | no |  | default `"2.1.0"` |
 | `stage` | PipelineStage (enum) or null | no |  | one of: `load_context`, `retrieve_brand`, `content_agent`, `keyword_agent`, `attribute_agent`, `image_agent`, `merge_outputs`, `validate_schema`, `validate_rules`, `validate_vision`, `correct`, `quality_check` |
 | `started_at` | string (date-time) or null | no |  |  |
 | `status` | JobState (enum) | yes |  | one of: `queued`, `running`, `succeeded`, `partial`, `failed`, `cancelled`, `dead_letter` |
@@ -5126,7 +5492,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `queued_at` | string (date-time) | yes |  |  |
 | `request_id` | string | yes |  | min length 1; max length 128 |
 | `result_url` | string or null | no |  |  |
-| `schema_version` | string | no |  | default `"2.0.0"` |
+| `schema_version` | string | no |  | default `"2.1.0"` |
 | `stage` | PipelineStage (enum) or null | no |  | one of: `load_context`, `retrieve_brand`, `content_agent`, `keyword_agent`, `attribute_agent`, `image_agent`, `merge_outputs`, `validate_schema`, `validate_rules`, `validate_vision`, `correct`, `quality_check` |
 | `started_at` | string (date-time) or null | no |  |  |
 | `status` | JobState (enum) | yes |  | one of: `queued`, `running`, `succeeded`, `partial`, `failed`, `cancelled`, `dead_letter` |
@@ -6090,7 +6456,7 @@ Content type `application/json`, required. Schema: `DryRunRequest`.
 | `listing.locale` | const "en-IN" | no |  | default `"en-IN"` |
 | `listing.marketplace` | Marketplace (enum) | yes |  | one of: `amazon`, `flipkart` |
 | `listing.product_id` | string (uuid) | yes |  |  |
-| `listing.schema_version` | string | no |  | default `"2.0.0"` |
+| `listing.schema_version` | string | no |  | default `"2.1.0"` |
 | `listing.status` | ListingStatus (enum) | no |  | one of: `created`, `generating`, `validated`, `needs_review`, `approved`, `publishing`, `published`, `blocked`, `failed`; default `"created"` |
 | `listing.version` | integer | no |  | min 1; default `1` |
 
@@ -6145,7 +6511,7 @@ Example (built from the schema; values are placeholders):
     "locale": "en-IN",
     "marketplace": "amazon",
     "product_id": "00000000-0000-4000-8000-000000000000",
-    "schema_version": "2.0.0",
+    "schema_version": "2.1.0",
     "status": "created",
     "version": 1
   }
@@ -6158,7 +6524,7 @@ Example (built from the schema; values are placeholders):
 curl -X POST "http://localhost:8000/api/v1/rules/dry-run" \
   -H "Authorization: Bearer <ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{"listing":{"attribute_sources":{"example_key":"string"},"attributes":{"example_key":"string"},"category":"string","claims":[{"fact_keys":["string"],"id":"00000000-0000-4000-8000-000000000000","status":"supported","text_path":"string"}],"confidence_score":0.5,"content":{"bullets":["string"],"description":"string","title":"string"},"created_at":"2026-10-05T09:30:00Z","generated_by_agent_run_id":"00000000-0000-4000-8000-000000000000","images":[{"image_id":"00000000-0000-4000-8000-000000000000","position":0,"slot":"main"}],"keywords":{"hidden_terms":["string"],"search_terms":["string"]},"listing_id":"00000000-0000-4000-8000-000000000000","locale":"en-IN","marketplace":"amazon","product_id":"00000000-0000-4000-8000-000000000000","schema_version":"2.0.0","status":"created","version":1}}'
+  -d '{"listing":{"attribute_sources":{"example_key":"string"},"attributes":{"example_key":"string"},"category":"string","claims":[{"fact_keys":["string"],"id":"00000000-0000-4000-8000-000000000000","status":"supported","text_path":"string"}],"confidence_score":0.5,"content":{"bullets":["string"],"description":"string","title":"string"},"created_at":"2026-10-05T09:30:00Z","generated_by_agent_run_id":"00000000-0000-4000-8000-000000000000","images":[{"image_id":"00000000-0000-4000-8000-000000000000","position":0,"slot":"main"}],"keywords":{"hidden_terms":["string"],"search_terms":["string"]},"listing_id":"00000000-0000-4000-8000-000000000000","locale":"en-IN","marketplace":"amazon","product_id":"00000000-0000-4000-8000-000000000000","schema_version":"2.1.0","status":"created","version":1}}'
 ```
 
 #### Responses
@@ -6189,7 +6555,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `passed` | boolean | yes |  |  |
 | `report` | ErrorReport | yes | Fields: see [ErrorReport](#errorreport). |  |
 | `rules_version` | integer or null | no |  |  |
-| `schema_version` | string | no |  | default `"2.0.0"` |
+| `schema_version` | string | no |  | default `"2.1.0"` |
 | `source` | ErrorSource (enum) | yes |  | one of: `schema`, `rules_engine`, `vision_model`, `ai_model`, `amazon_adapter`, `flipkart_adapter`, `system` |
 | `tenant_id` | string (uuid) | yes |  |  |
 | `validation_run_id` | string (uuid) or null | no |  |  |
@@ -6496,6 +6862,7 @@ Self-serve brand sign-up (ADR-0019): a pending request a platform admin approves
 | Operation | Purpose |
 |---|---|
 | [`POST /api/v1/signup`](#post-apiv1signup) | Sign up a brand: a pending request a platform admin approves |
+| [`POST /api/v1/signup/google`](#post-apiv1signupgoogle) | Sign up with the Google identity: a pending request a platform admin approves |
 | [`POST /api/v1/signup/status`](#post-apiv1signupstatus) | The caller's latest sign-up request (email and password) |
 
 ### POST /api/v1/signup
@@ -6574,6 +6941,98 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 
 ```json
 {
+  "request_id": "0b1c2d3e-0000-4000-8000-000000001501",
+  "status": "pending"
+}
+```
+
+[Back to the summary](#all-operations)
+
+### POST /api/v1/signup/google
+
+**Sign up with the Google identity: a pending request a platform admin approves.**
+
+`needs_details`: the sign-up form after Google (brand name, owner name, optional phone and website; the email is Google's verified one). Always 202 with the new pending request: a platform admin approves it as for any sign-up (it shows "Verified by Google"). After approval, "Continue with Google" signs in (the authenticator is set up at the first sign-in). The generic 401 when the email or Google account got an account meanwhile.
+
+| | |
+|---|---|
+| Operation id | `signup_google` |
+| Auth | none |
+| Permission (roles that hold it) | none (public) |
+| Idempotent | no |
+| Success | 202 `SignupStatusOut` |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+Content type `application/json`, required. Schema: `GoogleSignupRequest`.
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `binding` | string (password) | yes | The browser's binding secret (43 base64url characters) whose sha256 was sent to `/auth/google/start` as `b`. | min length 43; max length 43; write-only (never returned) |
+| `brand_name` | string | yes |  | min length 1; max length 200 |
+| `details_handle` | string (password) | yes | An opaque single-use handle. | min length 1; max length 128; write-only (never returned) |
+| `owner_name` | string | yes |  | min length 1; max length 200 |
+| `phone` | string or null | no |  | max length 32; pattern `^\+?[0-9][0-9 ()-]{5,30}$` |
+| `website` | string or null | no |  | max length 2048; pattern `^https?://[^\s/?#\x00-\x1f\x7f]+\.[^\s\x00-\x1f\x7f]+$` |
+
+Example (built from the schema; values are placeholders):
+
+```json
+{
+  "binding": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "brand_name": "string",
+  "details_handle": "string",
+  "owner_name": "string",
+  "phone": "string",
+  "website": "string"
+}
+```
+
+#### Example call
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/signup/google" \
+  -H "Content-Type: application/json" \
+  -d '{"binding":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","brand_name":"string","details_handle":"string","owner_name":"string","phone":"string","website":"string"}'
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 202 | Success. | `SignupStatusOut` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED`, `OAUTH_STATE_INVALID` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| 501 | Not implemented yet. | `ErrorEnvelope` |  | `NOT_IMPLEMENTED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**202 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `brand_name` | string | yes |  | min length 1 |
+| `created_at` | string (date-time) | yes |  |  |
+| `decided_at` | string (date-time) or null | no |  |  |
+| `reason` | string or null | no |  |  |
+| `request_id` | string (uuid) | yes |  |  |
+| `status` | string (enum) | yes |  | one of: `pending`, `approved`, `rejected` |
+| `tenant_id` | string (uuid) or null | no |  |  |
+
+202 example:
+
+```json
+{
+  "brand_name": "Acme Naturals",
+  "created_at": "2026-10-05T09:30:00Z",
   "request_id": "0b1c2d3e-0000-4000-8000-000000001501",
   "status": "pending"
 }
@@ -6738,6 +7197,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `data[].status` | string (enum) | yes |  | one of: `pending`, `approved`, `rejected` |
 | `data[].tenant_id` | string (uuid) or null | no | The tenant created on approve; null until then. |  |
 | `data[].user_id` | string (uuid) | yes |  |  |
+| `data[].verified_via` | const "google" or null | no | `google` when Google verified the applicant's email (ADR-0020): show a "Verified by Google" badge. Null for a password sign-up. |  |
 | `data[].website` | string or null | no |  |  |
 | `page` | PageInfo | yes |  |  |
 | `page.has_more` | boolean | yes |  |  |
@@ -6847,6 +7307,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `status` | string (enum) | yes |  | one of: `pending`, `approved`, `rejected` |
 | `tenant_id` | string (uuid) or null | no | The tenant created on approve; null until then. |  |
 | `user_id` | string (uuid) | yes |  |  |
+| `verified_via` | const "google" or null | no | `google` when Google verified the applicant's email (ADR-0020): show a "Verified by Google" badge. Null for a password sign-up. |  |
 | `website` | string or null | no |  |  |
 
 200 example:
@@ -6946,6 +7407,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `status` | string (enum) | yes |  | one of: `pending`, `approved`, `rejected` |
 | `tenant_id` | string (uuid) or null | no | The tenant created on approve; null until then. |  |
 | `user_id` | string (uuid) | yes |  |  |
+| `verified_via` | const "google" or null | no | `google` when Google verified the applicant's email (ADR-0020): show a "Verified by Google" badge. Null for a password sign-up. |  |
 | `website` | string or null | no |  |  |
 
 200 example:
@@ -7113,7 +7575,7 @@ Objects that appear inside many answers. Operation tables link here instead of r
 | `max_attempts` | integer | no |  | min 1; max 3; default `3` |
 | `request_id` | string or null | no |  | min length 1; max length 128 |
 | `retryable` | boolean | no |  | default `false` |
-| `schema_version` | string | no |  | default `"2.0.0"` |
+| `schema_version` | string | no |  | default `"2.1.0"` |
 | `status` | string (enum) | yes |  | one of: `passed`, `failed`, `partial` |
 
 ## Error codes
@@ -7163,7 +7625,7 @@ How to act on the retry class:
 | `IDENTIFIER_MISSING` | adapter | identifier_error | user_action |  |  |
 | `IMAGE_NON_COMPLIANT` | vision | media_error | user_action |  |  |
 | `IMPORT_FAILED` | summary |  | user_action |  | `products_bulk` |
-| `INTERNAL_ERROR` | system |  | system_failure |  | 65 operations |
+| `INTERNAL_ERROR` | system |  | system_failure |  | 71 operations |
 | `INVALID_STATUS_TRANSITION` | api |  | user_action |  | `admin_signup_requests_approve`, `admin_signup_requests_reject`, `imports_rows_retry`, `issues_dismiss`, `jobs_cancel`, `listings_generate`, `listings_refresh_status`, `listings_regenerate`, `listings_retry_fields` |
 | `JOB_TIMEOUT` | system |  | system_failure |  |  |
 | `JSON_INVALID` | ai |  | auto_retry |  |  |
@@ -7177,20 +7639,20 @@ How to act on the retry class:
 | `MARKETPLACE_UNAVAILABLE` | adapter | marketplace_technical | auto_retry |  | `marketplaces_callback` |
 | `MARKETPLACE_UNCONFIRMED` | adapter | marketplace_technical | auto_retry |  |  |
 | `MARKETPLACE_UNKNOWN_ERROR` | adapter | unknown | user_action |  | `marketplaces_callback` |
-| `METHOD_NOT_ALLOWED` | api |  | user_action |  | 65 operations |
-| `MFA_ENROLLMENT_REQUIRED` | api (2.0.0, DPP-1, ADR-0021) |  | user_action |  | `admin_signup_requests_approve`, `admin_signup_requests_reject`, `auth_mfa_recovery_codes`, `marketplaces_accounts_revoke`, `marketplaces_connect`, `members_patch` |
-| `MFA_STEP_UP_REQUIRED` | api (2.0.0, DPP-1, ADR-0021) |  | user_action |  | `admin_signup_requests_approve`, `admin_signup_requests_reject`, `auth_mfa_recovery_codes`, `auth_mfa_totp_confirm`, `auth_mfa_totp_enroll`, `marketplaces_accounts_revoke`, `marketplaces_connect`, `members_patch` |
+| `METHOD_NOT_ALLOWED` | api |  | user_action |  | 71 operations |
+| `MFA_ENROLLMENT_REQUIRED` | api (2.0.0, DPP-1, ADR-0021) |  | user_action |  | `admin_signup_requests_approve`, `admin_signup_requests_reject`, `auth_google_unlink`, `auth_mfa_recovery_codes`, `marketplaces_accounts_revoke`, `marketplaces_connect`, `members_patch` |
+| `MFA_STEP_UP_REQUIRED` | api (2.0.0, DPP-1, ADR-0021) |  | user_action |  | `admin_signup_requests_approve`, `admin_signup_requests_reject`, `auth_google_unlink`, `auth_mfa_recovery_codes`, `auth_mfa_totp_confirm`, `auth_mfa_totp_enroll`, `marketplaces_accounts_revoke`, `marketplaces_connect`, `members_patch` |
 | `MISSING_ATTRIBUTE` | rules | missing_data | user_action |  |  |
 | `MODEL_UNAVAILABLE` | ai |  | auto_retry |  |  |
 | `NOT_FOUND` | api |  | user_action |  | 30 operations |
-| `NOT_IMPLEMENTED` | api |  | system_failure |  | 13 operations |
-| `OAUTH_STATE_INVALID` | api |  | user_action |  | `marketplaces_callback`, `marketplaces_connect_confirm` |
+| `NOT_IMPLEMENTED` | api |  | system_failure |  | 16 operations |
+| `OAUTH_STATE_INVALID` | api |  | user_action |  | `auth_google_complete`, `auth_google_link`, `marketplaces_callback`, `marketplaces_connect_confirm`, `signup_google` |
 | `PATTERN_MISMATCH` | rules | content_error | ai_correct |  |  |
-| `PAYLOAD_TOO_LARGE` | api |  | user_action |  | 65 operations |
+| `PAYLOAD_TOO_LARGE` | api |  | user_action |  | 71 operations |
 | `PERMISSION_DENIED` | api |  | user_action |  | 27 operations |
 | `PRICE_ABOVE_MRP` | facts | invalid_value | user_action |  |  |
 | `PUBLISH_FAILED` | summary |  | user_action |  |  |
-| `RATE_LIMITED` | adapter | marketplace_technical | auto_retry |  | 65 operations |
+| `RATE_LIMITED` | adapter | marketplace_technical | auto_retry |  | 71 operations |
 | `REQUIRED_FIELD_MISSING` | schema | missing_data | user_action |  |  |
 | `RETRY_EXHAUSTED` | system |  | system_failure |  |  |
 | `SCHEMA_INVALID` | schema | content_error | ai_correct |  |  |
@@ -7202,10 +7664,10 @@ How to act on the retry class:
 | `SUBMISSION_NOT_APPLIED` | adapter | marketplace_technical | auto_retry |  |  |
 | `TIMEOUT` | ai |  | auto_retry |  |  |
 | `TOKEN_LIMIT` | ai |  | auto_retry |  |  |
-| `UNAUTHENTICATED` | api |  | user_action |  | 62 operations |
+| `UNAUTHENTICATED` | api |  | user_action |  | 66 operations |
 | `UNKNOWN_FACT_KEY` | facts | invalid_value | user_action |  | `products_create` |
 | `UNSUPPORTED_CLAIM` | rules | content_error | ai_correct |  |  |
-| `VALIDATION_FAILED` | summary |  | user_action |  | 65 operations |
+| `VALIDATION_FAILED` | summary |  | user_action |  | 71 operations |
 | `VALUE_NOT_ALLOWED` | rules | invalid_value | user_action |  |  |
 | `VARIANT_MATRIX_INCOMPLETE` | facts | variation_error | user_action |  |  |
 | `VARIATION_INVALID` | adapter | variation_error | user_action | rebuild_variation |  |

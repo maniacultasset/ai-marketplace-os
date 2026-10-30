@@ -1,5 +1,5 @@
-"""ADR-0020: the pure rules of Google sign-in: the decision table (plan §4 as changed by D1 and
-D4), the brand-name suggestion (D3) and the redaction of its handles and identity."""
+"""ADR-0020: the pure rules of Google sign-in: the decision table (§6-§7), the brand-name
+suggestion (§6) and the redaction of its handles and identity."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ VETTED = {"exists": True, "has_membership": True}
         (Situation(by_sub=True, exists=True), Decision(None, "no_active_membership")),
         (Situation(by_sub=True, is_platform_admin=True, **VETTED), Decision(None, "google_admin")),
         (Situation(by_sub=True, is_active=False, **VETTED), Decision(None, "inactive_user")),
-        # found by email (no Google account linked yet): link after the password and code (D1)
+        # found by email (no Google account linked yet): link after the password and code (§7)
         (Situation(by_sub=False, **VETTED), Decision("link_required")),
         (Situation(by_sub=False, is_platform_admin=True, **VETTED), Decision(None, "google_admin")),
         (
@@ -33,7 +33,7 @@ VETTED = {"exists": True, "has_membership": True}
             Decision(None, "google_link_refused"),
         ),
         (Situation(by_sub=False, is_active=False, **VETTED), Decision(None, "inactive_user")),
-        # an applicant (no membership): their request's status (D4), else refused
+        # an applicant (no membership): their request's status, else refused
         (Situation(by_sub=False, exists=True, has_request=True), Decision("pending")),
         (Situation(by_sub=False, exists=True), Decision(None, "google_unvetted_conflict")),
     ],

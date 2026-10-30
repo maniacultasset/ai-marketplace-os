@@ -26,5 +26,6 @@ change.
 | 0017 | Job retry, shutdown release and lease recovery | ⚑ proposed (S13a, PLAN Decision 5) | 2026-10-07 |
 | 0018 | Marketplace token envelope encryption | ⚑ proposed (S15, PLAN D5; OQ6, OQ20) | 2026-10-07 |
 | 0019 | Self-serve sign-up with admin approval (supersedes ADR-0006 decision 5 for brand onboarding) | accepted (owner-approved in chat) | 2026-10-11 |
+| 0020 | Sign in and sign up with Google, always followed by Kuinn's own login code (amends RULES §4 and ADR-0005 for RS256 on Google ID tokens only) | ⚑ proposed (Google sign-in; answers T97) | 2026-10-30 |
 | 0021 | MFA secrets under their own KMS key; password and lockout policy for Amazon DPP | ⚑ proposed (DPP-1; amends the CANON.md one-key line and ADR-0018 for `mfa-secret-key`) | 2026-10-27 |
 | 0022 | API edge: Cloud Armor WAF, locked ingress, candidate smoke through the load balancer (amends ADR-0001 deploy step) | ⚑ proposed (DPP-2; 0020 reserved by google-signin, 0021 by DPP-1) | 2026-10-27 |

@@ -256,6 +256,17 @@ Per-user platform tables (no `tenant_id`), each `user_id → users ON DELETE CAS
 
 Read-only roles never see `secret_blob`, `code_hash`, `challenge_hash`, the challenge `ip` and `user_agent`, or any history column.
 
+**[Google sign-in, 0012; ADR-0020]** `mfa_challenges.link_google_sub text` holds a Google account that waits to be linked until that password sign-in finishes (CHECK: 1..255 characters, only with `pwd` in `amr`), and `amr` may also hold `fed` (Google began the sign-in; never copied to a token or `refresh_tokens.amr`). `users.google_sub text` (CHECK 1..255; `uq_users_google_sub` WHERE NOT NULL; not readable by the read-only roles) is the linked Google account; `users_credential_guard` lets only migrator or a superuser write `google_sub`, `auth_provider` or `email_verified_at`, so app writes go through the SECURITY DEFINER functions `app_google_user(sub)`, `app_create_google_applicant(...)` (a password-less user with `auth_provider 'google'`, `email_verified_at now()` and the `sub`, plus a pending sign-up request `verified_via 'google'`; only for `app.login_email`), `app_link_google_sub(u, sub)` and `app_unlink_google_sub(u)` (only for `app.user_id`, only for a user with a password). `signup_requests.verified_via` (NULL or `google`) is set once, by that function.
+
+#### `login_flows` — [Google sign-in, 0012; ADR-0020]
+A platform table (no `tenant_id`; a named invariant-5 exception) holding one Google sign-in between the browser's redirects. Every row is found only by the sha256 of its single-use value (`flow_hash` UNIQUE, 32 bytes) and is bound to one browser (`binding_hash`, 32 bytes). ENABLE + FORCE RLS: `lf_hash_select` and `lf_hash_delete` (`flow_hash = app_token_hash()`), `lf_insert` (rows that expire within 15 minutes), `t_platform`, `t_migrator`; `app_rw` has no UPDATE or TRUNCATE, and each use is one `DELETE … RETURNING`. Read-only roles read `id, phase, expires_at, created_at` only. The daily maintenance run deletes expired rows (`app_prune_login_flows()`).
+
+| Column | Notes |
+|---|---|
+| `phase` | `authorize` (10 minutes; `code_verifier` and `nonce_hash` set), `handle` (60 seconds), `details` (15 minutes, a new user's sign-up), `link` (15 minutes, an existing user's password step); the identity columns are set exactly when the phase is not `authorize` |
+| `sub`, `email`, `hd`, `display_name`, `given_name`, `family_name` | the verified Google identity (bounded lengths) |
+| `expires_at`, `created_at` | the TTL is checked on every read |
+
 #### `tenant_memberships` — [Decided, ADR-0006 proposed; T23] new in 0001; roles [Site `users.role` L5890] [Canon A§5]
 Every actor FK targets this table, so "the approver is in the same brand" is enforced by the schema. Std tenant + `updated_at`.
 

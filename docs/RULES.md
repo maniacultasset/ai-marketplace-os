@@ -59,7 +59,8 @@ ADR-0016.
 ## 4. Libraries
 
 - **Pinned** (full table: `docs/ARCH.md` §8): Python `==3.13.*`; psycopg 3 (`postgresql+psycopg`)
-  for app and Alembic; PostgreSQL 17, pgvector >= 0.8.2; `pyjwt[crypto]` HS256 only; one `uvicorn`
+  for app and Alembic; PostgreSQL 17, pgvector >= 0.8.2; `pyjwt[crypto]` HS256 only (one exception:
+  RS256 to verify Google ID tokens, in `app/core/google_oidc.py` alone, ADR-0020); one `uvicorn`
   per instance; uv `0.12.19` with `uv.lock` and `uv sync --frozen`.
 - **Banned (ruff TID251):** `asyncpg`, `redis`, `arq`, `jose`, `passlib`, `numpy`. `openai` and
   `langgraph` are banned too, except in `app/services/embeddings.py` and `app/services/vision.py`,
@@ -68,7 +69,7 @@ ADR-0016.
 - Add or upgrade a dependency only in an approved plan; Renovate never auto-merges.
 - Open: Python 3.13 awaits the AI team (STATE open decision 9); the queue awaits the ADR-0004 spike (T3).
 
-Source: ADR-0002 to ADR-0005; ADR-0013 §3, §6; `pyproject.toml:53-54`, `:56-64`; `CANON.md:126`;
+Source: ADR-0002 to ADR-0005; ADR-0013 §3, §6; ADR-0020; `pyproject.toml:53-54`, `:56-64`; `CANON.md:126`;
 `apps/api/pyproject.toml`; `BACKEND-ARCHITECTURE.md:1275`; `docs/plans/README.md` "Test tooling".
 
 ## 5. Configuration

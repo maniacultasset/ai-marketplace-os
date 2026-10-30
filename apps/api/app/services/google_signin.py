@@ -87,7 +87,7 @@ class Failure:
 
 # ---- the pure rules ----
 
-# Mailbox providers whose domain names nobody's brand (D3): no brand name is suggested for them.
+# Mailbox providers whose domain names nobody's brand (ADR-0020 §6): no brand is suggested.
 CONSUMER_DOMAINS: Final = frozenset(
     {
         "gmail.com",
@@ -145,7 +145,7 @@ BRAND_MAX: Final = 200
 
 
 def suggest_brand(email: str) -> str | None:
-    """A brand name from a company email's domain (D3): the registrable label, title-cased, split
+    """A brand name from a company email's domain (ADR-0020 §6): the registrable label, title-cased, split
     only at hyphens and underscores (`acme-naturals.co.in` -> `Acme Naturals`,
     `acmenaturals.com` -> `Acmenaturals`); never for a mailbox provider, a digits-only or one-letter
     label, or an IDN. The user always edits it."""
@@ -189,7 +189,7 @@ class Decision:
 
 
 def decide(s: Situation) -> Decision:
-    """The decision table (plan §4, as changed by D1 and D4), checked in order. Every refusal is
+    """The decision table (ADR-0020 §6-§7), checked in order. Every refusal is
     the same generic failure to the browser; only the audit row says which."""
     if not s.exists:
         return Decision("needs_details")

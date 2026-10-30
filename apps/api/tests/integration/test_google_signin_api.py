@@ -496,7 +496,7 @@ async def test_google_session_step_up_never_claims_a_password(
     assert family == [(["otp"],)]
 
 
-# ---- existing accounts: link only after the password and the code (D1) ----
+# ---- existing accounts: link only after the password and the code (ADR-0020 §7) ----
 
 
 @pytest.mark.endpoint("auth_google_link", case="success")
@@ -658,7 +658,7 @@ async def test_inactive_user_refused(gapi: httpx.AsyncClient, gw: GoogleWorld) -
 async def test_password_applicant_sees_their_pending_request(
     gapi: httpx.AsyncClient, gw: GoogleWorld
 ) -> None:
-    """D4: Google proved the email, so a pending password sign-up shows its status."""
+    """Google proved the email, so a pending password sign-up shows its status."""
     response = await gapi.post(
         "/api/v1/signup",
         json={
