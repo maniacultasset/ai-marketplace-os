@@ -148,3 +148,61 @@ async def test_unknown_email_exit_code(
         changed[changed.index("--email") + 1] = "nobody@acme.test"
         stdin = FRESH + "\n" if argv is RESET else ""
         assert (await cli(changed, capsys, stdin))[0] == 4
+
+
+# ---- ADR-0023: staff resets forget every trusted browser; unlock keeps them ----
+
+
+def _seed_browser(conn: Any, uid: Any) -> None:
+    import hashlib
+    import secrets
+
+    conn.execute(
+        "INSERT INTO trusted_devices (user_id, token_hash, method, label, trusted_at, expires_at) "
+        "VALUES (%s, %s, 'otp', 'Chrome on macOS', now(), now() + interval '30 days')",
+        [uid, hashlib.sha256(secrets.token_bytes(32)).digest()],
+    )
+
+
+def _browsers(conn: Any, uid: Any) -> int:
+    return count(conn, "SELECT count(*) FROM trusted_devices WHERE user_id = %s", [uid])
+
+
+async def test_unlock_keeps_trusted_browsers(
+    world: Any, auth_db: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    uid = user_id(auth_db, EMAIL)
+    _seed_browser(auth_db, uid)
+    lock(auth_db, EMAIL)
+    assert (await cli(UNLOCK, capsys))[0] == 0
+    assert _browsers(auth_db, uid) == 1
+
+
+@pytest.mark.parametrize("argv", [SET, RESET], ids=["set-password", "reset-mfa"])
+async def test_staff_password_resets_forget_trusted_browsers(
+    world: Any, auth_db: Any, capsys: pytest.CaptureFixture[str], argv: list[str]
+) -> None:
+    uid = user_id(auth_db, EMAIL)
+    _seed_browser(auth_db, uid)
+    _seed_browser(auth_db, uid)
+    assert (await cli(argv, capsys, FRESH + "\n"))[0] == 0
+    assert _browsers(auth_db, uid) == 0
+
+
+async def test_refused_staff_reset_keeps_trusted_browsers(
+    world: Any, auth_db: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    uid = user_id(auth_db, EMAIL)
+    _seed_browser(auth_db, uid)
+    assert (await cli(RESET, capsys, "owner-weak-password\n"))[0] == 2
+    assert _browsers(auth_db, uid) == 1
+
+
+async def test_make_admin_forgets_trusted_browsers(
+    world: Any, auth_db: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    uid = user_id(auth_db, EMAIL)
+    _seed_browser(auth_db, uid)
+    argv = ["user", "make-admin", "--email", EMAIL, "--staff-email", "staff@ops.test"]
+    assert (await cli(argv, capsys))[0] == 0
+    assert _browsers(auth_db, uid) == 0

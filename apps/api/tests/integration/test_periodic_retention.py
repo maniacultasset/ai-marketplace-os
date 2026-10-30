@@ -80,6 +80,7 @@ async def test_retention_children_first(jobs_db: JobWorld) -> None:
         "refresh_tokens": 0,
         "invitations": 0,
         "brand_chunks": 0,
+        "trusted_devices": 0,
         "image_orphans": 0,
     }
     assert not _exists(jobs_db, "imports", imp) and not _exists(jobs_db, "job_runs", job)

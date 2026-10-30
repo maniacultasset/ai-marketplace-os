@@ -68,6 +68,8 @@ def test_every_repository_subclasses_tenant_base() -> None:
         },
         # ADR-0020 (0012): the Google sign-in flows, a platform table reached only by its hash
         "app.repositories.login_flows": {"LoginFlowRepository"},
+        # ADR-0023 (0013): trusted browsers, a per-user platform table under its own RLS
+        "app.repositories.trusted_devices": {"TrustedDeviceRepository"},
     }
     found = []
     for module_info in pkgutil.iter_modules(app.repositories.__path__):
@@ -83,6 +85,7 @@ def test_every_repository_subclasses_tenant_base() -> None:
     assert identity["app.repositories.identity"] <= set(found)
     assert identity["app.repositories.mfa"] <= set(found)
     assert identity["app.repositories.login_flows"] <= set(found)
+    assert identity["app.repositories.trusted_devices"] <= set(found)
     assert set(PLATFORM_READERS) <= set(found)
 
 
@@ -146,3 +149,13 @@ def test_login_flows_table_has_no_tenant() -> None:
 
     assert "tenant_id" not in LoginFlow.__table__.c
     assert not issubclass(LoginFlow, TenantScoped)
+
+
+def test_trusted_devices_table_has_no_tenant() -> None:
+    """ADR-0023: `TrustedDeviceRepository` is exempt from the tenant base only because
+    `trusted_devices` has no tenant column (per user, under `td_self`)."""
+    from app.db.models._tenant import TenantScoped
+    from app.db.models.tenancy import TrustedDevice
+
+    assert "tenant_id" not in TrustedDevice.__table__.c
+    assert not issubclass(TrustedDevice, TenantScoped)

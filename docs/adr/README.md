@@ -29,3 +29,4 @@ change.
 | 0020 | Sign in and sign up with Google, always followed by Kuinn's own login code (amends RULES §4 and ADR-0005 for RS256 on Google ID tokens only) | ⚑ proposed (Google sign-in; answers T97) | 2026-10-30 |
 | 0021 | MFA secrets under their own KMS key; password and lockout policy for Amazon DPP | ⚑ proposed (DPP-1; amends the CANON.md one-key line and ADR-0018 for `mfa-secret-key`) | 2026-10-27 |
 | 0022 | API edge: Cloud Armor WAF, locked ingress, candidate smoke through the load balancer (amends ADR-0001 deploy step) | ⚑ proposed (DPP-2; 0020 reserved by google-signin, 0021 by DPP-1) | 2026-10-27 |
+| 0023 | Trusted browsers and a narrower step-up (amends ADR-0021 §5 and §6, ADR-0020 §5) | ⚑ proposed (trusted devices; user decisions in chat 2026-10-30) | 2026-10-30 |

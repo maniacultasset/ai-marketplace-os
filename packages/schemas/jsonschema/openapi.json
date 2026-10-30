@@ -1490,6 +1490,27 @@
             "type": "string",
             "writeOnly": true
           },
+          "device_tokens": {
+            "anyOf": [
+              {
+                "items": {
+                  "description": "The `device_token` this browser was given for this account (send it in the body only; keep it in localStorage).",
+                  "format": "password",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string",
+                  "writeOnly": true
+                },
+                "maxItems": 5,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ADR-0023: every trusted-browser token this browser holds (at most 5, no repeats; the account is not known yet). Only the signed-in account's own can match; it skips the Kuinn code step, never Google.",
+            "title": "Device Tokens"
+          },
           "handle": {
             "description": "The `handle` of the `/auth/google?handle=` redirect.",
             "format": "password",
@@ -3199,6 +3220,12 @@
             "pattern": "^[0-9]{6}$",
             "title": "Code",
             "type": "string"
+          },
+          "trust_device": {
+            "default": false,
+            "description": "ADR-0023: trust this browser after this code (30 days, 7 for a platform admin): the next sign-in here skips the code. Ignored with a recovery code.",
+            "title": "Trust Device",
+            "type": "boolean"
           }
         },
         "required": [
@@ -3267,6 +3294,12 @@
               }
             ],
             "title": "Recovery Code"
+          },
+          "trust_device": {
+            "default": false,
+            "description": "ADR-0023: trust this browser after this code (30 days, 7 for a platform admin): the next sign-in here skips the code. Ignored with a recovery code.",
+            "title": "Trust Device",
+            "type": "boolean"
           }
         },
         "required": [
@@ -3278,6 +3311,23 @@
       "LoginRequest": {
         "additionalProperties": false,
         "properties": {
+          "device_token": {
+            "anyOf": [
+              {
+                "description": "The `device_token` this browser was given for this account (send it in the body only; keep it in localStorage).",
+                "format": "password",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ADR-0023: this browser's trusted-browser token for this email, if any. Read only after the password is correct; when it is live the code step is skipped.",
+            "title": "Device Token"
+          },
           "email": {
             "maxLength": 320,
             "minLength": 3,
@@ -3341,6 +3391,58 @@
             ],
             "description": "Send it to the next step's route; keep it in memory only.",
             "title": "Challenge Token"
+          },
+          "device_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "With `device_token`: when this browser stops being trusted (fixed; a use never moves it).",
+            "title": "Device Expires At"
+          },
+          "device_token": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ADR-0023, `signed_in` only: a new trusted-browser token for this email (after `trust_device`, or the next value of the one sent). Replace the stored one; the old value stops working.",
+            "title": "Device Token"
+          },
+          "device_token_invalid": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. On `/auth/google/complete` it means none of the sent tokens matched the signed-in account: forget only the entry stored for this `email`, and say nothing when there was none.",
+            "title": "Device Token Invalid"
+          },
+          "device_trust_days": {
+            "anyOf": [
+              {
+                "maximum": 30.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ADR-0023: on the code steps, how many days the \"Trust this browser\" choice lasts (30, or 7 for a platform admin). Absent: do not offer the choice.",
+            "title": "Device Trust Days"
           },
           "expires_in": {
             "anyOf": [
@@ -5629,7 +5731,7 @@
       },
       "TotpEnrollRequest": {
         "additionalProperties": false,
-        "description": "`current_password` is required while the account has no factor; replacing a factor\nneeds a step-up in the last 10 minutes instead.",
+        "description": "`current_password` is required while the account has no factor; replacing a factor\nneeds a step-up in the last 30 minutes instead.",
         "properties": {
           "current_password": {
             "anyOf": [
@@ -5648,6 +5750,77 @@
           }
         },
         "title": "TotpEnrollRequest",
+        "type": "object"
+      },
+      "TrustedDeviceOut": {
+        "description": "One trusted browser (ADR-0023). `label` is a coarse summary of its browser and system.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current": {
+            "description": "True for the browser this session signed in on.",
+            "title": "Current",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "description": "E.g. \"Chrome on macOS\".",
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The last sign-in that skipped the code here.",
+            "title": "Last Used At"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "created_at",
+          "expires_at",
+          "current"
+        ],
+        "title": "TrustedDeviceOut",
+        "type": "object"
+      },
+      "TrustedDevicesOut": {
+        "properties": {
+          "devices": {
+            "description": "The live trusted browsers, newest first (at most 10).",
+            "items": {
+              "$ref": "#/components/schemas/TrustedDeviceOut"
+            },
+            "maxItems": 10,
+            "title": "Devices",
+            "type": "array"
+          }
+        },
+        "required": [
+          "devices"
+        ],
+        "title": "TrustedDevicesOut",
         "type": "object"
       },
       "UploadUrlOut": {
@@ -6486,7 +6659,7 @@
                 }
               }
             },
-            "description": "Permission denied. Codes: `PERMISSION_DENIED`, `MFA_STEP_UP_REQUIRED`, `MFA_ENROLLMENT_REQUIRED`."
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
           },
           "404": {
             "content": {
@@ -6910,7 +7083,7 @@
                 }
               }
             },
-            "description": "Permission denied. Codes: `PERMISSION_DENIED`, `MFA_STEP_UP_REQUIRED`, `MFA_ENROLLMENT_REQUIRED`."
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
           },
           "404": {
             "content": {
@@ -7864,6 +8037,785 @@
         "x-mkos-action": "analytics:read"
       }
     },
+    "/api/v1/auth/devices": {
+      "get": {
+        "description": "The caller's trusted browsers (ADR-0023), newest first: where the next sign-in skips the\ncode. `current` marks this session's browser. Works with MFA on or off.",
+        "operationId": "auth_devices_list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "devices": [
+                    {
+                      "created_at": "2026-10-05T09:30:00Z",
+                      "current": true,
+                      "expires_at": "2026-11-04T09:30:00Z",
+                      "id": "7b0c5f8e-2d1a-4c3b-9e8f-0a1b2c3d4e5f",
+                      "label": "Chrome on macOS",
+                      "last_used_at": "2026-10-12T08:15:00Z"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/TrustedDevicesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "The request could not be parsed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request could not be parsed.",
+                    "status": 400,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request could not be parsed. Codes: `VALIDATION_FAILED`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "UNAUTHENTICATED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "UNAUTHENTICATED",
+                          "field": "request",
+                          "message": "Authentication required.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Authentication required.",
+                    "status": 401,
+                    "type": "UNAUTHENTICATED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.",
+                "example": 30,
+                "schema": {
+                  "minimum": 1.0,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The caller's trusted browsers (the code is skipped there at sign-in)",
+        "tags": [
+          "auth"
+        ],
+        "x-mkos-action": "tenant:read"
+      }
+    },
+    "/api/v1/auth/devices/sign-out-all": {
+      "post": {
+        "description": "Forget every trusted browser of the caller, this one included, and end every other\nsession in every tenant. This session stays signed in (at most 7 days after its own\nsign-in); every next sign-in asks for the code.",
+        "operationId": "auth_devices_sign_out_all",
+        "responses": {
+          "204": {
+            "description": "Done; no body."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "The request could not be parsed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request could not be parsed.",
+                    "status": 400,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request could not be parsed. Codes: `VALIDATION_FAILED`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "UNAUTHENTICATED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "UNAUTHENTICATED",
+                          "field": "request",
+                          "message": "Authentication required.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Authentication required.",
+                    "status": 401,
+                    "type": "UNAUTHENTICATED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.",
+                "example": 30,
+                "schema": {
+                  "minimum": 1.0,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Forget every trusted browser and end every other session",
+        "tags": [
+          "auth"
+        ],
+        "x-mkos-action": "tenant:read"
+      }
+    },
+    "/api/v1/auth/devices/{device_id}": {
+      "delete": {
+        "description": "Forget one of the caller's trusted browsers: its next sign-in asks for the code, and the\nsessions it began end now (this one too, when it is this browser). 404 for an unknown id or\nanother user's browser.",
+        "operationId": "auth_devices_remove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Done; no body."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "The request could not be parsed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request could not be parsed.",
+                    "status": 400,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request could not be parsed. Codes: `VALIDATION_FAILED`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "UNAUTHENTICATED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "UNAUTHENTICATED",
+                          "field": "request",
+                          "message": "Authentication required.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Authentication required.",
+                    "status": 401,
+                    "type": "UNAUTHENTICATED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "NOT_FOUND",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "NOT_FOUND",
+                          "field": "request",
+                          "message": "Not found.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Not found.",
+                    "status": 404,
+                    "type": "NOT_FOUND"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found. Codes: `NOT_FOUND`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "details": [
+                      {
+                        "loc": [
+                          "body",
+                          "field"
+                        ],
+                        "msg": "Field required"
+                      }
+                    ],
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "Request validation failed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request validation failed.",
+                    "status": 422,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed. Codes: `VALIDATION_FAILED`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.",
+                "example": 30,
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Forget one trusted browser and end the sessions it began",
+        "tags": [
+          "auth"
+        ],
+        "x-mkos-action": "tenant:read"
+      }
+    },
     "/api/v1/auth/google/callback": {
       "get": {
         "description": "Google's return (registered as the OAuth client's redirect URI). Always a 303 to the app's\n`/auth/google` route: `?handle=` (60 seconds, bound to the browser that started) or\n`?error=cancelled|failed|unavailable`. Not for direct use.",
@@ -8156,7 +9108,7 @@
     },
     "/api/v1/auth/google/complete": {
       "post": {
-        "description": "The app's `/auth/google` route posts the `handle` and the browser's binding secret, then\nacts on `outcome`: `sign_in` (store tokens, or continue with `login.challenge_token` at the\nusual code, enrolment or password step), `pending` (show the request status),\n`needs_details` (the prefilled sign-up form, then `/signup/google`) or `link_required` (ask\nthe existing account's password, then `/auth/google/link`). A Google sign-in always asks for\nthe Kuinn code when MFA is enforced. Every refusal is the same 401 with a generic message.",
+        "description": "The app's `/auth/google` route posts the `handle` and the browser's binding secret, then\nacts on `outcome`: `sign_in` (store tokens, or continue with `login.challenge_token` at the\nusual code, enrolment or password step), `pending` (show the request status),\n`needs_details` (the prefilled sign-up form, then `/signup/google`) or `link_required` (ask\nthe existing account's password, then `/auth/google/link`). A Google sign-in always asks for\nthe Kuinn code when MFA is enforced, unless one of `device_tokens` names a trusted browser of\nthat account (ADR-0023). Every refusal is the same 401 with a generic message.",
         "operationId": "auth_google_complete",
         "requestBody": {
           "content": {
@@ -9247,7 +10199,7 @@
     },
     "/api/v1/auth/google/unlink": {
       "post": {
-        "description": "Remove the Google account linked to the caller (needs a step-up code from the last 10\nminutes when MFA is enforced). Refused with 422 while the account has no password, since\nGoogle is then its only way in. 204 also when nothing is linked.",
+        "description": "Remove the Google account linked to the caller (needs a step-up code from the last 30\nminutes when MFA is enforced). Refused with 422 while the account has no password, since\nGoogle is then its only way in. 204 also when nothing is linked.",
         "operationId": "auth_google_unlink",
         "responses": {
           "204": {
@@ -9553,7 +10505,7 @@
     },
     "/api/v1/auth/login": {
       "post": {
-        "description": "Email and password in. `status` says what comes next: `signed_in` carries the access\nand refresh tokens and the user's memberships (the active tenant is the most recently used\none); `mfa_required`, `mfa_enrollment_required` and `password_change_required` carry a\n`challenge_token` for the next step and no token. Every refusal is the same 401, a locked\naccount included (10 failed passwords or codes lock it for 15 minutes).",
+        "description": "Email and password in. `status` says what comes next: `signed_in` carries the access\nand refresh tokens and the user's memberships (the active tenant is the most recently used\none); `mfa_required`, `mfa_enrollment_required` and `password_change_required` carry a\n`challenge_token` for the next step and no token. Every refusal is the same 401, a locked\naccount included (10 failed passwords or codes lock it for 15 minutes). With MFA enforced, a\nlive `device_token` (a trusted browser, ADR-0023) skips the code step: the answer is\n`signed_in` with the token's next value; a stale one answers `device_token_invalid`.",
         "operationId": "auth_login",
         "requestBody": {
           "content": {
@@ -9572,6 +10524,7 @@
                 "example": {
                   "challenge_expires_in": 300,
                   "challenge_token": "ch_example_opaque_value",
+                  "device_trust_days": 30,
                   "status": "mfa_required"
                 },
                 "schema": {
@@ -9838,7 +10791,7 @@
     },
     "/api/v1/auth/login/mfa": {
       "post": {
-        "description": "The code step: the `challenge_token` of `mfa_required` and exactly one of `code` (6\ndigits from the authenticator) or `recovery_code`. A wrong code, a used code, an expired or\nburned challenge (5 attempts) and a locked account are all 401.",
+        "description": "The code step: the `challenge_token` of `mfa_required` and exactly one of `code` (6\ndigits from the authenticator) or `recovery_code`. A wrong code, a used code, an expired or\nburned challenge (5 attempts) and a locked account are all 401. `trust_device` with a TOTP\ncode trusts this browser (ADR-0023): `device_token` comes back with the tokens.",
         "operationId": "auth_login_mfa",
         "requestBody": {
           "content": {
@@ -9856,6 +10809,8 @@
               "application/json": {
                 "example": {
                   "access_token": "eyJhbGciOiJIUzI1NiJ9.example.signature",
+                  "device_expires_at": "2026-11-04T09:30:00Z",
+                  "device_token": "example_device_token_43_base64url_chars_000",
                   "expires_in": 1800,
                   "memberships": [
                     {
@@ -10170,7 +11125,7 @@
     },
     "/api/v1/auth/login/mfa/confirm": {
       "post": {
-        "description": "Forced enrolment: a code from the new authenticator. Answers the 10 recovery codes (shown\nonce) and `result`, the sign-in to continue with. Every other session of the user ends.",
+        "description": "Forced enrolment: a code from the new authenticator. Answers the 10 recovery codes (shown\nonce) and `result`, the sign-in to continue with. Every other session and trusted browser\nof the user ends; `trust_device` trusts this browser (ADR-0023).",
         "operationId": "auth_login_mfa_confirm",
         "requestBody": {
           "content": {
@@ -11316,7 +12271,7 @@
     },
     "/api/v1/auth/mfa/recovery-codes": {
       "post": {
-        "description": "A new set of 10 recovery codes (shown once); the old ones stop working. Needs a step-up\nin the last 10 minutes (TOTP or recovery code).",
+        "description": "A new set of 10 recovery codes (shown once); the old ones stop working. Needs a step-up\nin the last 30 minutes (TOTP or recovery code).",
         "operationId": "auth_mfa_recovery_codes",
         "responses": {
           "200": {
@@ -11962,7 +12917,7 @@
     },
     "/api/v1/auth/mfa/totp/confirm": {
       "post": {
-        "description": "Confirm the new authenticator with a code: the 10 recovery codes (shown once). The\nuser's other sessions end; this one records the fresh code.",
+        "description": "Confirm the new authenticator with a code: the 10 recovery codes (shown once). The\nuser's other sessions and every trusted browser end; this one records the fresh code.",
         "operationId": "auth_mfa_totp_confirm",
         "requestBody": {
           "content": {
@@ -12337,7 +13292,7 @@
     },
     "/api/v1/auth/mfa/totp/enroll": {
       "post": {
-        "description": "Set up the authenticator from account settings (`current_password` required while there\nis no factor), or replace it (needs a step-up in the last 10 minutes, done with a TOTP code\nor a recovery code: 403 `MFA_STEP_UP_REQUIRED` otherwise).",
+        "description": "Set up the authenticator from account settings (`current_password` required while there\nis no factor), or replace it (needs a step-up in the last 30 minutes, done with a TOTP code\nor a recovery code: 403 `MFA_STEP_UP_REQUIRED` otherwise).",
         "operationId": "auth_mfa_totp_enroll",
         "requestBody": {
           "content": {
@@ -12702,7 +13657,7 @@
     },
     "/api/v1/auth/password": {
       "post": {
-        "description": "Change the password: the current one, then a new one that meets the rules (422 names\neach broken rule), is none of the last 10, at most once a day. The other sessions end.",
+        "description": "Change the password: the current one, then a new one that meets the rules (422 names\neach broken rule), is none of the last 10, at most once a day. The other sessions and every\ntrusted browser end (this session stays).",
         "operationId": "auth_password_change",
         "requestBody": {
           "content": {
@@ -12980,7 +13935,7 @@
     },
     "/api/v1/auth/password/expired": {
       "post": {
-        "description": "The forced password change (`password_change_required`): a new password that meets the\nrules (422 names each broken rule) and is none of the last 10. Every other session ends.",
+        "description": "The forced password change (`password_change_required`): a new password that meets the\nrules (422 names each broken rule) and is none of the last 10. Every other session and every\ntrusted browser ends; a \"trust this browser\" chosen at the code step is honoured here.",
         "operationId": "auth_password_expired",
         "requestBody": {
           "content": {

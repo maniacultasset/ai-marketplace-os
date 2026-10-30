@@ -92,7 +92,7 @@ password rules are live. Build every screen below before the backend switches to
    name or email part, not one of the last 10; a change is allowed once a day; a password expires
    after 365 days.
 6. **Step-up dialog.** On 403 `MFA_STEP_UP_REQUIRED`, ask for a code (or a recovery code, except on
-   admin actions: account revoke and the sign-up approve/reject take a TOTP only), POST
+   the marketplace account revoke, which takes a TOTP only), POST
    `/auth/mfa/step-up`, swap the access token, and retry the request once. `StepUpOut` has no
    `refresh_token`: swap only the access token and never pass it through the code that stores both
    tokens (it would wipe the stored refresh token). A 401 from step-up means the session has no MFA
@@ -110,6 +110,35 @@ password rules are live. Build every screen below before the backend switches to
    expired session.
 10. **Lockout.** 10 failed passwords or codes lock the account for 15 minutes; the login keeps
     answering the same 401 (there is no "locked" message). Staff unlock it on request.
+11. **Trusted browsers and the 30-minute step-up (contract 2.1.0; ADR-0023).** The backend ships
+    first: an older API refuses the new request fields (strict models), so send them only once
+    this API is live.
+    - **Storage.** `localStorage["kuinn.dt." + base64url(sha256(trim(lowercase(email))))]` =
+      `{token, expiresAt}`; at most 5 entries per browser (drop the oldest), skip and delete
+      expired ones, wrap every access in try/catch (blocked storage = no trust, no error). Never
+      put a token in a URL, the query cache or a log.
+    - **Login.** Send `device_token` with `/auth/login` when an entry exists for that email. On the
+      Google return page send `device_tokens` (every live entry, at most 5) with
+      `/auth/google/complete`, then key the answer by `email`. There `device_token_invalid` only
+      means none of the sent tokens belongs to that account: forget (and mention) only the entry
+      held for that email, and say nothing when there was none. One helper for every `LoginResult`
+      (login, code step, enrolment `result`, password expired, Google `login`): store
+      `device_token` with `device_expires_at` when present (it replaces the old value, which stops
+      working), and delete the entry when `device_token_invalid` is true.
+    - **Code steps.** On `/auth/login/mfa` and `/auth/login/mfa/confirm` add a checkbox, checked
+      by default: "Trust this browser for {device_trust_days} days", hint "Untick on a shared or
+      public computer.", sent as `trust_device`. Show it only when `device_trust_days` is present,
+      and hide it in recovery-code mode (the server ignores it there).
+    - **Settings > Security.** "Trusted browsers": `GET /auth/devices` ->
+      `{devices: [{id, label, created_at, last_used_at, expires_at, current}]}`. "Remove"
+      (`DELETE /auth/devices/{id}`, 204; 404 when already gone) after a confirm; removing the
+      `current` one also ends this session, so forget the entry and sign out. "Sign out all
+      devices" (`POST /auth/devices/sign-out-all`, 204; confirm: "Signs out every other session
+      and forgets every trusted browser, including this one."), then forget this email's entry and
+      refetch. After a password change or an authenticator replace, forget the entry and refetch.
+    - **Step-up.** The window is now 30 minutes; the platform admin's sign-up approve and reject no
+      longer ask for it. A sign-in that skipped the code on a trusted browser always gets the
+      step-up dialog on its first high-risk action.
 
 ## 7. Sign in and sign up with Google (contract 2.1.0; ADR-0020)
 

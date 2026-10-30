@@ -38,6 +38,10 @@ Q7: dict[str, str] = {
     "auth_google_complete": PUBLIC,
     "auth_google_link": PUBLIC,
     "auth_google_unlink": "tenant:read",
+    # ADR-0023: the caller's own trusted browsers
+    "auth_devices_list": "tenant:read",
+    "auth_devices_remove": "tenant:read",
+    "auth_devices_sign_out_all": "tenant:read",
     "tenants_me": "tenant:read",
     "tenants_me_update": "settings:manage",
     "brand_documents_upload": "settings:manage",
@@ -115,7 +119,8 @@ def _operation(spec: dict[str, Any], op_id: str) -> dict[str, Any]:
 
 def test_ops_are_the_q7_list() -> None:
     # S10 38 + S15 two + S16 three + S20 preview + S19 four + S21 two + ADR-0019 five
-    assert len(OPS) == 72
+    # + DPP-1 ten + ADR-0020 seven + ADR-0023 three
+    assert len(OPS) == 75
     assert set(OPS) == set(Q7)
 
 

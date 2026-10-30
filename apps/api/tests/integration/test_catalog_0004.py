@@ -98,6 +98,7 @@ def test_catalog_definer_search_path(db: Conn) -> None:
         "app_link_google_sub(uuid,text)",  # 0012
         "app_note_auth_failure(uuid)",  # 0011 (DPP-1)
         "app_prune_login_flows()",  # 0012
+        "app_prune_trusted_devices()",  # 0013 (ADR-0023)
         "app_unlink_google_sub(uuid)",  # 0012
         "expire_trials()",
         "set_tenant_lifecycle(uuid,text,text)",

@@ -46,6 +46,8 @@ dashboard's `/api/*` proxy, sets no cookies and keeps tokens in memory.
    lists only Kuinn's factors, so the contract's `AuthMethod` is unchanged, and a step-up never
    claims a password a Google session did not prove. A user with no password never meets the
    password-change step.
+   (ADR-0023: a trusted browser of that user may stand in for the Kuinn code; Google still
+   never does, and the token's `amr` still never claims `pwd`.)
 6. **Outcomes of `complete`**, decided by one pure table: `sign_in` (the account linked to this
    Google account), `pending` (an applicant's own sign-up request, for a linked or same-email
    applicant), `needs_details` (no account: a prefilled sign-up, owner name from Google, a brand

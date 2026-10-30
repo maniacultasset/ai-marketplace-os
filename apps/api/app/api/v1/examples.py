@@ -405,8 +405,13 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "challenge_token": "ch_example_opaque_value",
             "challenge_expires_in": 300,
             "mfa_grace_until": None,
+            "device_trust_days": 30,
         },
-        "auth_login_mfa": _SIGNED_IN,
+        "auth_login_mfa": {
+            **_SIGNED_IN,
+            "device_token": "example_device_token_43_base64url_chars_000",
+            "device_expires_at": "2026-11-04T09:30:00Z",
+        },
         "auth_login_mfa_enroll": {
             "otpauth_uri": "otpauth://totp/Kuinn:owner%40fabrica.example?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=Kuinn&algorithm=SHA1&digits=6&period=30",
             "secret_b32": "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP",
@@ -469,6 +474,20 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "is_platform_admin": False,
         },
         "auth_switch_tenant": _TOKENS,
+        "auth_devices_list": {
+            "devices": [
+                {
+                    "id": "7b0c5f8e-2d1a-4c3b-9e8f-0a1b2c3d4e5f",
+                    "label": "Chrome on macOS",
+                    "created_at": T0,
+                    "last_used_at": "2026-10-12T08:15:00Z",
+                    "expires_at": "2026-11-04T09:30:00Z",
+                    "current": True,
+                }
+            ]
+        },
+        "auth_devices_remove": None,
+        "auth_devices_sign_out_all": None,
         "members_list": _page(
             [
                 _MEMBER,

@@ -39,6 +39,8 @@ queue entry carries only `{"timestamp"}`, never tenant data.
   through `refresh_account` (its own lock and short transactions), one after another. One
   account's failure is logged and the pass goes on.
 - `prune_oauth_states` (hourly, S15): expired OAuth state and pending rows, tenant by tenant.
+- `retention_daily` also deletes the trusted browsers past their fixed expiry
+  (`app_prune_trusted_devices`, ADR-0023).
 - `purge_disconnected_accounts` (daily, in the maintenance job only, Amazon DPP 1.7): every
   account revoked or disconnected for 20 days goes through `purge_marketplace_account` (migration
   0011b) as `migrator`, one account per transaction; its submission objects are deleted before
@@ -97,6 +99,7 @@ from app.repositories.login_flows import LoginFlowRepository
 from app.repositories.marketplace_accounts import due_accounts
 from app.repositories.oauth_states import OAuthStateRepository, tenants_with_expired
 from app.repositories.transactions import identity_session
+from app.repositories.trusted_devices import TrustedDeviceRepository
 from app.services.image_keys import parse_image_key
 from app.services.job_hooks import run_terminal_hook
 from app.workers import rollup
@@ -496,6 +499,9 @@ async def retention_daily(job_manager: Any | None = None) -> dict[str, int]:
             include_cancelled=True,
             include_aborted=True,
         )
+    # ADR-0023: trusted browsers past their fixed expiry (a sign-in already refuses them)
+    async with identity_session() as session:
+        totals["trusted_devices"] = await TrustedDeviceRepository(session).prune()
     try:
         totals["image_orphans"] = await sweep_image_orphans()
     except Exception as exc:

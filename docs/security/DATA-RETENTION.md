@@ -31,6 +31,7 @@ account, token or response (`apps/api/app/services/generation_context.py`).
 | Import rows and job history | 90 days (180 for failed jobs) | `retention_daily` (`apps/api/app/repositories/retention.py`) in the daily maintenance job | Built: live after the next `setup` and `deploy` |
 | Refresh tokens | 7 days after expiry (a token lives 14 days) | `retention_daily` | Built (maintenance job) |
 | User accounts (email, argon2 password hash, sealed MFA secret, recovery-code hashes) | Until the user or the tenant is erased | `redact_user`, `purge_tenant` (migrator only) | Live |
+| Trusted browsers (browser label, dates, token hash; ADR-0023) | Until expiry (30 days, 7 for admins) or removal; deleted daily once expired; erased with the user | `retention_daily` (`app_prune_trusted_devices`), `redact_user`, `purge_tenant` | Built (maintenance job) |
 | `audit_log` (ids only; email and IP are nulled at erasure) | 24 months, never under 12 | `prune_audit_log` (migrator only) | Live (function); first prune due 2028 |
 | Cloud Logging `_Default` (app and request logs, redacted) | 30 days | `LOG_RETENTION_DAYS` in `scripts/deploy/gcp/prod.env` | Live |
 | Cloud Logging `security-logs` (sign-in events, refused requests, WAF denies) | 400 days | `deploy.sh setup` and `deploy.sh edge alerts` | Built: run `setup` |

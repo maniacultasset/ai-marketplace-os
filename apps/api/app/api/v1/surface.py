@@ -5,8 +5,8 @@ connect confirm and account revoke, 43 with S16's profile update and document li
 44 with S20's listing preview, 48 with S19's listing history, issues, issue dismiss and tasks,
 50 with S21's listing submissions and refresh-status, 55 with ADR-0019's sign-up, sign-up status
 and the platform admin's list, approve and reject, 65 with DPP-1's MFA, step-up and password
-routes (ADR-0021), 71 with Google sign-in's start, callback, complete, link, unlink and sign-up
-(ADR-0020); no
+routes (ADR-0021), 72 with Google sign-in's config, start, callback, complete, link, unlink and
+sign-up (ADR-0020), 75 with the trusted browsers' list, remove and sign-out-all (ADR-0023); no
 dead-letter path,
 which is staff tooling per T82). It
 drives the routers (`route()`), the declared OpenAPI responses (`declared_responses()`), the
@@ -18,8 +18,9 @@ op), and `roles` is derived from it through the role x action matrix (`app/core/
 registry, the runtime `require()` check and the declared 403s cannot drift apart. `cases()` and
 `declared_responses()` read only `op.roles`. Every operation carries `x-mkos-action` in OpenAPI.
 
-DPP-1 (ADR-0021): `step_up` marks the sensitive operations that need a code entered in the last
-10 minutes under `MFA_ENFORCEMENT=all` (`any`: a TOTP or a recovery code; `otp`: a TOTP code
+DPP-1 (ADR-0021, amended by ADR-0023): `step_up` marks the high-risk operations that need a code
+entered in the last 30 minutes under `MFA_ENFORCEMENT=all` (marketplace connect and revoke, team
+changes, recovery codes, Google unlink; replacing the authenticator checks it in the service) (`any`: a TOTP or a recovery code; `otp`: a TOTP code
 only). `route()` adds `require_recent_mfa` after the op's policy, and the op declares the two 403
 codes, `MFA_STEP_UP_REQUIRED` and `MFA_ENROLLMENT_REQUIRED`.
 """
@@ -63,6 +64,7 @@ from app.api.v1.schemas.auth import (
     TokenResponse,
     TotpConfirmOut,
     TotpEnrollOut,
+    TrustedDevicesOut,
 )
 from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.brand import BrandDocumentPage
@@ -154,7 +156,7 @@ class Operation:
     """Codes beyond the D2 default for a status (login's 401, products_create's UNKNOWN_FACT_KEY),
     or a status of the op's own (listings_preview's 501 for a marketplace with no adapter)."""
     step_up: Literal["any", "otp"] | None = None
-    """DPP-1: a code entered in the last 600 s is required under `MFA_ENFORCEMENT=all`."""
+    """DPP-1: a code entered in the last 1800 s is required under `MFA_ENFORCEMENT=all`."""
 
     def __post_init__(self) -> None:
         if self.public and self.platform_admin:
@@ -516,6 +518,16 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "Remove the linked Google account (after a step-up; needs a password)",
               "ADR-0020", action=A.TENANT_READ, step_up="any",
               extra_codes=MappingProxyType({422: (E.VALIDATION_FAILED,)})),
+    # ---- trusted browsers (ADR-0023): the caller's own, no step-up ----
+    Operation("auth_devices_list", "GET", "/auth/devices", 200, TrustedDevicesOut, "auth",
+              "The caller's trusted browsers (the code is skipped there at sign-in)",
+              "ADR-0023", action=A.TENANT_READ),
+    Operation("auth_devices_remove", "DELETE", "/auth/devices/{device_id}", 204, None, "auth",
+              "Forget one trusted browser and end the sessions it began", "ADR-0023",
+              action=A.TENANT_READ, extra_codes=MappingProxyType({404: (E.NOT_FOUND,)})),
+    Operation("auth_devices_sign_out_all", "POST", "/auth/devices/sign-out-all", 204, None,
+              "auth", "Forget every trusted browser and end every other session", "ADR-0023",
+              action=A.TENANT_READ),
     # ---- members (S10) ----
     Operation("members_list", "GET", "/members", 200, MemberPage, "members",
               "List the tenant's members", "S10", query=("limit", "cursor"),
@@ -693,14 +705,12 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "/admin/signup-requests/{request_id}/approve", 200, SignupRequestOut, "admin",
               "Approve a sign-up: create the trial tenant and its owner (idempotent)", "ADR-0019",
               has_body=True, conflict_code=E.INVALID_STATUS_TRANSITION,
-              extra_codes=MappingProxyType({404: (E.NOT_FOUND,)}), platform_admin=True,
-              step_up="otp"),
+              extra_codes=MappingProxyType({404: (E.NOT_FOUND,)}), platform_admin=True),
     Operation("admin_signup_requests_reject", "POST",
               "/admin/signup-requests/{request_id}/reject", 200, SignupRequestOut, "admin",
               "Reject a sign-up with a reason (idempotent)", "ADR-0019", has_body=True,
               conflict_code=E.INVALID_STATUS_TRANSITION,
-              extra_codes=MappingProxyType({404: (E.NOT_FOUND,)}), platform_admin=True,
-              step_up="otp"),
+              extra_codes=MappingProxyType({404: (E.NOT_FOUND,)}), platform_admin=True),
 )  # fmt: skip
 
 OPS: Final[Mapping[str, Operation]] = MappingProxyType({op.op_id: op for op in _ROWS})

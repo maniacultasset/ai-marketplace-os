@@ -46,12 +46,15 @@ variable name") that the API may only encrypt with (ADR-0018: decrypt only in th
 4. **Claims** `amr`, `mfa_at` and `sid` (the refresh family) are optional (contract 2.0.0) and
    only minted under `all`, so a token minted under `off` keeps the ten frozen claims and an older
    API still accepts it. Refresh rows store the session proof and rotation copies it.
-5. **Step-up**: sensitive routes need a code entered in the last 600 s under `all` (member
+5. **Step-up** (amended by ADR-0023: 1800 s, and no longer on the sign-up approve and reject):
+   sensitive routes need a code entered in the last 600 s under `all` (member
    changes and the marketplace connect take a TOTP or a recovery code; the account revoke and the
    sign-up approval take a TOTP code only). A user who lost the phone signs in with a recovery
    code, steps up with another, and binds a new authenticator without staff.
 6. **7-day re-authentication** under `all` past grace (none for admins): a refresh, or a tenant
-   switch, is refused when the session's code is missing or 7 days old.
+   switch, is refused when the session's code is missing or 7 days old. (Amended by ADR-0023: a
+   session begun by a trusted browser counts its 7 days from that sign-in, and only while the
+   browser stays trusted.)
 7. **Lockout**: one persisted counter for wrong passwords and wrong codes on every verify path
    (login, the code steps, both enrolments, step-up, both password changes, sign-up and its
    status). At 10 the account locks for 15 minutes behind the same 401 as an unknown email, after
@@ -98,5 +101,10 @@ variable name") that the API may only encrypt with (ADR-0018: decrypt only in th
     limiter; the challenge routes only by the per-IP limiter, and reaching the lock needs a live
     challenge token, which needs the password and a limited login.
   - **No email notice** of security changes; they are seen only in the app.
+  - **Trusted browsers (ADR-0023)**: a password plus a stolen trusted-browser token skips the
+    sign-in code for up to 30 days (7 for admins), bounded by the fixed expiry, rotation with
+    reuse revocation and revocation on every credential change; a session kept while its
+    browser's trust is dropped never outlives that trust, so the admin 7-day bound holds; the
+    step-up window is 30 minutes and a trusted sign-in never counts as fresh for it.
 - Contract 2.0.0 (two error codes, the login union) is a MAJOR release; the frontend must handle
   every sign-in `status` before the switch to `all`.

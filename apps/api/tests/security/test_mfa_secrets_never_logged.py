@@ -2,10 +2,11 @@
 
 One flow in process under `MFA_ENFORCEMENT=all`: the forced enrolment (both public challenge
 steps), a code sign-in, a recovery-code sign-in, a step-up, the bearer enrolment pair, a
-recovery-code regeneration, a password change and a forced password change. Then no log line,
-Sentry event, audit row or error body holds the TOTP secret, the `otpauth://` URI, a recovery
-code, a TOTP code, a challenge token or a password; and each new audit action wrote a log line
-whose message is the action, with an IP hash and no email.
+recovery-code regeneration, a trusted browser (ADR-0023: trusted, used, then replayed), a password
+change and a forced password change. Then no log line, Sentry event, audit row or error body
+holds the TOTP secret, the `otpauth://` URI, a recovery code, a TOTP code, a challenge token, a
+trusted-browser token or a password; and each new audit action wrote a log line whose message is
+the action, with an IP hash and no email.
 """
 
 from __future__ import annotations
@@ -41,6 +42,8 @@ NEW_ACTIONS = (
     "auth.mfa_codes_regenerated",
     "auth.step_up",
     "auth.password_changed",
+    "auth.device_trusted",  # ADR-0023
+    "auth.device_revoked",
 )
 
 
@@ -112,6 +115,30 @@ async def flow(
         secrets_seen += replaced["recovery_codes"]
         regenerated = (await post(RECOVERY_CODES, None, fresh)).json()
         secrets_seen += regenerated["recovery_codes"]
+        # ADR-0023: trust this browser, use it once (rotation), then replay the old token
+        login = {"email": EMAIL, "password": PASSWORD}
+        to_trust = (await post("/api/v1/auth/login", login)).json()
+        secrets_seen.append(to_trust["challenge_token"])
+        trust_code = clock.next_code(_secret(replacement))
+        secrets_seen.append(trust_code)
+        trusted = (
+            await post(
+                LOGIN_MFA,
+                {
+                    "challenge_token": to_trust["challenge_token"],
+                    "code": trust_code,
+                    "trust_device": True,
+                },
+            )
+        ).json()
+        first_token = trusted["device_token"]
+        secrets_seen.append(first_token)
+        used = (await post("/api/v1/auth/login", {**login, "device_token": first_token})).json()
+        assert used["status"] == "signed_in", used
+        secrets_seen.append(used["device_token"])
+        replayed = (await post("/api/v1/auth/login", {**login, "device_token": first_token})).json()
+        assert replayed["device_token_invalid"] is True, replayed
+        secrets_seen.append(replayed["challenge_token"])
         auth_db.execute(
             "UPDATE users SET password_changed_at = now() - interval '2 days' WHERE email = %s",
             [EMAIL],

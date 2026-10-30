@@ -117,8 +117,9 @@ def test_rls_table_list_matches_catalog(admin_conn: Conn) -> None:
     # ADR-0019: `signup_requests` is a platform table under its own policies
     # (test_signup_isolation.py), not the tenant template. ADR-0021: the four MFA tables are
     # user-scoped under their own self policies (test_mfa_isolation.py). ADR-0020: `login_flows`
-    # is reached only by its hash (test_google_isolation.py).
-    platform = {"users", "signup_requests", "login_flows", *MFA_TABLES}
+    # is reached only by its hash (test_google_isolation.py). ADR-0023: `trusted_devices` is
+    # user-scoped under `td_self` (test_trusted_device_isolation.py).
+    platform = {"users", "signup_requests", "login_flows", "trusted_devices", *MFA_TABLES}
     assert {str(r[0]) for r in rows} == set(TENANT_COLUMN) | platform
 
 

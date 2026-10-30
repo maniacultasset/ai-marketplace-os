@@ -45,6 +45,10 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("auth_google_complete", "POST", "/auth/google/complete"),
     ("auth_google_link", "POST", "/auth/google/link"),
     ("auth_google_unlink", "POST", "/auth/google/unlink"),
+    # ADR-0023: trusted browsers (72 + 3)
+    ("auth_devices_list", "GET", "/auth/devices"),
+    ("auth_devices_remove", "DELETE", "/auth/devices/{device_id}"),
+    ("auth_devices_sign_out_all", "POST", "/auth/devices/sign-out-all"),
     ("members_list", "GET", "/members"),
     ("members_patch", "PATCH", "/members/{user_id}"),
     ("tenants_me", "GET", "/tenants/me"),
@@ -107,7 +111,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 72
+    assert len(FROZEN) == 75
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -297,10 +301,29 @@ STEP_UP = {
     "marketplaces_connect": "any",
     "auth_mfa_recovery_codes": "any",
     "marketplaces_accounts_revoke": "otp",
-    "admin_signup_requests_approve": "otp",
-    "admin_signup_requests_reject": "otp",
     "auth_google_unlink": "any",  # ADR-0020
 }
+# ADR-0023: the step-up guards exactly the user's high-risk list; the admin's sign-up decisions
+# dropped it (still platform-admin only) and the window is 30 minutes
+NO_STEP_UP = {"admin_signup_requests_approve", "admin_signup_requests_reject"}
+
+
+def test_step_up_window_is_30_minutes() -> None:
+    from app.services.sign_in_policy import STEP_UP_MAX_AGE_SECONDS
+
+    assert STEP_UP_MAX_AGE_SECONDS == 1800
+    for op_id in NO_STEP_UP:
+        op = OPS[op_id]
+        assert op.step_up is None and op.platform_admin, op_id
+        assert op.error_codes[403] == (E.PERMISSION_DENIED,), op_id
+
+
+def test_device_ops_need_no_step_up() -> None:
+    for op_id in ("auth_devices_list", "auth_devices_remove", "auth_devices_sign_out_all"):
+        op = OPS[op_id]
+        assert op.step_up is None and op.action == Action.TENANT_READ, op_id
+        assert 403 not in op.error_codes, op_id
+    assert OPS["auth_devices_remove"].error_codes[404] == (E.NOT_FOUND,)
 
 
 def test_step_up_marked_on_guarded_ops() -> None:
@@ -367,8 +390,8 @@ def test_login_response_is_login_result() -> None:
     assert OPS["auth_switch_tenant"].response_model is TokenResponse
 
 
-def test_72_operations() -> None:
-    assert len(OPS) == 72
+def test_75_operations() -> None:
+    assert len(OPS) == 75
 
 
 def test_error_codes_per_d2() -> None:
@@ -425,7 +448,12 @@ def test_error_codes_per_d2() -> None:
             assert 403 not in codes, op.op_id
         # ADR-0019: a platform row's unknown id is 404 too, but it is not tenant-owned, so the
         # op has no not_found/wrong_tenant case pair (an admin's tenant never narrows it)
-        platform_404 = op.op_id in {"admin_signup_requests_approve", "admin_signup_requests_reject"}
+        # ADR-0023: a trusted browser is the user's own, not tenant-owned (404 for another's)
+        platform_404 = op.op_id in {
+            "admin_signup_requests_approve",
+            "admin_signup_requests_reject",
+            "auth_devices_remove",
+        }
         if "not_found" in c or platform_404:
             assert codes[404] == (E.NOT_FOUND,), op.op_id
         else:
@@ -454,7 +482,7 @@ def test_error_codes_per_d2() -> None:
 def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
-        "ADR-0019", "DPP-1", "ADR-0020",
+        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id

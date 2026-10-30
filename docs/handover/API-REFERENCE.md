@@ -2,7 +2,7 @@
 
 > Generated from `packages/schemas/jsonschema/openapi.json` by `scripts/docs/gen_api_reference.py`. Do not edit by hand: change the code, export the contract, then run `make docs-handover`.
 
-This is the complete reference of the backend's HTTP API for the frontend and AI teams. It lists all 74 operations: what each one does, who may call it, what to send and what comes back. The same contract ships as generated TypeScript types in the npm package `@maniacultasset/schemas` (GitHub Packages), which the frontend installs under the alias `@mkos/schemas`, so never hand-write a request or response type.
+This is the complete reference of the backend's HTTP API for the frontend and AI teams. It lists all 77 operations: what each one does, who may call it, what to send and what comes back. The same contract ships as generated TypeScript types in the npm package `@maniacultasset/schemas` (GitHub Packages), which the frontend installs under the alias `@mkos/schemas`, so never hand-write a request or response type.
 
 - Read **Conventions** first: auth, tenants, idempotency, concurrency, paging, errors and jobs work the same everywhere.
 - Then use the **summary table** to find an operation, and its section for the details.
@@ -106,7 +106,7 @@ Each operation requires one **action** (shown as "Permission" in every operation
 | `product:import` | yes | - | yes | - | 5 |
 | `settings:manage` | yes | yes | - | - | 3 |
 | `team:manage` | yes | yes | - | - | 2 |
-| `tenant:read` | yes | yes | yes | yes | 27 |
+| `tenant:read` | yes | yes | yes | yes | 30 |
 
 Public operations (`x-mkos-action: public`) need no token. `/healthz` and `/readyz` carry no action at all. A role not in the table holds nothing. The sign-up queue (`x-mkos-action: platform:admin`, ADR-0019) is not in the table: it needs the caller's own `users.is_platform_admin` flag, whatever their role.
 
@@ -374,80 +374,83 @@ Auth: `yes` means a Bearer access token is required. Permission: the action the 
 
 | # | Method | Path | Purpose | Auth | Permission (roles) | Idempotent |
 |---|---|---|---|---|---|---|
-| 1 | GET | [`/api/v1/auth/google/callback`](#get-apiv1authgooglecallback) | Google's return: 303 to the app with an opaque single-use handle | no | none (public) | yes (read-only) |
-| 2 | POST | [`/api/v1/auth/google/complete`](#post-apiv1authgooglecomplete) | Finish the Google step: sign in (or the code step), pending, the prefilled sign-up, or the password step that links Google | no | none (public) | no |
-| 3 | GET | [`/api/v1/auth/google/config`](#get-apiv1authgoogleconfig) | Whether sign-in with Google is switched on (show the button) | no | none (public) | yes (read-only) |
-| 4 | POST | [`/api/v1/auth/google/link`](#post-apiv1authgooglelink) | Link Google to an existing account: its password, then the usual code steps | no | none (public) | no |
-| 5 | GET | [`/api/v1/auth/google/start`](#get-apiv1authgooglestart) | Sign in or sign up with Google: redirect to Google's consent page | no | none (public) | yes (read-only) |
-| 6 | POST | [`/api/v1/auth/google/unlink`](#post-apiv1authgoogleunlink) | Remove the linked Google account (after a step-up; needs a password) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 7 | POST | [`/api/v1/auth/login`](#post-apiv1authlogin) | Log in with email and password: tokens, or the next sign-in step | no | none (public) | no |
-| 8 | POST | [`/api/v1/auth/login/mfa`](#post-apiv1authloginmfa) | Sign-in code step: a TOTP code or a recovery code for the login challenge | no | none (public) | no |
-| 9 | POST | [`/api/v1/auth/login/mfa/confirm`](#post-apiv1authloginmfaconfirm) | Forced enrolment at sign-in: confirm with a code; recovery codes and the sign-in result | no | none (public) | no |
-| 10 | POST | [`/api/v1/auth/login/mfa/enroll`](#post-apiv1authloginmfaenroll) | Forced enrolment at sign-in: a new authenticator secret | no | none (public) | no |
-| 11 | POST | [`/api/v1/auth/logout`](#post-apiv1authlogout) | Revoke the refresh token | no | none (public) | yes (always 204; a repeat is a no-op) |
-| 12 | GET | [`/api/v1/auth/me`](#get-apiv1authme) | The current principal and memberships | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 13 | POST | [`/api/v1/auth/mfa/recovery-codes`](#post-apiv1authmfarecovery-codes) | Regenerate the recovery codes (after a step-up) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 14 | POST | [`/api/v1/auth/mfa/step-up`](#post-apiv1authmfastep-up) | Step up with a code: a new access token for sensitive actions | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 15 | POST | [`/api/v1/auth/mfa/totp/confirm`](#post-apiv1authmfatotpconfirm) | Confirm the new authenticator with a code; recovery codes | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 16 | POST | [`/api/v1/auth/mfa/totp/enroll`](#post-apiv1authmfatotpenroll) | Set up or replace the authenticator from account settings | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 17 | POST | [`/api/v1/auth/password`](#post-apiv1authpassword) | Change the password (current password, DPP rules, not one of the last 10) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 18 | POST | [`/api/v1/auth/password/expired`](#post-apiv1authpasswordexpired) | Forced password change at sign-in | no | none (public) | no |
-| 19 | POST | [`/api/v1/auth/refresh`](#post-apiv1authrefresh) | Rotate the refresh token | no | none (public) | no (a repeat counts as token reuse and ends the session) |
-| 20 | GET | [`/api/v1/auth/security`](#get-apiv1authsecurity) | Account security: MFA status, recovery codes left, password expiry | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 21 | POST | [`/api/v1/auth/switch-tenant`](#post-apiv1authswitch-tenant) | Switch the active tenant: a new token pair for another of the caller's tenants | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 22 | GET | [`/api/v1/tenants/me`](#get-apiv1tenantsme) | The brand profile | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 23 | PATCH | [`/api/v1/tenants/me`](#patch-apiv1tenantsme) | Update the brand profile (If-Match: the ETag from GET) | yes | `settings:manage`: owner, admin | no (guarded by If-Match) |
-| 24 | GET | [`/api/v1/members`](#get-apiv1members) | List the tenant's members | yes | `team:manage`: owner, admin | yes (read-only) |
-| 25 | PATCH | [`/api/v1/members/{user_id}`](#patch-apiv1membersuser_id) | Change a member's role or active flag (only an owner grants or removes owner) | yes | `team:manage`: owner, admin | yes (a repeat sets the same values again) |
-| 26 | GET | [`/api/v1/brand/documents`](#get-apiv1branddocuments) | List the brand documents | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 27 | POST | [`/api/v1/brand/documents`](#post-apiv1branddocuments) | Upload a brand document for chunking | yes | `settings:manage`: owner, admin | yes (Idempotency-Key) |
-| 28 | DELETE | [`/api/v1/brand/documents/{document_id}`](#delete-apiv1branddocumentsdocument_id) | Delete a brand document and deactivate its chunks | yes | `settings:manage`: owner, admin | yes (a repeat is 404) |
-| 29 | GET | [`/api/v1/products`](#get-apiv1products) | List products | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 30 | POST | [`/api/v1/products`](#post-apiv1products) | Create one product | yes | `product:import`: owner, operator | no (a repeat with the same SKU is 409 `SKU_CONFLICT`) |
-| 31 | POST | [`/api/v1/products/bulk`](#post-apiv1productsbulk) | Import products from a CSV file | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
-| 32 | GET | [`/api/v1/products/{product_id}`](#get-apiv1productsproduct_id) | Read one product | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 33 | GET | [`/api/v1/imports/{import_id}`](#get-apiv1importsimport_id) | The import report (counts; rows via /rows) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 34 | GET | [`/api/v1/imports/{import_id}/rows`](#get-apiv1importsimport_idrows) | Import rows, optionally only failed ones | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 35 | POST | [`/api/v1/imports/{import_id}/rows/retry`](#post-apiv1importsimport_idrowsretry) | Re-run the failed rows only | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
-| 36 | POST | [`/api/v1/images/upload`](#post-apiv1imagesupload) | Upload an image (or name an uploaded key) and start the checks | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
-| 37 | POST | [`/api/v1/images/upload-url`](#post-apiv1imagesupload-url) | A signed upload URL for one image | yes | `product:import`: owner, operator | no |
-| 38 | GET | [`/api/v1/images/{image_id}/report`](#get-apiv1imagesimage_idreport) | The image compliance reports | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 39 | GET | [`/api/v1/listings`](#get-apiv1listings) | List listings (the review queue) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 40 | POST | [`/api/v1/listings/approve`](#post-apiv1listingsapprove) | Approve or reject a batch (maker-checker enforced) | yes | `listing:approve`: owner, reviewer | yes (Idempotency-Key) |
-| 41 | POST | [`/api/v1/listings/generate`](#post-apiv1listingsgenerate) | Start AI generation | yes | `listing:generate`: owner, operator | yes (Idempotency-Key) |
-| 42 | POST | [`/api/v1/listings/publish`](#post-apiv1listingspublish) | Publish approved listings | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
-| 43 | POST | [`/api/v1/listings/validate`](#post-apiv1listingsvalidate) | Run schema, rules and vision checks (200 with passed=false on a rules failure) | yes | `listing:edit`: owner, operator | yes (a repeat with unchanged rules returns the stored result) |
-| 44 | GET | [`/api/v1/listings/{listing_id}`](#get-apiv1listingslisting_id) | Read one listing with its content and validation | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 45 | PATCH | [`/api/v1/listings/{listing_id}/content`](#patch-apiv1listingslisting_idcontent) | Edit content (creates a new version) | yes | `listing:edit`: owner, operator | no (guarded by If-Match) |
-| 46 | GET | [`/api/v1/listings/{listing_id}/history`](#get-apiv1listingslisting_idhistory) | The listing's audit history, newest first | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 47 | GET | [`/api/v1/listings/{listing_id}/preview`](#get-apiv1listingslisting_idpreview) | Preview the marketplace payload of the current version (sends nothing) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 48 | POST | [`/api/v1/listings/{listing_id}/publish/retry-fields`](#post-apiv1listingslisting_idpublishretry-fields) | Retry only the fields that failed to publish | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
-| 49 | POST | [`/api/v1/listings/{listing_id}/refresh-status`](#post-apiv1listingslisting_idrefresh-status) | Check the marketplace status now (at most once per 5 minutes per listing) | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
-| 50 | POST | [`/api/v1/listings/{listing_id}/regenerate`](#post-apiv1listingslisting_idregenerate) | Regenerate an existing listing | yes | `listing:regenerate`: owner, operator, reviewer | yes (Idempotency-Key) |
-| 51 | GET | [`/api/v1/listings/{listing_id}/status`](#get-apiv1listingslisting_idstatus) | Listing status (a convenience alias; poll jobs instead) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 52 | GET | [`/api/v1/listings/{listing_id}/submissions`](#get-apiv1listingslisting_idsubmissions) | The listing's publish attempts with their per-field results, newest first | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 53 | GET | [`/api/v1/jobs/{job_id}`](#get-apiv1jobsjob_id) | The job envelope, read from job_runs | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 54 | POST | [`/api/v1/jobs/{job_id}/cancel`](#post-apiv1jobsjob_idcancel) | Cancel a queued job | yes | `listing:generate`: owner, operator | yes (Idempotency-Key) |
-| 55 | GET | [`/api/v1/issues`](#get-apiv1issues) | The issue inbox (open issues by default) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 56 | POST | [`/api/v1/issues/{issue_id}/dismiss`](#post-apiv1issuesissue_iddismiss) | Dismiss an open warning (errors cannot be dismissed) | yes | `listing:approve`: owner, reviewer | yes (Idempotency-Key) |
-| 57 | GET | [`/api/v1/tasks`](#get-apiv1tasks) | The human task inbox (open tasks by default) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 58 | GET | [`/api/v1/marketplaces/accounts`](#get-apiv1marketplacesaccounts) | Connected accounts and their health | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 59 | POST | [`/api/v1/marketplaces/accounts/{account_id}/revoke`](#post-apiv1marketplacesaccountsaccount_idrevoke) | Revoke a connection: delete the stored tokens | yes | `marketplace:connect`: owner, admin | yes (a repeat returns the account unchanged) |
-| 60 | POST | [`/api/v1/marketplaces/connect`](#post-apiv1marketplacesconnect) | Start OAuth; returns the consent URL | yes | `marketplace:connect`: owner, admin | no |
-| 61 | POST | [`/api/v1/marketplaces/connect/confirm`](#post-apiv1marketplacesconnectconfirm) | Confirm a pending connection: the account joins the caller's tenant | yes | `marketplace:connect`: owner, admin | no (the pending handle is single-use; a repeat is 409) |
-| 62 | GET | [`/api/v1/marketplaces/{marketplace}/callback`](#get-apiv1marketplacesmarketplacecallback) | OAuth return: 303 to the app with an opaque pending handle | no | none (public) | no (the OAuth state is single-use; a replay is 409) |
-| 63 | GET | [`/api/v1/rules`](#get-apiv1rules) | List rules | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 64 | POST | [`/api/v1/rules/dry-run`](#post-apiv1rulesdry-run) | Run the Rules Engine on a draft listing; saves nothing | yes | `listing:edit`: owner, operator | yes (saves nothing) |
-| 65 | GET | [`/api/v1/analytics`](#get-apiv1analytics) | Operational metrics (alias of /analytics/summary) | yes | `analytics:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 66 | GET | [`/api/v1/analytics/summary`](#get-apiv1analyticssummary) | Operational metrics for a date range | yes | `analytics:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 67 | POST | [`/api/v1/signup`](#post-apiv1signup) | Sign up a brand: a pending request a platform admin approves | no | none (public) | no |
-| 68 | POST | [`/api/v1/signup/google`](#post-apiv1signupgoogle) | Sign up with the Google identity: a pending request a platform admin approves | no | none (public) | no |
-| 69 | POST | [`/api/v1/signup/status`](#post-apiv1signupstatus) | The caller's latest sign-up request (email and password) | no | none (public) | no |
-| 70 | GET | [`/api/v1/admin/signup-requests`](#get-apiv1adminsignup-requests) | List sign-up requests, oldest first (platform admins) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | yes (read-only) |
-| 71 | POST | [`/api/v1/admin/signup-requests/{request_id}/approve`](#post-apiv1adminsignup-requestsrequest_idapprove) | Approve a sign-up: create the trial tenant and its owner (idempotent) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | no |
-| 72 | POST | [`/api/v1/admin/signup-requests/{request_id}/reject`](#post-apiv1adminsignup-requestsrequest_idreject) | Reject a sign-up with a reason (idempotent) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | no |
-| 73 | GET | [`/healthz`](#get-healthz) | Liveness probe: always 200, never touches the database | no | none (public probe) | yes (read-only) |
-| 74 | GET | [`/readyz`](#get-readyz) | Readiness probe: 200 when the database answers, else 503 | no | none (public probe) | yes (read-only) |
+| 1 | GET | [`/api/v1/auth/devices`](#get-apiv1authdevices) | The caller's trusted browsers (the code is skipped there at sign-in) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 2 | POST | [`/api/v1/auth/devices/sign-out-all`](#post-apiv1authdevicessign-out-all) | Forget every trusted browser and end every other session | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 3 | DELETE | [`/api/v1/auth/devices/{device_id}`](#delete-apiv1authdevicesdevice_id) | Forget one trusted browser and end the sessions it began | yes | `tenant:read`: owner, admin, operator, reviewer | yes (HTTP method) |
+| 4 | GET | [`/api/v1/auth/google/callback`](#get-apiv1authgooglecallback) | Google's return: 303 to the app with an opaque single-use handle | no | none (public) | yes (read-only) |
+| 5 | POST | [`/api/v1/auth/google/complete`](#post-apiv1authgooglecomplete) | Finish the Google step: sign in (or the code step), pending, the prefilled sign-up, or the password step that links Google | no | none (public) | no |
+| 6 | GET | [`/api/v1/auth/google/config`](#get-apiv1authgoogleconfig) | Whether sign-in with Google is switched on (show the button) | no | none (public) | yes (read-only) |
+| 7 | POST | [`/api/v1/auth/google/link`](#post-apiv1authgooglelink) | Link Google to an existing account: its password, then the usual code steps | no | none (public) | no |
+| 8 | GET | [`/api/v1/auth/google/start`](#get-apiv1authgooglestart) | Sign in or sign up with Google: redirect to Google's consent page | no | none (public) | yes (read-only) |
+| 9 | POST | [`/api/v1/auth/google/unlink`](#post-apiv1authgoogleunlink) | Remove the linked Google account (after a step-up; needs a password) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 10 | POST | [`/api/v1/auth/login`](#post-apiv1authlogin) | Log in with email and password: tokens, or the next sign-in step | no | none (public) | no |
+| 11 | POST | [`/api/v1/auth/login/mfa`](#post-apiv1authloginmfa) | Sign-in code step: a TOTP code or a recovery code for the login challenge | no | none (public) | no |
+| 12 | POST | [`/api/v1/auth/login/mfa/confirm`](#post-apiv1authloginmfaconfirm) | Forced enrolment at sign-in: confirm with a code; recovery codes and the sign-in result | no | none (public) | no |
+| 13 | POST | [`/api/v1/auth/login/mfa/enroll`](#post-apiv1authloginmfaenroll) | Forced enrolment at sign-in: a new authenticator secret | no | none (public) | no |
+| 14 | POST | [`/api/v1/auth/logout`](#post-apiv1authlogout) | Revoke the refresh token | no | none (public) | yes (always 204; a repeat is a no-op) |
+| 15 | GET | [`/api/v1/auth/me`](#get-apiv1authme) | The current principal and memberships | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 16 | POST | [`/api/v1/auth/mfa/recovery-codes`](#post-apiv1authmfarecovery-codes) | Regenerate the recovery codes (after a step-up) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 17 | POST | [`/api/v1/auth/mfa/step-up`](#post-apiv1authmfastep-up) | Step up with a code: a new access token for sensitive actions | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 18 | POST | [`/api/v1/auth/mfa/totp/confirm`](#post-apiv1authmfatotpconfirm) | Confirm the new authenticator with a code; recovery codes | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 19 | POST | [`/api/v1/auth/mfa/totp/enroll`](#post-apiv1authmfatotpenroll) | Set up or replace the authenticator from account settings | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 20 | POST | [`/api/v1/auth/password`](#post-apiv1authpassword) | Change the password (current password, DPP rules, not one of the last 10) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 21 | POST | [`/api/v1/auth/password/expired`](#post-apiv1authpasswordexpired) | Forced password change at sign-in | no | none (public) | no |
+| 22 | POST | [`/api/v1/auth/refresh`](#post-apiv1authrefresh) | Rotate the refresh token | no | none (public) | no (a repeat counts as token reuse and ends the session) |
+| 23 | GET | [`/api/v1/auth/security`](#get-apiv1authsecurity) | Account security: MFA status, recovery codes left, password expiry | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 24 | POST | [`/api/v1/auth/switch-tenant`](#post-apiv1authswitch-tenant) | Switch the active tenant: a new token pair for another of the caller's tenants | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 25 | GET | [`/api/v1/tenants/me`](#get-apiv1tenantsme) | The brand profile | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 26 | PATCH | [`/api/v1/tenants/me`](#patch-apiv1tenantsme) | Update the brand profile (If-Match: the ETag from GET) | yes | `settings:manage`: owner, admin | no (guarded by If-Match) |
+| 27 | GET | [`/api/v1/members`](#get-apiv1members) | List the tenant's members | yes | `team:manage`: owner, admin | yes (read-only) |
+| 28 | PATCH | [`/api/v1/members/{user_id}`](#patch-apiv1membersuser_id) | Change a member's role or active flag (only an owner grants or removes owner) | yes | `team:manage`: owner, admin | yes (a repeat sets the same values again) |
+| 29 | GET | [`/api/v1/brand/documents`](#get-apiv1branddocuments) | List the brand documents | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 30 | POST | [`/api/v1/brand/documents`](#post-apiv1branddocuments) | Upload a brand document for chunking | yes | `settings:manage`: owner, admin | yes (Idempotency-Key) |
+| 31 | DELETE | [`/api/v1/brand/documents/{document_id}`](#delete-apiv1branddocumentsdocument_id) | Delete a brand document and deactivate its chunks | yes | `settings:manage`: owner, admin | yes (a repeat is 404) |
+| 32 | GET | [`/api/v1/products`](#get-apiv1products) | List products | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 33 | POST | [`/api/v1/products`](#post-apiv1products) | Create one product | yes | `product:import`: owner, operator | no (a repeat with the same SKU is 409 `SKU_CONFLICT`) |
+| 34 | POST | [`/api/v1/products/bulk`](#post-apiv1productsbulk) | Import products from a CSV file | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
+| 35 | GET | [`/api/v1/products/{product_id}`](#get-apiv1productsproduct_id) | Read one product | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 36 | GET | [`/api/v1/imports/{import_id}`](#get-apiv1importsimport_id) | The import report (counts; rows via /rows) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 37 | GET | [`/api/v1/imports/{import_id}/rows`](#get-apiv1importsimport_idrows) | Import rows, optionally only failed ones | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 38 | POST | [`/api/v1/imports/{import_id}/rows/retry`](#post-apiv1importsimport_idrowsretry) | Re-run the failed rows only | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
+| 39 | POST | [`/api/v1/images/upload`](#post-apiv1imagesupload) | Upload an image (or name an uploaded key) and start the checks | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
+| 40 | POST | [`/api/v1/images/upload-url`](#post-apiv1imagesupload-url) | A signed upload URL for one image | yes | `product:import`: owner, operator | no |
+| 41 | GET | [`/api/v1/images/{image_id}/report`](#get-apiv1imagesimage_idreport) | The image compliance reports | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 42 | GET | [`/api/v1/listings`](#get-apiv1listings) | List listings (the review queue) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 43 | POST | [`/api/v1/listings/approve`](#post-apiv1listingsapprove) | Approve or reject a batch (maker-checker enforced) | yes | `listing:approve`: owner, reviewer | yes (Idempotency-Key) |
+| 44 | POST | [`/api/v1/listings/generate`](#post-apiv1listingsgenerate) | Start AI generation | yes | `listing:generate`: owner, operator | yes (Idempotency-Key) |
+| 45 | POST | [`/api/v1/listings/publish`](#post-apiv1listingspublish) | Publish approved listings | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
+| 46 | POST | [`/api/v1/listings/validate`](#post-apiv1listingsvalidate) | Run schema, rules and vision checks (200 with passed=false on a rules failure) | yes | `listing:edit`: owner, operator | yes (a repeat with unchanged rules returns the stored result) |
+| 47 | GET | [`/api/v1/listings/{listing_id}`](#get-apiv1listingslisting_id) | Read one listing with its content and validation | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 48 | PATCH | [`/api/v1/listings/{listing_id}/content`](#patch-apiv1listingslisting_idcontent) | Edit content (creates a new version) | yes | `listing:edit`: owner, operator | no (guarded by If-Match) |
+| 49 | GET | [`/api/v1/listings/{listing_id}/history`](#get-apiv1listingslisting_idhistory) | The listing's audit history, newest first | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 50 | GET | [`/api/v1/listings/{listing_id}/preview`](#get-apiv1listingslisting_idpreview) | Preview the marketplace payload of the current version (sends nothing) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 51 | POST | [`/api/v1/listings/{listing_id}/publish/retry-fields`](#post-apiv1listingslisting_idpublishretry-fields) | Retry only the fields that failed to publish | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
+| 52 | POST | [`/api/v1/listings/{listing_id}/refresh-status`](#post-apiv1listingslisting_idrefresh-status) | Check the marketplace status now (at most once per 5 minutes per listing) | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
+| 53 | POST | [`/api/v1/listings/{listing_id}/regenerate`](#post-apiv1listingslisting_idregenerate) | Regenerate an existing listing | yes | `listing:regenerate`: owner, operator, reviewer | yes (Idempotency-Key) |
+| 54 | GET | [`/api/v1/listings/{listing_id}/status`](#get-apiv1listingslisting_idstatus) | Listing status (a convenience alias; poll jobs instead) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 55 | GET | [`/api/v1/listings/{listing_id}/submissions`](#get-apiv1listingslisting_idsubmissions) | The listing's publish attempts with their per-field results, newest first | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 56 | GET | [`/api/v1/jobs/{job_id}`](#get-apiv1jobsjob_id) | The job envelope, read from job_runs | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 57 | POST | [`/api/v1/jobs/{job_id}/cancel`](#post-apiv1jobsjob_idcancel) | Cancel a queued job | yes | `listing:generate`: owner, operator | yes (Idempotency-Key) |
+| 58 | GET | [`/api/v1/issues`](#get-apiv1issues) | The issue inbox (open issues by default) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 59 | POST | [`/api/v1/issues/{issue_id}/dismiss`](#post-apiv1issuesissue_iddismiss) | Dismiss an open warning (errors cannot be dismissed) | yes | `listing:approve`: owner, reviewer | yes (Idempotency-Key) |
+| 60 | GET | [`/api/v1/tasks`](#get-apiv1tasks) | The human task inbox (open tasks by default) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 61 | GET | [`/api/v1/marketplaces/accounts`](#get-apiv1marketplacesaccounts) | Connected accounts and their health | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 62 | POST | [`/api/v1/marketplaces/accounts/{account_id}/revoke`](#post-apiv1marketplacesaccountsaccount_idrevoke) | Revoke a connection: delete the stored tokens | yes | `marketplace:connect`: owner, admin | yes (a repeat returns the account unchanged) |
+| 63 | POST | [`/api/v1/marketplaces/connect`](#post-apiv1marketplacesconnect) | Start OAuth; returns the consent URL | yes | `marketplace:connect`: owner, admin | no |
+| 64 | POST | [`/api/v1/marketplaces/connect/confirm`](#post-apiv1marketplacesconnectconfirm) | Confirm a pending connection: the account joins the caller's tenant | yes | `marketplace:connect`: owner, admin | no (the pending handle is single-use; a repeat is 409) |
+| 65 | GET | [`/api/v1/marketplaces/{marketplace}/callback`](#get-apiv1marketplacesmarketplacecallback) | OAuth return: 303 to the app with an opaque pending handle | no | none (public) | no (the OAuth state is single-use; a replay is 409) |
+| 66 | GET | [`/api/v1/rules`](#get-apiv1rules) | List rules | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 67 | POST | [`/api/v1/rules/dry-run`](#post-apiv1rulesdry-run) | Run the Rules Engine on a draft listing; saves nothing | yes | `listing:edit`: owner, operator | yes (saves nothing) |
+| 68 | GET | [`/api/v1/analytics`](#get-apiv1analytics) | Operational metrics (alias of /analytics/summary) | yes | `analytics:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 69 | GET | [`/api/v1/analytics/summary`](#get-apiv1analyticssummary) | Operational metrics for a date range | yes | `analytics:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 70 | POST | [`/api/v1/signup`](#post-apiv1signup) | Sign up a brand: a pending request a platform admin approves | no | none (public) | no |
+| 71 | POST | [`/api/v1/signup/google`](#post-apiv1signupgoogle) | Sign up with the Google identity: a pending request a platform admin approves | no | none (public) | no |
+| 72 | POST | [`/api/v1/signup/status`](#post-apiv1signupstatus) | The caller's latest sign-up request (email and password) | no | none (public) | no |
+| 73 | GET | [`/api/v1/admin/signup-requests`](#get-apiv1adminsignup-requests) | List sign-up requests, oldest first (platform admins) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | yes (read-only) |
+| 74 | POST | [`/api/v1/admin/signup-requests/{request_id}/approve`](#post-apiv1adminsignup-requestsrequest_idapprove) | Approve a sign-up: create the trial tenant and its owner (idempotent) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | no |
+| 75 | POST | [`/api/v1/admin/signup-requests/{request_id}/reject`](#post-apiv1adminsignup-requestsrequest_idreject) | Reject a sign-up with a reason (idempotent) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | no |
+| 76 | GET | [`/healthz`](#get-healthz) | Liveness probe: always 200, never touches the database | no | none (public probe) | yes (read-only) |
+| 77 | GET | [`/readyz`](#get-readyz) | Readiness probe: 200 when the database answers, else 503 | no | none (public probe) | yes (read-only) |
 
 ## Auth
 
@@ -455,6 +458,9 @@ Log in, renew tokens, log out, read who you are, and switch the active tenant. L
 
 | Operation | Purpose |
 |---|---|
+| [`GET /api/v1/auth/devices`](#get-apiv1authdevices) | The caller's trusted browsers (the code is skipped there at sign-in) |
+| [`POST /api/v1/auth/devices/sign-out-all`](#post-apiv1authdevicessign-out-all) | Forget every trusted browser and end every other session |
+| [`DELETE /api/v1/auth/devices/{device_id}`](#delete-apiv1authdevicesdevice_id) | Forget one trusted browser and end the sessions it began |
 | [`GET /api/v1/auth/google/callback`](#get-apiv1authgooglecallback) | Google's return: 303 to the app with an opaque single-use handle |
 | [`POST /api/v1/auth/google/complete`](#post-apiv1authgooglecomplete) | Finish the Google step: sign in (or the code step), pending, the prefilled sign-up, or the password step that links Google |
 | [`GET /api/v1/auth/google/config`](#get-apiv1authgoogleconfig) | Whether sign-in with Google is switched on (show the button) |
@@ -476,6 +482,171 @@ Log in, renew tokens, log out, read who you are, and switch the active tenant. L
 | [`POST /api/v1/auth/refresh`](#post-apiv1authrefresh) | Rotate the refresh token |
 | [`GET /api/v1/auth/security`](#get-apiv1authsecurity) | Account security: MFA status, recovery codes left, password expiry |
 | [`POST /api/v1/auth/switch-tenant`](#post-apiv1authswitch-tenant) | Switch the active tenant: a new token pair for another of the caller's tenants |
+
+### GET /api/v1/auth/devices
+
+**The caller's trusted browsers (the code is skipped there at sign-in).**
+
+The caller's trusted browsers (ADR-0023), newest first: where the next sign-in skips the code. `current` marks this session's browser. Works with MFA on or off.
+
+| | |
+|---|---|
+| Operation id | `auth_devices_list` |
+| Auth | Bearer access token |
+| Permission (roles that hold it) | `tenant:read`: owner, admin, operator, reviewer |
+| Idempotent | yes (read-only) |
+| Success | 200 `TrustedDevicesOut` |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+None.
+
+#### Example call
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/auth/devices" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 200 | Success. | `TrustedDevicesOut` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**200 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `devices` | array of TrustedDeviceOut | yes | The live trusted browsers, newest first (at most 10). | max items 10 |
+| `devices[].created_at` | string (date-time) | yes |  |  |
+| `devices[].current` | boolean | yes | True for the browser this session signed in on. |  |
+| `devices[].expires_at` | string (date-time) | yes |  |  |
+| `devices[].id` | string (uuid) | yes |  |  |
+| `devices[].label` | string | yes | E.g. "Chrome on macOS". | min length 1 |
+| `devices[].last_used_at` | string (date-time) or null | no | The last sign-in that skipped the code here. |  |
+
+200 example:
+
+```json
+{
+  "devices": [
+    {
+      "created_at": "2026-10-05T09:30:00Z",
+      "current": true,
+      "expires_at": "2026-11-04T09:30:00Z",
+      "id": "7b0c5f8e-2d1a-4c3b-9e8f-0a1b2c3d4e5f",
+      "label": "Chrome on macOS",
+      "last_used_at": "2026-10-12T08:15:00Z"
+    }
+  ]
+}
+```
+
+[Back to the summary](#all-operations)
+
+### POST /api/v1/auth/devices/sign-out-all
+
+**Forget every trusted browser and end every other session.**
+
+Forget every trusted browser of the caller, this one included, and end every other session in every tenant. This session stays signed in (at most 7 days after its own sign-in); every next sign-in asks for the code.
+
+| | |
+|---|---|
+| Operation id | `auth_devices_sign_out_all` |
+| Auth | Bearer access token |
+| Permission (roles that hold it) | `tenant:read`: owner, admin, operator, reviewer |
+| Idempotent | no |
+| Success | 204 (no body) |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+None.
+
+#### Example call
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/auth/devices/sign-out-all" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 204 | Done; no body. |  |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+[Back to the summary](#all-operations)
+
+### DELETE /api/v1/auth/devices/{device_id}
+
+**Forget one trusted browser and end the sessions it began.**
+
+Forget one of the caller's trusted browsers: its next sign-in asks for the code, and the sessions it began end now (this one too, when it is this browser). 404 for an unknown id or another user's browser.
+
+| | |
+|---|---|
+| Operation id | `auth_devices_remove` |
+| Auth | Bearer access token |
+| Permission (roles that hold it) | `tenant:read`: owner, admin, operator, reviewer |
+| Idempotent | yes (HTTP method) |
+| Success | 204 (no body) |
+
+#### Parameters
+
+| Name | In | Type | Required | Description | Constraints |
+|---|---|---|---|---|---|
+| `device_id` | path | string (uuid) | yes |  |  |
+
+#### Request body
+
+None.
+
+#### Example call
+
+```bash
+curl -X DELETE "http://localhost:8000/api/v1/auth/devices/<device_id>" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 204 | Done; no body. |  |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
+| 404 | Not found. | `ErrorEnvelope` |  | `NOT_FOUND` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+[Back to the summary](#all-operations)
 
 ### GET /api/v1/auth/google/callback
 
@@ -530,7 +701,7 @@ Header `Location` on 303: `{dashboard}/auth/google?handle=<opaque>` or `?error=c
 
 **Finish the Google step: sign in (or the code step), pending, the prefilled sign-up, or the password step that links Google.**
 
-The app's `/auth/google` route posts the `handle` and the browser's binding secret, then acts on `outcome`: `sign_in` (store tokens, or continue with `login.challenge_token` at the usual code, enrolment or password step), `pending` (show the request status), `needs_details` (the prefilled sign-up form, then `/signup/google`) or `link_required` (ask the existing account's password, then `/auth/google/link`). A Google sign-in always asks for the Kuinn code when MFA is enforced. Every refusal is the same 401 with a generic message.
+The app's `/auth/google` route posts the `handle` and the browser's binding secret, then acts on `outcome`: `sign_in` (store tokens, or continue with `login.challenge_token` at the usual code, enrolment or password step), `pending` (show the request status), `needs_details` (the prefilled sign-up form, then `/signup/google`) or `link_required` (ask the existing account's password, then `/auth/google/link`). A Google sign-in always asks for the Kuinn code when MFA is enforced, unless one of `device_tokens` names a trusted browser of that account (ADR-0023). Every refusal is the same 401 with a generic message.
 
 | | |
 |---|---|
@@ -551,6 +722,7 @@ Content type `application/json`, required. Schema: `GoogleCompleteRequest`.
 | Field | Type | Required | Description | Constraints |
 |---|---|---|---|---|
 | `binding` | string (password) | yes | The browser's binding secret (43 base64url characters) whose sha256 was sent to `/auth/google/start` as `b`. | min length 43; max length 43; write-only (never returned) |
+| `device_tokens` | array of string (password) or null | no | ADR-0023: every trusted-browser token this browser holds (at most 5, no repeats; the account is not known yet). Only the signed-in account's own can match; it skips the Kuinn code step, never Google. | max items 5 |
 | `handle` | string (password) | yes | The `handle` of the `/auth/google?handle=` redirect. | min length 1; max length 128; write-only (never returned) |
 
 Example (built from the schema; values are placeholders):
@@ -558,6 +730,9 @@ Example (built from the schema; values are placeholders):
 ```json
 {
   "binding": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "device_tokens": [
+    "string"
+  ],
   "handle": "string"
 }
 ```
@@ -567,7 +742,7 @@ Example (built from the schema; values are placeholders):
 ```bash
 curl -X POST "http://localhost:8000/api/v1/auth/google/complete" \
   -H "Content-Type: application/json" \
-  -d '{"binding":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","handle":"string"}'
+  -d '{"binding":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","device_tokens":["string"],"handle":"string"}'
 ```
 
 #### Responses
@@ -607,6 +782,10 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `login.access_token` | string or null | no |  | min length 1 |
 | `login.challenge_expires_in` | integer or null | no | Seconds the challenge stays valid (900 to enrol, else 300). | min 1 |
 | `login.challenge_token` | string or null | no | Send it to the next step's route; keep it in memory only. | min length 1 |
+| `login.device_expires_at` | string (date-time) or null | no | With `device_token`: when this browser stops being trusted (fixed; a use never moves it). |  |
+| `login.device_token` | string or null | no | ADR-0023, `signed_in` only: a new trusted-browser token for this email (after `trust_device`, or the next value of the one sent). Replace the stored one; the old value stops working. | min length 1 |
+| `login.device_token_invalid` | boolean or null | no | ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. On `/auth/google/complete` it means none of the sent tokens matched the signed-in account: forget only the entry stored for this `email`, and say nothing when there was none. |  |
+| `login.device_trust_days` | integer or null | no | ADR-0023: on the code steps, how many days the "Trust this browser" choice lasts (30, or 7 for a platform admin). Absent: do not offer the choice. | min 1; max 30 |
 | `login.expires_in` | integer or null | no | Access token lifetime in seconds. | min 1 |
 | `login.memberships` | array of MembershipOut or null | no |  |  |
 | `login.memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |
@@ -771,6 +950,10 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `access_token` | string or null | no |  | min length 1 |
 | `challenge_expires_in` | integer or null | no | Seconds the challenge stays valid (900 to enrol, else 300). | min 1 |
 | `challenge_token` | string or null | no | Send it to the next step's route; keep it in memory only. | min length 1 |
+| `device_expires_at` | string (date-time) or null | no | With `device_token`: when this browser stops being trusted (fixed; a use never moves it). |  |
+| `device_token` | string or null | no | ADR-0023, `signed_in` only: a new trusted-browser token for this email (after `trust_device`, or the next value of the one sent). Replace the stored one; the old value stops working. | min length 1 |
+| `device_token_invalid` | boolean or null | no | ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. On `/auth/google/complete` it means none of the sent tokens matched the signed-in account: forget only the entry stored for this `email`, and say nothing when there was none. |  |
+| `device_trust_days` | integer or null | no | ADR-0023: on the code steps, how many days the "Trust this browser" choice lasts (30, or 7 for a platform admin). Absent: do not offer the choice. | min 1; max 30 |
 | `expires_in` | integer or null | no | Access token lifetime in seconds. | min 1 |
 | `memberships` | array of MembershipOut or null | no |  |  |
 | `memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |
@@ -844,7 +1027,7 @@ Header `Location` on 302: Google's authorize URL (or `/login?error=google_unavai
 
 **Remove the linked Google account (after a step-up; needs a password).**
 
-Remove the Google account linked to the caller (needs a step-up code from the last 10 minutes when MFA is enforced). Refused with 422 while the account has no password, since Google is then its only way in. 204 also when nothing is linked.
+Remove the Google account linked to the caller (needs a step-up code from the last 30 minutes when MFA is enforced). Refused with 422 while the account has no password, since Google is then its only way in. 204 also when nothing is linked.
 
 | | |
 |---|---|
@@ -890,7 +1073,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 
 **Log in with email and password: tokens, or the next sign-in step.**
 
-Email and password in. `status` says what comes next: `signed_in` carries the access and refresh tokens and the user's memberships (the active tenant is the most recently used one); `mfa_required`, `mfa_enrollment_required` and `password_change_required` carry a `challenge_token` for the next step and no token. Every refusal is the same 401, a locked account included (10 failed passwords or codes lock it for 15 minutes).
+Email and password in. `status` says what comes next: `signed_in` carries the access and refresh tokens and the user's memberships (the active tenant is the most recently used one); `mfa_required`, `mfa_enrollment_required` and `password_change_required` carry a `challenge_token` for the next step and no token. Every refusal is the same 401, a locked account included (10 failed passwords or codes lock it for 15 minutes). With MFA enforced, a live `device_token` (a trusted browser, ADR-0023) skips the code step: the answer is `signed_in` with the token's next value; a stale one answers `device_token_invalid`.
 
 | | |
 |---|---|
@@ -910,6 +1093,7 @@ Content type `application/json`, required. Schema: `LoginRequest`.
 
 | Field | Type | Required | Description | Constraints |
 |---|---|---|---|---|
+| `device_token` | string (password) or null | no | ADR-0023: this browser's trusted-browser token for this email, if any. Read only after the password is correct; when it is live the code step is skipped. | min length 1; max length 128; write-only (never returned) |
 | `email` | string | yes |  | min length 3; max length 320; pattern `^[^@\s]+@[^@\s]+$` |
 | `password` | string (password) | yes |  | min length 1; max length 1024; write-only (never returned) |
 
@@ -917,6 +1101,7 @@ Example (built from the schema; values are placeholders):
 
 ```json
 {
+  "device_token": "string",
   "email": "user@example.com",
   "password": "<PASSWORD>"
 }
@@ -927,7 +1112,7 @@ Example (built from the schema; values are placeholders):
 ```bash
 curl -X POST "http://localhost:8000/api/v1/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"<PASSWORD>"}'
+  -d '{"device_token":"string","email":"user@example.com","password":"<PASSWORD>"}'
 ```
 
 #### Responses
@@ -951,6 +1136,10 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `access_token` | string or null | no |  | min length 1 |
 | `challenge_expires_in` | integer or null | no | Seconds the challenge stays valid (900 to enrol, else 300). | min 1 |
 | `challenge_token` | string or null | no | Send it to the next step's route; keep it in memory only. | min length 1 |
+| `device_expires_at` | string (date-time) or null | no | With `device_token`: when this browser stops being trusted (fixed; a use never moves it). |  |
+| `device_token` | string or null | no | ADR-0023, `signed_in` only: a new trusted-browser token for this email (after `trust_device`, or the next value of the one sent). Replace the stored one; the old value stops working. | min length 1 |
+| `device_token_invalid` | boolean or null | no | ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. On `/auth/google/complete` it means none of the sent tokens matched the signed-in account: forget only the entry stored for this `email`, and say nothing when there was none. |  |
+| `device_trust_days` | integer or null | no | ADR-0023: on the code steps, how many days the "Trust this browser" choice lasts (30, or 7 for a platform admin). Absent: do not offer the choice. | min 1; max 30 |
 | `expires_in` | integer or null | no | Access token lifetime in seconds. | min 1 |
 | `memberships` | array of MembershipOut or null | no |  |  |
 | `memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |
@@ -967,6 +1156,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 {
   "challenge_expires_in": 300,
   "challenge_token": "ch_example_opaque_value",
+  "device_trust_days": 30,
   "status": "mfa_required"
 }
 ```
@@ -977,7 +1167,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 
 **Sign-in code step: a TOTP code or a recovery code for the login challenge.**
 
-The code step: the `challenge_token` of `mfa_required` and exactly one of `code` (6 digits from the authenticator) or `recovery_code`. A wrong code, a used code, an expired or burned challenge (5 attempts) and a locked account are all 401.
+The code step: the `challenge_token` of `mfa_required` and exactly one of `code` (6 digits from the authenticator) or `recovery_code`. A wrong code, a used code, an expired or burned challenge (5 attempts) and a locked account are all 401. `trust_device` with a TOTP code trusts this browser (ADR-0023): `device_token` comes back with the tokens.
 
 | | |
 |---|---|
@@ -1000,6 +1190,7 @@ Content type `application/json`, required. Schema: `LoginMfaRequest`.
 | `challenge_token` | string (password) | yes | The opaque `challenge_token` of the last sign-in step (keep it in memory only). | min length 1; max length 256; write-only (never returned) |
 | `code` | string or null | no | A 6-digit TOTP code. | pattern `^[0-9]{6}$` |
 | `recovery_code` | string (password) or null | no | A recovery code; case, spaces and dashes are ignored. | min length 1; max length 64; write-only (never returned) |
+| `trust_device` | boolean | no | ADR-0023: trust this browser after this code (30 days, 7 for a platform admin): the next sign-in here skips the code. Ignored with a recovery code. | default `false` |
 
 Example (built from the schema; values are placeholders):
 
@@ -1007,7 +1198,8 @@ Example (built from the schema; values are placeholders):
 {
   "challenge_token": "string",
   "code": "string",
-  "recovery_code": "string"
+  "recovery_code": "string",
+  "trust_device": false
 }
 ```
 
@@ -1016,7 +1208,7 @@ Example (built from the schema; values are placeholders):
 ```bash
 curl -X POST "http://localhost:8000/api/v1/auth/login/mfa" \
   -H "Content-Type: application/json" \
-  -d '{"challenge_token":"string","code":"string","recovery_code":"string"}'
+  -d '{"challenge_token":"string","code":"string","recovery_code":"string","trust_device":false}'
 ```
 
 #### Responses
@@ -1041,6 +1233,10 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `access_token` | string or null | no |  | min length 1 |
 | `challenge_expires_in` | integer or null | no | Seconds the challenge stays valid (900 to enrol, else 300). | min 1 |
 | `challenge_token` | string or null | no | Send it to the next step's route; keep it in memory only. | min length 1 |
+| `device_expires_at` | string (date-time) or null | no | With `device_token`: when this browser stops being trusted (fixed; a use never moves it). |  |
+| `device_token` | string or null | no | ADR-0023, `signed_in` only: a new trusted-browser token for this email (after `trust_device`, or the next value of the one sent). Replace the stored one; the old value stops working. | min length 1 |
+| `device_token_invalid` | boolean or null | no | ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. On `/auth/google/complete` it means none of the sent tokens matched the signed-in account: forget only the entry stored for this `email`, and say nothing when there was none. |  |
+| `device_trust_days` | integer or null | no | ADR-0023: on the code steps, how many days the "Trust this browser" choice lasts (30, or 7 for a platform admin). Absent: do not offer the choice. | min 1; max 30 |
 | `expires_in` | integer or null | no | Access token lifetime in seconds. | min 1 |
 | `memberships` | array of MembershipOut or null | no |  |  |
 | `memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |
@@ -1056,6 +1252,8 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiJ9.example.signature",
+  "device_expires_at": "2026-11-04T09:30:00Z",
+  "device_token": "example_device_token_43_base64url_chars_000",
   "expires_in": 1800,
   "memberships": [
     {
@@ -1076,7 +1274,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 
 **Forced enrolment at sign-in: confirm with a code; recovery codes and the sign-in result.**
 
-Forced enrolment: a code from the new authenticator. Answers the 10 recovery codes (shown once) and `result`, the sign-in to continue with. Every other session of the user ends.
+Forced enrolment: a code from the new authenticator. Answers the 10 recovery codes (shown once) and `result`, the sign-in to continue with. Every other session and trusted browser of the user ends; `trust_device` trusts this browser (ADR-0023).
 
 | | |
 |---|---|
@@ -1098,13 +1296,15 @@ Content type `application/json`, required. Schema: `LoginConfirmRequest`.
 |---|---|---|---|---|
 | `challenge_token` | string (password) | yes | The opaque `challenge_token` of the last sign-in step (keep it in memory only). | min length 1; max length 256; write-only (never returned) |
 | `code` | string | yes | A 6-digit TOTP code. | pattern `^[0-9]{6}$` |
+| `trust_device` | boolean | no | ADR-0023: trust this browser after this code (30 days, 7 for a platform admin): the next sign-in here skips the code. Ignored with a recovery code. | default `false` |
 
 Example (built from the schema; values are placeholders):
 
 ```json
 {
   "challenge_token": "string",
-  "code": "string"
+  "code": "string",
+  "trust_device": false
 }
 ```
 
@@ -1113,7 +1313,7 @@ Example (built from the schema; values are placeholders):
 ```bash
 curl -X POST "http://localhost:8000/api/v1/auth/login/mfa/confirm" \
   -H "Content-Type: application/json" \
-  -d '{"challenge_token":"string","code":"string"}'
+  -d '{"challenge_token":"string","code":"string","trust_device":false}'
 ```
 
 #### Responses
@@ -1140,6 +1340,10 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `result.access_token` | string or null | no |  | min length 1 |
 | `result.challenge_expires_in` | integer or null | no | Seconds the challenge stays valid (900 to enrol, else 300). | min 1 |
 | `result.challenge_token` | string or null | no | Send it to the next step's route; keep it in memory only. | min length 1 |
+| `result.device_expires_at` | string (date-time) or null | no | With `device_token`: when this browser stops being trusted (fixed; a use never moves it). |  |
+| `result.device_token` | string or null | no | ADR-0023, `signed_in` only: a new trusted-browser token for this email (after `trust_device`, or the next value of the one sent). Replace the stored one; the old value stops working. | min length 1 |
+| `result.device_token_invalid` | boolean or null | no | ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. On `/auth/google/complete` it means none of the sent tokens matched the signed-in account: forget only the entry stored for this `email`, and say nothing when there was none. |  |
+| `result.device_trust_days` | integer or null | no | ADR-0023: on the code steps, how many days the "Trust this browser" choice lasts (30, or 7 for a platform admin). Absent: do not offer the choice. | min 1; max 30 |
 | `result.expires_in` | integer or null | no | Access token lifetime in seconds. | min 1 |
 | `result.memberships` | array of MembershipOut or null | no |  |  |
 | `result.memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |
@@ -1400,7 +1604,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 
 **Regenerate the recovery codes (after a step-up).**
 
-A new set of 10 recovery codes (shown once); the old ones stop working. Needs a step-up in the last 10 minutes (TOTP or recovery code).
+A new set of 10 recovery codes (shown once); the old ones stop working. Needs a step-up in the last 30 minutes (TOTP or recovery code).
 
 | | |
 |---|---|
@@ -1551,7 +1755,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 
 **Confirm the new authenticator with a code; recovery codes.**
 
-Confirm the new authenticator with a code: the 10 recovery codes (shown once). The user's other sessions end; this one records the fresh code.
+Confirm the new authenticator with a code: the 10 recovery codes (shown once). The user's other sessions and every trusted browser end; this one records the fresh code.
 
 | | |
 |---|---|
@@ -1637,7 +1841,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 
 **Set up or replace the authenticator from account settings.**
 
-Set up the authenticator from account settings (`current_password` required while there is no factor), or replace it (needs a step-up in the last 10 minutes, done with a TOTP code or a recovery code: 403 `MFA_STEP_UP_REQUIRED` otherwise).
+Set up the authenticator from account settings (`current_password` required while there is no factor), or replace it (needs a step-up in the last 30 minutes, done with a TOTP code or a recovery code: 403 `MFA_STEP_UP_REQUIRED` otherwise).
 
 | | |
 |---|---|
@@ -1714,7 +1918,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 
 **Change the password (current password, DPP rules, not one of the last 10).**
 
-Change the password: the current one, then a new one that meets the rules (422 names each broken rule), is none of the last 10, at most once a day. The other sessions end.
+Change the password: the current one, then a new one that meets the rules (422 names each broken rule), is none of the last 10, at most once a day. The other sessions and every trusted browser end (this session stays).
 
 | | |
 |---|---|
@@ -1775,7 +1979,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 
 **Forced password change at sign-in.**
 
-The forced password change (`password_change_required`): a new password that meets the rules (422 names each broken rule) and is none of the last 10. Every other session ends.
+The forced password change (`password_change_required`): a new password that meets the rules (422 names each broken rule) and is none of the last 10. Every other session and every trusted browser ends; a "trust this browser" chosen at the code step is honoured here.
 
 | | |
 |---|---|
@@ -1837,6 +2041,10 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `access_token` | string or null | no |  | min length 1 |
 | `challenge_expires_in` | integer or null | no | Seconds the challenge stays valid (900 to enrol, else 300). | min 1 |
 | `challenge_token` | string or null | no | Send it to the next step's route; keep it in memory only. | min length 1 |
+| `device_expires_at` | string (date-time) or null | no | With `device_token`: when this browser stops being trusted (fixed; a use never moves it). |  |
+| `device_token` | string or null | no | ADR-0023, `signed_in` only: a new trusted-browser token for this email (after `trust_device`, or the next value of the one sent). Replace the stored one; the old value stops working. | min length 1 |
+| `device_token_invalid` | boolean or null | no | ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. On `/auth/google/complete` it means none of the sent tokens matched the signed-in account: forget only the entry stored for this `email`, and say nothing when there was none. |  |
+| `device_trust_days` | integer or null | no | ADR-0023: on the code steps, how many days the "Trust this browser" choice lasts (30, or 7 for a platform admin). Absent: do not offer the choice. | min 1; max 30 |
 | `expires_in` | integer or null | no | Access token lifetime in seconds. | min 1 |
 | `memberships` | array of MembershipOut or null | no |  |  |
 | `memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |
@@ -7342,7 +7550,7 @@ curl -X POST "http://localhost:8000/api/v1/admin/signup-requests/<request_id>/ap
 | 200 | Success. | `SignupRequestOut` |  |  |
 | 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
 | 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
-| 403 | Permission denied. | `ErrorEnvelope` |  | `PERMISSION_DENIED`, `MFA_STEP_UP_REQUIRED`, `MFA_ENROLLMENT_REQUIRED` |
+| 403 | Permission denied. | `ErrorEnvelope` |  | `PERMISSION_DENIED` |
 | 404 | Not found. | `ErrorEnvelope` |  | `NOT_FOUND` |
 | 409 | The request conflicts with the current state. | `ErrorEnvelope` |  | `INVALID_STATUS_TRANSITION` |
 | 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
@@ -7442,7 +7650,7 @@ curl -X POST "http://localhost:8000/api/v1/admin/signup-requests/<request_id>/re
 | 200 | Success. | `SignupRequestOut` |  |  |
 | 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
 | 401 | Authentication required. | `ErrorEnvelope` |  | `UNAUTHENTICATED` |
-| 403 | Permission denied. | `ErrorEnvelope` |  | `PERMISSION_DENIED`, `MFA_STEP_UP_REQUIRED`, `MFA_ENROLLMENT_REQUIRED` |
+| 403 | Permission denied. | `ErrorEnvelope` |  | `PERMISSION_DENIED` |
 | 404 | Not found. | `ErrorEnvelope` |  | `NOT_FOUND` |
 | 409 | The request conflicts with the current state. | `ErrorEnvelope` |  | `INVALID_STATUS_TRANSITION` |
 | 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
@@ -7685,7 +7893,7 @@ How to act on the retry class:
 | `IDENTIFIER_MISSING` | adapter | identifier_error | user_action |  |  |
 | `IMAGE_NON_COMPLIANT` | vision | media_error | user_action |  |  |
 | `IMPORT_FAILED` | summary |  | user_action |  | `products_bulk` |
-| `INTERNAL_ERROR` | system |  | system_failure |  | 72 operations |
+| `INTERNAL_ERROR` | system |  | system_failure |  | 75 operations |
 | `INVALID_STATUS_TRANSITION` | api |  | user_action |  | `admin_signup_requests_approve`, `admin_signup_requests_reject`, `imports_rows_retry`, `issues_dismiss`, `jobs_cancel`, `listings_generate`, `listings_refresh_status`, `listings_regenerate`, `listings_retry_fields` |
 | `JOB_TIMEOUT` | system |  | system_failure |  |  |
 | `JSON_INVALID` | ai |  | auto_retry |  |  |
@@ -7699,20 +7907,20 @@ How to act on the retry class:
 | `MARKETPLACE_UNAVAILABLE` | adapter | marketplace_technical | auto_retry |  | `marketplaces_callback` |
 | `MARKETPLACE_UNCONFIRMED` | adapter | marketplace_technical | auto_retry |  |  |
 | `MARKETPLACE_UNKNOWN_ERROR` | adapter | unknown | user_action |  | `marketplaces_callback` |
-| `METHOD_NOT_ALLOWED` | api |  | user_action |  | 72 operations |
-| `MFA_ENROLLMENT_REQUIRED` | api (2.0.0, DPP-1, ADR-0021) |  | user_action |  | `admin_signup_requests_approve`, `admin_signup_requests_reject`, `auth_google_unlink`, `auth_mfa_recovery_codes`, `marketplaces_accounts_revoke`, `marketplaces_connect`, `members_patch` |
-| `MFA_STEP_UP_REQUIRED` | api (2.0.0, DPP-1, ADR-0021) |  | user_action |  | `admin_signup_requests_approve`, `admin_signup_requests_reject`, `auth_google_unlink`, `auth_mfa_recovery_codes`, `auth_mfa_totp_confirm`, `auth_mfa_totp_enroll`, `marketplaces_accounts_revoke`, `marketplaces_connect`, `members_patch` |
+| `METHOD_NOT_ALLOWED` | api |  | user_action |  | 75 operations |
+| `MFA_ENROLLMENT_REQUIRED` | api (2.0.0, DPP-1, ADR-0021) |  | user_action |  | `auth_google_unlink`, `auth_mfa_recovery_codes`, `marketplaces_accounts_revoke`, `marketplaces_connect`, `members_patch` |
+| `MFA_STEP_UP_REQUIRED` | api (2.0.0, DPP-1, ADR-0021) |  | user_action |  | `auth_google_unlink`, `auth_mfa_recovery_codes`, `auth_mfa_totp_confirm`, `auth_mfa_totp_enroll`, `marketplaces_accounts_revoke`, `marketplaces_connect`, `members_patch` |
 | `MISSING_ATTRIBUTE` | rules | missing_data | user_action |  |  |
 | `MODEL_UNAVAILABLE` | ai |  | auto_retry |  |  |
-| `NOT_FOUND` | api |  | user_action |  | 30 operations |
+| `NOT_FOUND` | api |  | user_action |  | 31 operations |
 | `NOT_IMPLEMENTED` | api |  | system_failure |  | 16 operations |
 | `OAUTH_STATE_INVALID` | api |  | user_action |  | `auth_google_complete`, `auth_google_link`, `marketplaces_callback`, `marketplaces_connect_confirm`, `signup_google` |
 | `PATTERN_MISMATCH` | rules | content_error | ai_correct |  |  |
-| `PAYLOAD_TOO_LARGE` | api |  | user_action |  | 72 operations |
+| `PAYLOAD_TOO_LARGE` | api |  | user_action |  | 75 operations |
 | `PERMISSION_DENIED` | api |  | user_action |  | 27 operations |
 | `PRICE_ABOVE_MRP` | facts | invalid_value | user_action |  |  |
 | `PUBLISH_FAILED` | summary |  | user_action |  |  |
-| `RATE_LIMITED` | adapter | marketplace_technical | auto_retry |  | 72 operations |
+| `RATE_LIMITED` | adapter | marketplace_technical | auto_retry |  | 75 operations |
 | `REQUIRED_FIELD_MISSING` | schema | missing_data | user_action |  |  |
 | `RETRY_EXHAUSTED` | system |  | system_failure |  |  |
 | `SCHEMA_INVALID` | schema | content_error | ai_correct |  |  |
@@ -7724,10 +7932,10 @@ How to act on the retry class:
 | `SUBMISSION_NOT_APPLIED` | adapter | marketplace_technical | auto_retry |  |  |
 | `TIMEOUT` | ai |  | auto_retry |  |  |
 | `TOKEN_LIMIT` | ai |  | auto_retry |  |  |
-| `UNAUTHENTICATED` | api |  | user_action |  | 66 operations |
+| `UNAUTHENTICATED` | api |  | user_action |  | 69 operations |
 | `UNKNOWN_FACT_KEY` | facts | invalid_value | user_action |  | `products_create` |
 | `UNSUPPORTED_CLAIM` | rules | content_error | ai_correct |  |  |
-| `VALIDATION_FAILED` | summary |  | user_action |  | 72 operations |
+| `VALIDATION_FAILED` | summary |  | user_action |  | 75 operations |
 | `VALUE_NOT_ALLOWED` | rules | invalid_value | user_action |  |  |
 | `VARIANT_MATRIX_INCOMPLETE` | facts | variation_error | user_action |  |  |
 | `VARIATION_INVALID` | adapter | variation_error | user_action | rebuild_variation |  |

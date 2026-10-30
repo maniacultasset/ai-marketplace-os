@@ -118,6 +118,14 @@ characters, four classes, no name, a day's minimum age, 365 days' maximum, none 
 TOTP secrets are sealed under their own KMS key, `mfa-secret-key`, which only the api may open.
 Detail: BACKEND-ARCHITECTURE.md §9.2; staff unlock and MFA reset: `docs/runbooks/MFA-STAFF.md`.
 
+**Trusted browsers and a narrower step-up (ADR-0023, proposed).** After a correct TOTP code a user
+may trust the browser for 30 days (7 for platform admins): the browser keeps a random token, the
+server only its hash (`trusted_devices`, under forced RLS), and the next password or Google sign-in
+there skips the code when the code is the last thing missing. Each use rotates the token; a replay
+forgets the browser. The token's `amr` and `mfa_at` still name the real code, so a step-up (now 30
+minutes, on marketplace connect and revoke, team changes and security changes only) asks a real
+one. Users list and remove trusted browsers in Settings > Security.
+
 **Sign in and sign up with Google (ADR-0020, proposed; off by default).** A backend authorization
 code flow with PKCE, bound to the browser by a sessionStorage secret (no cookie), verifies Google's
 RS256 ID token (the one RS256 use) and then runs the same sign-in as a password: under

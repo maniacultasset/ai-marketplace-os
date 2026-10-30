@@ -99,6 +99,10 @@ DENY_KEYS: Final[frozenset[str]] = frozenset(
         "link_handle",
         "google_sub",
         "link_google_sub",
+        # ADR-0023: the trusted-browser tokens and their stored hashes
+        "device_token",
+        "device_tokens",
+        "prev_token_hash",
     }
 )
 DENY_SUFFIXES: Final[tuple[str, ...]] = (

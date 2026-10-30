@@ -464,10 +464,16 @@ async def peek_email(handle: str, binding: str, phase: Literal["handle", "link",
 
 
 async def complete(
-    handle: str, binding: str, *, ip: str | None, user_agent: str | None
+    handle: str,
+    binding: str,
+    *,
+    ip: str | None,
+    user_agent: str | None,
+    device_tokens: list[str] | None = None,
 ) -> Completed | Failure:
     """Raises `GoogleDisabled` or `FlowInvalid`; returns the outcome or the generic failure
-    (committed before the caller answers)."""
+    (committed before the caller answers). `device_tokens` (ADR-0023) are the browser's
+    trusted-browser tokens, read only on the `sign_in` outcome."""
     _enabled()
     async with identity_session() as session:
         flows = LoginFlowRepository(session)
@@ -512,7 +518,9 @@ async def complete(
             return Completed(
                 "link_required", identity.email, link=Link(identity.email, link_handle)
             )
-        result = await auth.sign_in_with_google(session, user, ip=ip, user_agent=user_agent)
+        result = await auth.sign_in_with_google(
+            session, user, ip=ip, user_agent=user_agent, device_tokens=device_tokens
+        )
         if isinstance(result, auth.Refusal) or result is None:
             reason = result.kind if isinstance(result, auth.Refusal) else "no_active_membership"
             await _failed(session, user.id, reason, ip)

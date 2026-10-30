@@ -180,7 +180,7 @@ def test_fresh_passes(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_stale_403_step_up(monkeypatch: pytest.MonkeyPatch) -> None:
-    claims = _claims(amr=["pwd", "otp"], age=601)
+    claims = _claims(amr=["pwd", "otp"], age=1801)  # ADR-0023: 30 minutes
     client = _guard_app(monkeypatch, enforcement="all", claims=claims, otp_only=False)
     assert _status(client) == (403, "MFA_STEP_UP_REQUIRED")
     pre_mfa = _guard_app(

@@ -546,6 +546,54 @@ async def test_google_session_step_up_never_claims_a_password(
     assert family == [(["otp"],)]
 
 
+async def test_google_trusted_browser_skips_only_the_code(
+    gapi: httpx.AsyncClient,
+    gw: GoogleWorld,
+    monkeypatch: pytest.MonkeyPatch,
+    clock: TotpClock,  # noqa: F811
+) -> None:
+    """ADR-0023: after a code with `trust_device` on the Google path, the next Google sign-in
+    that sends the browser's tokens skips the Kuinn code; the token never claims a password, and
+    another account's token in the list matches nothing."""
+    from tests.support.fake_google import sub_for
+
+    mfa_on(monkeypatch)
+    user = await enrol(gapi, gw.conn, OWNER, clock)
+    gw.conn.execute("UPDATE users SET google_sub = %s WHERE email = %s", [sub_for(OWNER), OWNER])
+    browser = GoogleBrowser(gapi, gw)
+    login = (await browser.sign_in(**{"as": OWNER, "hd": "acme.test"})).json()["login"]
+    assert login["status"] == "mfa_required" and login["device_trust_days"] == 30
+    trusted = await gapi.post(
+        LOGIN_MFA,
+        json={
+            "challenge_token": login["challenge_token"],
+            "code": clock.next_code(user.secret),
+            "trust_device": True,
+        },
+    )
+    assert trusted.status_code == 200, trusted.text
+    token = trusted.json()["device_token"]
+    assert _payload(trusted.json()["access_token"])["amr"] == ["otp"]
+
+    handle = await browser.handle(**{"as": OWNER, "hd": "acme.test"})
+    done = await gapi.post(
+        COMPLETE,
+        json={"handle": handle, "binding": browser.secret, "device_tokens": ["B" * 43, token]},
+    )
+    assert done.status_code == 200, done.text
+    signed = done.json()["login"]
+    assert signed["status"] == "signed_in" and signed["device_token"] not in (None, token)
+    assert _payload(signed["access_token"])["amr"] == ["otp"]  # never `pwd` for Google
+    assert [r[-1] for r in audit_rows(gw.conn, "auth.login")][-1] == "google_trusted_device"
+
+    handle = await browser.handle(**{"as": OWNER, "hd": "acme.test"})
+    repeated = await gapi.post(
+        COMPLETE,
+        json={"handle": handle, "binding": browser.secret, "device_tokens": [token, token]},
+    )
+    assert repeated.status_code == 422  # no repeats in the list
+
+
 # ---- existing accounts: link only after the password and the code (ADR-0020 §7) ----
 
 

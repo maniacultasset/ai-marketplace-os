@@ -167,8 +167,8 @@ def test_refresh_allowed_matrix(
     )
 
 
-@pytest.mark.parametrize(("age", "fresh"), [(599, True), (600, True), (601, False)])
-def test_step_up_fresh_599_600_601(age: int, fresh: bool) -> None:
+@pytest.mark.parametrize(("age", "fresh"), [(1799, True), (1800, True), (1801, False)])
+def test_step_up_fresh_1799_1800_1801(age: int, fresh: bool) -> None:
     mfa_at = int(NOW.timestamp()) - age
     assert sp.step_up_fresh(mfa_at, ["pwd", "otp"], NOW, otp_only=False) is fresh
     assert sp.step_up_fresh(mfa_at, ["pwd", "otp"], NOW, otp_only=True) is fresh
@@ -207,7 +207,7 @@ def test_constants_match_dpp() -> None:
         sp.CHALLENGE_MAX_ATTEMPTS,
         sp.STEP_UP_MAX_AGE_SECONDS,
         sp.REAUTH_MAX_AGE_DAYS,
-    ) == (10, 900, 300, 900, 5, 600, 7)
+    ) == (10, 900, 300, 900, 5, 1800, 7)
 
 
 def test_module_imports_no_db_or_web() -> None:
@@ -311,3 +311,120 @@ def test_linking_never_gets_grace() -> None:
 )
 def test_first_factor_of(proven: frozenset[str], first: str) -> None:
     assert sp.first_factor_of(proven) == first
+
+
+# ---- trusted browsers (ADR-0023) ----
+
+DEV = frozenset({"pwd", sp.DEVICE_PROOF})
+FED_DEV = frozenset({"fed", sp.DEVICE_PROOF})
+
+
+def test_device_proof_is_internal_only() -> None:
+    assert sp.DEVICE_PROOF == "dev"
+    assert sp.DEVICE_PROOF not in sp.SECOND_FACTORS
+
+
+@pytest.mark.parametrize("proven", [DEV, FED_DEV], ids=["pwd+dev", "fed+dev"])
+def test_device_stands_in_for_the_code(proven: frozenset[str]) -> None:
+    assert sp.next_step(facts(), proven=proven) == "signed_in"
+
+
+def test_device_never_satisfies_enrolment() -> None:
+    assert sp.next_step(facts(has_active_factor=False), proven=DEV) == "mfa_enrollment_required"
+    in_grace = facts(has_active_factor=False, grace_until=GRACE["future"])
+    # a device proof never turns a grace sign-in into anything else (no factor, no trust)
+    assert sp.next_step(in_grace, proven=DEV) == "signed_in"
+    assert sp.trust_usable(in_grace, proven=DEV) is False
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [{"password_must_change": True}, {"password_compliant": False}],
+    ids=["must_change", "noncompliant"],
+)
+def test_device_with_password_change_due_is_not_signed_in(overrides: dict[str, object]) -> None:
+    f = facts(**overrides)
+    assert sp.next_step(f, proven=DEV) == "password_change_required"
+    assert sp.trust_usable(f, proven=DEV) is False
+
+
+def test_trust_usable_only_when_the_code_is_the_last_thing_missing() -> None:
+    assert sp.trust_usable(facts(), proven=DEV) is True
+    assert sp.trust_usable(facts(), proven=FED_DEV) is True
+    assert sp.trust_usable(facts(enforcement="off"), proven=DEV) is False
+    assert sp.trust_usable(facts(linking=True), proven=DEV) is False
+    assert sp.trust_usable(facts(is_active=False), proven=DEV) is False
+
+
+@pytest.mark.parametrize(("admin", "days"), [(False, 30), (True, 7)])
+def test_trust_days(admin: bool, days: int) -> None:
+    assert sp.trust_days(is_platform_admin=admin) == days
+
+
+def test_trust_constants() -> None:
+    assert (sp.TRUST_DAYS_BRAND, sp.TRUST_DAYS_ADMIN, sp.TRUST_MAX_DEVICES) == (30, 7, 10)
+
+
+OLD_CODE = NOW - timedelta(days=20)
+
+
+@pytest.mark.parametrize(
+    ("admin", "mfa_at", "device_auth_at", "device_live", "expected"),
+    [
+        # a device session renews within 7 days of its sign-in while the device is live
+        (False, OLD_CODE, NOW - timedelta(days=6, hours=23), True, True),
+        (False, OLD_CODE, NOW - timedelta(days=7), True, False),
+        (False, OLD_CODE, NOW - timedelta(days=1), False, False),  # removed or expired
+        (True, OLD_CODE, NOW - timedelta(days=1), True, True),
+        (True, OLD_CODE, NOW - timedelta(days=1), False, False),
+        # a step-up after the device sign-in: the normal rule from the fresh code
+        (False, NOW - timedelta(days=1), NOW - timedelta(days=2), False, True),
+        (False, NOW - timedelta(days=8), NOW - timedelta(days=9), True, False),
+        # the code that created the trust is the session's own (mfa_at == device_auth_at)
+        (False, NOW - timedelta(days=1), NOW - timedelta(days=1), False, True),
+        # no device: unchanged
+        (False, NOW - timedelta(days=1), None, False, True),
+        (False, OLD_CODE, None, True, False),
+    ],
+)
+def test_refresh_allowed_device_session(
+    admin: bool,
+    mfa_at: datetime,
+    device_auth_at: datetime | None,
+    device_live: bool,
+    expected: bool,
+) -> None:
+    assert (
+        sp.refresh_allowed(
+            enforcement="all",
+            grace_until=None,
+            is_platform_admin=admin,
+            mfa_at=mfa_at,
+            now=NOW,
+            device_auth_at=device_auth_at,
+            device_live=device_live,
+        )
+        is expected
+    )
+
+
+def test_refresh_allowed_device_session_off_and_grace() -> None:
+    old = NOW - timedelta(days=30)
+    assert sp.refresh_allowed(
+        enforcement="off",
+        grace_until=None,
+        is_platform_admin=False,
+        mfa_at=None,
+        now=NOW,
+        device_auth_at=old,
+        device_live=False,
+    )
+    assert sp.refresh_allowed(
+        enforcement="all",
+        grace_until=GRACE["future"],
+        is_platform_admin=False,
+        mfa_at=None,
+        now=NOW,
+        device_auth_at=old,
+        device_live=False,
+    )

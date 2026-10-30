@@ -200,6 +200,8 @@ class ChallengeRow:
     attempts: int
     # 0012 (ADR-0020): a Google account to link when this sign-in finishes
     link_google_sub: str | None = field(default=None, repr=False)
+    # 0013 (ADR-0023): "trust this browser" chosen at the code step
+    trust_device: bool = False
 
 
 class ChallengeRepository:
@@ -218,6 +220,7 @@ class ChallengeRepository:
         user_agent: str | None,
         mfa_at: datetime | None = None,
         link_google_sub: str | None = None,
+        trust_device: bool = False,
     ) -> uuid.UUID:
         """A new challenge; the user's expired or consumed ones are deleted first (needs
         `app.user_id` = `user_id`). `mfa_at` is set only when `amr` holds `otp` or `rc`."""
@@ -242,6 +245,7 @@ class ChallengeRepository:
                 user_agent=user_agent,
                 mfa_at=mfa_at,
                 link_google_sub=link_google_sub,
+                trust_device=True if trust_device else None,
             )
         )
         return challenge_id
@@ -268,6 +272,7 @@ class ChallengeRepository:
                 MfaChallenge.expires_at,
                 MfaChallenge.attempts,
                 MfaChallenge.link_google_sub,
+                MfaChallenge.trust_device,
             )
             .where(
                 MfaChallenge.challenge_hash == challenge_hash, MfaChallenge.consumed_at.is_(None)
@@ -278,7 +283,15 @@ class ChallengeRepository:
         if row is None:
             return None
         return ChallengeRow(
-            row[0], row[1], row[2], list(row[3]), row[4], row[5], int(row[6]), row[7]
+            row[0],
+            row[1],
+            row[2],
+            list(row[3]),
+            row[4],
+            row[5],
+            int(row[6]),
+            row[7],
+            row[8] is True,
         )
 
     async def fail(self, challenge_id: uuid.UUID) -> int:

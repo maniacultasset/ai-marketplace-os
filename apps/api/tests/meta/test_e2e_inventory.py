@@ -27,6 +27,7 @@ FLOWS: dict[str, tuple[str, ...]] = {
     "rules": ("rules.sh",),
     "jobs": ("jobs.sh",),
     "google": ("google_signin.sh",),  # ADR-0020
+    "trusted_devices": ("trusted_devices.sh",),  # ADR-0023
 }
 # the steps that may read the database (`psql` through the compose postgres), each with its reason;
 # every one is read-only (no write SQL), names as built
@@ -135,6 +136,16 @@ def test_every_flow_has_e2e_script(repo_root: Path) -> None:
         "foreign_binding",
     ):
         assert step in google, step
+    _, trusted = _split(scripts["trusted_devices.sh"])
+    for step in (
+        "login_with_token_off",
+        "list_empty_200",
+        "remove_unknown_404",
+        "sign_out_all_204",
+        "other_session_ended_401",
+        "this_session_kept_200",
+    ):
+        assert step in trusted, step
     _, jobs = _split(scripts["jobs.sh"])
     for step in ("poll_queued", "cancel_200", "cancel_again_409", "bharat_get_404"):
         assert step in jobs, step
