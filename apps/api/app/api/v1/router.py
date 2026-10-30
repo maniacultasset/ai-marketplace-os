@@ -12,6 +12,7 @@ from app.api.v1.routers import (
     analytics,
     auth,
     brand,
+    google,
     images,
     imports,
     issues,
@@ -29,6 +30,7 @@ from app.api.v1.routers import (
 router = APIRouter()
 for module in (
     auth,
+    google,
     members,
     tenants,
     brand,

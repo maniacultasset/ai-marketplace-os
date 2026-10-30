@@ -57,6 +57,8 @@ TOKEN_OPS = frozenset(
         # DPP-1 (ADR-0021): a `LoginResult` with `status=signed_in` carries the pair at the top
         "auth_login_mfa",
         "auth_password_expired",
+        # ADR-0020: the Google link step ends like a password login
+        "auth_google_link",
     }
 )
 _TOP: dict[str, bool] = {"access_token": True, "refresh_token": True}
@@ -85,6 +87,19 @@ SECRET_KEYS_BY_OP: dict[str, dict[str, bool]] = {
     "auth_mfa_recovery_codes": {"recovery_codes": True},
     # DPP-1 (ADR-0021): a step-up answers a fresh access token only (the refresh token is kept)
     "auth_mfa_step_up": {"access_token": True},
+    # ADR-0020: the Google step nests the `LoginResult` under `login` and hands out the single-use
+    # sign-up or link handle; the link step answers a `LoginResult`
+    "auth_google_complete": {
+        "access_token": False,
+        "refresh_token": False,
+        "challenge_token": False,
+        "details_handle": False,
+        "link_handle": False,
+        "email": False,  # the person's own Google email, shown back to them
+    },
+    "auth_google_link": _LOGIN_RESULT_TOP,
+    # ADR-0020: a boolean (no password on a Google-only account), not a secret
+    "auth_security": {"has_password": True},
 }
 
 
@@ -236,8 +251,18 @@ async def test_api3_no_response_holds_denied_key(
     assert response.status_code < 500, (op.op_id, response.text)
     if not response.headers.get("content-type", "").startswith("application/json"):
         return
-    for key, _ in walk(response.json()):
-        assert not denied(key) or allowed_in(op.op_id, key, top_level=False), (op.op_id, key)
+    body = response.json()
+    top = body.items() if isinstance(body, dict) else ()
+    for key, inner in top:
+        assert not denied(key) or allowed_in(op.op_id, key, top_level=True), (op.op_id, key)
+        for nested, _ in walk(inner):
+            assert not denied(nested) or allowed_in(op.op_id, nested, top_level=False), (
+                op.op_id,
+                nested,
+            )
+    if not isinstance(body, dict):
+        for key, _ in walk(body):
+            assert not denied(key) or allowed_in(op.op_id, key, top_level=False), (op.op_id, key)
 
 
 async def test_api3_token_keys_only_top_level_on_auth_login_refresh(

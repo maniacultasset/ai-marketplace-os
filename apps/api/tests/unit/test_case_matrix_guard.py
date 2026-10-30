@@ -105,6 +105,13 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "auth_mfa_recovery_codes",
         "auth_mfa_step_up",
         "auth_password_change",
+        # ADR-0020
+        "auth_google_start",
+        "auth_google_callback",
+        "auth_google_complete",
+        "auth_google_link",
+        "auth_google_unlink",
+        "signup_google",
     }
 )
 

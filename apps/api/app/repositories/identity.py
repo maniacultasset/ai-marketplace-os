@@ -64,6 +64,7 @@ __all__ = [
     "UserRepository",
     "UserRow",
     "consume_oauth_state",
+    "pending_signup_count",
 ]
 
 LIVE_TENANT_STATUSES: Final = ("trial", "active")
@@ -800,6 +801,13 @@ class SignupRepository:
             staff_email=staff_email,
             request_id=request_id,
         )
+
+
+async def pending_signup_count(session: AsyncSession) -> int:
+    """Sign-up requests waiting for a platform admin. Cross-user: run it only in
+    `platform_scope()` (the daily maintenance run's backlog warning, ADR-0020)."""
+    stmt = identity_scope(select(func.count()).where(SignupRequest.status == "pending"))
+    return int((await session.execute(stmt)).scalar_one())
 
 
 @dataclass(frozen=True, slots=True)

@@ -31,6 +31,12 @@ Q7: dict[str, str] = {
     "auth_mfa_recovery_codes": "tenant:read",
     "auth_mfa_step_up": "tenant:read",
     "auth_password_change": "tenant:read",
+    # ADR-0020: Google sign-in (the JSON steps are public: the handle is the credential)
+    "auth_google_start": PUBLIC,
+    "auth_google_callback": PUBLIC,
+    "auth_google_complete": PUBLIC,
+    "auth_google_link": PUBLIC,
+    "auth_google_unlink": "tenant:read",
     "tenants_me": "tenant:read",
     "tenants_me_update": "settings:manage",
     "brand_documents_upload": "settings:manage",
@@ -79,6 +85,7 @@ Q7: dict[str, str] = {
     # ADR-0019: the public sign-up and the platform admin's queue (no role in the matrix)
     "signup_create": PUBLIC,
     "signup_status": PUBLIC,
+    "signup_google": PUBLIC,
     "admin_signup_requests_list": PLATFORM_ADMIN,
     "admin_signup_requests_approve": PLATFORM_ADMIN,
     "admin_signup_requests_reject": PLATFORM_ADMIN,
@@ -107,7 +114,7 @@ def _operation(spec: dict[str, Any], op_id: str) -> dict[str, Any]:
 
 def test_ops_are_the_q7_list() -> None:
     # S10 38 + S15 two + S16 three + S20 preview + S19 four + S21 two + ADR-0019 five
-    assert len(OPS) == 65
+    assert len(OPS) == 71
     assert set(OPS) == set(Q7)
 
 
@@ -145,7 +152,14 @@ def test_restricted_ops_declare_403(op_id: str) -> None:
 
 
 # DPP-1: every role may call them, but a step-up refusal is a 403 of its own (no PERMISSION_DENIED)
-MFA_403 = frozenset({"auth_mfa_totp_enroll", "auth_mfa_totp_confirm", "auth_mfa_recovery_codes"})
+MFA_403 = frozenset(
+    {
+        "auth_mfa_totp_enroll",
+        "auth_mfa_totp_confirm",
+        "auth_mfa_recovery_codes",
+        "auth_google_unlink",  # ADR-0020: a step-up first
+    }
+)
 
 
 @pytest.mark.parametrize(

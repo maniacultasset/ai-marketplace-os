@@ -224,6 +224,16 @@ class SecurityOut(WireModel):
     mfa_grace_until: datetime | None = None
     password_changed_at: datetime | None = None
     password_expires_at: datetime | None = None
+    has_password: bool | None = Field(
+        default=None,
+        description='False for an account created with Google (ADR-0020): hide "Change '
+        'password" and the password dates.',
+    )
+    google_linked: bool | None = Field(
+        default=None,
+        description="True when a Google account can sign in to this account (ADR-0020); "
+        "`POST /auth/google/unlink` removes it.",
+    )
 
 
 class MeOut(WireModel):

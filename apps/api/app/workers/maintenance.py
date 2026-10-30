@@ -7,6 +7,8 @@ in this order, each in its own transactions:
 
 1. `prune_oauth_states`: expired OAuth state and pending rows (sealed pending tokens included).
 2. `prune_idempotency_keys`: expired HTTP idempotency keys.
+   `prune_login_flows` (ADR-0020): expired Google sign-in flows, and a warning when more than
+   200 sign-up requests are pending.
 3. `retention_daily`: import rows, imports and job chains past their cutoffs, old refresh tokens,
    closed invitations, inactive brand chunks, then the image orphan sweep. The queue's own entries
    are the worker's (no queue app here).
@@ -37,6 +39,7 @@ Step = Callable[[], Awaitable[Any]]
 STEPS: Final[tuple[tuple[str, Step], ...]] = (
     ("oauth_states", periodic.prune_oauth_states),
     ("idempotency_keys", periodic.prune_idempotency_keys),
+    ("login_flows", periodic.prune_login_flows),
     ("retention", periodic.retention_daily),
     ("account_purge", periodic.purge_disconnected_accounts),
 )

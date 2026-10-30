@@ -27,6 +27,15 @@ REQUEST_ID: Final = "req-example-0001"
 ETAG_EXAMPLE: Final = '"5f0c7c1e-8d2b-5a4e-9b6f-3c2d1e0f9a8b"'
 DOCUMENT: Final = "0b1c2d3e-0000-4000-8000-000000000901"
 CALLBACK_LOCATION: Final = "/marketplaces/connected?pending=pnd_8f3a2c1e9b7d4f60a1c2"
+# ADR-0020: Google sign-in's two redirects (no real client id, state or handle)
+GOOGLE_AUTHORIZE_EXAMPLE: Final = (
+    "https://accounts.google.com/o/oauth2/v2/auth?client_id=example.apps.googleusercontent.com"
+    "&redirect_uri=https%3A%2F%2Fkuinn.in%2Fapi%2Fv1%2Fauth%2Fgoogle%2Fcallback"
+    "&response_type=code&scope=openid+email+profile&state=st_example&nonce=nn_example"
+    "&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256"
+    "&prompt=select_account"
+)
+GOOGLE_CALLBACK_LOCATION: Final = "https://kuinn.in/auth/google?handle=gh_example_opaque_value"
 ISSUE: Final = "0b1c2d3e-0000-4000-8000-000000001001"
 TASK: Final = "0b1c2d3e-0000-4000-8000-000000001101"
 AUDIT_EVENT: Final = "0b1c2d3e-0000-4000-8000-000000001201"
@@ -361,6 +370,27 @@ _SIGNUP_REQUEST: Final = {
     "tenant_id": None,
     "created_at": T0,
     "decided_at": None,
+    "verified_via": None,
+}
+_MFA_REQUIRED: Final = {
+    "status": "mfa_required",
+    "access_token": None,
+    "refresh_token": None,
+    "token_type": None,
+    "expires_in": None,
+    "memberships": None,
+    "challenge_token": "ch_example_opaque_value",
+    "challenge_expires_in": 300,
+    "mfa_grace_until": None,
+}
+_GOOGLE_SIGNUP_STATUS: Final = {
+    "request_id": SIGNUP,
+    "brand_name": "Acme Naturals",
+    "status": "pending",
+    "reason": None,
+    "tenant_id": None,
+    "created_at": T0,
+    "decided_at": None,
 }
 
 SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
@@ -395,6 +425,8 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "mfa_grace_until": None,
             "password_changed_at": T0,
             "password_expires_at": "2027-10-05T09:30:00Z",
+            "has_password": True,
+            "google_linked": False,
         },
         "auth_mfa_recovery_codes": {"recovery_codes": _RECOVERY_CODES},
         "auth_mfa_step_up": {
@@ -403,6 +435,26 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "expires_in": 1800,
         },
         "auth_password_change": None,
+        "auth_google_start": None,
+        "auth_google_callback": None,
+        "auth_google_complete": {
+            "outcome": "needs_details",
+            "login": None,
+            "signup": None,
+            "details": {
+                "email": "asha@acmenaturals.example",
+                "email_verified": True,
+                "owner_name": "Asha Rao",
+                "given_name": "Asha",
+                "family_name": "Rao",
+                "suggested_brand_name": "Acmenaturals",
+                "details_handle": "gd_example_opaque_value",
+                "details_expires_in": 900,
+            },
+            "link": None,
+        },
+        "auth_google_link": _MFA_REQUIRED,
+        "auth_google_unlink": None,
         "auth_refresh": _TOKENS,
         "auth_logout": None,
         "auth_me": {
@@ -658,6 +710,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "created_at": T0,
             "decided_at": None,
         },
+        "signup_google": _GOOGLE_SIGNUP_STATUS,
         "admin_signup_requests_list": _page([_SIGNUP_REQUEST]),
         "admin_signup_requests_approve": {
             **_SIGNUP_REQUEST,

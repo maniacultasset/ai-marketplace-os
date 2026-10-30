@@ -498,6 +498,37 @@ async def login(
     return result
 
 
+# ---- Google sign-in's first step (ADR-0020) ----
+
+
+async def sign_in_with_google(
+    session: Any, user: UserRow, *, ip: str | None, user_agent: str | None
+) -> SignInResult | Refusal | None:
+    """A Google identity already linked to `user` (the caller resolved and decided it, and set
+    `app.user_id`): the per-user gate, then the shared `_sign_in()` with `fed` as the only
+    proven method, so under `all` the next step is always the Kuinn code or the enrolment. A
+    locked or busy account is a `Refusal` (nothing counted: a Google sign-in is not a guess at a
+    Kuinn secret); None for an inactive user or no live membership."""
+    state = await _gate(session, user.id, ip=ip)
+    if isinstance(state, AuthBusy):
+        return Refusal("busy")
+    if state is None:
+        return None
+    if is_locked(state.locked_until, _now()):
+        return Refusal("locked")
+    memberships = await MembershipRepository(session).list_active_for_user(user.id)
+    return await _sign_in(
+        session,
+        user,
+        memberships=memberships,
+        proven=frozenset({"fed"}),
+        mfa_at=None,
+        compliant=None,
+        ip=ip,
+        user_agent=user_agent,
+    )
+
+
 # ---- the challenge steps (DPP-1: /auth/login/mfa, /auth/login/mfa/{enroll,confirm},
 # /auth/password/expired) ----
 
@@ -827,9 +858,11 @@ async def regenerate_codes(principal: Principal, *, ip: str | None) -> list[str]
 
 
 def _session_amr(claims: JWTClaims, method: str) -> list[AuthMethod]:
-    """The session's own proven methods plus the fresh code (ADR-0020): a Google session's
-    step-up never claims a password it never proved."""
-    return _ordered(frozenset(claims.amr or ()) | {method})
+    """The fresh code's method, plus `pwd` only when the session proved a password (ADR-0020):
+    a Google session's step-up never claims a password. The older code methods are dropped, so
+    `amr` keeps naming the method proven at `mfa_at` (the TOTP-only step-up reads it)."""
+    first = frozenset({"pwd"}) & frozenset(claims.amr or ())
+    return _ordered(first | {method})
 
 
 @dataclass(frozen=True, slots=True)
@@ -1257,6 +1290,7 @@ __all__ = [
     "refresh",
     "regenerate_codes",
     "security",
+    "sign_in_with_google",
     "step_up",
     "switch_tenant",
     "totp_confirm",

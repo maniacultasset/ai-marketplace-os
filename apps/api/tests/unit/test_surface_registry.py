@@ -19,7 +19,8 @@ from mkos_schemas.codes import ErrorCode
 
 # The frozen list (PLAN D1): 35 operations at S3 plus S10's switch and members (38), no
 # dead-letter path. Later steps add ops as
-# "merged literal + N" (S10 38, S15 40, S16 43, S19 47, S20 48, S21 50, ADR-0019 55, DPP-1 65).
+# "merged literal + N" (S10 38, S15 40, S16 43, S19 47, S20 48, S21 50, ADR-0019 55, DPP-1 65,
+# ADR-0020 71).
 FROZEN: tuple[tuple[str, str, str], ...] = (
     ("auth_login", "POST", "/auth/login"),
     ("auth_refresh", "POST", "/auth/refresh"),
@@ -37,6 +38,12 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("auth_mfa_recovery_codes", "POST", "/auth/mfa/recovery-codes"),
     ("auth_mfa_step_up", "POST", "/auth/mfa/step-up"),
     ("auth_password_change", "POST", "/auth/password"),
+    # ADR-0020: Google sign-in (65 + 6, with signup_google below)
+    ("auth_google_start", "GET", "/auth/google/start"),
+    ("auth_google_callback", "GET", "/auth/google/callback"),
+    ("auth_google_complete", "POST", "/auth/google/complete"),
+    ("auth_google_link", "POST", "/auth/google/link"),
+    ("auth_google_unlink", "POST", "/auth/google/unlink"),
     ("members_list", "GET", "/members"),
     ("members_patch", "PATCH", "/members/{user_id}"),
     ("tenants_me", "GET", "/tenants/me"),
@@ -89,6 +96,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     # ADR-0019: self-serve sign-up and the platform admin's queue (50 + 5)
     ("signup_create", "POST", "/signup"),
     ("signup_status", "POST", "/signup/status"),
+    ("signup_google", "POST", "/signup/google"),
     ("admin_signup_requests_list", "GET", "/admin/signup-requests"),
     ("admin_signup_requests_approve", "POST", "/admin/signup-requests/{request_id}/approve"),
     ("admin_signup_requests_reject", "POST", "/admin/signup-requests/{request_id}/reject"),
@@ -98,7 +106,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 65
+    assert len(FROZEN) == 71
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -263,6 +271,12 @@ def test_public_ops() -> None:
         "auth_login_mfa_enroll",
         "auth_login_mfa_confirm",
         "auth_password_expired",
+        # ADR-0020: Google sign-in (the handle and the binding are checked in the service)
+        "auth_google_start",
+        "auth_google_callback",
+        "auth_google_complete",
+        "auth_google_link",
+        "signup_google",
     }
 
 
@@ -283,6 +297,7 @@ STEP_UP = {
     "marketplaces_accounts_revoke": "otp",
     "admin_signup_requests_approve": "otp",
     "admin_signup_requests_reject": "otp",
+    "auth_google_unlink": "any",  # ADR-0020
 }
 
 
@@ -297,6 +312,27 @@ def test_step_up_ops_declare_403_codes() -> None:
     for op in OPS.values():
         if op.op_id not in STEP_UP:
             assert E.MFA_ENROLLMENT_REQUIRED not in op.error_codes.get(403, ()), op.op_id
+
+
+# ADR-0020: the Google JSON steps (401 for a bad handle or the generic failure, 501 when off)
+GOOGLE_JSON = {"auth_google_complete", "auth_google_link", "signup_google"}
+
+
+def test_google_ops_declare_their_codes() -> None:
+    for op_id in GOOGLE_JSON:
+        codes = OPS[op_id].error_codes
+        assert codes[401] == (E.UNAUTHENTICATED, E.OAUTH_STATE_INVALID), op_id
+        assert codes[501] == (E.NOT_IMPLEMENTED,), op_id
+        assert codes[422] == (E.VALIDATION_FAILED,), op_id
+    for op_id in ("auth_google_start", "auth_google_callback"):
+        op = OPS[op_id]
+        assert op.public and op.response_model is None and op.method == "GET", op_id
+        assert 401 not in op.error_codes and 501 not in op.error_codes, op_id
+    assert OPS["auth_google_start"].status == 302
+    assert OPS["auth_google_callback"].status == 303
+    unlink = OPS["auth_google_unlink"]
+    assert unlink.status == 204 and unlink.step_up == "any" and not unlink.public
+    assert unlink.error_codes[422] == (E.VALIDATION_FAILED,)
 
 
 def test_mfa_ops_declare_401_422_501() -> None:
@@ -329,8 +365,8 @@ def test_login_response_is_login_result() -> None:
     assert OPS["auth_switch_tenant"].response_model is TokenResponse
 
 
-def test_65_operations() -> None:
-    assert len(OPS) == 65
+def test_71_operations() -> None:
+    assert len(OPS) == 71
 
 
 def test_error_codes_per_d2() -> None:
@@ -368,7 +404,9 @@ def test_error_codes_per_d2() -> None:
         c = cases(op)
         assert codes[429] == (E.RATE_LIMITED,)
         public_401 = {"auth_login", "auth_refresh", "signup_status"} | MFA_PUBLIC_401
-        if "missing_auth" in c or op.op_id in public_401:
+        if op.op_id in GOOGLE_JSON:
+            assert codes[401] == (E.UNAUTHENTICATED, E.OAUTH_STATE_INVALID), op.op_id
+        elif "missing_auth" in c or op.op_id in public_401:
             assert codes[401] == (E.UNAUTHENTICATED,), op.op_id
         else:
             assert 401 not in codes, op.op_id
@@ -400,7 +438,7 @@ def test_error_codes_per_d2() -> None:
         # (audit GAP2-CONTRACT-DOCS-CONFORMANCE-5; it used to pin 413 to `has_body` ops only).
         assert codes[413] == (E.PAYLOAD_TOO_LARGE,), op.op_id
         assert codes[400] == (E.VALIDATION_FAILED,), op.op_id
-        if "validation" in c:
+        if "validation" in c or op.op_id == "auth_google_unlink":
             extra_422 = {
                 "products_create": (E.UNKNOWN_FACT_KEY,),
                 "products_bulk": (E.IMPORT_FAILED,),  # S13b: the file-level import report
@@ -414,7 +452,7 @@ def test_error_codes_per_d2() -> None:
 def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
-        "ADR-0019", "DPP-1",
+        "ADR-0019", "DPP-1", "ADR-0020",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id

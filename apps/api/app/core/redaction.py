@@ -89,6 +89,16 @@ DENY_KEYS: Final[frozenset[str]] = frozenset(
         "challenge_hash",
         "current_password",
         "new_password",
+        # ADR-0020: Google sign-in's single-use handles, the browser binding and the identity
+        "binding",
+        "binding_hash",
+        "flow_hash",
+        "nonce",
+        "nonce_hash",
+        "details_handle",
+        "link_handle",
+        "google_sub",
+        "link_google_sub",
     }
 )
 DENY_SUFFIXES: Final[tuple[str, ...]] = (
@@ -111,6 +121,8 @@ DENY_SUFFIXES: Final[tuple[str, ...]] = (
 QUERY_ONLY_DENY_KEYS: Final[frozenset[str]] = frozenset(
     # `pending`: the OAuth callback's opaque confirm handle (S15), in its 303 Location
     {"code", "spapi_oauth_code", "oauth_code", "state", "mws_auth_token", "pending"}
+    # ADR-0020: the Google callback's `handle` (in its 303 Location) and `start`'s binding hash
+    | {"handle", "b"}
     # S17b: a signed object URL (S3 V4 / GCS V4) carries its signature and credential scope
     | {
         "x_amz_signature",

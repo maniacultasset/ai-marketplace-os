@@ -43,6 +43,7 @@ def _out(row: signup.SignupRow) -> SignupRequestOut:
             "tenant_id": row.created_tenant_id,
             "created_at": row.created_at,
             "decided_at": row.decided_at,
+            "verified_via": row.verified_via,
         }
     )
 

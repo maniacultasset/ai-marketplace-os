@@ -260,6 +260,8 @@ async def auth_security(principal: Caller) -> SecurityOut:
             "mfa_grace_until": found.mfa_grace_until,
             "password_changed_at": found.password_changed_at,
             "password_expires_at": found.password_expires_at,
+            "has_password": found.has_password,
+            "google_linked": found.google_linked,
         }
     )
 

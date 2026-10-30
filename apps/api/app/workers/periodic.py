@@ -81,6 +81,7 @@ from app.core.request_context import new_request_id, request_context
 from app.db.session import platform_scope, unit_of_work
 from app.repositories import account_purge, rate_limits, retention
 from app.repositories.idempotency import IdempotencyKeyRepository
+from app.repositories.identity import pending_signup_count
 from app.repositories.images import ImageRepository
 from app.repositories.jobs import (
     LOST,
@@ -92,8 +93,10 @@ from app.repositories.jobs import (
     retire_doing,
     tenants_with_queued,
 )
+from app.repositories.login_flows import LoginFlowRepository
 from app.repositories.marketplace_accounts import due_accounts
 from app.repositories.oauth_states import OAuthStateRepository, tenants_with_expired
+from app.repositories.transactions import identity_session
 from app.services.image_keys import parse_image_key
 from app.services.job_hooks import run_terminal_hook
 from app.workers import rollup
@@ -317,6 +320,27 @@ async def prune_oauth_states() -> int:
         async with unit_of_work(tenant_id) as session:
             total += await OAuthStateRepository(session, tenant_id).prune_expired()
     log.info("periodic.oauth_states_pruned", rows=total)
+    return total
+
+
+# ADR-0020: a sign-up backlog worth a look (an admin approves each one)
+PENDING_SIGNUPS_WARN: Final = 200
+
+
+async def prune_login_flows() -> int:
+    """ADR-0020: delete the expired Google sign-in flows (a row is deleted on use, so only the
+    abandoned ones are left), then warn (log and Sentry) when more than 200 sign-up requests
+    wait for a platform admin. Counts only."""
+    import sentry_sdk
+
+    async with identity_session() as session:
+        total = await LoginFlowRepository(session).prune()
+    async with platform_scope() as session:
+        pending = await pending_signup_count(session)
+    log.info("periodic.login_flows_pruned", rows=total)
+    if pending > PENDING_SIGNUPS_WARN:
+        log.warning("signup.pending_backlog", count=pending)
+        sentry_sdk.capture_message("signup.pending_backlog", level="warning")
     return total
 
 
