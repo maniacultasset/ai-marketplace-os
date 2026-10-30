@@ -1057,8 +1057,9 @@ def test_google_on_binds_the_secret_and_boots(
     _boot(monkeypatch, env, secrets)
     from app.core.config import get_settings
 
+    # derived from DASHBOARD_BASE_URL, so the callback host always matches the dashboard
     assert get_settings().google_redirect_uri == (
-        "https://kuinn-web.vercel.app/api/v1/auth/google/callback"
+        f"{env['DASHBOARD_BASE_URL']}/api/v1/auth/google/callback"
     )
     setup = _run(toolkit, tmp_path, "prod", "setup", "--dry-run", "--sha", SHA).stdout
     assert "GOOGLE_OAUTH_CLIENT_SECRET" in _secret_grants(setup, "aimos-api")
