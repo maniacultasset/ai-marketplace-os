@@ -44,6 +44,8 @@ POLICIES: dict[str, frozenset[str]] = {
     "login_flows": frozenset(
         {"lf_hash_select", "lf_hash_delete", "lf_insert", "t_platform", "t_migrator"}
     ),
+    # 0013 (ADR-0023): trusted browsers have no tenant_id; own rows through app.user_id
+    "trusted_devices": frozenset({"td_self", "t_platform", "t_migrator"}),
 }
 MFA_TABLES = frozenset(
     {"user_mfa_factors", "user_recovery_codes", "mfa_challenges", "user_password_history"}
@@ -95,7 +97,9 @@ def _policies(conn: Conn) -> dict[str, dict[str, tuple[str, frozenset[str]]]]:
 
 def test_rls_forced_everywhere(db: Conn) -> None:
     tables = _tables(db)
-    expected = _tenant_tables(db) | {"users", "tenants", "login_flows"} | MFA_TABLES
+    expected = (
+        _tenant_tables(db) | {"users", "tenants", "login_flows", "trusted_devices"} | MFA_TABLES
+    )
     assert len(expected) > 30, "is the database at head?"
     policies = _policies(db)
     for table in sorted(expected):

@@ -13,8 +13,9 @@ from typing import Annotated, Literal
 
 from mkos_schemas.base import NonBlankStr, StrictModel, WireModel
 from pydantic import Field, SecretStr, model_validator
+from pydantic_core import PydanticCustomError
 
-from app.api.v1.schemas.auth import Email, LoginResult
+from app.api.v1.schemas.auth import DeviceToken, Email, LoginResult
 from app.api.v1.schemas.signup import Phone, SignupStatusOut, Website
 from app.api.v1.schemas.tenants import ProfileName
 
@@ -37,6 +38,19 @@ FlowHandle = Annotated[
 class GoogleCompleteRequest(StrictModel):
     handle: FlowHandle = Field(description="The `handle` of the `/auth/google?handle=` redirect.")
     binding: Binding
+    device_tokens: Annotated[list[DeviceToken], Field(max_length=5)] | None = Field(
+        default=None,
+        description="ADR-0023: every trusted-browser token this browser holds (at most 5, no "
+        "repeats; the account is not known yet). Only the signed-in account's own can match; "
+        "it skips the Kuinn code step, never Google.",
+    )
+
+    @model_validator(mode="after")
+    def _distinct_tokens(self) -> GoogleCompleteRequest:
+        values = [t.get_secret_value() for t in self.device_tokens or []]
+        if len(set(values)) != len(values):
+            raise PydanticCustomError("mkos_invalid", "device_tokens must not repeat.")
+        return self
 
 
 class GoogleLinkRequest(StrictModel):

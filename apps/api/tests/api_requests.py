@@ -119,8 +119,9 @@ def _path(op: Operation, value: str = ID) -> str:
     path = op.path
     if op.path_id:
         path = path.replace("{" + op.path_id + "}", value)
-    # ADR-0019: a platform row's id, not a tenant-owned one (so no `path_id`)
-    path = path.replace("{request_id}", value)
+    # ADR-0019: a platform row's id, not a tenant-owned one (so no `path_id`); ADR-0023: a
+    # trusted browser is the user's own, not the tenant's
+    path = path.replace("{request_id}", value).replace("{device_id}", value)
     return PREFIX + path.replace("{marketplace}", "amazon")
 
 
@@ -143,7 +144,7 @@ def valid_request(op: Operation) -> Call:
 def invalid_request(op: Operation) -> Call:
     """Break one input. Raises when an op has no input (it then declares no 422)."""
     call = valid_request(op)
-    if op.path_id or "{request_id}" in op.path:
+    if op.path_id or "{request_id}" in op.path or "{device_id}" in op.path:
         call.url = _path(op, "not-a-uuid")
     elif op.op_id == "marketplaces_callback":
         call.params = {"code": "auth-code"}

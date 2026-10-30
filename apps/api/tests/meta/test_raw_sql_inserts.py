@@ -29,6 +29,9 @@ ALLOWED = {
     # 0011's body.
     "apps/api/alembic/sql/0012/01_erasure.up.sql: INSERT INTO public.audit_log",
     "apps/api/alembic/sql/0012/01_erasure.down.sql: INSERT INTO public.audit_log",
+    # 0013 (ADR-0023) redefines it once more (trusted browsers); its down file restores 0012's.
+    "apps/api/alembic/sql/0013/01_erasure.up.sql: INSERT INTO public.audit_log",
+    "apps/api/alembic/sql/0013/01_erasure.down.sql: INSERT INTO public.audit_log",
 }
 DEFINES_AUDIT = re.compile(r"CREATE\s+(OR\s+REPLACE\s+)?FUNCTION\s+(public\.)?audit\s*\(", re.I)
 

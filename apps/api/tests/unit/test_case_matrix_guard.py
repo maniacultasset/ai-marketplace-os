@@ -113,6 +113,10 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "auth_google_link",
         "auth_google_unlink",
         "signup_google",
+        # ADR-0023
+        "auth_devices_list",
+        "auth_devices_remove",
+        "auth_devices_sign_out_all",
     }
 )
 

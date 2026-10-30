@@ -109,6 +109,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The caller's trusted browsers (the code is skipped there at sign-in)
+         * @description The caller's trusted browsers (ADR-0023), newest first: where the next sign-in skips the
+         *     code. `current` marks this session's browser. Works with MFA on or off.
+         */
+        get: operations["auth_devices_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/devices/sign-out-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Forget every trusted browser and end every other session
+         * @description Forget every trusted browser of the caller, this one included, and end every other
+         *     session in every tenant. This session stays signed in (at most 7 days after its own
+         *     sign-in); every next sign-in asks for the code.
+         */
+        post: operations["auth_devices_sign_out_all"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/devices/{device_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Forget one trusted browser and end the sessions it began
+         * @description Forget one of the caller's trusted browsers: its next sign-in asks for the code, and the
+         *     sessions it began end now (this one too, when it is this browser). 404 for an unknown id or
+         *     another user's browser.
+         */
+        delete: operations["auth_devices_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/google/callback": {
         parameters: {
             query?: never;
@@ -147,7 +212,8 @@ export interface paths {
          *     usual code, enrolment or password step), `pending` (show the request status),
          *     `needs_details` (the prefilled sign-up form, then `/signup/google`) or `link_required` (ask
          *     the existing account's password, then `/auth/google/link`). A Google sign-in always asks for
-         *     the Kuinn code when MFA is enforced. Every refusal is the same 401 with a generic message.
+         *     the Kuinn code when MFA is enforced, unless one of `device_tokens` names a trusted browser of
+         *     that account (ADR-0023). Every refusal is the same 401 with a generic message.
          */
         post: operations["auth_google_complete"];
         delete?: never;
@@ -237,7 +303,7 @@ export interface paths {
         put?: never;
         /**
          * Remove the linked Google account (after a step-up; needs a password)
-         * @description Remove the Google account linked to the caller (needs a step-up code from the last 10
+         * @description Remove the Google account linked to the caller (needs a step-up code from the last 30
          *     minutes when MFA is enforced). Refused with 422 while the account has no password, since
          *     Google is then its only way in. 204 also when nothing is linked.
          */
@@ -263,7 +329,9 @@ export interface paths {
          *     and refresh tokens and the user's memberships (the active tenant is the most recently used
          *     one); `mfa_required`, `mfa_enrollment_required` and `password_change_required` carry a
          *     `challenge_token` for the next step and no token. Every refusal is the same 401, a locked
-         *     account included (10 failed passwords or codes lock it for 15 minutes).
+         *     account included (10 failed passwords or codes lock it for 15 minutes). With MFA enforced, a
+         *     live `device_token` (a trusted browser, ADR-0023) skips the code step: the answer is
+         *     `signed_in` with the token's next value; a stale one answers `device_token_invalid`.
          */
         post: operations["auth_login"];
         delete?: never;
@@ -285,7 +353,8 @@ export interface paths {
          * Sign-in code step: a TOTP code or a recovery code for the login challenge
          * @description The code step: the `challenge_token` of `mfa_required` and exactly one of `code` (6
          *     digits from the authenticator) or `recovery_code`. A wrong code, a used code, an expired or
-         *     burned challenge (5 attempts) and a locked account are all 401.
+         *     burned challenge (5 attempts) and a locked account are all 401. `trust_device` with a TOTP
+         *     code trusts this browser (ADR-0023): `device_token` comes back with the tokens.
          */
         post: operations["auth_login_mfa"];
         delete?: never;
@@ -306,7 +375,8 @@ export interface paths {
         /**
          * Forced enrolment at sign-in: confirm with a code; recovery codes and the sign-in result
          * @description Forced enrolment: a code from the new authenticator. Answers the 10 recovery codes (shown
-         *     once) and `result`, the sign-in to continue with. Every other session of the user ends.
+         *     once) and `result`, the sign-in to continue with. Every other session and trusted browser
+         *     of the user ends; `trust_device` trusts this browser (ADR-0023).
          */
         post: operations["auth_login_mfa_confirm"];
         delete?: never;
@@ -392,7 +462,7 @@ export interface paths {
         /**
          * Regenerate the recovery codes (after a step-up)
          * @description A new set of 10 recovery codes (shown once); the old ones stop working. Needs a step-up
-         *     in the last 10 minutes (TOTP or recovery code).
+         *     in the last 30 minutes (TOTP or recovery code).
          */
         post: operations["auth_mfa_recovery_codes"];
         delete?: never;
@@ -435,7 +505,7 @@ export interface paths {
         /**
          * Confirm the new authenticator with a code; recovery codes
          * @description Confirm the new authenticator with a code: the 10 recovery codes (shown once). The
-         *     user's other sessions end; this one records the fresh code.
+         *     user's other sessions and every trusted browser end; this one records the fresh code.
          */
         post: operations["auth_mfa_totp_confirm"];
         delete?: never;
@@ -456,7 +526,7 @@ export interface paths {
         /**
          * Set up or replace the authenticator from account settings
          * @description Set up the authenticator from account settings (`current_password` required while there
-         *     is no factor), or replace it (needs a step-up in the last 10 minutes, done with a TOTP code
+         *     is no factor), or replace it (needs a step-up in the last 30 minutes, done with a TOTP code
          *     or a recovery code: 403 `MFA_STEP_UP_REQUIRED` otherwise).
          */
         post: operations["auth_mfa_totp_enroll"];
@@ -478,7 +548,8 @@ export interface paths {
         /**
          * Change the password (current password, DPP rules, not one of the last 10)
          * @description Change the password: the current one, then a new one that meets the rules (422 names
-         *     each broken rule), is none of the last 10, at most once a day. The other sessions end.
+         *     each broken rule), is none of the last 10, at most once a day. The other sessions and every
+         *     trusted browser end (this session stays).
          */
         post: operations["auth_password_change"];
         delete?: never;
@@ -499,7 +570,8 @@ export interface paths {
         /**
          * Forced password change at sign-in
          * @description The forced password change (`password_change_required`): a new password that meets the
-         *     rules (422 names each broken rule) and is none of the last 10. Every other session ends.
+         *     rules (422 names each broken rule) and is none of the last 10. Every other session and every
+         *     trusted browser ends; a "trust this browser" chosen at the code step is honoured here.
          */
         post: operations["auth_password_expired"];
         delete?: never;
@@ -2056,6 +2128,11 @@ export interface components {
              */
             binding: string;
             /**
+             * Device Tokens
+             * @description ADR-0023: every trusted-browser token this browser holds (at most 5, no repeats; the account is not known yet). Only the signed-in account's own can match; it skips the Kuinn code step, never Google.
+             */
+            device_tokens?: string[] | null;
+            /**
              * Handle
              * Format: password
              * @description The `handle` of the `/auth/google?handle=` redirect.
@@ -2693,6 +2770,12 @@ export interface components {
              * @description A 6-digit TOTP code.
              */
             code: string;
+            /**
+             * Trust Device
+             * @description ADR-0023: trust this browser after this code (30 days, 7 for a platform admin): the next sign-in here skips the code. Ignored with a recovery code.
+             * @default false
+             */
+            trust_device: boolean;
         };
         /** LoginEnrollRequest */
         LoginEnrollRequest: {
@@ -2715,9 +2798,20 @@ export interface components {
             code?: string | null;
             /** Recovery Code */
             recovery_code?: string | null;
+            /**
+             * Trust Device
+             * @description ADR-0023: trust this browser after this code (30 days, 7 for a platform admin): the next sign-in here skips the code. Ignored with a recovery code.
+             * @default false
+             */
+            trust_device: boolean;
         };
         /** LoginRequest */
         LoginRequest: {
+            /**
+             * Device Token
+             * @description ADR-0023: this browser's trusted-browser token for this email, if any. Read only after the password is correct; when it is live the code step is skipped.
+             */
+            device_token?: string | null;
             /** Email */
             email: string;
             /**
@@ -2744,6 +2838,26 @@ export interface components {
              * @description Send it to the next step's route; keep it in memory only.
              */
             challenge_token?: string | null;
+            /**
+             * Device Expires At
+             * @description With `device_token`: when this browser stops being trusted (fixed; a use never moves it).
+             */
+            device_expires_at?: string | null;
+            /**
+             * Device Token
+             * @description ADR-0023, `signed_in` only: a new trusted-browser token for this email (after `trust_device`, or the next value of the one sent). Replace the stored one; the old value stops working.
+             */
+            device_token?: string | null;
+            /**
+             * Device Token Invalid
+             * @description ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token.
+             */
+            device_token_invalid?: boolean | null;
+            /**
+             * Device Trust Days
+             * @description ADR-0023: on the code steps, how many days "Don't ask for a code on this browser" lasts (30, or 7 for a platform admin).
+             */
+            device_trust_days?: number | null;
             /** Expires In */
             expires_in?: number | null;
             /** Memberships */
@@ -3593,11 +3707,55 @@ export interface components {
         /**
          * TotpEnrollRequest
          * @description `current_password` is required while the account has no factor; replacing a factor
-         *     needs a step-up in the last 10 minutes instead.
+         *     needs a step-up in the last 30 minutes instead.
          */
         TotpEnrollRequest: {
             /** Current Password */
             current_password?: string | null;
+        };
+        /**
+         * TrustedDeviceOut
+         * @description One trusted browser (ADR-0023). `label` is a coarse summary of its browser and system.
+         */
+        TrustedDeviceOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Current
+             * @description True for the browser this session signed in on.
+             */
+            current: boolean;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Label
+             * @description E.g. "Chrome on macOS".
+             */
+            label: string;
+            /**
+             * Last Used At
+             * @description The last sign-in that skipped the code here.
+             */
+            last_used_at?: string | null;
+        };
+        /** TrustedDevicesOut */
+        TrustedDevicesOut: {
+            /**
+             * Devices
+             * @description The live trusted browsers, newest first (at most 10).
+             */
+            devices: components["schemas"]["TrustedDeviceOut"][];
         };
         /** UploadUrlOut */
         UploadUrlOut: {
@@ -4180,7 +4338,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Permission denied. Codes: `PERMISSION_DENIED`, `MFA_STEP_UP_REQUIRED`, `MFA_ENROLLMENT_REQUIRED`. */
+            /** @description Permission denied. Codes: `PERMISSION_DENIED`. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4586,7 +4744,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Permission denied. Codes: `PERMISSION_DENIED`, `MFA_STEP_UP_REQUIRED`, `MFA_ENROLLMENT_REQUIRED`. */
+            /** @description Permission denied. Codes: `PERMISSION_DENIED`. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5313,6 +5471,765 @@ export interface operations {
                      *         "message": "Authentication required.",
                      *         "status": 401,
                      *         "type": "UNAUTHENTICATED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request body too large. Codes: `PAYLOAD_TOO_LARGE`. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PAYLOAD_TOO_LARGE",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PAYLOAD_TOO_LARGE",
+                     *               "field": "request",
+                     *               "message": "Request body too large.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request body too large.",
+                     *         "status": 413,
+                     *         "type": "PAYLOAD_TOO_LARGE"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed. Codes: `VALIDATION_FAILED`. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "details": [
+                     *           {
+                     *             "loc": [
+                     *               "body",
+                     *               "field"
+                     *             ],
+                     *             "msg": "Field required"
+                     *           }
+                     *         ],
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "Request validation failed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request validation failed.",
+                     *         "status": 422,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many requests. Codes: `RATE_LIMITED`. */
+            429: {
+                headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "RATE_LIMITED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "RATE_LIMITED",
+                     *               "field": "request",
+                     *               "message": "Too many requests.",
+                     *               "retryable": true,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": true,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Too many requests.",
+                     *         "status": 429,
+                     *         "type": "RATE_LIMITED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "INTERNAL_ERROR",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "INTERNAL_ERROR",
+                     *               "field": "request",
+                     *               "message": "Internal server error.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Internal server error.",
+                     *         "status": 500,
+                     *         "type": "INTERNAL_ERROR"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    auth_devices_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "devices": [
+                     *         {
+                     *           "created_at": "2026-10-05T09:30:00Z",
+                     *           "current": true,
+                     *           "expires_at": "2026-11-04T09:30:00Z",
+                     *           "id": "7b0c5f8e-2d1a-4c3b-9e8f-0a1b2c3d4e5f",
+                     *           "label": "Chrome on macOS",
+                     *           "last_used_at": "2026-10-12T08:15:00Z"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["TrustedDevicesOut"];
+                };
+            };
+            /** @description The request could not be parsed. Codes: `VALIDATION_FAILED`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "The request could not be parsed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The request could not be parsed.",
+                     *         "status": 400,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Authentication required. Codes: `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "UNAUTHENTICATED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "UNAUTHENTICATED",
+                     *               "field": "request",
+                     *               "message": "Authentication required.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Authentication required.",
+                     *         "status": 401,
+                     *         "type": "UNAUTHENTICATED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request body too large. Codes: `PAYLOAD_TOO_LARGE`. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PAYLOAD_TOO_LARGE",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PAYLOAD_TOO_LARGE",
+                     *               "field": "request",
+                     *               "message": "Request body too large.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request body too large.",
+                     *         "status": 413,
+                     *         "type": "PAYLOAD_TOO_LARGE"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many requests. Codes: `RATE_LIMITED`. */
+            429: {
+                headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "RATE_LIMITED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "RATE_LIMITED",
+                     *               "field": "request",
+                     *               "message": "Too many requests.",
+                     *               "retryable": true,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": true,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Too many requests.",
+                     *         "status": 429,
+                     *         "type": "RATE_LIMITED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "INTERNAL_ERROR",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "INTERNAL_ERROR",
+                     *               "field": "request",
+                     *               "message": "Internal server error.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Internal server error.",
+                     *         "status": 500,
+                     *         "type": "INTERNAL_ERROR"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    auth_devices_sign_out_all: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done; no body. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request could not be parsed. Codes: `VALIDATION_FAILED`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "The request could not be parsed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The request could not be parsed.",
+                     *         "status": 400,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Authentication required. Codes: `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "UNAUTHENTICATED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "UNAUTHENTICATED",
+                     *               "field": "request",
+                     *               "message": "Authentication required.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Authentication required.",
+                     *         "status": 401,
+                     *         "type": "UNAUTHENTICATED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request body too large. Codes: `PAYLOAD_TOO_LARGE`. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PAYLOAD_TOO_LARGE",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PAYLOAD_TOO_LARGE",
+                     *               "field": "request",
+                     *               "message": "Request body too large.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request body too large.",
+                     *         "status": 413,
+                     *         "type": "PAYLOAD_TOO_LARGE"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many requests. Codes: `RATE_LIMITED`. */
+            429: {
+                headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "RATE_LIMITED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "RATE_LIMITED",
+                     *               "field": "request",
+                     *               "message": "Too many requests.",
+                     *               "retryable": true,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": true,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Too many requests.",
+                     *         "status": 429,
+                     *         "type": "RATE_LIMITED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "INTERNAL_ERROR",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "INTERNAL_ERROR",
+                     *               "field": "request",
+                     *               "message": "Internal server error.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Internal server error.",
+                     *         "status": 500,
+                     *         "type": "INTERNAL_ERROR"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    auth_devices_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done; no body. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request could not be parsed. Codes: `VALIDATION_FAILED`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "The request could not be parsed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The request could not be parsed.",
+                     *         "status": 400,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Authentication required. Codes: `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "UNAUTHENTICATED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "UNAUTHENTICATED",
+                     *               "field": "request",
+                     *               "message": "Authentication required.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Authentication required.",
+                     *         "status": 401,
+                     *         "type": "UNAUTHENTICATED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not found. Codes: `NOT_FOUND`. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "NOT_FOUND",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "NOT_FOUND",
+                     *               "field": "request",
+                     *               "message": "Not found.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Not found.",
+                     *         "status": 404,
+                     *         "type": "NOT_FOUND"
                      *       }
                      *     }
                      */
@@ -7120,6 +8037,7 @@ export interface operations {
                      * @example {
                      *       "challenge_expires_in": 300,
                      *       "challenge_token": "ch_example_opaque_value",
+                     *       "device_trust_days": 30,
                      *       "status": "mfa_required"
                      *     }
                      */
@@ -7398,6 +8316,8 @@ export interface operations {
                     /**
                      * @example {
                      *       "access_token": "eyJhbGciOiJIUzI1NiJ9.example.signature",
+                     *       "device_expires_at": "2026-11-04T09:30:00Z",
+                     *       "device_token": "dt_example_opaque_value",
                      *       "expires_in": 1800,
                      *       "memberships": [
                      *         {

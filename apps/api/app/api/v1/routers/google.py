@@ -149,7 +149,8 @@ async def auth_google_complete(body: GoogleCompleteRequest, request: Request) ->
     usual code, enrolment or password step), `pending` (show the request status),
     `needs_details` (the prefilled sign-up form, then `/signup/google`) or `link_required` (ask
     the existing account's password, then `/auth/google/link`). A Google sign-in always asks for
-    the Kuinn code when MFA is enforced. Every refusal is the same 401 with a generic message."""
+    the Kuinn code when MFA is enforced, unless one of `device_tokens` names a trusted browser of
+    that account (ADR-0023). Every refusal is the same 401 with a generic message."""
     handle = body.handle.get_secret_value()
     binding = body.binding.get_secret_value()
     await enforce_google_limit(request)
@@ -157,7 +158,11 @@ async def auth_google_complete(body: GoogleCompleteRequest, request: Request) ->
         email = await google_signin.peek_email(handle, binding, "handle")
         await enforce_login_limit(request, email)
         done = await google_signin.complete(
-            handle, binding, ip=request_ip(request), user_agent=request.headers.get("user-agent")
+            handle,
+            binding,
+            ip=request_ip(request),
+            user_agent=request.headers.get("user-agent"),
+            device_tokens=[t.get_secret_value() for t in body.device_tokens or []] or None,
         )
     except google_signin.GoogleDisabled:
         raise _disabled() from None
@@ -229,7 +234,7 @@ async def auth_google_link(body: GoogleLinkRequest, request: Request) -> LoginRe
 
 @route(router, OPS["auth_google_unlink"])
 async def auth_google_unlink(request: Request, principal: Caller) -> Response:
-    """Remove the Google account linked to the caller (needs a step-up code from the last 10
+    """Remove the Google account linked to the caller (needs a step-up code from the last 30
     minutes when MFA is enforced). Refused with 422 while the account has no password, since
     Google is then its only way in. 204 also when nothing is linked."""
     refusal = await auth.google_unlink(principal, ip=request_ip(request))

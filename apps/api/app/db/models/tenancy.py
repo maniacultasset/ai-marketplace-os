@@ -1,7 +1,7 @@
 """Tenancy models: `tenants`, global `users`, `tenant_memberships`, `invitations`
 (DATABASE.md §5.1; ADR-0006), the platform `signup_requests` (0010; ADR-0019), the per-user MFA,
-challenge and password-history tables (0011; DPP-1, ADR-0021) and the Google sign-in flows
-(0012; ADR-0020). Columns, defaults, keys and indexes mirror revision
+challenge and password-history tables (0011; DPP-1, ADR-0021), the Google sign-in flows
+(0012; ADR-0020) and the trusted browsers (0013; ADR-0023). Columns, defaults, keys and indexes mirror revision
 0001_core_tenancy under the same names; the CHECK constraints live only in the revision."""
 
 from __future__ import annotations
@@ -243,6 +243,35 @@ class MfaChallenge(Base):
     created_at: Mapped[datetime] = created_at_column()
     # 0012 (ADR-0020): a Google account to link once this password sign-in finishes
     link_google_sub: Mapped[str | None] = mapped_column(Text)
+    # 0013 (ADR-0023): "trust this browser", chosen at the code step (NULL = false)
+    trust_device: Mapped[bool | None] = mapped_column(Boolean)
+
+
+class TrustedDevice(Base):
+    """A trusted browser (0013; ADR-0023): one per browser and user, found by the sha256 of its
+    random token, which changes on every use (the previous hash catches a replayed one). A
+    platform table under FORCE RLS (`td_self`); the hashes are never loaded unless asked for and
+    never granted to the read-only roles."""
+
+    __tablename__ = "trusted_devices"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_trusted_devices")),
+        _user_fk("trusted_devices"),
+        UniqueConstraint("token_hash", name=conv("uq_trusted_devices_token_hash")),
+        Index(conv("ix_trusted_devices_user_id_created_at"), "user_id", "created_at"),
+        Index(conv("ix_trusted_devices_expires_at"), "expires_at"),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    token_hash: Mapped[bytes] = deferred(mapped_column(LargeBinary, nullable=False))
+    prev_token_hash: Mapped[bytes | None] = deferred(mapped_column(LargeBinary))
+    method: Mapped[str] = mapped_column(Text)
+    label: Mapped[str] = mapped_column(Text)
+    trusted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created_at_column()
 
 
 class UserPasswordHistory(Base):

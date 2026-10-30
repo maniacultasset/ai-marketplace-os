@@ -1,5 +1,5 @@
 """Auth and members request and response models (owner step S10), with the DPP-1 MFA, lockout and
-password models (contract 2.0.0, ADR-0021)."""
+password models (contract 2.0.0, ADR-0021) and the trusted browsers (contract 2.1.0, ADR-0023)."""
 
 from __future__ import annotations
 
@@ -29,11 +29,28 @@ def _ascii_email(value: str) -> str:
 # pattern: the declared contract stays as S3 froze it.
 LoginEmail = Annotated[Email, AfterValidator(_ascii_email)]
 RefreshToken = Annotated[SecretStr, Field(min_length=1, max_length=4096)]
+# ADR-0023: the trusted-browser token exactly as the server returned it (43 base64url characters).
+# Any other value is not refused: it simply matches nothing (`device_token_invalid`), so a
+# damaged browser entry never blocks a sign-in.
+DeviceToken = Annotated[
+    SecretStr,
+    Field(
+        min_length=1,
+        max_length=128,
+        description="The `device_token` this browser was given for this account (send it in "
+        "the body only; keep it in localStorage).",
+    ),
+]
 
 
 class LoginRequest(StrictModel):
     email: LoginEmail
     password: Annotated[SecretStr, Field(min_length=1, max_length=1024)]
+    device_token: DeviceToken | None = Field(
+        default=None,
+        description="ADR-0023: this browser's trusted-browser token for this email, if any. "
+        "Read only after the password is correct; when it is live the code step is skipped.",
+    )
 
 
 class RefreshRequest(StrictModel):
@@ -116,6 +133,27 @@ class LoginResult(WireModel):
         default=None,
         description="Set while the user may still sign in without a factor: show a banner.",
     )
+    device_token: NonBlankStr | None = Field(
+        default=None,
+        description="ADR-0023, `signed_in` only: a new trusted-browser token for this email "
+        "(after `trust_device`, or the next value of the one sent). Replace the stored one; "
+        "the old value stops working.",
+    )
+    device_expires_at: datetime | None = Field(
+        default=None,
+        description="With `device_token`: when this browser stops being trusted (fixed; a use "
+        "never moves it).",
+    )
+    device_token_invalid: bool | None = Field(
+        default=None,
+        description="ADR-0023: true when a device token was sent, the first factor passed, "
+        "and it names no trusted browser of this account: forget the stored token.",
+    )
+    device_trust_days: Annotated[int, Field(ge=1, le=30)] | None = Field(
+        default=None,
+        description="ADR-0023: on the code steps, how many days \"Don't ask for a code on "
+        'this browser" lasts (30, or 7 for a platform admin).',
+    )
 
     @model_validator(mode="after")
     def _tokens_or_challenge(self) -> LoginResult:
@@ -126,6 +164,10 @@ class LoginResult(WireModel):
                 raise ValueError("signed_in carries the tokens and no challenge")
         elif any(t is not None for t in tokens) or self.challenge_token is None:
             raise ValueError("a challenge status carries a challenge and no tokens")
+        if (self.device_token is None) != (self.device_expires_at is None):
+            raise ValueError("device_token and device_expires_at come together")
+        if self.device_token is not None and self.status != "signed_in":
+            raise ValueError("a device token comes only with signed_in")
         return self
 
 
@@ -134,10 +176,20 @@ def _one_of_code(code: object, recovery_code: object) -> None:
         raise PydanticCustomError("mkos_invalid", "Give exactly one of code or recovery_code.")
 
 
+TrustDevice = Annotated[
+    StrictBool,
+    Field(
+        description="ADR-0023: trust this browser after this code (30 days, 7 for a platform "
+        "admin): the next sign-in here skips the code. Ignored with a recovery code."
+    ),
+]
+
+
 class LoginMfaRequest(StrictModel):
     challenge_token: ChallengeToken
     code: Code | None = None
     recovery_code: RecoveryCode | None = None
+    trust_device: TrustDevice = False
 
     @model_validator(mode="after")
     def _exactly_one(self) -> LoginMfaRequest:
@@ -152,11 +204,12 @@ class LoginEnrollRequest(StrictModel):
 class LoginConfirmRequest(StrictModel):
     challenge_token: ChallengeToken
     code: Code
+    trust_device: TrustDevice = False
 
 
 class TotpEnrollRequest(StrictModel):
     """`current_password` is required while the account has no factor; replacing a factor
-    needs a step-up in the last 10 minutes instead."""
+    needs a step-up in the last 30 minutes instead."""
 
     current_password: CurrentPassword | None = None
 
@@ -233,6 +286,25 @@ class SecurityOut(WireModel):
         default=None,
         description="True when a Google account can sign in to this account (ADR-0020); "
         "`POST /auth/google/unlink` removes it.",
+    )
+
+
+class TrustedDeviceOut(WireModel):
+    """One trusted browser (ADR-0023). `label` is a coarse summary of its browser and system."""
+
+    id: UUID
+    label: NonBlankStr = Field(description='E.g. "Chrome on macOS".')
+    created_at: datetime
+    last_used_at: datetime | None = Field(
+        default=None, description="The last sign-in that skipped the code here."
+    )
+    expires_at: datetime
+    current: bool = Field(description="True for the browser this session signed in on.")
+
+
+class TrustedDevicesOut(WireModel):
+    devices: Annotated[list[TrustedDeviceOut], Field(max_length=10)] = Field(
+        description="The live trusted browsers, newest first (at most 10)."
     )
 
 

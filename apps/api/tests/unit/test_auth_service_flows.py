@@ -20,8 +20,10 @@ from typing import Any
 import pytest
 from app.repositories.identity import AUTH_BUSY, AuthState, MembershipRow, UserRow
 from app.repositories.mfa import ChallengeRow
+from app.repositories.trusted_devices import TrustedDeviceRow
 from app.services import auth, auth_events
 from app.services import mfa as mfa_service
+from app.services import trusted_devices as trusted_service
 from mkos_schemas.auth import JWTClaims
 
 NOW = datetime.now(UTC)
@@ -61,6 +63,12 @@ class World:
     passwords_set: list[str] = field(default_factory=list)
     regenerated: int = 0
     email_lock_free: bool = True
+    # ADR-0023: what the browser's device tokens match, and the trusted-browser calls made
+    device: trusted_service.Lookup | None = None
+    looked_up: list[list[str]] = field(default_factory=list)
+    rotated: list[uuid.UUID] = field(default_factory=list)
+    trusted: list[dict[str, Any]] = field(default_factory=list)
+    forgotten: list[tuple[str, Any]] = field(default_factory=list)
 
 
 def _user(world: World, **changes: Any) -> UserRow:
@@ -245,6 +253,27 @@ def world(monkeypatch: pytest.MonkeyPatch) -> World:
             w.events.append("verify_password")
         return fn(*args)
 
+    async def lookup(_: Any, user_id: uuid.UUID, tokens: list[str], **__: Any) -> Any:
+        w.events.append("device_lookup")
+        w.looked_up.append(list(tokens))
+        return w.device or trusted_service.Lookup(invalid=True)
+
+    async def rotate(_: Any, device: TrustedDeviceRow) -> trusted_service.Rotated:
+        w.rotated.append(device.id)
+        return trusted_service.Rotated(device.id, device.trusted_at, "dt-next", device.expires_at)
+
+    async def trust(_: Any, user_id: uuid.UUID, **kw: Any) -> trusted_service.NewTrust:
+        w.trusted.append(kw)
+        return trusted_service.NewTrust(uuid.uuid4(), "dt-new", kw["code_at"] + timedelta(days=30))
+
+    async def forget_all(_: Any, user_id: uuid.UUID, reason: str, **kw: Any) -> int:
+        w.forgotten.append((reason, kw.get("keep_family")))
+        return 0
+
+    monkeypatch.setattr(trusted_service, "lookup", lookup)
+    monkeypatch.setattr(trusted_service, "rotate", rotate)
+    monkeypatch.setattr(trusted_service, "trust", trust)
+    monkeypatch.setattr(trusted_service, "forget_all", forget_all)
     monkeypatch.setattr(auth, "get_settings", lambda: w.settings)
     monkeypatch.setattr(auth, "identity_session", session)
     monkeypatch.setattr(auth, "set_gucs", set_gucs)
@@ -892,3 +921,179 @@ async def test_login_busy_email_lock_same_401_one_verify(world: World, known: bo
     assert world.verifies == 1 and world.failures == 0
     assert "gate" not in world.events and "by_email" not in world.events
     assert "auth.login_failed" in world.events
+
+
+# ---- trusted browsers (ADR-0023) ----
+
+TRUSTED_AT = NOW - timedelta(days=3)
+
+
+def _device(user: UserRow) -> trusted_service.Lookup:
+    row = TrustedDeviceRow(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        label="Chrome on macOS",
+        trusted_at=TRUSTED_AT,
+        expires_at=TRUSTED_AT + timedelta(days=30),
+        last_used_at=None,
+        created_at=TRUSTED_AT,
+        token_hash=b"h" * 32,
+    )
+    return trusted_service.Lookup(row)
+
+
+async def _login_with_device(
+    world: World, password: str = PASSWORD, token: str = "dt-old"  # noqa: S107 - a test value
+) -> auth.SignInResult | None:
+    return await auth.login(
+        "asha@acme.test", password, ip="203.0.113.7", user_agent="ua", device_token=token
+    )
+
+
+async def test_trusted_browser_skips_the_code_with_no_new_amr(world: World) -> None:
+    user = _user(world)
+    world.device = _device(user)
+    result = await _login_with_device(world)
+    assert result is not None and result.status == "signed_in"
+    assert not world.new_challenges
+    issued = world.issued[0]
+    assert issued["amr"] == ["pwd", "otp"]  # the code that created the trust, no `dev`
+    assert issued["mfa_at"] == TRUSTED_AT  # when that code was entered, not now
+    assert issued["device_id"] == world.device.device.id  # type: ignore[union-attr]
+    assert issued["device_auth_at"] == NOW
+    assert world.rotated == [world.device.device.id]  # type: ignore[union-attr]
+    assert result.device_token == "dt-next" and result.device_token_invalid is None
+    assert result.device_expires_at == TRUSTED_AT + timedelta(days=30)
+    assert world.cleared == 1
+
+
+async def test_wrong_password_never_reads_the_device(world: World) -> None:
+    user = _user(world)
+    world.device = _device(user)
+    assert await _login_with_device(world, "Wrong-Password-0000") is None
+    assert "device_lookup" not in world.events and not world.rotated
+    assert world.failures == 1
+
+
+async def test_locked_account_never_reads_the_device(world: World) -> None:
+    user = _user(world)
+    world.device = _device(user)
+    world.state = AuthState(0, NOW + timedelta(minutes=5))
+    assert await _login_with_device(world) is None
+    assert "device_lookup" not in world.events and not world.rotated
+
+
+async def test_trusted_browser_never_skips_a_password_change(world: World) -> None:
+    user = _user(world, password_must_change=True)
+    world.device = _device(user)
+    result = await _login_with_device(world)
+    assert result is not None and result.status == "mfa_required"
+    assert not world.rotated and result.device_token_invalid is None
+
+
+async def test_trusted_browser_never_skips_enrolment(world: World) -> None:
+    user = _user(world)
+    world.has_factor = False
+    world.device = _device(user)
+    result = await _login_with_device(world)
+    assert result is not None and result.status == "mfa_enrollment_required"
+    assert not world.rotated
+
+
+async def test_unknown_device_token_answers_invalid_and_offers_trust_days(world: World) -> None:
+    _user(world)
+    result = await _login_with_device(world)
+    assert result is not None and result.status == "mfa_required"
+    assert result.device_token_invalid is True and result.device_trust_days == 30
+
+
+async def test_admin_is_offered_seven_days(world: World) -> None:
+    _user(world, is_platform_admin=True)
+    result = await _login(world)
+    assert result is not None and result.device_trust_days == 7
+
+
+async def test_device_ignored_under_off(world: World) -> None:
+    user = _user(world)
+    world.settings.mfa_enforcement = "off"
+    world.device = _device(user)
+    result = await _login_with_device(world)
+    assert result is not None and result.status == "signed_in"
+    assert "device_lookup" not in world.events and result.device_token is None
+    assert result.device_trust_days is None
+
+
+async def test_linking_never_reads_the_device(world: World) -> None:
+    user = _user(world)
+    world.device = _device(user)
+    result = await auth.login(
+        "asha@acme.test",
+        PASSWORD,
+        ip=None,
+        user_agent="ua",
+        link_sub="google-sub",
+        device_token="dt-old",
+    )
+    assert result is not None and result.status == "mfa_required"
+    assert "device_lookup" not in world.events
+
+
+async def test_code_with_trust_device_creates_a_trusted_browser(world: World) -> None:
+    user = _user(world)
+    world.second_factor = "otp"
+    result = await auth.login_mfa(
+        _challenge(world, user),
+        code="123456",
+        recovery_code=None,
+        ip="203.0.113.7",
+        user_agent="Mozilla/5.0 Chrome/129.0",
+        trust_device=True,
+    )
+    assert result is not None and result.status == "signed_in"
+    assert result.device_token == "dt-new"
+    assert world.trusted[0]["code_at"] == NOW and world.trusted[0]["is_platform_admin"] is False
+    issued = world.issued[0]
+    assert issued["amr"] == ["pwd", "otp"] and issued["mfa_at"] == NOW
+    # the code session is this browser's, under the ordinary rule (mfa_at == device_auth_at)
+    assert issued["device_auth_at"] == issued["mfa_at"]
+
+
+async def test_recovery_code_never_trusts_the_browser(world: World) -> None:
+    user = _user(world)
+    world.second_factor = "rc"
+    result = await auth.login_mfa(
+        _challenge(world, user),
+        code=None,
+        recovery_code="abcd-efgh",
+        ip=None,
+        user_agent="ua",
+        trust_device=True,
+    )
+    assert result is not None and result.status == "signed_in"
+    assert not world.trusted and result.device_token is None
+
+
+async def test_trust_rides_on_the_password_change_challenge(world: World) -> None:
+    user = _user(world, password_must_change=True)
+    world.second_factor = "otp"
+    result = await auth.login_mfa(
+        _challenge(world, user),
+        code="123456",
+        recovery_code=None,
+        ip=None,
+        user_agent="ua",
+        trust_device=True,
+    )
+    assert result is not None and result.status == "password_change_required"
+    assert world.new_challenges[-1]["trust_device"] is True and not world.trusted
+
+
+async def test_change_password_forgets_browsers_keeping_this_session(world: World) -> None:
+    user = _user(world)
+    sid = uuid.uuid4()
+    principal = _principal(user)
+    found = await auth.change_password(
+        principal, _claims(user, sid=sid), PASSWORD, NEW_PASSWORD, ip=None
+    )
+    assert found is None
+    assert world.forgotten == [("password_changed", (principal.tenant_id, sid))]

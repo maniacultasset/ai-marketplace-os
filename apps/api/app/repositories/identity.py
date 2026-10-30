@@ -14,7 +14,9 @@ Writes that must touch rows raise `RowCountError` when they do not (DATABASE.md:
 DPP-1 (ADR-0021) adds the lockout calls (`begin_auth_attempt`, `note_auth_failure`,
 `clear_auth_failures`: the 0011 SECURITY DEFINER functions), the password writes and history read,
 the session proof (`amr`, `mfa_at`) on refresh rows, the step-up update of one family and the
-revocation of every family of a user.
+revocation of every family of a user. ADR-0023 adds the trusted browser that began a family
+(`device_id`, `device_auth_at`), the revocation of one browser's families and the detach of the
+caller's own family when its browser trust is dropped but the session is kept.
 """
 
 from __future__ import annotations
@@ -54,6 +56,7 @@ __all__ = [
     "AuthBusy",
     "AuthState",
     "ConsumedState",
+    "FamilyDevice",
     "MembershipRepository",
     "MembershipRow",
     "RefreshRow",
@@ -130,6 +133,17 @@ class RefreshRow:
     # DPP-1 (0011): how the family was proven; None for a family minted with MFA off
     amr: builtins.list[str] | None = None
     mfa_at: datetime | None = None
+    # ADR-0023 (0013): the trusted browser that began the family, and when
+    device_id: uuid.UUID | None = None
+    device_auth_at: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class FamilyDevice:
+    """A live family's trusted-browser fields (ADR-0023); both None for an ordinary session."""
+
+    device_id: uuid.UUID | None
+    device_auth_at: datetime | None
 
 
 # the history rows kept beside the current hash: current + 9 = the last 10 (DPP 1.4.1)
@@ -427,6 +441,8 @@ class RefreshTokenRepository:
         user_agent: str | None = None,
         amr: builtins.list[str] | None = None,
         mfa_at: datetime | None = None,
+        device_id: uuid.UUID | None = None,
+        device_auth_at: datetime | None = None,
     ) -> uuid.UUID:
         """A new refresh row (id chosen here, so no RETURNING has to pass a SELECT policy)."""
         row_id = uuid.uuid4()
@@ -442,6 +458,8 @@ class RefreshTokenRepository:
                 user_agent=user_agent,
                 amr=amr,
                 mfa_at=mfa_at,
+                device_id=device_id,
+                device_auth_at=device_auth_at,
             )
         )
         await self.db.execute(stmt)
@@ -460,6 +478,8 @@ class RefreshTokenRepository:
                 RefreshToken.expires_at,
                 RefreshToken.amr,
                 RefreshToken.mfa_at,
+                RefreshToken.device_id,
+                RefreshToken.device_auth_at,
             )
             .where(RefreshToken.token_hash == token_hash)
             .with_for_update()
@@ -528,11 +548,57 @@ class RefreshTokenRepository:
         ).execution_options(synchronize_session=False)
         return _rowcount(await self.db.execute(stmt))
 
+    async def family_device(
+        self, tenant_id: uuid.UUID, family_id: uuid.UUID, user_id: uuid.UUID
+    ) -> FamilyDevice | None:
+        """ADR-0023: the trusted-browser fields of the live family `family_id` of `user_id` (needs
+        `app.tenant_id` = `tenant_id`), or None when the family has no live row."""
+        stmt = identity_scope(
+            select(RefreshToken.device_id, RefreshToken.device_auth_at)
+            .where(
+                RefreshToken.tenant_id == tenant_id,
+                RefreshToken.family_id == family_id,
+                RefreshToken.user_id == user_id,
+                RefreshToken.revoked_at.is_(None),
+            )
+            .order_by(RefreshToken.created_at.desc())
+            .limit(1)
+        )
+        row = (await self.db.execute(stmt)).one_or_none()
+        return None if row is None else FamilyDevice(row[0], row[1])
+
+    async def detach_device(
+        self, tenant_id: uuid.UUID, family_id: uuid.UUID, user_id: uuid.UUID
+    ) -> int:
+        """ADR-0023: the caller's own family outlives its browser's trust (sign out all, a
+        password change from settings): `device_id` is cleared and `device_auth_at` kept, so the
+        session still ends 7 days after its trusted sign-in. The count."""
+        where = and_(
+            RefreshToken.tenant_id == tenant_id,
+            RefreshToken.family_id == family_id,
+            RefreshToken.user_id == user_id,
+            RefreshToken.revoked_at.is_(None),
+            RefreshToken.device_id.is_not(None),
+        )
+        await self.db.execute(
+            identity_scope(select(RefreshToken.id).where(where).with_for_update())
+        )
+        stmt = identity_scope(
+            update(RefreshToken).where(where).values(device_id=None)
+        ).execution_options(synchronize_session=False)
+        return _rowcount(await self.db.execute(stmt))
+
     async def revoke_user_everywhere(
-        self, user_id: uuid.UUID, *, keep_family: uuid.UUID | None, reason: str
+        self,
+        user_id: uuid.UUID,
+        *,
+        keep_family: uuid.UUID | None,
+        reason: str,
+        device_id: uuid.UUID | None = None,
     ) -> int:
         """DPP-1: revoke every live refresh family of `user_id` in every tenant it belongs to,
-        except `keep_family`; the count. Needs `app.user_id` = `user_id` (memberships_own). Each
+        except `keep_family`; the count. With `device_id` (ADR-0023) only the families that
+        trusted browser began. Needs `app.user_id` = `user_id` (memberships_own). Each
         tenant is written under its own `app.tenant_id` with AUTH-3's locking read then UPDATE;
         the caller's tenant GUC is put back afterwards."""
         tenants = (
@@ -560,6 +626,8 @@ class RefreshTokenRepository:
                 )
                 if keep_family is not None:
                     where = and_(where, RefreshToken.family_id != keep_family)
+                if device_id is not None:
+                    where = and_(where, RefreshToken.device_id == device_id)
                 await self.db.execute(
                     identity_scope(select(RefreshToken.id).where(where).with_for_update())
                 )

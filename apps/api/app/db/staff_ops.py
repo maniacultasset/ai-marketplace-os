@@ -12,6 +12,10 @@ with the staff email and the minted request id. Nothing here logs or returns a p
 DPP-1: every password staff set (a new user, `set-password`, `reset-mfa`) must meet the DPP 1.4.1
 rules (`PolicyError`, exit 2) and is must-change: the user picks their own at the next sign-in
 under `MFA_ENFORCEMENT=all`. `set-password` and `reset-mfa` also refuse any of the last 10.
+
+ADR-0023: `set-password`, `reset-mfa` and `make-admin` forget every trusted browser of the user
+(the next sign-in asks for the code; an admin's new browsers last 7 days). `unlock` resets
+nothing and keeps them.
 """
 
 from __future__ import annotations
@@ -318,7 +322,8 @@ async def _locked_user(conn: AsyncConnection, email: str) -> Any:
 
 async def _store_staff_password(conn: AsyncConnection, user: Any, password: SecretStr) -> None:
     """DPP-1: the rules, none of the last 10, then the new must-change hash; the old one joins
-    the history (9 kept), and every sign-in challenge of the user is deleted."""
+    the history (9 kept), and every sign-in challenge and (ADR-0023) every trusted browser of the
+    user is deleted."""
     plain = password.get_secret_value()
     breaches = password_policy.check(plain, email=user.email, display_name=user.display_name)
     if breaches:
@@ -358,6 +363,15 @@ async def _store_staff_password(conn: AsyncConnection, user: Any, password: Secr
     # Review E2E-1: a sign-in begun under the old password (an enroll or password_change
     # challenge) must not outlive it, or a leaked password survives the staff reset.
     await conn.execute(text("DELETE FROM public.mfa_challenges WHERE user_id = :u"), {"u": user.id})
+    await _forget_browsers(conn, user.id)
+
+
+async def _forget_browsers(conn: AsyncConnection, user_id: uuid.UUID) -> int:
+    """ADR-0023: every trusted browser of the user deleted (as migrator); the count."""
+    result: Any = await conn.execute(
+        text("DELETE FROM public.trusted_devices WHERE user_id = :u"), {"u": user_id}
+    )
+    return int(result.rowcount or 0)
 
 
 async def _revoke_everywhere(
@@ -499,8 +513,10 @@ async def make_platform_admin(
     engine: AsyncEngine, *, email: str, staff_email: str, request_id: str
 ) -> uuid.UUID:
     """`users.is_platform_admin = true` for an active user (ADR-0019), as migrator, with one
-    platform `user.platform_admin_granted` staff audit row. Idempotent: an admin stays one and
-    gets no second audit row. `NotEligibleError` for an unknown, inactive or erased user."""
+    platform `user.platform_admin_granted` staff audit row, and every trusted browser of the user
+    forgotten (ADR-0023: an admin trusts a browser for 7 days, never the 30 of a brand user).
+    Idempotent: an admin stays one and gets no second audit row. `NotEligibleError` for an
+    unknown, inactive or erased user."""
     async with engine.begin() as conn:
         current = (await conn.execute(text("SELECT current_user"))).scalar_one()
         if current != "migrator":
@@ -522,6 +538,7 @@ async def make_platform_admin(
         await conn.execute(
             text("UPDATE users SET is_platform_admin = true WHERE id = :u"), {"u": user_id}
         )
+        await _forget_browsers(conn, user_id)
         await _audit(
             conn,
             tenant_id=None,

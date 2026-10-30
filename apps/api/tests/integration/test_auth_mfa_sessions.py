@@ -1,6 +1,7 @@
 """DPP-1 AC18 (ADR-0021): sessions. Refresh and the tenant switch keep `amr`, `mfa_at` and `sid`;
 the step-up updates only the family named by `sid`; a guarded route answers 403 without a fresh
-code and passes within 600 s; the switch refuses a pre-MFA or stale session under `all`."""
+code and passes within 1800 s (ADR-0023); the switch refuses a pre-MFA or stale session under `all`.
+"""
 
 from __future__ import annotations
 
@@ -254,7 +255,7 @@ def _body(response: httpx.Response) -> dict[str, Any]:
     return error
 
 
-async def test_guarded_route_403_step_up_required_then_passes_within_600s(
+async def test_guarded_route_403_step_up_required_then_passes_within_1800s(
     api: httpx.AsyncClient,
     world: World,
     auth_db: Conn,
@@ -273,7 +274,7 @@ async def test_guarded_route_403_step_up_required_then_passes_within_600s(
         email=EMAIL,
         typ="access",
         amr=["pwd", "otp"],
-        mfa_at=_claims(user.access)["mfa_at"] - 601,
+        mfa_at=_claims(user.access)["mfa_at"] - 1801,
         sid=_claims(user.access)["sid"],
     )
     path = f"{MEMBERS}/{target}"

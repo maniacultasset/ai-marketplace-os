@@ -1,5 +1,5 @@
-"""Auth routes (S10): login, refresh, logout, me and the tenant switch; and (DPP-1, ADR-0021) the
-MFA, step-up and password routes.
+"""Auth routes (S10): login, refresh, logout, me and the tenant switch; (DPP-1, ADR-0021) the
+MFA, step-up and password routes; and (ADR-0023) the caller's trusted browsers.
 
 Every handler turns the service's result into its status after the service's session has closed
 and committed (a counted failure is never rolled back by the refusal). Under
@@ -10,6 +10,7 @@ both modes (the set-time password rules are live either way).
 from __future__ import annotations
 
 from typing import Annotated, Final
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, Response
 from mkos_schemas.auth import JWTClaims
@@ -41,6 +42,8 @@ from app.api.v1.schemas.auth import (
     TotpConfirmRequest,
     TotpEnrollOut,
     TotpEnrollRequest,
+    TrustedDeviceOut,
+    TrustedDevicesOut,
 )
 from app.api.v1.surface import OPS, route
 from app.core.config import get_settings
@@ -85,12 +88,17 @@ def _login_result(result: auth.SignInResult) -> LoginResult:
             expires_in=pair.expires_in,
             memberships=_memberships(pair.memberships),
             mfa_grace_until=result.mfa_grace_until,
+            device_token=result.device_token,
+            device_expires_at=result.device_expires_at,
+            device_token_invalid=result.device_token_invalid,
         )
     return LoginResult(
         status=result.status,
         challenge_token=result.challenge_token,
         challenge_expires_in=result.challenge_expires_in,
         mfa_grace_until=result.mfa_grace_until,
+        device_token_invalid=result.device_token_invalid,
+        device_trust_days=result.device_trust_days,
     )
 
 
@@ -132,13 +140,18 @@ async def auth_login(body: LoginRequest, request: Request) -> LoginResult:
     and refresh tokens and the user's memberships (the active tenant is the most recently used
     one); `mfa_required`, `mfa_enrollment_required` and `password_change_required` carry a
     `challenge_token` for the next step and no token. Every refusal is the same 401, a locked
-    account included (10 failed passwords or codes lock it for 15 minutes)."""
+    account included (10 failed passwords or codes lock it for 15 minutes). With MFA enforced, a
+    live `device_token` (a trusted browser, ADR-0023) skips the code step: the answer is
+    `signed_in` with the token's next value; a stale one answers `device_token_invalid`."""
     await enforce_login_limit(request, body.email)
     result = await auth.login(
         body.email,
         body.password.get_secret_value(),
         ip=request_ip(request),
         user_agent=_agent(request),
+        device_token=(
+            body.device_token.get_secret_value() if body.device_token is not None else None
+        ),
     )
     if result is None:
         raise _unauthenticated()
@@ -149,7 +162,8 @@ async def auth_login(body: LoginRequest, request: Request) -> LoginResult:
 async def auth_login_mfa(body: LoginMfaRequest, request: Request) -> LoginResult:
     """The code step: the `challenge_token` of `mfa_required` and exactly one of `code` (6
     digits from the authenticator) or `recovery_code`. A wrong code, a used code, an expired or
-    burned challenge (5 attempts) and a locked account are all 401."""
+    burned challenge (5 attempts) and a locked account are all 401. `trust_device` with a TOTP
+    code trusts this browser (ADR-0023): `device_token` comes back with the tokens."""
     _require_mfa_on()
     result = await auth.login_mfa(
         body.challenge_token.get_secret_value(),
@@ -159,6 +173,7 @@ async def auth_login_mfa(body: LoginMfaRequest, request: Request) -> LoginResult
         ),
         ip=request_ip(request),
         user_agent=_agent(request),
+        trust_device=body.trust_device,
     )
     if result is None:
         raise _unauthenticated()
@@ -182,13 +197,15 @@ async def auth_login_mfa_enroll(body: LoginEnrollRequest, request: Request) -> T
 @route(router, OPS["auth_login_mfa_confirm"])
 async def auth_login_mfa_confirm(body: LoginConfirmRequest, request: Request) -> LoginConfirmOut:
     """Forced enrolment: a code from the new authenticator. Answers the 10 recovery codes (shown
-    once) and `result`, the sign-in to continue with. Every other session of the user ends."""
+    once) and `result`, the sign-in to continue with. Every other session and trusted browser
+    of the user ends; `trust_device` trusts this browser (ADR-0023)."""
     _require_mfa_on()
     confirmed = await auth.login_confirm(
         body.challenge_token.get_secret_value(),
         body.code,
         ip=request_ip(request),
         user_agent=_agent(request),
+        trust_device=body.trust_device,
     )
     if confirmed is None or confirmed.result is None:
         raise _unauthenticated()
@@ -200,7 +217,8 @@ async def auth_login_mfa_confirm(body: LoginConfirmRequest, request: Request) ->
 @route(router, OPS["auth_password_expired"])
 async def auth_password_expired(body: PasswordExpiredRequest, request: Request) -> LoginResult:
     """The forced password change (`password_change_required`): a new password that meets the
-    rules (422 names each broken rule) and is none of the last 10. Every other session ends."""
+    rules (422 names each broken rule) and is none of the last 10. Every other session and every
+    trusted browser ends; a "trust this browser" chosen at the code step is honoured here."""
     _require_mfa_on()
     result = await auth.expired_password(
         body.challenge_token.get_secret_value(),
@@ -224,7 +242,7 @@ async def auth_mfa_totp_enroll(
     body: TotpEnrollRequest, request: Request, principal: Caller, claims: Claims
 ) -> TotpEnrollOut:
     """Set up the authenticator from account settings (`current_password` required while there
-    is no factor), or replace it (needs a step-up in the last 10 minutes, done with a TOTP code
+    is no factor), or replace it (needs a step-up in the last 30 minutes, done with a TOTP code
     or a recovery code: 403 `MFA_STEP_UP_REQUIRED` otherwise)."""
     _require_mfa_on()
     current = body.current_password.get_secret_value() if body.current_password else None
@@ -239,7 +257,7 @@ async def auth_mfa_totp_confirm(
     body: TotpConfirmRequest, request: Request, principal: Caller, claims: Claims
 ) -> TotpConfirmOut:
     """Confirm the new authenticator with a code: the 10 recovery codes (shown once). The
-    user's other sessions end; this one records the fresh code."""
+    user's other sessions and every trusted browser end; this one records the fresh code."""
     _require_mfa_on()
     found = await auth.totp_confirm(principal, claims, body.code, ip=request_ip(request))
     if isinstance(found, auth.Refusal):
@@ -269,7 +287,7 @@ async def auth_security(principal: Caller) -> SecurityOut:
 @route(router, OPS["auth_mfa_recovery_codes"])
 async def auth_mfa_recovery_codes(request: Request, principal: Caller) -> RecoveryCodesOut:
     """A new set of 10 recovery codes (shown once); the old ones stop working. Needs a step-up
-    in the last 10 minutes (TOTP or recovery code)."""
+    in the last 30 minutes (TOTP or recovery code)."""
     _require_mfa_on()
     codes = await auth.regenerate_codes(principal, ip=request_ip(request))
     if isinstance(codes, auth.Refusal):
@@ -306,7 +324,8 @@ async def auth_password_change(
     body: PasswordChangeRequest, request: Request, principal: Caller, claims: Claims
 ) -> Response:
     """Change the password: the current one, then a new one that meets the rules (422 names
-    each broken rule), is none of the last 10, at most once a day. The other sessions end."""
+    each broken rule), is none of the last 10, at most once a day. The other sessions and every
+    trusted browser end (this session stays)."""
     refusal = await auth.change_password(
         principal,
         claims,
@@ -316,6 +335,52 @@ async def auth_password_change(
     )
     if refusal is not None:
         raise _refused(refusal, masked_as="wrong_password")
+    return Response(status_code=204)
+
+
+@route(router, OPS["auth_devices_list"])
+async def auth_devices_list(principal: Caller, claims: Claims) -> TrustedDevicesOut:
+    """The caller's trusted browsers (ADR-0023), newest first: where the next sign-in skips the
+    code. `current` marks this session's browser. Works with MFA on or off."""
+    found = await auth.list_devices(principal, claims)
+    return TrustedDevicesOut(
+        devices=[
+            TrustedDeviceOut(
+                id=d.id,
+                label=d.label,
+                created_at=d.created_at,
+                last_used_at=d.last_used_at,
+                expires_at=d.expires_at,
+                current=d.current,
+            )
+            for d in found
+        ]
+    )
+
+
+@route(router, OPS["auth_devices_remove"])
+async def auth_devices_remove(device_id: UUID, request: Request, principal: Caller) -> Response:
+    """Forget one of the caller's trusted browsers: its next sign-in asks for the code, and the
+    sessions it began end now (this one too, when it is this browser). 404 for an unknown id or
+    another user's browser."""
+    refusal = await auth.remove_device(principal, device_id, ip=request_ip(request))
+    if refusal is not None:
+        if refusal.kind == "not_found":
+            raise ApiError(404, ErrorCode.NOT_FOUND)
+        raise _refused(refusal)
+    return Response(status_code=204)
+
+
+@route(router, OPS["auth_devices_sign_out_all"])
+async def auth_devices_sign_out_all(
+    request: Request, principal: Caller, claims: Claims
+) -> Response:
+    """Forget every trusted browser of the caller, this one included, and end every other
+    session in every tenant. This session stays signed in (at most 7 days after its own
+    sign-in); every next sign-in asks for the code."""
+    refusal = await auth.sign_out_all(principal, claims, ip=request_ip(request))
+    if refusal is not None:
+        raise _refused(refusal)
     return Response(status_code=204)
 
 

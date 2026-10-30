@@ -65,7 +65,8 @@ TOKEN_OPS = frozenset(
     }
 )
 _TOP: dict[str, bool] = {"access_token": True, "refresh_token": True}
-_LOGIN_RESULT_TOP: dict[str, bool] = {**_TOP, "challenge_token": True}
+# ADR-0023: a `LoginResult` also hands out the browser's new trusted-browser token
+_LOGIN_RESULT_TOP: dict[str, bool] = {**_TOP, "challenge_token": True, "device_token": True}
 # The secret-bearing response keys each op answers by design, and whether at the top level of its
 # success body (True) or only nested (False). Any other op, key or placement fails.
 SECRET_KEYS_BY_OP: dict[str, dict[str, bool]] = {
@@ -82,6 +83,7 @@ SECRET_KEYS_BY_OP: dict[str, dict[str, bool]] = {
         "access_token": False,
         "refresh_token": False,
         "challenge_token": False,
+        "device_token": False,
     },
     # DPP-1 (ADR-0021): the TOTP secret is shown once at enrolment, for the authenticator app
     "auth_login_mfa_enroll": {"otpauth_uri": True, "secret_b32": True},
@@ -96,6 +98,7 @@ SECRET_KEYS_BY_OP: dict[str, dict[str, bool]] = {
         "access_token": False,
         "refresh_token": False,
         "challenge_token": False,
+        "device_token": False,
         "details_handle": False,
         "link_handle": False,
     },

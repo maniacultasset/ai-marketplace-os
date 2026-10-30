@@ -151,11 +151,13 @@ async def new_challenge(
     user_agent: str | None,
     mfa_at: datetime | None = None,
     link_google_sub: str | None = None,
+    trust_device: bool = False,
 ) -> tuple[str, int]:
     """An opaque one-time token for the next sign-in step (only its sha256 is stored) and its
     lifetime in seconds: 15 minutes to enrol (installing an app takes time), else 5. `amr` may
     hold `fed` (Google began the sign-in, ADR-0020); `link_google_sub` is a Google account to
-    link when the sign-in finishes."""
+    link when the sign-in finishes; `trust_device` (ADR-0023) rides to the password change, only
+    with a TOTP code proven."""
     raw = secrets.token_urlsafe(CHALLENGE_TOKEN_BYTES)
     ttl = challenge_ttl(purpose)
     await ChallengeRepository(session).create(
@@ -168,5 +170,6 @@ async def new_challenge(
         user_agent=user_agent,
         mfa_at=mfa_at if {"otp", "rc"} & set(amr) else None,
         link_google_sub=link_google_sub,
+        trust_device=trust_device and "otp" in amr,
     )
     return raw, ttl

@@ -269,6 +269,10 @@ class RefreshToken(TenantScoped, Base):
     # 0011 (DPP-1): how the family was proven, copied on every rotation
     amr: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
     mfa_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # 0013 (ADR-0023): the trusted browser that began the family and when (no foreign key: a
+    # removed browser must not turn its sessions into ordinary ones)
+    device_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    device_auth_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class OAuthState(TenantScoped, Base):

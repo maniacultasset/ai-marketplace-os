@@ -196,6 +196,7 @@ DEFINERS = frozenset(
         "app_link_google_sub(uuid,text)",  # 0012
         "app_unlink_google_sub(uuid)",  # 0012
         "app_prune_login_flows()",  # 0012
+        "app_prune_trusted_devices()",  # 0013 (ADR-0023)
     }
 )
 

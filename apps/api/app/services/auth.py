@@ -27,6 +27,13 @@ DPP-1 rules every sign-in path here follows:
   sign-in always asks for the Kuinn code (or enrolment) and a token's `amr` lists only Kuinn's own
   factors. Linking a Google account to an existing user waits on the challenge
   (`link_google_sub`) and happens only when that password sign-in finishes.
+- **Trusted browsers (ADR-0023).** After a correct TOTP code a user may trust the browser
+  (`trust_device`). Its token, sent with the next password or Google sign-in, stands in for the
+  code only when the code is the last thing missing; it is looked at only after the first factor
+  passed, and swapped for a new one on each use. A trusted sign-in mints no new `amr` value: the
+  first factor proven now plus `otp`, with `mfa_at` = when the code that created the trust was
+  entered, so a step-up still asks for a real code. Its 7-day renewal counts from that sign-in
+  (`refresh_tokens.device_auth_at`) and only while the browser stays trusted.
 """
 
 from __future__ import annotations
@@ -66,7 +73,9 @@ from app.repositories.mfa import (
     RecoveryCodeRepository,
 )
 from app.repositories.transactions import identity_session, set_gucs, unit_of_work
+from app.repositories.trusted_devices import TrustedDeviceRepository, TrustedDeviceRow
 from app.services import auth_events, mfa
+from app.services import trusted_devices as trusted
 from app.services.sign_in_policy import (
     SignInFacts,
     Step,
@@ -77,6 +86,8 @@ from app.services.sign_in_policy import (
     next_step,
     refresh_allowed,
     step_up_fresh,
+    trust_days,
+    trust_usable,
 )
 
 
@@ -131,6 +142,13 @@ class SignInResult:
     challenge_token: str | None = field(default=None, repr=False)
     challenge_expires_in: int | None = None
     mfa_grace_until: datetime | None = None
+    # ADR-0023: a new or rotated trusted-browser token (with `signed_in` only)
+    device_token: str | None = field(default=None, repr=False)
+    device_expires_at: datetime | None = None
+    # ADR-0023: a token was sent, the first factor passed, and no live browser matched
+    device_token_invalid: bool | None = None
+    # ADR-0023: the trust length to offer at the code step (7 for an admin, else 30)
+    device_trust_days: int | None = None
 
 
 RefusalKind = Literal[
@@ -217,6 +235,8 @@ async def _issue(
     user_agent: str | None,
     amr: list[AuthMethod] | None = None,
     mfa_at: datetime | None = None,
+    device_id: UUID | None = None,
+    device_auth_at: datetime | None = None,
 ) -> tuple[str, str, UUID]:
     """A signed access + refresh pair for one tenant, the refresh row stored by hash with the
     session proof (`amr`, `mfa_at`). The tokens carry `amr`, `mfa_at` and `sid` (the family)
@@ -238,6 +258,8 @@ async def _issue(
         user_agent=_agent(user_agent),
         amr=list(amr) if amr else None,
         mfa_at=mfa_at,
+        device_id=device_id,
+        device_auth_at=device_auth_at,
     )
     return encode(access), raw_refresh, row_id
 
@@ -318,12 +340,19 @@ async def _sign_in(
     ip: str | None,
     user_agent: str | None,
     link_sub: str | None = None,
+    device: trusted.Lookup | None = None,
+    trust: bool = False,
 ) -> SignInResult | None:
     """The one place a sign-in ends, for a password and for Google alike: None for an inactive
     user or no live membership; a challenge for the next step; or tokens for the most recently
     used live tenant, which clears the lockout counter. `app.user_id` is set. `link_sub` (a
     Google account proven in this browser) rides on every challenge of a password sign-in and is
-    linked only when the sign-in ends with tokens (ADR-0020)."""
+    linked only when the sign-in ends with tokens (ADR-0020).
+
+    ADR-0023: `device` is what the browser's trusted-browser tokens matched; its live browser
+    stands in for the code only when `trust_usable` (else it is left alone, not rotated).
+    `trust` asks to trust this browser after a TOTP code proven in this sign-in: at tokens, or
+    carried on the password-change challenge."""
     has_factor = await MfaFactorRepository(session).has_active(user.id)
     facts = _facts(
         user,
@@ -336,8 +365,15 @@ async def _sign_in(
     step = next_step(facts, proven=proven)
     if step is None:
         return None
+    live: TrustedDeviceRow | None = device.device if device is not None else None
+    use_device = live is not None and step == "mfa_required" and trust_usable(facts, proven=proven)
+    if use_device:
+        step = "signed_in"
+    trust = trust and _enforcing() and "otp" in proven and mfa_at is not None
+    invalid = True if device is not None and device.invalid else None
     grace = facts.grace_until if in_grace(facts) else None
     if step != "signed_in":
+        offer = step in ("mfa_required", "mfa_enrollment_required") and _enforcing()
         raw, ttl = await mfa.new_challenge(
             session,
             user_id=user.id,
@@ -347,11 +383,19 @@ async def _sign_in(
             user_agent=_agent(user_agent),
             mfa_at=mfa_at,
             link_google_sub=link_sub,
+            trust_device=trust,
         )
         return SignInResult(
-            step, challenge_token=raw, challenge_expires_in=ttl, mfa_grace_until=grace
+            step,
+            challenge_token=raw,
+            challenge_expires_in=ttl,
+            mfa_grace_until=grace,
+            device_token_invalid=invalid,
+            device_trust_days=(
+                trust_days(is_platform_admin=user.is_platform_admin) if offer else None
+            ),
         )
-    amr = _ordered(proven)
+    amr = _ordered(proven | {"otp"}) if use_device else _ordered(proven)
     if _enforcing() and not amr:
         # a Google sign-in under `all` always proves a Kuinn code first (no grace for `fed`)
         raise RuntimeError("a sign-in under MFA_ENFORCEMENT=all ended with no Kuinn factor")
@@ -363,6 +407,30 @@ async def _sign_in(
     await users.touch_login(user.id)
     if link_sub is not None:
         await _link_google(session, user.id, link_sub, tenant_id=chosen.tenant_id, ip=ip)
+    device_id: UUID | None = None
+    device_auth_at: datetime | None = None
+    device_token: str | None = None
+    device_expires_at: datetime | None = None
+    if use_device and live is not None:
+        rotated = await trusted.rotate(session, live)
+        # the code that created the trust, never this sign-in, is the session's code time
+        mfa_at = rotated.trusted_at
+        device_id, device_auth_at = rotated.device_id, _now()
+        device_token, device_expires_at = rotated.token, rotated.expires_at
+    elif trust and mfa_at is not None:
+        created = await trusted.trust(
+            session,
+            user.id,
+            is_platform_admin=user.is_platform_admin,
+            code_at=mfa_at,
+            agent=user_agent,
+            ip=inet(ip),
+            tenant_id=chosen.tenant_id,
+        )
+        # the code session itself is marked as this browser's (mfa_at == device_auth_at keeps
+        # the ordinary 7-day rule), so the device list can show "this browser"
+        device_id, device_auth_at = created.device_id, mfa_at
+        device_token, device_expires_at = created.token, created.expires_at
     access, refresh_token, _ = await _issue(
         session,
         user_id=user.id,
@@ -374,17 +442,29 @@ async def _sign_in(
         user_agent=user_agent,
         amr=amr or None,
         mfa_at=mfa_at,
+        device_id=device_id,
+        device_auth_at=device_auth_at,
     )
+    reason = "google" if facts.first_factor == "fed" else None
+    if use_device:
+        reason = "google_trusted_device" if facts.first_factor == "fed" else "trusted_device"
     await auth_events.record(
         session,
         action="auth.login",
         user_id=user.id,
         tenant_id=chosen.tenant_id,
         ip=inet(ip),
-        reason="google" if facts.first_factor == "fed" else None,
+        reason=reason,
     )
     pair = TokenPair(access, refresh_token, _access_ttl(), [_membership(m) for m in memberships])
-    return SignInResult("signed_in", tokens=pair, mfa_grace_until=grace)
+    return SignInResult(
+        "signed_in",
+        tokens=pair,
+        mfa_grace_until=grace,
+        device_token=device_token,
+        device_expires_at=device_expires_at,
+        device_token_invalid=invalid if not use_device else None,
+    )
 
 
 async def _link_google(
@@ -426,12 +506,14 @@ async def login(
     ip: str | None,
     user_agent: str | None,
     link_sub: str | None = None,
+    device_token: str | None = None,
 ) -> SignInResult | None:
     """Email + password in; tokens or the next challenge out, or None for the one 401 (an
     unknown email, a wrong password, a locked account, an inactive user and no live membership
     look the same: one argon2 verify each). A failure writes `auth.login_failed` and commits
     before the caller answers 401 (Q10 (4)). `link_sub` (ADR-0020, the Google link step) links
-    that Google account when this sign-in finishes; it never gets the grace period."""
+    that Google account when this sign-in finishes; it never gets the grace period.
+    `device_token` (ADR-0023) is read only after the password passed, and never while linking."""
     async with identity_session() as session:
         await set_gucs(session, login_email=email)
         users = UserRepository(session)
@@ -482,6 +564,9 @@ async def login(
         if must_persist_noncompliance(facts):
             await users.set_must_change(user.id)
             user = replace(user, password_must_change=True)
+        device = None
+        if device_token is not None and link_sub is None and _enforcing():
+            device = await trusted.lookup(session, user.id, [device_token], ip=inet(ip), now=_now())
         result = await _sign_in(
             session,
             user,
@@ -492,6 +577,7 @@ async def login(
             ip=ip,
             user_agent=user_agent,
             link_sub=link_sub,
+            device=device,
         )
         if result is None:  # pragma: no cover - active and member were checked above
             await _login_failed(session, user.id, "no_active_membership", ip)
@@ -502,13 +588,20 @@ async def login(
 
 
 async def sign_in_with_google(
-    session: Any, user: UserRow, *, ip: str | None, user_agent: str | None
+    session: Any,
+    user: UserRow,
+    *,
+    ip: str | None,
+    user_agent: str | None,
+    device_tokens: list[str] | None = None,
 ) -> SignInResult | Refusal | None:
     """A Google identity already linked to `user` (the caller resolved and decided it, and set
     `app.user_id`): the per-user gate, then the shared `_sign_in()` with `fed` as the only
     proven method, so under `all` the next step is always the Kuinn code or the enrolment. A
     locked or busy account is a `Refusal` (nothing counted: a Google sign-in is not a guess at a
-    Kuinn secret); None for an inactive user or no live membership."""
+    Kuinn secret); None for an inactive user or no live membership. `device_tokens` (ADR-0023)
+    are every trusted-browser token the browser holds: only this user's can match, and a match
+    stands in for the code only (Google still never does)."""
     state = await _gate(session, user.id, ip=ip)
     if isinstance(state, AuthBusy):
         return Refusal("busy")
@@ -517,6 +610,9 @@ async def sign_in_with_google(
     if is_locked(state.locked_until, _now()):
         return Refusal("locked")
     memberships = await MembershipRepository(session).list_active_for_user(user.id)
+    device = None
+    if device_tokens and _enforcing() and user.is_active and memberships:
+        device = await trusted.lookup(session, user.id, device_tokens, ip=inet(ip), now=_now())
     return await _sign_in(
         session,
         user,
@@ -526,6 +622,7 @@ async def sign_in_with_google(
         compliant=None,
         ip=ip,
         user_agent=user_agent,
+        device=device,
     )
 
 
@@ -586,9 +683,12 @@ async def login_mfa(
     recovery_code: str | None,
     ip: str | None,
     user_agent: str | None,
+    trust_device: bool = False,
 ) -> SignInResult | None:
     """The code step after the password: a TOTP code or a recovery code against a `login`
-    challenge; tokens (or the next challenge), or None for the one 401."""
+    challenge; tokens (or the next challenge), or None for the one 401. `trust_device`
+    (ADR-0023) trusts this browser, with a TOTP code only (a recovery code is the lost-phone
+    path: never remembered)."""
     async with identity_session() as session:
         opened = await _open_challenge(session, challenge_token, "login", ip=ip)
         if opened is None:
@@ -618,6 +718,7 @@ async def login_mfa(
             ip=ip,
             user_agent=user_agent,
             link_sub=opened.challenge.link_google_sub,
+            trust=trust_device and method == "otp",
         )
 
 
@@ -638,11 +739,17 @@ class Confirmed:
 
 
 async def login_confirm(
-    challenge_token: str, code: str, *, ip: str | None, user_agent: str | None
+    challenge_token: str,
+    code: str,
+    *,
+    ip: str | None,
+    user_agent: str | None,
+    trust_device: bool = False,
 ) -> Confirmed | None:
     """The forced enrolment's second half: the code proves the pending secret, which becomes the
-    active factor with 10 recovery codes; the challenge is consumed, every refresh family of the
-    user is revoked, and the sign-in goes on with `amr` holding `otp`."""
+    active factor with 10 recovery codes; the challenge is consumed, every refresh family and
+    every trusted browser of the user is revoked, and the sign-in goes on with `amr` holding
+    `otp` (and, with `trust_device`, trusts this browser)."""
     async with identity_session() as session:
         opened = await _open_challenge(session, challenge_token, "enroll", ip=ip)
         if opened is None or await MfaFactorRepository(session).has_active(opened.user.id):
@@ -656,6 +763,7 @@ async def login_confirm(
         await RefreshTokenRepository(session).revoke_user_everywhere(
             opened.user.id, keep_family=None, reason="mfa_enrolled"
         )
+        await trusted.forget_all(session, opened.user.id, "mfa_changed", ip=inet(ip))
         await auth_events.record(
             session, action="auth.mfa_enrolled", user_id=opened.user.id, tenant_id=None, ip=inet(ip)
         )
@@ -669,6 +777,7 @@ async def login_confirm(
             ip=ip,
             user_agent=user_agent,
             link_sub=opened.challenge.link_google_sub,
+            trust=trust_device,
         )
         return Confirmed(codes, result)
 
@@ -677,9 +786,11 @@ async def expired_password(
     challenge_token: str, new_password: str, *, ip: str | None, user_agent: str | None
 ) -> SignInResult | Refusal | None:
     """The forced password change: a `password_change` challenge and a new password that meets
-    the rules and none of the last 10. Every refresh family is revoked, the challenge consumed,
-    and the sign-in ends with the methods (and code time) proven before the change. None is the
-    401; a `Refusal` (policy or reuse) is a 422 and uses one of the challenge's 5 attempts."""
+    the rules and none of the last 10. Every refresh family and every trusted browser is revoked,
+    the challenge consumed, and the sign-in ends with the methods (and code time) proven before
+    the change; a "trust this browser" chosen at the code step is honoured now (ADR-0023). None
+    is the 401; a `Refusal` (policy or reuse) is a 422 and uses one of the challenge's 5
+    attempts."""
     async with identity_session() as session:
         opened = await _open_challenge(session, challenge_token, "password_change", ip=ip)
         if opened is None:
@@ -694,6 +805,7 @@ async def expired_password(
         await RefreshTokenRepository(session).revoke_user_everywhere(
             opened.user.id, keep_family=None, reason="password_changed"
         )
+        await trusted.forget_all(session, opened.user.id, "password_changed", ip=inet(ip))
         challenges = ChallengeRepository(session)
         await challenges.consume(opened.challenge.id)
         await challenges.delete_open(opened.user.id)  # review E2E-1: no old challenge survives
@@ -717,6 +829,7 @@ async def expired_password(
             ip=ip,
             user_agent=user_agent,
             link_sub=opened.challenge.link_google_sub,
+            trust=opened.challenge.trust_device,
         )
 
 
@@ -763,7 +876,7 @@ async def totp_enroll(
     principal: Principal, claims: JWTClaims, current_password: str | None, *, ip: str | None
 ) -> mfa.Enrollment | Refusal:
     """A new pending secret from account settings. With no factor yet the current password is
-    required; replacing a factor needs a step-up in the last 10 minutes (a TOTP or a recovery
+    required; replacing a factor needs a step-up in the last 30 minutes (a TOTP or a recovery
     code, so a lost phone can be replaced without staff)."""
     async with identity_session() as session:
         refused = await _bearer_gate(session, principal, ip=ip)
@@ -793,8 +906,8 @@ async def totp_confirm(
     principal: Principal, claims: JWTClaims, code: str, *, ip: str | None
 ) -> list[str] | Refusal:
     """The code proves the pending secret, which becomes the active factor with 10 recovery
-    codes. The caller's family (`sid`) records the fresh code; the user's other families are
-    revoked."""
+    codes. The caller's family (`sid`) records the fresh code; the user's other families and
+    every trusted browser are revoked (ADR-0023)."""
     async with identity_session() as session:
         refused = await _bearer_gate(session, principal, ip=ip)
         if refused is not None:
@@ -826,6 +939,14 @@ async def totp_confirm(
         await tokens.revoke_user_everywhere(
             principal.user_id, keep_family=claims.sid, reason="mfa_enrolled"
         )
+        await trusted.forget_all(
+            session,
+            principal.user_id,
+            "mfa_changed",
+            ip=inet(ip),
+            tenant_id=principal.tenant_id,
+            keep_family=_own_family(principal, claims),
+        )
         await auth_events.record(
             session,
             action="auth.mfa_enrolled",
@@ -837,7 +958,7 @@ async def totp_confirm(
 
 
 async def regenerate_codes(principal: Principal, *, ip: str | None) -> list[str] | Refusal:
-    """A new set of 10 recovery codes (the route requires a step-up in the last 10 minutes),
+    """A new set of 10 recovery codes (the route requires a step-up in the last 30 minutes),
     behind the per-user gate and only while the user has an active factor (after a staff
     reset-mfa a recent step-up must not mint codes for an account with no factor)."""
     async with identity_session() as session:
@@ -855,6 +976,11 @@ async def regenerate_codes(principal: Principal, *, ip: str | None) -> list[str]
             ip=inet(ip),
         )
     return codes
+
+
+def _own_family(principal: Principal, claims: JWTClaims) -> tuple[UUID, UUID] | None:
+    """The caller's own refresh family (tenant, `sid`), or None for a token minted with MFA off."""
+    return None if claims.sid is None else (principal.tenant_id, claims.sid)
 
 
 def _session_amr(claims: JWTClaims, method: str) -> list[AuthMethod]:
@@ -956,7 +1082,8 @@ async def change_password(
     ip: str | None,
 ) -> Refusal | None:
     """A self-service change: the current password, at most once a day, the DPP rules and none
-    of the last 10. The caller's other refresh families are revoked."""
+    of the last 10. The caller's other refresh families and every trusted browser are revoked
+    (ADR-0023)."""
     async with identity_session() as session:
         refused = await _bearer_gate(session, principal, ip=ip)
         if refused is not None:
@@ -984,6 +1111,14 @@ async def change_password(
         await _store_password(session, user, new_password)
         await RefreshTokenRepository(session).revoke_user_everywhere(
             principal.user_id, keep_family=claims.sid, reason="password_changed"
+        )
+        await trusted.forget_all(
+            session,
+            principal.user_id,
+            "password_changed",
+            ip=inet(ip),
+            tenant_id=principal.tenant_id,
+            keep_family=_own_family(principal, claims),
         )
         await ChallengeRepository(session).delete_open(principal.user_id)  # review E2E-1
         await auth_events.record(
@@ -1038,7 +1173,7 @@ async def security(principal: Principal) -> Security:
 
 async def google_unlink(principal: Principal, *, ip: str | None) -> Refusal | None:
     """Remove the linked Google account (ADR-0020). The route has already demanded a step-up
-    code from the last 10 minutes. Refused (`password_required`) while the user has no password,
+    code from the last 30 minutes. Refused (`password_required`) while the user has no password,
     because the account would have no way left to sign in. Idempotent when nothing is linked."""
     async with identity_session() as session:
         refused = await _bearer_gate(session, principal, ip=ip)
@@ -1067,6 +1202,109 @@ async def has_active_factor(user_id: UUID) -> bool:
     async with identity_session() as session:
         await set_gucs(session, user_id=user_id)
         return await MfaFactorRepository(session).has_active(user_id)
+
+
+# ---- trusted browsers (ADR-0023: /auth/devices, /auth/devices/{id}, /auth/devices/sign-out-all) ----
+
+
+@dataclass(frozen=True, slots=True)
+class TrustedDevice:
+    id: UUID
+    label: str
+    created_at: datetime
+    last_used_at: datetime | None
+    expires_at: datetime
+    current: bool
+
+
+async def _owner_gate(session: Any, principal: Principal, *, ip: str | None) -> Refusal | None:
+    """The bearer device routes: the caller's tenant GUC, then the per-user gate (serialises
+    them with a sign-in of the same user). A locked account may still forget its browsers."""
+    await set_gucs(session, tenant_id=principal.tenant_id)
+    state = await _gate(session, principal.user_id, ip=ip)
+    if isinstance(state, AuthBusy):
+        return Refusal("busy")
+    if state is None:
+        return Refusal("not_found")
+    return None
+
+
+async def _current_device(session: Any, principal: Principal, claims: JWTClaims) -> UUID | None:
+    if claims.sid is None:
+        return None
+    own = await RefreshTokenRepository(session).family_device(
+        principal.tenant_id, claims.sid, principal.user_id
+    )
+    return own.device_id if own is not None else None
+
+
+async def list_devices(principal: Principal, claims: JWTClaims) -> list[TrustedDevice]:
+    """The caller's own live trusted browsers, newest first (at most 10); `current` names the
+    browser this session came from."""
+    async with identity_session() as session:
+        await set_gucs(session, user_id=principal.user_id, tenant_id=principal.tenant_id)
+        rows = await TrustedDeviceRepository(session).list_for_user(principal.user_id, now=_now())
+        current = await _current_device(session, principal, claims)
+    return [
+        TrustedDevice(r.id, r.label, r.created_at, r.last_used_at, r.expires_at, r.id == current)
+        for r in rows
+    ]
+
+
+async def remove_device(principal: Principal, device_id: UUID, *, ip: str | None) -> Refusal | None:
+    """Forget one of the caller's browsers and end the sessions it began (in every tenant).
+    Another user's browser or an unknown id is `not_found` (RLS makes them the same)."""
+    async with identity_session() as session:
+        refused = await _owner_gate(session, principal, ip=ip)
+        if refused is not None:
+            return refused
+        if not await TrustedDeviceRepository(session).delete(principal.user_id, [device_id]):
+            return Refusal("not_found")
+        await RefreshTokenRepository(session).revoke_user_everywhere(
+            principal.user_id, keep_family=None, reason="device_removed", device_id=device_id
+        )
+        await auth_events.record(
+            session,
+            action=trusted.REVOKED,
+            user_id=principal.user_id,
+            tenant_id=principal.tenant_id,
+            ip=inet(ip),
+            reason="removed",
+        )
+    return None
+
+
+async def sign_out_all(
+    principal: Principal, claims: JWTClaims, *, ip: str | None
+) -> Refusal | None:
+    """Forget every trusted browser of the caller (this one too) and end every other session in
+    every tenant. The caller's own session stays, detached from its browser (it still ends 7
+    days after its trusted sign-in); the next sign-in on any browser asks for the code."""
+    async with identity_session() as session:
+        refused = await _owner_gate(session, principal, ip=ip)
+        if refused is not None:
+            return refused
+        await RefreshTokenRepository(session).revoke_user_everywhere(
+            principal.user_id, keep_family=claims.sid, reason="sign_out_all"
+        )
+        forgotten = await trusted.forget_all(
+            session,
+            principal.user_id,
+            "sign_out_all",
+            ip=inet(ip),
+            tenant_id=principal.tenant_id,
+            keep_family=_own_family(principal, claims),
+        )
+        if not forgotten:  # the user's own request is audited even with no browser to forget
+            await auth_events.record(
+                session,
+                action=trusted.REVOKED,
+                reason="sign_out_all",
+                user_id=principal.user_id,
+                tenant_id=principal.tenant_id,
+                ip=inet(ip),
+            )
+    return None
 
 
 # ---- refresh (CODE-PLAN S10 C9; PLAN Decision 8; DPP-1 7-day rule) ----
@@ -1110,7 +1348,9 @@ async def refresh(raw_token: str, *, ip: str | None, user_agent: str | None) -> 
         member = await memberships.probe(row.tenant_id, row.user_id)
         if member is None:
             return None
-        if not await _renewal_allowed(session, row.user_id, row.mfa_at):
+        if not await _renewal_allowed(
+            session, row.user_id, row.mfa_at, row.device_id, row.device_auth_at
+        ):
             await auth_events.record(
                 session,
                 action="auth.refresh_reauth_required",
@@ -1131,24 +1371,45 @@ async def refresh(raw_token: str, *, ip: str | None, user_agent: str | None) -> 
             user_agent=user_agent,
             amr=row.amr,  # type: ignore[arg-type]
             mfa_at=row.mfa_at,
+            device_id=row.device_id,
+            device_auth_at=row.device_auth_at,
         )
         await tokens.rotate(row.tenant_id, row.id, new_id)
         listed = await memberships.list_active_for_user(row.user_id)
     return TokenPair(access, new_refresh, _access_ttl(), [_membership(m) for m in listed])
 
 
-async def _renewal_allowed(session: Any, user_id: UUID, mfa_at: datetime | None) -> bool:
-    """`refresh_allowed` with the user's own admin flag (read only under `all`)."""
+async def _renewal_allowed(
+    session: Any,
+    user_id: UUID,
+    mfa_at: datetime | None,
+    device_id: UUID | None = None,
+    device_auth_at: datetime | None = None,
+) -> bool:
+    """`refresh_allowed` with the user's own admin flag (read only under `all`) and, for a
+    trusted-browser session with no code since (ADR-0023), whether that browser is still trusted
+    (a session kept by its own sign-out-all or password change has no browser left to check:
+    `device_id` cleared, `device_auth_at` kept)."""
     settings = get_settings()
     if settings.mfa_enforcement != "all":
         return True
+    now = _now()
     admin = await UserRepository(session).is_platform_admin(user_id)
+    live = True
+    if (
+        device_id is not None
+        and device_auth_at is not None
+        and (mfa_at is None or mfa_at < device_auth_at)
+    ):
+        live = await TrustedDeviceRepository(session).is_live(user_id, device_id, now=now)
     return refresh_allowed(
         enforcement=settings.mfa_enforcement,
         grace_until=settings.mfa_grace_until,
         is_platform_admin=admin,
         mfa_at=mfa_at,
-        now=_now(),
+        now=now,
+        device_auth_at=device_auth_at,
+        device_live=live,
     )
 
 
@@ -1228,11 +1489,21 @@ async def switch_tenant(
     tenants_switcher under `app.user_id`), then every write runs under the target's GUC. Under
     `all`, the access token's own code time passes the 7-day rule first, else `reauth_required`
     (401), so a pre-MFA or stale token cannot renew itself by switching. The new family keeps
-    the token's `amr` and `mfa_at`."""
+    the token's `amr` and `mfa_at`, and (ADR-0023) the trusted browser and sign-in time of the
+    caller's own family, under the same rule as a refresh."""
     async with identity_session() as session:
-        await set_gucs(session, user_id=principal.user_id)
+        await set_gucs(session, user_id=principal.user_id, tenant_id=principal.tenant_id)
         mfa_at = _from_unix(claims.mfa_at)
-        if not await _renewal_allowed(session, principal.user_id, mfa_at):
+        own = None
+        if claims.sid is not None and _enforcing():
+            own = await RefreshTokenRepository(session).family_device(
+                principal.tenant_id, claims.sid, principal.user_id
+            )
+        device_id = own.device_id if own is not None else None
+        device_auth_at = own.device_auth_at if own is not None else None
+        if not await _renewal_allowed(
+            session, principal.user_id, mfa_at, device_id, device_auth_at
+        ):
             return Refusal("reauth_required")
         memberships = MembershipRepository(session)
         member = await memberships.probe(target, principal.user_id)
@@ -1251,6 +1522,8 @@ async def switch_tenant(
             user_agent=user_agent,
             amr=claims.amr or ["pwd"],
             mfa_at=mfa_at,
+            device_id=device_id,
+            device_auth_at=device_auth_at,
         )
         await AuditRepository(session).write(
             tenant_id=target,
@@ -1274,12 +1547,14 @@ __all__ = [
     "SignInResult",
     "StepUp",
     "TokenPair",
+    "TrustedDevice",
     "change_password",
     "dummy_hash",
     "expired_password",
     "google_unlink",
     "has_active_factor",
     "inet",
+    "list_devices",
     "login",
     "login_confirm",
     "login_enroll",
@@ -1289,8 +1564,10 @@ __all__ = [
     "probe_principal",
     "refresh",
     "regenerate_codes",
+    "remove_device",
     "security",
     "sign_in_with_google",
+    "sign_out_all",
     "step_up",
     "switch_tenant",
     "totp_confirm",
