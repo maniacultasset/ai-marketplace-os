@@ -69,6 +69,10 @@ def toolkit(repo_root: Path, tmp_path: Path) -> Iterator[Path]:
             text = text.replace("__FILL_ME__", ORIGIN).replace(
                 "API_PUBLIC_URL=\n", f"API_PUBLIC_URL={API_URL}\n"
             )
+            # Google sign-in starts off in the copy; the Google tests switch it on themselves.
+            text = re.sub(
+                r"^GOOGLE_OAUTH_ENABLED=.*$", "GOOGLE_OAUTH_ENABLED=false", text, flags=re.M
+            )
         (target / source.name).write_text(text, encoding="utf-8")
     (target / "deploy.sh").chmod(0o755)
     yield target
@@ -1016,10 +1020,11 @@ GOOGLE_CLIENT = "1039991710726-74ijetqns5m41m2m3c6piso02j3vub2p.apps.googleuserc
 
 
 @pytest.mark.parametrize("env_name", ["staging", "prod"])
-def test_env_files_ship_google_off(repo_root: Path, env_name: str) -> None:
+def test_env_files_ship_the_google_switch(repo_root: Path, env_name: str) -> None:
     text = (repo_root / DEPLOY / f"{env_name}.env").read_text(encoding="utf-8")
     values = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
-    assert values["GOOGLE_OAUTH_ENABLED"] == "false"
+    # prod runs Sign in with Google; staging has no Google client yet
+    assert values["GOOGLE_OAUTH_ENABLED"] == ("true" if env_name == "prod" else "false")
     if env_name == "prod":
         assert values["GOOGLE_OAUTH_CLIENT_ID"] == GOOGLE_CLIENT
     assert "GOOGLE_OAUTH_CLIENT_SECRET" not in values

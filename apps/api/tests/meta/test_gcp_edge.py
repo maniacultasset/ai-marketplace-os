@@ -156,6 +156,10 @@ def toolkit(repo_root: Path, tmp_path: Path) -> Iterator[Path]:
             text = re.sub(
                 r"^DASHBOARD_BASE_URL=.*$", f"DASHBOARD_BASE_URL={ORIGIN}", text, flags=re.M
             )
+            # Google sign-in is covered by test_gcp_deploy; keep it off in the edge copy.
+            text = re.sub(
+                r"^GOOGLE_OAUTH_ENABLED=.*$", "GOOGLE_OAUTH_ENABLED=false", text, flags=re.M
+            )
         (target / source.name).write_text(text, encoding="utf-8")
     (target / "deploy.sh").chmod(0o755)
     yield target
