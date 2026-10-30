@@ -17,7 +17,7 @@ import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Any, Literal
+from typing import Any, Final, Literal
 from uuid import UUID
 
 from app.adapters.mfa_secrets import unseal_bytes
@@ -33,6 +33,7 @@ from app.repositories.mfa import ChallengeRepository, MfaFactorRepository, Recov
 from app.services.sign_in_policy import CHALLENGE_TTL_SECONDS, ENROLL_CHALLENGE_TTL_SECONDS
 
 Method = Literal["otp", "rc"]
+CHALLENGE_METHOD_ORDER: Final = ("pwd", "fed", "otp", "rc")
 Purpose = Literal["login", "enroll", "password_change"]
 CHALLENGE_TOKEN_BYTES = 32
 
@@ -149,19 +150,23 @@ async def new_challenge(
     ip: str | None,
     user_agent: str | None,
     mfa_at: datetime | None = None,
+    link_google_sub: str | None = None,
 ) -> tuple[str, int]:
     """An opaque one-time token for the next sign-in step (only its sha256 is stored) and its
-    lifetime in seconds: 15 minutes to enrol (installing an app takes time), else 5."""
+    lifetime in seconds: 15 minutes to enrol (installing an app takes time), else 5. `amr` may
+    hold `fed` (Google began the sign-in, ADR-0020); `link_google_sub` is a Google account to
+    link when the sign-in finishes."""
     raw = secrets.token_urlsafe(CHALLENGE_TOKEN_BYTES)
     ttl = challenge_ttl(purpose)
     await ChallengeRepository(session).create(
         user_id=user_id,
         purpose=purpose,
-        amr=sorted(set(amr), key=["pwd", "otp", "rc"].index),
+        amr=sorted(set(amr), key=CHALLENGE_METHOD_ORDER.index),
         challenge_hash=challenge_digest(raw),
         expires_at=datetime.now(UTC) + timedelta(seconds=ttl),
         ip=ip,
         user_agent=user_agent,
         mfa_at=mfa_at if {"otp", "rc"} & set(amr) else None,
+        link_google_sub=link_google_sub,
     )
     return raw, ttl

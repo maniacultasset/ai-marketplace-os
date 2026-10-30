@@ -1,7 +1,9 @@
 """The sign-in and lockout decisions of DPP-1, as pure functions (no database, no web code).
 
 The caller checks the password (or the code) and the lock first; `next_step` then says what the
-sign-in needs next. The counter itself is atomic SQL (`app_note_auth_failure` in migration
+sign-in needs next. Google sign-in (ADR-0020) is a first factor only (`fed`): it never gets the
+grace period and never skips the code, and a user with no password never meets the password-change
+step. The counter itself is atomic SQL (`app_note_auth_failure` in migration
 `0011_mfa_lockout`), whose threshold and lock length are the literals below; a unit test keeps the
 two in step.
 """
@@ -24,6 +26,7 @@ STEP_UP_MAX_AGE_SECONDS: Final = 600
 REAUTH_MAX_AGE_DAYS: Final = 7
 
 Enforcement = Literal["off", "all"]
+FirstFactor = Literal["pwd", "fed"]
 Step = Literal["signed_in", "mfa_required", "mfa_enrollment_required", "password_change_required"]
 SECOND_FACTORS: Final = frozenset({"otp", "rc"})
 
@@ -42,6 +45,12 @@ class SignInFacts:
     password_must_change: bool
     # None when the plaintext is unknown: every step after the password step.
     password_compliant: bool | None
+    # ADR-0020: False for a Google-only user (no password to expire or change)
+    has_password: bool = True
+    # ADR-0020: `fed` when the sign-in began with Google (never a grace period)
+    first_factor: FirstFactor = "pwd"
+    # ADR-0020: a Google account waits to be linked once this sign-in finishes (no grace)
+    linking: bool = False
 
 
 def _grace_running(grace_until: datetime | None, now: datetime) -> bool:
@@ -49,17 +58,22 @@ def _grace_running(grace_until: datetime | None, now: datetime) -> bool:
 
 
 def in_grace(f: SignInFacts) -> bool:
-    """True when this user may still sign in without a factor (it sets `mfa_grace_until`)."""
+    """True when this user may still sign in without a factor (it sets `mfa_grace_until`).
+    Never for a Google sign-in, nor while it links a Google account (ADR-0020)."""
     return (
         f.enforcement == "all"
         and not f.has_active_factor
         and not f.is_platform_admin
         and not f.first_login
+        and f.first_factor == "pwd"
+        and not f.linking
         and _grace_running(f.grace_until, f.now)
     )
 
 
 def _password_change_due(f: SignInFacts) -> bool:
+    if not f.has_password:
+        return False
     return (
         f.password_must_change
         or password_policy.expired(f.password_changed_at, f.now)
@@ -81,6 +95,11 @@ def next_step(f: SignInFacts, *, proven: frozenset[str]) -> Step | None:
     if _password_change_due(f):
         return "password_change_required"
     return "signed_in"
+
+
+def first_factor_of(proven: frozenset[str]) -> FirstFactor:
+    """`fed` when Google, not a password, began the sign-in."""
+    return "fed" if "fed" in proven and "pwd" not in proven else "pwd"
 
 
 def must_persist_noncompliance(f: SignInFacts) -> bool:

@@ -243,3 +243,71 @@ def test_sql_lock_constants_match_sign_in_policy() -> None:
     thresholds = set(re.findall(r"failed_auth_count \+ 1 >= (\d+)", body))
     assert thresholds == {str(sp.LOCK_THRESHOLD)}
     assert set(re.findall(r"interval '(\d+) seconds'", body)) == {str(sp.LOCK_SECONDS)}
+
+
+# ---- ADR-0020: Google sign-in is a first factor only ----
+
+FED = frozenset({"fed"})
+
+
+@pytest.mark.parametrize("grace", ["unset", "future", "past"])
+def test_fed_never_gets_grace(grace: str) -> None:
+    f = facts(grace_until=GRACE[grace], has_active_factor=False, first_factor="fed")
+    assert sp.in_grace(f) is False
+    assert sp.next_step(f, proven=FED) == "mfa_enrollment_required"
+
+
+def test_fed_with_factor_needs_the_code() -> None:
+    f = facts(first_factor="fed")
+    assert sp.next_step(f, proven=FED) == "mfa_required"
+    assert sp.next_step(f, proven=FED | {"otp"}) == "signed_in"
+    assert sp.next_step(f, proven=FED | {"rc"}) == "signed_in"
+
+
+def test_fed_first_login_enrols() -> None:
+    f = facts(first_factor="fed", has_active_factor=False, first_login=True)
+    assert sp.next_step(f, proven=FED) == "mfa_enrollment_required"
+
+
+def test_fed_off_signs_in() -> None:
+    assert sp.next_step(facts(enforcement="off", first_factor="fed"), proven=FED) == "signed_in"
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"password_must_change": True},
+        {"password_changed_at": NOW - timedelta(days=400)},
+        {"password_compliant": False},
+    ],
+)
+def test_no_password_step_without_a_password(change: dict[str, object]) -> None:
+    f = facts(first_factor="fed", has_password=False, **change)
+    assert sp.next_step(f, proven=FED | {"otp"}) == "signed_in"
+
+
+def test_password_step_still_due_with_a_password() -> None:
+    f = facts(first_factor="fed", has_password=True, password_must_change=True)
+    assert sp.next_step(f, proven=FED | {"otp"}) == "password_change_required"
+
+
+def test_linking_never_gets_grace() -> None:
+    f = facts(grace_until=GRACE["future"], has_active_factor=False, linking=True)
+    assert sp.in_grace(f) is False
+    assert sp.next_step(f, proven=PROVEN["pwd"]) == "mfa_enrollment_required"
+    assert sp.in_grace(replace(f, linking=False)) is True
+
+
+@pytest.mark.parametrize(
+    ("proven", "first"),
+    [
+        (frozenset({"fed"}), "fed"),
+        (frozenset({"fed", "otp"}), "fed"),
+        (frozenset({"pwd"}), "pwd"),
+        (frozenset({"pwd", "otp"}), "pwd"),
+        (frozenset({"pwd", "fed"}), "pwd"),
+        (frozenset(), "pwd"),
+    ],
+)
+def test_first_factor_of(proven: frozenset[str], first: str) -> None:
+    assert sp.first_factor_of(proven) == first

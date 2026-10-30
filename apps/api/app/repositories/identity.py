@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import builtins
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Final
@@ -83,6 +84,8 @@ class UserRow:
     password_must_change: bool = False
     is_platform_admin: bool = False
     last_login_at: datetime | None = None
+    # 0012 (ADR-0020): the linked Google account, or None
+    google_sub: str | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,6 +152,7 @@ def _user_row(user: User) -> UserRow:
         password_must_change=user.password_must_change,
         is_platform_admin=user.is_platform_admin,
         last_login_at=user.last_login_at,
+        google_sub=user.google_sub,
     )
 
 
@@ -301,6 +305,26 @@ class UserRepository:
             .returning(User.id)
         )
         return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
+    # ---- Google sign-in (0012, ADR-0020): the definer functions are the only writers ----
+
+    async def google_user(self, sub: str) -> uuid.UUID | None:
+        """The live user linked to this Google account (`app_google_user`), or None."""
+        found = (
+            await self.db.execute(text("SELECT public.app_google_user(:s)"), {"s": sub})
+        ).scalar_one_or_none()
+        return found if isinstance(found, uuid.UUID) else None
+
+    async def link_google_sub(self, user_id: uuid.UUID, sub: str) -> bool:
+        """Link a Google account to the caller's own row (`app.user_id` = `user_id`); False when
+        the user is an admin, has no password, already has one, or the account is taken."""
+        stmt = text("SELECT public.app_link_google_sub(:u, :s)")
+        return bool((await self.db.execute(stmt, {"u": user_id, "s": sub})).scalar_one())
+
+    async def unlink_google_sub(self, user_id: uuid.UUID) -> bool:
+        """Remove the caller's linked Google account; False when none or no password."""
+        stmt = text("SELECT public.app_unlink_google_sub(:u)")
+        return bool((await self.db.execute(stmt, {"u": user_id})).scalar_one())
 
     async def touch_login(self, user_id: uuid.UUID) -> None:
         """`last_login_at = now()` on the caller's own row (users_self needs `app.user_id`)."""
@@ -482,7 +506,7 @@ class RefreshTokenRepository:
         family_id: uuid.UUID,
         user_id: uuid.UUID,
         *,
-        amr: builtins.list[str],
+        amr: Sequence[str],
         mfa_at: datetime,
     ) -> int:
         """DPP-1: record a fresh code on the live rows of one family of `user_id` (the step-up
@@ -499,7 +523,7 @@ class RefreshTokenRepository:
             identity_scope(select(RefreshToken.id).where(where).with_for_update())
         )
         stmt = identity_scope(
-            update(RefreshToken).where(where).values(amr=amr, mfa_at=mfa_at)
+            update(RefreshToken).where(where).values(amr=list(amr), mfa_at=mfa_at)
         ).execution_options(synchronize_session=False)
         return _rowcount(await self.db.execute(stmt))
 
@@ -583,6 +607,8 @@ class SignupRow:
     created_tenant_id: uuid.UUID | None
     decided_at: datetime | None
     created_at: datetime
+    # 0012 (ADR-0020): `google` when Google verified the applicant's email
+    verified_via: str | None = None
 
 
 def _signup_select() -> Any:
@@ -599,6 +625,7 @@ def _signup_select() -> Any:
         SignupRequest.created_tenant_id,
         SignupRequest.decided_at,
         SignupRequest.created_at,
+        SignupRequest.verified_via,
     ).join(User, User.id == SignupRequest.user_id)
 
 
@@ -642,6 +669,37 @@ class SignupRepository:
         )
         found = (await self.db.execute(stmt)).scalar_one_or_none()
         return None if found is None else row_id
+
+    async def create_google_applicant(
+        self,
+        *,
+        email: str,
+        sub: str,
+        display_name: str | None,
+        brand_name: str,
+        owner_name: str,
+        phone: str | None,
+        website: str | None,
+    ) -> uuid.UUID | None:
+        """A new Google applicant (0012 `app_create_google_applicant`): a user with no password,
+        Google's `sub` and a verified email, plus a pending request `verified_via = 'google'`.
+        Needs `app.login_email` = `email`. None when the email or the Google account is taken."""
+        stmt = text("SELECT public.app_create_google_applicant(:e, :s, :d, :b, :o, :p, :w)")
+        found = (
+            await self.db.execute(
+                stmt,
+                {
+                    "e": email,
+                    "s": sub,
+                    "d": display_name,
+                    "b": brand_name,
+                    "o": owner_name,
+                    "p": phone,
+                    "w": website,
+                },
+            )
+        ).scalar_one_or_none()
+        return found if isinstance(found, uuid.UUID) else None
 
     async def latest_for(
         self, user_id: uuid.UUID, *, pending_only: bool = False

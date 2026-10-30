@@ -198,6 +198,8 @@ class ChallengeRow:
     mfa_at: datetime | None
     expires_at: datetime
     attempts: int
+    # 0012 (ADR-0020): a Google account to link when this sign-in finishes
+    link_google_sub: str | None = field(default=None, repr=False)
 
 
 class ChallengeRepository:
@@ -215,6 +217,7 @@ class ChallengeRepository:
         ip: str | None,
         user_agent: str | None,
         mfa_at: datetime | None = None,
+        link_google_sub: str | None = None,
     ) -> uuid.UUID:
         """A new challenge; the user's expired or consumed ones are deleted first (needs
         `app.user_id` = `user_id`). `mfa_at` is set only when `amr` holds `otp` or `rc`."""
@@ -238,6 +241,7 @@ class ChallengeRepository:
                 ip=ip,
                 user_agent=user_agent,
                 mfa_at=mfa_at,
+                link_google_sub=link_google_sub,
             )
         )
         return challenge_id
@@ -263,6 +267,7 @@ class ChallengeRepository:
                 MfaChallenge.mfa_at,
                 MfaChallenge.expires_at,
                 MfaChallenge.attempts,
+                MfaChallenge.link_google_sub,
             )
             .where(
                 MfaChallenge.challenge_hash == challenge_hash, MfaChallenge.consumed_at.is_(None)
@@ -272,7 +277,9 @@ class ChallengeRepository:
         row = (await self.db.execute(stmt)).one_or_none()
         if row is None:
             return None
-        return ChallengeRow(row[0], row[1], row[2], list(row[3]), row[4], row[5], int(row[6]))
+        return ChallengeRow(
+            row[0], row[1], row[2], list(row[3]), row[4], row[5], int(row[6]), row[7]
+        )
 
     async def fail(self, challenge_id: uuid.UUID) -> int:
         """One wrong code: attempts + 1, and consumed (burned) at the cap. The new count."""
