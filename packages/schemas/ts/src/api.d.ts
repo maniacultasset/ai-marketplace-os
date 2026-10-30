@@ -2850,12 +2850,12 @@ export interface components {
             device_token?: string | null;
             /**
              * Device Token Invalid
-             * @description ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token.
+             * @description ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. On `/auth/google/complete` it means none of the sent tokens matched the signed-in account: forget only the entry stored for this `email`, and say nothing when there was none.
              */
             device_token_invalid?: boolean | null;
             /**
              * Device Trust Days
-             * @description ADR-0023: on the code steps, how many days "Don't ask for a code on this browser" lasts (30, or 7 for a platform admin).
+             * @description ADR-0023: on the code steps, how many days the "Trust this browser" choice lasts (30, or 7 for a platform admin). Absent: do not offer the choice.
              */
             device_trust_days?: number | null;
             /** Expires In */
@@ -8317,7 +8317,7 @@ export interface operations {
                      * @example {
                      *       "access_token": "eyJhbGciOiJIUzI1NiJ9.example.signature",
                      *       "device_expires_at": "2026-11-04T09:30:00Z",
-                     *       "device_token": "dt_example_opaque_value",
+                     *       "device_token": "example_device_token_43_base64url_chars_000",
                      *       "expires_in": 1800,
                      *       "memberships": [
                      *         {

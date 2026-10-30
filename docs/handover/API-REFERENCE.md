@@ -784,8 +784,8 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `login.challenge_token` | string or null | no | Send it to the next step's route; keep it in memory only. | min length 1 |
 | `login.device_expires_at` | string (date-time) or null | no | With `device_token`: when this browser stops being trusted (fixed; a use never moves it). |  |
 | `login.device_token` | string or null | no | ADR-0023, `signed_in` only: a new trusted-browser token for this email (after `trust_device`, or the next value of the one sent). Replace the stored one; the old value stops working. | min length 1 |
-| `login.device_token_invalid` | boolean or null | no | ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. |  |
-| `login.device_trust_days` | integer or null | no | ADR-0023: on the code steps, how many days "Don't ask for a code on this browser" lasts (30, or 7 for a platform admin). | min 1; max 30 |
+| `login.device_token_invalid` | boolean or null | no | ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. On `/auth/google/complete` it means none of the sent tokens matched the signed-in account: forget only the entry stored for this `email`, and say nothing when there was none. |  |
+| `login.device_trust_days` | integer or null | no | ADR-0023: on the code steps, how many days the "Trust this browser" choice lasts (30, or 7 for a platform admin). Absent: do not offer the choice. | min 1; max 30 |
 | `login.expires_in` | integer or null | no | Access token lifetime in seconds. | min 1 |
 | `login.memberships` | array of MembershipOut or null | no |  |  |
 | `login.memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |
@@ -952,8 +952,8 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `challenge_token` | string or null | no | Send it to the next step's route; keep it in memory only. | min length 1 |
 | `device_expires_at` | string (date-time) or null | no | With `device_token`: when this browser stops being trusted (fixed; a use never moves it). |  |
 | `device_token` | string or null | no | ADR-0023, `signed_in` only: a new trusted-browser token for this email (after `trust_device`, or the next value of the one sent). Replace the stored one; the old value stops working. | min length 1 |
-| `device_token_invalid` | boolean or null | no | ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. |  |
-| `device_trust_days` | integer or null | no | ADR-0023: on the code steps, how many days "Don't ask for a code on this browser" lasts (30, or 7 for a platform admin). | min 1; max 30 |
+| `device_token_invalid` | boolean or null | no | ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. On `/auth/google/complete` it means none of the sent tokens matched the signed-in account: forget only the entry stored for this `email`, and say nothing when there was none. |  |
+| `device_trust_days` | integer or null | no | ADR-0023: on the code steps, how many days the "Trust this browser" choice lasts (30, or 7 for a platform admin). Absent: do not offer the choice. | min 1; max 30 |
 | `expires_in` | integer or null | no | Access token lifetime in seconds. | min 1 |
 | `memberships` | array of MembershipOut or null | no |  |  |
 | `memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |
@@ -1138,8 +1138,8 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `challenge_token` | string or null | no | Send it to the next step's route; keep it in memory only. | min length 1 |
 | `device_expires_at` | string (date-time) or null | no | With `device_token`: when this browser stops being trusted (fixed; a use never moves it). |  |
 | `device_token` | string or null | no | ADR-0023, `signed_in` only: a new trusted-browser token for this email (after `trust_device`, or the next value of the one sent). Replace the stored one; the old value stops working. | min length 1 |
-| `device_token_invalid` | boolean or null | no | ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. |  |
-| `device_trust_days` | integer or null | no | ADR-0023: on the code steps, how many days "Don't ask for a code on this browser" lasts (30, or 7 for a platform admin). | min 1; max 30 |
+| `device_token_invalid` | boolean or null | no | ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. On `/auth/google/complete` it means none of the sent tokens matched the signed-in account: forget only the entry stored for this `email`, and say nothing when there was none. |  |
+| `device_trust_days` | integer or null | no | ADR-0023: on the code steps, how many days the "Trust this browser" choice lasts (30, or 7 for a platform admin). Absent: do not offer the choice. | min 1; max 30 |
 | `expires_in` | integer or null | no | Access token lifetime in seconds. | min 1 |
 | `memberships` | array of MembershipOut or null | no |  |  |
 | `memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |
@@ -1235,8 +1235,8 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `challenge_token` | string or null | no | Send it to the next step's route; keep it in memory only. | min length 1 |
 | `device_expires_at` | string (date-time) or null | no | With `device_token`: when this browser stops being trusted (fixed; a use never moves it). |  |
 | `device_token` | string or null | no | ADR-0023, `signed_in` only: a new trusted-browser token for this email (after `trust_device`, or the next value of the one sent). Replace the stored one; the old value stops working. | min length 1 |
-| `device_token_invalid` | boolean or null | no | ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. |  |
-| `device_trust_days` | integer or null | no | ADR-0023: on the code steps, how many days "Don't ask for a code on this browser" lasts (30, or 7 for a platform admin). | min 1; max 30 |
+| `device_token_invalid` | boolean or null | no | ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. On `/auth/google/complete` it means none of the sent tokens matched the signed-in account: forget only the entry stored for this `email`, and say nothing when there was none. |  |
+| `device_trust_days` | integer or null | no | ADR-0023: on the code steps, how many days the "Trust this browser" choice lasts (30, or 7 for a platform admin). Absent: do not offer the choice. | min 1; max 30 |
 | `expires_in` | integer or null | no | Access token lifetime in seconds. | min 1 |
 | `memberships` | array of MembershipOut or null | no |  |  |
 | `memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |
@@ -1253,7 +1253,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 {
   "access_token": "eyJhbGciOiJIUzI1NiJ9.example.signature",
   "device_expires_at": "2026-11-04T09:30:00Z",
-  "device_token": "dt_example_opaque_value",
+  "device_token": "example_device_token_43_base64url_chars_000",
   "expires_in": 1800,
   "memberships": [
     {
@@ -1342,8 +1342,8 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `result.challenge_token` | string or null | no | Send it to the next step's route; keep it in memory only. | min length 1 |
 | `result.device_expires_at` | string (date-time) or null | no | With `device_token`: when this browser stops being trusted (fixed; a use never moves it). |  |
 | `result.device_token` | string or null | no | ADR-0023, `signed_in` only: a new trusted-browser token for this email (after `trust_device`, or the next value of the one sent). Replace the stored one; the old value stops working. | min length 1 |
-| `result.device_token_invalid` | boolean or null | no | ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. |  |
-| `result.device_trust_days` | integer or null | no | ADR-0023: on the code steps, how many days "Don't ask for a code on this browser" lasts (30, or 7 for a platform admin). | min 1; max 30 |
+| `result.device_token_invalid` | boolean or null | no | ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. On `/auth/google/complete` it means none of the sent tokens matched the signed-in account: forget only the entry stored for this `email`, and say nothing when there was none. |  |
+| `result.device_trust_days` | integer or null | no | ADR-0023: on the code steps, how many days the "Trust this browser" choice lasts (30, or 7 for a platform admin). Absent: do not offer the choice. | min 1; max 30 |
 | `result.expires_in` | integer or null | no | Access token lifetime in seconds. | min 1 |
 | `result.memberships` | array of MembershipOut or null | no |  |  |
 | `result.memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |
@@ -2043,8 +2043,8 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `challenge_token` | string or null | no | Send it to the next step's route; keep it in memory only. | min length 1 |
 | `device_expires_at` | string (date-time) or null | no | With `device_token`: when this browser stops being trusted (fixed; a use never moves it). |  |
 | `device_token` | string or null | no | ADR-0023, `signed_in` only: a new trusted-browser token for this email (after `trust_device`, or the next value of the one sent). Replace the stored one; the old value stops working. | min length 1 |
-| `device_token_invalid` | boolean or null | no | ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. |  |
-| `device_trust_days` | integer or null | no | ADR-0023: on the code steps, how many days "Don't ask for a code on this browser" lasts (30, or 7 for a platform admin). | min 1; max 30 |
+| `device_token_invalid` | boolean or null | no | ADR-0023: true when a device token was sent, the first factor passed, and it names no trusted browser of this account: forget the stored token. On `/auth/google/complete` it means none of the sent tokens matched the signed-in account: forget only the entry stored for this `email`, and say nothing when there was none. |  |
+| `device_trust_days` | integer or null | no | ADR-0023: on the code steps, how many days the "Trust this browser" choice lasts (30, or 7 for a platform admin). Absent: do not offer the choice. | min 1; max 30 |
 | `expires_in` | integer or null | no | Access token lifetime in seconds. | min 1 |
 | `memberships` | array of MembershipOut or null | no |  |  |
 | `memberships[].role` | string (enum) | yes |  | one of: `owner`, `operator`, `reviewer`, `admin` |

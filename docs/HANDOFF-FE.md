@@ -119,14 +119,16 @@ password rules are live. Build every screen below before the backend switches to
       put a token in a URL, the query cache or a log.
     - **Login.** Send `device_token` with `/auth/login` when an entry exists for that email. On the
       Google return page send `device_tokens` (every live entry, at most 5) with
-      `/auth/google/complete`, then key the answer by `email`. One helper for every `LoginResult`
+      `/auth/google/complete`, then key the answer by `email`. There `device_token_invalid` only
+      means none of the sent tokens belongs to that account: forget (and mention) only the entry
+      held for that email, and say nothing when there was none. One helper for every `LoginResult`
       (login, code step, enrolment `result`, password expired, Google `login`): store
       `device_token` with `device_expires_at` when present (it replaces the old value, which stops
       working), and delete the entry when `device_token_invalid` is true.
     - **Code steps.** On `/auth/login/mfa` and `/auth/login/mfa/confirm` add a checkbox, checked
-      by default: "Don't ask for a code on this browser for {device_trust_days ?? 30} days", hint
-      "Untick on a shared or public computer.", sent as `trust_device`. Hide it in recovery-code
-      mode (the server ignores it there).
+      by default: "Trust this browser for {device_trust_days} days", hint "Untick on a shared or
+      public computer.", sent as `trust_device`. Show it only when `device_trust_days` is present,
+      and hide it in recovery-code mode (the server ignores it there).
     - **Settings > Security.** "Trusted browsers": `GET /auth/devices` ->
       `{devices: [{id, label, created_at, last_used_at, expires_at, current}]}`. "Remove"
       (`DELETE /auth/devices/{id}`, 204; 404 when already gone) after a confirm; removing the
@@ -135,7 +137,8 @@ password rules are live. Build every screen below before the backend switches to
       and forgets every trusted browser, including this one."), then forget this email's entry and
       refetch. After a password change or an authenticator replace, forget the entry and refetch.
     - **Step-up.** The window is now 30 minutes; the platform admin's sign-up approve and reject no
-      longer ask for it.
+      longer ask for it. A sign-in that skipped the code on a trusted browser always gets the
+      step-up dialog on its first high-risk action.
 
 ## 7. Sign in and sign up with Google (contract 2.1.0; ADR-0020)
 

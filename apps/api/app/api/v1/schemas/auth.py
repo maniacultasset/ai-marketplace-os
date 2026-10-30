@@ -147,12 +147,15 @@ class LoginResult(WireModel):
     device_token_invalid: bool | None = Field(
         default=None,
         description="ADR-0023: true when a device token was sent, the first factor passed, "
-        "and it names no trusted browser of this account: forget the stored token.",
+        "and it names no trusted browser of this account: forget the stored token. On "
+        "`/auth/google/complete` it means none of the sent tokens matched the signed-in "
+        "account: forget only the entry stored for this `email`, and say nothing when there "
+        "was none.",
     )
     device_trust_days: Annotated[int, Field(ge=1, le=30)] | None = Field(
         default=None,
-        description="ADR-0023: on the code steps, how many days \"Don't ask for a code on "
-        'this browser" lasts (30, or 7 for a platform admin).',
+        description='ADR-0023: on the code steps, how many days the "Trust this browser" '
+        "choice lasts (30, or 7 for a platform admin). Absent: do not offer the choice.",
     )
 
     @model_validator(mode="after")

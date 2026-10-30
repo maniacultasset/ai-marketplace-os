@@ -5,8 +5,8 @@ connect confirm and account revoke, 43 with S16's profile update and document li
 44 with S20's listing preview, 48 with S19's listing history, issues, issue dismiss and tasks,
 50 with S21's listing submissions and refresh-status, 55 with ADR-0019's sign-up, sign-up status
 and the platform admin's list, approve and reject, 65 with DPP-1's MFA, step-up and password
-routes (ADR-0021), 71 with Google sign-in's start, callback, complete, link, unlink and sign-up
-(ADR-0020), 75 with the trusted browsers' list, remove and sign-out-all (ADR-0023); no
+routes (ADR-0021), 72 with Google sign-in's config, start, callback, complete, link, unlink and
+sign-up (ADR-0020), 75 with the trusted browsers' list, remove and sign-out-all (ADR-0023); no
 dead-letter path,
 which is staff tooling per T82). It
 drives the routers (`route()`), the declared OpenAPI responses (`declared_responses()`), the

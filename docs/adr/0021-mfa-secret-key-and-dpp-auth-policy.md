@@ -103,6 +103,8 @@ variable name") that the API may only encrypt with (ADR-0018: decrypt only in th
   - **No email notice** of security changes; they are seen only in the app.
   - **Trusted browsers (ADR-0023)**: a password plus a stolen trusted-browser token skips the
     sign-in code for up to 30 days (7 for admins), bounded by the fixed expiry, rotation with
-    reuse revocation and revocation on every credential change; the step-up window is 30 minutes.
+    reuse revocation and revocation on every credential change; a session kept while its
+    browser's trust is dropped never outlives that trust, so the admin 7-day bound holds; the
+    step-up window is 30 minutes and a trusted sign-in never counts as fresh for it.
 - Contract 2.0.0 (two error codes, the login union) is a MAJOR release; the frontend must handle
   every sign-in `status` before the switch to `all`.

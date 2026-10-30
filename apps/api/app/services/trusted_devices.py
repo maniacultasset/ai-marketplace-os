@@ -25,7 +25,7 @@ from app.core import device_tokens, user_agent
 from app.repositories.identity import RefreshTokenRepository
 from app.repositories.trusted_devices import TrustedDeviceRepository, TrustedDeviceRow
 from app.services import auth_events
-from app.services.sign_in_policy import TRUST_MAX_DEVICES, trust_days
+from app.services.sign_in_policy import REAUTH_MAX_AGE_DAYS, TRUST_MAX_DEVICES, trust_days
 
 __all__ = [
     "Lookup",
@@ -166,10 +166,13 @@ async def forget_all(
     """Every trusted browser of the user deleted (a credential changed, or sign out all), with
     one `auth.device_revoked` row when any was. The sessions they began are revoked by the
     caller's own revocation; `keep_family` (tenant, family) is the caller's session, kept but
-    detached from its browser, so it still ends 7 days after its trusted sign-in."""
-    count = await TrustedDeviceRepository(session).delete_all(user_id)
+    detached from its browser first (while its expiry can still be read), so it ends no later
+    than 7 days after its trusted sign-in and never after the browser's own trust would have."""
     if keep_family is not None:
-        await RefreshTokenRepository(session).detach_device(keep_family[0], keep_family[1], user_id)
+        await RefreshTokenRepository(session).detach_device(
+            keep_family[0], keep_family[1], user_id, reauth_days=REAUTH_MAX_AGE_DAYS
+        )
+    count = await TrustedDeviceRepository(session).delete_all(user_id)
     if count:
         await auth_events.record(
             session, action=REVOKED, user_id=user_id, tenant_id=tenant_id, ip=ip, reason=reason

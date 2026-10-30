@@ -25,7 +25,7 @@ import builtins
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Final
 
 from sqlalchemy import and_, delete, func, insert, literal, select, text, tuple_, update
@@ -43,6 +43,7 @@ from app.db.models.tenancy import (
     SignupRequest,
     Tenant,
     TenantMembership,
+    TrustedDevice,
     User,
     UserPasswordHistory,
 )
@@ -568,11 +569,20 @@ class RefreshTokenRepository:
         return None if row is None else FamilyDevice(row[0], row[1])
 
     async def detach_device(
-        self, tenant_id: uuid.UUID, family_id: uuid.UUID, user_id: uuid.UUID
+        self,
+        tenant_id: uuid.UUID,
+        family_id: uuid.UUID,
+        user_id: uuid.UUID,
+        *,
+        reauth_days: int,
     ) -> int:
         """ADR-0023: the caller's own family outlives its browser's trust (sign out all, a
-        password change from settings): `device_id` is cleared and `device_auth_at` kept, so the
-        session still ends 7 days after its trusted sign-in. The count."""
+        password change from settings, an authenticator replace): `device_id` is cleared and
+        `device_auth_at` capped at the browser's expiry less `reauth_days`, so the session still
+        ends at the earlier of 7 days after its trusted sign-in and the end of that browser's
+        trust (a session never outlives its browser). A browser already gone caps it at
+        `device_auth_at` less `reauth_days`: it was not renewable and stays so. Runs before the
+        browsers are deleted, and needs `app.user_id` = `user_id` (`td_self`). The count."""
         where = and_(
             RefreshToken.tenant_id == tenant_id,
             RefreshToken.family_id == family_id,
@@ -583,8 +593,18 @@ class RefreshTokenRepository:
         await self.db.execute(
             identity_scope(select(RefreshToken.id).where(where).with_for_update())
         )
+        window = timedelta(days=reauth_days)
+        browser_end = (
+            select(TrustedDevice.expires_at - window)
+            .where(TrustedDevice.id == RefreshToken.device_id, TrustedDevice.user_id == user_id)
+            .scalar_subquery()
+        )
+        capped = func.least(
+            RefreshToken.device_auth_at,
+            func.coalesce(browser_end, RefreshToken.device_auth_at - window),
+        )
         stmt = identity_scope(
-            update(RefreshToken).where(where).values(device_id=None)
+            update(RefreshToken).where(where).values(device_id=None, device_auth_at=capped)
         ).execution_options(synchronize_session=False)
         return _rowcount(await self.db.execute(stmt))
 

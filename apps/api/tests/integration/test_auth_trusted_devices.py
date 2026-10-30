@@ -3,8 +3,9 @@ PostgreSQL (the app as app_rw under FORCE RLS; the admin connection builds and r
 
 A trusted browser is created only by a TOTP code with `trust_device`, skips only the code (never
 enrolment, a password change or a Google link), rotates its token on each use, mints no new `amr`
-value (`mfa_at` stays the time of the code that created it), and is revoked by every credential
-change, by the user, by eviction past 10, by expiry and by token reuse.
+value (`mfa_at` stays the time of the code that created it, and is never fresh for a step-up), is
+revoked by every credential change, by the user, by eviction past 10, by expiry and by token
+reuse, and a session kept while its browser is forgotten never outlives that browser's trust.
 """
 
 from __future__ import annotations
@@ -164,7 +165,9 @@ async def test_trusted_browser_skips_the_code_and_rotates(
     assert body["status"] == "signed_in" and body["challenge_token"] is None
     claims = _claims(body["access_token"])
     assert claims["amr"] == ["pwd", "otp"]  # no new method: the code that created the trust
-    assert claims["mfa_at"] == int(row[3].timestamp())
+    # the code that created the trust, made stale for the step-up even minutes after that code
+    assert claims["mfa_at"] <= int(row[3].timestamp())
+    assert claims["mfa_at"] <= int(time.time()) - 1800
     assert body["device_token"] and body["device_token"] != first_token
     assert body["device_expires_at"] is not None
     [rotated] = _devices(auth_db, EMAIL)
@@ -743,6 +746,83 @@ async def test_sign_out_all_keeps_this_session_only(
     assert "sign_out_all" in [r[-1] for r in audit_rows(auth_db, "auth.device_revoked")]
     again = (await _login(api, auth_db, EMAIL, token=second["device_token"])).json()
     assert again["status"] == "mfa_required"
+
+
+def _age_sessions(conn: Conn, days: float) -> None:
+    """Move every live session's code and trusted sign-in times `days` into the past (the
+    clock moving on)."""
+    conn.execute(
+        "UPDATE refresh_tokens SET mfa_at = mfa_at - make_interval(secs => %s), "
+        "device_auth_at = device_auth_at - make_interval(secs => %s) WHERE revoked_at IS NULL",
+        [days * 86400, days * 86400],
+    )
+
+
+@pytest.mark.parametrize(("admin", "trust_age"), [(True, 6.9), (False, 29.9)])
+async def test_a_kept_session_never_outlives_its_browser(
+    api: httpx.AsyncClient,
+    world: World,
+    auth_db: Conn,
+    monkeypatch: pytest.MonkeyPatch,
+    clock: TotpClock,  # noqa: F811
+    admin: bool,
+    trust_age: float,
+) -> None:
+    """A trusted sign-in just before the browser's trust ends, then sign out all: the kept
+    session is capped at the browser's expiry (admin day 7, brand day 30), not 7 days on."""
+    if admin:
+        auth_db.execute("UPDATE users SET is_platform_admin = true WHERE email = %s", [EMAIL])
+    user = await _enrolled(api, auth_db, monkeypatch, clock)
+    token = (await _trust(api, auth_db, user, clock))["device_token"]
+    days = 7 if admin else 30
+    auth_db.execute(
+        "UPDATE trusted_devices SET trusted_at = now() - make_interval(secs => %s), "
+        "expires_at = now() - make_interval(secs => %s) + make_interval(days => %s) "
+        "WHERE user_id = %s",
+        [trust_age * 86400, trust_age * 86400, days, user_id(auth_db, EMAIL)],
+    )
+    [device] = _devices(auth_db, EMAIL)
+    session = (await _login(api, auth_db, EMAIL, token=token)).json()
+    assert session["status"] == "signed_in", session
+    done = await api.post(SIGN_OUT_ALL, headers=bearer(session["access_token"]))
+    assert done.status_code == 204, done.text
+    assert _devices(auth_db, EMAIL) == []
+    sid = _claims(session["access_token"])["sid"]
+    [kept] = auth_db.execute(
+        "SELECT device_id, device_auth_at FROM refresh_tokens "
+        "WHERE family_id = %s AND revoked_at IS NULL",
+        [sid],
+    ).fetchall()
+    assert kept[0] is None and kept[1] == device[4] - timedelta(days=7)
+    renewed = await api.post(REFRESH, json={"refresh_token": session["refresh_token"]})
+    assert renewed.status_code == 200, renewed.text
+    _age_sessions(auth_db, 0.2)  # day 7.1 (admin) or 30.1: past the browser's trust
+    late = await api.post(REFRESH, json={"refresh_token": renewed.json()["refresh_token"]})
+    assert late.status_code == 401, late.text
+
+
+async def test_a_trusted_sign_in_right_after_the_code_still_steps_up(
+    api: httpx.AsyncClient,
+    world: World,
+    auth_db: Conn,
+    monkeypatch: pytest.MonkeyPatch,
+    clock: TotpClock,  # noqa: F811
+) -> None:
+    """The code that created the trust is a minute old, yet the trusted sign-in is not fresh
+    for a step-up: a copied token plus the password never reaches a high-risk route."""
+    user = await _enrolled(api, auth_db, monkeypatch, clock)
+    token = (await _trust(api, auth_db, user, clock))["device_token"]
+    session = (await _login(api, auth_db, EMAIL, token=token)).json()
+    assert session["status"] == "signed_in", session
+    target = world.user("reviewer@acme.test")
+    refused = await api.patch(
+        f"{MEMBERS}/{target}", json={"role": "operator"}, headers=bearer(session["access_token"])
+    )
+    assert refused.status_code == 403
+    assert refused.json()["error"]["type"] == "MFA_STEP_UP_REQUIRED"
+    # and the session itself still renews: the trusted sign-in counts for the 7-day rule
+    renewed = await api.post(REFRESH, json={"refresh_token": session["refresh_token"]})
+    assert renewed.status_code == 200, renewed.text
 
 
 # ---- 14. the lockout is untouched ----

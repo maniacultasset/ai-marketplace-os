@@ -928,15 +928,15 @@ async def test_login_busy_email_lock_same_401_one_verify(world: World, known: bo
 TRUSTED_AT = NOW - timedelta(days=3)
 
 
-def _device(user: UserRow) -> trusted_service.Lookup:
+def _device(user: UserRow, trusted_at: datetime = TRUSTED_AT) -> trusted_service.Lookup:
     row = TrustedDeviceRow(
         id=uuid.uuid4(),
         user_id=user.id,
         label="Chrome on macOS",
-        trusted_at=TRUSTED_AT,
-        expires_at=TRUSTED_AT + timedelta(days=30),
+        trusted_at=trusted_at,
+        expires_at=trusted_at + timedelta(days=30),
         last_used_at=None,
-        created_at=TRUSTED_AT,
+        created_at=trusted_at,
         token_hash=b"h" * 32,
     )
     return trusted_service.Lookup(row)
@@ -965,6 +965,18 @@ async def test_trusted_browser_skips_the_code_with_no_new_amr(world: World) -> N
     assert result.device_token == "dt-next" and result.device_token_invalid is None
     assert result.device_expires_at == TRUSTED_AT + timedelta(days=30)
     assert world.cleared == 1
+
+
+async def test_a_fresh_trust_is_never_fresh_for_a_step_up(world: World) -> None:
+    """ADR-0023: the code that created the trust is a minute old, yet the trusted sign-in's
+    `mfa_at` is past the 1800-second step-up window."""
+    user = _user(world)
+    world.device = _device(user, trusted_at=NOW - timedelta(minutes=1))
+    result = await _login_with_device(world)
+    assert result is not None and result.status == "signed_in"
+    issued = world.issued[0]
+    assert issued["mfa_at"] == NOW - timedelta(seconds=1801)
+    assert issued["device_auth_at"] == NOW
 
 
 async def test_wrong_password_never_reads_the_device(world: World) -> None:

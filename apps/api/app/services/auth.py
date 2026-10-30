@@ -32,7 +32,8 @@ DPP-1 rules every sign-in path here follows:
   code only when the code is the last thing missing; it is looked at only after the first factor
   passed, and swapped for a new one on each use. A trusted sign-in mints no new `amr` value: the
   first factor proven now plus `otp`, with `mfa_at` = when the code that created the trust was
-  entered, so a step-up still asks for a real code. Its 7-day renewal counts from that sign-in
+  entered, and never less than 30 minutes and 1 second ago, so a step-up always asks for a real
+  code. Its 7-day renewal counts from that sign-in
   (`refresh_tokens.device_auth_at`) and only while the browser stays trusted.
 """
 
@@ -42,7 +43,7 @@ import ipaddress
 import secrets
 import uuid
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from functools import cache
 from typing import Any, Final, Literal
 from uuid import UUID
@@ -77,6 +78,7 @@ from app.repositories.trusted_devices import TrustedDeviceRepository, TrustedDev
 from app.services import auth_events, mfa
 from app.services import trusted_devices as trusted
 from app.services.sign_in_policy import (
+    STEP_UP_MAX_AGE_SECONDS,
     SignInFacts,
     Step,
     first_factor_of,
@@ -111,6 +113,8 @@ async def probe_principal(claims: JWTClaims) -> Principal | None:
 
 USER_AGENT_MAX: Final = 512
 METHOD_ORDER: Final = ("pwd", "otp", "rc")
+# ADR-0023: a trusted sign-in's `mfa_at` is at least this old, so it never passes a step-up
+_STEP_UP_STALE: Final = timedelta(seconds=STEP_UP_MAX_AGE_SECONDS + 1)
 PURPOSE_FOR: Final[dict[str, mfa.Purpose]] = {
     "mfa_required": "login",
     "mfa_enrollment_required": "enroll",
@@ -413,9 +417,11 @@ async def _sign_in(
     device_expires_at: datetime | None = None
     if use_device and live is not None:
         rotated = await trusted.rotate(session, live)
-        # the code that created the trust, never this sign-in, is the session's code time
-        mfa_at = rotated.trusted_at
-        device_id, device_auth_at = rotated.device_id, _now()
+        # the code that created the trust, never this sign-in, is the session's code time, and
+        # never one a step-up counts as fresh: a step-up always asks this session for a code
+        signed_at = _now()
+        mfa_at = min(rotated.trusted_at, signed_at - _STEP_UP_STALE)
+        device_id, device_auth_at = rotated.device_id, signed_at
         device_token, device_expires_at = rotated.token, rotated.expires_at
     elif trust and mfa_at is not None:
         created = await trusted.trust(
@@ -1388,8 +1394,9 @@ async def _renewal_allowed(
 ) -> bool:
     """`refresh_allowed` with the user's own admin flag (read only under `all`) and, for a
     trusted-browser session with no code since (ADR-0023), whether that browser is still trusted
-    (a session kept by its own sign-out-all or password change has no browser left to check:
-    `device_id` cleared, `device_auth_at` kept)."""
+    (a session kept by its own sign-out-all, password change or authenticator replace has no
+    browser left to check: `device_id` cleared and `device_auth_at` already capped at that
+    browser's expiry less 7 days, so the 7-day rule alone ends it in time)."""
     settings = get_settings()
     if settings.mfa_enforcement != "all":
         return True

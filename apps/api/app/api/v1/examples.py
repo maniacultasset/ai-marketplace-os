@@ -409,7 +409,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
         },
         "auth_login_mfa": {
             **_SIGNED_IN,
-            "device_token": "dt_example_opaque_value",
+            "device_token": "example_device_token_43_base64url_chars_000",
             "device_expires_at": "2026-11-04T09:30:00Z",
         },
         "auth_login_mfa_enroll": {

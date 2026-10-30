@@ -150,7 +150,7 @@ STEP_UP_MARK: Final = "__mkos_step_up__"
 @cache
 def require_recent_mfa(*, otp_only: bool) -> Any:
     """DPP-1 step-up (ADR-0021): under `MFA_ENFORCEMENT=all` the access token must carry a code
-    entered in the last 600 seconds (a TOTP code only, when `otp_only`); otherwise 403
+    entered in the last 1800 seconds (ADR-0023; a TOTP code only, when `otp_only`); otherwise 403
     `MFA_STEP_UP_REQUIRED`, or 403 `MFA_ENROLLMENT_REQUIRED` when the caller has no factor yet
     (one read, on the refusal path only). A no-op under `off`. It runs after the op's policy,
     so a wrong role is still 403 `PERMISSION_DENIED` first."""
