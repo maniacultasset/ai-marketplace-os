@@ -1,6 +1,7 @@
 """Tenancy models: `tenants`, global `users`, `tenant_memberships`, `invitations`
-(DATABASE.md §5.1; ADR-0006), the platform `signup_requests` (0010; ADR-0019) and the per-user MFA,
-challenge and password-history tables (0011; DPP-1, ADR-0021). Columns, defaults, keys and indexes mirror revision
+(DATABASE.md §5.1; ADR-0006), the platform `signup_requests` (0010; ADR-0019), the per-user MFA,
+challenge and password-history tables (0011; DPP-1, ADR-0021) and the Google sign-in flows
+(0012; ADR-0020). Columns, defaults, keys and indexes mirror revision
 0001_core_tenancy under the same names; the CHECK constraints live only in the revision."""
 
 from __future__ import annotations
@@ -117,6 +118,13 @@ class User(Base):
     __table_args__ = (
         PrimaryKeyConstraint("id", name=conv("pk_users")),
         Index(conv("uq_users_email_lower"), func.lower(text("email")), unique=True),
+        # 0012 (Google sign-in, ADR-0020): one Google account per user, one user per account
+        Index(
+            conv("uq_users_google_sub"),
+            "google_sub",
+            unique=True,
+            postgresql_where=text("google_sub IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = id_column()
@@ -141,6 +149,9 @@ class User(Base):
         DateTime(timezone=True), server_default=NOW
     )
     password_must_change: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    # 0012 (ADR-0020): the linked Google account's `sub`; written only by the definer functions
+    # (users_credential_guard), never granted to the read-only roles.
+    google_sub: Mapped[str | None] = mapped_column(Text)
 
 
 def _user_fk(table: str) -> ForeignKeyConstraint:
@@ -230,6 +241,8 @@ class MfaChallenge(Base):
     ip: Mapped[str | None] = mapped_column(INET)
     user_agent: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = created_at_column()
+    # 0012 (ADR-0020): a Google account to link once this password sign-in finishes
+    link_google_sub: Mapped[str | None] = mapped_column(Text)
 
 
 class UserPasswordHistory(Base):
@@ -299,6 +312,37 @@ class SignupRequest(Base):
     created_tenant_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
+    # 0012 (ADR-0020): `google` when Google verified the applicant's email; set at insert only
+    verified_via: Mapped[str | None] = mapped_column(Text)
+
+
+class LoginFlow(Base):
+    """One Google sign-in between the browser's redirects (0012; ADR-0020). A platform table: no
+    `tenant_id` and not `TenantScoped`; FORCE RLS lets app_rw read and delete only the row whose
+    `flow_hash` is `app.token_hash`. Hashes, the verifier and the identity are never granted to
+    the read-only roles."""
+
+    __tablename__ = "login_flows"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_login_flows")),
+        UniqueConstraint("flow_hash", name=conv("uq_login_flows_flow_hash")),
+        Index(conv("ix_login_flows_expires_at"), "expires_at"),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    phase: Mapped[str] = mapped_column(Text)
+    flow_hash: Mapped[bytes] = deferred(mapped_column(LargeBinary, nullable=False))
+    binding_hash: Mapped[bytes] = deferred(mapped_column(LargeBinary, nullable=False))
+    code_verifier: Mapped[str | None] = deferred(mapped_column(Text))
+    nonce_hash: Mapped[bytes | None] = deferred(mapped_column(LargeBinary))
+    sub: Mapped[str | None] = mapped_column(Text)
+    email: Mapped[str | None] = mapped_column(Text)
+    hd: Mapped[str | None] = mapped_column(Text)
+    display_name: Mapped[str | None] = mapped_column(Text)
+    given_name: Mapped[str | None] = mapped_column(Text)
+    family_name: Mapped[str | None] = mapped_column(Text)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created_at_column()
 
 
 class TenantMembership(TenantScoped, Base):

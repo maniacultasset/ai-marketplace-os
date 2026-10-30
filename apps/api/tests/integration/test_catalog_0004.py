@@ -92,8 +92,13 @@ def test_catalog_definer_search_path(db: Conn) -> None:
     assert [r[0] for r in rows] == [
         "app_begin_auth_attempt(uuid)",  # 0011 (DPP-1)
         "app_clear_auth_failures(uuid)",  # 0011 (DPP-1)
+        "app_create_google_applicant(text,text,text,text,text,text,text)",  # 0012 (ADR-0020)
+        "app_google_user(text)",  # 0012
         "app_is_platform_admin()",  # 0010 (ADR-0019)
+        "app_link_google_sub(uuid,text)",  # 0012
         "app_note_auth_failure(uuid)",  # 0011 (DPP-1)
+        "app_prune_login_flows()",  # 0012
+        "app_unlink_google_sub(uuid)",  # 0012
         "expire_trials()",
         "set_tenant_lifecycle(uuid,text,text)",
     ]

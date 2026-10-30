@@ -40,6 +40,10 @@ POLICIES: dict[str, frozenset[str]] = {
     "user_recovery_codes": frozenset({"urc_self", "t_platform", "t_migrator"}),
     "mfa_challenges": frozenset({"mc_self", "mc_hash", "t_platform", "t_migrator"}),
     "user_password_history": frozenset({"uph_self", "t_platform", "t_migrator"}),
+    # 0012 (ADR-0020): Google sign-in flows have no tenant_id; one row through app.token_hash
+    "login_flows": frozenset(
+        {"lf_hash_select", "lf_hash_delete", "lf_insert", "t_platform", "t_migrator"}
+    ),
 }
 MFA_TABLES = frozenset(
     {"user_mfa_factors", "user_recovery_codes", "mfa_challenges", "user_password_history"}
@@ -91,7 +95,7 @@ def _policies(conn: Conn) -> dict[str, dict[str, tuple[str, frozenset[str]]]]:
 
 def test_rls_forced_everywhere(db: Conn) -> None:
     tables = _tables(db)
-    expected = _tenant_tables(db) | {"users", "tenants"} | MFA_TABLES
+    expected = _tenant_tables(db) | {"users", "tenants", "login_flows"} | MFA_TABLES
     assert len(expected) > 30, "is the database at head?"
     policies = _policies(db)
     for table in sorted(expected):
