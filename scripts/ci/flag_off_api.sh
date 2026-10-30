@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Start or stop the flag-off API for `make e2e` (S22 T18; C2): `start PORT` runs a second local
-# API with FLIPKART_ENABLED=false on 127.0.0.1:PORT (uvicorn's loopback default; never a host
-# flag) in the background, with a PID file, and waits up to 60 s for /readyz; `stop PORT` ends it.
-# It shares the caller's env (the same .env, database and JWT secret as `make dev`), so the e2e
-# can show the refusals of a deployment that keeps Flipkart off. Local dev tooling only.
+# API with FLIPKART_ENABLED=false and (ADR-0020) GOOGLE_OAUTH_ENABLED=false on 127.0.0.1:PORT
+# (uvicorn's loopback default; never a host flag) in the background, with a PID file, and waits up
+# to 60 s for /readyz; `stop PORT` ends it. It shares the caller's env (the same .env, database and
+# JWT secret as `make dev`), so the e2e can show the refusals of a deployment that keeps Flipkart
+# and Google sign-in off. Local dev tooling only.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -31,7 +32,7 @@ stop() {
 case "$mode" in
   start)
     stop
-    FLIPKART_ENABLED=false nohup uv run --frozen python -m uvicorn app.main:app \
+    GOOGLE_OAUTH_ENABLED=false FLIPKART_ENABLED=false nohup uv run --frozen python -m uvicorn app.main:app \
       --port "$port" --app-dir apps/api >"$logfile" 2>&1 &
     echo $! >"$pidfile"
     for _ in $(seq 1 60); do

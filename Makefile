@@ -250,6 +250,9 @@ bootstrap-mimic:
 # the e2e worker's publish and status-sync jobs never leave the machine.
 # S22 C2: the local API (and every e2e hook) also runs with Flipkart on against the fake's listing
 # routes; `.env.example` and the Settings default keep FLIPKART_ENABLED=false everywhere else.
+# ADR-0020: and with Google sign-in on against the fake Google the fake serves under /google (its
+# own fixed client and its own origin as the issuer, a raised per-IP Google limit for the e2e
+# script); `.env.example` and the Settings default keep GOOGLE_OAUTH_ENABLED=false.
 FAKE_MARKETPLACE_URL = http://127.0.0.1:$(FAKE_MARKETPLACE_HOST_PORT)
 FAKE_AMAZON_APP_ID := amzn1.sp.solution.REPLACE_ME
 FAKE_MARKETPLACE_ENV = AMAZON_APP_ID=$(FAKE_AMAZON_APP_ID) \
@@ -259,7 +262,15 @@ FAKE_MARKETPLACE_ENV = AMAZON_APP_ID=$(FAKE_AMAZON_APP_ID) \
 	FLIPKART_TOKEN_URL=$(FAKE_MARKETPLACE_URL)/flipkart/token \
 	AMAZON_SPAPI_ENDPOINT=$(FAKE_MARKETPLACE_URL) \
 	FLIPKART_API_BASE=$(FAKE_MARKETPLACE_URL)/flipkart/sellers \
-	FLIPKART_ENABLED=true
+	FLIPKART_ENABLED=true \
+	GOOGLE_OAUTH_ENABLED=true \
+	GOOGLE_OAUTH_CLIENT_ID=fake-google-client.apps.googleusercontent.com \
+	GOOGLE_OAUTH_CLIENT_SECRET=fake-google-client-secret-local-only \
+	GOOGLE_AUTHORIZE_URL=$(FAKE_MARKETPLACE_URL)/google/authorize \
+	GOOGLE_TOKEN_URL=$(FAKE_MARKETPLACE_URL)/google/token \
+	GOOGLE_JWKS_URL=$(FAKE_MARKETPLACE_URL)/google/certs \
+	GOOGLE_ISSUER=$(FAKE_MARKETPLACE_URL)/google \
+	AUTH_GOOGLE_RATE_LIMIT_PER_MIN=60
 
 # uvicorn keeps its 127.0.0.1 default: never pass --host here.
 .PHONY: dev

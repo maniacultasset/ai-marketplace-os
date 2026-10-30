@@ -74,7 +74,7 @@ import json
 import secrets
 import time
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Final
 from urllib.parse import urlencode
@@ -876,7 +876,6 @@ CONFIG_KEYS: Final = (
     # ADR-0020: the fake Google accepts the local API's client and redirect URI
     "GOOGLE_OAUTH_CLIENT_ID",
     "GOOGLE_OAUTH_CLIENT_SECRET",
-    "GOOGLE_ISSUER",
     "DASHBOARD_BASE_URL",
 )
 
@@ -925,7 +924,6 @@ def config_from_env(environ: Mapping[str, str], dotenv: Path) -> FakeConfig:
                 if values["DASHBOARD_BASE_URL"]
                 else base.google.redirect_uri
             ),
-            issuer=pick("GOOGLE_ISSUER", base.google.issuer),
         ),
     )
 
@@ -939,6 +937,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=int, default=4020)
     args = parser.parse_args(argv)
     config = config_from_env(os.environ, Path.cwd() / ".env")
+    # ADR-0020: the fake Google's issuer is its own origin (the local API sets GOOGLE_ISSUER to it)
+    google = replace(config.google, issuer=f"http://127.0.0.1:{args.port}/google")
+    config = replace(config, google=google)
     uvicorn.run(build_fake(config), host="127.0.0.1", port=args.port, log_level="warning")
     return 0
 

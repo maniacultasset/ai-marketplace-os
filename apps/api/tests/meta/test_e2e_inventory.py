@@ -26,6 +26,7 @@ FLOWS: dict[str, tuple[str, ...]] = {
     "analytics": ("analytics.sh",),
     "rules": ("rules.sh",),
     "jobs": ("jobs.sh",),
+    "google": ("google_signin.sh",),  # ADR-0020
 }
 # the steps that may read the database (`psql` through the compose postgres), each with its reason;
 # every one is read-only (no write SQL), names as built
@@ -120,6 +121,20 @@ def test_every_flow_has_e2e_script(repo_root: Path) -> None:
         "restore_operator_role_200",
     ):
         assert step in members, step
+    _, google = _split(scripts["google_signin.sh"])
+    for step in (
+        "new_user_needs_details",
+        "new_user_signup_202",
+        "pending_again",
+        "admin_approves",
+        "google_sign_in",
+        "link_required",
+        "linked_sign_in",
+        "cancelled",
+        "not_authoritative",
+        "foreign_binding",
+    ):
+        assert step in google, step
     _, jobs = _split(scripts["jobs.sh"])
     for step in ("poll_queued", "cancel_200", "cancel_again_409", "bharat_get_404"):
         assert step in jobs, step
