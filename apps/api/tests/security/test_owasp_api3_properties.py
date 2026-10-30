@@ -40,6 +40,9 @@ PERSONAL_OPS = frozenset(
         "admin_signup_requests_list",
         "admin_signup_requests_approve",
         "admin_signup_requests_reject",
+        # ADR-0020: the person's own Google email, shown back to them (top level and in the
+        # sign-up or link payload)
+        "auth_google_complete",
     }
 )
 TOKEN_KEYS = frozenset({"access_token", "refresh_token"})
@@ -95,7 +98,6 @@ SECRET_KEYS_BY_OP: dict[str, dict[str, bool]] = {
         "challenge_token": False,
         "details_handle": False,
         "link_handle": False,
-        "email": False,  # the person's own Google email, shown back to them
     },
     "auth_google_link": _LOGIN_RESULT_TOP,
     # ADR-0020: a boolean (no password on a Google-only account), not a secret
@@ -301,7 +303,11 @@ def test_api3_secret_key_allow_list_matches_the_surface(auth_db: Any) -> None:
     spec = openapi_spec()
     assert set(SECRET_KEYS_BY_OP) <= set(OPS)
     for op_id, allowed in SECRET_KEYS_BY_OP.items():
-        found = {(k, top) for k, top in _response_keys(spec, op_id) if denied(k)}
+        found = {
+            (k, top)
+            for k, top in _response_keys(spec, op_id)
+            if denied(k) and not (k in PERSONAL_KEYS and op_id in PERSONAL_OPS)
+        }
         assert found == set(allowed.items()), op_id
 
 
