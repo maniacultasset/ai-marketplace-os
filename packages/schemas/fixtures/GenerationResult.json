@@ -1,9 +1,9 @@
 {
-  "schema_version": "2.0.0",
+  "schema_version": "2.1.0",
   "request_id": "req-golden-1",
   "job_id": "44444444-4444-4444-4444-444444444444",
   "listing": {
-    "schema_version": "2.0.0",
+    "schema_version": "2.1.0",
     "listing_id": "9c1d2f6a-3b84-4f21-9a55-0c6f8b2e77d1",
     "product_id": "4e8a1b30-77cc-41d9-8f02-5b9c1de3a004",
     "marketplace": "amazon",
@@ -61,13 +61,13 @@
   },
   "image_reports": [],
   "validation": {
-    "schema_version": "2.0.0",
+    "schema_version": "2.1.0",
     "listing_id": "9c1d2f6a-3b84-4f21-9a55-0c6f8b2e77d1",
     "listing_version_id": null,
     "passed": false,
     "stages": [
       {
-        "schema_version": "2.0.0",
+        "schema_version": "2.1.0",
         "validation_run_id": null,
         "tenant_id": "11111111-1111-1111-1111-111111111111",
         "listing_id": "9c1d2f6a-3b84-4f21-9a55-0c6f8b2e77d1",
@@ -79,7 +79,7 @@
         "rules_version": null,
         "duration_ms": 0,
         "report": {
-          "schema_version": "2.0.0",
+          "schema_version": "2.1.0",
           "status": "failed",
           "error_code": "VALIDATION_FAILED",
           "retryable": true,
@@ -117,7 +117,7 @@
   },
   "agent_runs": [
     {
-      "schema_version": "2.0.0",
+      "schema_version": "2.1.0",
       "id": "7b3c9e10-22d5-4f6a-8c31-9e0a4d5b6f22",
       "tenant_id": "11111111-1111-1111-1111-111111111111",
       "product_id": null,

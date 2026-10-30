@@ -12,6 +12,9 @@
 - `enforce_signup_limit(request)`: the same 5/min per `sha256(ip)` alone, called by the public
   sign-up before anything else, so one address cannot mint accounts across many emails
   (ADR-0019).
+- `enforce_google_limit(request)`: `AUTH_GOOGLE_RATE_LIMIT_PER_MIN` (10) per `sha256(ip)` on
+  every Google sign-in step (ADR-0020); the JSON steps then add the login limiter keyed on the
+  email their handle carries, before the handle is consumed.
 
 The client IP (Q6): uvicorn runs with `--proxy-headers --forwarded-allow-ips='*'`, which rewrites
 the ASGI peer to the left-most `X-Forwarded-For` entry, so `request.client` is never trusted when
@@ -87,6 +90,17 @@ async def enforce_login_limit(request: Request, email: str) -> None:
     settings = get_settings()
     await _enforce(login_bucket(request_ip(request), email), settings.auth_login_rate_limit_per_min)
     await _enforce(login_email_bucket(email), settings.auth_login_email_rate_limit_per_min)
+
+
+def google_bucket(ip: str) -> str:
+    return f"google:{hashlib.sha256(ip.encode()).hexdigest()}"
+
+
+async def enforce_google_limit(request: Request) -> None:
+    """ADR-0020: every Google sign-in step, per `sha256(ip)`, before any handle is read."""
+    await _enforce(
+        google_bucket(request_ip(request)), get_settings().auth_google_rate_limit_per_min
+    )
 
 
 def signup_bucket(ip: str) -> str:

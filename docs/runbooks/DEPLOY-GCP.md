@@ -61,6 +61,10 @@ After that, every update is `deploy.sh staging release`.
 - `ALLOWED_ORIGINS` and `DASHBOARD_BASE_URL` in the env file: https origins, no trailing `/`.
 - `SENTRY_DSN`, plus `OPENAI_API_KEY` wherever the worker runs: typed at the hidden prompt, straight
   into Secret Manager.
+- With `GOOGLE_OAUTH_ENABLED=true` (ADR-0020; off by default): `GOOGLE_OAUTH_CLIENT_ID` in the env
+  file and `GOOGLE_OAUTH_CLIENT_SECRET` typed at the hidden prompt. The secret is bound to the api
+  only while the switch is on, and `deploy` and `release` refuse to start when it has no value
+  (`google guard`). Switching, verification and rollback: `GOOGLE-SIGNIN.md`.
 - Optional: `API_PUBLIC_URL`, once a domain fronts the API. `JWT_ISSUER` and the OAuth redirect URIs
   follow it, and the Amazon/Flipkart applications must list the same callback strings.
 - Everything else is generated: `JWT_SECRET`, `ADMIN_SESSION_SECRET`, the `postgres`, `app_rw`,
@@ -72,7 +76,7 @@ After that, every update is `deploy.sh staging release`.
 
 | Account | Project roles | Resource roles |
 |---|---|---|
-| `aimos-api` | `cloudsql.client` | accessor on its 6 secrets; `cryptoKeyEncrypter` (encrypt only, ADR-0018) on the one key |
+| `aimos-api` | `cloudsql.client` | accessor on its 6 secrets (7 with Google sign-in on: `GOOGLE_OAUTH_CLIENT_SECRET`); `cryptoKeyEncrypter` (encrypt only, ADR-0018) on the one key |
 | `aimos-worker` | `cloudsql.client` | accessor on its 5 secrets (adds `OPENAI_API_KEY`); `cryptoKeyEncrypterDecrypter` on the key |
 | `aimos-migrate` | `cloudsql.client` | accessor on `ALEMBIC_DATABASE_URL` |
 | `aimos-ops` | `cloudsql.client` | accessor on the 4 DB passwords, `ALEMBIC_DATABASE_URL`, each `INITIAL_PASSWORD_*` |

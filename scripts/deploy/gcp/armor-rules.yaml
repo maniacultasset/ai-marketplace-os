@@ -15,13 +15,16 @@ version: 1
 
 patterns:
   # Every route that checks a password or a TOTP/recovery code, by path (DPP-1 routes included;
-  # /auth/mfa/totp/enroll takes current_password while the account has no factor).
-  auth: "^/api/v1/(auth/(login(/[a-z-]+){0,2}|password(/expired)?|mfa/(step-up|totp/(enroll|confirm)))|signup(/status)?)$"
+  # /auth/mfa/totp/enroll takes current_password while the account has no factor), and the Google
+  # sign-in steps that redeem a single-use handle (ADR-0020; /auth/google/link takes a password).
+  auth: "^/api/v1/(auth/(login(/[a-z-]+){0,2}|password(/expired)?|mfa/(step-up|totp/(enroll|confirm))|google/(complete|link))|signup(/status|/google)?)$"
   # Skipped by every CRS set, for POST only: the three multipart upload routes (Armor reads raw
   # multipart bytes, first 64 kB only; the app validates file content) and the auth paths whose
   # JSON body carries a password, a code or a refresh token (refresh and logout), since exclusions
-  # cannot target JSON body fields. Every other method on these paths is CRS-inspected.
-  crs_skip: "^/api/v1/(brand/documents|products/bulk|images/upload|auth/(login(/[a-z-]+){0,2}|password(/expired)?|mfa/(step-up|totp/(enroll|confirm))|refresh|logout)|signup(/status)?)$"
+  # cannot target JSON body fields. Every other method on these paths is CRS-inspected. The Google
+  # steps (ADR-0020) carry random base64url handles and the browser binding (a `--` in one reads
+  # as an SQL comment), and /auth/google/link a password.
+  crs_skip: "^/api/v1/(brand/documents|products/bulk|images/upload|auth/(login(/[a-z-]+){0,2}|password(/expired)?|mfa/(step-up|totp/(enroll|confirm))|refresh|logout|google/(complete|link))|signup(/status|/google)?)$"
 
 rules:
   - priority: 100

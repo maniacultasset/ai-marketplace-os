@@ -48,7 +48,7 @@ def test_openapi_export_deterministic(tmp_path: Path) -> None:
 
 def test_info_version_is_schemas_version(tmp_path: Path) -> None:
     spec = json.loads(_export(tmp_path, "v.json"))
-    assert spec["info"]["version"] == metadata.version("mkos-schemas") == "2.0.0"
+    assert spec["info"]["version"] == metadata.version("mkos-schemas") == "2.1.0"
 
 
 def test_export_ignores_app_env_production(tmp_path: Path) -> None:

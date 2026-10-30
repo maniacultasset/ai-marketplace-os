@@ -22,6 +22,11 @@ DPP-1 rules every sign-in path here follows:
 - **Lockout.** A locked account refuses on every path whatever the input; the public password
   routes still run their one argon2 verify for timing parity and ignore its result. The counter
   clears only after a full sign-in (or a staff unlock).
+- **Google sign-in (ADR-0020)** ends in the same `_sign_in()`: Google is a first factor (`fed`,
+  kept on the challenge only), never a second one, so under `MFA_ENFORCEMENT=all` a Google
+  sign-in always asks for the Kuinn code (or enrolment) and a token's `amr` lists only Kuinn's own
+  factors. Linking a Google account to an existing user waits on the challenge
+  (`link_google_sub`) and happens only when that password sign-in finishes.
 """
 
 from __future__ import annotations
@@ -65,6 +70,7 @@ from app.services import auth_events, mfa
 from app.services.sign_in_policy import (
     SignInFacts,
     Step,
+    first_factor_of,
     in_grace,
     is_locked,
     must_persist_noncompliance,
@@ -182,7 +188,13 @@ def _enforcing() -> bool:
 
 
 def _ordered(methods: set[str] | frozenset[str]) -> list[AuthMethod]:
+    """The token's `amr`: Kuinn's own factors only (`fed` is dropped, ADR-0020)."""
     return [m for m in METHOD_ORDER if m in methods]
+
+
+def _challenge_amr(methods: frozenset[str]) -> list[str]:
+    """A challenge's methods: may also hold `fed` (Google began the sign-in); a token never."""
+    return [m for m in mfa.CHALLENGE_METHOD_ORDER if m in methods]
 
 
 def _unix(moment: datetime | None) -> int | None:
@@ -273,6 +285,8 @@ def _facts(
     has_factor: bool,
     memberships: list[MembershipRow],
     compliant: bool | None,
+    proven: frozenset[str] = frozenset({"pwd"}),
+    linking: bool = False,
 ) -> SignInFacts:
     settings = get_settings()
     return SignInFacts(
@@ -287,6 +301,9 @@ def _facts(
         password_changed_at=user.password_changed_at or _now(),
         password_must_change=user.password_must_change,
         password_compliant=compliant,
+        has_password=user.hashed_password is not None,
+        first_factor=first_factor_of(proven),
+        linking=linking,
     )
 
 
@@ -300,12 +317,22 @@ async def _sign_in(
     compliant: bool | None,
     ip: str | None,
     user_agent: str | None,
+    link_sub: str | None = None,
 ) -> SignInResult | None:
-    """The one place a sign-in ends (Google sign-in reuses it later): None for an inactive user
-    or no live membership; a challenge for the next step; or tokens for the most recently used
-    live tenant, which clears the lockout counter. `app.user_id` is set."""
+    """The one place a sign-in ends, for a password and for Google alike: None for an inactive
+    user or no live membership; a challenge for the next step; or tokens for the most recently
+    used live tenant, which clears the lockout counter. `app.user_id` is set. `link_sub` (a
+    Google account proven in this browser) rides on every challenge of a password sign-in and is
+    linked only when the sign-in ends with tokens (ADR-0020)."""
     has_factor = await MfaFactorRepository(session).has_active(user.id)
-    facts = _facts(user, has_factor=has_factor, memberships=memberships, compliant=compliant)
+    facts = _facts(
+        user,
+        has_factor=has_factor,
+        memberships=memberships,
+        compliant=compliant,
+        proven=proven,
+        linking=link_sub is not None,
+    )
     step = next_step(facts, proven=proven)
     if step is None:
         return None
@@ -315,20 +342,27 @@ async def _sign_in(
             session,
             user_id=user.id,
             purpose=PURPOSE_FOR[step],
-            amr=_ordered(proven),
+            amr=_challenge_amr(proven),
             ip=inet(ip),
             user_agent=_agent(user_agent),
             mfa_at=mfa_at,
+            link_google_sub=link_sub,
         )
         return SignInResult(
             step, challenge_token=raw, challenge_expires_in=ttl, mfa_grace_until=grace
         )
+    amr = _ordered(proven)
+    if _enforcing() and not amr:
+        # a Google sign-in under `all` always proves a Kuinn code first (no grace for `fed`)
+        raise RuntimeError("a sign-in under MFA_ENFORCEMENT=all ended with no Kuinn factor")
     users = UserRepository(session)
     await users.clear_auth_failures(user.id)
     chosen = memberships[0]
     await set_gucs(session, tenant_id=chosen.tenant_id)
     await MembershipRepository(session).touch_last_used(chosen.tenant_id, user.id)
     await users.touch_login(user.id)
+    if link_sub is not None:
+        await _link_google(session, user.id, link_sub, tenant_id=chosen.tenant_id, ip=ip)
     access, refresh_token, _ = await _issue(
         session,
         user_id=user.id,
@@ -338,14 +372,36 @@ async def _sign_in(
         family_id=uuid.uuid4(),
         ip=ip,
         user_agent=user_agent,
-        amr=_ordered(proven),
+        amr=amr or None,
         mfa_at=mfa_at,
     )
     await auth_events.record(
-        session, action="auth.login", user_id=user.id, tenant_id=chosen.tenant_id, ip=inet(ip)
+        session,
+        action="auth.login",
+        user_id=user.id,
+        tenant_id=chosen.tenant_id,
+        ip=inet(ip),
+        reason="google" if facts.first_factor == "fed" else None,
     )
     pair = TokenPair(access, refresh_token, _access_ttl(), [_membership(m) for m in memberships])
     return SignInResult("signed_in", tokens=pair, mfa_grace_until=grace)
+
+
+async def _link_google(
+    session: Any, user_id: UUID, sub: str, *, tenant_id: UUID, ip: str | None
+) -> None:
+    """Link the Google account proven in this browser, now that the user's own password (and
+    code, under `all`) passed. A refused link (taken meanwhile, an admin) leaves the sign-in
+    alone and logs a warning; the definer function is the only writer (0012)."""
+    if await UserRepository(session).link_google_sub(user_id, sub):
+        await auth_events.record(
+            session, action="auth.google_linked", user_id=user_id, tenant_id=tenant_id, ip=inet(ip)
+        )
+    else:
+        auth_events.log_event(
+            "auth.google_link_refused", user_id=user_id, tenant_id=tenant_id, ip=inet(ip),
+            warning=True,
+        )  # fmt: skip
 
 
 async def _login_failed(session: Any, user_id: UUID | None, reason: str, ip: str | None) -> None:
@@ -364,12 +420,18 @@ async def _login_failed(session: Any, user_id: UUID | None, reason: str, ip: str
 
 
 async def login(
-    email: str, password: str, *, ip: str | None, user_agent: str | None
+    email: str,
+    password: str,
+    *,
+    ip: str | None,
+    user_agent: str | None,
+    link_sub: str | None = None,
 ) -> SignInResult | None:
     """Email + password in; tokens or the next challenge out, or None for the one 401 (an
     unknown email, a wrong password, a locked account, an inactive user and no live membership
     look the same: one argon2 verify each). A failure writes `auth.login_failed` and commits
-    before the caller answers 401 (Q10 (4))."""
+    before the caller answers 401 (Q10 (4)). `link_sub` (ADR-0020, the Google link step) links
+    that Google account when this sign-in finishes; it never gets the grace period."""
     async with identity_session() as session:
         await set_gucs(session, login_email=email)
         users = UserRepository(session)
@@ -410,7 +472,13 @@ async def login(
             password, email=user.email, display_name=user.display_name
         )
         has_factor = await MfaFactorRepository(session).has_active(user.id)
-        facts = _facts(user, has_factor=has_factor, memberships=memberships, compliant=compliant)
+        facts = _facts(
+            user,
+            has_factor=has_factor,
+            memberships=memberships,
+            compliant=compliant,
+            linking=link_sub is not None,
+        )
         if must_persist_noncompliance(facts):
             await users.set_must_change(user.id)
             user = replace(user, password_must_change=True)
@@ -423,10 +491,42 @@ async def login(
             compliant=compliant,
             ip=ip,
             user_agent=user_agent,
+            link_sub=link_sub,
         )
         if result is None:  # pragma: no cover - active and member were checked above
             await _login_failed(session, user.id, "no_active_membership", ip)
     return result
+
+
+# ---- Google sign-in's first step (ADR-0020) ----
+
+
+async def sign_in_with_google(
+    session: Any, user: UserRow, *, ip: str | None, user_agent: str | None
+) -> SignInResult | Refusal | None:
+    """A Google identity already linked to `user` (the caller resolved and decided it, and set
+    `app.user_id`): the per-user gate, then the shared `_sign_in()` with `fed` as the only
+    proven method, so under `all` the next step is always the Kuinn code or the enrolment. A
+    locked or busy account is a `Refusal` (nothing counted: a Google sign-in is not a guess at a
+    Kuinn secret); None for an inactive user or no live membership."""
+    state = await _gate(session, user.id, ip=ip)
+    if isinstance(state, AuthBusy):
+        return Refusal("busy")
+    if state is None:
+        return None
+    if is_locked(state.locked_until, _now()):
+        return Refusal("locked")
+    memberships = await MembershipRepository(session).list_active_for_user(user.id)
+    return await _sign_in(
+        session,
+        user,
+        memberships=memberships,
+        proven=frozenset({"fed"}),
+        mfa_at=None,
+        compliant=None,
+        ip=ip,
+        user_agent=user_agent,
+    )
 
 
 # ---- the challenge steps (DPP-1: /auth/login/mfa, /auth/login/mfa/{enroll,confirm},
@@ -517,6 +617,7 @@ async def login_mfa(
             compliant=None,
             ip=ip,
             user_agent=user_agent,
+            link_sub=opened.challenge.link_google_sub,
         )
 
 
@@ -567,6 +668,7 @@ async def login_confirm(
             compliant=None,
             ip=ip,
             user_agent=user_agent,
+            link_sub=opened.challenge.link_google_sub,
         )
         return Confirmed(codes, result)
 
@@ -614,6 +716,7 @@ async def expired_password(
             compliant=True,
             ip=ip,
             user_agent=user_agent,
+            link_sub=opened.challenge.link_google_sub,
         )
 
 
@@ -717,7 +820,7 @@ async def totp_confirm(
                 principal.tenant_id,
                 claims.sid,
                 principal.user_id,
-                amr=["pwd", "otp"],
+                amr=_session_amr(claims, "otp"),
                 mfa_at=_now(),
             )
         await tokens.revoke_user_everywhere(
@@ -752,6 +855,14 @@ async def regenerate_codes(principal: Principal, *, ip: str | None) -> list[str]
             ip=inet(ip),
         )
     return codes
+
+
+def _session_amr(claims: JWTClaims, method: str) -> list[AuthMethod]:
+    """The fresh code's method, plus `pwd` only when the session proved a password (ADR-0020):
+    a Google session's step-up never claims a password. The older code methods are dropped, so
+    `amr` keeps naming the method proven at `mfa_at` (the TOTP-only step-up reads it)."""
+    first = frozenset({"pwd"}) & frozenset(claims.amr or ())
+    return _ordered(first | {method})
 
 
 @dataclass(frozen=True, slots=True)
@@ -798,7 +909,7 @@ async def step_up(
                     principal.tenant_id,
                     claims.sid,
                     principal.user_id,
-                    amr=["pwd", method],
+                    amr=_session_amr(claims, method),
                     mfa_at=now,
                 )
                 if touched == 0:
@@ -821,7 +932,7 @@ async def step_up(
             role=principal.role,
             email=principal.email,
             typ="access",
-            amr=["pwd", method],
+            amr=_session_amr(claims, method),
             mfa_at=_unix(now),
             sid=claims.sid,
         )
@@ -893,17 +1004,22 @@ class Security:
     mfa_grace_until: datetime | None
     password_changed_at: datetime | None
     password_expires_at: datetime | None
+    has_password: bool = True
+    google_linked: bool = False
 
 
 async def security(principal: Principal) -> Security:
-    """The account-security card: factor, codes left, enforcement, grace and password expiry."""
+    """The account-security card: factor, codes left, enforcement, grace and password expiry,
+    and (ADR-0020) whether the user has a password and a linked Google account. A Google-only
+    user has no password, so no password dates."""
     async with identity_session() as session:
         await set_gucs(session, user_id=principal.user_id)
         user = await UserRepository(session).self_row(principal.user_id)
         enrolled = await MfaFactorRepository(session).has_active(principal.user_id)
         left = await RecoveryCodeRepository(session).left(principal.user_id)
     settings = get_settings()
-    changed = user.password_changed_at if user is not None else None
+    has_password = user is not None and user.hashed_password is not None
+    changed = user.password_changed_at if user is not None and has_password else None
     grace = None
     if settings.mfa_enforcement == "all" and not enrolled and user is not None:
         facts = _facts(user, has_factor=False, memberships=[], compliant=None)
@@ -915,7 +1031,35 @@ async def security(principal: Principal) -> Security:
         mfa_grace_until=grace,
         password_changed_at=changed,
         password_expires_at=(changed + password_policy.MAX_AGE) if changed else None,
+        has_password=has_password,
+        google_linked=user is not None and user.google_sub is not None,
     )
+
+
+async def google_unlink(principal: Principal, *, ip: str | None) -> Refusal | None:
+    """Remove the linked Google account (ADR-0020). The route has already demanded a step-up
+    code from the last 10 minutes. Refused (`password_required`) while the user has no password,
+    because the account would have no way left to sign in. Idempotent when nothing is linked."""
+    async with identity_session() as session:
+        refused = await _bearer_gate(session, principal, ip=ip)
+        if refused is not None:
+            return refused
+        user = await UserRepository(session).self_row(principal.user_id)
+        if user is None:
+            return Refusal("not_found")
+        if user.google_sub is None:
+            return None
+        if user.hashed_password is None:
+            return Refusal("password_required")
+        if await UserRepository(session).unlink_google_sub(principal.user_id):
+            await auth_events.record(
+                session,
+                action="auth.google_unlinked",
+                user_id=principal.user_id,
+                tenant_id=principal.tenant_id,
+                ip=inet(ip),
+            )
+    return None
 
 
 async def has_active_factor(user_id: UUID) -> bool:
@@ -1133,6 +1277,7 @@ __all__ = [
     "change_password",
     "dummy_hash",
     "expired_password",
+    "google_unlink",
     "has_active_factor",
     "inet",
     "login",
@@ -1145,6 +1290,7 @@ __all__ = [
     "refresh",
     "regenerate_codes",
     "security",
+    "sign_in_with_google",
     "step_up",
     "switch_tenant",
     "totp_confirm",

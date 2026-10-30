@@ -98,6 +98,11 @@ class SignupRequestOut(WireModel):
     )
     created_at: datetime
     decided_at: datetime | None = None
+    verified_via: Literal["google"] | None = Field(
+        default=None,
+        description="`google` when Google verified the applicant's email (ADR-0020): show a "
+        '"Verified by Google" badge. Null for a password sign-up.',
+    )
 
 
 class SignupRequestPage(Page[SignupRequestOut]):

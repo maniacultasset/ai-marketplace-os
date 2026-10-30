@@ -46,6 +46,7 @@ TABLES = [
 ]
 SECRET_COLUMNS = [
     ("users", "hashed_password"),
+    ("users", "google_sub"),  # 0012 (ADR-0020): an identifier
     ("invitations", "token_hash"),
     ("business_parties", "email"),
     ("business_parties", "phone"),
@@ -190,6 +191,11 @@ DEFINERS = frozenset(
         "app_begin_auth_attempt(uuid)",  # 0011 (DPP-1)
         "app_clear_auth_failures(uuid)",  # 0011 (DPP-1)
         "app_note_auth_failure(uuid)",  # 0011 (DPP-1)
+        "app_google_user(text)",  # 0012 (ADR-0020)
+        "app_create_google_applicant(text,text,text,text,text,text,text)",  # 0012
+        "app_link_google_sub(uuid,text)",  # 0012
+        "app_unlink_google_sub(uuid)",  # 0012
+        "app_prune_login_flows()",  # 0012
     }
 )
 

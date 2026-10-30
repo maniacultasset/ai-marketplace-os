@@ -264,6 +264,9 @@ def world(monkeypatch: pytest.MonkeyPatch) -> World:
     monkeypatch.setattr("app.services.auth.verify_password", fake_verify)
     monkeypatch.setattr(auth, "dummy_hash", lambda: "hash:not-a-real-password")
     monkeypatch.setattr(auth, "encode", lambda claims: f"jwt-{claims.typ}")
+    # the service's clock is the module's NOW: a lock or expiry set as NOW + 5 minutes must not
+    # lapse when a long parallel run reaches this test more than 5 minutes after import
+    monkeypatch.setattr(auth, "_now", lambda: NOW)
     return w
 
 

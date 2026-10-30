@@ -20,7 +20,7 @@ def test_every_op_has_example() -> None:
 def test_examples_validate(op: Operation) -> None:
     example = SUCCESS_EXAMPLES[op.op_id]
     if op.response_model is None:
-        assert op.status in {204, 303}
+        assert op.status in {204, 302, 303}
     else:
         op.response_model.model_validate(example)
         declared = success_response(op)[op.status]["content"]["application/json"]["example"]
@@ -51,3 +51,20 @@ def test_callback_location_carries_no_secret() -> None:
         lowered = location.lower()
         for word in ("code=", "state=", "token", "account", "seller"):
             assert word not in lowered
+
+
+def test_google_locations_carry_no_secret() -> None:
+    """ADR-0020: the start example names no real client and the callback example carries only
+    the opaque handle (no code, state, token or email)."""
+    from app.api.v1.examples import GOOGLE_AUTHORIZE_EXAMPLE, GOOGLE_CALLBACK_LOCATION
+
+    start = success_response(OPS["auth_google_start"])[302]["headers"]["Location"]
+    assert start["example"] == GOOGLE_AUTHORIZE_EXAMPLE
+    query = parse_qs(urlsplit(GOOGLE_AUTHORIZE_EXAMPLE).query)
+    assert query["client_id"] == ["example.apps.googleusercontent.com"]
+    assert query["code_challenge_method"] == ["S256"] and "code_verifier" not in query
+    back = success_response(OPS["auth_google_callback"])[303]["headers"]["Location"]
+    assert back["example"] == GOOGLE_CALLBACK_LOCATION
+    assert set(parse_qs(urlsplit(GOOGLE_CALLBACK_LOCATION).query)) == {"handle"}
+    for word in ("code=", "state=", "token", "@"):
+        assert word not in GOOGLE_CALLBACK_LOCATION.lower()

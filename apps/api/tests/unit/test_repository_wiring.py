@@ -66,6 +66,8 @@ def test_every_repository_subclasses_tenant_base() -> None:
             "PasswordHistoryRepository",
             "RecoveryCodeRepository",
         },
+        # ADR-0020 (0012): the Google sign-in flows, a platform table reached only by its hash
+        "app.repositories.login_flows": {"LoginFlowRepository"},
     }
     found = []
     for module_info in pkgutil.iter_modules(app.repositories.__path__):
@@ -80,6 +82,7 @@ def test_every_repository_subclasses_tenant_base() -> None:
     assert "RuleRepository" in found
     assert identity["app.repositories.identity"] <= set(found)
     assert identity["app.repositories.mfa"] <= set(found)
+    assert identity["app.repositories.login_flows"] <= set(found)
     assert set(PLATFORM_READERS) <= set(found)
 
 
@@ -133,3 +136,13 @@ def test_mfa_repositories_name_tables_without_tenant() -> None:
     for model in (MfaChallenge, UserMfaFactor, UserPasswordHistory, UserRecoveryCode):
         assert "tenant_id" not in model.__table__.c, model.__name__
         assert not issubclass(model, TenantScoped), model.__name__
+
+
+def test_login_flows_table_has_no_tenant() -> None:
+    """ADR-0020: `LoginFlowRepository` is exempt from the tenant base only because `login_flows`
+    has no tenant column (it is reached by the sha256 of a single-use value, under FORCE RLS)."""
+    from app.db.models._tenant import TenantScoped
+    from app.db.models.tenancy import LoginFlow
+
+    assert "tenant_id" not in LoginFlow.__table__.c
+    assert not issubclass(LoginFlow, TenantScoped)

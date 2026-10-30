@@ -70,6 +70,15 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
     "signup_status": {"email": "founder@kalakar.example", "password": "pw"},
     "admin_signup_requests_approve": {"trial_days": 14},
     "admin_signup_requests_reject": {"reason": "Could not verify the brand."},
+    # ADR-0020
+    "auth_google_complete": {"handle": "gh", "binding": "b" * 43},
+    "auth_google_link": {"link_handle": "gl", "binding": "b" * 43, "password": "pw"},
+    "signup_google": {
+        "details_handle": "gd",
+        "binding": "b" * 43,
+        "brand_name": "Acme Naturals",
+        "owner_name": "Asha Rao",
+    },
 }
 # Ops whose every body field is optional: `{}` is valid, so break a field instead.
 _INVALID_JSON: dict[str, dict[str, Any]] = {"auth_mfa_totp_enroll": {"current_password": ""}}
@@ -78,6 +87,9 @@ _QUERY: dict[str, dict[str, str]] = {
     "marketplaces_callback": {"code": "auth-code", "state": "st_0123456789"},
     "analytics_get": {"from": "2026-09-01", "to": "2026-09-30"},
     "analytics_summary": {"from": "2026-09-01", "to": "2026-09-30"},
+    # ADR-0020
+    "auth_google_start": {"b": "B" * 43},
+    "auth_google_callback": {"code": "g-code", "state": "st_0123456789"},
 }
 
 
@@ -135,6 +147,10 @@ def invalid_request(op: Operation) -> Call:
         call.url = _path(op, "not-a-uuid")
     elif op.op_id == "marketplaces_callback":
         call.params = {"code": "auth-code"}
+    elif op.op_id == "auth_google_start":
+        call.params = {"b": "too-short"}
+    elif op.op_id == "auth_google_callback":
+        call.params = {"state": "s" * 2049}
     elif op.op_id in _QUERY:
         call.params = {**call.params, "from": "not-a-date"}
     elif op.op_id in _INVALID_JSON:

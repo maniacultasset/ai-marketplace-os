@@ -110,3 +110,56 @@ password rules are live. Build every screen below before the backend switches to
    expired session.
 10. **Lockout.** 10 failed passwords or codes lock the account for 15 minutes; the login keeps
     answering the same 401 (there is no "locked" message). Staff unlock it on request.
+
+## 7. Sign in and sign up with Google (contract 2.1.0; ADR-0020)
+
+The backend ships with `GOOGLE_OAUTH_ENABLED=false`: `GET /api/v1/auth/google/config` answers
+`{"enabled": false}`, `start` redirects to `/login?error=google_unavailable` and the JSON steps
+answer 501. Show the button only while `config.enabled` is true, and keep the notice for
+`error=google_unavailable` (the flag can go off while a sign-in is under way). Google only proves who the person is:
+under MFA the usual code (or enrolment) step always follows.
+
+1. **The button** ("Continue with Google" on `/login`, "Sign up with Google" on `/signup`, the
+   official multicolour G, above an "or" divider). On click: make a 32-byte random secret
+   (`crypto.getRandomValues`, base64url, 43 characters), keep `{bind: secret, return: <safe return
+   path>, intent: "login" | "signup"}` in `sessionStorage["gsi"]`, then
+   `location.assign("/api/v1/auth/google/start?b=" + base64url(sha256(ascii(secret))))` (no padding).
+   Hash the 43-character text, never the 32 raw bytes. Test vector: the secret of 32 zero bytes is
+   `AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA` and its `b` is
+   `DwBzhbb51LfusnSGBa_hqYSgo7-j8BTQnip4TOnlzRo`.
+   Always a same-origin relative path through the `/api` proxy, as a full page navigation (the
+   backend refuses a `start` whose `Sec-Fetch-Site` is not `same-origin` or whose `Sec-Fetch-Mode`
+   is not `navigate`, with a redirect to `/auth/google?error=failed`). The intent only picks the copy.
+2. **The app route `/auth/google`** receives `?handle=<opaque>` or
+   `?error=cancelled|failed|unavailable` (`unavailable`: the "not available" notice, as for
+   `/login?error=google_unavailable`). Read it, strip it with `history.replaceState`, read and
+   remove `sessionStorage["gsi"]` (no secret: show the generic failure with a link to `/login`), and
+   POST `/api/v1/auth/google/complete {handle, binding: secret}`. Every answer carries `email`
+   (Google's verified email) to show on the steps that follow. Act on `outcome`:
+   - `sign_in`: `login` is a `LoginResult`: `signed_in` stores the tokens and goes to the saved
+     return path (re-apply the safe-redirect check); any other status continues with
+     `login.challenge_token` at the usual code, enrolment or password-change step.
+   - `pending`: `signup` is the request status card (pending, rejected with its reason, approved).
+   - `needs_details`: "No Kuinn account for `<details.email>` yet": the sign-up form, prefilled
+     (`owner_name`, else `given_name` + `family_name`, editable; `suggested_brand_name` when
+     present, editable, computed by the backend so no domain list is kept in the app; the email read-only with
+     "Verified by Google"; no password field). POST `/api/v1/signup/google {details_handle, binding,
+     brand_name, owner_name, phone?, website?}` -> 202 `SignupStatusOut` (pending). The handle lives
+     15 minutes; keep the binding secret in memory for it (it was removed from sessionStorage).
+   - `link_required`: "A Kuinn account already uses `<link.email>`": ask its password once, POST
+     `/api/v1/auth/google/link {link_handle, binding, password}` -> a `LoginResult`, then the usual
+     code steps. A wrong password is the login's 401 and the handle stays usable for 15 minutes.
+   - Errors: 401 `OAUTH_STATE_INVALID` ("This Google sign-in has expired. Start again."), 401
+     `UNAUTHENTICATED` (one sentence for every refusal: "Couldn't sign you in with Google. If you
+     already have an account, sign in with your email and password."), 429, 501.
+3. **Public paths.** Add exactly `/auth/google/complete`, `/auth/google/link` and `/signup/google`
+   to the no-refresh public paths (exact match). Keep handles, the binding secret and the challenge
+   token in memory only; never put them in logs, analytics or a URL of your own.
+4. **Settings > Security.** `SecurityOut.has_password === false` (an account made with Google):
+   hide "Change password" and the password dates. `google_linked`: show "Google sign-in: on" with a
+   "Remove" button: POST `/api/v1/auth/google/unlink` (204) after a step-up (403
+   `MFA_STEP_UP_REQUIRED` as for other sensitive actions); a 422 means the account has no password.
+5. **Admin queue.** `SignupRequestOut.verified_via === "google"`: show a "Verified by Google" badge.
+6. **One origin.** The binding lives in one tab's sessionStorage: the sign-in must finish in the tab
+   that started it, on the dashboard origin the backend's `DASHBOARD_BASE_URL` names.
+

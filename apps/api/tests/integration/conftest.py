@@ -24,6 +24,10 @@ from tests.support.xdist_db import is_test_database, role_catalog_lock
 from .admin_support import admin_client as admin_client
 from .admin_support import ops_world as ops_world
 
+# ADR-0020: the Google sign-in world and its app client.
+from .google_support import gapi as gapi
+from .google_support import gw as gw
+
 if TYPE_CHECKING:
     from alembic.config import Config
     from app.core.config import Settings
@@ -300,8 +304,8 @@ def clean_tenant_db(superuser_conn: Conn) -> None:
     superuser_conn.execute("SET session_replication_role = replica")
     try:
         superuser_conn.execute(
-            "TRUNCATE tenants, users, category_templates, rules, marketplace_error_map "
-            "RESTART IDENTITY CASCADE"
+            "TRUNCATE tenants, users, category_templates, rules, marketplace_error_map, "
+            "login_flows RESTART IDENTITY CASCADE"
         )
     finally:
         superuser_conn.execute("RESET session_replication_role")

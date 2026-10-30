@@ -5,7 +5,8 @@ connect confirm and account revoke, 43 with S16's profile update and document li
 44 with S20's listing preview, 48 with S19's listing history, issues, issue dismiss and tasks,
 50 with S21's listing submissions and refresh-status, 55 with ADR-0019's sign-up, sign-up status
 and the platform admin's list, approve and reject, 65 with DPP-1's MFA, step-up and password
-routes (ADR-0021); no
+routes (ADR-0021), 71 with Google sign-in's start, callback, complete, link, unlink and sign-up
+(ADR-0020); no
 dead-letter path,
 which is staff tooling per T82). It
 drives the routers (`route()`), the declared OpenAPI responses (`declared_responses()`), the
@@ -42,7 +43,13 @@ from pydantic import BaseModel
 
 from app.api.errors import STATUS_MESSAGES, ErrorEnvelope, envelope_body
 from app.api.v1.deps import public, require, require_platform_admin, require_recent_mfa
-from app.api.v1.examples import CALLBACK_LOCATION, ETAG_EXAMPLE, SUCCESS_EXAMPLES
+from app.api.v1.examples import (
+    CALLBACK_LOCATION,
+    ETAG_EXAMPLE,
+    GOOGLE_AUTHORIZE_EXAMPLE,
+    GOOGLE_CALLBACK_LOCATION,
+    SUCCESS_EXAMPLES,
+)
 from app.api.v1.schemas.analytics import AnalyticsSummary
 from app.api.v1.schemas.auth import (
     LoginConfirmOut,
@@ -59,6 +66,7 @@ from app.api.v1.schemas.auth import (
 )
 from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.brand import BrandDocumentPage
+from app.api.v1.schemas.google import GoogleCompleteOut, GoogleConfigOut
 from app.api.v1.schemas.images import ImageAccepted, ImageReportOut, UploadUrlOut
 from app.api.v1.schemas.imports import ImportAccepted, ImportRowPage
 from app.api.v1.schemas.issues import IssueOut, IssuePage
@@ -306,20 +314,45 @@ def declared_responses(op: Operation) -> dict[int | str, dict[str, Any]]:
     return out
 
 
+# The redirect ops' success entry: (description, Location description, Location example).
+REDIRECTS: Final[Mapping[str, tuple[str, str, str]]] = MappingProxyType(
+    {
+        "marketplaces_callback": (
+            "Redirect to the app. `Location` carries only an opaque single-use `pending` handle: "
+            "no code, token or account data.",
+            "The fixed app route plus `?pending=<opaque>`.",
+            CALLBACK_LOCATION,
+        ),
+        "auth_google_start": (
+            "Redirect to Google's consent page (authorization code with PKCE S256, `state`, "
+            "`nonce`, `prompt=select_account`, scopes `openid email profile`). With Google "
+            "sign-in switched off it redirects to `/login?error=google_unavailable` instead.",
+            "Google's authorize URL (or `/login?error=google_unavailable`).",
+            GOOGLE_AUTHORIZE_EXAMPLE,
+        ),
+        "auth_google_callback": (
+            "Redirect to the app's `/auth/google` route with an opaque single-use `handle` "
+            "(60 seconds, bound to the browser), or `?error=cancelled` (the user backed out at "
+            "Google), `?error=failed` or `?error=unavailable`: no code, token or account data.",
+            "`{dashboard}/auth/google?handle=<opaque>` or `?error=cancelled|failed|unavailable`.",
+            GOOGLE_CALLBACK_LOCATION,
+        ),
+    }
+)
+
+
 def success_response(op: Operation) -> dict[int | str, dict[str, Any]]:
-    """The 2xx/3xx entry: the op's success example, or the 303 `Location` / 204 description."""
-    if op.status == 303:
+    """The 2xx/3xx entry: the op's success example, or the redirect `Location` / 204 text."""
+    if op.op_id in REDIRECTS:
+        description, location, example = REDIRECTS[op.op_id]
         return {
-            303: {
-                "description": (
-                    "Redirect to the app. `Location` carries only an opaque single-use "
-                    "`pending` handle: no code, token or account data."
-                ),
+            op.status: {
+                "description": description,
                 "headers": {
                     "Location": {
-                        "description": "The fixed app route plus `?pending=<opaque>`.",
+                        "description": location,
                         "schema": {"type": "string"},
-                        "example": CALLBACK_LOCATION,
+                        "example": example,
                     }
                 },
             }
@@ -408,6 +441,11 @@ _501: Final = MappingProxyType({501: (E.NOT_IMPLEMENTED,)})
 _MFA_PUBLIC: Final = MappingProxyType({401: (E.UNAUTHENTICATED,), 501: (E.NOT_IMPLEMENTED,)})
 # DPP-1: the bearer enrolment pair (403 when replacing without a fresh step-up; 501 under `off`)
 _MFA_BEARER: Final = MappingProxyType({403: (E.MFA_STEP_UP_REQUIRED,), 501: (E.NOT_IMPLEMENTED,)})
+# ADR-0020: the Google JSON steps (an unknown, used, expired or foreign handle is 401
+# OAUTH_STATE_INVALID; the generic failure is 401 UNAUTHENTICATED; 501 with the flag off)
+_GOOGLE_PUBLIC: Final = MappingProxyType(
+    {401: (E.UNAUTHENTICATED, E.OAUTH_STATE_INVALID), 501: (E.NOT_IMPLEMENTED,)}
+)
 
 _ROWS: Final[tuple[Operation, ...]] = (
     # ---- auth (S10) ----
@@ -457,6 +495,27 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("auth_password_change", "POST", "/auth/password", 204, None, "auth",
               "Change the password (current password, DPP rules, not one of the last 10)",
               "DPP-1", has_body=True, action=A.TENANT_READ),
+    # ---- Google sign-in, always followed by the Kuinn code (ADR-0020) ----
+    Operation("auth_google_config", "GET", "/auth/google/config", 200, GoogleConfigOut,
+              "auth", "Whether sign-in with Google is switched on (show the button)",
+              "ADR-0020", public=True),
+    Operation("auth_google_start", "GET", "/auth/google/start", 302, None, "auth",
+              "Sign in or sign up with Google: redirect to Google's consent page",
+              "ADR-0020", public=True, query=("b",)),
+    Operation("auth_google_callback", "GET", "/auth/google/callback", 303, None, "auth",
+              "Google's return: 303 to the app with an opaque single-use handle", "ADR-0020",
+              public=True, query=("code", "state", "error")),
+    Operation("auth_google_complete", "POST", "/auth/google/complete", 200, GoogleCompleteOut,
+              "auth", "Finish the Google step: sign in (or the code step), pending, the "
+              "prefilled sign-up, or the password step that links Google", "ADR-0020",
+              public=True, has_body=True, extra_codes=_GOOGLE_PUBLIC),
+    Operation("auth_google_link", "POST", "/auth/google/link", 200, LoginResult, "auth",
+              "Link Google to an existing account: its password, then the usual code steps",
+              "ADR-0020", public=True, has_body=True, extra_codes=_GOOGLE_PUBLIC),
+    Operation("auth_google_unlink", "POST", "/auth/google/unlink", 204, None, "auth",
+              "Remove the linked Google account (after a step-up; needs a password)",
+              "ADR-0020", action=A.TENANT_READ, step_up="any",
+              extra_codes=MappingProxyType({422: (E.VALIDATION_FAILED,)})),
     # ---- members (S10) ----
     Operation("members_list", "GET", "/members", 200, MemberPage, "members",
               "List the tenant's members", "S10", query=("limit", "cursor"),
@@ -624,6 +683,9 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("signup_status", "POST", "/signup/status", 200, SignupStatusOut, "signup",
               "The caller's latest sign-up request (email and password)", "ADR-0019",
               public=True, has_body=True, extra_codes=_401),
+    Operation("signup_google", "POST", "/signup/google", 202, SignupStatusOut, "signup",
+              "Sign up with the Google identity: a pending request a platform admin approves",
+              "ADR-0020", public=True, has_body=True, extra_codes=_GOOGLE_PUBLIC),
     Operation("admin_signup_requests_list", "GET", "/admin/signup-requests", 200,
               SignupRequestPage, "admin", "List sign-up requests, oldest first (platform admins)",
               "ADR-0019", query=("status", "limit", "cursor"), platform_admin=True),

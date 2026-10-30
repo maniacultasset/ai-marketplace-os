@@ -80,6 +80,21 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | `MFA_ENFORCEMENT` | `off` | local .env | optional | DPP-1, ADR-0021. `off` or `all`. `off`: login and tokens behave as before MFA (the MFA routes answer 501); the lockout and the set-time password rules still apply. `all`: every user needs a TOTP code or a recovery code (platform admins and first logins at once, others after MFA_GRACE_UNTIL). Deployed, set it only in `scripts/deploy/gcp/<env>.env` plus a release: a value set by hand on Cloud Run is wiped by the next deploy. |
 | `MFA_GRACE_UNTIL` | `(empty)` | local .env | optional; **required by deploy.sh when MFA_ENFORCEMENT=all** | DPP-1, ADR-0021. ISO 8601 with an offset, e.g. 2026-11-20T00:00:00+05:30; a naive value is refused at boot. Until then, existing non-admin users with no factor may sign in without one. A past date means no grace. |
 
+## Google sign-in
+
+ADR-0020. Off by default. The redirect URI is not a variable: the API derives it as `{DASHBOARD_BASE_URL}/api/v1/auth/google/callback`, which is the exact string registered on the OAuth client (the dashboard proxies `/api/*` to the API, so the browser stays on one origin).
+
+| Variable | Local value | Source | Required | Notes |
+|---|---|---|---|---|
+| `GOOGLE_OAUTH_ENABLED` | `false` | local .env | optional | `true` turns on `/auth/google/*` and `/signup/google`; `false` makes `start` redirect (302) to `/login?error=google_unavailable` and the JSON routes 501. Deployed, set it only in `scripts/deploy/gcp/<env>.env` plus a same-image redeploy (runbook `docs/runbooks/GOOGLE-SIGNIN.md`). |
+| `GOOGLE_OAUTH_CLIENT_ID` | `(empty — leave blank)` | local .env | required by the api when `GOOGLE_OAUTH_ENABLED=true` | The Web application client id from the Google Cloud console (not a secret). Outside local it must end with `.apps.googleusercontent.com`. |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | `(empty — leave blank)` | Secret Manager | required by the api when `GOOGLE_OAUTH_ENABLED=true` | Never in a committed file; bound by `deploy.sh` only while the flag is on. Outside local it must have no whitespace and 32+ characters. In the redaction deny-list (`*_secret`). |
+| `GOOGLE_AUTHORIZE_URL` | `https://accounts.google.com/o/oauth2/v2/auth` | local .env | optional | Google's constant. Outside local any other value refuses boot; tests and the local e2e run point it at the fake Google (`make fake-marketplace`, `/google/authorize`). |
+| `GOOGLE_TOKEN_URL` | `https://oauth2.googleapis.com/token` | local .env | optional | Google's constant; same rule as `GOOGLE_AUTHORIZE_URL`. The token request body is never logged. |
+| `GOOGLE_JWKS_URL` | `https://www.googleapis.com/oauth2/v3/certs` | local .env | optional | Google's constant; same rule. The keys are cached for an hour, refetched at most once a minute on an unknown `kid`. |
+| `GOOGLE_ISSUER` | `https://accounts.google.com` | local .env | optional | Google's constant; same rule. `accounts.google.com` (no scheme) is accepted as the same issuer, as Google documents. |
+| `AUTH_GOOGLE_RATE_LIMIT_PER_MIN` | `10` | local .env | optional | Per IP on `/auth/google/start` and `/callback`, and with the login limiter (per IP + email, per email) on `/auth/google/complete`, `/auth/google/link` and `/signup/google`. |
+
 ## LLM
 
 | Variable | Local value | Source | Required | Notes |

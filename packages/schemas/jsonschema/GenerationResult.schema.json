@@ -202,7 +202,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "2.0.0",
+          "default": "2.1.0",
           "title": "Schema Version",
           "type": "string"
         },
@@ -389,7 +389,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "2.0.0",
+          "default": "2.1.0",
           "title": "Schema Version",
           "type": "string"
         },
@@ -770,7 +770,7 @@
           "type": "boolean"
         },
         "schema_version": {
-          "default": "2.0.0",
+          "default": "2.1.0",
           "title": "Schema Version",
           "type": "string"
         },
@@ -1096,7 +1096,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "2.0.0",
+          "default": "2.1.0",
           "title": "Schema Version",
           "type": "string"
         },
@@ -1369,7 +1369,7 @@
           "title": "Rules Version"
         },
         "schema_version": {
-          "default": "2.0.0",
+          "default": "2.1.0",
           "title": "Schema Version",
           "type": "string"
         },
@@ -1450,7 +1450,7 @@
           "title": "Request Id"
         },
         "schema_version": {
-          "default": "2.0.0",
+          "default": "2.1.0",
           "title": "Schema Version",
           "type": "string"
         },
@@ -1557,7 +1557,7 @@
       "type": "string"
     },
     "schema_version": {
-      "default": "2.0.0",
+      "default": "2.1.0",
       "title": "Schema Version",
       "type": "string"
     },

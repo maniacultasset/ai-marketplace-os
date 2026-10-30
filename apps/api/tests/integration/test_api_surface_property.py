@@ -110,6 +110,12 @@ def surface(
     # NOT_IMPLEMENTED of `MFA_ENFORCEMENT=off`, which `not_a_server_error` would flag
     monkeypatch.setenv("MFA_ENFORCEMENT", "all")
     monkeypatch.delenv("MFA_GRACE_UNTIL", raising=False)
+    # ADR-0020: Google sign-in is on (against the fake Google's settings), so its JSON steps
+    # answer for real instead of the switched-off 501
+    from .google_support import GOOGLE_ENV
+
+    for key, value in GOOGLE_ENV.items():
+        monkeypatch.setenv(key, value)
     monkeypatch.chdir(tmp_path)
     get_settings.cache_clear()
     get_sessionmaker.cache_clear()

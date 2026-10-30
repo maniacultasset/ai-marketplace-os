@@ -118,6 +118,13 @@ characters, four classes, no name, a day's minimum age, 365 days' maximum, none 
 TOTP secrets are sealed under their own KMS key, `mfa-secret-key`, which only the api may open.
 Detail: BACKEND-ARCHITECTURE.md §9.2; staff unlock and MFA reset: `docs/runbooks/MFA-STAFF.md`.
 
+**Sign in and sign up with Google (ADR-0020, proposed; off by default).** A backend authorization
+code flow with PKCE, bound to the browser by a sessionStorage secret (no cookie), verifies Google's
+RS256 ID token (the one RS256 use) and then runs the same sign-in as a password: under
+`MFA_ENFORCEMENT=all` the Kuinn code or enrolment always follows, with no grace. An existing account
+is linked only after its own password and code; a new user gets a prefilled sign-up that a platform
+admin approves. Switch and checks: `docs/runbooks/GOOGLE-SIGNIN.md`.
+
 ## 5. Environments
 
 | | Local | Staging | Production |

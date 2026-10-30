@@ -237,6 +237,7 @@ def test_run_order_ends_with_the_purge() -> None:
     assert [name for name, _ in maintenance.STEPS] == [
         "oauth_states",
         "idempotency_keys",
+        "login_flows",
         "retention",
         "account_purge",
     ]

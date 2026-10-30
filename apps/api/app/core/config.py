@@ -30,7 +30,7 @@ from types import MappingProxyType
 from typing import Final, Literal
 from urllib.parse import urlsplit
 
-from pydantic import AwareDatetime, Field, ValidationError, field_validator
+from pydantic import AwareDatetime, Field, SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.model_prices import EMBEDDING_PRICE_USD_PER_MTOK, is_usable_openai_key
@@ -88,6 +88,22 @@ API_HTTPS_URLS: Final[tuple[tuple[str, str], ...]] = (("jwt_issuer", "JWT_ISSUER
 # on the raw value. A character-variety floor would also refuse CANON-ADDENDUM A§14's production
 # fixture (`"x" * 32`), so it waits on TEAM-QUESTIONS T132.
 SECRET_MIN_LENGTH: Final = 32
+
+# Google sign-in (ADR-0020): Google's own endpoints. A deployed api refuses any other value (only
+# APP_ENV=local may point them at the fake Google in tests and the e2e run).
+GOOGLE_ENDPOINTS: Final[Mapping[str, tuple[str, str]]] = MappingProxyType(
+    {
+        "google_authorize_url": (
+            "GOOGLE_AUTHORIZE_URL",
+            "https://accounts.google.com/o/oauth2/v2/auth",
+        ),
+        "google_token_url": ("GOOGLE_TOKEN_URL", "https://oauth2.googleapis.com/token"),
+        "google_jwks_url": ("GOOGLE_JWKS_URL", "https://www.googleapis.com/oauth2/v3/certs"),
+        "google_issuer": ("GOOGLE_ISSUER", "https://accounts.google.com"),
+    }
+)
+GOOGLE_CLIENT_ID_SUFFIX: Final = ".apps.googleusercontent.com"
+GOOGLE_CALLBACK_PATH: Final = "/auth/google/callback"
 
 OtelSampler = Literal[
     "always_on",
@@ -171,6 +187,16 @@ class Settings(BaseSettings):
     mfa_enforcement: Literal["off", "all"] = "off"  # DPP-1: `off` keeps today's login and tokens
     mfa_grace_until: AwareDatetime | None = None  # ISO 8601 with an offset; naive is refused
 
+    # ---- Google sign-in (ADR-0020): off by default; the secret comes from Secret Manager ----
+    google_oauth_enabled: bool = False
+    google_oauth_client_id: str | None = None
+    google_oauth_client_secret: SecretStr | None = None
+    google_authorize_url: str = GOOGLE_ENDPOINTS["google_authorize_url"][1]
+    google_token_url: str = GOOGLE_ENDPOINTS["google_token_url"][1]
+    google_jwks_url: str = GOOGLE_ENDPOINTS["google_jwks_url"][1]
+    google_issuer: str = GOOGLE_ENDPOINTS["google_issuer"][1]
+    auth_google_rate_limit_per_min: int = Field(default=10, ge=1)
+
     # ---- models: per-provider keys ----
     llm_provider: Literal["openai", "deepseek"] = "openai"
     openai_api_key: str | None = Field(default=None, repr=False)
@@ -224,6 +250,8 @@ class Settings(BaseSettings):
         "amazon_app_id",
         "amazon_authorize_url",
         "flipkart_authorize_url",
+        "google_oauth_client_id",
+        "google_oauth_client_secret",
         mode="before",
     )
     @classmethod
@@ -247,6 +275,13 @@ class Settings(BaseSettings):
         if parts.path not in ("", "/") or parts.query or parts.fragment or "#" in value:
             raise ValueError("must be an origin: no path, query or fragment")
         return f"{parts.scheme}://{parts.netloc}"
+
+    @property
+    def google_redirect_uri(self) -> str:
+        """The one Google redirect URI (ADR-0020): derived from DASHBOARD_BASE_URL, so it can
+        never drift from the origin the browser is on (the dashboard proxies `/api/*`). It is the
+        exact string registered on the OAuth client in the Google Cloud console."""
+        return f"{self.dashboard_base_url}{self.api_v1_prefix}{GOOGLE_CALLBACK_PATH}"
 
     @field_validator("embedding_dimensions", mode="before")
     @classmethod
@@ -456,6 +491,7 @@ def _boot_errors(s: Settings) -> list[str]:
     errors += _vision_errors(s)
     errors += _spapi_errors(s)
     errors += _flipkart_errors(s)
+    errors += _google_errors(s)
     return errors
 
 
@@ -533,6 +569,36 @@ def _flipkart_errors(s: Settings) -> list[str]:
     errors += flipkart_endpoint_errors(s.flipkart_api_base, app_env=s.app_env)
     authorize = None if _unset(s.flipkart_authorize_url) else s.flipkart_authorize_url
     errors += flipkart_oauth_endpoint_errors(s.flipkart_token_url, authorize, app_env=s.app_env)
+    return errors
+
+
+def _google_errors(s: Settings) -> list[str]:
+    """ADR-0020: Google's endpoints are fixed outside local (an override would let a fake
+    issuer sign users in), and an api with `GOOGLE_OAUTH_ENABLED=true` needs the client id (a
+    `*.apps.googleusercontent.com` id) and the secret (strong outside local). The flag off adds
+    nothing, so a hotfix never needs the secret. Names only, never a value."""
+    errors: list[str] = []
+    if s.app_env != "local":
+        changed = [env for field, (env, default) in GOOGLE_ENDPOINTS.items()
+                   if getattr(s, field) != default]  # fmt: skip
+        if changed:
+            errors.append(f"APP_ENV={s.app_env} refuses overriding {', '.join(changed)}")
+    if not s.google_oauth_enabled or s.app_role != "api":
+        return errors
+    client_id = s.google_oauth_client_id
+    if _unset(client_id):
+        errors.append("GOOGLE_OAUTH_ENABLED=true requires GOOGLE_OAUTH_CLIENT_ID")
+    elif not (client_id or "").endswith(GOOGLE_CLIENT_ID_SUFFIX) and s.app_env != "local":
+        errors.append(f"GOOGLE_OAUTH_CLIENT_ID must end with {GOOGLE_CLIENT_ID_SUFFIX}")
+    held = s.google_oauth_client_secret
+    secret = held.get_secret_value() if held is not None else None
+    if _unset(secret):
+        errors.append("GOOGLE_OAUTH_ENABLED=true requires GOOGLE_OAUTH_CLIENT_SECRET")
+    elif s.app_env != "local" and _is_weak_secret(secret or ""):
+        errors.append(
+            f"APP_ENV={s.app_env} refuses a weak GOOGLE_OAUTH_CLIENT_SECRET "
+            f"(whitespace, or under {SECRET_MIN_LENGTH} characters)"
+        )
     return errors
 
 
