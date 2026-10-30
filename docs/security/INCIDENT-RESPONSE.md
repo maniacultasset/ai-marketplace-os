@@ -35,7 +35,7 @@ Keep the phone numbers in the company's private contact list, not in this repo.
 | # | Type | Examples | First containment |
 |---|---|---|---|
 | 1 | Marketplace token exposure | A token, client secret or KMS permission leaked; a sealed token readable by the wrong role | Revoke the connection (`POST /api/v1/marketplaces/accounts/{id}/revoke`), rotate the LWA or Flipkart client secret in the developer portal and Secret Manager, ask affected brands to remove Kuinn in Seller Central and reconnect |
-| 2 | Account takeover | A Kuinn user or staff login used by someone else; repeated `auth.locked` for one account | `user reset-mfa` and a new password (`docs/runbooks/MFA-STAFF.md`); deactivate the membership; for GCP, GitHub or Vercel, the owner suspends the account and removes its access |
+| 2 | Account takeover | A Kuinn user or staff login used by someone else; repeated `auth.locked` for one account; `auth.device_reuse` (a replayed trusted-browser token) | `user reset-mfa` and a new password (`docs/runbooks/MFA-STAFF.md`; both also forget every trusted browser); deactivate the membership; for GCP, GitHub or Vercel, the owner suspends the account and removes its access |
 | 3 | Cross-tenant data access | A brand sees another brand's data | Turn off the affected route or feature by a release; preserve logs and the database state (PITR clone) before any fix |
 | 4 | Secret or code leak | A secret in git, a public bucket, a leaked laptop | Rotate the secret (Secret Manager new version, redeploy), `gitleaks` over all history, revoke the device's sessions |
 | 5 | Attack on the API | WAF deny spike, 429 spike, unusual data volume, Adaptive Protection alert | Enforce the Armor rules in preview (`deploy.sh prod edge enforce`), add a deny rule for the source, lock ingress |
@@ -75,8 +75,9 @@ Keep the phone numbers in the company's private contact list, not in this repo.
 
 Every second Monday the engineering lead reviews, and records one line in the table below:
 - `security-logs`: WAF denies by rule and source, 401/403/429 counts by path, `auth.locked`,
-  `auth.login_failed`, `auth.mfa_failed`, `auth.refresh_reuse_detected`, `auth.password_changed`
-  and the staff events `auth.unlocked` and `auth.mfa_reset`.
+  `auth.login_failed`, `auth.mfa_failed`, `auth.refresh_reuse_detected`, `auth.password_changed`,
+  `auth.device_reuse`, `auth.device_revoked` and the staff events `auth.unlocked` and
+  `auth.mfa_reset`.
 - `_Required`: IAM policy changes, new service account keys, KMS and Secret Manager admin calls.
 - Sentry: new error types.
 

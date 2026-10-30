@@ -20,6 +20,11 @@ is taken over.
 The commands write their own audit rows (`auth.unlocked`, `auth.mfa_reset`, actor `staff` with your
 email), which an alert or a review can match to the ticket.
 
+Trusted browsers (ADR-0023): `set-password`, `reset-mfa` and `make-admin` also forget every
+trusted browser of the user, so the next sign-in on any browser asks for a code (an admin's new
+trusted browsers last 7 days). `unlock` resets nothing and keeps them. A user can remove their own
+trusted browsers in Settings > Security ("Remove", or "Sign out all devices").
+
 ## 2. The commands
 
 ### Production and staging (Cloud Run jobs)

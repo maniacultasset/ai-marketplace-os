@@ -31,6 +31,15 @@ as `"@mkos/schemas": "npm:@maniacultasset/schemas@<version>"`) share one version
   - `SecurityOut` gains `has_password` and `google_linked` (optional booleans); `SignupRequestOut` gains `verified_via` (`"google"` or null).
   - **FE:** add `/auth/google/complete`, `/auth/google/link` and `/signup/google` to the exact-match public no-refresh paths; keep handles and the challenge token in memory only; resume the existing MFA steps from `login`; hide "Change password" when `has_password` is false; show "Verified by Google" on `verified_via`.
   - **AI:** no change.
+- Trusted browsers and a narrower step-up (ADR-0023, proposed; additive MINOR under the open 2.1.0 heading: optional request and response fields, new operations and models, no new error code, no new member in any closed vocabulary; `SignInStatus`, `AuthMethod` and `JWTClaims` are unchanged). Tech Lead approval 2026-10-30 (alone; the AI and FE leads are unnamed). **Operations: 72 -> 75.**
+  - **Requests.** `LoginRequest.device_token?` (the browser's trusted-browser token for that email; read only after the password passed); `GoogleCompleteRequest.device_tokens?` (at most 5, no repeats: every token the browser holds); `LoginMfaRequest.trust_device?` and `LoginConfirmRequest.trust_device?` (boolean, default false; ignored with a recovery code). Under `MFA_ENFORCEMENT=off` all are ignored.
+  - **`LoginResult`** (so also `LoginConfirmOut.result`, `GoogleCompleteOut.login` and `/auth/google/link`) gains `device_token?` and `device_expires_at?` (with `signed_in` only: a new trust, or the next value of the token sent; the old value stops working; the expiry is fixed), `device_token_invalid?` (true when a token was sent, the first factor passed and it names no trusted browser of the account: forget it) and `device_trust_days?` (30, or 7 for a platform admin, on `mfa_required` and `mfa_enrollment_required`).
+  - `auth_devices_list` (GET `/auth/devices`, bearer `tenant:read`): 200 `TrustedDevicesOut {devices: [TrustedDeviceOut {id, label, created_at, last_used_at, expires_at, current}]}` (at most 10, newest first).
+  - `auth_devices_remove` (DELETE `/auth/devices/{device_id}`, bearer, 204): forgets one browser and ends the sessions it began; 404 `NOT_FOUND` for an unknown id or another user's.
+  - `auth_devices_sign_out_all` (POST `/auth/devices/sign-out-all`, bearer, 204): forgets every trusted browser and ends every other session; the caller's session stays.
+  - **Step-up.** The window is 1800 s (was 600). `admin_signup_requests_approve` and `admin_signup_requests_reject` no longer take a step-up and no longer declare `MFA_STEP_UP_REQUIRED` / `MFA_ENROLLMENT_REQUIRED` (they stay platform-admin only; the 403 is `PERMISSION_DENIED`). A narrower set of declared codes: a client that handles them loses nothing.
+  - **FE:** `docs/HANDOFF-FE.md` §6 item 11 (storage keyed by a hash of the email, the checkbox, Settings > Security, the 30-minute copy). Ship after the backend: an older API refuses the new request fields.
+  - **AI:** no change.
 
 ## 2.0.0 (unreleased)
 
