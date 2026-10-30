@@ -5,7 +5,14 @@ from __future__ import annotations
 
 import pytest
 from app.core.redaction import redact, redact_text
-from app.services.google_signin import CONSUMER_DOMAINS, Decision, Situation, decide, suggest_brand
+from app.services.google_signin import (
+    CONSUMER_DOMAINS,
+    Decision,
+    Situation,
+    decide,
+    same_origin_navigation,
+    suggest_brand,
+)
 
 VETTED = {"exists": True, "has_membership": True}
 
@@ -84,3 +91,26 @@ def test_handles_and_identity_redacted() -> None:
     assert set(redact(event).values()) == {"[REDACTED]"}
     line = redact_text("GET /auth/google?handle=h-secret-1 and /start?b=bind-secret-2")
     assert "h-secret-1" not in line and "bind-secret-2" not in line
+
+
+@pytest.mark.parametrize(
+    ("site", "mode", "allowed"),
+    [
+        ("same-origin", "navigate", True),
+        ("Same-Origin", "navigate", True),
+        (None, None, True),  # not a current browser's navigation: no victim sends this
+        ("same-origin", None, True),
+        ("cross-site", "navigate", False),
+        ("same-site", "navigate", False),
+        ("none", "navigate", False),  # a pasted or bookmarked link
+        ("cross-site", None, False),
+        (None, "navigate", True),
+        ("same-origin", "cors", False),
+        ("same-origin", "no-cors", False),
+        ("same-origin", "nested-navigate", False),
+    ],
+)
+def test_start_only_from_the_apps_own_navigation(
+    site: str | None, mode: str | None, allowed: bool
+) -> None:
+    assert same_origin_navigation(site, mode) is allowed

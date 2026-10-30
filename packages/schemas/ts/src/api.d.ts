@@ -156,6 +156,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/google/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whether sign-in with Google is switched on (show the button)
+         * @description Whether to show "Continue with Google" on the login and sign-up pages. With the flag off
+         *     `start` only redirects back to `/login?error=google_unavailable`, so hide the button.
+         */
+        get: operations["auth_google_config"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/google/link": {
         parameters: {
             query?: never;
@@ -191,7 +212,10 @@ export interface paths {
          * @description Navigate here (same origin, through the dashboard's `/api` proxy) from both the login and
          *     the sign-up page. `b` is base64url(sha256(secret)) of a fresh 32-byte random secret the
          *     browser keeps in sessionStorage for `/auth/google/complete`. 302 to Google; with Google
-         *     sign-in off, 302 to `/login?error=google_unavailable`.
+         *     sign-in off, 302 to `/login?error=google_unavailable`. Only the app's own page navigation
+         *     may start (`Sec-Fetch-Site: same-origin`, `Sec-Fetch-Mode: navigate` when the browser sends
+         *     them): from another site it is a 302 to the app's `/auth/google?error=failed` and nothing
+         *     is stored.
          */
         get: operations["auth_google_start"];
         put?: never;
@@ -2009,6 +2033,11 @@ export interface components {
          */
         GoogleCompleteOut: {
             details?: components["schemas"]["GoogleDetailsOut"] | null;
+            /**
+             * Email
+             * @description The Google account's verified email, on every outcome: show it on the steps that follow (the code step of `sign_in`, the password of `link_required`).
+             */
+            email?: string | null;
             link?: components["schemas"]["GoogleLinkOut"] | null;
             login?: components["schemas"]["LoginResult"] | null;
             /**
@@ -2032,6 +2061,17 @@ export interface components {
              * @description The `handle` of the `/auth/google?handle=` redirect.
              */
             handle: string;
+        };
+        /**
+         * GoogleConfigOut
+         * @description Whether "Continue with Google" is offered: show the button only when `enabled`.
+         */
+        GoogleConfigOut: {
+            /**
+             * Enabled
+             * @description `GOOGLE_OAUTH_ENABLED`: Google sign-in is switched on.
+             */
+            enabled: boolean;
         };
         /**
          * GoogleDetailsOut
@@ -5718,6 +5758,7 @@ export interface operations {
                      *         "owner_name": "Asha Rao",
                      *         "suggested_brand_name": "Acmenaturals"
                      *       },
+                     *       "email": "asha@acmenaturals.example",
                      *       "outcome": "needs_details"
                      *     }
                      */
@@ -5966,6 +6007,192 @@ export interface operations {
                      *         "message": "Not implemented yet.",
                      *         "status": 501,
                      *         "type": "NOT_IMPLEMENTED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "INTERNAL_ERROR",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "INTERNAL_ERROR",
+                     *               "field": "request",
+                     *               "message": "Internal server error.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Internal server error.",
+                     *         "status": 500,
+                     *         "type": "INTERNAL_ERROR"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    auth_google_config: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "enabled": true
+                     *     }
+                     */
+                    "application/json": components["schemas"]["GoogleConfigOut"];
+                };
+            };
+            /** @description The request could not be parsed. Codes: `VALIDATION_FAILED`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "The request could not be parsed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The request could not be parsed.",
+                     *         "status": 400,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request body too large. Codes: `PAYLOAD_TOO_LARGE`. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PAYLOAD_TOO_LARGE",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PAYLOAD_TOO_LARGE",
+                     *               "field": "request",
+                     *               "message": "Request body too large.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request body too large.",
+                     *         "status": 413,
+                     *         "type": "PAYLOAD_TOO_LARGE"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many requests. Codes: `RATE_LIMITED`. */
+            429: {
+                headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "RATE_LIMITED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "RATE_LIMITED",
+                     *               "field": "request",
+                     *               "message": "Too many requests.",
+                     *               "retryable": true,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": true,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Too many requests.",
+                     *         "status": 429,
+                     *         "type": "RATE_LIMITED"
                      *       }
                      *     }
                      */

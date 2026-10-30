@@ -20,7 +20,7 @@ from mkos_schemas.codes import ErrorCode
 # The frozen list (PLAN D1): 35 operations at S3 plus S10's switch and members (38), no
 # dead-letter path. Later steps add ops as
 # "merged literal + N" (S10 38, S15 40, S16 43, S19 47, S20 48, S21 50, ADR-0019 55, DPP-1 65,
-# ADR-0020 71).
+# ADR-0020 72).
 FROZEN: tuple[tuple[str, str, str], ...] = (
     ("auth_login", "POST", "/auth/login"),
     ("auth_refresh", "POST", "/auth/refresh"),
@@ -38,7 +38,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("auth_mfa_recovery_codes", "POST", "/auth/mfa/recovery-codes"),
     ("auth_mfa_step_up", "POST", "/auth/mfa/step-up"),
     ("auth_password_change", "POST", "/auth/password"),
-    # ADR-0020: Google sign-in (65 + 6, with signup_google below)
+    # ADR-0020: Google sign-in (65 + 7, with signup_google below)
+    ("auth_google_config", "GET", "/auth/google/config"),
     ("auth_google_start", "GET", "/auth/google/start"),
     ("auth_google_callback", "GET", "/auth/google/callback"),
     ("auth_google_complete", "POST", "/auth/google/complete"),
@@ -106,7 +107,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 71
+    assert len(FROZEN) == 72
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -272,6 +273,7 @@ def test_public_ops() -> None:
         "auth_login_mfa_confirm",
         "auth_password_expired",
         # ADR-0020: Google sign-in (the handle and the binding are checked in the service)
+        "auth_google_config",
         "auth_google_start",
         "auth_google_callback",
         "auth_google_complete",
@@ -365,8 +367,8 @@ def test_login_response_is_login_result() -> None:
     assert OPS["auth_switch_tenant"].response_model is TokenResponse
 
 
-def test_71_operations() -> None:
-    assert len(OPS) == 71
+def test_72_operations() -> None:
+    assert len(OPS) == 72
 
 
 def test_error_codes_per_d2() -> None:

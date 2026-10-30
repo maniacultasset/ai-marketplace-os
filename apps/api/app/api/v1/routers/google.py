@@ -29,6 +29,7 @@ from app.api.v1.schemas.auth import LoginResult
 from app.api.v1.schemas.google import (
     GoogleCompleteOut,
     GoogleCompleteRequest,
+    GoogleConfigOut,
     GoogleDetailsOut,
     GoogleLinkOut,
     GoogleLinkRequest,
@@ -36,6 +37,7 @@ from app.api.v1.schemas.google import (
 )
 from app.api.v1.schemas.signup import SignupStatusOut
 from app.api.v1.surface import OPS, route
+from app.core.config import get_settings
 from app.core.rbac import Principal
 from app.services import auth, google_signin
 from app.services.signup import SignupRow
@@ -88,6 +90,13 @@ def _status_out(row: SignupRow) -> SignupStatusOut:
     )
 
 
+@route(router, OPS["auth_google_config"])
+async def auth_google_config() -> GoogleConfigOut:
+    """Whether to show "Continue with Google" on the login and sign-up pages. With the flag off
+    `start` only redirects back to `/login?error=google_unavailable`, so hide the button."""
+    return GoogleConfigOut(enabled=get_settings().google_oauth_enabled)
+
+
 @route(router, OPS["auth_google_start"])
 async def auth_google_start(
     request: Request,
@@ -96,12 +105,21 @@ async def auth_google_start(
     """Navigate here (same origin, through the dashboard's `/api` proxy) from both the login and
     the sign-up page. `b` is base64url(sha256(secret)) of a fresh 32-byte random secret the
     browser keeps in sessionStorage for `/auth/google/complete`. 302 to Google; with Google
-    sign-in off, 302 to `/login?error=google_unavailable`."""
+    sign-in off, 302 to `/login?error=google_unavailable`. Only the app's own page navigation
+    may start (`Sec-Fetch-Site: same-origin`, `Sec-Fetch-Mode: navigate` when the browser sends
+    them): from another site it is a 302 to the app's `/auth/google?error=failed` and nothing
+    is stored."""
     await enforce_google_limit(request)
     try:
-        location = await google_signin.start(b)
+        location = await google_signin.start(
+            b,
+            fetch_site=request.headers.get("sec-fetch-site"),
+            fetch_mode=request.headers.get("sec-fetch-mode"),
+        )
     except google_signin.GoogleDisabled:
         return _redirect(302, google_signin.UNAVAILABLE_LOCATION)
+    except google_signin.CrossSiteStart:
+        return _redirect(302, google_signin.app_location(get_settings(), error="failed"))
     except google_signin.FlowInvalid:
         raise ApiError(422, ErrorCode.VALIDATION_FAILED) from None
     return _redirect(302, location)
@@ -152,9 +170,13 @@ async def auth_google_complete(body: GoogleCompleteRequest, request: Request) ->
 
 def _complete_out(done: google_signin.Completed) -> GoogleCompleteOut:
     if done.outcome == "sign_in" and done.login is not None:
-        return GoogleCompleteOut(outcome="sign_in", login=_login_result(done.login))
+        return GoogleCompleteOut(
+            outcome="sign_in", email=done.email, login=_login_result(done.login)
+        )
     if done.outcome == "pending" and done.signup is not None:
-        return GoogleCompleteOut(outcome="pending", signup=_status_out(done.signup))
+        return GoogleCompleteOut(
+            outcome="pending", email=done.email, signup=_status_out(done.signup)
+        )
     if done.outcome == "needs_details" and done.details is not None:
         d = done.details
         details = GoogleDetailsOut(
@@ -166,14 +188,14 @@ def _complete_out(done: google_signin.Completed) -> GoogleCompleteOut:
             details_handle=d.details_handle,
             details_expires_in=d.details_expires_in,
         )
-        return GoogleCompleteOut(outcome="needs_details", details=details)
+        return GoogleCompleteOut(outcome="needs_details", email=done.email, details=details)
     if done.outcome == "link_required" and done.link is not None:
         link = GoogleLinkOut(
             email=done.link.email,
             link_handle=done.link.link_handle,
             link_expires_in=done.link.link_expires_in,
         )
-        return GoogleCompleteOut(outcome="link_required", link=link)
+        return GoogleCompleteOut(outcome="link_required", email=done.email, link=link)
     raise RuntimeError("a Google outcome without its payload")  # pragma: no cover
 
 

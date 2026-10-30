@@ -66,7 +66,7 @@ from app.api.v1.schemas.auth import (
 )
 from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.brand import BrandDocumentPage
-from app.api.v1.schemas.google import GoogleCompleteOut
+from app.api.v1.schemas.google import GoogleCompleteOut, GoogleConfigOut
 from app.api.v1.schemas.images import ImageAccepted, ImageReportOut, UploadUrlOut
 from app.api.v1.schemas.imports import ImportAccepted, ImportRowPage
 from app.api.v1.schemas.issues import IssueOut, IssuePage
@@ -496,6 +496,9 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "Change the password (current password, DPP rules, not one of the last 10)",
               "DPP-1", has_body=True, action=A.TENANT_READ),
     # ---- Google sign-in, always followed by the Kuinn code (ADR-0020) ----
+    Operation("auth_google_config", "GET", "/auth/google/config", 200, GoogleConfigOut,
+              "auth", "Whether sign-in with Google is switched on (show the button)",
+              "ADR-0020", public=True),
     Operation("auth_google_start", "GET", "/auth/google/start", 302, None, "auth",
               "Sign in or sign up with Google: redirect to Google's consent page",
               "ADR-0020", public=True, query=("b",)),

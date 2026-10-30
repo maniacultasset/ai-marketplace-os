@@ -57,6 +57,12 @@ class GoogleSignupRequest(StrictModel):
     website: Website | None = None
 
 
+class GoogleConfigOut(WireModel):
+    """Whether "Continue with Google" is offered: show the button only when `enabled`."""
+
+    enabled: bool = Field(description="`GOOGLE_OAUTH_ENABLED`: Google sign-in is switched on.")
+
+
 class GoogleDetailsOut(WireModel):
     """`needs_details`: no Kuinn account uses this Google email yet. Prefill the sign-up form."""
 
@@ -96,6 +102,11 @@ class GoogleCompleteOut(WireModel):
     """
 
     outcome: GoogleOutcome
+    email: Email | None = Field(
+        default=None,
+        description="The Google account's verified email, on every outcome: show it on the "
+        "steps that follow (the code step of `sign_in`, the password of `link_required`).",
+    )
     login: LoginResult | None = None
     signup: SignupStatusOut | None = None
     details: GoogleDetailsOut | None = None
@@ -117,6 +128,7 @@ class GoogleCompleteOut(WireModel):
 __all__ = [
     "GoogleCompleteOut",
     "GoogleCompleteRequest",
+    "GoogleConfigOut",
     "GoogleDetailsOut",
     "GoogleLinkOut",
     "GoogleLinkRequest",

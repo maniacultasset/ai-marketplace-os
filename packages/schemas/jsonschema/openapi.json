@@ -1416,6 +1416,21 @@
               }
             ]
           },
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "minLength": 3,
+                "pattern": "^[^@\\s]+@[^@\\s]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The Google account's verified email, on every outcome: show it on the steps that follow (the code step of `sign_in`, the password of `link_required`).",
+            "title": "Email"
+          },
           "link": {
             "anyOf": [
               {
@@ -1490,6 +1505,21 @@
           "binding"
         ],
         "title": "GoogleCompleteRequest",
+        "type": "object"
+      },
+      "GoogleConfigOut": {
+        "description": "Whether \"Continue with Google\" is offered: show the button only when `enabled`.",
+        "properties": {
+          "enabled": {
+            "description": "`GOOGLE_OAUTH_ENABLED`: Google sign-in is switched on.",
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "GoogleConfigOut",
         "type": "object"
       },
       "GoogleDetailsOut": {
@@ -8153,6 +8183,7 @@
                     "owner_name": "Asha Rao",
                     "suggested_brand_name": "Acmenaturals"
                   },
+                  "email": "asha@acmenaturals.example",
                   "outcome": "needs_details"
                 },
                 "schema": {
@@ -8449,6 +8480,194 @@
           }
         },
         "summary": "Finish the Google step: sign in (or the code step), pending, the prefilled sign-up, or the password step that links Google",
+        "tags": [
+          "auth"
+        ],
+        "x-mkos-action": "public"
+      }
+    },
+    "/api/v1/auth/google/config": {
+      "get": {
+        "description": "Whether to show \"Continue with Google\" on the login and sign-up pages. With the flag off\n`start` only redirects back to `/login?error=google_unavailable`, so hide the button.",
+        "operationId": "auth_google_config",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "enabled": true
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/GoogleConfigOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "The request could not be parsed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request could not be parsed.",
+                    "status": 400,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request could not be parsed. Codes: `VALIDATION_FAILED`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.",
+                "example": 30,
+                "schema": {
+                  "minimum": 1.0,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "summary": "Whether sign-in with Google is switched on (show the button)",
         "tags": [
           "auth"
         ],
@@ -8780,7 +8999,7 @@
     },
     "/api/v1/auth/google/start": {
       "get": {
-        "description": "Navigate here (same origin, through the dashboard's `/api` proxy) from both the login and\nthe sign-up page. `b` is base64url(sha256(secret)) of a fresh 32-byte random secret the\nbrowser keeps in sessionStorage for `/auth/google/complete`. 302 to Google; with Google\nsign-in off, 302 to `/login?error=google_unavailable`.",
+        "description": "Navigate here (same origin, through the dashboard's `/api` proxy) from both the login and\nthe sign-up page. `b` is base64url(sha256(secret)) of a fresh 32-byte random secret the\nbrowser keeps in sessionStorage for `/auth/google/complete`. 302 to Google; with Google\nsign-in off, 302 to `/login?error=google_unavailable`. Only the app's own page navigation\nmay start (`Sec-Fetch-Site: same-origin`, `Sec-Fetch-Mode: navigate` when the browser sends\nthem): from another site it is a 302 to the app's `/auth/google?error=failed` and nothing\nis stored.",
         "operationId": "auth_google_start",
         "parameters": [
           {

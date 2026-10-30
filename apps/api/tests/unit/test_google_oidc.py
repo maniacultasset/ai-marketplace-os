@@ -262,3 +262,17 @@ def test_real_clock_default_verifies_fresh_token() -> None:
 def test_sha256_takes_any_text(value: str) -> None:
     assert len(g.sha256(value)) == 32
     assert not g.binding_matches(value, g.sha256("other"))
+
+
+def test_binding_hashes_the_secrets_text_not_its_bytes() -> None:
+    # The contract vector the app's tests use (docs/HANDOFF-FE.md): `b` is the sha256 of the
+    # 43-character base64url text, never of the 32 raw bytes it encodes.
+    secret = "A" * 43  # base64url of 32 zero bytes
+    b = "DwBzhbb51LfusnSGBa_hqYSgo7-j8BTQnip4TOnlzRo"
+    stored = g.binding_hash(b)
+    assert stored is not None
+    assert g.binding_matches(secret, stored)
+    assert g.b64url(g.sha256(secret)) == b
+    raw_bytes_hash = "Zmh6rfhivXdsj8GLjp-OIAiXFIVu4jOzkCpZHQ1fKSU"
+    other = g.binding_hash(raw_bytes_hash)
+    assert other is not None and not g.binding_matches(secret, other)

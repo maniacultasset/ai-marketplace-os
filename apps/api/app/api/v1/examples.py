@@ -435,10 +435,12 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "expires_in": 1800,
         },
         "auth_password_change": None,
+        "auth_google_config": {"enabled": True},
         "auth_google_start": None,
         "auth_google_callback": None,
         "auth_google_complete": {
             "outcome": "needs_details",
+            "email": "asha@acmenaturals.example",
             "login": None,
             "signup": None,
             "details": {

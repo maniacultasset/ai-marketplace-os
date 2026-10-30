@@ -30,7 +30,7 @@ from types import MappingProxyType
 from typing import Final, Literal
 from urllib.parse import urlsplit
 
-from pydantic import AwareDatetime, Field, ValidationError, field_validator
+from pydantic import AwareDatetime, Field, SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.model_prices import EMBEDDING_PRICE_USD_PER_MTOK, is_usable_openai_key
@@ -190,7 +190,7 @@ class Settings(BaseSettings):
     # ---- Google sign-in (ADR-0020): off by default; the secret comes from Secret Manager ----
     google_oauth_enabled: bool = False
     google_oauth_client_id: str | None = None
-    google_oauth_client_secret: str | None = Field(default=None, repr=False)
+    google_oauth_client_secret: SecretStr | None = None
     google_authorize_url: str = GOOGLE_ENDPOINTS["google_authorize_url"][1]
     google_token_url: str = GOOGLE_ENDPOINTS["google_token_url"][1]
     google_jwks_url: str = GOOGLE_ENDPOINTS["google_jwks_url"][1]
@@ -590,7 +590,8 @@ def _google_errors(s: Settings) -> list[str]:
         errors.append("GOOGLE_OAUTH_ENABLED=true requires GOOGLE_OAUTH_CLIENT_ID")
     elif not (client_id or "").endswith(GOOGLE_CLIENT_ID_SUFFIX) and s.app_env != "local":
         errors.append(f"GOOGLE_OAUTH_CLIENT_ID must end with {GOOGLE_CLIENT_ID_SUFFIX}")
-    secret = s.google_oauth_client_secret
+    held = s.google_oauth_client_secret
+    secret = held.get_secret_value() if held is not None else None
     if _unset(secret):
         errors.append("GOOGLE_OAUTH_ENABLED=true requires GOOGLE_OAUTH_CLIENT_SECRET")
     elif s.app_env != "local" and _is_weak_secret(secret or ""):

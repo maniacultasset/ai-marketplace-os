@@ -78,6 +78,22 @@ class FlowInvalid(Exception):  # noqa: N818 - a refusal: 401 OAUTH_STATE_INVALID
     """An unknown, used or expired handle, or a binding that is not this browser's."""
 
 
+class CrossSiteStart(Exception):  # noqa: N818 - a refusal: back to the app's failure page
+    """`start` reached from another site, or not as a page navigation (Fetch Metadata)."""
+
+
+def same_origin_navigation(fetch_site: str | None, fetch_mode: str | None) -> bool:
+    """Whether `start` came from the app itself. The app opens it with a full page load from its
+    own origin, so the browser sends `Sec-Fetch-Site: same-origin` and `Sec-Fetch-Mode:
+    navigate`. Any other value (`cross-site`, `same-site`, `none` for a pasted link, a `fetch`
+    or an iframe) would let another site choose the binding of a sign-in the victim finishes at
+    Google. A request without the headers is not a current browser's navigation, and no victim
+    can be made to send one, so it passes."""
+    if fetch_site is not None and fetch_site.strip().lower() != "same-origin":
+        return False
+    return fetch_mode is None or fetch_mode.strip().lower() == "navigate"
+
+
 @dataclass(frozen=True, slots=True)
 class Failure:
     """The one generic failure (401 UNAUTHENTICATED); `reason` is audited, never shown."""
@@ -238,6 +254,7 @@ class Link:
 @dataclass(frozen=True, slots=True)
 class Completed:
     outcome: Outcome
+    email: str = field(repr=False)
     login: auth.SignInResult | None = None
     signup: SignupRow | None = None
     details: Details | None = None
@@ -317,10 +334,14 @@ def app_location(settings: Settings, **query: str) -> str:
 # ---- 1. start ----
 
 
-async def start(b: str) -> str:
+async def start(b: str, *, fetch_site: str | None = None, fetch_mode: str | None = None) -> str:
     """Google's consent URL for a browser whose binding's sha256 is `b`. Raises `GoogleDisabled`
-    with the flag off, `FlowInvalid` for a malformed `b`."""
+    with the flag off, `CrossSiteStart` when another site sent the browser here (nothing is
+    stored), `FlowInvalid` for a malformed `b`."""
     settings = _enabled()
+    if not same_origin_navigation(fetch_site, fetch_mode):
+        log.warning("auth.google_start_cross_site", fetch_site=fetch_site, fetch_mode=fetch_mode)
+        raise CrossSiteStart
     binding_hash = google_oidc.binding_hash(b)
     if binding_hash is None:
         raise FlowInvalid
@@ -397,7 +418,11 @@ async def _identity(
             code=code,
             verifier=verifier,
             client_id=settings.google_oauth_client_id or "",
-            client_secret=settings.google_oauth_client_secret or "",
+            client_secret=(
+                settings.google_oauth_client_secret.get_secret_value()
+                if settings.google_oauth_client_secret is not None
+                else ""
+            ),
             redirect_uri=settings.google_redirect_uri,
         )
         verified = await _verify(settings, id_token.get_secret_value(), nonce_hash)
@@ -467,12 +492,14 @@ async def complete(
                 ttl_s=DETAILS_TTL_SECONDS,
                 identity=identity,
             )
-            return Completed("needs_details", details=_details(identity, details_handle))
+            return Completed(
+                "needs_details", identity.email, details=_details(identity, details_handle)
+            )
         if user is None:  # pragma: no cover - decide() answers needs_details for no user
             raise FlowInvalid
         if decision.outcome == "pending":
             latest = await SignupRepository(session).latest_for(user.id)
-            return Completed("pending", signup=latest)
+            return Completed("pending", identity.email, signup=latest)
         if decision.outcome == "link_required":
             link_handle = google_oidc.new_token()
             await flows.insert(
@@ -482,13 +509,15 @@ async def complete(
                 ttl_s=LINK_TTL_SECONDS,
                 identity=identity,
             )
-            return Completed("link_required", link=Link(identity.email, link_handle))
+            return Completed(
+                "link_required", identity.email, link=Link(identity.email, link_handle)
+            )
         result = await auth.sign_in_with_google(session, user, ip=ip, user_agent=user_agent)
         if isinstance(result, auth.Refusal) or result is None:
             reason = result.kind if isinstance(result, auth.Refusal) else "no_active_membership"
             await _failed(session, user.id, reason, ip)
             return Failure(reason)
-        return Completed("sign_in", login=result)
+        return Completed("sign_in", identity.email, login=result)
 
 
 async def _find_user(session: Any, identity: FlowIdentity) -> tuple[UserRow | None, bool]:
@@ -629,6 +658,7 @@ __all__ = [
     "CONSUMER_DOMAINS",
     "UNAVAILABLE_LOCATION",
     "Completed",
+    "CrossSiteStart",
     "Decision",
     "Details",
     "Failure",
@@ -642,6 +672,7 @@ __all__ = [
     "decide",
     "link",
     "peek_email",
+    "same_origin_navigation",
     "signup_details",
     "start",
     "suggest_brand",

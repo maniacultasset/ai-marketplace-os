@@ -32,6 +32,7 @@ Q7: dict[str, str] = {
     "auth_mfa_step_up": "tenant:read",
     "auth_password_change": "tenant:read",
     # ADR-0020: Google sign-in (the JSON steps are public: the handle is the credential)
+    "auth_google_config": PUBLIC,
     "auth_google_start": PUBLIC,
     "auth_google_callback": PUBLIC,
     "auth_google_complete": PUBLIC,
@@ -114,7 +115,7 @@ def _operation(spec: dict[str, Any], op_id: str) -> dict[str, Any]:
 
 def test_ops_are_the_q7_list() -> None:
     # S10 38 + S15 two + S16 three + S20 preview + S19 four + S21 two + ADR-0019 five
-    assert len(OPS) == 71
+    assert len(OPS) == 72
     assert set(OPS) == set(Q7)
 
 

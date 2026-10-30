@@ -85,6 +85,11 @@ def test_deployed_on_boots_with_client(clean_env: Path, monkeypatch: pytest.Monk
     )
     assert settings.google_oauth_enabled is True  # type: ignore[attr-defined]
     assert CLIENT_SECRET not in repr(settings)
+    # a SecretStr: a settings dump or JSON never carries the value
+    assert CLIENT_SECRET not in str(settings.model_dump())  # type: ignore[attr-defined]
+    assert CLIENT_SECRET not in settings.model_dump_json()  # type: ignore[attr-defined]
+    held = settings.google_oauth_client_secret  # type: ignore[attr-defined]
+    assert held.get_secret_value() == CLIENT_SECRET
 
 
 @pytest.mark.parametrize("app_env", ["staging", "production"])

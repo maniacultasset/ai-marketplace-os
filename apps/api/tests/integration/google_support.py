@@ -42,12 +42,15 @@ GOOGLE_ENV: Final[dict[str, str]] = {
     "GOOGLE_ISSUER": CFG.issuer,
     "DASHBOARD_BASE_URL": DASHBOARD,
 }
+CONFIG = f"{PREFIX}/auth/google/config"
 START = f"{PREFIX}/auth/google/start"
 CALLBACK = f"{PREFIX}/auth/google/callback"
 COMPLETE = f"{PREFIX}/auth/google/complete"
 LINK = f"{PREFIX}/auth/google/link"
 UNLINK = f"{PREFIX}/auth/google/unlink"
 SIGNUP_GOOGLE = f"{PREFIX}/signup/google"
+# What a browser sends when the app's own page opens `start` (a same-origin page navigation).
+NAVIGATION: Final = {"Sec-Fetch-Site": "same-origin", "Sec-Fetch-Mode": "navigate"}
 GENERIC: Final = (
     "Couldn't sign you in with Google. If you already have an account, sign in with your email "
     "and password."
@@ -127,7 +130,7 @@ class GoogleBrowser:
         return binding_of(self.secret)
 
     async def start(self) -> httpx.Response:
-        return await self.api.get(START, params={"b": self.b})
+        return await self.api.get(START, params={"b": self.b}, headers=NAVIGATION)
 
     async def consent(self, authorize_url: str, **control: str) -> str:
         """The user picks an account at (fake) Google: the callback URL Google sends back."""

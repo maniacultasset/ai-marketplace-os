@@ -19,6 +19,7 @@ from .conftest import LOCAL_HOSTS
 from .google_support import (
     CFG,
     COMPLETE,
+    CONFIG,
     DASHBOARD,
     FAKE_BASE,
     GENERIC,
@@ -85,6 +86,7 @@ async def _enrol_google(browser: GoogleBrowser, totp: TotpClock, **control: str)
     """A Google sign-in under `all` with no factor: enrol, confirm; the signed-in result."""
     done = (await browser.sign_in(**control)).json()
     assert done["outcome"] == "sign_in", done
+    assert done["email"], done  # Google's email, for the code step's screen
     login = done["login"]
     assert login["status"] == "mfa_enrollment_required", login
     challenge = login["challenge_token"]
@@ -151,6 +153,53 @@ async def test_start_flag_off_redirects_to_login(
     assert response.status_code == 302
     assert response.headers["location"] == "/login?error=google_unavailable"
     assert flows(gw.conn) == 0
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        {"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate"},
+        {"Sec-Fetch-Site": "same-site", "Sec-Fetch-Mode": "navigate"},
+        {"Sec-Fetch-Site": "none", "Sec-Fetch-Mode": "navigate"},
+        {"Sec-Fetch-Site": "cross-site"},
+        {"Sec-Fetch-Site": "same-origin", "Sec-Fetch-Mode": "no-cors"},
+        {"Sec-Fetch-Site": "same-origin", "Sec-Fetch-Mode": "cors"},
+    ],
+)
+async def test_start_from_another_site_stores_nothing(
+    gapi: httpx.AsyncClient, gw: GoogleWorld, headers: dict[str, str]
+) -> None:
+    # Another site must not choose the binding of a sign-in the victim then finishes at Google.
+    browser = GoogleBrowser(gapi, gw)
+    response = await gapi.get(START, params={"b": browser.b}, headers=headers)
+    assert response.status_code == 302
+    assert response.headers["location"] == f"{DASHBOARD}/auth/google?error=failed"
+    assert response.headers["cache-control"] == "no-store"
+    assert flows(gw.conn) == 0
+
+
+async def test_start_without_fetch_metadata_passes(
+    gapi: httpx.AsyncClient, gw: GoogleWorld
+) -> None:
+    # No current browser omits the headers on a navigation, so no victim can be made to.
+    response = await gapi.get(START, params={"b": GoogleBrowser(gapi, gw).b})
+    assert response.status_code == 302
+    assert response.headers["location"].startswith(f"{FAKE_BASE}/google/authorize?")
+    assert flows(gw.conn, "authorize") == 1
+
+
+@pytest.mark.endpoint("auth_google_config", case="success")
+async def test_config_reports_the_flag(
+    gapi: httpx.AsyncClient, gw: GoogleWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.core.config import get_settings
+
+    response = await gapi.get(CONFIG)
+    assert response.status_code == 200
+    assert response.json() == {"enabled": True}
+    monkeypatch.setenv("GOOGLE_OAUTH_ENABLED", "false")
+    get_settings.cache_clear()
+    assert (await gapi.get(CONFIG)).json() == {"enabled": False}
 
 
 async def test_start_rate_limited_per_ip(gapi: httpx.AsyncClient, gw: GoogleWorld) -> None:
@@ -249,6 +298,7 @@ async def test_complete_new_user_needs_details_with_prefill(
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["outcome"] == "needs_details"
+    assert body["email"] == GMAIL
     assert body["login"] is None and body["signup"] is None and body["link"] is None
     details = body["details"]
     assert details["email"] == GMAIL and details["email_verified"] is True
@@ -510,7 +560,7 @@ async def test_link_after_password_and_code(
     enrolled = await enrol(gapi, gw.conn, OWNER, clock)
     browser = GoogleBrowser(gapi, gw)
     done = (await browser.sign_in(**{"as": OWNER, "hd": "acme.test"})).json()
-    assert done["outcome"] == "link_required"
+    assert done["outcome"] == "link_required" and done["email"] == OWNER
     assert done["link"]["email"] == OWNER and done["link"]["link_expires_in"] == 900
     password = await gapi.post(
         LINK,
