@@ -113,9 +113,10 @@ password rules are live. Build every screen below before the backend switches to
 
 ## 7. Sign in and sign up with Google (contract 2.1.0; ADR-0020)
 
-The backend ships with `GOOGLE_OAUTH_ENABLED=false`: `start` redirects to
-`/login?error=google_unavailable` and the JSON steps answer 501. Build the screens below and show
-the notice for that error until the backend switches it on. Google only proves who the person is:
+The backend ships with `GOOGLE_OAUTH_ENABLED=false`: `GET /api/v1/auth/google/config` answers
+`{"enabled": false}`, `start` redirects to `/login?error=google_unavailable` and the JSON steps
+answer 501. Show the button only while `config.enabled` is true, and keep the notice for
+`error=google_unavailable` (the flag can go off while a sign-in is under way). Google only proves who the person is:
 under MFA the usual code (or enrolment) step always follows.
 
 1. **The button** ("Continue with Google" on `/login`, "Sign up with Google" on `/signup`, the
@@ -123,17 +124,25 @@ under MFA the usual code (or enrolment) step always follows.
    (`crypto.getRandomValues`, base64url, 43 characters), keep `{bind: secret, return: <safe return
    path>, intent: "login" | "signup"}` in `sessionStorage["gsi"]`, then
    `location.assign("/api/v1/auth/google/start?b=" + base64url(sha256(ascii(secret))))` (no padding).
-   Always a same-origin relative path through the `/api` proxy. The intent only picks the copy.
+   Hash the 43-character text, never the 32 raw bytes. Test vector: the secret of 32 zero bytes is
+   `AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA` and its `b` is
+   `DwBzhbb51LfusnSGBa_hqYSgo7-j8BTQnip4TOnlzRo`.
+   Always a same-origin relative path through the `/api` proxy, as a full page navigation (the
+   backend refuses a `start` whose `Sec-Fetch-Site` is not `same-origin` or whose `Sec-Fetch-Mode`
+   is not `navigate`, with a redirect to `/auth/google?error=failed`). The intent only picks the copy.
 2. **The app route `/auth/google`** receives `?handle=<opaque>` or
-   `?error=cancelled|failed|unavailable`. Read it, strip it with `history.replaceState`, read and
+   `?error=cancelled|failed|unavailable` (`unavailable`: the "not available" notice, as for
+   `/login?error=google_unavailable`). Read it, strip it with `history.replaceState`, read and
    remove `sessionStorage["gsi"]` (no secret: show the generic failure with a link to `/login`), and
-   POST `/api/v1/auth/google/complete {handle, binding: secret}`. Act on `outcome`:
+   POST `/api/v1/auth/google/complete {handle, binding: secret}`. Every answer carries `email`
+   (Google's verified email) to show on the steps that follow. Act on `outcome`:
    - `sign_in`: `login` is a `LoginResult`: `signed_in` stores the tokens and goes to the saved
      return path (re-apply the safe-redirect check); any other status continues with
      `login.challenge_token` at the usual code, enrolment or password-change step.
    - `pending`: `signup` is the request status card (pending, rejected with its reason, approved).
    - `needs_details`: "No Kuinn account for `<details.email>` yet": the sign-up form, prefilled
-     (`owner_name`, editable; `suggested_brand_name` when present, editable; the email read-only with
+     (`owner_name`, else `given_name` + `family_name`, editable; `suggested_brand_name` when
+     present, editable, computed by the backend so no domain list is kept in the app; the email read-only with
      "Verified by Google"; no password field). POST `/api/v1/signup/google {details_handle, binding,
      brand_name, owner_name, phone?, website?}` -> 202 `SignupStatusOut` (pending). The handle lives
      15 minutes; keep the binding secret in memory for it (it was removed from sessionStorage).

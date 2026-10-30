@@ -2,7 +2,7 @@
 
 > Generated from `packages/schemas/jsonschema/openapi.json` by `scripts/docs/gen_api_reference.py`. Do not edit by hand: change the code, export the contract, then run `make docs-handover`.
 
-This is the complete reference of the backend's HTTP API for the frontend and AI teams. It lists all 73 operations: what each one does, who may call it, what to send and what comes back. The same contract ships as generated TypeScript types in the npm package `@maniacultasset/schemas` (GitHub Packages), which the frontend installs under the alias `@mkos/schemas`, so never hand-write a request or response type.
+This is the complete reference of the backend's HTTP API for the frontend and AI teams. It lists all 74 operations: what each one does, who may call it, what to send and what comes back. The same contract ships as generated TypeScript types in the npm package `@maniacultasset/schemas` (GitHub Packages), which the frontend installs under the alias `@mkos/schemas`, so never hand-write a request or response type.
 
 - Read **Conventions** first: auth, tenants, idempotency, concurrency, paging, errors and jobs work the same everywhere.
 - Then use the **summary table** to find an operation, and its section for the details.
@@ -376,77 +376,78 @@ Auth: `yes` means a Bearer access token is required. Permission: the action the 
 |---|---|---|---|---|---|---|
 | 1 | GET | [`/api/v1/auth/google/callback`](#get-apiv1authgooglecallback) | Google's return: 303 to the app with an opaque single-use handle | no | none (public) | yes (read-only) |
 | 2 | POST | [`/api/v1/auth/google/complete`](#post-apiv1authgooglecomplete) | Finish the Google step: sign in (or the code step), pending, the prefilled sign-up, or the password step that links Google | no | none (public) | no |
-| 3 | POST | [`/api/v1/auth/google/link`](#post-apiv1authgooglelink) | Link Google to an existing account: its password, then the usual code steps | no | none (public) | no |
-| 4 | GET | [`/api/v1/auth/google/start`](#get-apiv1authgooglestart) | Sign in or sign up with Google: redirect to Google's consent page | no | none (public) | yes (read-only) |
-| 5 | POST | [`/api/v1/auth/google/unlink`](#post-apiv1authgoogleunlink) | Remove the linked Google account (after a step-up; needs a password) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 6 | POST | [`/api/v1/auth/login`](#post-apiv1authlogin) | Log in with email and password: tokens, or the next sign-in step | no | none (public) | no |
-| 7 | POST | [`/api/v1/auth/login/mfa`](#post-apiv1authloginmfa) | Sign-in code step: a TOTP code or a recovery code for the login challenge | no | none (public) | no |
-| 8 | POST | [`/api/v1/auth/login/mfa/confirm`](#post-apiv1authloginmfaconfirm) | Forced enrolment at sign-in: confirm with a code; recovery codes and the sign-in result | no | none (public) | no |
-| 9 | POST | [`/api/v1/auth/login/mfa/enroll`](#post-apiv1authloginmfaenroll) | Forced enrolment at sign-in: a new authenticator secret | no | none (public) | no |
-| 10 | POST | [`/api/v1/auth/logout`](#post-apiv1authlogout) | Revoke the refresh token | no | none (public) | yes (always 204; a repeat is a no-op) |
-| 11 | GET | [`/api/v1/auth/me`](#get-apiv1authme) | The current principal and memberships | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 12 | POST | [`/api/v1/auth/mfa/recovery-codes`](#post-apiv1authmfarecovery-codes) | Regenerate the recovery codes (after a step-up) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 13 | POST | [`/api/v1/auth/mfa/step-up`](#post-apiv1authmfastep-up) | Step up with a code: a new access token for sensitive actions | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 14 | POST | [`/api/v1/auth/mfa/totp/confirm`](#post-apiv1authmfatotpconfirm) | Confirm the new authenticator with a code; recovery codes | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 15 | POST | [`/api/v1/auth/mfa/totp/enroll`](#post-apiv1authmfatotpenroll) | Set up or replace the authenticator from account settings | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 16 | POST | [`/api/v1/auth/password`](#post-apiv1authpassword) | Change the password (current password, DPP rules, not one of the last 10) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 17 | POST | [`/api/v1/auth/password/expired`](#post-apiv1authpasswordexpired) | Forced password change at sign-in | no | none (public) | no |
-| 18 | POST | [`/api/v1/auth/refresh`](#post-apiv1authrefresh) | Rotate the refresh token | no | none (public) | no (a repeat counts as token reuse and ends the session) |
-| 19 | GET | [`/api/v1/auth/security`](#get-apiv1authsecurity) | Account security: MFA status, recovery codes left, password expiry | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 20 | POST | [`/api/v1/auth/switch-tenant`](#post-apiv1authswitch-tenant) | Switch the active tenant: a new token pair for another of the caller's tenants | yes | `tenant:read`: owner, admin, operator, reviewer | no |
-| 21 | GET | [`/api/v1/tenants/me`](#get-apiv1tenantsme) | The brand profile | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 22 | PATCH | [`/api/v1/tenants/me`](#patch-apiv1tenantsme) | Update the brand profile (If-Match: the ETag from GET) | yes | `settings:manage`: owner, admin | no (guarded by If-Match) |
-| 23 | GET | [`/api/v1/members`](#get-apiv1members) | List the tenant's members | yes | `team:manage`: owner, admin | yes (read-only) |
-| 24 | PATCH | [`/api/v1/members/{user_id}`](#patch-apiv1membersuser_id) | Change a member's role or active flag (only an owner grants or removes owner) | yes | `team:manage`: owner, admin | yes (a repeat sets the same values again) |
-| 25 | GET | [`/api/v1/brand/documents`](#get-apiv1branddocuments) | List the brand documents | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 26 | POST | [`/api/v1/brand/documents`](#post-apiv1branddocuments) | Upload a brand document for chunking | yes | `settings:manage`: owner, admin | yes (Idempotency-Key) |
-| 27 | DELETE | [`/api/v1/brand/documents/{document_id}`](#delete-apiv1branddocumentsdocument_id) | Delete a brand document and deactivate its chunks | yes | `settings:manage`: owner, admin | yes (a repeat is 404) |
-| 28 | GET | [`/api/v1/products`](#get-apiv1products) | List products | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 29 | POST | [`/api/v1/products`](#post-apiv1products) | Create one product | yes | `product:import`: owner, operator | no (a repeat with the same SKU is 409 `SKU_CONFLICT`) |
-| 30 | POST | [`/api/v1/products/bulk`](#post-apiv1productsbulk) | Import products from a CSV file | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
-| 31 | GET | [`/api/v1/products/{product_id}`](#get-apiv1productsproduct_id) | Read one product | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 32 | GET | [`/api/v1/imports/{import_id}`](#get-apiv1importsimport_id) | The import report (counts; rows via /rows) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 33 | GET | [`/api/v1/imports/{import_id}/rows`](#get-apiv1importsimport_idrows) | Import rows, optionally only failed ones | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 34 | POST | [`/api/v1/imports/{import_id}/rows/retry`](#post-apiv1importsimport_idrowsretry) | Re-run the failed rows only | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
-| 35 | POST | [`/api/v1/images/upload`](#post-apiv1imagesupload) | Upload an image (or name an uploaded key) and start the checks | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
-| 36 | POST | [`/api/v1/images/upload-url`](#post-apiv1imagesupload-url) | A signed upload URL for one image | yes | `product:import`: owner, operator | no |
-| 37 | GET | [`/api/v1/images/{image_id}/report`](#get-apiv1imagesimage_idreport) | The image compliance reports | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 38 | GET | [`/api/v1/listings`](#get-apiv1listings) | List listings (the review queue) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 39 | POST | [`/api/v1/listings/approve`](#post-apiv1listingsapprove) | Approve or reject a batch (maker-checker enforced) | yes | `listing:approve`: owner, reviewer | yes (Idempotency-Key) |
-| 40 | POST | [`/api/v1/listings/generate`](#post-apiv1listingsgenerate) | Start AI generation | yes | `listing:generate`: owner, operator | yes (Idempotency-Key) |
-| 41 | POST | [`/api/v1/listings/publish`](#post-apiv1listingspublish) | Publish approved listings | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
-| 42 | POST | [`/api/v1/listings/validate`](#post-apiv1listingsvalidate) | Run schema, rules and vision checks (200 with passed=false on a rules failure) | yes | `listing:edit`: owner, operator | yes (a repeat with unchanged rules returns the stored result) |
-| 43 | GET | [`/api/v1/listings/{listing_id}`](#get-apiv1listingslisting_id) | Read one listing with its content and validation | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 44 | PATCH | [`/api/v1/listings/{listing_id}/content`](#patch-apiv1listingslisting_idcontent) | Edit content (creates a new version) | yes | `listing:edit`: owner, operator | no (guarded by If-Match) |
-| 45 | GET | [`/api/v1/listings/{listing_id}/history`](#get-apiv1listingslisting_idhistory) | The listing's audit history, newest first | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 46 | GET | [`/api/v1/listings/{listing_id}/preview`](#get-apiv1listingslisting_idpreview) | Preview the marketplace payload of the current version (sends nothing) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 47 | POST | [`/api/v1/listings/{listing_id}/publish/retry-fields`](#post-apiv1listingslisting_idpublishretry-fields) | Retry only the fields that failed to publish | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
-| 48 | POST | [`/api/v1/listings/{listing_id}/refresh-status`](#post-apiv1listingslisting_idrefresh-status) | Check the marketplace status now (at most once per 5 minutes per listing) | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
-| 49 | POST | [`/api/v1/listings/{listing_id}/regenerate`](#post-apiv1listingslisting_idregenerate) | Regenerate an existing listing | yes | `listing:regenerate`: owner, operator, reviewer | yes (Idempotency-Key) |
-| 50 | GET | [`/api/v1/listings/{listing_id}/status`](#get-apiv1listingslisting_idstatus) | Listing status (a convenience alias; poll jobs instead) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 51 | GET | [`/api/v1/listings/{listing_id}/submissions`](#get-apiv1listingslisting_idsubmissions) | The listing's publish attempts with their per-field results, newest first | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 52 | GET | [`/api/v1/jobs/{job_id}`](#get-apiv1jobsjob_id) | The job envelope, read from job_runs | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 53 | POST | [`/api/v1/jobs/{job_id}/cancel`](#post-apiv1jobsjob_idcancel) | Cancel a queued job | yes | `listing:generate`: owner, operator | yes (Idempotency-Key) |
-| 54 | GET | [`/api/v1/issues`](#get-apiv1issues) | The issue inbox (open issues by default) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 55 | POST | [`/api/v1/issues/{issue_id}/dismiss`](#post-apiv1issuesissue_iddismiss) | Dismiss an open warning (errors cannot be dismissed) | yes | `listing:approve`: owner, reviewer | yes (Idempotency-Key) |
-| 56 | GET | [`/api/v1/tasks`](#get-apiv1tasks) | The human task inbox (open tasks by default) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 57 | GET | [`/api/v1/marketplaces/accounts`](#get-apiv1marketplacesaccounts) | Connected accounts and their health | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 58 | POST | [`/api/v1/marketplaces/accounts/{account_id}/revoke`](#post-apiv1marketplacesaccountsaccount_idrevoke) | Revoke a connection: delete the stored tokens | yes | `marketplace:connect`: owner, admin | yes (a repeat returns the account unchanged) |
-| 59 | POST | [`/api/v1/marketplaces/connect`](#post-apiv1marketplacesconnect) | Start OAuth; returns the consent URL | yes | `marketplace:connect`: owner, admin | no |
-| 60 | POST | [`/api/v1/marketplaces/connect/confirm`](#post-apiv1marketplacesconnectconfirm) | Confirm a pending connection: the account joins the caller's tenant | yes | `marketplace:connect`: owner, admin | no (the pending handle is single-use; a repeat is 409) |
-| 61 | GET | [`/api/v1/marketplaces/{marketplace}/callback`](#get-apiv1marketplacesmarketplacecallback) | OAuth return: 303 to the app with an opaque pending handle | no | none (public) | no (the OAuth state is single-use; a replay is 409) |
-| 62 | GET | [`/api/v1/rules`](#get-apiv1rules) | List rules | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 63 | POST | [`/api/v1/rules/dry-run`](#post-apiv1rulesdry-run) | Run the Rules Engine on a draft listing; saves nothing | yes | `listing:edit`: owner, operator | yes (saves nothing) |
-| 64 | GET | [`/api/v1/analytics`](#get-apiv1analytics) | Operational metrics (alias of /analytics/summary) | yes | `analytics:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 65 | GET | [`/api/v1/analytics/summary`](#get-apiv1analyticssummary) | Operational metrics for a date range | yes | `analytics:read`: owner, admin, operator, reviewer | yes (read-only) |
-| 66 | POST | [`/api/v1/signup`](#post-apiv1signup) | Sign up a brand: a pending request a platform admin approves | no | none (public) | no |
-| 67 | POST | [`/api/v1/signup/google`](#post-apiv1signupgoogle) | Sign up with the Google identity: a pending request a platform admin approves | no | none (public) | no |
-| 68 | POST | [`/api/v1/signup/status`](#post-apiv1signupstatus) | The caller's latest sign-up request (email and password) | no | none (public) | no |
-| 69 | GET | [`/api/v1/admin/signup-requests`](#get-apiv1adminsignup-requests) | List sign-up requests, oldest first (platform admins) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | yes (read-only) |
-| 70 | POST | [`/api/v1/admin/signup-requests/{request_id}/approve`](#post-apiv1adminsignup-requestsrequest_idapprove) | Approve a sign-up: create the trial tenant and its owner (idempotent) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | no |
-| 71 | POST | [`/api/v1/admin/signup-requests/{request_id}/reject`](#post-apiv1adminsignup-requestsrequest_idreject) | Reject a sign-up with a reason (idempotent) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | no |
-| 72 | GET | [`/healthz`](#get-healthz) | Liveness probe: always 200, never touches the database | no | none (public probe) | yes (read-only) |
-| 73 | GET | [`/readyz`](#get-readyz) | Readiness probe: 200 when the database answers, else 503 | no | none (public probe) | yes (read-only) |
+| 3 | GET | [`/api/v1/auth/google/config`](#get-apiv1authgoogleconfig) | Whether sign-in with Google is switched on (show the button) | no | none (public) | yes (read-only) |
+| 4 | POST | [`/api/v1/auth/google/link`](#post-apiv1authgooglelink) | Link Google to an existing account: its password, then the usual code steps | no | none (public) | no |
+| 5 | GET | [`/api/v1/auth/google/start`](#get-apiv1authgooglestart) | Sign in or sign up with Google: redirect to Google's consent page | no | none (public) | yes (read-only) |
+| 6 | POST | [`/api/v1/auth/google/unlink`](#post-apiv1authgoogleunlink) | Remove the linked Google account (after a step-up; needs a password) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 7 | POST | [`/api/v1/auth/login`](#post-apiv1authlogin) | Log in with email and password: tokens, or the next sign-in step | no | none (public) | no |
+| 8 | POST | [`/api/v1/auth/login/mfa`](#post-apiv1authloginmfa) | Sign-in code step: a TOTP code or a recovery code for the login challenge | no | none (public) | no |
+| 9 | POST | [`/api/v1/auth/login/mfa/confirm`](#post-apiv1authloginmfaconfirm) | Forced enrolment at sign-in: confirm with a code; recovery codes and the sign-in result | no | none (public) | no |
+| 10 | POST | [`/api/v1/auth/login/mfa/enroll`](#post-apiv1authloginmfaenroll) | Forced enrolment at sign-in: a new authenticator secret | no | none (public) | no |
+| 11 | POST | [`/api/v1/auth/logout`](#post-apiv1authlogout) | Revoke the refresh token | no | none (public) | yes (always 204; a repeat is a no-op) |
+| 12 | GET | [`/api/v1/auth/me`](#get-apiv1authme) | The current principal and memberships | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 13 | POST | [`/api/v1/auth/mfa/recovery-codes`](#post-apiv1authmfarecovery-codes) | Regenerate the recovery codes (after a step-up) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 14 | POST | [`/api/v1/auth/mfa/step-up`](#post-apiv1authmfastep-up) | Step up with a code: a new access token for sensitive actions | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 15 | POST | [`/api/v1/auth/mfa/totp/confirm`](#post-apiv1authmfatotpconfirm) | Confirm the new authenticator with a code; recovery codes | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 16 | POST | [`/api/v1/auth/mfa/totp/enroll`](#post-apiv1authmfatotpenroll) | Set up or replace the authenticator from account settings | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 17 | POST | [`/api/v1/auth/password`](#post-apiv1authpassword) | Change the password (current password, DPP rules, not one of the last 10) | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 18 | POST | [`/api/v1/auth/password/expired`](#post-apiv1authpasswordexpired) | Forced password change at sign-in | no | none (public) | no |
+| 19 | POST | [`/api/v1/auth/refresh`](#post-apiv1authrefresh) | Rotate the refresh token | no | none (public) | no (a repeat counts as token reuse and ends the session) |
+| 20 | GET | [`/api/v1/auth/security`](#get-apiv1authsecurity) | Account security: MFA status, recovery codes left, password expiry | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 21 | POST | [`/api/v1/auth/switch-tenant`](#post-apiv1authswitch-tenant) | Switch the active tenant: a new token pair for another of the caller's tenants | yes | `tenant:read`: owner, admin, operator, reviewer | no |
+| 22 | GET | [`/api/v1/tenants/me`](#get-apiv1tenantsme) | The brand profile | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 23 | PATCH | [`/api/v1/tenants/me`](#patch-apiv1tenantsme) | Update the brand profile (If-Match: the ETag from GET) | yes | `settings:manage`: owner, admin | no (guarded by If-Match) |
+| 24 | GET | [`/api/v1/members`](#get-apiv1members) | List the tenant's members | yes | `team:manage`: owner, admin | yes (read-only) |
+| 25 | PATCH | [`/api/v1/members/{user_id}`](#patch-apiv1membersuser_id) | Change a member's role or active flag (only an owner grants or removes owner) | yes | `team:manage`: owner, admin | yes (a repeat sets the same values again) |
+| 26 | GET | [`/api/v1/brand/documents`](#get-apiv1branddocuments) | List the brand documents | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 27 | POST | [`/api/v1/brand/documents`](#post-apiv1branddocuments) | Upload a brand document for chunking | yes | `settings:manage`: owner, admin | yes (Idempotency-Key) |
+| 28 | DELETE | [`/api/v1/brand/documents/{document_id}`](#delete-apiv1branddocumentsdocument_id) | Delete a brand document and deactivate its chunks | yes | `settings:manage`: owner, admin | yes (a repeat is 404) |
+| 29 | GET | [`/api/v1/products`](#get-apiv1products) | List products | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 30 | POST | [`/api/v1/products`](#post-apiv1products) | Create one product | yes | `product:import`: owner, operator | no (a repeat with the same SKU is 409 `SKU_CONFLICT`) |
+| 31 | POST | [`/api/v1/products/bulk`](#post-apiv1productsbulk) | Import products from a CSV file | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
+| 32 | GET | [`/api/v1/products/{product_id}`](#get-apiv1productsproduct_id) | Read one product | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 33 | GET | [`/api/v1/imports/{import_id}`](#get-apiv1importsimport_id) | The import report (counts; rows via /rows) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 34 | GET | [`/api/v1/imports/{import_id}/rows`](#get-apiv1importsimport_idrows) | Import rows, optionally only failed ones | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 35 | POST | [`/api/v1/imports/{import_id}/rows/retry`](#post-apiv1importsimport_idrowsretry) | Re-run the failed rows only | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
+| 36 | POST | [`/api/v1/images/upload`](#post-apiv1imagesupload) | Upload an image (or name an uploaded key) and start the checks | yes | `product:import`: owner, operator | yes (Idempotency-Key) |
+| 37 | POST | [`/api/v1/images/upload-url`](#post-apiv1imagesupload-url) | A signed upload URL for one image | yes | `product:import`: owner, operator | no |
+| 38 | GET | [`/api/v1/images/{image_id}/report`](#get-apiv1imagesimage_idreport) | The image compliance reports | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 39 | GET | [`/api/v1/listings`](#get-apiv1listings) | List listings (the review queue) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 40 | POST | [`/api/v1/listings/approve`](#post-apiv1listingsapprove) | Approve or reject a batch (maker-checker enforced) | yes | `listing:approve`: owner, reviewer | yes (Idempotency-Key) |
+| 41 | POST | [`/api/v1/listings/generate`](#post-apiv1listingsgenerate) | Start AI generation | yes | `listing:generate`: owner, operator | yes (Idempotency-Key) |
+| 42 | POST | [`/api/v1/listings/publish`](#post-apiv1listingspublish) | Publish approved listings | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
+| 43 | POST | [`/api/v1/listings/validate`](#post-apiv1listingsvalidate) | Run schema, rules and vision checks (200 with passed=false on a rules failure) | yes | `listing:edit`: owner, operator | yes (a repeat with unchanged rules returns the stored result) |
+| 44 | GET | [`/api/v1/listings/{listing_id}`](#get-apiv1listingslisting_id) | Read one listing with its content and validation | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 45 | PATCH | [`/api/v1/listings/{listing_id}/content`](#patch-apiv1listingslisting_idcontent) | Edit content (creates a new version) | yes | `listing:edit`: owner, operator | no (guarded by If-Match) |
+| 46 | GET | [`/api/v1/listings/{listing_id}/history`](#get-apiv1listingslisting_idhistory) | The listing's audit history, newest first | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 47 | GET | [`/api/v1/listings/{listing_id}/preview`](#get-apiv1listingslisting_idpreview) | Preview the marketplace payload of the current version (sends nothing) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 48 | POST | [`/api/v1/listings/{listing_id}/publish/retry-fields`](#post-apiv1listingslisting_idpublishretry-fields) | Retry only the fields that failed to publish | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
+| 49 | POST | [`/api/v1/listings/{listing_id}/refresh-status`](#post-apiv1listingslisting_idrefresh-status) | Check the marketplace status now (at most once per 5 minutes per listing) | yes | `listing:publish`: owner, operator | yes (Idempotency-Key) |
+| 50 | POST | [`/api/v1/listings/{listing_id}/regenerate`](#post-apiv1listingslisting_idregenerate) | Regenerate an existing listing | yes | `listing:regenerate`: owner, operator, reviewer | yes (Idempotency-Key) |
+| 51 | GET | [`/api/v1/listings/{listing_id}/status`](#get-apiv1listingslisting_idstatus) | Listing status (a convenience alias; poll jobs instead) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 52 | GET | [`/api/v1/listings/{listing_id}/submissions`](#get-apiv1listingslisting_idsubmissions) | The listing's publish attempts with their per-field results, newest first | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 53 | GET | [`/api/v1/jobs/{job_id}`](#get-apiv1jobsjob_id) | The job envelope, read from job_runs | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 54 | POST | [`/api/v1/jobs/{job_id}/cancel`](#post-apiv1jobsjob_idcancel) | Cancel a queued job | yes | `listing:generate`: owner, operator | yes (Idempotency-Key) |
+| 55 | GET | [`/api/v1/issues`](#get-apiv1issues) | The issue inbox (open issues by default) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 56 | POST | [`/api/v1/issues/{issue_id}/dismiss`](#post-apiv1issuesissue_iddismiss) | Dismiss an open warning (errors cannot be dismissed) | yes | `listing:approve`: owner, reviewer | yes (Idempotency-Key) |
+| 57 | GET | [`/api/v1/tasks`](#get-apiv1tasks) | The human task inbox (open tasks by default) | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 58 | GET | [`/api/v1/marketplaces/accounts`](#get-apiv1marketplacesaccounts) | Connected accounts and their health | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 59 | POST | [`/api/v1/marketplaces/accounts/{account_id}/revoke`](#post-apiv1marketplacesaccountsaccount_idrevoke) | Revoke a connection: delete the stored tokens | yes | `marketplace:connect`: owner, admin | yes (a repeat returns the account unchanged) |
+| 60 | POST | [`/api/v1/marketplaces/connect`](#post-apiv1marketplacesconnect) | Start OAuth; returns the consent URL | yes | `marketplace:connect`: owner, admin | no |
+| 61 | POST | [`/api/v1/marketplaces/connect/confirm`](#post-apiv1marketplacesconnectconfirm) | Confirm a pending connection: the account joins the caller's tenant | yes | `marketplace:connect`: owner, admin | no (the pending handle is single-use; a repeat is 409) |
+| 62 | GET | [`/api/v1/marketplaces/{marketplace}/callback`](#get-apiv1marketplacesmarketplacecallback) | OAuth return: 303 to the app with an opaque pending handle | no | none (public) | no (the OAuth state is single-use; a replay is 409) |
+| 63 | GET | [`/api/v1/rules`](#get-apiv1rules) | List rules | yes | `tenant:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 64 | POST | [`/api/v1/rules/dry-run`](#post-apiv1rulesdry-run) | Run the Rules Engine on a draft listing; saves nothing | yes | `listing:edit`: owner, operator | yes (saves nothing) |
+| 65 | GET | [`/api/v1/analytics`](#get-apiv1analytics) | Operational metrics (alias of /analytics/summary) | yes | `analytics:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 66 | GET | [`/api/v1/analytics/summary`](#get-apiv1analyticssummary) | Operational metrics for a date range | yes | `analytics:read`: owner, admin, operator, reviewer | yes (read-only) |
+| 67 | POST | [`/api/v1/signup`](#post-apiv1signup) | Sign up a brand: a pending request a platform admin approves | no | none (public) | no |
+| 68 | POST | [`/api/v1/signup/google`](#post-apiv1signupgoogle) | Sign up with the Google identity: a pending request a platform admin approves | no | none (public) | no |
+| 69 | POST | [`/api/v1/signup/status`](#post-apiv1signupstatus) | The caller's latest sign-up request (email and password) | no | none (public) | no |
+| 70 | GET | [`/api/v1/admin/signup-requests`](#get-apiv1adminsignup-requests) | List sign-up requests, oldest first (platform admins) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | yes (read-only) |
+| 71 | POST | [`/api/v1/admin/signup-requests/{request_id}/approve`](#post-apiv1adminsignup-requestsrequest_idapprove) | Approve a sign-up: create the trial tenant and its owner (idempotent) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | no |
+| 72 | POST | [`/api/v1/admin/signup-requests/{request_id}/reject`](#post-apiv1adminsignup-requestsrequest_idreject) | Reject a sign-up with a reason (idempotent) | yes | `platform:admin`: platform admins only (`users.is_platform_admin`), any role | no |
+| 73 | GET | [`/healthz`](#get-healthz) | Liveness probe: always 200, never touches the database | no | none (public probe) | yes (read-only) |
+| 74 | GET | [`/readyz`](#get-readyz) | Readiness probe: 200 when the database answers, else 503 | no | none (public probe) | yes (read-only) |
 
 ## Auth
 
@@ -456,6 +457,7 @@ Log in, renew tokens, log out, read who you are, and switch the active tenant. L
 |---|---|
 | [`GET /api/v1/auth/google/callback`](#get-apiv1authgooglecallback) | Google's return: 303 to the app with an opaque single-use handle |
 | [`POST /api/v1/auth/google/complete`](#post-apiv1authgooglecomplete) | Finish the Google step: sign in (or the code step), pending, the prefilled sign-up, or the password step that links Google |
+| [`GET /api/v1/auth/google/config`](#get-apiv1authgoogleconfig) | Whether sign-in with Google is switched on (show the button) |
 | [`POST /api/v1/auth/google/link`](#post-apiv1authgooglelink) | Link Google to an existing account: its password, then the usual code steps |
 | [`GET /api/v1/auth/google/start`](#get-apiv1authgooglestart) | Sign in or sign up with Google: redirect to Google's consent page |
 | [`POST /api/v1/auth/google/unlink`](#post-apiv1authgoogleunlink) | Remove the linked Google account (after a step-up; needs a password) |
@@ -596,6 +598,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 | `details.given_name` | string or null | no |  |  |
 | `details.owner_name` | string or null | no | Google's full name, editable. |  |
 | `details.suggested_brand_name` | string or null | no | From a company email's domain (never a mailbox provider's); editable. |  |
+| `email` | string or null | no | The Google account's verified email, on every outcome: show it on the steps that follow (the code step of `sign_in`, the password of `link_required`). | min length 3; max length 320; pattern `^[^@\s]+@[^@\s]+$` |
 | `link` | GoogleLinkOut or null | no | `link_required`: a Kuinn account already uses this email. Ask for its password once (`/auth/google/link`), then the usual code steps; Google is linked when they pass. |  |
 | `link.email` | string | yes |  | min length 3; max length 320; pattern `^[^@\s]+@[^@\s]+$` |
 | `link.link_expires_in` | integer | yes | Seconds the handle stays valid. | min 1 |
@@ -637,7 +640,64 @@ Every error status above answers with the [error envelope](#the-error-envelope).
     "owner_name": "Asha Rao",
     "suggested_brand_name": "Acmenaturals"
   },
+  "email": "asha@acmenaturals.example",
   "outcome": "needs_details"
+}
+```
+
+[Back to the summary](#all-operations)
+
+### GET /api/v1/auth/google/config
+
+**Whether sign-in with Google is switched on (show the button).**
+
+Whether to show "Continue with Google" on the login and sign-up pages. With the flag off `start` only redirects back to `/login?error=google_unavailable`, so hide the button.
+
+| | |
+|---|---|
+| Operation id | `auth_google_config` |
+| Auth | none |
+| Permission (roles that hold it) | none (public) |
+| Idempotent | yes (read-only) |
+| Success | 200 `GoogleConfigOut` |
+
+#### Parameters
+
+None.
+
+#### Request body
+
+None.
+
+#### Example call
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/auth/google/config"
+```
+
+#### Responses
+
+| Status | Meaning | Body | Headers | Error codes |
+|---|---|---|---|---|
+| 200 | Success. | `GoogleConfigOut` |  |  |
+| 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
+| 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
+| 429 | Too many requests. | `ErrorEnvelope` | `Retry-After` | `RATE_LIMITED` |
+| default | Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. | `ErrorEnvelope` |  |  |
+
+Every error status above answers with the [error envelope](#the-error-envelope).
+
+**200 body fields** (`application/json`):
+
+| Field | Type | Required | Description | Constraints |
+|---|---|---|---|---|
+| `enabled` | boolean | yes | `GOOGLE_OAUTH_ENABLED`: Google sign-in is switched on. |  |
+
+200 example:
+
+```json
+{
+  "enabled": true
 }
 ```
 
@@ -737,7 +797,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 
 **Sign in or sign up with Google: redirect to Google's consent page.**
 
-Navigate here (same origin, through the dashboard's `/api` proxy) from both the login and the sign-up page. `b` is base64url(sha256(secret)) of a fresh 32-byte random secret the browser keeps in sessionStorage for `/auth/google/complete`. 302 to Google; with Google sign-in off, 302 to `/login?error=google_unavailable`.
+Navigate here (same origin, through the dashboard's `/api` proxy) from both the login and the sign-up page. `b` is base64url(sha256(secret)) of a fresh 32-byte random secret the browser keeps in sessionStorage for `/auth/google/complete`. 302 to Google; with Google sign-in off, 302 to `/login?error=google_unavailable`. Only the app's own page navigation may start (`Sec-Fetch-Site: same-origin`, `Sec-Fetch-Mode: navigate` when the browser sends them): from another site it is a 302 to the app's `/auth/google?error=failed` and nothing is stored.
 
 | | |
 |---|---|
@@ -7625,7 +7685,7 @@ How to act on the retry class:
 | `IDENTIFIER_MISSING` | adapter | identifier_error | user_action |  |  |
 | `IMAGE_NON_COMPLIANT` | vision | media_error | user_action |  |  |
 | `IMPORT_FAILED` | summary |  | user_action |  | `products_bulk` |
-| `INTERNAL_ERROR` | system |  | system_failure |  | 71 operations |
+| `INTERNAL_ERROR` | system |  | system_failure |  | 72 operations |
 | `INVALID_STATUS_TRANSITION` | api |  | user_action |  | `admin_signup_requests_approve`, `admin_signup_requests_reject`, `imports_rows_retry`, `issues_dismiss`, `jobs_cancel`, `listings_generate`, `listings_refresh_status`, `listings_regenerate`, `listings_retry_fields` |
 | `JOB_TIMEOUT` | system |  | system_failure |  |  |
 | `JSON_INVALID` | ai |  | auto_retry |  |  |
@@ -7639,7 +7699,7 @@ How to act on the retry class:
 | `MARKETPLACE_UNAVAILABLE` | adapter | marketplace_technical | auto_retry |  | `marketplaces_callback` |
 | `MARKETPLACE_UNCONFIRMED` | adapter | marketplace_technical | auto_retry |  |  |
 | `MARKETPLACE_UNKNOWN_ERROR` | adapter | unknown | user_action |  | `marketplaces_callback` |
-| `METHOD_NOT_ALLOWED` | api |  | user_action |  | 71 operations |
+| `METHOD_NOT_ALLOWED` | api |  | user_action |  | 72 operations |
 | `MFA_ENROLLMENT_REQUIRED` | api (2.0.0, DPP-1, ADR-0021) |  | user_action |  | `admin_signup_requests_approve`, `admin_signup_requests_reject`, `auth_google_unlink`, `auth_mfa_recovery_codes`, `marketplaces_accounts_revoke`, `marketplaces_connect`, `members_patch` |
 | `MFA_STEP_UP_REQUIRED` | api (2.0.0, DPP-1, ADR-0021) |  | user_action |  | `admin_signup_requests_approve`, `admin_signup_requests_reject`, `auth_google_unlink`, `auth_mfa_recovery_codes`, `auth_mfa_totp_confirm`, `auth_mfa_totp_enroll`, `marketplaces_accounts_revoke`, `marketplaces_connect`, `members_patch` |
 | `MISSING_ATTRIBUTE` | rules | missing_data | user_action |  |  |
@@ -7648,11 +7708,11 @@ How to act on the retry class:
 | `NOT_IMPLEMENTED` | api |  | system_failure |  | 16 operations |
 | `OAUTH_STATE_INVALID` | api |  | user_action |  | `auth_google_complete`, `auth_google_link`, `marketplaces_callback`, `marketplaces_connect_confirm`, `signup_google` |
 | `PATTERN_MISMATCH` | rules | content_error | ai_correct |  |  |
-| `PAYLOAD_TOO_LARGE` | api |  | user_action |  | 71 operations |
+| `PAYLOAD_TOO_LARGE` | api |  | user_action |  | 72 operations |
 | `PERMISSION_DENIED` | api |  | user_action |  | 27 operations |
 | `PRICE_ABOVE_MRP` | facts | invalid_value | user_action |  |  |
 | `PUBLISH_FAILED` | summary |  | user_action |  |  |
-| `RATE_LIMITED` | adapter | marketplace_technical | auto_retry |  | 71 operations |
+| `RATE_LIMITED` | adapter | marketplace_technical | auto_retry |  | 72 operations |
 | `REQUIRED_FIELD_MISSING` | schema | missing_data | user_action |  |  |
 | `RETRY_EXHAUSTED` | system |  | system_failure |  |  |
 | `SCHEMA_INVALID` | schema | content_error | ai_correct |  |  |
@@ -7667,7 +7727,7 @@ How to act on the retry class:
 | `UNAUTHENTICATED` | api |  | user_action |  | 66 operations |
 | `UNKNOWN_FACT_KEY` | facts | invalid_value | user_action |  | `products_create` |
 | `UNSUPPORTED_CLAIM` | rules | content_error | ai_correct |  |  |
-| `VALIDATION_FAILED` | summary |  | user_action |  | 71 operations |
+| `VALIDATION_FAILED` | summary |  | user_action |  | 72 operations |
 | `VALUE_NOT_ALLOWED` | rules | invalid_value | user_action |  |  |
 | `VARIANT_MATRIX_INCOMPLETE` | facts | variation_error | user_action |  |  |
 | `VARIATION_INVALID` | adapter | variation_error | user_action | rebuild_variation |  |
