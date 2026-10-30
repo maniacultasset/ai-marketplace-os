@@ -8780,7 +8780,7 @@
     },
     "/api/v1/auth/google/start": {
       "get": {
-        "description": "Navigate here (same origin, through the dashboard's `/api` proxy) from both the login and\nthe sign-up page. `b` is base64url(sha256(secret)) of a fresh 32-byte random secret the\nbrowser keeps in sessionStorage for `/auth/google/complete`. 302 to Google; with Google\nsign-in off, 303 to `/login?error=google_unavailable`.",
+        "description": "Navigate here (same origin, through the dashboard's `/api` proxy) from both the login and\nthe sign-up page. `b` is base64url(sha256(secret)) of a fresh 32-byte random secret the\nbrowser keeps in sessionStorage for `/auth/google/complete`. 302 to Google; with Google\nsign-in off, 302 to `/login?error=google_unavailable`.",
         "operationId": "auth_google_start",
         "parameters": [
           {
@@ -8798,7 +8798,7 @@
         ],
         "responses": {
           "302": {
-            "description": "Redirect to Google's consent page (authorization code with PKCE S256, `state`, `nonce`, `prompt=select_account`, scopes `openid email profile`). With Google sign-in switched off the answer is 303 to `/login?error=google_unavailable`.",
+            "description": "Redirect to Google's consent page (authorization code with PKCE S256, `state`, `nonce`, `prompt=select_account`, scopes `openid email profile`). With Google sign-in switched off it redirects to `/login?error=google_unavailable` instead.",
             "headers": {
               "Location": {
                 "description": "Google's authorize URL (or `/login?error=google_unavailable`).",

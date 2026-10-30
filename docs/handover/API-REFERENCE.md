@@ -737,7 +737,7 @@ Every error status above answers with the [error envelope](#the-error-envelope).
 
 **Sign in or sign up with Google: redirect to Google's consent page.**
 
-Navigate here (same origin, through the dashboard's `/api` proxy) from both the login and the sign-up page. `b` is base64url(sha256(secret)) of a fresh 32-byte random secret the browser keeps in sessionStorage for `/auth/google/complete`. 302 to Google; with Google sign-in off, 303 to `/login?error=google_unavailable`.
+Navigate here (same origin, through the dashboard's `/api` proxy) from both the login and the sign-up page. `b` is base64url(sha256(secret)) of a fresh 32-byte random secret the browser keeps in sessionStorage for `/auth/google/complete`. 302 to Google; with Google sign-in off, 302 to `/login?error=google_unavailable`.
 
 | | |
 |---|---|
@@ -767,7 +767,7 @@ curl -X GET "http://localhost:8000/api/v1/auth/google/start?b=<b>"
 
 | Status | Meaning | Body | Headers | Error codes |
 |---|---|---|---|---|
-| 302 | Redirect to Google's consent page (authorization code with PKCE S256, `state`, `nonce`, `prompt=select_account`, scopes `openid email profile`). With Google sign-in switched off the answer is 303 to `/login?error=google_unavailable`. |  | `Location` |  |
+| 302 | Redirect to Google's consent page (authorization code with PKCE S256, `state`, `nonce`, `prompt=select_account`, scopes `openid email profile`). With Google sign-in switched off it redirects to `/login?error=google_unavailable` instead. |  | `Location` |  |
 | 400 | The request could not be parsed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |
 | 413 | Request body too large. | `ErrorEnvelope` |  | `PAYLOAD_TOO_LARGE` |
 | 422 | Request validation failed. | `ErrorEnvelope` |  | `VALIDATION_FAILED` |

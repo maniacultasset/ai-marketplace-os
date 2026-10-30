@@ -191,7 +191,7 @@ export interface paths {
          * @description Navigate here (same origin, through the dashboard's `/api` proxy) from both the login and
          *     the sign-up page. `b` is base64url(sha256(secret)) of a fresh 32-byte random secret the
          *     browser keeps in sessionStorage for `/auth/google/complete`. 302 to Google; with Google
-         *     sign-in off, 303 to `/login?error=google_unavailable`.
+         *     sign-in off, 302 to `/login?error=google_unavailable`.
          */
         get: operations["auth_google_start"];
         put?: never;
@@ -6342,7 +6342,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Redirect to Google's consent page (authorization code with PKCE S256, `state`, `nonce`, `prompt=select_account`, scopes `openid email profile`). With Google sign-in switched off the answer is 303 to `/login?error=google_unavailable`. */
+            /** @description Redirect to Google's consent page (authorization code with PKCE S256, `state`, `nonce`, `prompt=select_account`, scopes `openid email profile`). With Google sign-in switched off it redirects to `/login?error=google_unavailable` instead. */
             302: {
                 headers: {
                     /**

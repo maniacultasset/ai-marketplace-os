@@ -326,7 +326,7 @@ REDIRECTS: Final[Mapping[str, tuple[str, str, str]]] = MappingProxyType(
         "auth_google_start": (
             "Redirect to Google's consent page (authorization code with PKCE S256, `state`, "
             "`nonce`, `prompt=select_account`, scopes `openid email profile`). With Google "
-            "sign-in switched off the answer is 303 to `/login?error=google_unavailable`.",
+            "sign-in switched off it redirects to `/login?error=google_unavailable` instead.",
             "Google's authorize URL (or `/login?error=google_unavailable`).",
             GOOGLE_AUTHORIZE_EXAMPLE,
         ),

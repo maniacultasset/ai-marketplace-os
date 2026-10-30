@@ -51,6 +51,7 @@ def _seed(conn: Conn, email: str, tenant: UUID, label: str) -> UUID:
 @pytest.fixture(scope="module")
 def world(clean_module_admin_conn: Conn) -> GoogleIsoWorld:
     conn = clean_module_admin_conn
+    conn.execute("DELETE FROM login_flows")  # a platform table the tenant cascade never reaches
     tenants = []
     for slug in ("acme", "bharat"):
         row = conn.execute(

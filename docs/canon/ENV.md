@@ -86,7 +86,7 @@ ADR-0020. Off by default. The redirect URI is not a variable: the API derives it
 
 | Variable | Local value | Source | Required | Notes |
 |---|---|---|---|---|
-| `GOOGLE_OAUTH_ENABLED` | `false` | local .env | optional | `true` turns on `/auth/google/*` and `/signup/google`; `false` makes `start` answer 303 to `/login?error=google_unavailable` and the JSON routes 501. Deployed, set it only in `scripts/deploy/gcp/<env>.env` plus a same-image redeploy (runbook `docs/runbooks/GOOGLE-SIGNIN.md`). |
+| `GOOGLE_OAUTH_ENABLED` | `false` | local .env | optional | `true` turns on `/auth/google/*` and `/signup/google`; `false` makes `start` redirect (302) to `/login?error=google_unavailable` and the JSON routes 501. Deployed, set it only in `scripts/deploy/gcp/<env>.env` plus a same-image redeploy (runbook `docs/runbooks/GOOGLE-SIGNIN.md`). |
 | `GOOGLE_OAUTH_CLIENT_ID` | `(empty — leave blank)` | local .env | required by the api when `GOOGLE_OAUTH_ENABLED=true` | The Web application client id from the Google Cloud console (not a secret). Outside local it must end with `.apps.googleusercontent.com`. |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | `(empty — leave blank)` | Secret Manager | required by the api when `GOOGLE_OAUTH_ENABLED=true` | Never in a committed file; bound by `deploy.sh` only while the flag is on. Outside local it must have no whitespace and 32+ characters. In the redaction deny-list (`*_secret`). |
 | `GOOGLE_AUTHORIZE_URL` | `https://accounts.google.com/o/oauth2/v2/auth` | local .env | optional | Google's constant. Outside local any other value refuses boot; tests and the local e2e run point it at the fake Google (`make fake-marketplace`, `/google/authorize`). |

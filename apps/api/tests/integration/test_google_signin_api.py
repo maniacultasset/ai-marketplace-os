@@ -148,7 +148,7 @@ async def test_start_flag_off_redirects_to_login(
     monkeypatch.setenv("GOOGLE_OAUTH_ENABLED", "false")
     get_settings.cache_clear()
     response = await GoogleBrowser(gapi, gw).start()
-    assert response.status_code == 303
+    assert response.status_code == 302
     assert response.headers["location"] == "/login?error=google_unavailable"
     assert flows(gw.conn) == 0
 

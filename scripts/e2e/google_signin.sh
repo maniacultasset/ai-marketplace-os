@@ -290,7 +290,7 @@ step flag_off
 if [ -n "${FLAG_OFF_URL:-}" ]; then
   python3 scripts/ci/local_url.py "$FLAG_OFF_URL" || exit 2
   call GET "${FLAG_OFF_URL%/}/api/v1/auth/google/start?b=$(cat "$work/tab3.b")"
-  expect 303
+  expect 302
   [ "$(location)" = "/login?error=google_unavailable" ] || fail "want /login?error=google_unavailable"
 else
   echo "e2e: SKIP flag_off (no FLAG_OFF_URL)"

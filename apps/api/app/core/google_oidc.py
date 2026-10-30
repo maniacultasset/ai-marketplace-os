@@ -71,7 +71,9 @@ def b64url_decode(text: str) -> bytes:
 
 
 def sha256(text: str) -> bytes:
-    return hashlib.sha256(text.encode("ascii")).digest()
+    """The sha256 of the text's UTF-8 bytes (every value we mint is ASCII, so this is the ASCII
+    hash; a hostile non-ASCII handle, state or binding simply matches nothing)."""
+    return hashlib.sha256(text.encode("utf-8", "surrogatepass")).digest()
 
 
 def new_token(n_bytes: int = STATE_BYTES) -> str:

@@ -96,12 +96,12 @@ async def auth_google_start(
     """Navigate here (same origin, through the dashboard's `/api` proxy) from both the login and
     the sign-up page. `b` is base64url(sha256(secret)) of a fresh 32-byte random secret the
     browser keeps in sessionStorage for `/auth/google/complete`. 302 to Google; with Google
-    sign-in off, 303 to `/login?error=google_unavailable`."""
+    sign-in off, 302 to `/login?error=google_unavailable`."""
     await enforce_google_limit(request)
     try:
         location = await google_signin.start(b)
     except google_signin.GoogleDisabled:
-        return _redirect(303, google_signin.UNAVAILABLE_LOCATION)
+        return _redirect(302, google_signin.UNAVAILABLE_LOCATION)
     except google_signin.FlowInvalid:
         raise ApiError(422, ErrorCode.VALIDATION_FAILED) from None
     return _redirect(302, location)

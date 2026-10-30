@@ -256,3 +256,9 @@ def test_real_clock_default_verifies_fresh_token() -> None:
         nonce_hash=g.sha256(NONCE),
     )
     assert identity.email == "asha.rao@gmail.com"
+
+
+@pytest.mark.parametrize("value", ["é", "\ud83d", "a\x00b"])
+def test_sha256_takes_any_text(value: str) -> None:
+    assert len(g.sha256(value)) == 32
+    assert not g.binding_matches(value, g.sha256("other"))
