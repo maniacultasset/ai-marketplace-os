@@ -7,7 +7,7 @@
 #   preflight   gcloud, account, project, billing, APIs
 #   setup       APIs, Artifact Registry, service accounts, KMS, buckets, HMAC key, Cloud SQL,
 #               database, generated secrets; stops if SENTRY_DSN or OPENAI_API_KEY is missing
-#   build       Cloud Build of apps/api/Dockerfile from a clean HEAD, tagged sha-<12>
+#   build       Cloud Build of apps/api/Dockerfile from a clean HEAD, tagged sha-<12> (PIPELINE_REF: real pipeline)
 #   db-init     0000_bootstrap.sql and the role passwords, as postgres, in a one-off job
 #   migrate     the migrate job (alembic upgrade head, dictionary sync, rules load, templates load), waited on
 #   deploy      the api service and the worker pool, then smoke
@@ -132,6 +132,42 @@ if [ "$GOOGLE_OAUTH_ENABLED" = "true" ]; then
   esac
   API_SECRETS="$API_SECRETS GOOGLE_OAUTH_CLIENT_SECRET"
 fi
+
+# ---- ADR-0024: the AI pipeline and the generation route, refused before any gcloud call ----
+# PIPELINE_REF empty builds the in-repo stub image with cloudbuild.yaml, as before. A full
+# 40-character mkos-pipeline commit sha builds the AI team's package instead
+# (cloudbuild-pipeline.yaml), fetched with the read-only deploy key in PIPELINE_KEY_SECRET, which
+# only the build account may read. A production worker refuses the stub at boot, so production
+# with WORKER_ENABLED=true needs the ref (staging keeps running the stub). The ref lives in the
+# committed env file, so a new ref is a new commit and a new sha-<12> tag. An env file older than
+# these keys gets the stub and the Settings defaults.
+PIPELINE_REF="${PIPELINE_REF-}"
+PIPELINE_KEY_SECRET="MKOS_PIPELINE_DEPLOY_KEY"
+LLM_PROVIDER="${LLM_PROVIDER:-openai}"
+LLM_MODEL_DEFAULT="${LLM_MODEL_DEFAULT-}"
+LLM_API_BASE="${LLM_API_BASE-}"
+LLM_DAILY_BUDGET_USD="${LLM_DAILY_BUDGET_USD-}"
+LLM_TENANT_DAILY_BUDGET_USD="${LLM_TENANT_DAILY_BUDGET_USD-}"
+if [ -n "$PIPELINE_REF" ] && ! printf '%s\n' "$PIPELINE_REF" | grep -Eqx '[0-9a-f]{40}'; then
+  die "PIPELINE_REF must be a full 40-character lowercase commit sha (in $ENV_NAME.env)"
+fi
+if [ "$APP_ENV" = "production" ] && [ "$WORKER_ENABLED" = "true" ] && [ -z "$PIPELINE_REF" ]; then
+  die "WORKER_ENABLED=true in production needs PIPELINE_REF: a production worker refuses mkos-pipeline-stub (in $ENV_NAME.env)"
+fi
+# The generation provider's key: OpenRouter is deepseek plus LLM_API_BASE, its key in
+# DEEPSEEK_API_KEY. Only the worker calls a model, so only the worker gets the key.
+case "$LLM_PROVIDER" in
+  openai) ;;
+  deepseek)
+    USER_SECRETS="$USER_SECRETS DEEPSEEK_API_KEY"
+    WORKER_SECRETS="$WORKER_SECRETS DEEPSEEK_API_KEY"
+    ;;
+  *) die "LLM_PROVIDER must be openai or deepseek (in $ENV_NAME.env)" ;;
+esac
+case "$LLM_API_BASE" in
+  "" | https://?*) ;;
+  *) die "LLM_API_BASE, when set, must be an https URL (in $ENV_NAME.env)" ;;
+esac
 
 LABELS="app=aimos,env=$APP_ENV"
 CONN="$PROJECT:$REGION:$SQL_INSTANCE"
@@ -569,6 +605,23 @@ setup_secrets() {
   for name in $MIGRATE_SECRETS; do grant_secret "$name" "$SA_MIGRATE"; done
   for name in $DB_INIT_SECRETS $OPS_SECRETS; do grant_secret "$name" "$SA_OPS"; done
   for name in $MAINT_SECRETS; do grant_secret "$name" "$SA_MAINT"; done
+  # ADR-0024: the read-only mkos-pipeline deploy key, readable by the build account alone. No
+  # value is written here: check_user_secrets prints the owner's command.
+  if [ -n "$PIPELINE_REF" ]; then
+    ensure_secret "$PIPELINE_KEY_SECRET"
+    grant_secret "$PIPELINE_KEY_SECRET" "$SA_BUILD"
+  fi
+}
+
+# ADR-0024: how the owner makes the read-only deploy key and stores it (the value never passes
+# through this script). Printed by `setup` and by a `build` that finds no key.
+pipeline_key_help() {
+  say "secret $PIPELINE_KEY_SECRET has no value. In your own terminal: make a key, add its public half"
+  say "to maniacultasset/mkos-pipeline as a READ-ONLY deploy key, store the private half, delete both:"
+  printf '  d="$(mktemp -d)" && ssh-keygen -q -t ed25519 -N "" -C aimos-cloud-build-%s -f "$d/key" \\\n' "$APP_ENV"
+  printf '    && gh repo deploy-key add "$d/key.pub" --repo maniacultasset/mkos-pipeline --title aimos-cloud-build-%s \\\n' "$APP_ENV"
+  printf '    && gcloud secrets versions add %s --data-file="$d/key" --project=%s; rm -rf "$d"\n' \
+    "$PIPELINE_KEY_SECRET" "$PROJECT"
 }
 
 # The two values only a person can supply. Each missing one gets a command for the user's OWN
@@ -579,6 +632,8 @@ check_user_secrets() {
   [ "$WORKER_ENABLED" != "true" ] || wanted="$wanted OPENAI_API_KEY"
   # ADR-0020: the Google client secret, only while Google sign-in is switched on
   [ "$GOOGLE_OAUTH_ENABLED" != "true" ] || wanted="$wanted GOOGLE_OAUTH_CLIENT_SECRET"
+  # ADR-0024: the generation provider's key, when it is not the OpenAI key already asked for
+  [ "$WORKER_ENABLED" != "true" ] || [ "$LLM_PROVIDER" != "deepseek" ] || wanted="$wanted DEEPSEEK_API_KEY"
   for name in $wanted; do
     if secret_has_version "$name"; then
       say "secret $name: present"
@@ -589,6 +644,15 @@ check_user_secrets() {
         "$name" "$name" "$PROJECT"
     fi
   done
+  # ADR-0024: the deploy key is a multi-line private key file, so the owner adds it from the file
+  if [ -n "$PIPELINE_REF" ]; then
+    if secret_has_version "$PIPELINE_KEY_SECRET"; then
+      say "secret $PIPELINE_KEY_SECRET: present"
+    else
+      missing=1
+      pipeline_key_help
+    fi
+  fi
   if [ "$missing" -eq 1 ]; then
     [ "$DRY_RUN" -eq 1 ] && return 0
     die "setup stops here: add the secrets above, then rerun: scripts/deploy/gcp/deploy.sh $ENV_NAME setup"
@@ -637,12 +701,33 @@ cmd_build() {
     say "image $IMAGE:$tag exists (tags are immutable); nothing to build"
     return 0
   fi
+  local config="$HERE/cloudbuild.yaml" subs="_IMAGE=$IMAGE:$tag,_GIT_SHA=$sha"
+  if [ -n "$PIPELINE_REF" ]; then
+    pipeline_guard
+    config="$HERE/cloudbuild-pipeline.yaml"
+    subs="$subs,_PIPELINE_REF=$PIPELINE_REF"
+  fi
   show git -C "$ROOT" archive --format=tar.gz -o "$WORK/source.tgz" HEAD
   git -C "$ROOT" archive --format=tar.gz -o "$WORK/source.tgz" HEAD
-  gc builds submit "$WORK/source.tgz" --config="$HERE/cloudbuild.yaml" --region="$REGION" \
+  gc builds submit "$WORK/source.tgz" --config="$config" --region="$REGION" \
     --service-account="projects/$PROJECT/serviceAccounts/$(sa_email "$SA_BUILD")" \
     --gcs-source-staging-dir="gs://$BUILD_BUCKET/source" \
-    --substitutions="_IMAGE=$IMAGE:$tag,_GIT_SHA=$sha"
+    --substitutions="$subs"
+}
+
+# ADR-0024: a pipeline build reads the deploy key from Secret Manager; without a value Cloud Build
+# would fail after the upload, so the build refuses first.
+pipeline_guard() {
+  say "build: mkos-pipeline at $PIPELINE_REF (cloudbuild-pipeline.yaml)"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "pipeline guard: skipped (dry run)"
+    return 0
+  fi
+  if ! secret_has_version "$PIPELINE_KEY_SECRET"; then
+    pipeline_key_help
+    die "secret $PIPELINE_KEY_SECRET has no value in $PROJECT: run scripts/deploy/gcp/deploy.sh $ENV_NAME setup, add the key, then build"
+  fi
+  say "pipeline guard: OK ($PIPELINE_KEY_SECRET)"
 }
 
 # IMAGE@sha256:... of the built sha (deploys go by digest, never by a movable tag).
@@ -745,6 +830,21 @@ app_env() {
     FLIPKART_OAUTH_REDIRECT_URI "$url/api/v1/marketplaces/flipkart/callback" \
     APP_NAME "marketplace-os-$role" OTEL_SERVICE_NAME "marketplace-os-$role"
   [ "$role" != "api" ] || printf 'JWT_ISSUER\t%s\n' "${JWT_ISSUER:-$url}"
+  # ADR-0024: the generation route, on the worker only (the one role that calls a model)
+  if [ "$role" = "worker" ]; then
+    printf 'LLM_PROVIDER\t%s\n' "$LLM_PROVIDER"
+    [ -z "$LLM_MODEL_DEFAULT" ] || printf 'LLM_MODEL_DEFAULT\t%s\n' "$LLM_MODEL_DEFAULT"
+    [ -z "$LLM_API_BASE" ] || printf 'LLM_API_BASE\t%s\n' "$LLM_API_BASE"
+  fi
+  # The daily caps on the api and the worker alike: the api's generate precheck and the worker's
+  # claim must refuse at the same cap.
+  case "$role" in
+    api | worker)
+      [ -z "$LLM_DAILY_BUDGET_USD" ] || printf 'LLM_DAILY_BUDGET_USD\t%s\n' "$LLM_DAILY_BUDGET_USD"
+      [ -z "$LLM_TENANT_DAILY_BUDGET_USD" ] ||
+        printf 'LLM_TENANT_DAILY_BUDGET_USD\t%s\n' "$LLM_TENANT_DAILY_BUDGET_USD"
+      ;;
+  esac
   # DPP-1 (ADR-0021): the MFA switch and its key, on the api only (the worker refuses the key)
   [ "$role" != "api" ] || printf 'MFA_ENFORCEMENT\t%s\nMFA_GRACE_UNTIL\t%s\nMFA_KMS_KEY_URI\t%s\n' \
     "$MFA_ENFORCEMENT" "$MFA_GRACE_UNTIL" "$MFA_KMS_KEY_URI"

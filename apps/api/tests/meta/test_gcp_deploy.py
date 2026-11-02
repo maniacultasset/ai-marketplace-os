@@ -44,6 +44,7 @@ SECRET_VALUES = {
     "S3_SECRET_KEY": "d" * 40,
     "SENTRY_DSN": "https://key@o0.ingest.sentry.io/0",
     "OPENAI_API_KEY": "sk-test-" + "e" * 32,
+    "DEEPSEEK_API_KEY": "sk-or-test-" + "9" * 32,
     "GOOGLE_OAUTH_CLIENT_SECRET": "test-only-google-client-secret-" + "f" * 8,
 }
 
@@ -274,8 +275,8 @@ def test_prod_setup_sizes(toolkit: Path, tmp_path: Path) -> None:
         "--storage-size=30GB",
     ):
         assert flag in sql, flag
-    # the prod worker waits for the AI package, so its OpenAI key is not asked for yet
-    assert "OPENAI_API_KEY: " not in out
+    # the prod worker waits for the AI package, so its model keys are not asked for yet
+    assert "OPENAI_API_KEY: " not in out and "DEEPSEEK_API_KEY: " not in out
 
 
 def test_initial_password_secrets_never_collide(toolkit: Path, tmp_path: Path) -> None:
@@ -1116,3 +1117,316 @@ def test_release_runs_the_google_guard_before_building(repo_root: Path) -> None:
     release = script[script.index("cmd_release() {") :]
     release = release[: release.index("\n}\n")]
     assert release.index("google_guard") < release.index("cmd_build")
+
+
+# ---- ADR-0024: the real pipeline build and the generation route ----
+
+PIPELINE_SHA = "f61f48d" + "0" * 31 + "aa"
+OPENROUTER = "https://openrouter.ai/api/v1"
+PIPELINE_KEY = "MKOS_PIPELINE_DEPLOY_KEY"
+
+
+def _commit_toolkit(toolkit: Path) -> None:
+    """The toolkit copy as one clean commit, so `build` (which refuses a dirty tree) runs."""
+    repo = toolkit.parents[2]
+    git = ["git", "-C", str(repo), "-c", "user.email=t@t", "-c", "user.name=t"]
+    git += ["-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false"]
+    if not (repo / ".git").exists():
+        subprocess.run([*git, "init", "-q"], check=True)
+    subprocess.run([*git, "add", "-A"], check=True)
+    subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "x"], check=True)
+
+
+def _worker_container(out: str) -> tuple[dict[str, str], list[str]]:
+    spec: dict[str, Any] = _worker_spec(out)
+    container = spec["spec"]["template"]["spec"]["containers"][0]
+    env = {e["name"]: e["value"] for e in container["env"] if "value" in e}
+    return env, [e["name"] for e in container["env"] if "valueFrom" in e]
+
+
+@pytest.mark.parametrize("env_name", ["staging", "prod"])
+def test_env_files_carry_the_pipeline_and_model_keys(repo_root: Path, env_name: str) -> None:
+    text = (repo_root / DEPLOY / f"{env_name}.env").read_text(encoding="utf-8")
+    values = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
+    assert values["PIPELINE_REF"] == ""
+    assert values["LLM_PROVIDER"] == "deepseek"
+    assert values["LLM_MODEL_DEFAULT"] == "deepseek/deepseek-chat"
+    assert values["LLM_API_BASE"] == OPENROUTER
+    assert (values["LLM_DAILY_BUDGET_USD"], values["LLM_TENANT_DAILY_BUDGET_USD"]) == ("3", "1")
+    assert PIPELINE_KEY not in values and "DEEPSEEK_API_KEY" not in values
+    # prod's worker stays off: it would refuse the stub image (ADR-0024)
+    assert values["WORKER_ENABLED"] == {"staging": "true", "prod": "false"}[env_name]
+
+
+def test_worker_gets_the_generation_route_and_key(
+    toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The worker env carries the provider, model and base; DEEPSEEK_API_KEY is a worker secret
+    (on both deploy paths) and the env boots."""
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    env, secrets = _worker_container(out)
+    assert env["LLM_PROVIDER"] == "deepseek"
+    assert env["LLM_MODEL_DEFAULT"] == "deepseek/deepseek-chat"
+    assert env["LLM_API_BASE"] == OPENROUTER
+    assert (env["LLM_DAILY_BUDGET_USD"], env["LLM_TENANT_DAILY_BUDGET_USD"]) == ("3", "1")
+    assert {"DEEPSEEK_API_KEY", "OPENAI_API_KEY"} <= set(secrets)
+    flags = _run(
+        toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA, worker_deploy=True
+    ).stdout
+    line = next(line for line in flags.splitlines() if "run worker-pools deploy" in line)
+    assert "DEEPSEEK_API_KEY" in _secret_names(line)
+    worker_env = yaml.safe_load(_blocks(flags, "env file")[1])
+    assert worker_env["LLM_API_BASE"] == OPENROUTER and worker_env["APP_ROLE"] == "worker"
+    _boot(monkeypatch, env, secrets)
+    from app.core.config import get_settings
+
+    loaded = get_settings()
+    assert (loaded.llm_provider, loaded.llm_api_base) == ("deepseek", OPENROUTER)
+    assert (loaded.llm_daily_budget_usd, loaded.llm_tenant_daily_budget_usd) == (3.0, 1.0)
+
+
+def test_api_gets_the_caps_but_no_model_route_or_key(toolkit: Path, tmp_path: Path) -> None:
+    """The api's generate precheck and the worker refuse at the same caps; only the worker calls
+    a model, so only it gets the provider, the base and the key."""
+    for env_name in ("staging", "prod"):
+        out = _run(toolkit, tmp_path, env_name, "deploy", "--dry-run", "--sha", SHA).stdout
+        env = _api_env(out)
+        assert (env["LLM_DAILY_BUDGET_USD"], env["LLM_TENANT_DAILY_BUDGET_USD"]) == ("3", "1")
+        for name in ("LLM_PROVIDER", "LLM_MODEL_DEFAULT", "LLM_API_BASE"):
+            assert name not in env, (env_name, name)
+        deploy = next(line for line in out.splitlines() if line.startswith("+ gcloud run deploy "))
+        assert "DEEPSEEK_API_KEY" not in _secret_names(deploy)
+        maintenance = _blocks(out, "env file")[-1]
+        assert "LLM_" not in maintenance
+
+
+def test_openai_provider_drops_the_deepseek_key(toolkit: Path, tmp_path: Path) -> None:
+    _set_env(toolkit, "staging", LLM_PROVIDER="openai", LLM_MODEL_DEFAULT="", LLM_API_BASE="")
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    env, secrets = _worker_container(out)
+    assert env["LLM_PROVIDER"] == "openai"
+    assert "LLM_API_BASE" not in env and "LLM_MODEL_DEFAULT" not in env
+    assert "DEEPSEEK_API_KEY" not in secrets and "OPENAI_API_KEY" in secrets
+    setup = _run(toolkit, tmp_path, "staging", "setup", "--dry-run", "--sha", SHA).stdout
+    assert "DEEPSEEK_API_KEY" not in setup
+
+
+def test_setup_asks_for_the_generation_key_with_the_worker(toolkit: Path, tmp_path: Path) -> None:
+    out = _run(toolkit, tmp_path, "staging", "setup", "--dry-run", "--sha", SHA).stdout
+    assert 'bash -c \'read -rsp "DEEPSEEK_API_KEY: " v; echo; printf %s "$v" | ' in out
+    assert "secrets create DEEPSEEK_API_KEY " in out
+    assert "DEEPSEEK_API_KEY" in _secret_grants(out, "aimos-worker")
+    assert "DEEPSEEK_API_KEY" not in _secret_grants(out, "aimos-api")
+
+
+@pytest.mark.parametrize(
+    ("env_name", "values", "message"),
+    [
+        (
+            "prod",
+            {"WORKER_ENABLED": "true"},
+            "WORKER_ENABLED=true in production needs PIPELINE_REF",
+        ),
+        ("prod", {"PIPELINE_REF": "f61f48d"}, "PIPELINE_REF must be a full 40-character"),
+        ("staging", {"PIPELINE_REF": "F" * 40}, "PIPELINE_REF must be a full 40-character"),
+        ("staging", {"PIPELINE_REF": "v0.1.0"}, "PIPELINE_REF must be a full 40-character"),
+        ("staging", {"LLM_PROVIDER": "openrouter"}, "LLM_PROVIDER must be openai or deepseek"),
+        ("staging", {"LLM_API_BASE": "http://openrouter.ai/api/v1"}, "LLM_API_BASE, when set"),
+    ],
+)
+def test_bad_pipeline_or_model_settings_refused_before_gcloud(
+    toolkit: Path, tmp_path: Path, env_name: str, values: dict[str, str], message: str
+) -> None:
+    _set_env(toolkit, env_name, **values)
+    for command in ("build", "release", "deploy", "setup"):
+        result = _run(toolkit, tmp_path, env_name, command, "--dry-run", "--sha", SHA)
+        assert result.returncode == 1, command
+        assert message in result.stderr, command
+        assert "+ gcloud" not in result.stdout, command
+
+
+def test_prod_worker_with_a_pipeline_ref_deploys_and_boots(
+    toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With PIPELINE_REF the guard lets the prod worker through, and its env (prod.env's model
+    values) boots once the image holds mkos-pipeline instead of the stub."""
+    _set_env(toolkit, "prod", WORKER_ENABLED="true", PIPELINE_REF=PIPELINE_SHA)
+    out = _run(toolkit, tmp_path, "prod", "deploy", "--dry-run", "--sha", SHA).stdout
+    env, secrets = _worker_container(out)
+    assert env["APP_ENV"] == "production" and env["LLM_API_BASE"] == OPENROUTER
+    assert "PIPELINE_REF" not in env and PIPELINE_KEY not in secrets
+    monkeypatch.setattr("app.core.config._pipeline_stub_installed", lambda: False)
+    _boot(monkeypatch, env, secrets)
+
+
+def test_build_without_a_pipeline_ref_is_the_stub_build(toolkit: Path, tmp_path: Path) -> None:
+    _commit_toolkit(toolkit)
+    out = _run(toolkit, tmp_path, "staging", "build", "--dry-run").stdout
+    submit = next(line for line in out.splitlines() if "builds submit" in line)
+    assert re.search(r"--config=\S+/cloudbuild\.yaml ", submit), submit
+    assert "_PIPELINE_REF" not in submit and "pipeline guard" not in out
+
+
+def test_build_with_a_pipeline_ref_uses_the_pipeline_config(toolkit: Path, tmp_path: Path) -> None:
+    _set_env(toolkit, "staging", PIPELINE_REF=PIPELINE_SHA)
+    _commit_toolkit(toolkit)
+    out = _run(toolkit, tmp_path, "staging", "build", "--dry-run").stdout
+    submit = next(line for line in out.splitlines() if "builds submit" in line)
+    assert re.search(r"--config=\S+/cloudbuild-pipeline\.yaml ", submit), submit
+    subs = re.search(r"--substitutions=(\S+)", submit)
+    assert subs is not None
+    keys = dict(pair.split("=", 1) for pair in subs.group(1).split(","))
+    assert set(keys) == {"_IMAGE", "_GIT_SHA", "_PIPELINE_REF"}
+    assert keys["_PIPELINE_REF"] == PIPELINE_SHA
+    assert "deploy: pipeline guard: skipped (dry run)" in out
+    assert "aimos-build@aimos-staging.iam.gserviceaccount.com" in submit
+
+
+FAKE_GCLOUD_NO_KEY = """#!/bin/sh
+case " $* " in
+  *" config get-value account "*) echo "owner@example.test"; exit 0 ;;
+  *" config get-value project "*) echo "aimos-staging"; exit 0 ;;
+  *" billing projects describe "*) echo "True"; exit 0 ;;
+  *" services list "*) exit 0 ;;
+  *" artifacts docker images describe "*) echo "ERROR: NOT_FOUND" >&2; exit 1 ;;
+  *" secrets versions list "*) exit 0 ;;
+esac
+echo "$*" >> "$FAKE_GCLOUD_LOG"
+exit 98
+"""
+
+
+def test_build_refuses_without_the_deploy_key(toolkit: Path, tmp_path: Path) -> None:
+    """A pipeline build stops before the upload when the deploy key has no value, and prints the
+    owner's command (the key's value never passes through the script)."""
+    _set_env(toolkit, "staging", PIPELINE_REF=PIPELINE_SHA)
+    _commit_toolkit(toolkit)
+    bin_dir = tmp_path / "bin-no-key"
+    bin_dir.mkdir()
+    (bin_dir / "gcloud").write_text(FAKE_GCLOUD_NO_KEY, encoding="utf-8")
+    (bin_dir / "gcloud").chmod(0o755)
+    log = tmp_path / "gcloud-no-key.log"
+    result = subprocess.run(
+        ["bash", str(toolkit / "deploy.sh"), "staging", "build"],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+        env={
+            "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+            "HOME": str(tmp_path),
+            "TMPDIR": str(tmp_path),
+            "FAKE_GCLOUD_LOG": str(log),
+        },
+        cwd=tmp_path,
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert f"secret {PIPELINE_KEY} has no value in aimos-staging" in result.stderr
+    assert f"gcloud secrets versions add {PIPELINE_KEY} --data-file=" in result.stdout
+    assert "gh repo deploy-key add" in result.stdout and "--allow-write" not in result.stdout
+    assert not log.exists(), log.read_text(encoding="utf-8")  # nothing submitted
+
+
+def test_setup_with_a_pipeline_ref_grants_the_key_to_the_build_account_only(
+    toolkit: Path, tmp_path: Path
+) -> None:
+    _set_env(toolkit, "staging", PIPELINE_REF=PIPELINE_SHA)
+    out = _run(toolkit, tmp_path, "staging", "setup", "--dry-run", "--sha", SHA).stdout
+    assert f"secrets create {PIPELINE_KEY} --replication-policy=user-managed" in out
+    grants = [
+        line
+        for line in out.splitlines()
+        if f"secrets add-iam-policy-binding {PIPELINE_KEY} " in line
+    ]
+    assert len(grants) == 1
+    assert "--member=serviceAccount:aimos-build@aimos-staging.iam.gserviceaccount.com" in grants[0]
+    assert "--role=roles/secretmanager.secretAccessor" in grants[0]
+    assert f"secrets versions add {PIPELINE_KEY} --data-file=" in out
+    # no value is written by the script itself
+    assert f"| gcloud secrets versions add {PIPELINE_KEY}" not in out
+
+
+def test_setup_without_a_pipeline_ref_never_touches_the_key(toolkit: Path, tmp_path: Path) -> None:
+    for env_name in ("staging", "prod"):
+        out = _run(toolkit, tmp_path, env_name, "setup", "--dry-run", "--sha", SHA).stdout
+        assert PIPELINE_KEY not in out, env_name
+
+
+def _cloudbuild(repo_root: Path, name: str) -> tuple[str, dict[str, Any]]:
+    text = (repo_root / DEPLOY / name).read_text(encoding="utf-8")
+    loaded = yaml.safe_load(text)
+    assert isinstance(loaded, dict)
+    return text, loaded
+
+
+def _substitutions(loaded: dict[str, Any]) -> set[str]:
+    """Every `${NAME}` Cloud Build substitutes in the config (`$$` is a literal `$`)."""
+    flat = yaml.safe_dump(loaded).replace("$$", "")
+    return set(re.findall(r"\$\{([A-Z_]+)\}", flat))
+
+
+def test_stub_cloudbuild_config_has_no_secret(repo_root: Path) -> None:
+    text, loaded = _cloudbuild(repo_root, "cloudbuild.yaml")
+    assert "availableSecrets" not in loaded and "secretEnv" not in text
+    assert "PIPELINE" not in text
+    assert _substitutions(loaded) == {"_IMAGE", "_GIT_SHA"}
+
+
+def test_pipeline_cloudbuild_config_wires_the_key_as_a_buildkit_secret(repo_root: Path) -> None:
+    _, loaded = _cloudbuild(repo_root, "cloudbuild-pipeline.yaml")
+    # deploy.sh passes exactly these user substitutions (Cloud Build refuses a mismatch)
+    assert _substitutions(loaded) == {"_IMAGE", "_GIT_SHA", "_PIPELINE_REF", "PROJECT_ID"}
+    (secret,) = loaded["availableSecrets"]["secretManager"]
+    assert secret == {
+        "versionName": f"projects/${{PROJECT_ID}}/secrets/{PIPELINE_KEY}/versions/latest",
+        "env": PIPELINE_KEY,
+    }
+    (step,) = loaded["steps"]
+    assert step["name"] == "gcr.io/cloud-builders/docker" and step["entrypoint"] == "bash"
+    assert step["secretEnv"] == [PIPELINE_KEY] and step["env"] == ["DOCKER_BUILDKIT=1"]
+    assert loaded["images"] == ["${_IMAGE}"]
+    script = step["args"][1]
+    assert step["args"][0] == "-c" and script.startswith("set -euo pipefail\n")
+    for flag in (
+        "--file=apps/api/Dockerfile",
+        "--tag=${_IMAGE}",
+        "--build-arg=PIPELINE_REF=${_PIPELINE_REF}",
+        '--secret=id=mkos_pipeline_key,src="$$key"',
+    ):
+        assert flag in script, flag
+    # the key goes to a temp file in the step container, removed on exit, never echoed
+    assert "trap 'rm -f \"$$key\"' EXIT" in script
+    assert f'printf \'%s\\n\' "$${PIPELINE_KEY}" >"$$key"' in script
+    assert "set -x" not in script and "echo" not in script and "/workspace" not in script
+    assert PIPELINE_KEY not in script.split("docker build", 1)[1]
+
+
+def test_pipeline_cloudbuild_script_renders_to_valid_bash(repo_root: Path, tmp_path: Path) -> None:
+    """The step script after Cloud Build's substitution parses as bash and names the Dockerfile
+    secret id."""
+    _, loaded = _cloudbuild(repo_root, "cloudbuild-pipeline.yaml")
+    script = loaded["steps"][0]["args"][1]
+    rendered = (
+        script.replace("${_IMAGE}", f"asia-south1-docker.pkg.dev/p/aimos/backend:sha-{SHA}")
+        .replace("${_GIT_SHA}", SHA)
+        .replace("${_PIPELINE_REF}", PIPELINE_SHA)
+        .replace("$$", "$")
+    )
+    assert "${_" not in rendered
+    path = tmp_path / "step.sh"
+    path.write_text(rendered, encoding="utf-8")
+    result = subprocess.run(["bash", "-n", str(path)], capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stderr
+    dockerfile = (repo_root / "apps/api/Dockerfile").read_text(encoding="utf-8")
+    assert "--mount=type=secret,id=mkos_pipeline_key," in dockerfile
+    assert "--secret=id=mkos_pipeline_key," in rendered
+
+
+def test_runbook_and_adr_cover_the_pipeline_build(repo_root: Path) -> None:
+    runbook = (repo_root / "docs/runbooks/DEPLOY-GCP.md").read_text(encoding="utf-8")
+    for needle in ("PIPELINE_REF", PIPELINE_KEY, "cloudbuild-pipeline.yaml", "LLM_API_BASE"):
+        assert needle in runbook, needle
+    adr = (repo_root / "docs/adr/0024-real-pipeline-deploy-build-install.md").read_text(
+        encoding="utf-8"
+    )
+    assert "T104" in adr and PIPELINE_KEY in adr
