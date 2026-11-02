@@ -15,8 +15,8 @@
   https non-loopback ALLOWED_ORIGINS (exact origins, never `*`) and JWT_ISSUER (PROD-2).
   Numeric settings carry lower bounds in every env (PROD-3). A worker off local also needs the
   vision provider's key (B2): OpenAI, the only provider with a vision model, and the generation
-  provider's key (`LLM_PROVIDER`; ADR-0024). LLM_API_BASE follows the seam's own api_base rule
-  (https, no userinfo, no private host) in every env.
+  provider's key (`LLM_PROVIDER`; ADR-0024). Under `LLM_GATEWAY=openrouter` those three keys are
+  replaced by one, OPENROUTER_API_KEY, and every model call goes to the pinned OPENROUTER_BASE_URL.
 - There is no module-level `settings`: call `get_settings()` where the value is needed.
 """
 
@@ -30,7 +30,7 @@ from functools import lru_cache
 from importlib import metadata
 from types import MappingProxyType
 from typing import Final, Literal
-from urllib.parse import urlparse, urlsplit
+from urllib.parse import urlsplit
 
 from pydantic import AwareDatetime, Field, SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -43,15 +43,15 @@ EMBEDDING_DIMENSIONS: Final[int] = 1536
 # so `LLM_PROVIDER_VISION` is OpenAI only, whatever `LLM_PROVIDER` says.
 VisionProvider = Literal["openai"]
 VISION_PROVIDER_KEY_ENV: Final[Mapping[str, str]] = MappingProxyType({"openai": "OPENAI_API_KEY"})
-# ADR-0024: the env var holding each generation provider's key. An OpenAI-compatible router
-# (OpenRouter) is `deepseek` plus LLM_API_BASE: the key name is the provider's, the route is the base.
+# ADR-0024: the env var holding each generation provider's key under `LLM_GATEWAY=direct`.
 GENERATION_PROVIDER_KEY_ENV: Final[Mapping[str, str]] = MappingProxyType(
     {"openai": "OPENAI_API_KEY", "deepseek": "DEEPSEEK_API_KEY"}
 )
-# ModelCredentials.api_base's rule (mkos_schemas/jobs.py), checked at boot so a bad base never
-# reaches a job: these hosts and every private, link-local or loopback address are refused.
-API_BASE_FORBIDDEN_HOSTS: Final = frozenset({"localhost", "127.0.0.1", "169.254.169.254"})
-API_BASE_MAX_LENGTH: Final = 2048
+# ADR-0024: the model gateways. `direct` calls each provider's own API with its own key;
+# `openrouter` sends generation, vision and embedding to OpenRouter with one key. The base URL is
+# a constant, never a setting, so no env value can point a model call (and its key) elsewhere.
+LlmGateway = Literal["direct", "openrouter"]
+OPENROUTER_BASE_URL: Final = "https://openrouter.ai/api/v1"
 
 # Every JWT literal committed to the repo or the Canon: ENV.md's JWT_SECRET row (.env.example),
 # CANON-ADDENDUM.md:290 (the CI env block) and CANON-ADDENDUM.md:319 (the schema export).
@@ -209,11 +209,12 @@ class Settings(BaseSettings):
     auth_google_rate_limit_per_min: int = Field(default=10, ge=1)
 
     # ---- models: per-provider keys ----
+    llm_gateway: LlmGateway = "direct"
     llm_provider: Literal["openai", "deepseek"] = "openai"
     openai_api_key: str | None = Field(default=None, repr=False)
     deepseek_api_key: str | None = Field(default=None, repr=False)
+    openrouter_api_key: str | None = Field(default=None, repr=False)
     llm_model_default: str = "gpt-4o-mini"
-    llm_api_base: str | None = Field(default=None, max_length=API_BASE_MAX_LENGTH)
     llm_model_escalation: str = "gpt-4o"
     llm_provider_vision: VisionProvider = "openai"
     llm_model_vision: str = Field(default="gpt-4o-mini", min_length=1, max_length=128)
@@ -264,7 +265,6 @@ class Settings(BaseSettings):
         "flipkart_authorize_url",
         "google_oauth_client_id",
         "google_oauth_client_secret",
-        "llm_api_base",
         mode="before",
     )
     @classmethod
@@ -288,14 +288,6 @@ class Settings(BaseSettings):
         if parts.path not in ("", "/") or parts.query or parts.fragment or "#" in value:
             raise ValueError("must be an origin: no path, query or fragment")
         return f"{parts.scheme}://{parts.netloc}"
-
-    @field_validator("llm_api_base")
-    @classmethod
-    def _api_base_rule(cls, value: str | None) -> str | None:
-        # The seam refuses any other base (ModelCredentials.api_base), so the boot does too.
-        if value is not None and api_base_problem(value) is not None:
-            raise ValueError("LLM_API_BASE is not an allowed api_base")
-        return value
 
     @property
     def google_redirect_uri(self) -> str:
@@ -335,28 +327,6 @@ def _is_weak_secret(secret: str) -> bool:
     """Whitespace anywhere (a blank, padded or mangled Secret Manager value) or too short.
     Measured on the raw value: `min_length` counts the padding, `.strip()` would hide it."""
     return any(char.isspace() for char in secret) or len(secret) < SECRET_MIN_LENGTH
-
-
-def api_base_problem(value: str) -> str | None:
-    """Why `value` is not a ModelCredentials.api_base (mkos_schemas/jobs.py `_https_only`), or
-    None. The same rule in the same order: https, no userinfo, a host, no private host."""
-    parsed = urlparse(value)
-    if parsed.scheme != "https":
-        return "api_base must be https"
-    if parsed.username or parsed.password:
-        return "userinfo forbidden"
-    host = parsed.hostname
-    if not host:
-        return "host required"
-    if host in API_BASE_FORBIDDEN_HOSTS:
-        return "private host forbidden"
-    try:
-        addr = ipaddress.ip_address(host)
-    except ValueError:
-        return None
-    if addr.is_private or addr.is_link_local or addr.is_loopback:
-        return "private host forbidden"
-    return None
 
 
 def _is_loopback_host(host: str) -> bool:
@@ -533,6 +503,7 @@ def _boot_errors(s: Settings) -> list[str]:
     errors += _embedding_errors(s)
     errors += _vision_errors(s)
     errors += _generation_errors(s)
+    errors += _gateway_errors(s)
     errors += _spapi_errors(s)
     errors += _flipkart_errors(s)
     errors += _google_errors(s)
@@ -546,7 +517,8 @@ def _embedding_errors(s: Settings) -> list[str]:
     if s.app_role != "worker":
         return []
     errors: list[str] = []
-    if s.app_env != "local" and not is_usable_openai_key(s.openai_api_key):
+    direct = s.llm_gateway == "direct"
+    if direct and s.app_env != "local" and not is_usable_openai_key(s.openai_api_key):
         errors.append("APP_ROLE=worker requires OPENAI_API_KEY outside APP_ENV=local")
     if s.embedding_model not in EMBEDDING_PRICE_USD_PER_MTOK:
         errors.append("EMBEDDING_MODEL has no price entry")
@@ -556,8 +528,9 @@ def _embedding_errors(s: Settings) -> list[str]:
 def _vision_errors(s: Settings) -> list[str]:
     """B2 (ai-deps C18): a worker sends product images to `LLM_PROVIDER_VISION`, so outside local
     it needs that provider's key; the placeholder counts as none. Local uses the port's
-    placeholder key. Names only, never the key or the model value."""
-    if s.app_role != "worker" or s.app_env == "local":
+    placeholder key. Under `LLM_GATEWAY=openrouter` the gateway's key stands in (`_gateway_errors`).
+    Names only, never the key or the model value."""
+    if s.app_role != "worker" or s.app_env == "local" or s.llm_gateway != "direct":
         return []
     name = VISION_PROVIDER_KEY_ENV[s.llm_provider_vision]
     if is_usable_openai_key(getattr(s, name.lower())):
@@ -569,10 +542,10 @@ def _vision_errors(s: Settings) -> list[str]:
 
 
 def _generation_errors(s: Settings) -> list[str]:
-    """ADR-0024: a worker sends listing generation to `LLM_PROVIDER`, so outside local it needs
-    that provider's key (for `deepseek`, also the key an LLM_API_BASE router such as OpenRouter
-    takes); the placeholder counts as none. Names only, never the key or the model value."""
-    if s.app_role != "worker" or s.app_env == "local":
+    """ADR-0024: under `LLM_GATEWAY=direct` a worker sends listing generation to `LLM_PROVIDER`,
+    so outside local it needs that provider's key; the placeholder counts as none. Names only,
+    never the key or the model value."""
+    if s.app_role != "worker" or s.app_env == "local" or s.llm_gateway != "direct":
         return []
     name = GENERATION_PROVIDER_KEY_ENV[s.llm_provider]
     if is_usable_openai_key(getattr(s, name.lower())):
@@ -580,6 +553,26 @@ def _generation_errors(s: Settings) -> list[str]:
     return [
         f"LLM_PROVIDER={s.llm_provider} requires {name} for APP_ROLE=worker outside APP_ENV=local"
     ]
+
+
+def _gateway_errors(s: Settings) -> list[str]:
+    """ADR-0024: under `LLM_GATEWAY=openrouter` every model call a worker makes (generation,
+    vision, embedding) carries OPENROUTER_API_KEY, so outside local it is the one key the worker
+    needs; the placeholder counts as none. Names only, never the key."""
+    if s.app_role != "worker" or s.app_env == "local" or s.llm_gateway != "openrouter":
+        return []
+    if is_usable_openai_key(s.openrouter_api_key):
+        return []
+    return [
+        "LLM_GATEWAY=openrouter requires OPENROUTER_API_KEY "
+        "for APP_ROLE=worker outside APP_ENV=local"
+    ]
+
+
+def gateway_openai_model(model: str) -> str:
+    """The OpenRouter id of an OpenAI model (`openai/<model>`): the vision and embedding models
+    are OpenAI's, named by their OpenAI ids in Settings."""
+    return f"openai/{model}"
 
 
 def _spapi_errors(s: Settings) -> list[str]:

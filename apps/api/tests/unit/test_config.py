@@ -39,6 +39,7 @@ SECRET_FIELDS = {
     "KMS_LOCAL_DEV_KEY": "Zq9kmslocal",
     "OPENAI_API_KEY": "Zq9openai",
     "DEEPSEEK_API_KEY": "Zq9deepseek",
+    "OPENROUTER_API_KEY": "Zq9openrouter",
     "AMAZON_CLIENT_SECRET": "Zq9amazon",
     "FLIPKART_CLIENT_SECRET": "Zq9flipkart",
     "SENTRY_DSN": "https://Zq9sentry@o0.ingest.sentry.io/0",

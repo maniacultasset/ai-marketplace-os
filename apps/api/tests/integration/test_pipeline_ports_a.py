@@ -166,23 +166,29 @@ async def test_port_get_model_credentials_purposes(
     assert creds.api_base is None and creds.timeout_seconds == 60
 
 
-async def test_port_get_model_credentials_forwards_api_base_for_generation_only(
+async def test_port_get_model_credentials_through_the_openrouter_gateway(
     products_world: World, auth_db: Conn
 ) -> None:
-    """ADR-0024: LLM_API_BASE reaches the generation credentials only."""
-    base = "https://openrouter.ai/api/v1"
+    """ADR-0024: under LLM_GATEWAY=openrouter every purpose carries the one key and the pinned
+    base; the direct keys are never handed out."""
     cfg = settings(
+        "staging",
+        llm_gateway="openrouter",
         llm_provider="deepseek",
-        llm_api_base=base,
+        llm_model_default="deepseek/deepseek-chat",
         openai_api_key="sk-openai",
-        deepseek_api_key="sk-router",
+        deepseek_api_key="sk-deep",
+        openrouter_api_key="sk-router",
     )
     deps = await build(products_world, auth_db, cfg)
     generation = await deps.get_model_credentials("generation")
-    assert (generation.provider, generation.api_base) == ("deepseek", base)
-    assert generation.api_key.get_secret_value() == "sk-router"
-    for purpose in ("vision", "embedding"):
-        assert (await deps.get_model_credentials(purpose)).api_base is None, purpose
+    assert (generation.provider, generation.model) == ("deepseek", "deepseek/deepseek-chat")
+    for purpose in ("generation", "vision", "embedding"):
+        creds = await deps.get_model_credentials(purpose)
+        assert creds.api_base == "https://openrouter.ai/api/v1", purpose
+        assert creds.api_key.get_secret_value() == "sk-router", purpose
+    embedding = await deps.get_model_credentials("embedding")
+    assert embedding.model == "openai/text-embedding-3-small"
 
 
 async def test_port_get_model_credentials_local_placeholder_when_unset(

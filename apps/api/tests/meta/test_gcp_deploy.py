@@ -1181,7 +1181,7 @@ def test_worker_gets_the_generation_route_and_key(
     from app.core.config import get_settings
 
     loaded = get_settings()
-    assert (loaded.llm_provider, loaded.llm_api_base) == ("deepseek", OPENROUTER)
+    assert loaded.llm_provider == "deepseek"
     assert (loaded.llm_daily_budget_usd, loaded.llm_tenant_daily_budget_usd) == (3.0, 1.0)
 
 
