@@ -1126,6 +1126,7 @@ def test_release_runs_the_google_guard_before_building(repo_root: Path) -> None:
 PIPELINE_SHA = "f61f48d" + "0" * 31 + "aa"
 PIPELINE_KEY = "MKOS_PIPELINE_DEPLOY_KEY"
 MODEL_KEYS = ("OPENAI_API_KEY", "DEEPSEEK_API_KEY", "OPENROUTER_API_KEY")
+NO_ROUTER_MODEL = "LLM_GATEWAY=openrouter needs LLM_MODEL_DEFAULT as an OpenRouter model id"
 
 
 def _commit_toolkit(toolkit: Path) -> None:
@@ -1179,7 +1180,9 @@ def test_staging_worker_keeps_the_direct_route(toolkit: Path, tmp_path: Path) ->
     assert "OPENAI_API_KEY" in secrets
     assert "OPENROUTER_API_KEY" not in secrets and "DEEPSEEK_API_KEY" not in secrets
     setup = _run(toolkit, tmp_path, "staging", "setup", "--dry-run", "--sha", SHA).stdout
-    assert "OPENROUTER_API_KEY" not in setup and "DEEPSEEK_API_KEY" not in setup
+    for name in ("OPENROUTER_API_KEY", "DEEPSEEK_API_KEY"):
+        assert f"secrets create {name} " not in setup and f"{name}: " not in setup, name
+        assert name not in _secret_grants(setup, "aimos-worker"), name
 
 
 def _openrouter_staging(toolkit: Path) -> None:
@@ -1276,6 +1279,106 @@ def test_prod_setup_with_the_worker_off_asks_for_no_model_key(
     assert "secret OPENROUTER_API_KEY has no value" not in out
 
 
+def _secret_revokes(out: str, account: str) -> set[str]:
+    revokes = set()
+    for line in out.splitlines():
+        if "secrets remove-iam-policy-binding" in line and f"serviceAccount:{account}@" in line:
+            words = shlex.split(line)
+            assert "--role=roles/secretmanager.secretAccessor" in words, line
+            revokes.add(words[4])
+    return revokes
+
+
+@pytest.mark.parametrize(
+    ("env_name", "values", "kept"),
+    [
+        ("staging", {}, {"OPENAI_API_KEY"}),
+        ("staging", {"LLM_PROVIDER": "deepseek"}, {"OPENAI_API_KEY", "DEEPSEEK_API_KEY"}),
+        (
+            "staging",
+            {"LLM_GATEWAY": "openrouter", "LLM_MODEL_DEFAULT": "deepseek/deepseek-chat"},
+            {"OPENROUTER_API_KEY"},
+        ),
+        ("prod", {}, {"OPENROUTER_API_KEY"}),
+        ("prod", {"WORKER_ENABLED": "true", "PIPELINE_REF": PIPELINE_SHA}, {"OPENROUTER_API_KEY"}),
+    ],
+)
+def test_setup_removes_the_worker_access_to_the_other_gateway_keys(
+    toolkit: Path, tmp_path: Path, env_name: str, values: dict[str, str], kept: set[str]
+) -> None:
+    """A gateway switch: an earlier setup granted the worker the other gateway's keys (every
+    worker had OPENAI_API_KEY before ADR-0024, prod included), and --set-secrets only stops
+    mounting them, so setup removes the worker's access to every model key it no longer uses,
+    after the grants, and never touches another account."""
+    _set_env(toolkit, env_name, **values)
+    out = _run(toolkit, tmp_path, env_name, "setup", "--dry-run", "--sha", SHA).stdout
+    model_grants = _secret_grants(out, "aimos-worker") & set(MODEL_KEYS)
+    assert model_grants == kept
+    assert _secret_revokes(out, "aimos-worker") == set(MODEL_KEYS) - kept
+    revokes = [x for x in out.splitlines() if "secrets remove-iam-policy-binding" in x]
+    assert len(revokes) == len(MODEL_KEYS) - len(kept)
+    lines = out.splitlines()
+    last_grant = max(i for i, x in enumerate(lines) if "aimos-worker@" in x and "add-iam" in x)
+    assert last_grant < lines.index(revokes[0])
+
+
+def _revoke_harness(toolkit: Path, tmp_path: Path, policy: str, model_keys: str) -> list[str]:
+    """revoke_stale_model_keys and secret_grants_accessor out of deploy.sh, run for real (no dry
+    run) against a stub `gq` that prints POLICY (csv role,member) for OPENAI_API_KEY and fails
+    for any other secret, as gcloud does for a missing one; returns the `gc` calls."""
+    script = (toolkit / "deploy.sh").read_text(encoding="utf-8")
+    bodies = []
+    for name in ("revoke_stale_model_keys() {", "secret_grants_accessor() {"):
+        body = script[script.index(name) :]
+        bodies.append(body[: body.index("\n}\n") + 3])
+    harness = tmp_path / "revoke.sh"
+    harness.write_text(
+        "set -euo pipefail\n"
+        "DRY_RUN=0 PROJECT=p SA_WORKER=aimos-worker\n"
+        'ALL_MODEL_KEYS="OPENAI_API_KEY DEEPSEEK_API_KEY OPENROUTER_API_KEY"\n'
+        f'MODEL_KEYS="{model_keys}"\n'
+        'sa_email() { printf \'%s@%s.iam.gserviceaccount.com\' "$1" "$PROJECT"; }\n'
+        'retry() { "$@"; }\n'
+        'gc() { echo "gc $*"; }\n'
+        'gq() { [ "$3" = OPENAI_API_KEY ] || return 1; printf "%s" "$POLICY"; }\n'
+        + "".join(bodies)
+        + "revoke_stale_model_keys\n",
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        ["bash", str(harness)],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=True,
+        env={"PATH": os.environ["PATH"], "POLICY": policy},
+    )
+    return result.stdout.splitlines()
+
+
+WORKER = "serviceAccount:aimos-worker@p.iam.gserviceaccount.com"
+
+
+def test_revoke_runs_only_where_the_worker_holds_the_binding(toolkit: Path, tmp_path: Path) -> None:
+    """A real run removes the binding only on a secret that exists and grants the worker
+    secretAccessor; a missing secret, another account or another role is left alone."""
+    held = f"roles/secretmanager.secretAccessor,{WORKER}\nroles/x,serviceAccount:other@p\n"
+    calls = _revoke_harness(toolkit, tmp_path, held, "OPENROUTER_API_KEY")
+    assert calls == [
+        f"gc secrets remove-iam-policy-binding OPENAI_API_KEY --member={WORKER} "
+        "--role=roles/secretmanager.secretAccessor --format=none"
+    ]
+    for policy in (
+        "",
+        f"roles/secretmanager.viewer,{WORKER}\n",
+        "roles/secretmanager.secretAccessor,serviceAccount:aimos-api@p.iam.gserviceaccount.com\n",
+        f"roles/secretmanager.secretAccessor,{WORKER}x\n",
+    ):
+        assert _revoke_harness(toolkit, tmp_path, policy, "OPENROUTER_API_KEY") == [], policy
+    # the gateway's own key is never removed
+    assert _revoke_harness(toolkit, tmp_path, held, "OPENAI_API_KEY") == []
+
+
 @pytest.mark.parametrize(
     ("env_name", "values", "message"),
     [
@@ -1290,6 +1393,10 @@ def test_prod_setup_with_the_worker_off_asks_for_no_model_key(
         ("staging", {"LLM_PROVIDER": "openrouter"}, "LLM_PROVIDER must be openai or deepseek"),
         ("staging", {"LLM_GATEWAY": "https://x.test/v1"}, "LLM_GATEWAY must be direct or"),
         ("prod", {"LLM_GATEWAY": "OpenRouter"}, "LLM_GATEWAY must be direct or openrouter"),
+        ("prod", {"LLM_MODEL_DEFAULT": ""}, NO_ROUTER_MODEL),
+        ("prod", {"LLM_MODEL_DEFAULT": "deepseek-chat"}, NO_ROUTER_MODEL),
+        ("prod", {"LLM_MODEL_DEFAULT": "deepseek/"}, NO_ROUTER_MODEL),
+        ("staging", {"LLM_GATEWAY": "openrouter"}, NO_ROUTER_MODEL),
     ],
 )
 def test_bad_pipeline_or_model_settings_refused_before_gcloud(
@@ -1504,7 +1611,7 @@ case " $* " in
   *"kms keys describe"*) echo "projects/p/cryptoKeys/k"; exit 0 ;;
   *"iam service-accounts describe"*) echo "sa@p"; exit 0 ;;
   *"services list"*) echo "cloudscheduler.googleapis.com"; exit 0 ;;
-  *"secrets versions list OPENROUTER_API_KEY "*) [ -n "$HAS_MODEL_KEY" ] && echo "versions/1"; exit 0 ;;
+  *"secrets versions list $MISSING_KEY "*) [ -n "$HAS_MODEL_KEY" ] && echo "versions/1"; exit 0 ;;
   *"secrets versions list "*) echo "versions/1"; exit 0 ;;
 esac
 echo "$*" >> "$FAKE_GCLOUD_LOG"
@@ -1513,9 +1620,18 @@ exit 98
 
 
 def _run_model_key(
-    toolkit: Path, tmp_path: Path, command: str, *, has_key: bool
+    toolkit: Path,
+    tmp_path: Path,
+    command: str,
+    *,
+    has_key: bool,
+    missing: str = "OPENROUTER_API_KEY",
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
-    _openrouter_staging(toolkit)
+    """Staging under openrouter, or as committed (direct) when `missing` is a direct key."""
+    if missing == "OPENROUTER_API_KEY":
+        _openrouter_staging(toolkit)
+    elif missing == "DEEPSEEK_API_KEY":
+        _set_env(toolkit, "staging", LLM_PROVIDER="deepseek")
     bin_dir = tmp_path / f"bin-model-{command}-{has_key}"
     bin_dir.mkdir()
     (bin_dir / "gcloud").write_text(FAKE_GCLOUD_NO_MODEL_KEY, encoding="utf-8")
@@ -1533,6 +1649,7 @@ def _run_model_key(
             "TMPDIR": str(tmp_path),
             "FAKE_GCLOUD_LOG": str(log),
             "HAS_MODEL_KEY": "1" if has_key else "",
+            "MISSING_KEY": missing,
         },
         cwd=tmp_path,
     )
@@ -1551,6 +1668,18 @@ def test_deploy_refuses_without_the_generation_key(
     assert "secret OPENROUTER_API_KEY has no value in aimos-staging" in result.stderr
     assert "deploy.sh staging setup first" in result.stderr
     assert not log.exists(), log.read_text(encoding="utf-8")  # nothing built or deployed
+
+
+@pytest.mark.parametrize("missing", ["OPENAI_API_KEY", "DEEPSEEK_API_KEY"])
+def test_direct_deploy_refuses_without_its_model_key(
+    toolkit: Path, tmp_path: Path, missing: str
+) -> None:
+    """Under direct with the worker on, an empty OpenAI key (or DeepSeek's, when it generates)
+    stops the deploy before anything moves."""
+    result, log = _run_model_key(toolkit, tmp_path, "deploy", has_key=False, missing=missing)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert f"secret {missing} has no value in aimos-staging" in result.stderr
+    assert not log.exists(), log.read_text(encoding="utf-8")
 
 
 def test_model_key_guard_passes_with_the_generation_key(toolkit: Path, tmp_path: Path) -> None:

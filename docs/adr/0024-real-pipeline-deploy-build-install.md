@@ -89,8 +89,12 @@
    caps `LLM_DAILY_BUDGET_USD` and `LLM_TENANT_DAILY_BUDGET_USD` (the api's generate precheck and
    the worker's claim must agree). The worker's model secrets follow the gateway: `OPENAI_API_KEY`
    (plus `DEEPSEEK_API_KEY` under `LLM_PROVIDER=deepseek`) for `direct`, `OPENROUTER_API_KEY` alone
-   for `openrouter`. `setup` creates and grants them, and asks for their values only while
-   `WORKER_ENABLED=true`. `deploy` and `release` refuse while one has no value and the worker is
+   for `openrouter`. `setup` creates and grants them, asks for their values only while
+   `WORKER_ENABLED=true`, and removes the worker's access to the model keys the gateway does not
+   use (an earlier `setup` granted `OPENAI_API_KEY` to every worker, prod's included). Under
+   `openrouter` `LLM_MODEL_DEFAULT` must be `vendor/model`: `deploy.sh` and the worker boot both
+   refuse a bare id such as the default `gpt-4o-mini`, which OpenRouter would reject on every
+   call. `deploy` and `release` refuse while one has no value and the worker is
    on (the model key guard). `prod.env` is `openrouter` with `LLM_PROVIDER=deepseek` and
    `deepseek/deepseek-chat`, worker still off. `staging.env` stays `direct` with the OpenAI
    defaults.

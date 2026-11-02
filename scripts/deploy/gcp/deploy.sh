@@ -167,9 +167,20 @@ case "$LLM_GATEWAY" in
     MODEL_KEYS="OPENAI_API_KEY"
     [ "$LLM_PROVIDER" != "deepseek" ] || MODEL_KEYS="$MODEL_KEYS DEEPSEEK_API_KEY"
     ;;
-  openrouter) MODEL_KEYS="OPENROUTER_API_KEY" ;;
+  openrouter)
+    MODEL_KEYS="OPENROUTER_API_KEY"
+    # OpenRouter names a model vendor/model; a bare id (or the Settings default gpt-4o-mini) would
+    # boot and then fail every generation call, so the worker refuses it and so does this.
+    case "$LLM_MODEL_DEFAULT" in
+      ?*/?*) ;;
+      *) die "LLM_GATEWAY=openrouter needs LLM_MODEL_DEFAULT as an OpenRouter model id, such as deepseek/deepseek-chat (in $ENV_NAME.env)" ;;
+    esac
+    ;;
   *) die "LLM_GATEWAY must be direct or openrouter (in $ENV_NAME.env)" ;;
 esac
+# Every model key either gateway uses: setup removes the worker's access to the ones outside
+# MODEL_KEYS (revoke_stale_model_keys).
+ALL_MODEL_KEYS="OPENAI_API_KEY DEEPSEEK_API_KEY OPENROUTER_API_KEY"
 USER_SECRETS="$USER_SECRETS $MODEL_KEYS"
 WORKER_SECRETS="$WORKER_SECRETS $MODEL_KEYS"
 
@@ -297,6 +308,33 @@ dsn_secret() {
 grant_secret() {
   retry gc secrets add-iam-policy-binding "$1" --member="serviceAccount:$(sa_email "$2")" \
     --role=roles/secretmanager.secretAccessor --format=none
+}
+
+# ADR-0024: a gateway switch must not leave the worker able to read the other gateway's keys. An
+# earlier `setup` granted them (before ADR-0024 every worker got OPENAI_API_KEY), and
+# --set-secrets only stops mounting them, so each model key outside MODEL_KEYS loses the
+# worker's access wherever the secret exists and grants it.
+revoke_stale_model_keys() {
+  local name member
+  member="serviceAccount:$(sa_email "$SA_WORKER")"
+  for name in $ALL_MODEL_KEYS; do
+    case " $MODEL_KEYS " in *" $name "*) continue ;; esac
+    secret_grants_accessor "$name" "$member" || continue
+    retry gc secrets remove-iam-policy-binding "$name" --member="$member" \
+      --role=roles/secretmanager.secretAccessor --format=none
+  done
+}
+
+# SECRET MEMBER: MEMBER holds secretAccessor on SECRET. A dry run reads as yes, so the removal
+# prints; a real run with no such secret reads as no.
+secret_grants_accessor() {
+  local bindings
+  if ! bindings="$(gq secrets get-iam-policy "$1" --flatten='bindings[].members' \
+    --format='csv[no-heading](bindings.role,bindings.members)')"; then
+    [ "$DRY_RUN" -eq 1 ]
+    return
+  fi
+  printf '%s\n' "$bindings" | grep -qxF "roles/secretmanager.secretAccessor,$2"
 }
 
 # "ENV=SECRET:latest,..." for --set-secrets, from a space-separated list of names (each env var
@@ -606,6 +644,7 @@ setup_secrets() {
   for name in $USER_SECRETS; do ensure_secret "$name"; done
   for name in $API_SECRETS; do grant_secret "$name" "$SA_API"; done
   for name in $WORKER_SECRETS; do grant_secret "$name" "$SA_WORKER"; done
+  revoke_stale_model_keys
   for name in $MIGRATE_SECRETS; do grant_secret "$name" "$SA_MIGRATE"; done
   for name in $DB_INIT_SECRETS $OPS_SECRETS; do grant_secret "$name" "$SA_OPS"; done
   for name in $MAINT_SECRETS; do grant_secret "$name" "$SA_MAINT"; done

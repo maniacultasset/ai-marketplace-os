@@ -70,13 +70,16 @@ After that, every update is `deploy.sh staging release`.
   `LLM_TENANT_DAILY_BUDGET_USD`.
   - `LLM_GATEWAY=openrouter` (prod): every worker model call (generation, vision, embedding)
     goes to OpenRouter with one key, `OPENROUTER_API_KEY`, typed at the hidden prompt. The URL is
-    fixed in code; there is no URL to set. `LLM_MODEL_DEFAULT` is an OpenRouter model id such as
-    `deepseek/deepseek-chat`. No OpenAI or DeepSeek key is needed.
+    fixed in code; there is no URL to set. `LLM_MODEL_DEFAULT` must be an OpenRouter model id
+    (`vendor/model`, such as `deepseek/deepseek-chat`): `deploy.sh` refuses a blank or bare one
+    before any gcloud call, and the worker refuses it at boot. No OpenAI or DeepSeek key is needed.
   - `LLM_GATEWAY=direct` (staging, and the default): OpenAI's and DeepSeek's own APIs with
     `OPENAI_API_KEY` (and `DEEPSEEK_API_KEY` under `LLM_PROVIDER=deepseek`), as before.
   Only the worker gets the gateway, provider, model and key; the caps go to the api too. After
   switching the gateway with the worker on, rerun `setup` and enter the new key; until then
-  `deploy` and `release` refuse (`model key guard`).
+  `deploy` and `release` refuse (`model key guard`). Each `setup` also removes the worker's
+  access to the model keys the gateway no longer uses (before ADR-0024 every worker could read
+  `OPENAI_API_KEY`, prod included); the secrets and their values stay.
 - Optional: `API_PUBLIC_URL`, once a domain fronts the API. `JWT_ISSUER` and the OAuth redirect URIs
   follow it, and the Amazon/Flipkart applications must list the same callback strings.
 - Everything else is generated: `JWT_SECRET`, `ADMIN_SESSION_SECRET`, the `postgres`, `app_rw`,
@@ -89,7 +92,7 @@ After that, every update is `deploy.sh staging release`.
 | Account | Project roles | Resource roles |
 |---|---|---|
 | `aimos-api` | `cloudsql.client` | accessor on its 6 secrets (7 with Google sign-in on: `GOOGLE_OAUTH_CLIENT_SECRET`); `cryptoKeyEncrypter` (encrypt only, ADR-0018) on the one key |
-| `aimos-worker` | `cloudsql.client` | accessor on its 5 secrets (the 4 shared ones plus its model key: `OPENROUTER_API_KEY` under `LLM_GATEWAY=openrouter`; `OPENAI_API_KEY` under `direct`, 6 with `DEEPSEEK_API_KEY` under `LLM_PROVIDER=deepseek`); `cryptoKeyEncrypterDecrypter` on the key |
+| `aimos-worker` | `cloudsql.client` | accessor on its 5 secrets (the 4 shared ones plus its model key: `OPENROUTER_API_KEY` under `LLM_GATEWAY=openrouter`; `OPENAI_API_KEY` under `direct`, 6 with `DEEPSEEK_API_KEY` under `LLM_PROVIDER=deepseek`), once `setup` has run on this release: it removes the worker's access to the other model keys; `cryptoKeyEncrypterDecrypter` on the key |
 | `aimos-migrate` | `cloudsql.client` | accessor on `ALEMBIC_DATABASE_URL` |
 | `aimos-ops` | `cloudsql.client` | accessor on the 4 DB passwords, `ALEMBIC_DATABASE_URL`, each `INITIAL_PASSWORD_*` |
 | `aimos-storage` | none | `storage.objectAdmin` on the 3 app buckets: the identity behind the HMAC key |
