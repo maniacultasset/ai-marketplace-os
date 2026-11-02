@@ -1,4 +1,4 @@
-# ADR-0024: The AI team's pipeline enters the deploy image only, by commit sha and a read-only deploy key; the generation route is configurable
+# ADR-0024: The AI team's pipeline enters the deploy image only, by commit sha and a read-only deploy key; model calls can go through OpenRouter
 
 - **Status:** proposed (owner decisions in chat, 2026-11-02; closes T104)
 - **Date:** 2026-11-02
@@ -25,6 +25,11 @@
 - The model and provider are the AI team's choice. They use OpenRouter, which is
   OpenAI-compatible. The seam's `ModelCredentials.api_base` already carries a validated https base
   (`mkos_schemas/jobs.py`), but the backend always sent `None`.
+- The owner wants one model key for everything the worker calls. OpenRouter also serves
+  embeddings (`POST /api/v1/embeddings`, OpenAI-compatible, `openai/text-embedding-3-small` at
+  $0.02 per million tokens, the same as OpenAI, with `usage.prompt_tokens`; checked 2026-11-02).
+  A free-form base URL setting would let a bad env value send the key and brand text to any
+  host, so the base is not a setting.
 - Deploys are run by hand with `scripts/deploy/gcp/deploy.sh` (Cloud Build under the `aimos-build`
   service account), not from GitHub, so there is no WIF identity in the path.
 
@@ -62,20 +67,33 @@
 6. **Guard.** `deploy.sh` refuses, before any gcloud call, `WORKER_ENABLED=true` in production with
    an empty `PIPELINE_REF`, and a `PIPELINE_REF` that is not a 40-character lowercase sha. Staging
    keeps its stub worker (`APP_ENV=staging` accepts it). The boot refusal in `config.py` stays.
-7. **Generation route.** A new optional setting `LLM_API_BASE` (ENV.md) goes to
-   `ModelCredentials.api_base` for `get_model_credentials("generation")` only; vision and embedding
-   keep `None`. Settings applies the seam's own rule in every env (https, no userinfo, a host, no
-   localhost, private, link-local or loopback address, 2048 characters at most). OpenRouter is
-   `LLM_PROVIDER=deepseek`, `LLM_MODEL_DEFAULT=<OpenRouter slug, e.g. deepseek/deepseek-chat>`,
-   `LLM_API_BASE=https://openrouter.ai/api/v1`, with the OpenRouter key in `DEEPSEEK_API_KEY`:
-   the key name is the provider's, the route is the base. The `mkos-schemas` contract is unchanged.
-8. **Worker env and keys.** `deploy.sh` gives the worker `LLM_PROVIDER`, `LLM_MODEL_DEFAULT` and
-   `LLM_API_BASE` from the env file, and the api and the worker the daily caps
-   `LLM_DAILY_BUDGET_USD` and `LLM_TENANT_DAILY_BUDGET_USD` (the api's generate precheck and the
-   worker's claim must agree). `DEEPSEEK_API_KEY` becomes a user secret and a worker secret only
-   under `LLM_PROVIDER=deepseek`; `setup` asks for it while `WORKER_ENABLED=true`. A worker outside
-   local refuses to boot without the key of `LLM_PROVIDER` (as it already does for the embedding
-   and vision keys).
+7. **Model gateway.** A new setting `LLM_GATEWAY` picks from a fixed list:
+   - `direct` (the default) is the behaviour before this ADR: embedding and vision use
+     `OPENAI_API_KEY` against OpenAI, generation uses the `LLM_PROVIDER` key, `api_base` is `None`.
+   - `openrouter` sends every model call to OpenRouter with one key, `OPENROUTER_API_KEY`. The base
+     URL `https://openrouter.ai/api/v1` is a constant in `app/core/config.py`, never a setting, so
+     no env value can point the key or brand text at another host.
+     `get_model_credentials` returns that base and key for every purpose. Generation keeps
+     `LLM_PROVIDER` and `LLM_MODEL_DEFAULT` (an OpenRouter model id such as
+     `deepseek/deepseek-chat`). Vision and embedding name their OpenAI model as `openai/<model>`.
+     The backend's own embedder calls OpenRouter's `/embeddings` with `openai/<EMBEDDING_MODEL>`,
+     1536 dimensions, `max_retries=0`, and reads `usage.prompt_tokens` as before.
+     Brand chunks, retrieval, `agent_runs.model_used` and the price keep the OpenAI id
+     (`text-embedding-3-small`): the vectors are the same model's, so switching the gateway needs no
+     re-embed, and the cost is still recorded at $0.02 per million tokens.
+   The `mkos-schemas` contract is unchanged.
+8. **Worker boot and keys.** A worker outside local under `direct` needs `OPENAI_API_KEY` and the
+   `LLM_PROVIDER` key, as before. Under `openrouter` it needs `OPENROUTER_API_KEY` and no other
+   model key. `deploy.sh` reads `LLM_GATEWAY` from the env file. It gives the worker
+   `LLM_GATEWAY`, `LLM_PROVIDER` and `LLM_MODEL_DEFAULT`, and gives the api and the worker the daily
+   caps `LLM_DAILY_BUDGET_USD` and `LLM_TENANT_DAILY_BUDGET_USD` (the api's generate precheck and
+   the worker's claim must agree). The worker's model secrets follow the gateway: `OPENAI_API_KEY`
+   (plus `DEEPSEEK_API_KEY` under `LLM_PROVIDER=deepseek`) for `direct`, `OPENROUTER_API_KEY` alone
+   for `openrouter`. `setup` creates and grants them, and asks for their values only while
+   `WORKER_ENABLED=true`. `deploy` and `release` refuse while one has no value and the worker is
+   on (the model key guard). `prod.env` is `openrouter` with `LLM_PROVIDER=deepseek` and
+   `deepseek/deepseek-chat`, worker still off. `staging.env` stays `direct` with the OpenAI
+   defaults.
 
 ## Consequences
 
@@ -95,7 +113,11 @@
   new deploy key and secret version, revocable on GitHub at any time. The stub build never needs
   it.
 - With an empty `PIPELINE_REF` the image and prod behaviour are as before; prod's worker stays off
-  until the owner sets the ref, builds, adds the model keys and sets `WORKER_ENABLED=true`
+  until the owner sets the ref, builds, adds the OpenRouter key and sets `WORKER_ENABLED=true`
   (`docs/runbooks/DEPLOY-GCP.md`, "The real pipeline").
+- Under `openrouter` every model call, embeddings included, depends on OpenRouter being up, and
+  OpenRouter sees the brand text it embeds. Going back is one env line (`LLM_GATEWAY=direct`),
+  `setup` for the OpenAI key, and a release; stored vectors stay valid.
+- A new model host means a code change (a new gateway value and constant), not an env edit.
 - The prod api now carries the env file's daily caps (3 and 1 USD); it carried the Settings
   defaults before. With no worker spending, no request is refused at either cap.

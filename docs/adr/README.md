@@ -30,4 +30,4 @@ change.
 | 0021 | MFA secrets under their own KMS key; password and lockout policy for Amazon DPP | ⚑ proposed (DPP-1; amends the CANON.md one-key line and ADR-0018 for `mfa-secret-key`) | 2026-10-27 |
 | 0022 | API edge: Cloud Armor WAF, locked ingress, candidate smoke through the load balancer (amends ADR-0001 deploy step) | ⚑ proposed (DPP-2; 0020 reserved by google-signin, 0021 by DPP-1) | 2026-10-27 |
 | 0023 | Trusted browsers and a narrower step-up (amends ADR-0021 §5 and §6, ADR-0020 §5) | ⚑ proposed (trusted devices; user decisions in chat 2026-10-30) | 2026-10-30 |
-| 0024 | The AI team's pipeline enters the deploy image only, by commit sha and a read-only deploy key; configurable generation route `LLM_API_BASE` (amends ADR-0012 §3, ADR-0013 §5; closes T104) | ⚑ proposed (owner decisions in chat 2026-11-02) | 2026-11-02 |
+| 0024 | The AI team's pipeline enters the deploy image only, by commit sha and a read-only deploy key; model gateway `LLM_GATEWAY` (`direct` or `openrouter`) (amends ADR-0012 §3, ADR-0013 §5; closes T104) | ⚑ proposed (owner decisions in chat 2026-11-02) | 2026-11-02 |
