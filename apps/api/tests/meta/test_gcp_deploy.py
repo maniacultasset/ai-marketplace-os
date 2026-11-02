@@ -1430,3 +1430,94 @@ def test_runbook_and_adr_cover_the_pipeline_build(repo_root: Path) -> None:
         encoding="utf-8"
     )
     assert "T104" in adr and PIPELINE_KEY in adr
+
+
+# ---- the model key guard: a deploy refuses before the api moves when the worker's key is empty ----
+
+FAKE_GCLOUD_NO_MODEL_KEY = """#!/bin/sh
+case " $* " in
+  *" --help "*) exit 0 ;;
+  *" config get-value account "*) echo "owner@example.test"; exit 0 ;;
+  *" config get-value project "*) echo "aimos-staging"; exit 0 ;;
+  *" billing projects describe "*) echo "True"; exit 0 ;;
+  *"run services describe"*) echo "ERROR: NOT_FOUND" >&2; exit 1 ;;
+  *"kms keys describe"*) echo "projects/p/cryptoKeys/k"; exit 0 ;;
+  *"iam service-accounts describe"*) echo "sa@p"; exit 0 ;;
+  *"services list"*) echo "cloudscheduler.googleapis.com"; exit 0 ;;
+  *"secrets versions list DEEPSEEK_API_KEY "*) [ -n "$HAS_MODEL_KEY" ] && echo "versions/1"; exit 0 ;;
+  *"secrets versions list "*) echo "versions/1"; exit 0 ;;
+esac
+echo "$*" >> "$FAKE_GCLOUD_LOG"
+exit 98
+"""
+
+
+def _run_model_key(
+    toolkit: Path, tmp_path: Path, command: str, *, has_key: bool
+) -> tuple[subprocess.CompletedProcess[str], Path]:
+    bin_dir = tmp_path / f"bin-model-{command}-{has_key}"
+    bin_dir.mkdir()
+    (bin_dir / "gcloud").write_text(FAKE_GCLOUD_NO_MODEL_KEY, encoding="utf-8")
+    (bin_dir / "gcloud").chmod(0o755)
+    log = tmp_path / f"gcloud-model-{command}-{has_key}.log"
+    result = subprocess.run(
+        ["bash", str(toolkit / "deploy.sh"), "staging", command, "--sha", SHA],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+        env={
+            "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+            "HOME": str(tmp_path),
+            "TMPDIR": str(tmp_path),
+            "FAKE_GCLOUD_LOG": str(log),
+            "HAS_MODEL_KEY": "1" if has_key else "",
+        },
+        cwd=tmp_path,
+    )
+    return result, log
+
+
+@pytest.mark.parametrize("command", ["deploy", "release"])
+def test_deploy_refuses_without_the_generation_key(
+    toolkit: Path, tmp_path: Path, command: str
+) -> None:
+    """Staging runs the worker under deepseek: a project whose `setup` predates DEEPSEEK_API_KEY
+    stops before the build and before the api moves, naming the secret and the fix."""
+    result, log = _run_model_key(toolkit, tmp_path, command, has_key=False)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "secret DEEPSEEK_API_KEY has no value in aimos-staging" in result.stderr
+    assert "deploy.sh staging setup first" in result.stderr
+    assert not log.exists(), log.read_text(encoding="utf-8")  # nothing built or deployed
+
+
+def test_model_key_guard_passes_with_the_generation_key(toolkit: Path, tmp_path: Path) -> None:
+    result, _ = _run_model_key(toolkit, tmp_path, "deploy", has_key=True)
+    assert "deploy: model key guard: OK (DEEPSEEK_API_KEY)" in result.stdout, result.stderr
+
+
+def test_dry_run_deploy_reports_the_model_key_guard(toolkit: Path, tmp_path: Path) -> None:
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    lines = out.splitlines()
+    guard = lines.index("deploy: model key guard: skipped (dry run)")
+    assert lines.index("deploy: google guard: sign-in with Google is off") < guard
+    assert guard < next(i for i, x in enumerate(lines) if "gcloud run deploy aimos-api" in x)
+    # prod keeps the worker off, so its deploy never needs the key
+    out = _run(toolkit, tmp_path, "prod", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert (
+        "deploy: model key guard: not needed (WORKER_ENABLED=false, LLM_PROVIDER=deepseek)" in out
+    )
+
+
+def test_release_runs_the_model_key_guard_before_building(repo_root: Path) -> None:
+    script = (repo_root / DEPLOY / "deploy.sh").read_text(encoding="utf-8")
+    for name in ("cmd_release() {", "cmd_deploy() {"):
+        body = script[script.index(name) :]
+        body = body[: body.index("\n}\n")]
+        assert "model_key_guard" in body, name
+    release = script[script.index("cmd_release() {") :]
+    release = release[: release.index("\n}\n")]
+    assert release.index("model_key_guard") < release.index("cmd_build")
+    deploy = script[script.index("cmd_deploy() {") :]
+    deploy = deploy[: deploy.index("\n}\n")]
+    assert deploy.index("model_key_guard") < deploy.index("deploy_api")

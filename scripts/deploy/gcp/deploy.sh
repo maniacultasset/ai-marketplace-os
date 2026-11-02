@@ -1075,6 +1075,23 @@ google_guard() {
   say "google guard: OK (GOOGLE_OAUTH_CLIENT_SECRET)"
 }
 
+# ADR-0024: with the worker on and LLM_PROVIDER=deepseek, the worker mounts DEEPSEEK_API_KEY and
+# refuses to boot without it. A project whose `setup` predates the key would fail at the worker,
+# after the api moved, so the deploy refuses first.
+model_key_guard() {
+  if [ "$WORKER_ENABLED" != "true" ] || [ "$LLM_PROVIDER" != "deepseek" ]; then
+    say "model key guard: not needed (WORKER_ENABLED=$WORKER_ENABLED, LLM_PROVIDER=$LLM_PROVIDER)"
+    return 0
+  fi
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "model key guard: skipped (dry run)"
+    return 0
+  fi
+  secret_has_version DEEPSEEK_API_KEY ||
+    die "secret DEEPSEEK_API_KEY has no value in $PROJECT: run scripts/deploy/gcp/deploy.sh $ENV_NAME setup first"
+  say "model key guard: OK (DEEPSEEK_API_KEY)"
+}
+
 cmd_deploy() {
   check_filled
   check_ingress
@@ -1084,6 +1101,7 @@ cmd_deploy() {
   kms_guard
   setup_guard
   google_guard
+  model_key_guard
   image="$(image_ref)"
   deploy_api "$image" "$url"
   [ "$DRY_RUN" -eq 1 ] || [ -n "$API_PUBLIC_URL" ] || url="$(service_url)"
@@ -1157,6 +1175,7 @@ cmd_release() {
   kms_guard
   setup_guard
   google_guard
+  model_key_guard
   cmd_build
   cmd_migrate
   cmd_deploy
