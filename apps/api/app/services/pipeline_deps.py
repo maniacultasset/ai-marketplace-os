@@ -24,7 +24,10 @@ Ports:
 - `get_model_credentials`: `generation` → the `LLM_PROVIDER` key and `LLM_MODEL_DEFAULT`;
   `vision` → the `LLM_PROVIDER_VISION` key (OpenAI only: DeepSeek has no vision model) and
   `LLM_MODEL_VISION` (B2, ai-deps C18); `embedding` → always the OpenAI key (ENV.md:86,
-  BA:1538). Never a marketplace credential.
+  BA:1538). That is `LLM_GATEWAY=direct`, with `api_base=None`. Under `openrouter` (ADR-0024)
+  every purpose gets OPENROUTER_API_KEY and `api_base=OPENROUTER_BASE_URL`, and vision and
+  embedding name their OpenAI model as `openai/<model>`; the provider and the generation model
+  stay as set. Never a marketplace credential.
 - `emit_node_event`: `started` writes `job_runs.node` on the running job (never
   `listings.status`) and opens span `pipeline.<node>` (attributes `job_id`, `tenant_id`, `node`
   only); `ok`/`failed` ends it with that status. `close_spans()` ends any left open. `detail` is
@@ -51,7 +54,7 @@ from opentelemetry import trace
 from opentelemetry.trace import Span, Status, StatusCode
 from pydantic import SecretStr
 
-from app.core.config import Settings
+from app.core.config import OPENROUTER_BASE_URL, Settings, gateway_openai_model
 from app.core.logging import get_logger
 from app.core.redaction import redact
 from app.core.request_context import current_request_id, new_request_id
@@ -123,6 +126,7 @@ class _ModelConfig:
     app_env: str
     provider: Literal["openai", "deepseek"]
     generation_model: str
+    api_base: str | None
     vision_provider: Literal["openai"]
     vision_model: str
     embedding_model: str
@@ -133,14 +137,29 @@ class _ModelConfig:
 
     @classmethod
     def from_settings(cls, settings: Settings) -> _ModelConfig:
+        common: dict[str, Any] = {
+            "app_env": settings.app_env,
+            "provider": settings.llm_provider,
+            "generation_model": settings.llm_model_default,
+            "vision_provider": settings.llm_provider_vision,
+            "timeout_seconds": float(settings.llm_timeout_seconds),
+        }
+        if settings.llm_gateway == "openrouter":
+            key = _secret(settings.openrouter_api_key)
+            return cls(
+                **common,
+                api_base=OPENROUTER_BASE_URL,
+                vision_model=gateway_openai_model(settings.llm_model_vision),
+                embedding_model=gateway_openai_model(settings.embedding_model),
+                generation_key=key,
+                vision_key=key,
+                embedding_key=key,
+            )
         return cls(
-            app_env=settings.app_env,
-            provider=settings.llm_provider,
-            generation_model=settings.llm_model_default,
-            vision_provider=settings.llm_provider_vision,
+            **common,
+            api_base=None,
             vision_model=settings.llm_model_vision,
             embedding_model=settings.embedding_model,
-            timeout_seconds=float(settings.llm_timeout_seconds),
             generation_key=_provider_key(settings, settings.llm_provider),
             vision_key=_provider_key(settings, settings.llm_provider_vision),
             embedding_key=_secret(settings.openai_api_key),
@@ -353,7 +372,7 @@ class BackendPipelineDeps:
         return ModelCredentials(
             provider=provider,
             api_key=key,
-            api_base=None,
+            api_base=models.api_base,
             model=model,
             timeout_seconds=models.timeout_seconds,
         )

@@ -69,7 +69,9 @@
      PR and nightly jobs never fetch `mkos-pipeline`; they use the stub (EXECUTION-PLAN.md:807). Only
      the deploy build fetches the pinned pipeline, with a read-only credential kept in GCP Secret
      Manager and reached through WIF, which binds only `main` (EXECUTION-PLAN.md:303-311), never a
-     GitHub secret. The mechanism is settled in S4/S14 (T104).
+     GitHub secret. The mechanism is settled in S4/S14 (T104). *(Settled by ADR-0024: deploys run
+     by hand through Cloud Build, so the build service account, not WIF, reads a read-only GitHub
+     deploy key from Secret Manager, and the Dockerfile installs the pipeline by commit sha.)*
    - CODEOWNERS is committed but inert.
    - "A force-push to main is rejected" and the §4.2 rulesets move to "when Team lands".
 6. **Dependencies:**

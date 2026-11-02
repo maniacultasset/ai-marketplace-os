@@ -14,7 +14,10 @@
   (audit PROD-1; a character-variety floor waits on TEAM-QUESTIONS T132). The api also needs
   https non-loopback ALLOWED_ORIGINS (exact origins, never `*`) and JWT_ISSUER (PROD-2).
   Numeric settings carry lower bounds in every env (PROD-3). A worker off local also needs the
-  vision provider's key (B2): OpenAI, the only provider with a vision model.
+  vision provider's key (B2): OpenAI, the only provider with a vision model, and the generation
+  provider's key (`LLM_PROVIDER`; ADR-0024). Under `LLM_GATEWAY=openrouter` those three keys are
+  replaced by one, OPENROUTER_API_KEY, every model call goes to the pinned OPENROUTER_BASE_URL,
+  and LLM_MODEL_DEFAULT must be an OpenRouter `vendor/model` id.
 - There is no module-level `settings`: call `get_settings()` where the value is needed.
 """
 
@@ -41,6 +44,15 @@ EMBEDDING_DIMENSIONS: Final[int] = 1536
 # so `LLM_PROVIDER_VISION` is OpenAI only, whatever `LLM_PROVIDER` says.
 VisionProvider = Literal["openai"]
 VISION_PROVIDER_KEY_ENV: Final[Mapping[str, str]] = MappingProxyType({"openai": "OPENAI_API_KEY"})
+# ADR-0024: the env var holding each generation provider's key under `LLM_GATEWAY=direct`.
+GENERATION_PROVIDER_KEY_ENV: Final[Mapping[str, str]] = MappingProxyType(
+    {"openai": "OPENAI_API_KEY", "deepseek": "DEEPSEEK_API_KEY"}
+)
+# ADR-0024: the model gateways. `direct` calls each provider's own API with its own key;
+# `openrouter` sends generation, vision and embedding to OpenRouter with one key. The base URL is
+# a constant, never a setting, so no env value can point a model call (and its key) elsewhere.
+LlmGateway = Literal["direct", "openrouter"]
+OPENROUTER_BASE_URL: Final = "https://openrouter.ai/api/v1"
 
 # Every JWT literal committed to the repo or the Canon: ENV.md's JWT_SECRET row (.env.example),
 # CANON-ADDENDUM.md:290 (the CI env block) and CANON-ADDENDUM.md:319 (the schema export).
@@ -198,9 +210,11 @@ class Settings(BaseSettings):
     auth_google_rate_limit_per_min: int = Field(default=10, ge=1)
 
     # ---- models: per-provider keys ----
+    llm_gateway: LlmGateway = "direct"
     llm_provider: Literal["openai", "deepseek"] = "openai"
     openai_api_key: str | None = Field(default=None, repr=False)
     deepseek_api_key: str | None = Field(default=None, repr=False)
+    openrouter_api_key: str | None = Field(default=None, repr=False)
     llm_model_default: str = "gpt-4o-mini"
     llm_model_escalation: str = "gpt-4o"
     llm_provider_vision: VisionProvider = "openai"
@@ -489,6 +503,8 @@ def _boot_errors(s: Settings) -> list[str]:
     errors += _storage_errors(s)
     errors += _embedding_errors(s)
     errors += _vision_errors(s)
+    errors += _generation_errors(s)
+    errors += _gateway_errors(s)
     errors += _spapi_errors(s)
     errors += _flipkart_errors(s)
     errors += _google_errors(s)
@@ -502,7 +518,8 @@ def _embedding_errors(s: Settings) -> list[str]:
     if s.app_role != "worker":
         return []
     errors: list[str] = []
-    if s.app_env != "local" and not is_usable_openai_key(s.openai_api_key):
+    direct = s.llm_gateway == "direct"
+    if direct and s.app_env != "local" and not is_usable_openai_key(s.openai_api_key):
         errors.append("APP_ROLE=worker requires OPENAI_API_KEY outside APP_ENV=local")
     if s.embedding_model not in EMBEDDING_PRICE_USD_PER_MTOK:
         errors.append("EMBEDDING_MODEL has no price entry")
@@ -512,8 +529,9 @@ def _embedding_errors(s: Settings) -> list[str]:
 def _vision_errors(s: Settings) -> list[str]:
     """B2 (ai-deps C18): a worker sends product images to `LLM_PROVIDER_VISION`, so outside local
     it needs that provider's key; the placeholder counts as none. Local uses the port's
-    placeholder key. Names only, never the key or the model value."""
-    if s.app_role != "worker" or s.app_env == "local":
+    placeholder key. Under `LLM_GATEWAY=openrouter` the gateway's key stands in (`_gateway_errors`).
+    Names only, never the key or the model value."""
+    if s.app_role != "worker" or s.app_env == "local" or s.llm_gateway != "direct":
         return []
     name = VISION_PROVIDER_KEY_ENV[s.llm_provider_vision]
     if is_usable_openai_key(getattr(s, name.lower())):
@@ -522,6 +540,53 @@ def _vision_errors(s: Settings) -> list[str]:
         f"LLM_PROVIDER_VISION={s.llm_provider_vision} requires {name} "
         "for APP_ROLE=worker outside APP_ENV=local"
     ]
+
+
+def _generation_errors(s: Settings) -> list[str]:
+    """ADR-0024: under `LLM_GATEWAY=direct` a worker sends listing generation to `LLM_PROVIDER`,
+    so outside local it needs that provider's key; the placeholder counts as none. Names only,
+    never the key or the model value."""
+    if s.app_role != "worker" or s.app_env == "local" or s.llm_gateway != "direct":
+        return []
+    name = GENERATION_PROVIDER_KEY_ENV[s.llm_provider]
+    if is_usable_openai_key(getattr(s, name.lower())):
+        return []
+    return [
+        f"LLM_PROVIDER={s.llm_provider} requires {name} for APP_ROLE=worker outside APP_ENV=local"
+    ]
+
+
+def _gateway_errors(s: Settings) -> list[str]:
+    """ADR-0024: under `LLM_GATEWAY=openrouter` every model call a worker makes (generation,
+    vision, embedding) carries OPENROUTER_API_KEY, so outside local it is the one key the worker
+    needs; the placeholder counts as none. OpenRouter names a model `vendor/model`: the generation
+    model is sent as set, so it must be one (the default `gpt-4o-mini` is not), and the vision
+    model gets `openai/` added, so it must not already have a vendor. Names only, never the key
+    or a model value."""
+    if s.app_role != "worker" or s.app_env == "local" or s.llm_gateway != "openrouter":
+        return []
+    errors: list[str] = []
+    if not is_usable_openai_key(s.openrouter_api_key):
+        errors.append(
+            "LLM_GATEWAY=openrouter requires OPENROUTER_API_KEY "
+            "for APP_ROLE=worker outside APP_ENV=local"
+        )
+    if not _is_vendor_model_id(s.llm_model_default):
+        errors.append("LLM_GATEWAY=openrouter requires LLM_MODEL_DEFAULT as vendor/model")
+    if "/" in s.llm_model_vision:
+        errors.append("LLM_GATEWAY=openrouter requires LLM_MODEL_VISION as an OpenAI model id")
+    return errors
+
+
+def _is_vendor_model_id(model: str) -> bool:
+    vendor, slash, name = model.partition("/")
+    return bool(slash and vendor.strip() and name.strip())
+
+
+def gateway_openai_model(model: str) -> str:
+    """The OpenRouter id of an OpenAI model (`openai/<model>`): the vision and embedding models
+    are OpenAI's, named by their OpenAI ids in Settings."""
+    return f"openai/{model}"
 
 
 def _spapi_errors(s: Settings) -> list[str]:

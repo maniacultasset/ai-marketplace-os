@@ -18,7 +18,7 @@ change.
 | 0009 | Environments, release flow, zero-traffic deploy with auto-rollback | ⚑ proposed, team decides (user's chat decision) | 2026-09-27 |
 | 0010 | Automated test strategy: 4 gates, quality bars, toolset | ⚑ proposed, team decides (user's chat decision); **departs from site UAT gate (T8)** | 2026-09-27 |
 | 0011 | Team loop: agents, conductor, approvals | ⚑ proposed, team decides (user's chat decision) | 2026-09-27 |
-| 0012 | This repository holds the backend only; contracts published; AI pipeline pinned from its own repo | accepted (user in chat); provisional against the site (T103); pipeline home pending AI team (T104); Amendment 1 (npm name `@maniacultasset/schemas`, FE alias `@mkos/schemas`) proposed 2026-10-05 | 2026-09-29 |
+| 0012 | This repository holds the backend only; contracts published; AI pipeline pinned from its own repo | accepted (user in chat); provisional against the site (T103); pipeline home answered by ADR-0024 (T104); Amendment 1 (npm name `@maniacultasset/schemas`, FE alias `@mkos/schemas`) proposed 2026-10-05 | 2026-09-29 |
 | 0013 | Toolchain, boot settings and CI for the backend-only repo on GitHub Free (S1) | accepted (user in chat) | 2026-09-29 |
 | 0014 | Tenant offboarding, the two-phase purge and user erasure | ⚑ proposed (S10a, revision 0004_integrity) | 2026-10-06 |
 | 0015 | Listing lifecycle and the publish ledger | ⚑ proposed (S10a, revision 0004_integrity) | 2026-10-06 |
@@ -30,3 +30,4 @@ change.
 | 0021 | MFA secrets under their own KMS key; password and lockout policy for Amazon DPP | ⚑ proposed (DPP-1; amends the CANON.md one-key line and ADR-0018 for `mfa-secret-key`) | 2026-10-27 |
 | 0022 | API edge: Cloud Armor WAF, locked ingress, candidate smoke through the load balancer (amends ADR-0001 deploy step) | ⚑ proposed (DPP-2; 0020 reserved by google-signin, 0021 by DPP-1) | 2026-10-27 |
 | 0023 | Trusted browsers and a narrower step-up (amends ADR-0021 §5 and §6, ADR-0020 §5) | ⚑ proposed (trusted devices; user decisions in chat 2026-10-30) | 2026-10-30 |
+| 0024 | The AI team's pipeline enters the deploy image only, by commit sha and a read-only deploy key; model gateway `LLM_GATEWAY` (`direct` or `openrouter`) (amends ADR-0012 §3, ADR-0013 §5; closes T104) | ⚑ proposed (owner decisions in chat 2026-11-02) | 2026-11-02 |

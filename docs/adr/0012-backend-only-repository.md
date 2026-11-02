@@ -3,6 +3,8 @@
 - **Status:** accepted (user, in chat, 2026-09-29). **Provisional against the site:** the client spec
   scaffolds one monorepo with `apps/web` (L4881, L6964), so the teams confirm it in TEAM-QUESTIONS T103.
   Where the AI pipeline lives (item 3) is a recommended default until the AI team confirms (T104).
+  **Item 3 amended by ADR-0024 (2026-11-02):** the pipeline is installed in the deploy image only,
+  pinned by commit sha with a read-only deploy key; `uv.lock` and CI keep the stub.
 - **Date:** 2026-09-29
 - **Deciders:** the user (Tech Lead)
 
@@ -27,7 +29,9 @@
      (`packages/schemas` subdirectory), pinned in their lockfile.
 3. **AI pipeline (recommended default, T104):**
    - The AI team's `mkos-pipeline` lives in their own repository.
-   - The backend worker installs it at a pinned git tag, recorded in `uv.lock`.
+   - The backend worker installs it at a pinned git tag, recorded in `uv.lock`. *(Superseded by
+     ADR-0024: the deploy build installs it by full commit sha with `--no-deps`; `uv.lock` keeps
+     the stub.)*
    - The seam is unchanged: `run_listing_pipeline(ctx, deps) -> GenerationResult` with five ports; the
      AI code opens no database session (invariants 1, 6 and 7).
    - This repository keeps a **stub pipeline** that implements the seam deterministically, so our tests
@@ -46,7 +50,8 @@
 - Integration is proven by the stub in our CI, and by a contract test the AI team runs against a
   tagged `mkos-schemas`.
 - CI needs read access to the AI repository to install the pinned pipeline, through a read-only
-  deploy key or a GitHub App token.
+  deploy key or a GitHub App token. *(Narrowed by ADR-0013 §5 and ADR-0024: CI never reads it;
+  only the deploy build does, with a read-only deploy key in Secret Manager.)*
 - These Canon rows are amended: CANON.md:41 (TypeScript package consumption), :46 (AI package home and
   workspace membership), :84 (repository layout) and the 12-check list (Addendum §12).
 

@@ -19,12 +19,12 @@ passed on a command line or written to a committed file.
 | Subcommand | What it does |
 |---|---|
 | `preflight` | Checks `gcloud`, the account, that the config project is the env's `PROJECT`, billing, and the API list. |
-| `setup` | One time, rerunnable. Enables the APIs and sets log retention, and creates the 400-day `security-logs` bucket with the `app-security` sink (the api's `auth.*` events and its 401/403/429 requests, never an OAuth callback URL; Amazon DPP 2.6.1). Creates the Artifact Registry repo (immutable tags, cleanup policy), the service accounts, the KMS key ring `marketplace-os` with the keys `oauth-token-key` and `mfa-secret-key` (90-day rotation each; only the api service account may use `mfa-secret-key`, ADR-0021), the buckets (uniform access, public access prevention, CSV lifecycle, CORS for the dashboard origins) and an HMAC key into `S3_ACCESS_KEY`/`S3_SECRET_KEY`. Enables Cloud Scheduler and creates the maintenance identities `aimos-maint` (Cloud SQL client, `DATABASE_URL`, `ALEMBIC_DATABASE_URL` and the HMAC pair) and `aimos-sched` (no project role). Creates Cloud SQL and the database (backups in `SQL_BACKUP_LOCATION`, default the region; on a live instance a different value moves new backups there), the generated secrets and the per-secret IAM. Stops if `SENTRY_DSN` (or, with the worker on, `OPENAI_API_KEY`) has no value, and prints the command to add it. |
-| `build` | Cloud Build of `apps/api/Dockerfile` from a `git archive` of a clean `HEAD`, pushed as `.../aimos/backend:sha-<12>`. Refuses uncommitted changes. Skips a tag that already exists. |
+| `setup` | One time, rerunnable. Enables the APIs and sets log retention, and creates the 400-day `security-logs` bucket with the `app-security` sink (the api's `auth.*` events and its 401/403/429 requests, never an OAuth callback URL; Amazon DPP 2.6.1). Creates the Artifact Registry repo (immutable tags, cleanup policy), the service accounts, the KMS key ring `marketplace-os` with the keys `oauth-token-key` and `mfa-secret-key` (90-day rotation each; only the api service account may use `mfa-secret-key`, ADR-0021), the buckets (uniform access, public access prevention, CSV lifecycle, CORS for the dashboard origins) and an HMAC key into `S3_ACCESS_KEY`/`S3_SECRET_KEY`. Enables Cloud Scheduler and creates the maintenance identities `aimos-maint` (Cloud SQL client, `DATABASE_URL`, `ALEMBIC_DATABASE_URL` and the HMAC pair) and `aimos-sched` (no project role). Creates Cloud SQL and the database (backups in `SQL_BACKUP_LOCATION`, default the region; on a live instance a different value moves new backups there), the generated secrets and the per-secret IAM. Stops if `SENTRY_DSN` (or, with the worker on, its model key: `OPENROUTER_API_KEY` under `LLM_GATEWAY=openrouter`; `OPENAI_API_KEY`, plus `DEEPSEEK_API_KEY` under `LLM_PROVIDER=deepseek`, under `direct`) has no value, and prints the command to add it. With `PIPELINE_REF` set (ADR-0024) it also creates `MKOS_PIPELINE_DEPLOY_KEY`, readable by `aimos-build` alone, and stops until it has a value. |
+| `build` | Cloud Build of `apps/api/Dockerfile` from a `git archive` of a clean `HEAD`, pushed as `.../aimos/backend:sha-<12>`. Refuses uncommitted changes. Skips a tag that already exists. `PIPELINE_REF` empty: `cloudbuild.yaml`, the in-repo stub image. `PIPELINE_REF` set: `cloudbuild-pipeline.yaml`, the AI team's `mkos-pipeline` at that commit (see "The real pipeline" below); refuses first when `MKOS_PIPELINE_DEPLOY_KEY` has no value. |
 | `db-init` | One time, rerunnable. A one-off job of the same image (`APP_ROLE=shell`) runs `scripts/db/run_bootstrap.py` as `postgres` over the `/cloudsql` socket. It runs `0000_bootstrap.sql`, then sets the `app_rw`, `app_ro` and `migrator` passwords from SCRAM verifiers, under the `0000_role_passwords.sql` safety checks. |
 | `migrate` | The migrate job (`APP_ROLE=migrate`, all as `migrator`): `alembic upgrade head`, the dictionary sync, `rules load` (the platform rules), then `templates load` (the Amazon and Flipkart mappings), each from the files in the image and each idempotent, so a rerun writes nothing. Rules load before templates, so a failed run never leaves a category generatable without its rules. The error map is not loaded: it stays empty until observed rows exist. A rule taken out of `rules.seed.json` stays stored and enabled: to retire one, keep it in the file with `"enabled": false`. Once the rules are loaded, validation, review, approval and the image gate evaluate them for every tenant, so results change for existing listings. It runs with `max-retries 0`, waits, and fails when the run fails. |
 | `deploy` | The api service: public, the app does its own auth, Cloud SQL attached, secrets as env vars. A new revision gets 0% traffic until its tagged URL passes `smoke`, then takes all traffic; then every `sha-*` revision tag is removed, its own included, because a tag URL reaches that revision directly and would bypass settings a later revision changed (MFA, lockout). Roll back by revision name (`update-traffic --to-revisions`). On the first deploy, `JWT_ISSUER` and the OAuth redirect URIs are re-pointed to the URL the service got (a pinned `JWT_ISSUER` in the env file stays as set). Ingress comes from `INGRESS` (`all`, or `internal-and-cloud-load-balancing` once the edge is locked; the locked value needs `API_PUBLIC_URL=https://$EDGE_DOMAIN`). With ingress locked, the new revision is tagged `candidate` and smoked through the load balancer with the header `x-aimos-candidate` set to the random value `edge setup` wrote into the URL map (never printed); the tag is removed on every exit, and a failed smoke keeps traffic. A KMS guard (after the live-state guard below) checks that `oauth-token-key` and `mfa-secret-key` exist and stops with "run setup first" when one is missing (a release that added a key must run `setup` before `deploy`). A live-state guard first reads the running service (any describe error but NOT_FOUND stops the deploy) and refuses to unlock a locked service (`DEPLOY_ALLOW_UNLOCK=1` overrides), to lock an open one, which is `edge lock-ingress`'s job (`DEPLOY_ALLOW_LOCK=1` overrides), or to change its `JWT_ISSUER`, which signs every user out (`DEPLOY_ALLOW_ISSUER_CHANGE=1` overrides). Then the worker pool (`WORKER_ENABLED=true` only), then the daily maintenance job `aimos-maintenance` on the same image (`python -m app.workers.maintenance`: OAuth state and idempotency-key prunes, `retention_daily`, the marketplace account purge; `aimos-sched` may run it via `roles/run.invoker` on the job) and its Cloud Scheduler trigger `aimos-maintenance-daily` (`MAINT_SCHEDULE`, `MAINT_TIME_ZONE`; created once, updated after), then `smoke`. |
-| `release` | The KMS guard and the setup guard, then `build`, `migrate`, `deploy`: the normal update. The setup guard stops with "run setup first" before any build when `aimos-maint` or `aimos-sched` is missing or `cloudscheduler.googleapis.com` is off (a project whose `setup` predates the maintenance job); `deploy` runs both guards too. After pulling a release that adds a key, an account or an API, run `setup` before `release`. |
+| `release` | The KMS guard and the setup guard, then `build`, `migrate`, `deploy`: the normal update. The setup guard stops with "run setup first" before any build when `aimos-maint` or `aimos-sched` is missing or `cloudscheduler.googleapis.com` is off (a project whose `setup` predates the maintenance job); `deploy` runs both guards too. The model key guard (ADR-0024) stops the same way when the worker is on and one of its model keys (the gateway's) has no value. After pulling a release that adds a key, an account or an API, run `setup` before `release`. |
 | `smoke` | `GET /healthz` must answer 200 (on a `*.run.app` URL, whose front end answers `/healthz` itself with a 404, and on the edge domain, whose Cloud Armor path rule denies it, `GET /api/v1/auth/me` must answer 401 instead); `GET /readyz` must answer 200 with `"postgres":"ok"`. Retried for cold starts. |
 | `tenant` | `tenant create --name N --slug S --owner-email E --staff-email F [--trial-days D]`, `tenant add-member --slug S --email E --role owner\|operator\|reviewer\|admin --staff-email F`, `tenant set-password --email E --staff-email F`, `tenant make-admin --email E --staff-email F`, and (DPP-1, after the identity check in `MFA-STAFF.md`) `tenant unlock --email E --staff-email F` (no password) and `tenant reset-mfa --email E --staff-email F`. Runs the staff CLI (`python -m app.cli`) in a one-off job. A new user's password is generated into `INITIAL_PASSWORD_<email>_<hash>` (8 groups of an upper-case letter, a lower-case letter and a digit, so it meets the DPP rules; must-change at the next sign-in), and the job reads it on stdin from a mounted file. The script prints the `gcloud secrets versions access` command that shows it, never the value. A rerun of `create` with a taken slug fails and changes nothing. |
 | `status` | The service URL, latest revisions, worker pool, recent job runs and secret names (never values). |
@@ -65,6 +65,21 @@ After that, every update is `deploy.sh staging release`.
   file and `GOOGLE_OAUTH_CLIENT_SECRET` typed at the hidden prompt. The secret is bound to the api
   only while the switch is on, and `deploy` and `release` refuse to start when it has no value
   (`google guard`). Switching, verification and rollback: `GOOGLE-SIGNIN.md`.
+- The model gateway in the env file (ADR-0024; the AI team picks the model): `LLM_GATEWAY`,
+  `LLM_PROVIDER`, `LLM_MODEL_DEFAULT` and the daily caps `LLM_DAILY_BUDGET_USD` and
+  `LLM_TENANT_DAILY_BUDGET_USD`.
+  - `LLM_GATEWAY=openrouter` (prod): every worker model call (generation, vision, embedding)
+    goes to OpenRouter with one key, `OPENROUTER_API_KEY`, typed at the hidden prompt. The URL is
+    fixed in code; there is no URL to set. `LLM_MODEL_DEFAULT` must be an OpenRouter model id
+    (`vendor/model`, such as `deepseek/deepseek-chat`): `deploy.sh` refuses a blank or bare one
+    before any gcloud call, and the worker refuses it at boot. No OpenAI or DeepSeek key is needed.
+  - `LLM_GATEWAY=direct` (staging, and the default): OpenAI's and DeepSeek's own APIs with
+    `OPENAI_API_KEY` (and `DEEPSEEK_API_KEY` under `LLM_PROVIDER=deepseek`), as before.
+  Only the worker gets the gateway, provider, model and key; the caps go to the api too. After
+  switching the gateway with the worker on, rerun `setup` and enter the new key; until then
+  `deploy` and `release` refuse (`model key guard`). Each `setup` also removes the worker's
+  access to the model keys the gateway no longer uses (before ADR-0024 every worker could read
+  `OPENAI_API_KEY`, prod included); the secrets and their values stay.
 - Optional: `API_PUBLIC_URL`, once a domain fronts the API. `JWT_ISSUER` and the OAuth redirect URIs
   follow it, and the Amazon/Flipkart applications must list the same callback strings.
 - Everything else is generated: `JWT_SECRET`, `ADMIN_SESSION_SECRET`, the `postgres`, `app_rw`,
@@ -77,11 +92,40 @@ After that, every update is `deploy.sh staging release`.
 | Account | Project roles | Resource roles |
 |---|---|---|
 | `aimos-api` | `cloudsql.client` | accessor on its 6 secrets (7 with Google sign-in on: `GOOGLE_OAUTH_CLIENT_SECRET`); `cryptoKeyEncrypter` (encrypt only, ADR-0018) on the one key |
-| `aimos-worker` | `cloudsql.client` | accessor on its 5 secrets (adds `OPENAI_API_KEY`); `cryptoKeyEncrypterDecrypter` on the key |
+| `aimos-worker` | `cloudsql.client` | accessor on its 5 secrets (the 4 shared ones plus its model key: `OPENROUTER_API_KEY` under `LLM_GATEWAY=openrouter`; `OPENAI_API_KEY` under `direct`, 6 with `DEEPSEEK_API_KEY` under `LLM_PROVIDER=deepseek`), once `setup` has run on this release: it removes the worker's access to the other model keys; `cryptoKeyEncrypterDecrypter` on the key |
 | `aimos-migrate` | `cloudsql.client` | accessor on `ALEMBIC_DATABASE_URL` |
 | `aimos-ops` | `cloudsql.client` | accessor on the 4 DB passwords, `ALEMBIC_DATABASE_URL`, each `INITIAL_PASSWORD_*` |
 | `aimos-storage` | none | `storage.objectAdmin` on the 3 app buckets: the identity behind the HMAC key |
-| `aimos-build` | `logging.logWriter` | `artifactregistry.writer` on the repo; `objectViewer` on the build-source bucket |
+| `aimos-build` | `logging.logWriter` | `artifactregistry.writer` on the repo; `objectViewer` on the build-source bucket; with `PIPELINE_REF` set, accessor on `MKOS_PIPELINE_DEPLOY_KEY` (no other account reads it) |
+
+## The real pipeline (ADR-0024)
+
+CI, local runs and every image built with `PIPELINE_REF` empty carry the in-repo
+`mkos-pipeline-stub`. A production worker refuses the stub at boot, so prod runs no worker until
+the image carries the AI team's `mkos-pipeline`. `deploy.sh` refuses `WORKER_ENABLED=true` in
+production while `PIPELINE_REF` is empty.
+
+1. The AI team names the commit to ship. Put its full 40-character sha in `PIPELINE_REF` in the
+   env file (a tag is not accepted; note it in the commit message) and commit.
+2. `scripts/deploy/gcp/deploy.sh prod setup`. It creates `MKOS_PIPELINE_DEPLOY_KEY` with no value,
+   grants `secretAccessor` on it to `aimos-build` only, and stops with the command to run in your
+   own terminal: it makes an ed25519 key in a temp dir, adds the public half to
+   `maniacultasset/mkos-pipeline` as a read-only deploy key (`gh repo deploy-key add`, no
+   `--allow-write`), stores the private half with `gcloud secrets versions add ... --data-file=`,
+   and deletes both files. Rerun `setup`.
+3. `build` (or `release`). Cloud Build runs `cloudbuild-pipeline.yaml`: the key goes from Secret
+   Manager to a BuildKit secret mounted for one `RUN`; the Dockerfile fetches exactly that commit
+   over SSH with GitHub's ed25519 host key pinned, uninstalls the stub and installs
+   `mkos-pipeline` with `--no-deps` (it keeps the image's `mkos-schemas`, `httpx` and `pydantic`).
+   The build fails unless `mkos_pipeline` imports from `mkos-pipeline` with no stub installed. The
+   image carries the label `mkos.pipeline.revision`.
+4. Only then set `WORKER_ENABLED=true` in `prod.env`, commit, run `setup` and add the one key
+   it asks for (`OPENROUTER_API_KEY`, since `prod.env` says `LLM_GATEWAY=openrouter`), then
+   `release`.
+
+Rotate the deploy key by adding a new deploy key and secret version, then deleting the old deploy
+key on GitHub. Revoke it by deleting the deploy key on GitHub; builds with `PIPELINE_REF` set fail
+until a new one is added, and the stub build never needs it.
 
 ## Roll back a bad revision
 
@@ -133,7 +177,8 @@ deletion protection, and its backups are kept after deletion (`--retain-backups-
 
 - **Prod generation waits for the AI team's package.** `APP_ENV=production` with
   `APP_ROLE=worker` refuses `mkos-pipeline-stub` at boot (`app/core/config.py`), so `prod.env` ships
-  `WORKER_ENABLED=false`. Turn it on once the image carries the real `mkos-pipeline`.
+  `WORKER_ENABLED=false` and an empty `PIPELINE_REF`. Turn the worker on only after a build with
+  `PIPELINE_REF` (see "The real pipeline").
 - **Marketplace tokens need the Cloud KMS wrapper.** Outside local, `app/core/crypto.py` raises
   `NotImplementedError` until the wrapper lands. The key and its IAM are ready, but connecting a
   store fails in staging and prod until then.

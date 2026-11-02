@@ -34,7 +34,91 @@ def _instructions(dockerfile: str) -> list[str]:
 def test_base_image_python_313_slim_trixie_pinned(dockerfile: str) -> None:
     froms = [i for i in _instructions(dockerfile) if i.startswith("FROM ")]
     assert re.fullmatch(rf"FROM python:3\.13-slim-trixie{DIGEST} AS base", froms[0])
-    assert froms[1:] == ["FROM base AS builder", "FROM base AS runtime"]
+    assert froms[1:] == [
+        "FROM base AS builder",
+        "FROM base AS pipeline-src",
+        "FROM builder AS builder-pipeline",
+        "FROM builder${PIPELINE_REF:+-pipeline} AS venv",
+        "FROM base AS runtime",
+    ]
+
+
+# ---- ADR-0024: the real pipeline behind PIPELINE_REF ----
+
+# GitHub's published ed25519 host key fingerprint (`gh api meta`, ssh_key_fingerprints).
+GITHUB_ED25519_SHA256 = "+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU"
+
+
+def _stage(dockerfile: str, name: str) -> list[str]:
+    instructions = _instructions(dockerfile)
+    start = next(i for i, line in enumerate(instructions) if line.endswith(f" AS {name}"))
+    end = next(
+        (i for i in range(start + 1, len(instructions)) if instructions[i].startswith("FROM ")),
+        len(instructions),
+    )
+    return instructions[start:end]
+
+
+def test_pipeline_ref_defaults_empty_and_selects_the_stub(dockerfile: str) -> None:
+    """Empty PIPELINE_REF (CI, local, every build so far) builds the stub image: the runtime
+    copies `venv`, which is `builder` unless the arg is set."""
+    instructions = _instructions(dockerfile)
+    assert instructions[0] == 'ARG PIPELINE_REF=""'
+    runtime = _stage(dockerfile, "runtime")
+    copies = [i for i in runtime if i.startswith("COPY --from=") and "astral-sh" not in i]
+    assert copies[:2] == ["COPY --from=venv /opt/venv /opt/venv", "COPY --from=venv /src /src"]
+    assert not [i for i in runtime if "PIPELINE_REF" in i or "pipeline" in i.lower()]
+
+
+def test_pipeline_source_pinned_by_sha_over_a_pinned_host_key(dockerfile: str) -> None:
+    import base64
+    import hashlib
+
+    stage = " ".join(_stage(dockerfile, "pipeline-src"))
+    hosts = re.findall(r"'github\.com ssh-ed25519 ([A-Za-z0-9+/=]+)'", stage)
+    assert len(hosts) == 1
+    digest = hashlib.sha256(base64.b64decode(hosts[0])).digest()
+    assert base64.b64encode(digest).decode().rstrip("=") == GITHUB_ED25519_SHA256
+    assert "StrictHostKeyChecking=yes" in stage and "StrictHostKeyChecking=no" not in stage
+    assert "HostKeyAlgorithms=ssh-ed25519" in stage and "BatchMode=yes" in stage
+    assert "grep -Eqx '[0-9a-f]{40}'" in stage
+    assert 'test "$(git -C /pipeline rev-parse HEAD)" = "$PIPELINE_REF"' in stage
+    assert "git@github.com:maniacultasset/mkos-pipeline.git" in stage
+    assert "rm -rf /pipeline/.git" in stage
+
+
+def test_pipeline_key_is_a_secret_mount_only(dockerfile: str) -> None:
+    """The deploy key is a BuildKit secret for one RUN: never a build arg, ENV, COPY or file."""
+    mounts = re.findall(r"--mount=type=secret,[^ ]+", dockerfile)
+    assert mounts == ["--mount=type=secret,id=mkos_pipeline_key,required=true"]
+    for instruction in _instructions(dockerfile):
+        if instruction.startswith(("ARG ", "ENV ", "COPY ", "LABEL ")):
+            assert "key" not in instruction.lower() or "astral-sh" in instruction, instruction
+    assert "/run/secrets/mkos_pipeline_key" in dockerfile
+    assert dockerfile.count("/run/secrets/") == 1
+
+
+def test_builder_pipeline_swaps_the_stub_with_no_deps(dockerfile: str) -> None:
+    stage = _stage(dockerfile, "builder-pipeline")
+    assert len(stage) == 2
+    run = stage[1]
+    commands = [c.strip() for c in run.split("&&")]
+    assert commands[0].endswith("uv pip uninstall mkos-pipeline-stub")
+    assert "--mount=type=bind,from=pipeline-src,source=/pipeline" in commands[0]
+    assert commands[1].split() == [
+        "uv",
+        "pip",
+        "install",
+        "--no-deps",
+        "--no-cache",
+        "--build-constraints",
+        "/mnt/build-constraints.txt",
+        "/mnt/mkos-pipeline",
+    ]
+    assert commands[2] == "rm -rf packages/pipeline-stub"
+    check = commands[3]
+    assert "from mkos_pipeline import run_listing_pipeline" in check
+    assert "'mkos-pipeline' in names and 'mkos-pipeline-stub' not in names" in check
 
 
 def test_uv_image_0_12_19(dockerfile: str) -> None:

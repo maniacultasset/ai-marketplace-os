@@ -1,0 +1,36 @@
+# The API image with the AI team's mkos-pipeline in place of the stub (`deploy.sh <env> build`
+# when the env file sets PIPELINE_REF; ADR-0024). As cloudbuild.yaml, plus the read-only deploy
+# key from Secret Manager (readable by the build account alone), handed to BuildKit as the secret
+# `mkos_pipeline_key`: the step writes it to a 0600 file in the step container's own /tmp (never
+# /workspace), docker mounts it for one RUN, and it never reaches a layer, a label or the log.
+# _IMAGE, _GIT_SHA and _PIPELINE_REF (a full 40-character commit sha) come from deploy.sh;
+# `$$` is a literal `$` for bash.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    env: ["DOCKER_BUILDKIT=1"]
+    secretEnv: ["MKOS_PIPELINE_DEPLOY_KEY"]
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        key="$$(mktemp)"
+        trap 'rm -f "$$key"' EXIT
+        printf '%s\n' "$$MKOS_PIPELINE_DEPLOY_KEY" >"$$key"
+        docker build \
+          --file=apps/api/Dockerfile \
+          --tag=${_IMAGE} \
+          --label=org.opencontainers.image.revision=${_GIT_SHA} \
+          --label=mkos.pipeline.revision=${_PIPELINE_REF} \
+          --build-arg=PIPELINE_REF=${_PIPELINE_REF} \
+          --secret=id=mkos_pipeline_key,src="$$key" \
+          .
+images: ["${_IMAGE}"]
+availableSecrets:
+  secretManager:
+    - versionName: projects/${PROJECT_ID}/secrets/MKOS_PIPELINE_DEPLOY_KEY/versions/latest
+      env: MKOS_PIPELINE_DEPLOY_KEY
+options:
+  # The build service account writes to Cloud Logging only (no logs bucket to grant).
+  logging: CLOUD_LOGGING_ONLY
+timeout: 1800s

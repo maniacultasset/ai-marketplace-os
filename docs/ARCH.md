@@ -89,7 +89,8 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
   the stub is the workspace member `packages/pipeline-stub` (distribution `mkos-pipeline-stub`,
   import `mkos_pipeline`), and a production worker refuses to boot with it installed. Import
   contracts keep the pipeline free of `app`, web, DB and queue packages, and only `app.workers` may
-  import it. **Open: T104** (pipeline home), **T1** (Python 3.13).
+  import it. The deploy image swaps the stub for the AI team's `mkos-pipeline` at a pinned commit
+  when `PIPELINE_REF` is set (ADR-0024, answers T104). **Open:** **T1** (Python 3.13).
 
 Source: CANON.md "The AI seam"; CANON-ADDENDUM.md §21; ADR-0012 §Decision 3; ADR-0013 §Decision 5;
 EXECUTION-PLAN.md §6.2.
@@ -204,7 +205,8 @@ infra/ (OpenTofu)                             S4 staging, S25 prod
 ```
 
 - No `apps/web`, `packages/pipeline` or `app/agents`; the stub lives in `packages/pipeline-stub`
-  (S14b default for T104). **Open: T104** (where the stub lives), **T103** (the site's single monorepo).
+  (S14b default for T104; ADR-0024 keeps it for CI and local, the deploy image may carry the real
+  package). **Open:** **T103** (the site's single monorepo).
 
 Source: CANON.md:84 and "The AI seam"; CANON-ADDENDUM.md §5-§6, §21; DATABASE.md §8.3, `audit_log`;
 BACKEND-ARCHITECTURE.md §4.3; ADR-0012 §Decision 1; EXECUTION-PLAN.md
@@ -246,8 +248,8 @@ Source: pyproject.toml:53-64; CANON.md:126; ADR-0005 §Decision 1, 2; ADR-0013 �
 
 ## 9. Open items that change this picture
 
-- **TEAM-QUESTIONS:** T1 (Python 3.13 on the AI side), T3 (Postgres queue), T103 (backend-only repo),
-  T104 (pipeline home).
+- **TEAM-QUESTIONS:** T1 (Python 3.13 on the AI side), T3 (Postgres queue), T103 (backend-only repo).
+  T104 (pipeline home) is answered by ADR-0024.
 - **STATE open decisions:** 5 (apex domain, client items), 9 (AI team's stack), 10 (`DATABASE.md` rev 3
   as the schema source for S5-S10).
 
