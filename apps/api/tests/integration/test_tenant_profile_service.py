@@ -114,7 +114,7 @@ async def test_update_coalesce_race_claim_before_commit(
     await _update(products_world, {"guidelines": ["Old."]})
     ((job_id, _),) = _jobs(auth_db)
     url = os.environ["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://", 1)
-    order: list[str] = []
+    seen: list[Any] = []
 
     def claim() -> None:
         with psycopg.connect(url, autocommit=True) as conn:
@@ -123,13 +123,14 @@ async def test_update_coalesce_race_claim_before_commit(
                 "UPDATE job_runs SET status = 'running', started_at = now(), lease_expires_at = now() + interval '1 hour' WHERE id = %s AND status = 'queued'",
                 [job_id],
             )
-            order.append("claimed")
+            # What the claim sees once its UPDATE returns: the PATCH's commit, if it waited.
+            row = conn.execute("SELECT guidelines FROM tenants WHERE id = %s", [acme]).fetchone()
+            seen.append(row[0] if row else None)
 
     started = asyncio.Event()
 
     async def slow_patch() -> None:
         await _update(products_world, {"guidelines": ["New."]})
-        order.append("committed")
 
     from app.repositories.jobs import JobRunRepository
 
@@ -147,7 +148,7 @@ async def test_update_coalesce_race_claim_before_commit(
     claimer = asyncio.create_task(asyncio.to_thread(claim))
     await patch
     await claimer
-    assert order == ["committed", "claimed"]
+    assert seen == [["New."]]
     assert (
         count(
             auth_db, "SELECT count(*) FROM job_runs WHERE payload_json->>'source' = 'brand_profile'"
