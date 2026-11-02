@@ -213,6 +213,26 @@ async def test_openrouter_embedder_request_shape() -> None:
     assert all(len(v) == DIMS for v in batch.vectors)
 
 
+def test_default_http_client_ignores_proxy_env_and_redirects(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without an injected client the key's client never reads HTTPS_PROXY/ALL_PROXY or
+    SSL_CERT_FILE from the environment and never follows a redirect, in either gateway."""
+    from app.core.config import Settings
+
+    monkeypatch.setenv("HTTPS_PROXY", "http://proxy.example.invalid:3128")
+    monkeypatch.setenv("ALL_PROXY", "http://proxy.example.invalid:3128")
+    for cfg in (
+        _settings(),
+        Settings(
+            _env_file=None, app_env="local", llm_gateway="openrouter", openrouter_api_key=ROUTER_KEY
+        ),
+    ):
+        client = OpenAIEmbedder(cfg)._client._client
+        assert client.trust_env is False and client.follow_redirects is False
+        assert client.timeout.read == float(cfg.llm_timeout_seconds)
+
+
 async def test_openrouter_embedder_base_url_env_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_BASE_URL", "https://evil.example.invalid/v1")
     script = Script(lambda r: httpx2.Response(200, json=_ok(["x"])))
@@ -245,8 +265,16 @@ async def test_openrouter_embedding_cost_is_recorded(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(embeddings, "record_agent_run", capture)
 
     def reply(request: httpx2.Request) -> httpx2.Response:
+        # OpenRouter's real reply shape: its own id and provider, and cost fields in `usage`
         body = _ok(json.loads(request.content)["input"])
-        body["usage"] = {"prompt_tokens": 1_000_000, "total_tokens": 1_000_000}
+        body |= {"id": "gen-emb-1", "provider": "OpenAI"}
+        body["usage"] = {
+            "prompt_tokens": 1_000_000,
+            "total_tokens": 1_000_000,
+            "cost": 0.02,
+            "is_byok": False,
+            "cost_details": {"upstream_inference_cost": None},
+        }
         return httpx2.Response(200, json=body)
 
     embedder = _router_embedder(Script(reply))
@@ -256,6 +284,33 @@ async def test_openrouter_embedding_cost_is_recorded(monkeypatch: pytest.MonkeyP
     (row,) = rows
     assert row.status == "completed" and row.model_used == "text-embedding-3-small"
     assert row.tokens.input == 1_000_000 and row.cost_usd == Decimal("0.020000")
+
+
+@pytest.mark.parametrize(
+    ("error", "retryable", "status"),
+    [
+        ({"code": 502, "message": "upstream down"}, True, 502),
+        ({"code": 429, "message": "rate limited"}, True, 429),
+        ({"message": "no code"}, True, None),
+        ({"code": "server_error", "message": "string code"}, True, None),
+        ({"code": 400, "message": "bad input"}, False, 400),
+    ],
+)
+async def test_openrouter_error_body_on_200(
+    error: dict[str, Any], retryable: bool, status: int | None
+) -> None:
+    """OpenRouter answers an upstream failure with a 200 and an `error` object: retried like the
+    same status on the wire (a 400 is not), never as an unusable shape, and the provider's text
+    stays out of the error."""
+    body = {"error": {**error, "message": f"{error['message']} {ROUTER_KEY}"}}
+    script = Script(lambda _: httpx2.Response(200, json=body))
+    with pytest.raises(EmbeddingFailed) as info:
+        await _router_embedder(script).embed(["a"])
+    assert len(script.requests) == 1
+    assert info.value.code is ErrorCode.MODEL_UNAVAILABLE
+    assert (info.value.retryable, info.value.status) == (retryable, status)
+    assert "unexpected embedding shape" not in str(info.value)
+    assert ROUTER_KEY not in str(info.value) and error["message"] not in str(info.value)
 
 
 @pytest.mark.parametrize("app_env", ["local", "staging"])

@@ -16,6 +16,8 @@ and metering, without renaming anything here.
   message is the class name and HTTP status only: never the key, the input or the provider text.
   A 200 reply of an unusable shape (wrong types, non-finite numbers, missing `usage`, indexes not
   exactly 0..n-1) is `MODEL_UNAVAILABLE` not retryable, so it is still metered (audit JOBS-5).
+  A 200 whose body is an `error` object (OpenRouter's upstream failure) is `MODEL_UNAVAILABLE`,
+  retryable unless its `code` is a 4xx other than 429.
 - `get_embedder(settings)`: a usable gateway key (`OPENAI_API_KEY`, or `OPENROUTER_API_KEY` under
   `LLM_GATEWAY=openrouter`) → `OpenAIEmbedder`; else `APP_ENV=local` →
   `HashEmbedder(settings.embedding_model)`; else `EmbedderUnavailable` (`MODEL_UNAVAILABLE`).
@@ -182,13 +184,19 @@ class OpenAIEmbedder:
         if settings.llm_gateway == "openrouter":
             base_url, self._request_model = OPENROUTER_BASE_URL, gateway_openai_model(self.model)
         # base_url is one of two pinned constants so an OPENAI_BASE_URL in the environment can
-        # never redirect brand text; max_retries=0 so the SDK never hides a call (CP8).
+        # never redirect brand text; max_retries=0 so the SDK never hides a call (CP8). The SDK's
+        # own client reads HTTPS_PROXY/SSL_CERT_FILE and follows redirects, so the key's client
+        # pins both off, like every other outbound client here.
+        timeout = float(settings.llm_timeout_seconds)
         self._client = AsyncOpenAI(
             api_key=key,
             base_url=base_url,
-            timeout=float(settings.llm_timeout_seconds),
+            timeout=timeout,
             max_retries=0,
-            http_client=http_client,
+            http_client=http_client
+            or openai.DefaultAsyncHttpxClient(
+                timeout=timeout, follow_redirects=False, trust_env=False
+            ),
         )
 
     def __repr__(self) -> str:
@@ -221,6 +229,9 @@ class OpenAIEmbedder:
             ) from None
         if not isinstance(response, CreateEmbeddingResponse):  # a 200 with a non-JSON body
             raise _unexpected_shape()
+        error = getattr(response, "error", None)
+        if isinstance(error, dict):
+            raise _error_body(error)
         return EmbeddingBatch(
             vectors=_vectors(response, len(texts)),
             input_tokens=_prompt_tokens(response),
@@ -231,6 +242,20 @@ class OpenAIEmbedder:
 def _unexpected_shape() -> EmbeddingFailed:
     return EmbeddingFailed(
         ErrorCode.MODEL_UNAVAILABLE, retryable=False, cause="unexpected embedding shape"
+    )
+
+
+def _error_body(error: dict[str, Any]) -> EmbeddingFailed:
+    """A 200 whose body is `{"error": {...}}`: OpenRouter's answer when the upstream provider
+    failed. Its `code` is an HTTP status: 429 and 5xx (or none) are retried like the same status
+    on the wire, other codes are not. The cause never carries the provider's message."""
+    code = error.get("code")
+    status = code if type(code) is int and 100 <= code <= 599 else None
+    return EmbeddingFailed(
+        ErrorCode.MODEL_UNAVAILABLE,
+        retryable=status is None or status == 429 or status >= 500,
+        cause="error body",
+        status=status,
     )
 
 
