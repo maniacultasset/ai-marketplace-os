@@ -16,8 +16,13 @@ and metering, without renaming anything here.
   message is the class name and HTTP status only: never the key, the input or the provider text.
   A 200 reply of an unusable shape (wrong types, non-finite numbers, missing `usage`, indexes not
   exactly 0..n-1) is `MODEL_UNAVAILABLE` not retryable, so it is still metered (audit JOBS-5).
-- `get_embedder(settings)`: a usable `OPENAI_API_KEY` → `OpenAIEmbedder`; else `APP_ENV=local` →
+- `get_embedder(settings)`: a usable gateway key (`OPENAI_API_KEY`, or `OPENROUTER_API_KEY` under
+  `LLM_GATEWAY=openrouter`) → `OpenAIEmbedder`; else `APP_ENV=local` →
   `HashEmbedder(settings.embedding_model)`; else `EmbedderUnavailable` (`MODEL_UNAVAILABLE`).
+- Under `LLM_GATEWAY=openrouter` (ADR-0024) `OpenAIEmbedder` calls the pinned
+  `OPENROUTER_BASE_URL` (OpenAI-compatible `/embeddings`) and sends `openai/<EMBEDDING_MODEL>`.
+  Its `model` stays `EMBEDDING_MODEL`: the vectors are the same model's, so stored brand chunks,
+  retrieval, `agent_runs.model_used` and the price do not depend on the gateway.
 - `embed_texts` / `embed_query`: the only callers of `Embedder.embed` (invariant 7). Each call of
   at most `MAX_INPUTS_PER_CALL` inputs writes exactly one `agent_runs` row, success or failure,
   with a sha256 digest of the inputs and never their text.
@@ -45,7 +50,12 @@ from mkos_schemas.errors import ErrorItem, ErrorReport
 from openai import AsyncOpenAI
 from openai.types import CreateEmbeddingResponse
 
-from app.core.config import EMBEDDING_DIMENSIONS, Settings
+from app.core.config import (
+    EMBEDDING_DIMENSIONS,
+    OPENROUTER_BASE_URL,
+    Settings,
+    gateway_openai_model,
+)
 from app.core.model_prices import embedding_cost_usd, is_usable_openai_key
 from app.core.vectors import hash_vector
 from app.services.telemetry import record_agent_run
@@ -117,7 +127,7 @@ class HashEmbedder:
 
 def get_embedder(settings: Settings) -> Embedder:
     """The one embedder selector (S16 CP1): a usable key → OpenAI; else local → hash vectors."""
-    if is_usable_openai_key(settings.openai_api_key):
+    if is_usable_openai_key(_gateway_key(settings)):
         return OpenAIEmbedder(settings)
     if settings.app_env == "local":
         return HashEmbedder(settings.embedding_model)
@@ -151,21 +161,31 @@ class EmbeddingFailed(Exception):  # noqa: N818 - the S16 CODE-PLAN name
 OPENAI_BASE_URL: Final = "https://api.openai.com/v1"
 
 
+def _gateway_key(settings: Settings) -> str | None:
+    if settings.llm_gateway == "openrouter":
+        return settings.openrouter_api_key
+    return settings.openai_api_key
+
+
 class OpenAIEmbedder:
-    """`text-embedding-3-small` (or the configured model) at 1536 dimensions."""
+    """`text-embedding-3-small` (or the configured model) at 1536 dimensions, from OpenAI or,
+    under `LLM_GATEWAY=openrouter`, from OpenRouter's OpenAI-compatible endpoint."""
 
     def __init__(
         self, settings: Settings, *, http_client: httpx2.AsyncClient | None = None
     ) -> None:
-        key = settings.openai_api_key
+        key = _gateway_key(settings)
         if not is_usable_openai_key(key):
             raise EmbedderUnavailable
         self.model = settings.embedding_model
-        # base_url is pinned so an OPENAI_BASE_URL in the environment can never redirect brand
-        # text; max_retries=0 so the SDK never hides a call (CP8).
+        base_url, self._request_model = OPENAI_BASE_URL, self.model
+        if settings.llm_gateway == "openrouter":
+            base_url, self._request_model = OPENROUTER_BASE_URL, gateway_openai_model(self.model)
+        # base_url is one of two pinned constants so an OPENAI_BASE_URL in the environment can
+        # never redirect brand text; max_retries=0 so the SDK never hides a call (CP8).
         self._client = AsyncOpenAI(
             api_key=key,
-            base_url=OPENAI_BASE_URL,
+            base_url=base_url,
             timeout=float(settings.llm_timeout_seconds),
             max_retries=0,
             http_client=http_client,
@@ -177,7 +197,7 @@ class OpenAIEmbedder:
     async def embed(self, texts: Sequence[str]) -> EmbeddingBatch:
         try:
             response = await self._client.embeddings.create(
-                model=self.model, input=list(texts), encoding_format="float"
+                model=self._request_model, input=list(texts), encoding_format="float"
             )
         except openai.APITimeoutError:
             raise EmbeddingFailed(
