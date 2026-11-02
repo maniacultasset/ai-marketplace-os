@@ -16,7 +16,8 @@
   Numeric settings carry lower bounds in every env (PROD-3). A worker off local also needs the
   vision provider's key (B2): OpenAI, the only provider with a vision model, and the generation
   provider's key (`LLM_PROVIDER`; ADR-0024). Under `LLM_GATEWAY=openrouter` those three keys are
-  replaced by one, OPENROUTER_API_KEY, and every model call goes to the pinned OPENROUTER_BASE_URL.
+  replaced by one, OPENROUTER_API_KEY, every model call goes to the pinned OPENROUTER_BASE_URL,
+  and LLM_MODEL_DEFAULT must be an OpenRouter `vendor/model` id.
 - There is no module-level `settings`: call `get_settings()` where the value is needed.
 """
 
@@ -558,15 +559,28 @@ def _generation_errors(s: Settings) -> list[str]:
 def _gateway_errors(s: Settings) -> list[str]:
     """ADR-0024: under `LLM_GATEWAY=openrouter` every model call a worker makes (generation,
     vision, embedding) carries OPENROUTER_API_KEY, so outside local it is the one key the worker
-    needs; the placeholder counts as none. Names only, never the key."""
+    needs; the placeholder counts as none. OpenRouter names a model `vendor/model`: the generation
+    model is sent as set, so it must be one (the default `gpt-4o-mini` is not), and the vision
+    model gets `openai/` added, so it must not already have a vendor. Names only, never the key
+    or a model value."""
     if s.app_role != "worker" or s.app_env == "local" or s.llm_gateway != "openrouter":
         return []
-    if is_usable_openai_key(s.openrouter_api_key):
-        return []
-    return [
-        "LLM_GATEWAY=openrouter requires OPENROUTER_API_KEY "
-        "for APP_ROLE=worker outside APP_ENV=local"
-    ]
+    errors: list[str] = []
+    if not is_usable_openai_key(s.openrouter_api_key):
+        errors.append(
+            "LLM_GATEWAY=openrouter requires OPENROUTER_API_KEY "
+            "for APP_ROLE=worker outside APP_ENV=local"
+        )
+    if not _is_vendor_model_id(s.llm_model_default):
+        errors.append("LLM_GATEWAY=openrouter requires LLM_MODEL_DEFAULT as vendor/model")
+    if "/" in s.llm_model_vision:
+        errors.append("LLM_GATEWAY=openrouter requires LLM_MODEL_VISION as an OpenAI model id")
+    return errors
+
+
+def _is_vendor_model_id(model: str) -> bool:
+    vendor, slash, name = model.partition("/")
+    return bool(slash and vendor.strip() and name.strip())
 
 
 def gateway_openai_model(model: str) -> str:

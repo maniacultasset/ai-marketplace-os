@@ -33,6 +33,8 @@ NO_OPENAI_GEN_KEY = (
 NO_ROUTER_KEY = (
     "LLM_GATEWAY=openrouter requires OPENROUTER_API_KEY for APP_ROLE=worker outside APP_ENV=local"
 )
+NO_ROUTER_MODEL = "LLM_GATEWAY=openrouter requires LLM_MODEL_DEFAULT as vendor/model"
+NO_ROUTER_VISION = "LLM_GATEWAY=openrouter requires LLM_MODEL_VISION as an OpenAI model id"
 
 
 def _boot(monkeypatch: pytest.MonkeyPatch, **env: str) -> Settings:
@@ -59,7 +61,9 @@ def _env(app_env: str, role: str, **extra: str) -> dict[str, str]:
 
 
 def _router_env(app_env: str, role: str = "worker", **extra: str) -> dict[str, str]:
-    """A deployed env under openrouter: no OpenAI key at all (DEPLOYED_S15_ENV carries one)."""
+    """A deployed env under openrouter: no OpenAI key at all (DEPLOYED_S15_ENV carries one), and
+    an OpenRouter generation model id unless `extra` names another."""
+    extra = {"LLM_MODEL_DEFAULT": "deepseek/deepseek-chat", **extra}
     env = _env(app_env, role, LLM_GATEWAY="openrouter", **extra)
     env.pop("OPENAI_API_KEY", None)
     return env
@@ -186,6 +190,48 @@ def test_router_refusal_names_no_value(clean_env: Path, monkeypatch: pytest.Monk
     message = _refusal(monkeypatch, env)
     assert NO_ROUTER_KEY in message
     assert CANARY_KEY not in message and "canary-generation-model" not in message
+
+
+# ---- openrouter: model ids OpenRouter can route ----
+
+
+@pytest.mark.parametrize("model", ["gpt-4o-mini", "deepseek-chat", "deepseek/", "/gpt-4o", " / "])
+def test_router_worker_refuses_a_bare_generation_model(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, model: str
+) -> None:
+    """The generation model is sent as set, and OpenRouter answers a bare id with a 400 on every
+    job, so the worker refuses to boot; the message names the setting, never the value."""
+    env = _router_env("staging", OPENROUTER_API_KEY=CANARY_KEY, LLM_MODEL_DEFAULT=model)
+    message = _refusal(monkeypatch, env)
+    assert NO_ROUTER_MODEL in message and NO_ROUTER_KEY not in message
+    if model.strip(" /"):
+        assert model.strip(" /") not in message
+
+
+def test_router_worker_refuses_the_settings_default_model(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """staging.env's blank LLM_MODEL_DEFAULT (the Settings default gpt-4o-mini) under openrouter."""
+    env = _router_env("staging", OPENROUTER_API_KEY=CANARY_KEY)
+    env.pop("LLM_MODEL_DEFAULT")
+    assert NO_ROUTER_MODEL in _refusal(monkeypatch, env)
+
+
+def test_router_worker_refuses_a_vendor_vision_model(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The vision model gets `openai/` added, so `openai/gpt-4o` would go out doubled."""
+    env = _router_env("staging", OPENROUTER_API_KEY=CANARY_KEY, LLM_MODEL_VISION="openai/gpt-4o")
+    message = _refusal(monkeypatch, env)
+    assert NO_ROUTER_VISION in message and NO_ROUTER_MODEL not in message
+
+
+def test_bare_models_still_fine_under_direct_and_local_router(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert _boot(monkeypatch, **_env("staging", "worker")).llm_model_default == "gpt-4o-mini"
+    env = _router_env("local", LLM_MODEL_DEFAULT="gpt-4o-mini")
+    assert _boot(monkeypatch, **env).llm_model_default == "gpt-4o-mini"
 
 
 # ---- direct: the generation provider's key at worker boot (unchanged contract) ----
