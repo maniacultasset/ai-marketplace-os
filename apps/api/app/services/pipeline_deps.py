@@ -21,10 +21,11 @@ Ports:
   4th call gets an `INTERNAL_ERROR` report without evaluating (the cap lives in the graph,
   this is the backstop).
 - `validate_images`: the stored reports of the listing's images, no I/O, no model.
-- `get_model_credentials`: `generation` → the `LLM_PROVIDER` key and `LLM_MODEL_DEFAULT`;
+- `get_model_credentials`: `generation` → the `LLM_PROVIDER` key, `LLM_MODEL_DEFAULT` and
+  `LLM_API_BASE` (ADR-0024: an OpenAI-compatible route such as OpenRouter; None when unset);
   `vision` → the `LLM_PROVIDER_VISION` key (OpenAI only: DeepSeek has no vision model) and
   `LLM_MODEL_VISION` (B2, ai-deps C18); `embedding` → always the OpenAI key (ENV.md:86,
-  BA:1538). Never a marketplace credential.
+  BA:1538). Vision and embedding always get `api_base=None`. Never a marketplace credential.
 - `emit_node_event`: `started` writes `job_runs.node` on the running job (never
   `listings.status`) and opens span `pipeline.<node>` (attributes `job_id`, `tenant_id`, `node`
   only); `ok`/`failed` ends it with that status. `close_spans()` ends any left open. `detail` is
@@ -123,6 +124,7 @@ class _ModelConfig:
     app_env: str
     provider: Literal["openai", "deepseek"]
     generation_model: str
+    generation_api_base: str | None
     vision_provider: Literal["openai"]
     vision_model: str
     embedding_model: str
@@ -137,6 +139,7 @@ class _ModelConfig:
             app_env=settings.app_env,
             provider=settings.llm_provider,
             generation_model=settings.llm_model_default,
+            generation_api_base=settings.llm_api_base,
             vision_provider=settings.llm_provider_vision,
             vision_model=settings.llm_model_vision,
             embedding_model=settings.embedding_model,
@@ -340,12 +343,14 @@ class BackendPipelineDeps:
         if purpose not in PURPOSES:
             raise SeamPortError(ErrorCode.VALIDATION_FAILED, "purpose")
         provider: Literal["openai", "deepseek"]
+        api_base: str | None = None
         if purpose == "embedding":
             provider, key, model = "openai", models.embedding_key, models.embedding_model
         elif purpose == "vision":
             provider, key, model = models.vision_provider, models.vision_key, models.vision_model
         else:
             provider, key, model = models.provider, models.generation_key, models.generation_model
+            api_base = models.generation_api_base
         if key is None:
             if models.app_env != "local":
                 raise SeamPortError(ErrorCode.MODEL_UNAVAILABLE, purpose)
@@ -353,7 +358,7 @@ class BackendPipelineDeps:
         return ModelCredentials(
             provider=provider,
             api_key=key,
-            api_base=None,
+            api_base=api_base,
             model=model,
             timeout_seconds=models.timeout_seconds,
         )

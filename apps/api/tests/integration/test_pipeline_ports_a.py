@@ -166,6 +166,25 @@ async def test_port_get_model_credentials_purposes(
     assert creds.api_base is None and creds.timeout_seconds == 60
 
 
+async def test_port_get_model_credentials_forwards_api_base_for_generation_only(
+    products_world: World, auth_db: Conn
+) -> None:
+    """ADR-0024: LLM_API_BASE reaches the generation credentials only."""
+    base = "https://openrouter.ai/api/v1"
+    cfg = settings(
+        llm_provider="deepseek",
+        llm_api_base=base,
+        openai_api_key="sk-openai",
+        deepseek_api_key="sk-router",
+    )
+    deps = await build(products_world, auth_db, cfg)
+    generation = await deps.get_model_credentials("generation")
+    assert (generation.provider, generation.api_base) == ("deepseek", base)
+    assert generation.api_key.get_secret_value() == "sk-router"
+    for purpose in ("vision", "embedding"):
+        assert (await deps.get_model_credentials(purpose)).api_base is None, purpose
+
+
 async def test_port_get_model_credentials_local_placeholder_when_unset(
     products_world: World, auth_db: Conn
 ) -> None:

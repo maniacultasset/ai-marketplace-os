@@ -81,6 +81,44 @@ async def test_vision_timeout_and_api_base() -> None:
     assert creds.api_base is None and creds.timeout_seconds == 42
 
 
+OPENROUTER = "https://openrouter.ai/api/v1"
+
+
+async def test_api_base_forwarded_for_generation_only() -> None:
+    """ADR-0024: LLM_API_BASE routes generation (OpenRouter is `deepseek` plus the base);
+    vision and embedding keep the provider's own API."""
+    deps = _deps(
+        llm_provider="deepseek",
+        llm_model_default="deepseek/deepseek-chat",
+        llm_api_base=OPENROUTER,
+        openai_api_key="sk-openai",
+        deepseek_api_key="sk-router",
+    )
+    generation = await deps.get_model_credentials("generation")
+    assert (generation.provider, generation.model, generation.api_base) == (
+        "deepseek",
+        "deepseek/deepseek-chat",
+        OPENROUTER,
+    )
+    assert generation.api_key.get_secret_value() == "sk-router"
+    for purpose in ("vision", "embedding"):
+        creds = await deps.get_model_credentials(purpose)
+        assert creds.provider == "openai" and creds.api_base is None, purpose
+
+
+async def test_api_base_none_when_unset() -> None:
+    deps = _deps(openai_api_key="sk-openai")
+    for purpose in ("generation", "vision", "embedding"):
+        assert (await deps.get_model_credentials(purpose)).api_base is None, purpose
+
+
+async def test_api_base_forwarded_with_the_local_placeholder_key() -> None:
+    deps = _deps(llm_provider="deepseek", llm_api_base=OPENROUTER)
+    creds = await deps.get_model_credentials("generation")
+    assert creds.api_base == OPENROUTER
+    assert creds.api_key.get_secret_value() == "local_only_model_key_unset"
+
+
 def test_model_config_repr_hides_every_key() -> None:
     deps = _deps(
         llm_provider="deepseek", openai_api_key="sk-o-visible", deepseek_api_key="sk-d-vis"
