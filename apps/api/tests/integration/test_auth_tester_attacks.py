@@ -221,8 +221,13 @@ async def test_attack_five_concurrent_refreshes_one_wins_family_dead(
 
 
 async def test_attack_concurrent_logins_all_succeed_no_500(
-    api: httpx.AsyncClient, world: World, auth_db: Conn
+    api: httpx.AsyncClient, world: World, auth_db: Conn, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from app.services import rate_limit
+
+    # One fixed window: a run that crosses a minute boundary would let the sixth login through.
+    moment = datetime(2026, 10, 6, 12, 0, 30, tzinfo=UTC)
+    monkeypatch.setattr(rate_limit, "now", lambda: moment)
     results = await asyncio.gather(*(_login(api, DUAL) for _ in range(5)))
     assert [r.status_code for r in results] == [200] * 5, [r.text for r in results]
     assert len({r.json()["refresh_token"] for r in results}) == 5
