@@ -6,7 +6,7 @@
 #
 #   preflight   gcloud, account, project, billing, APIs
 #   setup       APIs, Artifact Registry, service accounts, KMS, buckets, HMAC key, Cloud SQL,
-#               database, generated secrets; stops if SENTRY_DSN or OPENAI_API_KEY is missing
+#               database, generated secrets; stops if SENTRY_DSN or the worker's model key is missing
 #   build       Cloud Build of apps/api/Dockerfile from a clean HEAD, tagged sha-<12> (PIPELINE_REF: real pipeline)
 #   db-init     0000_bootstrap.sql and the role passwords, as postgres, in a one-off job
 #   migrate     the migrate job (alembic upgrade head, dictionary sync, rules load, templates load), waited on
@@ -29,10 +29,11 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../../.." && pwd)"
 PLACEHOLDER="__FILL_ME__"
-USER_SECRETS="SENTRY_DSN OPENAI_API_KEY GOOGLE_OAUTH_CLIENT_SECRET"
+# The worker's model keys (MODEL_KEYS) join USER_SECRETS and WORKER_SECRETS by LLM_GATEWAY, below.
+USER_SECRETS="SENTRY_DSN GOOGLE_OAUTH_CLIENT_SECRET"
 REQUIRED_APIS="run.googleapis.com sqladmin.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com cloudkms.googleapis.com storage.googleapis.com iam.googleapis.com logging.googleapis.com cloudresourcemanager.googleapis.com serviceusage.googleapis.com cloudscheduler.googleapis.com"
 API_SECRETS="DATABASE_URL JWT_SECRET ADMIN_SESSION_SECRET S3_ACCESS_KEY S3_SECRET_KEY SENTRY_DSN"
-WORKER_SECRETS="DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY SENTRY_DSN OPENAI_API_KEY"
+WORKER_SECRETS="DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY SENTRY_DSN"
 MIGRATE_SECRETS="ALEMBIC_DATABASE_URL"
 DB_INIT_SECRETS="POSTGRES_PASSWORD APP_RW_PASSWORD APP_RO_PASSWORD MIGRATOR_PASSWORD"
 OPS_SECRETS="ALEMBIC_DATABASE_URL"
@@ -133,7 +134,7 @@ if [ "$GOOGLE_OAUTH_ENABLED" = "true" ]; then
   API_SECRETS="$API_SECRETS GOOGLE_OAUTH_CLIENT_SECRET"
 fi
 
-# ---- ADR-0024: the AI pipeline and the generation route, refused before any gcloud call ----
+# ---- ADR-0024: the AI pipeline and the model gateway, refused before any gcloud call ----
 # PIPELINE_REF empty builds the in-repo stub image with cloudbuild.yaml, as before. A full
 # 40-character mkos-pipeline commit sha builds the AI team's package instead
 # (cloudbuild-pipeline.yaml), fetched with the read-only deploy key in PIPELINE_KEY_SECRET, which
@@ -143,9 +144,9 @@ fi
 # these keys gets the stub and the Settings defaults.
 PIPELINE_REF="${PIPELINE_REF-}"
 PIPELINE_KEY_SECRET="MKOS_PIPELINE_DEPLOY_KEY"
+LLM_GATEWAY="${LLM_GATEWAY:-direct}"
 LLM_PROVIDER="${LLM_PROVIDER:-openai}"
 LLM_MODEL_DEFAULT="${LLM_MODEL_DEFAULT-}"
-LLM_API_BASE="${LLM_API_BASE-}"
 LLM_DAILY_BUDGET_USD="${LLM_DAILY_BUDGET_USD-}"
 LLM_TENANT_DAILY_BUDGET_USD="${LLM_TENANT_DAILY_BUDGET_USD-}"
 if [ -n "$PIPELINE_REF" ] && ! printf '%s\n' "$PIPELINE_REF" | grep -Eqx '[0-9a-f]{40}'; then
@@ -154,20 +155,23 @@ fi
 if [ "$APP_ENV" = "production" ] && [ "$WORKER_ENABLED" = "true" ] && [ -z "$PIPELINE_REF" ]; then
   die "WORKER_ENABLED=true in production needs PIPELINE_REF: a production worker refuses mkos-pipeline-stub (in $ENV_NAME.env)"
 fi
-# The generation provider's key: OpenRouter is deepseek plus LLM_API_BASE, its key in
-# DEEPSEEK_API_KEY. Only the worker calls a model, so only the worker gets the key.
 case "$LLM_PROVIDER" in
-  openai) ;;
-  deepseek)
-    USER_SECRETS="$USER_SECRETS DEEPSEEK_API_KEY"
-    WORKER_SECRETS="$WORKER_SECRETS DEEPSEEK_API_KEY"
-    ;;
+  openai | deepseek) ;;
   *) die "LLM_PROVIDER must be openai or deepseek (in $ENV_NAME.env)" ;;
 esac
-case "$LLM_API_BASE" in
-  "" | https://?*) ;;
-  *) die "LLM_API_BASE, when set, must be an https URL (in $ENV_NAME.env)" ;;
+# The keys the worker's model calls carry. direct: OpenAI for embedding and vision, plus DeepSeek's
+# own key when it generates. openrouter: one key for every call; the base URL is a constant in
+# app/core/config.py, never a value here. Only the worker calls a model, so only it gets them.
+case "$LLM_GATEWAY" in
+  direct)
+    MODEL_KEYS="OPENAI_API_KEY"
+    [ "$LLM_PROVIDER" != "deepseek" ] || MODEL_KEYS="$MODEL_KEYS DEEPSEEK_API_KEY"
+    ;;
+  openrouter) MODEL_KEYS="OPENROUTER_API_KEY" ;;
+  *) die "LLM_GATEWAY must be direct or openrouter (in $ENV_NAME.env)" ;;
 esac
+USER_SECRETS="$USER_SECRETS $MODEL_KEYS"
+WORKER_SECRETS="$WORKER_SECRETS $MODEL_KEYS"
 
 LABELS="app=aimos,env=$APP_ENV"
 CONN="$PROJECT:$REGION:$SQL_INSTANCE"
@@ -630,12 +634,11 @@ pipeline_key_help() {
 # terminal: `read -s` keeps the value off the screen, out of argv and out of shell history.
 check_user_secrets() {
   local name missing=0 wanted="SENTRY_DSN"
-  # Only the worker embeds (S16): a deployment without the worker pool needs no OpenAI key yet.
-  [ "$WORKER_ENABLED" != "true" ] || wanted="$wanted OPENAI_API_KEY"
+  # Only the worker calls a model (S16, ADR-0024): a deployment without the worker pool needs no
+  # model key yet. MODEL_KEYS follows LLM_GATEWAY.
+  [ "$WORKER_ENABLED" != "true" ] || wanted="$wanted $MODEL_KEYS"
   # ADR-0020: the Google client secret, only while Google sign-in is switched on
   [ "$GOOGLE_OAUTH_ENABLED" != "true" ] || wanted="$wanted GOOGLE_OAUTH_CLIENT_SECRET"
-  # ADR-0024: the generation provider's key, when it is not the OpenAI key already asked for
-  [ "$WORKER_ENABLED" != "true" ] || [ "$LLM_PROVIDER" != "deepseek" ] || wanted="$wanted DEEPSEEK_API_KEY"
   for name in $wanted; do
     if secret_has_version "$name"; then
       say "secret $name: present"
@@ -832,11 +835,10 @@ app_env() {
     FLIPKART_OAUTH_REDIRECT_URI "$url/api/v1/marketplaces/flipkart/callback" \
     APP_NAME "marketplace-os-$role" OTEL_SERVICE_NAME "marketplace-os-$role"
   [ "$role" != "api" ] || printf 'JWT_ISSUER\t%s\n' "${JWT_ISSUER:-$url}"
-  # ADR-0024: the generation route, on the worker only (the one role that calls a model)
+  # ADR-0024: the gateway, provider and model, on the worker only (the one role that calls a model)
   if [ "$role" = "worker" ]; then
-    printf 'LLM_PROVIDER\t%s\n' "$LLM_PROVIDER"
+    printf 'LLM_GATEWAY\t%s\nLLM_PROVIDER\t%s\n' "$LLM_GATEWAY" "$LLM_PROVIDER"
     [ -z "$LLM_MODEL_DEFAULT" ] || printf 'LLM_MODEL_DEFAULT\t%s\n' "$LLM_MODEL_DEFAULT"
-    [ -z "$LLM_API_BASE" ] || printf 'LLM_API_BASE\t%s\n' "$LLM_API_BASE"
   fi
   # The daily caps on the api and the worker alike: the api's generate precheck and the worker's
   # claim must refuse at the same cap.
@@ -1075,21 +1077,24 @@ google_guard() {
   say "google guard: OK (GOOGLE_OAUTH_CLIENT_SECRET)"
 }
 
-# ADR-0024: with the worker on and LLM_PROVIDER=deepseek, the worker mounts DEEPSEEK_API_KEY and
-# refuses to boot without it. A project whose `setup` predates the key would fail at the worker,
-# after the api moved, so the deploy refuses first.
+# ADR-0024: with the worker on, the worker mounts its gateway's keys (MODEL_KEYS) and refuses to
+# boot without them. A project whose `setup` predates a key (a gateway switch) would fail at the
+# worker, after the api moved, so the deploy refuses first.
 model_key_guard() {
-  if [ "$WORKER_ENABLED" != "true" ] || [ "$LLM_PROVIDER" != "deepseek" ]; then
-    say "model key guard: not needed (WORKER_ENABLED=$WORKER_ENABLED, LLM_PROVIDER=$LLM_PROVIDER)"
+  local name
+  if [ "$WORKER_ENABLED" != "true" ]; then
+    say "model key guard: not needed (WORKER_ENABLED=$WORKER_ENABLED, LLM_GATEWAY=$LLM_GATEWAY)"
     return 0
   fi
   if [ "$DRY_RUN" -eq 1 ]; then
     say "model key guard: skipped (dry run)"
     return 0
   fi
-  secret_has_version DEEPSEEK_API_KEY ||
-    die "secret DEEPSEEK_API_KEY has no value in $PROJECT: run scripts/deploy/gcp/deploy.sh $ENV_NAME setup first"
-  say "model key guard: OK (DEEPSEEK_API_KEY)"
+  for name in $MODEL_KEYS; do
+    secret_has_version "$name" ||
+      die "secret $name has no value in $PROJECT: run scripts/deploy/gcp/deploy.sh $ENV_NAME setup first"
+  done
+  say "model key guard: OK ($MODEL_KEYS)"
 }
 
 cmd_deploy() {

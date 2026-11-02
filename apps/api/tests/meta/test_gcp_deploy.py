@@ -44,7 +44,8 @@ SECRET_VALUES = {
     "S3_SECRET_KEY": "d" * 40,
     "SENTRY_DSN": "https://key@o0.ingest.sentry.io/0",
     "OPENAI_API_KEY": "sk-test-" + "e" * 32,
-    "DEEPSEEK_API_KEY": "sk-or-test-" + "9" * 32,
+    "DEEPSEEK_API_KEY": "sk-ds-test-" + "9" * 32,
+    "OPENROUTER_API_KEY": "sk-or-test-" + "8" * 32,
     "GOOGLE_OAUTH_CLIENT_SECRET": "test-only-google-client-secret-" + "f" * 8,
 }
 
@@ -276,7 +277,8 @@ def test_prod_setup_sizes(toolkit: Path, tmp_path: Path) -> None:
     ):
         assert flag in sql, flag
     # the prod worker waits for the AI package, so its model keys are not asked for yet
-    assert "OPENAI_API_KEY: " not in out and "DEEPSEEK_API_KEY: " not in out
+    for name in ("OPENAI_API_KEY", "DEEPSEEK_API_KEY", "OPENROUTER_API_KEY"):
+        assert f"{name}: " not in out, name
 
 
 def test_initial_password_secrets_never_collide(toolkit: Path, tmp_path: Path) -> None:
@@ -1122,8 +1124,8 @@ def test_release_runs_the_google_guard_before_building(repo_root: Path) -> None:
 # ---- ADR-0024: the real pipeline build and the generation route ----
 
 PIPELINE_SHA = "f61f48d" + "0" * 31 + "aa"
-OPENROUTER = "https://openrouter.ai/api/v1"
 PIPELINE_KEY = "MKOS_PIPELINE_DEPLOY_KEY"
+MODEL_KEYS = ("OPENAI_API_KEY", "DEEPSEEK_API_KEY", "OPENROUTER_API_KEY")
 
 
 def _commit_toolkit(toolkit: Path) -> None:
@@ -1144,79 +1146,134 @@ def _worker_container(out: str) -> tuple[dict[str, str], list[str]]:
     return env, [e["name"] for e in container["env"] if "valueFrom" in e]
 
 
-@pytest.mark.parametrize("env_name", ["staging", "prod"])
-def test_env_files_carry_the_pipeline_and_model_keys(repo_root: Path, env_name: str) -> None:
-    text = (repo_root / DEPLOY / f"{env_name}.env").read_text(encoding="utf-8")
-    values = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
-    assert values["PIPELINE_REF"] == ""
-    assert values["LLM_PROVIDER"] == "deepseek"
-    assert values["LLM_MODEL_DEFAULT"] == "deepseek/deepseek-chat"
-    assert values["LLM_API_BASE"] == OPENROUTER
-    assert (values["LLM_DAILY_BUDGET_USD"], values["LLM_TENANT_DAILY_BUDGET_USD"]) == ("3", "1")
-    assert PIPELINE_KEY not in values and "DEEPSEEK_API_KEY" not in values
+def test_env_files_carry_the_pipeline_and_the_gateway(repo_root: Path) -> None:
+    """prod routes through OpenRouter with its worker still off; staging keeps origin's direct
+    OpenAI route and the Settings defaults (blank model and caps), so its worker is unchanged."""
+    found = {}
+    for env_name in ("staging", "prod"):
+        text = (repo_root / DEPLOY / f"{env_name}.env").read_text(encoding="utf-8")
+        found[env_name] = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
+        values = found[env_name]
+        assert values["PIPELINE_REF"] == "", env_name
+        for name in (PIPELINE_KEY, "LLM_API_BASE", *MODEL_KEYS):
+            assert name not in values, (env_name, name)
+    prod, staging = found["prod"], found["staging"]
+    assert (prod["LLM_GATEWAY"], prod["LLM_PROVIDER"]) == ("openrouter", "deepseek")
+    assert prod["LLM_MODEL_DEFAULT"] == "deepseek/deepseek-chat"
+    assert (prod["LLM_DAILY_BUDGET_USD"], prod["LLM_TENANT_DAILY_BUDGET_USD"]) == ("3", "1")
     # prod's worker stays off: it would refuse the stub image (ADR-0024)
-    assert values["WORKER_ENABLED"] == {"staging": "true", "prod": "false"}[env_name]
+    assert prod["WORKER_ENABLED"] == "false"
+    assert (staging["LLM_GATEWAY"], staging["LLM_PROVIDER"]) == ("direct", "openai")
+    for name in ("LLM_MODEL_DEFAULT", "LLM_DAILY_BUDGET_USD", "LLM_TENANT_DAILY_BUDGET_USD"):
+        assert staging[name] == "", name
+    assert staging["WORKER_ENABLED"] == "true"
 
 
-def test_worker_gets_the_generation_route_and_key(
-    toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """The worker env carries the provider, model and base; DEEPSEEK_API_KEY is a worker secret
-    (on both deploy paths) and the env boots."""
+def test_staging_worker_keeps_the_direct_route(toolkit: Path, tmp_path: Path) -> None:
+    """Staging as committed: the OpenAI key, no router key, no model or caps in the env."""
     out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
     env, secrets = _worker_container(out)
-    assert env["LLM_PROVIDER"] == "deepseek"
+    assert (env["LLM_GATEWAY"], env["LLM_PROVIDER"]) == ("direct", "openai")
+    for name in ("LLM_MODEL_DEFAULT", "LLM_DAILY_BUDGET_USD", "LLM_API_BASE"):
+        assert name not in env, name
+    assert "OPENAI_API_KEY" in secrets
+    assert "OPENROUTER_API_KEY" not in secrets and "DEEPSEEK_API_KEY" not in secrets
+    setup = _run(toolkit, tmp_path, "staging", "setup", "--dry-run", "--sha", SHA).stdout
+    assert "OPENROUTER_API_KEY" not in setup and "DEEPSEEK_API_KEY" not in setup
+
+
+def _openrouter_staging(toolkit: Path) -> None:
+    _set_env(
+        toolkit,
+        "staging",
+        LLM_GATEWAY="openrouter",
+        LLM_PROVIDER="deepseek",
+        LLM_MODEL_DEFAULT="deepseek/deepseek-chat",
+        LLM_DAILY_BUDGET_USD="3",
+        LLM_TENANT_DAILY_BUDGET_USD="1",
+    )
+
+
+def test_openrouter_worker_gets_the_gateway_and_one_key(
+    toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Under openrouter the worker env carries the gateway, provider, model and caps, and its
+    only model secret is OPENROUTER_API_KEY (on both deploy paths); the env boots without the
+    OpenAI key."""
+    _openrouter_staging(toolkit)
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    env, secrets = _worker_container(out)
+    assert (env["LLM_GATEWAY"], env["LLM_PROVIDER"]) == ("openrouter", "deepseek")
     assert env["LLM_MODEL_DEFAULT"] == "deepseek/deepseek-chat"
-    assert env["LLM_API_BASE"] == OPENROUTER
     assert (env["LLM_DAILY_BUDGET_USD"], env["LLM_TENANT_DAILY_BUDGET_USD"]) == ("3", "1")
-    assert {"DEEPSEEK_API_KEY", "OPENAI_API_KEY"} <= set(secrets)
+    assert "LLM_API_BASE" not in env and "openrouter.ai" not in "".join(env.values())
+    assert [name for name in secrets if name in MODEL_KEYS] == ["OPENROUTER_API_KEY"]
     flags = _run(
         toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA, worker_deploy=True
     ).stdout
     line = next(line for line in flags.splitlines() if "run worker-pools deploy" in line)
-    assert "DEEPSEEK_API_KEY" in _secret_names(line)
+    assert [name for name in _secret_names(line) if name in MODEL_KEYS] == ["OPENROUTER_API_KEY"]
     worker_env = yaml.safe_load(_blocks(flags, "env file")[1])
-    assert worker_env["LLM_API_BASE"] == OPENROUTER and worker_env["APP_ROLE"] == "worker"
+    assert worker_env["LLM_GATEWAY"] == "openrouter" and worker_env["APP_ROLE"] == "worker"
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     _boot(monkeypatch, env, secrets)
     from app.core.config import get_settings
 
     loaded = get_settings()
-    assert loaded.llm_provider == "deepseek"
+    assert (loaded.llm_gateway, loaded.llm_provider) == ("openrouter", "deepseek")
+    assert loaded.openai_api_key is None
     assert (loaded.llm_daily_budget_usd, loaded.llm_tenant_daily_budget_usd) == (3.0, 1.0)
 
 
 def test_api_gets_the_caps_but_no_model_route_or_key(toolkit: Path, tmp_path: Path) -> None:
     """The api's generate precheck and the worker refuse at the same caps; only the worker calls
-    a model, so only it gets the provider, the base and the key."""
+    a model, so only it gets the gateway, the provider, the model and the key."""
+    _openrouter_staging(toolkit)
     for env_name in ("staging", "prod"):
         out = _run(toolkit, tmp_path, env_name, "deploy", "--dry-run", "--sha", SHA).stdout
         env = _api_env(out)
         assert (env["LLM_DAILY_BUDGET_USD"], env["LLM_TENANT_DAILY_BUDGET_USD"]) == ("3", "1")
-        for name in ("LLM_PROVIDER", "LLM_MODEL_DEFAULT", "LLM_API_BASE"):
+        for name in ("LLM_GATEWAY", "LLM_PROVIDER", "LLM_MODEL_DEFAULT"):
             assert name not in env, (env_name, name)
         deploy = next(line for line in out.splitlines() if line.startswith("+ gcloud run deploy "))
-        assert "DEEPSEEK_API_KEY" not in _secret_names(deploy)
+        assert not set(_secret_names(deploy)) & set(MODEL_KEYS), env_name
         maintenance = _blocks(out, "env file")[-1]
         assert "LLM_" not in maintenance
 
 
-def test_openai_provider_drops_the_deepseek_key(toolkit: Path, tmp_path: Path) -> None:
-    _set_env(toolkit, "staging", LLM_PROVIDER="openai", LLM_MODEL_DEFAULT="", LLM_API_BASE="")
+def test_direct_deepseek_adds_its_own_key(toolkit: Path, tmp_path: Path) -> None:
+    _set_env(toolkit, "staging", LLM_PROVIDER="deepseek")
     out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
     env, secrets = _worker_container(out)
-    assert env["LLM_PROVIDER"] == "openai"
-    assert "LLM_API_BASE" not in env and "LLM_MODEL_DEFAULT" not in env
-    assert "DEEPSEEK_API_KEY" not in secrets and "OPENAI_API_KEY" in secrets
+    assert (env["LLM_GATEWAY"], env["LLM_PROVIDER"]) == ("direct", "deepseek")
+    assert {"OPENAI_API_KEY", "DEEPSEEK_API_KEY"} <= set(secrets)
+    assert "OPENROUTER_API_KEY" not in secrets
     setup = _run(toolkit, tmp_path, "staging", "setup", "--dry-run", "--sha", SHA).stdout
-    assert "DEEPSEEK_API_KEY" not in setup
+    assert 'bash -c \'read -rsp "DEEPSEEK_API_KEY: " v; echo; printf %s "$v" | ' in setup
 
 
-def test_setup_asks_for_the_generation_key_with_the_worker(toolkit: Path, tmp_path: Path) -> None:
+def test_setup_asks_for_the_router_key_with_the_worker(toolkit: Path, tmp_path: Path) -> None:
+    _openrouter_staging(toolkit)
     out = _run(toolkit, tmp_path, "staging", "setup", "--dry-run", "--sha", SHA).stdout
-    assert 'bash -c \'read -rsp "DEEPSEEK_API_KEY: " v; echo; printf %s "$v" | ' in out
-    assert "secrets create DEEPSEEK_API_KEY " in out
-    assert "DEEPSEEK_API_KEY" in _secret_grants(out, "aimos-worker")
-    assert "DEEPSEEK_API_KEY" not in _secret_grants(out, "aimos-api")
+    assert 'bash -c \'read -rsp "OPENROUTER_API_KEY: " v; echo; printf %s "$v" | ' in out
+    for name in ("OPENAI_API_KEY", "DEEPSEEK_API_KEY"):
+        assert f"{name}: " not in out, name
+    assert "secrets create OPENROUTER_API_KEY " in out
+    assert "OPENROUTER_API_KEY" in _secret_grants(out, "aimos-worker")
+    assert "OPENROUTER_API_KEY" not in _secret_grants(out, "aimos-api")
+    assert not {"OPENAI_API_KEY", "DEEPSEEK_API_KEY"} & _secret_grants(out, "aimos-worker")
+
+
+def test_prod_setup_with_the_worker_off_asks_for_no_model_key(
+    toolkit: Path, tmp_path: Path
+) -> None:
+    """prod.env is openrouter with the worker off: setup creates the empty secret and grants it to
+    the worker, but asks for no value, so setup does not stop on it."""
+    out = _run(toolkit, tmp_path, "prod", "setup", "--dry-run", "--sha", SHA).stdout
+    assert "secrets create OPENROUTER_API_KEY " in out
+    assert "OPENROUTER_API_KEY" in _secret_grants(out, "aimos-worker")
+    assert "OPENROUTER_API_KEY: " not in out
+    assert "secret OPENROUTER_API_KEY has no value" not in out
 
 
 @pytest.mark.parametrize(
@@ -1231,7 +1288,8 @@ def test_setup_asks_for_the_generation_key_with_the_worker(toolkit: Path, tmp_pa
         ("staging", {"PIPELINE_REF": "F" * 40}, "PIPELINE_REF must be a full 40-character"),
         ("staging", {"PIPELINE_REF": "v0.1.0"}, "PIPELINE_REF must be a full 40-character"),
         ("staging", {"LLM_PROVIDER": "openrouter"}, "LLM_PROVIDER must be openai or deepseek"),
-        ("staging", {"LLM_API_BASE": "http://openrouter.ai/api/v1"}, "LLM_API_BASE, when set"),
+        ("staging", {"LLM_GATEWAY": "https://x.test/v1"}, "LLM_GATEWAY must be direct or"),
+        ("prod", {"LLM_GATEWAY": "OpenRouter"}, "LLM_GATEWAY must be direct or openrouter"),
     ],
 )
 def test_bad_pipeline_or_model_settings_refused_before_gcloud(
@@ -1248,13 +1306,14 @@ def test_bad_pipeline_or_model_settings_refused_before_gcloud(
 def test_prod_worker_with_a_pipeline_ref_deploys_and_boots(
     toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """With PIPELINE_REF the guard lets the prod worker through, and its env (prod.env's model
-    values) boots once the image holds mkos-pipeline instead of the stub."""
+    """With PIPELINE_REF the guard lets the prod worker through, and its env (prod.env's gateway
+    values, the router key alone) boots once the image holds mkos-pipeline instead of the stub."""
     _set_env(toolkit, "prod", WORKER_ENABLED="true", PIPELINE_REF=PIPELINE_SHA)
     out = _run(toolkit, tmp_path, "prod", "deploy", "--dry-run", "--sha", SHA).stdout
     env, secrets = _worker_container(out)
-    assert env["APP_ENV"] == "production" and env["LLM_API_BASE"] == OPENROUTER
+    assert env["APP_ENV"] == "production" and env["LLM_GATEWAY"] == "openrouter"
     assert "PIPELINE_REF" not in env and PIPELINE_KEY not in secrets
+    assert [name for name in secrets if name in MODEL_KEYS] == ["OPENROUTER_API_KEY"]
     monkeypatch.setattr("app.core.config._pipeline_stub_installed", lambda: False)
     _boot(monkeypatch, env, secrets)
 
@@ -1424,12 +1483,13 @@ def test_pipeline_cloudbuild_script_renders_to_valid_bash(repo_root: Path, tmp_p
 
 def test_runbook_and_adr_cover_the_pipeline_build(repo_root: Path) -> None:
     runbook = (repo_root / "docs/runbooks/DEPLOY-GCP.md").read_text(encoding="utf-8")
-    for needle in ("PIPELINE_REF", PIPELINE_KEY, "cloudbuild-pipeline.yaml", "LLM_API_BASE"):
+    for needle in ("PIPELINE_REF", PIPELINE_KEY, "cloudbuild-pipeline.yaml", "LLM_GATEWAY"):
         assert needle in runbook, needle
+    assert "OPENROUTER_API_KEY" in runbook and "LLM_API_BASE" not in runbook
     adr = (repo_root / "docs/adr/0024-real-pipeline-deploy-build-install.md").read_text(
         encoding="utf-8"
     )
-    assert "T104" in adr and PIPELINE_KEY in adr
+    assert "T104" in adr and PIPELINE_KEY in adr and "LLM_GATEWAY" in adr
 
 
 # ---- the model key guard: a deploy refuses before the api moves when the worker's key is empty ----
@@ -1444,7 +1504,7 @@ case " $* " in
   *"kms keys describe"*) echo "projects/p/cryptoKeys/k"; exit 0 ;;
   *"iam service-accounts describe"*) echo "sa@p"; exit 0 ;;
   *"services list"*) echo "cloudscheduler.googleapis.com"; exit 0 ;;
-  *"secrets versions list DEEPSEEK_API_KEY "*) [ -n "$HAS_MODEL_KEY" ] && echo "versions/1"; exit 0 ;;
+  *"secrets versions list OPENROUTER_API_KEY "*) [ -n "$HAS_MODEL_KEY" ] && echo "versions/1"; exit 0 ;;
   *"secrets versions list "*) echo "versions/1"; exit 0 ;;
 esac
 echo "$*" >> "$FAKE_GCLOUD_LOG"
@@ -1455,6 +1515,7 @@ exit 98
 def _run_model_key(
     toolkit: Path, tmp_path: Path, command: str, *, has_key: bool
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
+    _openrouter_staging(toolkit)
     bin_dir = tmp_path / f"bin-model-{command}-{has_key}"
     bin_dir.mkdir()
     (bin_dir / "gcloud").write_text(FAKE_GCLOUD_NO_MODEL_KEY, encoding="utf-8")
@@ -1482,18 +1543,19 @@ def _run_model_key(
 def test_deploy_refuses_without_the_generation_key(
     toolkit: Path, tmp_path: Path, command: str
 ) -> None:
-    """Staging runs the worker under deepseek: a project whose `setup` predates DEEPSEEK_API_KEY
-    stops before the build and before the api moves, naming the secret and the fix."""
+    """Staging switched to openrouter with the worker on: a project whose `setup` predates
+    OPENROUTER_API_KEY stops before the build and before the api moves, naming the secret and
+    the fix."""
     result, log = _run_model_key(toolkit, tmp_path, command, has_key=False)
     assert result.returncode == 1, result.stdout + result.stderr
-    assert "secret DEEPSEEK_API_KEY has no value in aimos-staging" in result.stderr
+    assert "secret OPENROUTER_API_KEY has no value in aimos-staging" in result.stderr
     assert "deploy.sh staging setup first" in result.stderr
     assert not log.exists(), log.read_text(encoding="utf-8")  # nothing built or deployed
 
 
 def test_model_key_guard_passes_with_the_generation_key(toolkit: Path, tmp_path: Path) -> None:
     result, _ = _run_model_key(toolkit, tmp_path, "deploy", has_key=True)
-    assert "deploy: model key guard: OK (DEEPSEEK_API_KEY)" in result.stdout, result.stderr
+    assert "deploy: model key guard: OK (OPENROUTER_API_KEY)" in result.stdout, result.stderr
 
 
 def test_dry_run_deploy_reports_the_model_key_guard(toolkit: Path, tmp_path: Path) -> None:
@@ -1505,7 +1567,7 @@ def test_dry_run_deploy_reports_the_model_key_guard(toolkit: Path, tmp_path: Pat
     # prod keeps the worker off, so its deploy never needs the key
     out = _run(toolkit, tmp_path, "prod", "deploy", "--dry-run", "--sha", SHA).stdout
     assert (
-        "deploy: model key guard: not needed (WORKER_ENABLED=false, LLM_PROVIDER=deepseek)" in out
+        "deploy: model key guard: not needed (WORKER_ENABLED=false, LLM_GATEWAY=openrouter)" in out
     )
 
 
