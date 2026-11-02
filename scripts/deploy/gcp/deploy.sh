@@ -614,7 +614,9 @@ setup_secrets() {
 }
 
 # ADR-0024: how the owner makes the read-only deploy key and stores it (the value never passes
-# through this script). Printed by `setup` and by a `build` that finds no key.
+# through this script). Printed by `setup` and by a `build` that finds no key. The `$d` in the
+# printed command is for the owner's shell, so it stays unexpanded here.
+# shellcheck disable=SC2016
 pipeline_key_help() {
   say "secret $PIPELINE_KEY_SECRET has no value. In your own terminal: make a key, add its public half"
   say "to maniacultasset/mkos-pipeline as a READ-ONLY deploy key, store the private half, delete both:"
