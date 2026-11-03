@@ -30,7 +30,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../../.." && pwd)"
 PLACEHOLDER="__FILL_ME__"
 # The worker's model keys (MODEL_KEYS) join USER_SECRETS and WORKER_SECRETS by LLM_GATEWAY, below.
-USER_SECRETS="SENTRY_DSN GOOGLE_OAUTH_CLIENT_SECRET"
+USER_SECRETS="SENTRY_DSN GOOGLE_OAUTH_CLIENT_SECRET AMAZON_CLIENT_SECRET"
 REQUIRED_APIS="run.googleapis.com sqladmin.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com cloudkms.googleapis.com storage.googleapis.com iam.googleapis.com logging.googleapis.com cloudresourcemanager.googleapis.com serviceusage.googleapis.com cloudscheduler.googleapis.com"
 API_SECRETS="DATABASE_URL JWT_SECRET ADMIN_SESSION_SECRET S3_ACCESS_KEY S3_SECRET_KEY SENTRY_DSN"
 WORKER_SECRETS="DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY SENTRY_DSN"
@@ -132,6 +132,29 @@ if [ "$GOOGLE_OAUTH_ENABLED" = "true" ]; then
     *) die "GOOGLE_OAUTH_ENABLED=true needs GOOGLE_OAUTH_CLIENT_ID (<id>.apps.googleusercontent.com, in $ENV_NAME.env)" ;;
   esac
   API_SECRETS="$API_SECRETS GOOGLE_OAUTH_CLIENT_SECRET"
+fi
+
+# ---- the Amazon SP-API app, refused before any gcloud call ----
+# The switch is AMAZON_APP_ID: blank keeps Amazon connect off (it answers 501) and binds no
+# secret. Set, it needs the LWA client id and the https consent page, and the api and the worker
+# (which refreshes the tokens) get AMAZON_CLIENT_SECRET. Change it only in the env file plus a
+# same-image redeploy (`--env-vars-file` replaces every env var; docs/EXTERNAL-SETUP.md).
+AMAZON_APP_ID="${AMAZON_APP_ID-}"
+AMAZON_CLIENT_ID="${AMAZON_CLIENT_ID-}"
+AMAZON_AUTHORIZE_URL="${AMAZON_AUTHORIZE_URL-}"
+if [ -n "$AMAZON_APP_ID" ]; then
+  printf '%s\n' "$AMAZON_APP_ID" |
+    grep -Eqx 'amzn1\.sp\.solution\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}' ||
+    die "AMAZON_APP_ID must look like amzn1.sp.solution.<uuid> (in $ENV_NAME.env)"
+  [ -n "$AMAZON_CLIENT_ID" ] ||
+    die "AMAZON_APP_ID set needs AMAZON_CLIENT_ID, the LWA client id (in $ENV_NAME.env)"
+  case "$AMAZON_AUTHORIZE_URL" in
+    *[[:space:]]*) die "AMAZON_APP_ID set needs AMAZON_AUTHORIZE_URL as an https URL (in $ENV_NAME.env)" ;;
+    https://?*) ;;
+    *) die "AMAZON_APP_ID set needs AMAZON_AUTHORIZE_URL as an https URL (in $ENV_NAME.env)" ;;
+  esac
+  API_SECRETS="$API_SECRETS AMAZON_CLIENT_SECRET"
+  WORKER_SECRETS="$WORKER_SECRETS AMAZON_CLIENT_SECRET"
 fi
 
 # ---- ADR-0024: the AI pipeline and the model gateway, refused before any gcloud call ----
@@ -678,6 +701,8 @@ check_user_secrets() {
   [ "$WORKER_ENABLED" != "true" ] || wanted="$wanted $MODEL_KEYS"
   # ADR-0020: the Google client secret, only while Google sign-in is switched on
   [ "$GOOGLE_OAUTH_ENABLED" != "true" ] || wanted="$wanted GOOGLE_OAUTH_CLIENT_SECRET"
+  # The Amazon app's LWA client secret, only while AMAZON_APP_ID is set
+  [ -z "$AMAZON_APP_ID" ] || wanted="$wanted AMAZON_CLIENT_SECRET"
   for name in $wanted; do
     if secret_has_version "$name"; then
       say "secret $name: present"
@@ -895,6 +920,16 @@ app_env() {
   # URI is derived from DASHBOARD_BASE_URL by the api itself)
   [ "$role" != "api" ] || printf 'GOOGLE_OAUTH_ENABLED\t%s\nGOOGLE_OAUTH_CLIENT_ID\t%s\n' \
     "$GOOGLE_OAUTH_ENABLED" "$GOOGLE_OAUTH_CLIENT_ID"
+  # The Amazon SP-API app's public ids and consent page, on the api (connect) and the worker
+  # (token refresh), only while AMAZON_APP_ID is set
+  if [ -n "$AMAZON_APP_ID" ]; then
+    case "$role" in
+      api | worker)
+        printf 'AMAZON_APP_ID\t%s\nAMAZON_CLIENT_ID\t%s\nAMAZON_AUTHORIZE_URL\t%s\n' \
+          "$AMAZON_APP_ID" "$AMAZON_CLIENT_ID" "$AMAZON_AUTHORIZE_URL"
+        ;;
+    esac
+  fi
 }
 
 yaml_quote() { printf '"%s"' "$(printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"; }
@@ -1116,6 +1151,22 @@ google_guard() {
   say "google guard: OK (GOOGLE_OAUTH_CLIENT_SECRET)"
 }
 
+# With AMAZON_APP_ID set, the api and the worker mount AMAZON_CLIENT_SECRET, and Cloud Run refuses
+# a secret reference with no version mid-release, so the deploy refuses first.
+amazon_guard() {
+  if [ -z "$AMAZON_APP_ID" ]; then
+    say "amazon guard: the Amazon app is off (AMAZON_APP_ID blank)"
+    return 0
+  fi
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "amazon guard: skipped (dry run)"
+    return 0
+  fi
+  secret_has_version AMAZON_CLIENT_SECRET ||
+    die "secret AMAZON_CLIENT_SECRET has no value in $PROJECT: run scripts/deploy/gcp/deploy.sh $ENV_NAME setup first"
+  say "amazon guard: OK (AMAZON_CLIENT_SECRET)"
+}
+
 # ADR-0024: with the worker on, the worker mounts its gateway's keys (MODEL_KEYS) and refuses to
 # boot without them. A project whose `setup` predates a key (a gateway switch) would fail at the
 # worker, after the api moved, so the deploy refuses first.
@@ -1145,6 +1196,7 @@ cmd_deploy() {
   kms_guard
   setup_guard
   google_guard
+  amazon_guard
   model_key_guard
   image="$(image_ref)"
   deploy_api "$image" "$url"
@@ -1219,6 +1271,7 @@ cmd_release() {
   kms_guard
   setup_guard
   google_guard
+  amazon_guard
   model_key_guard
   cmd_build
   cmd_migrate

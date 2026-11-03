@@ -47,6 +47,7 @@ SECRET_VALUES = {
     "DEEPSEEK_API_KEY": "sk-ds-test-" + "9" * 32,
     "OPENROUTER_API_KEY": "sk-or-test-" + "8" * 32,
     "GOOGLE_OAUTH_CLIENT_SECRET": "test-only-google-client-secret-" + "f" * 8,
+    "AMAZON_CLIENT_SECRET": "test-only-amazon-client-secret-" + "7" * 8,
 }
 
 FAKE_GCLOUD = """#!/bin/sh
@@ -75,6 +76,8 @@ def toolkit(repo_root: Path, tmp_path: Path) -> Iterator[Path]:
             text = re.sub(
                 r"^GOOGLE_OAUTH_ENABLED=.*$", "GOOGLE_OAUTH_ENABLED=false", text, flags=re.M
             )
+            # The Amazon app starts off in the copy too; the Amazon tests set AMAZON_APP_ID.
+            text = re.sub(r"^AMAZON_APP_ID=.*$", "AMAZON_APP_ID=", text, flags=re.M)
         (target / source.name).write_text(text, encoding="utf-8")
     (target / "deploy.sh").chmod(0o755)
     yield target
@@ -1119,6 +1122,210 @@ def test_release_runs_the_google_guard_before_building(repo_root: Path) -> None:
     release = script[script.index("cmd_release() {") :]
     release = release[: release.index("\n}\n")]
     assert release.index("google_guard") < release.index("cmd_build")
+
+
+# ---- the Amazon SP-API app: AMAZON_APP_ID is the switch ----
+
+AMAZON_APP = "amzn1.sp.solution.0f1e2d3c-4b5a-6978-8a9b-0c1d2e3f4a5b"
+AMAZON_CLIENT = "amzn1.application-oa2-client.0123456789abcdef0123456789abcdef"
+AMAZON_CONSENT = "https://sellercentral.amazon.in/apps/authorize/consent?version=beta"
+AMAZON_KEYS = ("AMAZON_APP_ID", "AMAZON_CLIENT_ID", "AMAZON_AUTHORIZE_URL")
+
+
+def _amazon_on(toolkit: Path, env_name: str) -> None:
+    _set_env(toolkit, env_name, AMAZON_APP_ID=AMAZON_APP, AMAZON_CLIENT_ID=AMAZON_CLIENT)
+
+
+@pytest.mark.parametrize("env_name", ["staging", "prod"])
+def test_env_files_ship_the_amazon_app_off(repo_root: Path, env_name: str) -> None:
+    text = (repo_root / DEPLOY / f"{env_name}.env").read_text(encoding="utf-8")
+    values = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
+    assert values["AMAZON_APP_ID"] == "" and values["AMAZON_CLIENT_ID"] == ""
+    # a draft app consents only with version=beta (docs/EXTERNAL-SETUP.md)
+    assert values["AMAZON_AUTHORIZE_URL"] == AMAZON_CONSENT
+    assert values["AMAZON_USE_SANDBOX"] == "true"
+    assert "AMAZON_CLIENT_SECRET" not in values
+
+
+@pytest.mark.parametrize("env_name", ["staging", "prod"])
+def test_amazon_off_binds_no_secret(
+    toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch, env_name: str
+) -> None:
+    out = _run(toolkit, tmp_path, env_name, "deploy", "--dry-run", "--sha", SHA).stdout
+    assert "deploy: amazon guard: the Amazon app is off (AMAZON_APP_ID blank)" in out
+    env = _api_env(out)
+    for key in AMAZON_KEYS:
+        assert key not in env, key
+    deploy = next(line for line in out.splitlines() if line.startswith("+ gcloud run deploy "))
+    secrets = _secret_names(deploy)
+    assert "AMAZON_CLIENT_SECRET" not in secrets
+    _boot(monkeypatch, env, secrets)
+    from app.adapters.oauth import get_oauth_client
+    from app.core.config import get_settings
+
+    # connect answers 501 without a client
+    assert get_oauth_client("amazon", get_settings()) is None
+    if env_name == "staging":
+        worker_env, worker_secrets = _worker_container(out)
+        assert "AMAZON_CLIENT_SECRET" not in worker_secrets
+        assert not [k for k in worker_env if k in AMAZON_KEYS]
+    setup = _run(toolkit, tmp_path, env_name, "setup", "--dry-run", "--sha", SHA).stdout
+    # created empty, like the Google secret, but granted to no one and never asked for
+    assert "gcloud secrets create AMAZON_CLIENT_SECRET " in setup
+    for account in ("aimos-api", "aimos-worker"):
+        assert "AMAZON_CLIENT_SECRET" not in _secret_grants(setup, account), account
+    assert 'read -rsp "AMAZON_CLIENT_SECRET: "' not in setup
+
+
+def test_amazon_on_binds_the_secret_to_api_and_worker_and_both_boot(
+    toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _amazon_on(toolkit, "staging")
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert "deploy: amazon guard: skipped (dry run)" in out
+    env = _api_env(out)
+    assert env["AMAZON_APP_ID"] == AMAZON_APP
+    assert env["AMAZON_CLIENT_ID"] == AMAZON_CLIENT
+    assert env["AMAZON_AUTHORIZE_URL"] == AMAZON_CONSENT
+    deploy = next(line for line in out.splitlines() if line.startswith("+ gcloud run deploy "))
+    secrets = _secret_names(deploy)
+    assert "AMAZON_CLIENT_SECRET" in secrets
+    _boot(monkeypatch, env, secrets)
+    from app.adapters.oauth import get_oauth_client
+    from app.core.config import get_settings
+
+    client = get_oauth_client("amazon", get_settings())
+    assert client is not None
+    url = client.authorize_url(state="s", code_challenge=None)
+    assert url.startswith("https://sellercentral.amazon.in/apps/authorize/consent?")
+    assert "version=beta" in url and f"application_id={AMAZON_APP}" in url
+    worker_env, worker_secrets = _worker_container(out)
+    assert "AMAZON_CLIENT_SECRET" in worker_secrets
+    for key in AMAZON_KEYS:
+        assert worker_env[key] == env[key], key
+    for key in (*env, *secrets):  # the worker boots on its own env, not the api's
+        monkeypatch.delenv(key, raising=False)
+    _boot(monkeypatch, worker_env, worker_secrets)
+    assert get_oauth_client("amazon", get_settings()) is not None
+    flags = _run(
+        toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA, worker_deploy=True
+    ).stdout
+    line = next(line for line in flags.splitlines() if "run worker-pools deploy" in line)
+    assert "AMAZON_CLIENT_SECRET" in _secret_names(line)
+    setup = _run(toolkit, tmp_path, "staging", "setup", "--dry-run", "--sha", SHA).stdout
+    for account in ("aimos-api", "aimos-worker"):
+        assert "AMAZON_CLIENT_SECRET" in _secret_grants(setup, account), account
+    assert 'bash -c \'read -rsp "AMAZON_CLIENT_SECRET: " v; echo; printf %s "$v" | ' in setup
+
+
+@pytest.mark.parametrize("env_name", ["staging", "prod"])
+def test_amazon_jobs_never_get_the_app(toolkit: Path, tmp_path: Path, env_name: str) -> None:
+    _amazon_on(toolkit, env_name)
+    out = _run(toolkit, tmp_path, env_name, "deploy", "--dry-run", "--sha", SHA).stdout
+    blocks = _blocks(out, "env file")
+    assert "AMAZON_APP_ID" in blocks[0]
+    # every env file after the api's belongs to a job (the worker uses its spec here)
+    for block in blocks[1:]:
+        for key in AMAZON_KEYS:
+            assert key not in block, key
+    jobs = [x for x in out.splitlines() if "run jobs deploy" in x and "--set-secrets=" in x]
+    assert jobs
+    for line in jobs:
+        assert "AMAZON_CLIENT_SECRET" not in _secret_names(line), line
+    setup = _run(toolkit, tmp_path, env_name, "setup", "--dry-run", "--sha", SHA).stdout
+    for account in ("aimos-ops", "aimos-maint", "aimos-migrate", "aimos-build"):
+        assert "AMAZON_CLIENT_SECRET" not in _secret_grants(setup, account), account
+
+
+@pytest.mark.parametrize(
+    ("values", "message"),
+    [
+        (
+            {"AMAZON_APP_ID": "amzn1.sp.solution.REPLACE_ME", "AMAZON_CLIENT_ID": AMAZON_CLIENT},
+            "AMAZON_APP_ID must look like amzn1.sp.solution.<uuid>",
+        ),
+        (
+            {"AMAZON_APP_ID": AMAZON_APP, "AMAZON_CLIENT_ID": ""},
+            "AMAZON_APP_ID set needs AMAZON_CLIENT_ID",
+        ),
+        (
+            {
+                "AMAZON_APP_ID": AMAZON_APP,
+                "AMAZON_CLIENT_ID": AMAZON_CLIENT,
+                "AMAZON_AUTHORIZE_URL": "",
+            },
+            "AMAZON_APP_ID set needs AMAZON_AUTHORIZE_URL as an https URL",
+        ),
+        (
+            {
+                "AMAZON_APP_ID": AMAZON_APP,
+                "AMAZON_CLIENT_ID": AMAZON_CLIENT,
+                "AMAZON_AUTHORIZE_URL": "http://sellercentral.amazon.in/apps/authorize/consent",
+            },
+            "AMAZON_APP_ID set needs AMAZON_AUTHORIZE_URL as an https URL",
+        ),
+        (
+            {
+                "AMAZON_APP_ID": AMAZON_APP,
+                "AMAZON_CLIENT_ID": AMAZON_CLIENT,
+                # quoted: the env file is sourced, so only a quoted space reaches the check
+                "AMAZON_AUTHORIZE_URL": '"' + AMAZON_CONSENT.replace("?", " ?") + '"',
+            },
+            "AMAZON_APP_ID set needs AMAZON_AUTHORIZE_URL as an https URL",
+        ),
+        (
+            {"AMAZON_APP_ID": AMAZON_APP + "x", "AMAZON_CLIENT_ID": AMAZON_CLIENT},
+            "AMAZON_APP_ID must look like amzn1.sp.solution.<uuid>",
+        ),
+        (
+            {"AMAZON_APP_ID": "x" + AMAZON_APP, "AMAZON_CLIENT_ID": AMAZON_CLIENT},
+            "AMAZON_APP_ID must look like amzn1.sp.solution.<uuid>",
+        ),
+    ],
+)
+def test_bad_amazon_app_refused(
+    toolkit: Path, tmp_path: Path, values: dict[str, str], message: str
+) -> None:
+    _set_env(toolkit, "staging", **values)
+    for command in ("release", "deploy", "setup"):
+        result = _run(toolkit, tmp_path, "staging", command, "--dry-run", "--sha", SHA)
+        assert result.returncode != 0, command
+        assert message in result.stderr, command
+
+
+def test_release_runs_the_amazon_guard_before_building(repo_root: Path) -> None:
+    script = (repo_root / DEPLOY / "deploy.sh").read_text(encoding="utf-8")
+    for name in ("cmd_release() {", "cmd_deploy() {"):
+        body = script[script.index(name) :]
+        body = body[: body.index("\n}\n")]
+        assert "amazon_guard" in body, name
+    release = script[script.index("cmd_release() {") :]
+    release = release[: release.index("\n}\n")]
+    assert release.index("amazon_guard") < release.index("cmd_build")
+
+
+@pytest.mark.parametrize("command", ["deploy", "release"])
+def test_deploy_refuses_without_the_amazon_secret(
+    toolkit: Path, tmp_path: Path, command: str
+) -> None:
+    """With the Amazon app on, an AMAZON_CLIENT_SECRET with no version stops the run before
+    anything is built or deployed, naming the secret and the fix."""
+    _amazon_on(toolkit, "staging")
+    result, log = _run_model_key(
+        toolkit, tmp_path, command, has_key=False, missing="AMAZON_CLIENT_SECRET"
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "secret AMAZON_CLIENT_SECRET has no value in aimos-staging" in result.stderr
+    assert "deploy.sh staging setup first" in result.stderr
+    assert not log.exists(), log.read_text(encoding="utf-8")  # nothing built or deployed
+
+
+def test_amazon_guard_passes_with_the_secret(toolkit: Path, tmp_path: Path) -> None:
+    _amazon_on(toolkit, "staging")
+    result, _ = _run_model_key(
+        toolkit, tmp_path, "deploy", has_key=True, missing="AMAZON_CLIENT_SECRET"
+    )
+    assert "deploy: amazon guard: OK (AMAZON_CLIENT_SECRET)" in result.stdout, result.stderr
 
 
 # ---- ADR-0024: the real pipeline build and the generation route ----
