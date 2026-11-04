@@ -430,15 +430,39 @@ def test_origin_auth_rotation_two_values(clean_env: Path, monkeypatch: pytest.Mo
         assert shape in _abort(monkeypatch, env)
 
 
-def test_malformed_secret_never_vouches_while_off(
+@pytest.mark.parametrize("app_env", ["local", "staging", "production"])
+def test_origin_auth_off_refuses_malformed_secret(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, app_env: str
+) -> None:
+    # Fix round 1 F1: under off a malformed value would vouch for no caller, so every user behind
+    # the Worker would share one limiter bucket. `echo "$NEW $OLD" | gcloud ...` stores the
+    # trailing newline, the likeliest bad value.
+    for bad in (
+        "short",
+        f"{EDGE_A} {EDGE_B} {EDGE_A}",
+        "é" * 32,
+        f"{EDGE_A} {EDGE_B}\n",
+        f"{EDGE_A}\n",
+    ):
+        message = _abort(monkeypatch, _deployed(app_env, EDGE_ORIGIN_SECRET=bad))
+        assert "EDGE_ORIGIN_SECRET" in message
+        assert "Zq9" not in message
+    loaded = _boot(monkeypatch, _deployed(app_env, EDGE_ORIGIN_SECRET=f"{EDGE_A} {EDGE_B}"))
+    assert loaded.origin_auth == "off"  # type: ignore[attr-defined]
+    assert loaded.edge_origin_secrets() == (EDGE_A.encode(), EDGE_B.encode())  # type: ignore[attr-defined]
+
+
+def test_malformed_secret_never_vouches_without_the_boot_guard(
     clean_env: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # off boots whatever the value, but a value enforce would refuse marks no caller as the edge
-    for bad in ("short", f"{EDGE_A} {EDGE_B} {EDGE_A}", "é" * 32):
-        loaded = _boot(monkeypatch, _deployed(EDGE_ORIGIN_SECRET=bad))
-        assert loaded.edge_origin_secrets() == ()  # type: ignore[attr-defined]
-    loaded = _boot(monkeypatch, _deployed(EDGE_ORIGIN_SECRET=EDGE_A))
-    assert loaded.edge_origin_secrets() == (EDGE_A.encode(),)  # type: ignore[attr-defined]
+    # Settings() skips the boot guard: a value it would refuse still marks no caller as the edge
+    from app.core.config import Settings
+
+    for key, value in _deployed().items():
+        monkeypatch.setenv(key, value)
+    for bad in ("short", f"{EDGE_A} {EDGE_B} {EDGE_A}", "é" * 32, f"{EDGE_A}\n"):
+        monkeypatch.setenv("EDGE_ORIGIN_SECRET", bad)
+        assert Settings().edge_origin_secrets() == ()
 
 
 @pytest.mark.parametrize("value", ["on", "ENFORCE", "", "true"])

@@ -304,7 +304,7 @@ class Settings(BaseSettings):
     def edge_origin_secrets(self) -> tuple[bytes, ...]:
         """The accepted Worker origin secrets (ADR-0025): the current value, then the previous one
         during a rotation, separated by one space. Empty when unset or malformed, so a value the
-        boot guard would refuse never vouches for a caller, even under `ORIGIN_AUTH=off`."""
+        boot guard refuses (in both modes) never vouches for a caller, even without that guard."""
         if self.edge_origin_secret is None:
             return ()
         raw = self.edge_origin_secret.get_secret_value()
@@ -368,12 +368,17 @@ def _edge_secret_errors(raw: str) -> list[str]:
 
 def _edge_errors(s: Settings) -> list[str]:
     """ADR-0025: an api under `ORIGIN_AUTH=enforce` needs a well-formed Worker origin secret, in
-    every APP_ENV (a weak value would let anyone past the guard). Names only, never a value."""
-    if s.app_role != "api" or s.origin_auth != "enforce":
+    every APP_ENV (a weak value would let anyone past the guard). A set value must be well formed
+    under `off` too: a malformed one vouches for no caller, so every user behind the Worker would
+    share one limiter bucket; refusing the boot keeps the previous revision serving. Names only,
+    never a value."""
+    if s.app_role != "api":
         return []
-    if s.edge_origin_secret is None:
+    if s.edge_origin_secret is not None:
+        return _edge_secret_errors(s.edge_origin_secret.get_secret_value())
+    if s.origin_auth == "enforce":
         return ["ORIGIN_AUTH=enforce requires EDGE_ORIGIN_SECRET"]
-    return _edge_secret_errors(s.edge_origin_secret.get_secret_value())
+    return []
 
 
 def _is_loopback_host(host: str) -> bool:

@@ -72,10 +72,12 @@ owner. `prod.env` holds `EDGE_PROVIDER=cloudflare` and `ORIGIN_AUTH=off`; in thi
    `scripts/deploy/cloudflare/api-edge-worker.js` from the merged commit; Deploy.
 2. Settings, Variables: `ORIGIN_URL` = the run.app URL (`deploy.sh prod status`), `EDGE_HOST` =
    `api.kuinn.in`.
-3. Settings, Variables, Secret `ORIGIN_SECRET`: the first value of `EDGE_ORIGIN_SECRET`. Read it in
-   your own terminal and paste it into the dashboard field; never into chat, a file or a ticket:
-   `gcloud secrets versions access latest --secret=EDGE_ORIGIN_SECRET --project=aimos-prod | pbcopy`,
-   then clear the clipboard.
+3. Settings, Variables, Secret `ORIGIN_SECRET`: the first value of `EDGE_ORIGIN_SECRET` only, never
+   the two-value version a rotation holds. Read it in your own terminal and paste it into the
+   dashboard field; never into chat, a file or a ticket:
+   `gcloud secrets versions access latest --secret=EDGE_ORIGIN_SECRET --project=aimos-prod | cut -d' ' -f1 | tr -d '\n' | pbcopy`,
+   then clear the clipboard. Then run `deploy.sh prod edge status` and stop unless it prints
+   "edge serving: yes".
 4. Settings, Domains and Routes: add the Custom Domain `api.kuinn.in`; turn the `workers.dev`
    route and Preview URLs OFF.
 
@@ -104,11 +106,22 @@ Paid if the Cloud Run request count passes about 50,000 a day.
 
 ## Rotation
 
-1. `gcloud secrets versions add EDGE_ORIGIN_SECRET` with `<new> <old>` (one space), then a
-   same-image `prod deploy`: the api accepts both.
-2. Set the Worker secret `ORIGIN_SECRET` to `<new>`.
-3. Add a version holding `<new>` alone and `prod deploy` again. Rotate at once on any suspicion of
-   a leak.
+Work in one terminal; `NEW` and `OLD` live only in its shell variables, never in a file, and the
+Worker gets `NEW` from that variable, never from the two-value version read back.
+
+1. `NEW=$(openssl rand -hex 32)` and
+   `OLD=$(gcloud secrets versions access latest --secret=EDGE_ORIGIN_SECRET --project=aimos-prod)`.
+   Add `<new> <old>` (one space, no trailing newline: use `printf`, never `echo`):
+   `printf '%s %s' "$NEW" "$OLD" | gcloud secrets versions add EDGE_ORIGIN_SECRET --data-file=- --project=aimos-prod`,
+   then a same-image `prod deploy`: the api accepts both. A malformed value refuses the boot in
+   any `ORIGIN_AUTH` mode, so the previous revision keeps serving; fix the value and deploy again.
+2. Set the Worker secret `ORIGIN_SECRET` to `<new>` alone: `printf '%s' "$NEW" | pbcopy`, paste,
+   clear the clipboard. Run `deploy.sh prod edge status` and stop unless it prints
+   "edge serving: yes".
+3. Add a version holding `<new>` alone
+   (`printf '%s' "$NEW" | gcloud secrets versions add EDGE_ORIGIN_SECRET --data-file=- --project=aimos-prod`)
+   and `prod deploy` again. Run `deploy.sh prod edge status` again and stop unless it prints
+   "edge serving: yes". Then `unset NEW OLD`. Rotate at once on any suspicion of a leak.
 
 ## Rollback
 
