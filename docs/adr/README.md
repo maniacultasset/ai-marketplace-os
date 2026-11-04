@@ -31,3 +31,4 @@ change.
 | 0022 | API edge: Cloud Armor WAF, locked ingress, candidate smoke through the load balancer (amends ADR-0001 deploy step) | ⚑ proposed (DPP-2; 0020 reserved by google-signin, 0021 by DPP-1) | 2026-10-27 |
 | 0023 | Trusted browsers and a narrower step-up (amends ADR-0021 §5 and §6, ADR-0020 §5) | ⚑ proposed (trusted devices; user decisions in chat 2026-10-30) | 2026-10-30 |
 | 0024 | The AI team's pipeline enters the deploy image only, by commit sha and a read-only deploy key; model gateway `LLM_GATEWAY` (`direct` or `openrouter`) (amends ADR-0012 §3, ADR-0013 §5; closes T104) | ⚑ proposed (owner decisions in chat 2026-11-02) | 2026-11-02 |
+| 0025 | Interim API edge on Cloudflare Free, with an origin secret checked by the app (amends ADR-0022 until Cloud Armor quota returns; replaces its DPP 1.1.1 gate meanwhile) | ⚑ proposed (EDGE-CF; owner decisions in chat 2026-11-03) | 2026-11-03 |

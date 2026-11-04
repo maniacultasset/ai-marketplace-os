@@ -48,6 +48,8 @@ SECRET_VALUES = {
     "OPENROUTER_API_KEY": "sk-or-test-" + "8" * 32,
     "GOOGLE_OAUTH_CLIENT_SECRET": "test-only-google-client-secret-" + "f" * 8,
     "AMAZON_CLIENT_SECRET": "test-only-amazon-client-secret-" + "7" * 8,
+    # ADR-0025: prod.env runs EDGE_PROVIDER=cloudflare, which binds the Worker's origin secret
+    "EDGE_ORIGIN_SECRET": "6" * 64,
 }
 
 FAKE_GCLOUD = """#!/bin/sh

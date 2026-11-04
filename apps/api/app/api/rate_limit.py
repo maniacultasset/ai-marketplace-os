@@ -26,11 +26,16 @@ entry; a caller-written entry is always to its left). Put a load balancer in fro
 is used. The access log carries the entry count as `xff_entries` (never the values), which is how
 the cutover measures it; `HOPS["production"]` changes only in the cutover PR
 (docs/runbooks/EDGE-CUTOVER.md steps 4-5; KNOWN-ISSUES.md S25 hop counts).
+
+Behind the interim Cloudflare edge (ADR-0025) the Worker sends the client address it read from
+`cf-connecting-ip` as `x-kuinn-client-ip`; `edge_client_ip()` trusts it only on a request whose
+origin secret matched, and `request_ip()` falls back to `client_ip()` otherwise.
 """
 
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 from typing import Final, Literal
@@ -38,8 +43,10 @@ from uuid import UUID
 
 from fastapi import Request
 from mkos_schemas.codes import ErrorCode
+from starlette.types import Scope
 
 from app.api.errors import ApiError
+from app.api.origin_auth import CLIENT_IP_HEADER, SCOPE_KEY
 from app.core.config import get_settings
 from app.services import rate_limit
 
@@ -62,7 +69,31 @@ def client_ip(forwarded_for: Sequence[str], peer: str | None, hops: int) -> str:
     return chosen[:MAX_IP_CHARS]
 
 
+def edge_client_ip(scope: Scope) -> str | None:
+    """The address the Cloudflare Worker read from `cf-connecting-ip` (ADR-0025, AC12), or None.
+    Trusted only when `OriginGuard.screen` matched the Worker's secret on this request (it strips
+    the header otherwise), and only as exactly one header holding one bare IP address: no port,
+    list or zone id. Behind the Worker, X-Forwarded-For carries Cloudflare's address, so without
+    this every user would share one bucket; `HOPS` stays as it is for direct run.app callers."""
+    if scope.get(SCOPE_KEY) is not True:
+        return None
+    values = [v for k, v in scope.get("headers") or () if k.lower() == CLIENT_IP_HEADER]
+    if len(values) != 1:
+        return None
+    raw = values[0].decode("latin-1").strip()
+    if not raw.isascii() or "%" in raw:
+        return None
+    try:
+        address = ipaddress.ip_address(raw)
+    except ValueError:
+        return None
+    return str(address)[:MAX_IP_CHARS]
+
+
 def request_ip(request: Request) -> str:
+    edge = edge_client_ip(request.scope)
+    if edge is not None:
+        return edge
     peer = request.client.host if request.client is not None else None
     return client_ip(request.headers.getlist("x-forwarded-for"), peer, HOPS[get_settings().app_env])
 

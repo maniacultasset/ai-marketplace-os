@@ -12,6 +12,7 @@ from app.api import health
 from app.api.body_limit import BodyLimitMiddleware
 from app.api.cors import ApiCORSMiddleware
 from app.api.errors import install_error_handlers
+from app.api.origin_auth import OriginGuard
 from app.api.security_headers import SecurityHeaders
 from app.api.v1.router import router as v1_router
 from app.api.v1.routers.rules import DRY_RUN_MAX_BODY_BYTES, DRY_RUN_PATH
@@ -55,6 +56,11 @@ def create_app() -> FastAPI:
     # (wrapped outside ServerErrorMiddleware, so a 500 carries them too).
     app.security_headers = SecurityHeaders(
         api_prefix=settings.api_v1_prefix, hsts=settings.app_env != "local"
+    )
+    # ADR-0025: always set, so the edge client-IP header is stripped in every mode; it answers
+    # 403 only under ORIGIN_AUTH=enforce.
+    app.origin_guard = OriginGuard(
+        enforce=settings.origin_auth == "enforce", secrets=settings.edge_origin_secrets()
     )
     if sentry_on:
         app.on_request = tag_request
