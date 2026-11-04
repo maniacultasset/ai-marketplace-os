@@ -1,5 +1,9 @@
 # API edge cutover: Cloud Armor on a global external load balancer (prod)
 
+> Interim (ADR-0025): while the Cloud Armor quota is 0, `api.kuinn.in` runs on Cloudflare
+> Free instead: `docs/runbooks/EDGE-CLOUDFLARE.md`. This runbook applies once `EDGE_PROVIDER` is
+> blank or `armor` again.
+
 This runbook puts `api.kuinn.in` in front of the prod API: a global external Application Load
 Balancer with a Google-managed certificate and an SSL policy MODERN / minimum TLS 1.2, Cloud Armor
 Standard (`kuinn-api-waf`, rules in `scripts/deploy/gcp/armor-rules.yaml`), then closes the

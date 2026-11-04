@@ -366,3 +366,128 @@ def test_error_messages_hold_no_values(clean_env: Path, monkeypatch: pytest.Monk
     assert "Zq9-private" not in message
     message = _abort(monkeypatch, _deployed("staging", APP_ROLE="worker", MFA_KMS_KEY_URI=odd))
     assert "Zq9-private" not in message
+
+
+# ---- ADR-0025: ORIGIN_AUTH and the Worker's EDGE_ORIGIN_SECRET ----
+
+EDGE_A = "Zq9-edge-origin-secret-current-32"
+EDGE_B = "Zq9-edge-origin-secret-previous-3"
+
+
+def test_origin_auth_defaults_off_and_boots_without_secret(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    loaded = _boot(monkeypatch, _deployed())
+    assert loaded.origin_auth == "off"  # type: ignore[attr-defined]
+    assert loaded.edge_origin_secrets() == ()  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize("blank", [None, "", "   "])
+def test_origin_auth_enforce_requires_secret(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, blank: str | None
+) -> None:
+    env = _deployed(ORIGIN_AUTH="enforce")
+    if blank is not None:
+        env["EDGE_ORIGIN_SECRET"] = blank
+    assert "ORIGIN_AUTH=enforce requires EDGE_ORIGIN_SECRET" in _abort(monkeypatch, env)
+
+
+@pytest.mark.parametrize("app_env", ["local", "staging", "production"])
+def test_origin_auth_enforce_refuses_weak_secret(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, app_env: str
+) -> None:
+    for weak in ("x" * 31, "x" * 16 + "\t" + "x" * 16, "x" * 16 + "\n" + "x" * 16):
+        env = _deployed(app_env, ORIGIN_AUTH="enforce", EDGE_ORIGIN_SECRET=weak)
+        assert "refuses a weak EDGE_ORIGIN_SECRET" in _abort(monkeypatch, env)
+    loaded = _boot(
+        monkeypatch, _deployed(app_env, ORIGIN_AUTH="enforce", EDGE_ORIGIN_SECRET="x" * 32)
+    )
+    assert loaded.edge_origin_secrets() == (b"x" * 32,)  # type: ignore[attr-defined]
+
+
+def test_origin_auth_enforce_refuses_non_ascii_secret(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # CODE-PLAN critique LOW: a header value must be ASCII (Worker Headers, latin-1 ASGI)
+    for bad in ("é" * 32, "x" * 31 + "\x01"):
+        env = _deployed(ORIGIN_AUTH="enforce", EDGE_ORIGIN_SECRET=bad)
+        assert "EDGE_ORIGIN_SECRET must be ASCII" in _abort(monkeypatch, env)
+
+
+def test_origin_auth_rotation_two_values(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    loaded = _boot(
+        monkeypatch, _deployed(ORIGIN_AUTH="enforce", EDGE_ORIGIN_SECRET=f"{EDGE_A} {EDGE_B}")
+    )
+    assert loaded.edge_origin_secrets() == (EDGE_A.encode(), EDGE_B.encode())  # type: ignore[attr-defined]
+    shape = "EDGE_ORIGIN_SECRET holds one value, or two separated by one space"
+    for bad in (
+        f"{EDGE_A} {EDGE_B} {EDGE_A}",
+        f"{EDGE_A}  {EDGE_B}",
+        f" {EDGE_A}",
+        f"{EDGE_A} ",
+    ):
+        env = _deployed(ORIGIN_AUTH="enforce", EDGE_ORIGIN_SECRET=bad)
+        assert shape in _abort(monkeypatch, env)
+
+
+@pytest.mark.parametrize("app_env", ["local", "staging", "production"])
+def test_origin_auth_off_refuses_malformed_secret(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, app_env: str
+) -> None:
+    # Fix round 1 F1: under off a malformed value would vouch for no caller, so every user behind
+    # the Worker would share one limiter bucket. `echo "$NEW $OLD" | gcloud ...` stores the
+    # trailing newline, the likeliest bad value.
+    for bad in (
+        "short",
+        f"{EDGE_A} {EDGE_B} {EDGE_A}",
+        "é" * 32,
+        f"{EDGE_A} {EDGE_B}\n",
+        f"{EDGE_A}\n",
+    ):
+        message = _abort(monkeypatch, _deployed(app_env, EDGE_ORIGIN_SECRET=bad))
+        assert "EDGE_ORIGIN_SECRET" in message
+        assert "Zq9" not in message
+    loaded = _boot(monkeypatch, _deployed(app_env, EDGE_ORIGIN_SECRET=f"{EDGE_A} {EDGE_B}"))
+    assert loaded.origin_auth == "off"  # type: ignore[attr-defined]
+    assert loaded.edge_origin_secrets() == (EDGE_A.encode(), EDGE_B.encode())  # type: ignore[attr-defined]
+
+
+def test_malformed_secret_never_vouches_without_the_boot_guard(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Settings() skips the boot guard: a value it would refuse still marks no caller as the edge
+    from app.core.config import Settings
+
+    for key, value in _deployed().items():
+        monkeypatch.setenv(key, value)
+    for bad in ("short", f"{EDGE_A} {EDGE_B} {EDGE_A}", "é" * 32, f"{EDGE_A}\n"):
+        monkeypatch.setenv("EDGE_ORIGIN_SECRET", bad)
+        assert Settings().edge_origin_secrets() == ()
+
+
+@pytest.mark.parametrize("value", ["on", "ENFORCE", "", "true"])
+def test_origin_auth_bad_literal_refused(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    message = _abort(monkeypatch, _deployed(ORIGIN_AUTH=value, EDGE_ORIGIN_SECRET=EDGE_A))
+    assert "ORIGIN_AUTH" in message.upper()
+
+
+def test_origin_auth_worker_role_ignores_secret(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = {"APP_ENV": "local", "APP_ROLE": "worker", "DATABASE_URL": LOCAL_URL}
+    loaded = _boot(monkeypatch, {**env, "ORIGIN_AUTH": "enforce"})
+    assert loaded.origin_auth == "enforce"  # type: ignore[attr-defined]
+
+
+def test_origin_auth_error_names_no_value(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    for bad in ("Zq9-short-edge", f"{EDGE_A} {EDGE_B} Zq9-third-edge-value-xxxxxxxxxxx"):
+        message = _abort(monkeypatch, _deployed(ORIGIN_AUTH="enforce", EDGE_ORIGIN_SECRET=bad))
+        assert "Zq9" not in message
+
+
+def test_edge_origin_secret_repr_hidden(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    loaded = _boot(monkeypatch, _deployed(ORIGIN_AUTH="enforce", EDGE_ORIGIN_SECRET=EDGE_A))
+    assert EDGE_A not in repr(loaded)
+    assert EDGE_A not in loaded.model_dump_json()  # type: ignore[attr-defined]

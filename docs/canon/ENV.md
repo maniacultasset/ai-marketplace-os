@@ -28,6 +28,8 @@ The single consolidated list. Local values match `docker-compose.yml` exactly so
 | `ADMIN_STAFF_EMAILS` | `(empty — leave blank)` | local .env | optional | Comma-separated allowlist, second layer behind IAP/IAM. |
 | `ADMIN_LOCAL_EMAIL` | `dev@local` | local .env | optional | Used only when APP_ENV=local. |
 | `PORT` | `8000` | local .env | required | 8000 locally (a second worktree sets its own value in its `.env`). Cloud Run injects `$PORT` (image default 8080); the worker health server binds `settings.port`, which is why this is a register row and not a hard-coded constant. |
+| `ORIGIN_AUTH` | `off` | local .env | optional | off \| enforce; default off; api only (ADR-0025, proposed). `enforce` answers 403 `PERMISSION_DENIED` to any request outside `/healthz` and `/readyz` that lacks the Cloudflare Worker's `x-kuinn-origin-auth` header, before routing. The header is stripped from every request in both modes; a matched header also lets the app trust the Worker's `x-kuinn-client-ip` for rate limits. `enforce` without a valid `EDGE_ORIGIN_SECRET` refuses boot. |
+| `EDGE_ORIGIN_SECRET` | `(empty — leave blank)` | Secret Manager | required by the api when `ORIGIN_AUTH=enforce` | The Worker's origin secret (ADR-0025): one value, or two separated by one space during a rotation (current, then previous). Each value ASCII, no whitespace, 32+ characters, in every APP_ENV; a set value of any other shape refuses the api's boot under `off` too; `deploy.sh` generates 64 hex characters and binds it to the api only. Compared in constant time against every value. Never in a committed file or a log line; in the redaction deny-list (`*_secret`). |
 
 ## Database
 

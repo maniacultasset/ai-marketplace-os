@@ -13,8 +13,8 @@ detection, not at confirmation.
 
 | Role | Who | Reach |
 |---|---|---|
-| Incident Management Point of Contact (IMPOC), DPP 1.6.5 | To be named by Maniacult | To be filled (a monitored company mailbox, not a personal address) |
-| Backup IMPOC | To be named by Maniacult | To be filled |
+| Incident Management Point of Contact (IMPOC), DPP 1.6.5 | Amisha Jasoria | amishajasoria03@gmail.com |
+| Backup IMPOC | Naresh Jasoria | nareshjasoria0707@gmail.com |
 | Incident lead (technical) | Engineering lead | Team chat, then phone |
 | GCP project owner | The `aimos-prod` owner account | Can disable accounts, rotate keys, lock ingress |
 | Amazon | Security team | security@amazon.com (Security Incidents); spapi-abuse@amazon.com (seller abuse, AUP 1.3) |
@@ -114,5 +114,6 @@ Closed (UTC):
 | Date | What | Outcome |
 |---|---|---|
 | 2026-10-28 | Plan written | First version; IMPOC to be named; approval pending |
+| 2026-11-04 | IMPOC and backup named | Amisha Jasoria (IMPOC), Naresh Jasoria (backup); director approval pending |
 | By 2027-01-31 | Tabletop exercise (type 1, a leaked LWA client secret) | |
 | 2027-04-28 | Six-month review | |
