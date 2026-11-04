@@ -1991,7 +1991,9 @@ def test_cloudflare_smoke_header_never_printed(toolkit: Path, tmp_path: Path) ->
 
 def _normalised(result: subprocess.CompletedProcess[str]) -> str:
     text = f"rc={result.returncode}\n{result.stdout}\n{result.stderr}"
-    return re.sub(r"aimos-deploy\.[A-Za-z0-9]+", "aimos-deploy.X", text)
+    text = re.sub(r"aimos-deploy\.[A-Za-z0-9]+", "aimos-deploy.X", text)
+    # the KMS key's next rotation time is now + 90 days to the second, so two runs can differ
+    return re.sub(r"--next-rotation-time=[0-9T:-]+Z", "--next-rotation-time=T", text)
 
 
 @pytest.mark.parametrize("args", [("release",), ("edge", "setup"), ("setup",), ("deploy",)])
