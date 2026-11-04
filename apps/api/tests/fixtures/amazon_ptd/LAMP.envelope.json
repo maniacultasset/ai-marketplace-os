@@ -1,0 +1,68 @@
+{
+  "displayName": "Lamp",
+  "locale": "en_IN",
+  "marketplaceIds": [
+    "A21TJRUUN4KGV"
+  ],
+  "metaSchema": {
+    "link": {
+      "resource": "https://schemas.amazon.com/selling-partners/definitions/product-types/meta-schema/v1",
+      "verb": "GET"
+    },
+    "checksum": "not-checked"
+  },
+  "productType": "LAMP",
+  "productTypeVersion": {
+    "version": "UFAKE0003",
+    "latest": true,
+    "releaseCandidate": false
+  },
+  "propertyGroups": {
+    "offer": {
+      "title": "Offer",
+      "propertyNames": []
+    },
+    "product_identity": {
+      "title": "Product Identity",
+      "propertyNames": [
+        "item_name"
+      ]
+    },
+    "product_details": {
+      "title": "Product Details",
+      "propertyNames": [
+        "bullet_point",
+        "child_parent_sku_relationship",
+        "color",
+        "country_of_origin",
+        "generic_keyword",
+        "item_dimensions",
+        "lamp_type",
+        "light_source_type",
+        "main_product_image_locator",
+        "material",
+        "other_product_image_locator_1",
+        "other_product_image_locator_2",
+        "other_product_image_locator_3",
+        "other_product_image_locator_4",
+        "other_product_image_locator_5",
+        "other_product_image_locator_6",
+        "other_product_image_locator_7",
+        "other_product_image_locator_8",
+        "parentage_level",
+        "product_description",
+        "shade_material",
+        "variation_theme"
+      ]
+    }
+  },
+  "requirements": "LISTING_PRODUCT_ONLY",
+  "requirementsEnforced": "ENFORCED",
+  "schema": {
+    "link": {
+      "resource": "filled-by-the-fake",
+      "verb": "GET"
+    },
+    "checksum": "filled-by-the-fake"
+  }
+}

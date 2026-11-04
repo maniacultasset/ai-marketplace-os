@@ -24,6 +24,12 @@ spec's `marketplace_field` and `value_map` (DATABASE.md:541-542, T49).
 - `preview(listing)`: what a create would send, per item, and the mapping report.
 - `reverse_index(template)`: Amazon attribute -> the field paths that feed it, so a marketplace
   issue on `generic_keyword` fails both keyword paths.
+- DW2: with a stored Product Type Definition (`listing.product_type_schema`) for the template's
+  product type, `build()` also checks each item's attributes against it
+  (`schema_check.check_item`). Those errors have their own dedupe, keyed on (field, code,
+  raw_code, message), and a schema `required` the template check already reported is left out.
+  A definition for another product type is not used (one SCHEMA_INVALID warning); none at all
+  changes nothing (AC10).
 
 The adapter only adds errors; it never removes or downgrades a Rules Engine verdict (invariant
 2): `required_attributes` and the enum vocabulary are the ones the engine checks.
@@ -44,6 +50,7 @@ from mkos_schemas.listing import AttributeValue, CanonicalListing
 from mkos_schemas.paths import is_valid_field_path
 
 from app.adapters.amazon import constants as c
+from app.adapters.amazon import schema_check
 from app.adapters.base import (
     AdapterItem,
     AdapterListing,
@@ -417,9 +424,10 @@ def _family_errors(listing: AdapterListing, template: CategoryTemplate | None) -
 
 
 def build(
-    listing: AdapterListing, *, marketplace_id: str = DEFAULT_MARKETPLACE_ID
+    listing: AdapterListing, *, marketplace_id: str = DEFAULT_MARKETPLACE_ID, schema: bool = True
 ) -> tuple[list[MappedItem], list[ErrorItem]]:
-    """Every item's mapping and every blocking error (`check`), in item order."""
+    """Every item's mapping and every blocking error (`check`), in item order. `schema=False`
+    leaves out the stored-definition check: the update path (PATCH) is never blocked by it."""
     template = listing.template if is_mapped(listing.template) else None
     mapped = template.template if template is not None else None
     errors: list[ErrorItem] = []
@@ -446,8 +454,8 @@ def build(
                     value=unit.seller_sku,
                 )
             )
+    seen: set[str] = set()
     if mapped is not None:
-        seen: set[str] = set()
         for unit in listing.units():
             values = unit_attributes(listing, unit)
             axes = _axes(listing) or frozenset()
@@ -472,7 +480,42 @@ def build(
             if marker not in seen_values:
                 seen_values.add(marker)
                 errors.append(problem)
+    if schema:
+        errors += _schema_errors(listing, items, template, seen)
     return items, errors
+
+
+def _schema_errors(
+    listing: AdapterListing,
+    items: Sequence[MappedItem],
+    template: AdapterTemplate | None,
+    reported: set[str],
+) -> list[ErrorItem]:
+    """DW2: each item against the stored definition; schema errors have their own dedupe."""
+    schema = listing.product_type_schema
+    if schema is None or template is None or not template.product_type:
+        return []
+    if schema.product_type != template.product_type:
+        return [
+            error(
+                "listing",
+                ErrorCode.SCHEMA_INVALID,
+                f"The stored Amazon schema is for {schema.product_type}, not "
+                f"{template.product_type}; the listing was not checked against it.",
+                severity=Severity.WARNING,
+            )
+        ]
+    index = reverse_index(template.template)
+    found: list[ErrorItem] = []
+    markers: set[tuple[str, str, str | None, str]] = set()
+    for item in items:
+        attributes = item.payload.get("attributes") or {}
+        for problem in schema_check.check_item(attributes, schema, index, reported=reported):
+            marker = (problem.field, problem.error_code.value, problem.raw_code, problem.message)
+            if marker not in markers:
+                markers.add(marker)
+                found.append(problem)
+    return found
 
 
 def check(listing: AdapterListing) -> list[ErrorItem]:

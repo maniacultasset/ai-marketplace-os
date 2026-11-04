@@ -1,8 +1,9 @@
 """Amazon SP-API Listings Items constants (spec L5272; S20 T6; PLAN D1-D3).
 
-Every wire name here is believed from the public SP-API documentation and has not been checked
-against a sandbox or a product type definition yet: DW1 (sandbox) and DW2 (PTD templates)
-confirm them. They live only in this adapter (invariant 4): the canonical listing has none.
+Every wire name here is believed from the public SP-API documentation. They stay believed until
+the production definitions are fetched (DW2-P): since DW2, `app.cli templates diff` checks them
+against a stored Product Type Definition. They live only in this adapter (invariant 4): the
+canonical listing has none.
 """
 
 from __future__ import annotations
@@ -60,3 +61,16 @@ ACCEPTED: Final = "ACCEPTED"
 INVALID: Final = "INVALID"
 BUYABLE: Final = "BUYABLE"
 DISCOVERABLE: Final = "DISCOVERABLE"
+
+# DW2: the Product Type Definitions API (2020-09-01). Only `getDefinitionsProductType` is used.
+PTD_API_VERSION: Final = "2020-09-01"
+PTD_PATH: Final = f"/definitions/{PTD_API_VERSION}/productTypes"
+PTD_LOCALE: Final = "en_IN"
+PTD_REQUIREMENTS: Final = REQUIREMENTS  # decision 2: store and validate what submission sends
+PTD_REQUIREMENTS_VALUES: Final = ("LISTING", "LISTING_PRODUCT_ONLY", "LISTING_OFFER_ONLY")
+PTD_OPERATIONS: Final = ("ptd_get",)
+# Believed: Amazon publishes 5 req/s; 1/s is the safe start for a one-shot staff command.
+PTD_RATES: Final[Mapping[str, int]] = MappingProxyType({"ptd_get": 1})
+PRODUCT_TYPE_PATTERN: Final = r"^[A-Z0-9_]{1,64}$"
+SCHEMA_MAX_BODY: Final = 16 * 1024 * 1024
+MAX_SCHEMA_ERRORS: Final = 50

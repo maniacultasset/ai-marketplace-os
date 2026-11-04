@@ -210,6 +210,9 @@ def test_no_enum_types(db: Conn) -> None:
     assert rows == []
 
 
+AMAZON_ONLY = frozenset({"product_type_definitions"})  # 0014
+
+
 def test_marketplace_columns_checked(db: Conn) -> None:
     """Every `marketplace` column has a CHECK over exactly ('amazon', 'flipkart') (T9)."""
     tables = db.execute(
@@ -224,6 +227,8 @@ def test_marketplace_columns_checked(db: Conn) -> None:
             (table, attnum),
         ).fetchall()
         wanted = "CHECK ((marketplace = ANY (ARRAY['amazon'::text, 'flipkart'::text])))"
+        if table in AMAZON_ONLY:  # DW2: Amazon Product Type Definitions only, a narrower CHECK
+            wanted = "CHECK ((marketplace = 'amazon'::text))"
         assert [str(c[0]) for c in checks] == [wanted], (table, checks)
 
 

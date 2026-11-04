@@ -15,9 +15,13 @@ connect 5 s / read 10 s, and each reply read through a 1 MiB cap.
   GET is `MarketplaceUnavailable`. Any other answer (2xx, 400, 404) goes back to the adapter.
 - C16: a SKU of `.` or `..` is refused, and every built request's raw path must equal the
   template with exactly the encoded seller and SKU segments, before anything is sent.
+- DW2: one more route, `getDefinitionsProductType` (`get_json("ptd_get", ...)`, GET only, used by
+  `app.adapters.amazon.definitions`). The product type must match `PRODUCT_TYPE_PATTERN` before
+  the limiter or the token is touched, and the raw-path check holds for it too. A client built
+  without a seller (`seller_id=None`, the platform PTD refresh) refuses every item call.
 - One log line `marketplace.call` per try: operation, method, path template, duration, status,
-  the rate-limit header, the first issue code and the try number. Never a URL, SKU, body,
-  header or token. The token is a `SecretStr` until the header is built.
+  the rate-limit header, the first issue code and the try number. Never a URL, SKU, product
+  type, body, header or token. The token is a `SecretStr` until the header is built.
 """
 
 from __future__ import annotations
@@ -25,10 +29,11 @@ from __future__ import annotations
 import asyncio
 import json
 import random
+import re
 import time
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
-from typing import Any, Final, Protocol
+from typing import Any, Final, Literal, Protocol
 from urllib.parse import quote, urlencode
 
 import httpx
@@ -58,6 +63,10 @@ MAX_RETRIES_429: Final = 3
 BACKOFF_CAP_S: Final = 60.0
 JITTER_S: Final = 0.5
 PATH_TEMPLATE: Final = f"{c.ITEMS_PATH}/{{sellerId}}/{{sku}}"
+PTD_PATH_TEMPLATE: Final = f"{c.PTD_PATH}/{{productType}}"
+PRODUCT_TYPE_RE: Final = re.compile(c.PRODUCT_TYPE_PATTERN)
+ITEM_DENIED: Final = "The Amazon account did not grant the Listings role to this app."
+PTD_DENIED: Final = "The Amazon app may not read product type definitions for this marketplace."
 UNSAFE_SKUS: Final = frozenset({".", ".."})
 GET_INCLUDED: Final = "summaries,attributes,issues"
 _RETRYABLE: Final = frozenset({RetryClass.AUTO_RETRY, RetryClass.AI_CORRECT})
@@ -97,6 +106,19 @@ def failure(code: ErrorCode, message: str) -> ErrorReport:
     return ErrorReport(status="failed", error_code=code, retryable=retryable, errors=[item])
 
 
+@dataclass(frozen=True)
+class _Route:
+    """One built request target: what is sent, and what is logged (the template only)."""
+
+    operation: str
+    method: str
+    path_template: str
+    url: str
+    raw_path: bytes
+    write: bool
+    denied_message: str
+
+
 class _TooLarge(Exception):  # noqa: N818 - private signal
     pass
 
@@ -118,7 +140,7 @@ class SpApiClient:
         *,
         endpoint: str,
         marketplace_id: str,
-        seller_id: str,
+        seller_id: str | None,
         tokens: TokenSource,
         limiter: OutboundLimiter,
         transport: httpx.AsyncBaseTransport | None = None,
@@ -127,7 +149,7 @@ class SpApiClient:
         clock: Callable[[], float] = time.monotonic,
         max_body: int = MAX_BODY,
     ) -> None:
-        if not seller_id or seller_id in UNSAFE_SKUS:
+        if seller_id is not None and (not seller_id or seller_id.strip() in UNSAFE_SKUS):
             raise ValueError("seller_id is required")
         self._endpoint = endpoint.rstrip("/")
         self._marketplace_id = marketplace_id
@@ -156,17 +178,29 @@ class SpApiClient:
     # ---- the three calls ----
 
     async def put(self, sku: str, body: Mapping[str, Any]) -> SpApiResponse:
-        return await self._call("put", "PUT", sku, body)
+        return await self._call(self._item_route("put", "PUT", sku), body)
 
     async def patch(self, sku: str, body: Mapping[str, Any]) -> SpApiResponse:
-        return await self._call("patch", "PATCH", sku, body)
+        return await self._call(self._item_route("patch", "PATCH", sku), body)
 
     async def get(self, sku: str) -> SpApiResponse:
-        return await self._call("get", "GET", sku, None)
+        return await self._call(self._item_route("get", "GET", sku), None)
+
+    async def get_json(
+        self,
+        operation: Literal["ptd_get"],
+        *,
+        product_type: str,
+        query: Mapping[str, str],
+    ) -> SpApiResponse:
+        """DW2: a read of the Product Type Definitions API (`app.adapters.amazon.definitions`)."""
+        return await self._call(self._ptd_route(operation, product_type, query), None)
 
     # ---- internals ----
 
-    def _target(self, method: str, sku: str) -> tuple[str, bytes]:
+    def _item_route(self, operation: str, method: str, sku: str) -> _Route:
+        if self._seller is None:
+            raise ValueError("seller_id is required")
         if not isinstance(sku, str) or not sku or sku.strip() in UNSAFE_SKUS:
             raise ValueError("refused seller SKU")
         path = f"{c.ITEMS_PATH}/{quote(self._seller, safe='')}/{quote(sku, safe='')}"
@@ -174,15 +208,40 @@ class SpApiClient:
         if method == "GET":
             query["includedData"] = GET_INCLUDED
         raw = f"{path}?{urlencode(query, safe='')}"
-        return self._endpoint + raw, raw.encode("ascii")
+        return _Route(
+            operation,
+            method,
+            PATH_TEMPLATE,
+            self._endpoint + raw,
+            raw.encode("ascii"),
+            method != "GET",
+            ITEM_DENIED,
+        )
 
-    def _request(self, method: str, sku: str, content: bytes | None, token: str) -> httpx.Request:
-        url, expected = self._target(method, sku)
+    def _ptd_route(self, operation: str, product_type: str, query: Mapping[str, str]) -> _Route:
+        if operation not in c.PTD_OPERATIONS:
+            raise ValueError("unknown PTD operation")
+        if not isinstance(product_type, str) or not PRODUCT_TYPE_RE.fullmatch(product_type):
+            raise ValueError("refused product type")
+        raw = f"{c.PTD_PATH}/{product_type}?{urlencode(dict(query), safe='')}"
+        return _Route(
+            operation,
+            "GET",
+            PTD_PATH_TEMPLATE,
+            self._endpoint + raw,
+            raw.encode("ascii"),
+            False,
+            PTD_DENIED,
+        )
+
+    def _request(self, route: _Route, content: bytes | None, token: str) -> httpx.Request:
         headers = {"x-amz-access-token": token, "accept": "application/json"}
         if content is not None:
             headers["content-type"] = "application/json"
-        request = self._http.build_request(method, url, content=content, headers=headers)
-        if request.url.raw_path != expected:  # C16: no dot segment or re-encoding reaches the wire
+        request = self._http.build_request(
+            route.method, route.url, content=content, headers=headers
+        )
+        if request.url.raw_path != route.raw_path:  # C16: no dot segment or re-encoding
             raise ValueError("request path differs from the SP-API template")
         return request
 
@@ -196,15 +255,13 @@ class SpApiClient:
             chunks.append(chunk)
         return b"".join(chunks)
 
-    def _log(
-        self, operation: str, method: str, started: float, status: int | None, **extra: Any
-    ) -> None:
+    def _log(self, route: _Route, started: float, status: int | None, **extra: Any) -> None:
         log.info(
             "marketplace.call",
             marketplace="amazon",
-            operation=operation,
-            method=method,
-            path=PATH_TEMPLATE,
+            operation=route.operation,
+            method=route.method,
+            path=route.path_template,
             duration_ms=round((self._clock() - started) * 1000, 1),
             status=status,
             **extra,
@@ -215,49 +272,44 @@ class SpApiClient:
             return MarketplaceAmbiguous(failure(ErrorCode.MARKETPLACE_UNCONFIRMED, message))
         return MarketplaceUnavailable(failure(ErrorCode.MARKETPLACE_UNAVAILABLE, message))
 
-    async def _call(
-        self, operation: str, method: str, sku: str, body: Mapping[str, Any] | None
-    ) -> SpApiResponse:
-        self._target(method, sku)  # refuse before the limiter or the token is touched
+    async def _call(self, route: _Route, body: Mapping[str, Any] | None) -> SpApiResponse:
+        # the route was built (and refused) before the limiter or the token is touched
         content = None
         if body is not None:
             content = json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
-        write = method != "GET"
+        write = route.write
         retries = 0
         attempt = 0
         while True:
             attempt += 1
-            with adapter_call_span("amazon", operation, method, PATH_TEMPLATE) as span:
-                await self._limiter.acquire(operation)
+            with adapter_call_span(
+                "amazon", route.operation, route.method, route.path_template
+            ) as span:
+                await self._limiter.acquire(route.operation)
                 secret = await self._tokens.get()
-                request = self._request(method, sku, content, secret.get_secret_value())
+                request = self._request(route, content, secret.get_secret_value())
                 del secret
                 started = self._clock()
                 try:
                     response = await self._http.send(request, stream=True)
                 except _BEFORE_SEND as exc:
-                    self._log(
-                        operation, method, started, None, attempt=attempt, error=type(exc).__name__
-                    )
+                    self._log(route, started, None, attempt=attempt, error=type(exc).__name__)
                     raise MarketplaceUnavailable(
                         failure(ErrorCode.MARKETPLACE_UNAVAILABLE, "Amazon could not be reached.")
                     ) from None
                 except httpx.HTTPError as exc:
-                    self._log(
-                        operation, method, started, None, attempt=attempt, error=type(exc).__name__
-                    )
+                    self._log(route, started, None, attempt=attempt, error=type(exc).__name__)
                     raise self._unknown(
                         write, "Amazon did not answer the request in time."
                     ) from None
                 try:
                     raw = await self._read(response)
                 except _TooLarge:
-                    self._log(operation, method, started, response.status_code, attempt=attempt)
+                    self._log(route, started, response.status_code, attempt=attempt)
                     raise self._unknown(write, "Amazon answered with an oversized reply.") from None
                 except httpx.HTTPError as exc:
                     self._log(
-                        operation,
-                        method,
+                        route,
                         started,
                         response.status_code,
                         attempt=attempt,
@@ -275,8 +327,7 @@ class SpApiClient:
                 except (ValueError, RecursionError):  # a deeply nested body is unreadable too
                     parsed_ok = False
                 self._log(
-                    operation,
-                    method,
+                    route,
                     started,
                     status,
                     attempt=attempt,
@@ -301,10 +352,7 @@ class SpApiClient:
                             failure(ErrorCode.AUTH_EXPIRED, "Amazon refused the account's token.")
                         )
                     raise PermissionDenied(
-                        failure(
-                            ErrorCode.ACCOUNT_PERMISSION_DENIED,
-                            "The Amazon account did not grant the Listings role to this app.",
-                        )
+                        failure(ErrorCode.ACCOUNT_PERMISSION_DENIED, route.denied_message)
                     )
                 if 300 <= status < 400:
                     raise self._unknown(write, "Amazon answered with a redirect.")

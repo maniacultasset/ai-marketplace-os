@@ -400,3 +400,128 @@ async def test_listings_preview_no_token_or_url_in_body(
     for marker in ("Atza|", "Atzr|", "Bearer", "eyJ", "access_token", "refresh_token"):
         assert marker not in text
     assert "passed" not in json.loads(text)
+
+
+# ---- DW2 T10 (AC8, AC10, AC13): the stored Amazon definition in the preview ----
+
+
+def _ptd_kurta(**changes: Any) -> dict[str, Any]:
+    from tests.support.fake_marketplace import ptd_fixture
+
+    schema: dict[str, Any] = json.loads(ptd_fixture("KURTA.schema.json"))
+    value = schema["properties"]
+    value["item_name"]["items"]["properties"]["value"]["maxLength"] = changes.get("title_max", 200)
+    if "neck_enum" in changes:
+        value["neck_style"]["items"]["properties"]["value"]["enum"] = changes["neck_enum"]
+    if "keyword_bytes" in changes:
+        keyword = value["generic_keyword"]["items"]["properties"]["value"]
+        keyword["maxUtf8ByteLength"] = changes["keyword_bytes"]
+    schema["required"] = [*schema["required"], *changes.get("required", ())]
+    return schema
+
+
+def _statements() -> tuple[list[str], Any]:
+    from sqlalchemy import event
+    from sqlalchemy.engine import Engine
+
+    seen: list[str] = []
+
+    def capture(conn: Any, cursor: Any, statement: str, *args: Any) -> None:
+        seen.append(statement)
+
+    event.listen(Engine, "before_cursor_execute", capture)
+    return seen, lambda: event.remove(Engine, "before_cursor_execute", capture)
+
+
+async def test_listings_preview_checks_the_stored_definition(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    from app.adapters.amazon import schema_check
+
+    from .ptd_support import store
+
+    schema_check.clear_cache()
+    store(
+        auth_db,
+        _ptd_kurta(title_max=10, neck_enum=["Boat Neck"], keyword_bytes=5, required=["brand"]),
+    )
+    image_id = uuid.uuid4()
+    body = _body(image_id, neckline="round")
+    listing_id, _ = _standalone(products_world, auth_db, content=body)
+    response = await _get(api, products_world, listing_id)
+    assert response.status_code == 200, response.text
+    report = response.json()["report"]
+    assert report["status"] == "failed"
+    found = {(e["field"], e["error_code"]) for e in report["errors"]}
+    assert found == {
+        ("attributes.fit", "MISSING_ATTRIBUTE"),
+        ("listing", "MISSING_ATTRIBUTE"),
+        ("content.title", "FIELD_TOO_LONG"),
+        ("attributes.neckline", "VALUE_NOT_ALLOWED"),
+        ("keywords.search_terms", "BYTE_BUDGET_EXCEEDED"),
+        ("keywords.hidden_terms", "BYTE_BUDGET_EXCEEDED"),
+    }
+    for error in report["errors"]:
+        assert error["value_submitted"] is None
+        assert error["raw_code"].endswith(":UFAKE0001")
+        for value in ("Navy cotton kurta set", "round", "kurta set", "cotton kurta"):
+            assert value not in error["message"]
+
+
+async def test_preview_with_a_deep_stored_schema_fails_closed(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    """Review round 1: a deeply nested stored definition
+    (600 nested objects, accepted by `templates refresh`) is one SCHEMA_INVALID on `listing`,
+    never a 500 (PLAN D5 fails closed, AC10)."""
+    from app.adapters.amazon import schema_check
+
+    from .ptd_support import store
+
+    schema_check.clear_cache()
+    depth = 300
+    deep = json.loads(('{"properties":{"a":' * depth) + "{}" + ("}}" * depth))
+    store(auth_db, {"type": "object", **deep})
+    listing_id, _ = _standalone(products_world, auth_db)
+    response = await _get(api, products_world, listing_id)
+    assert response.status_code == 200, response.status_code
+    codes = {(e["field"], e["error_code"]) for e in response.json()["report"]["errors"]}
+    assert ("listing", "SCHEMA_INVALID") in codes
+
+
+async def test_listings_preview_unchanged_without_a_definition(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    from .ptd_support import store
+
+    listing_id, _ = _standalone(products_world, auth_db)
+    before = (await _get(api, products_world, listing_id)).content
+    # a definition for another product type is never this listing's
+    store(auth_db, {"type": "object", "required": ["brand"]}, product_type="SHIRT")
+    after = (await _get(api, products_world, listing_id)).content
+    assert after == before
+
+
+async def test_listings_preview_reads_the_schema_once_per_digest(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    from app.adapters.amazon import schema_check
+
+    from .ptd_support import store
+
+    schema_check.clear_cache()
+    store(auth_db, _ptd_kurta(title_max=150))
+    listing_id, _ = _standalone(products_world, auth_db)
+    seen, stop = _statements()
+    try:
+        first = await _get(api, products_world, listing_id)
+        reads_first = [s for s in seen if "schema_json" in s]
+        seen.clear()
+        second = await _get(api, products_world, listing_id)
+        reads_second = [s for s in seen if "schema_json" in s]
+        touched = [s for s in seen if "product_type_definitions" in s]
+    finally:
+        stop()
+    assert first.status_code == second.status_code == 200
+    assert len(reads_first) == 1 and reads_second == []
+    assert len(touched) == 1  # the light `current()` read only

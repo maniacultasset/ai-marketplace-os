@@ -1,0 +1,720 @@
+{
+  "$schema": "https://schemas.amazon.com/selling-partners/definitions/product-types/meta-schema/v1",
+  "$id": "https://schemas.example.test/ptd/LAMP.json",
+  "$comment": "Hand-written test fixture (DW2 decision 9); never a copied Amazon schema.",
+  "title": "LAMP test fixture",
+  "type": "object",
+  "$defs": {
+    "marketplace_id": {
+      "type": "string",
+      "enum": [
+        "A21TJRUUN4KGV"
+      ]
+    },
+    "language_tag": {
+      "type": "string",
+      "enum": [
+        "en_IN"
+      ]
+    }
+  },
+  "properties": {
+    "bullet_point": {
+      "title": "Bullet Point",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          },
+          "language_tag": {
+            "$ref": "#/$defs/language_tag"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxItems": 5
+    },
+    "child_parent_sku_relationship": {
+      "title": "Child Parent SKU Relationship",
+      "type": "array",
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "child_relationship_type",
+          "parent_sku"
+        ],
+        "properties": {
+          "child_relationship_type": {
+            "type": "string",
+            "enum": [
+              "variation"
+            ]
+          },
+          "parent_sku": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "color": {
+      "title": "Color",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "enum": [
+              "Beige",
+              "Black",
+              "Blue",
+              "Brass",
+              "Bronze",
+              "Brown",
+              "Copper",
+              "Gold",
+              "Green",
+              "Grey",
+              "Red",
+              "Silver",
+              "White",
+              "Yellow"
+            ]
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          },
+          "language_tag": {
+            "$ref": "#/$defs/language_tag"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id",
+        "language_tag"
+      ]
+    },
+    "country_of_origin": {
+      "title": "Country Of Origin",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          },
+          "language_tag": {
+            "$ref": "#/$defs/language_tag"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id",
+        "language_tag"
+      ]
+    },
+    "generic_keyword": {
+      "title": "Generic Keyword",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "maxUtf8ByteLength": 250
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          },
+          "language_tag": {
+            "$ref": "#/$defs/language_tag"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id",
+        "language_tag"
+      ]
+    },
+    "item_dimensions": {
+      "title": "Item Dimensions",
+      "type": "array",
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "length",
+          "width",
+          "height"
+        ],
+        "properties": {
+          "length": {
+            "type": "object",
+            "required": [
+              "value",
+              "unit"
+            ],
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "centimeters",
+                  "inches"
+                ]
+              }
+            }
+          },
+          "width": {
+            "type": "object",
+            "required": [
+              "value",
+              "unit"
+            ],
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "centimeters",
+                  "inches"
+                ]
+              }
+            }
+          },
+          "height": {
+            "type": "object",
+            "required": [
+              "value",
+              "unit"
+            ],
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "centimeters",
+                  "inches"
+                ]
+              }
+            }
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "item_name": {
+      "title": "Item Name",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          },
+          "language_tag": {
+            "$ref": "#/$defs/language_tag"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id",
+        "language_tag"
+      ]
+    },
+    "lamp_type": {
+      "title": "Lamp Type",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          },
+          "language_tag": {
+            "$ref": "#/$defs/language_tag"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id",
+        "language_tag"
+      ]
+    },
+    "light_source_type": {
+      "title": "Light Source Type",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          },
+          "language_tag": {
+            "$ref": "#/$defs/language_tag"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id",
+        "language_tag"
+      ]
+    },
+    "main_product_image_locator": {
+      "title": "Main Image Location",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "media_location"
+        ],
+        "properties": {
+          "media_location": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "material": {
+      "title": "Lamp Material",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          },
+          "language_tag": {
+            "$ref": "#/$defs/language_tag"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id",
+        "language_tag"
+      ]
+    },
+    "other_product_image_locator_1": {
+      "title": "Other Image Location 1",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "media_location"
+        ],
+        "properties": {
+          "media_location": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "other_product_image_locator_2": {
+      "title": "Other Image Location 2",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "media_location"
+        ],
+        "properties": {
+          "media_location": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "other_product_image_locator_3": {
+      "title": "Other Image Location 3",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "media_location"
+        ],
+        "properties": {
+          "media_location": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "other_product_image_locator_4": {
+      "title": "Other Image Location 4",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "media_location"
+        ],
+        "properties": {
+          "media_location": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "other_product_image_locator_5": {
+      "title": "Other Image Location 5",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "media_location"
+        ],
+        "properties": {
+          "media_location": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "other_product_image_locator_6": {
+      "title": "Other Image Location 6",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "media_location"
+        ],
+        "properties": {
+          "media_location": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "other_product_image_locator_7": {
+      "title": "Other Image Location 7",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "media_location"
+        ],
+        "properties": {
+          "media_location": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "other_product_image_locator_8": {
+      "title": "Other Image Location 8",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "media_location"
+        ],
+        "properties": {
+          "media_location": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "parentage_level": {
+      "title": "Parentage Level",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "enum": [
+              "child",
+              "parent"
+            ]
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id"
+      ]
+    },
+    "product_description": {
+      "title": "Product Description",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          },
+          "language_tag": {
+            "$ref": "#/$defs/language_tag"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id",
+        "language_tag"
+      ]
+    },
+    "shade_material": {
+      "title": "Shade Material",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          },
+          "language_tag": {
+            "$ref": "#/$defs/language_tag"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id",
+        "language_tag"
+      ]
+    },
+    "variation_theme": {
+      "title": "Variation Theme",
+      "type": "array",
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "COLOR",
+              "SIZE",
+              "SIZE/COLOR"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "color",
+    "item_name"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "not": {
+          "required": [
+            "parentage_level"
+          ],
+          "properties": {
+            "parentage_level": {
+              "contains": {
+                "required": [
+                  "value"
+                ],
+                "properties": {
+                  "value": {
+                    "const": "parent"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "main_product_image_locator"
+        ]
+      }
+    }
+  ]
+}

@@ -368,6 +368,61 @@ def test_error_messages_hold_no_values(clean_env: Path, monkeypatch: pytest.Monk
     assert "Zq9-private" not in message
 
 
+# ---- DW2 decision 4 (AC7): the platform refresh token is for the CLI job only ----
+
+PLATFORM_TOKEN = "Atzr|Zq9platform-refresh-token"
+
+
+@pytest.mark.parametrize("app_env", ["staging", "production"])
+@pytest.mark.parametrize("role", ["api", "worker"])
+def test_platform_token_refused_by_api_and_worker(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, app_env: str, role: str
+) -> None:
+    from app.core.config import Settings, _boot_errors
+
+    for key, value in _deployed(app_env, APP_ROLE=role).items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("AMAZON_PLATFORM_REFRESH_TOKEN", PLATFORM_TOKEN)
+    errors = _boot_errors(Settings())
+    hits = [e for e in errors if "AMAZON_PLATFORM_REFRESH_TOKEN" in e]
+    assert hits == [
+        f"APP_ROLE={role} refuses AMAZON_PLATFORM_REFRESH_TOKEN (the CLI job alone uses it)"
+    ]
+    message = _abort(monkeypatch, {"AMAZON_PLATFORM_REFRESH_TOKEN": PLATFORM_TOKEN})
+    assert "AMAZON_PLATFORM_REFRESH_TOKEN" in message
+    assert "Zq9" not in message
+
+
+@pytest.mark.parametrize("app_env", ["staging", "production"])
+def test_platform_token_allowed_for_the_migrate_job(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, app_env: str
+) -> None:
+    _boot(
+        monkeypatch,
+        {
+            "APP_ENV": app_env,
+            "APP_ROLE": "migrate",
+            "ALEMBIC_DATABASE_URL": DEPLOYED_URL,
+            "AMAZON_PLATFORM_REFRESH_TOKEN": PLATFORM_TOKEN,
+        },
+    )
+
+
+def test_platform_token_allowed_for_a_local_api(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _boot(
+        monkeypatch,
+        {
+            "APP_ENV": "local",
+            "APP_ROLE": "api",
+            "DATABASE_URL": LOCAL_URL,
+            "JWT_SECRET": CI_LITERAL,
+            "AMAZON_PLATFORM_REFRESH_TOKEN": PLATFORM_TOKEN,
+        },
+    )
+
+
 # ---- ADR-0025: ORIGIN_AUTH and the Worker's EDGE_ORIGIN_SECRET ----
 
 EDGE_A = "Zq9-edge-origin-secret-current-32"

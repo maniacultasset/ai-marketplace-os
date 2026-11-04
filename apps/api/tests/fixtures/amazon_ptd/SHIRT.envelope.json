@@ -1,0 +1,71 @@
+{
+  "displayName": "Shirt",
+  "locale": "en_IN",
+  "marketplaceIds": [
+    "A21TJRUUN4KGV"
+  ],
+  "metaSchema": {
+    "link": {
+      "resource": "https://schemas.amazon.com/selling-partners/definitions/product-types/meta-schema/v1",
+      "verb": "GET"
+    },
+    "checksum": "not-checked"
+  },
+  "productType": "SHIRT",
+  "productTypeVersion": {
+    "version": "UFAKE0002",
+    "latest": true,
+    "releaseCandidate": false
+  },
+  "propertyGroups": {
+    "offer": {
+      "title": "Offer",
+      "propertyNames": []
+    },
+    "product_identity": {
+      "title": "Product Identity",
+      "propertyNames": [
+        "item_name"
+      ]
+    },
+    "product_details": {
+      "title": "Product Details",
+      "propertyNames": [
+        "bullet_point",
+        "child_parent_sku_relationship",
+        "color",
+        "country_of_origin",
+        "fabric_type",
+        "fit_type",
+        "generic_keyword",
+        "item_weight",
+        "main_product_image_locator",
+        "neck_style",
+        "number_of_items",
+        "other_product_image_locator_1",
+        "other_product_image_locator_2",
+        "other_product_image_locator_3",
+        "other_product_image_locator_4",
+        "other_product_image_locator_5",
+        "other_product_image_locator_6",
+        "other_product_image_locator_7",
+        "other_product_image_locator_8",
+        "parentage_level",
+        "pattern",
+        "product_description",
+        "size",
+        "sleeve_length_description",
+        "variation_theme"
+      ]
+    }
+  },
+  "requirements": "LISTING_PRODUCT_ONLY",
+  "requirementsEnforced": "ENFORCED",
+  "schema": {
+    "link": {
+      "resource": "filled-by-the-fake",
+      "verb": "GET"
+    },
+    "checksum": "filled-by-the-fake"
+  }
+}

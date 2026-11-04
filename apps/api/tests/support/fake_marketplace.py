@@ -62,6 +62,22 @@ update of an unknown SKU is `FAILURE` with `LISTING_NOT_FOUND`. GET lists the st
   status, once), `fk_auth {mode: expired|denied, times}`, `fk_state {sku: ACTIVE|INACTIVE}`,
   `fk_body redirect|oversize|html` (once), `reset_calls`.
 - `GET /__calls?marketplace=flipkart|amazon`: `{count, calls}` of that marketplace only.
+
+Product Type Definitions 2020-09-01 (DW2 T7; hand-written fixtures in `tests/fixtures/amazon_ptd`):
+`GET /definitions/2020-09-01/productTypes/{productType}?marketplaceIds=&requirements=&locale=`.
+- The same token check as the Listings route (403 `Unauthorized`). `marketplaceIds=ATVPDKIKX0DER`
+  (US) is 403, as the sandbox answers. An unknown product type is 404.
+- The envelope is the fixture's, with `schema.link.resource` set to a pre-signed-looking
+  `https://ptd-schemas.fake.amazonaws.com/__ptd_schema/<token>?X-Amz-...` and `schema.checksum`
+  = base64(md5) of the bytes that link serves. Tests route that host to this app (the client
+  connects to a checked address with the host in `Host`; the ASGI transport ignores both).
+- `GET /__ptd_schema/{token}` serves those bytes; it needs no token (a pre-signed link).
+- `/__control` `ptd`: `{"schema": "<fixture name>"}` (sticky: the fixture served for every
+  product type), `"status": [429, 500, ...]` (one answer per PTD GET, consumed), and the one-shot
+  switches `bad_checksum`, `deny` (403), `not_enforced`, `external_ref` (the served schema gains
+  an external `$ref`), `oversize` (the link serves 16 MiB + 1 bytes), `redirect_link` (the link
+  answers 302). `POST /__control/reset {"ptd": true}` clears them.
+- `/__calls` records each PTD and link call with the request's header names only.
 """
 
 from __future__ import annotations
@@ -189,6 +205,9 @@ class FakeState:
     fk_state: dict[str, str] = field(default_factory=dict)
     fk_body: str | None = None
     fk_requests: int = 0
+    # ---- Product Type Definitions (DW2 T7) ----
+    ptd: dict[str, Any] = field(default_factory=dict)
+    ptd_served: dict[str, bytes] = field(default_factory=dict)
 
 
 def canary_token() -> str:
@@ -355,10 +374,15 @@ def build_fake(config: FakeConfig | None = None) -> Starlette:
             state.expires_in = body["expires_in"]
         _spapi_control(state, body)
         _flipkart_control(state, body)
+        _ptd_control(state, body)
         return JSONResponse({"ok": True})
 
     async def reset(request: Request) -> Response:
         body = await request.json()
+        if isinstance(body, dict) and body.get("ptd") is True:
+            state.ptd.clear()
+            state.ptd_served.clear()
+            return JSONResponse({"reset": "ptd"})
         if not isinstance(body, dict) or not isinstance(body.get("prefix"), str):
             return _bad("expected {prefix}")
         return JSONResponse({"reset": reset_prefix(state, body["prefix"])})
@@ -379,6 +403,12 @@ def build_fake(config: FakeConfig | None = None) -> Starlette:
     async def flipkart(request: Request) -> Response:
         return await _flipkart(state, request)
 
+    async def ptd_get(request: Request) -> Response:
+        return _ptd_get(state, request)
+
+    async def ptd_schema(request: Request) -> Response:
+        return _ptd_schema(state, request)
+
     app = Starlette(
         routes=[
             Route("/healthz", healthz, methods=["GET"]),
@@ -387,6 +417,8 @@ def build_fake(config: FakeConfig | None = None) -> Starlette:
             Route("/__control/reset", reset, methods=["POST"]),
             Route("/__calls", calls, methods=["GET"]),
             Route(SPAPI_ROUTE, spapi, methods=["GET", "PUT", "PATCH"]),
+            Route(PTD_GET_ROUTE, ptd_get, methods=["GET"]),
+            Route(PTD_SCHEMA_ROUTE, ptd_schema, methods=["GET"]),
             Route(FK_CREATE_ROUTE, flipkart, methods=["POST"]),
             Route(FK_UPDATE_ROUTE, flipkart, methods=["POST"]),
             Route(FK_GET_ROUTE, flipkart, methods=["GET"]),
@@ -863,6 +895,122 @@ async def _flipkart(state: FakeState, request: Request) -> Response:
     if after is not None:
         return _fk_error("INTERNAL_ERROR", "Something went wrong.", after)
     return JSONResponse({"request_id": f"fk-req-{state.fk_requests:06d}", "results": results})
+
+
+# ---- Product Type Definitions (DW2 T7) ----
+
+PTD_GET_ROUTE: Final = "/definitions/2020-09-01/productTypes/{productType}"
+PTD_SCHEMA_ROUTE: Final = "/__ptd_schema/{token}"
+PTD_LINK_HOST: Final = "ptd-schemas.fake.amazonaws.com"
+PTD_FIXTURES: Final = Path(__file__).resolve().parents[1] / "fixtures" / "amazon_ptd"
+PTD_US_MARKETPLACE: Final = "ATVPDKIKX0DER"
+PTD_SWITCHES: Final = (
+    "bad_checksum",
+    "deny",
+    "not_enforced",
+    "external_ref",
+    "oversize",
+    "redirect_link",
+)
+PTD_OVERSIZE: Final = 16 * 1024 * 1024 + 1
+
+
+def _ptd_control(state: FakeState, body: dict[str, Any]) -> None:
+    ptd = body.get("ptd")
+    if not isinstance(ptd, dict):
+        return
+    for name in PTD_SWITCHES:
+        if isinstance(ptd.get(name), bool):
+            state.ptd[name] = ptd[name]
+    if isinstance(ptd.get("schema"), str):
+        state.ptd["schema"] = ptd["schema"]
+    if isinstance(ptd.get("status"), list):
+        state.ptd["status"] = [int(code) for code in ptd["status"]]
+
+
+def _ptd_once(state: FakeState, name: str) -> bool:
+    return bool(state.ptd.pop(name, False))
+
+
+def _ptd_record(state: FakeState, request: Request, kind: str) -> None:
+    state.calls.append(
+        {
+            "marketplace": "amazon",
+            "kind": kind,
+            "method": request.method,
+            "path": request.url.path,
+            "raw_path": request.scope.get("raw_path", b"").decode("latin-1"),
+            "query": request.url.query,
+            "header_names": sorted(request.headers.keys()),
+            "time": time.monotonic(),
+        }
+    )
+
+
+def ptd_fixture(name: str) -> bytes:
+    """The bytes of one fixture file under `tests/fixtures/amazon_ptd` (names only, no path)."""
+    if "/" in name or name.startswith("."):
+        raise ValueError("a fixture name, not a path")
+    return (PTD_FIXTURES / name).read_bytes()
+
+
+def ptd_checksum(body: bytes) -> str:
+    return base64.b64encode(hashlib.md5(body, usedforsecurity=False).digest()).decode("ascii")
+
+
+def _ptd_get(state: FakeState, request: Request) -> Response:
+    _ptd_record(state, request, "ptd")
+    product_type = request.path_params["productType"]
+    marketplace = request.query_params.get("marketplaceIds")
+    if not marketplace:
+        return _errors("InvalidInput", "marketplaceIds is required", 400)
+    if request.headers.get("x-amz-access-token", "") not in state.access_tokens:
+        return _errors("Unauthorized", "Access to requested resource is denied.", 403)
+    statuses = state.ptd.get("status") or []
+    if statuses:
+        code = statuses.pop(0)
+        return _errors("InternalFailure" if code >= 500 else "QuotaExceeded", "fault", code)
+    if marketplace == PTD_US_MARKETPLACE or _ptd_once(state, "deny"):
+        return _errors("Unauthorized", "Access to requested resource is denied.", 403)
+    name = state.ptd.get("schema") or f"{product_type}.schema.json"
+    try:
+        envelope = json.loads(ptd_fixture(f"{product_type}.envelope.json"))
+        body = ptd_fixture(name)
+    except (FileNotFoundError, ValueError):
+        return _errors("NotFound", "Product type not found.", 404)
+    if _ptd_once(state, "external_ref"):
+        schema = json.loads(body)
+        schema["properties"]["item_name"] = {"$ref": "https://schemas.example.invalid/x.json#/a"}
+        body = json.dumps(schema).encode("utf-8")
+    token = secrets.token_hex(8)
+    state.ptd_served[token] = body
+    checksum = ptd_checksum(body)
+    if _ptd_once(state, "bad_checksum"):
+        checksum = ptd_checksum(body + b" ")
+    envelope["productType"] = product_type
+    envelope["schema"] = {
+        "link": {
+            "resource": f"https://{PTD_LINK_HOST}/__ptd_schema/{token}"
+            f"?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature={secrets.token_hex(16)}",
+            "verb": "GET",
+        },
+        "checksum": checksum,
+    }
+    if _ptd_once(state, "not_enforced"):
+        envelope["requirementsEnforced"] = "NOT_ENFORCED"
+    return JSONResponse(envelope)
+
+
+def _ptd_schema(state: FakeState, request: Request) -> Response:
+    _ptd_record(state, request, "ptd_schema")
+    body = state.ptd_served.get(request.path_params["token"])
+    if body is None:
+        return Response(b"<Error><Code>AccessDenied</Code></Error>", status_code=403)
+    if _ptd_once(state, "redirect_link"):
+        return RedirectResponse(f"https://{PTD_LINK_HOST}/elsewhere", status_code=302)
+    if _ptd_once(state, "oversize"):
+        return Response(b'"' + b"x" * (PTD_OVERSIZE - 2) + b'"', media_type="application/json")
+    return Response(body, media_type="application/json")
 
 
 CONFIG_KEYS: Final = (

@@ -187,3 +187,50 @@ class ListingStatusTransition(Base):
     voids_approval: Mapped[bool] = mapped_column(Boolean, server_default=FALSE)
     allowed_reasons: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
     requires_from_reason: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
+
+
+class ProductTypeDefinition(Base):
+    """`product_type_definitions` (revision 0014, DW2; DATABASE.md §5.2): an Amazon Product Type
+    Definition as fetched by `app.cli templates refresh`. Platform-global, SELECT-only for the app
+    roles; the guard keeps content immutable (only `is_current` moves). CHECKs live in the
+    revision. No personal column: the actor is in the audit row."""
+
+    __tablename__ = "product_type_definitions"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_product_type_definitions")),
+        UniqueConstraint(
+            "marketplace_id",
+            "product_type",
+            "requirements",
+            "locale",
+            "product_type_version",
+            "schema_digest",
+            name=conv("ptd_version_key"),
+        ),
+        Index(
+            conv("ptd_one_current"),
+            "marketplace_id",
+            "product_type",
+            "requirements",
+            "locale",
+            unique=True,
+            postgresql_where=text("is_current"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    marketplace: Mapped[str] = mapped_column(Text)
+    marketplace_id: Mapped[str] = mapped_column(Text)
+    product_type: Mapped[str] = mapped_column(Text)
+    requirements: Mapped[str] = mapped_column(Text)
+    locale: Mapped[str] = mapped_column(Text)
+    product_type_version: Mapped[str] = mapped_column(Text)
+    requirements_enforced: Mapped[str] = mapped_column(Text)
+    display_name: Mapped[str | None] = mapped_column(Text)
+    property_groups: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    schema_json: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    meta_schema_id: Mapped[str | None] = mapped_column(Text)
+    schema_digest: Mapped[bytes] = mapped_column(LargeBinary)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    is_current: Mapped[bool] = mapped_column(Boolean, server_default=FALSE)
+    created_at: Mapped[datetime] = created_at_column()

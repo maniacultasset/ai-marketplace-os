@@ -57,6 +57,7 @@ from app.adapters.base import (
     MarketplaceDisabled,
     MarketplaceUnavailable,
     PermissionDenied,
+    ProductTypeSchema,
     RateLimited,
     RawResponseSink,
     submitted_fields,
@@ -76,6 +77,7 @@ from app.repositories.listings import PreviewSource
 from app.repositories.submissions import NewItem, NewSubmission
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.services.adapter_input import build_adapter_listing, canonical_listing
+from app.services.product_type_schema import current_schema
 from app.services.publish_ledger import Decision, ErrorKind, route_error, route_result
 from app.services.publish_outcome import AttemptCtx, apply_decision, refusal_report, revalidate
 from app.services.publish_rules import (
@@ -153,6 +155,8 @@ class Prepared:
     justification: str | None = None
     applied_before: bool = False
     listing_applied: bool = False
+    # DW2: the current Amazon definition, read at job time (None: no check, AC10)
+    ptd: ProductTypeSchema | None = None
 
 
 def _fail(
@@ -194,6 +198,12 @@ async def _read(ctx: JobContext, payload: PublishJobPayload) -> Prepared:
             source=source,
             approve_digest=await uow.review_decisions.approve_digest(version),
             facts=None if resolved is None else facts_digest(resolved),
+        )
+        pinned = source.template
+        prep.ptd = await current_schema(
+            uow,
+            marketplace=listing.marketplace,
+            product_type=None if pinned is None else pinned.product_type,
         )
         canonical = canonical_listing(source)
         for index, ref in enumerate(canonical.images):
@@ -600,7 +610,11 @@ async def _publish(
         prep = await _read(ctx, payload)  # the row is resolved: plan the next attempt afresh
     plan = _plan_new(ctx, prep, payload)
     snapshot_item = build_adapter_listing(
-        prep.source, image_refs={}, idempotency_key="pending", attempt=plan.attempt
+        prep.source,
+        image_refs={},
+        idempotency_key="pending",
+        attempt=plan.attempt,
+        product_type_schema=prep.ptd,
     )
     snapshot = snapshot_bytes(
         snapshot_item,
@@ -628,7 +642,11 @@ async def _publish(
     )
     await _write_ahead(ctx, prep, plan, snapshot)
     item = build_adapter_listing(
-        prep.source, image_refs=urls, idempotency_key=key, attempt=plan.attempt
+        prep.source,
+        image_refs=urls,
+        idempotency_key=key,
+        attempt=plan.attempt,
+        product_type_schema=prep.ptd,
     )
     return await _call(
         ctx,
@@ -748,7 +766,11 @@ async def _resolve_open(
         async with tenant_uow(ctx.tenant_id) as uow:
             per_sku = await uow.field_results.retry_payload(prep.listing.id, prep.version_id)
     item = build_adapter_listing(
-        prep.source, image_refs=urls, idempotency_key=row.idempotency_key, attempt=row.attempt
+        prep.source,
+        image_refs=urls,
+        idempotency_key=row.idempotency_key,
+        attempt=row.attempt,
+        product_type_schema=prep.ptd,
     )
     own = row.job_id == ctx.job_run_id
     if row.sent_at is not None and row.operation == "create":
@@ -826,7 +848,11 @@ async def _resolve_foreign(
     outcome = "error"
     if row.sent_at is not None and row.operation == "create":
         item = build_adapter_listing(
-            prep.source, image_refs=urls, idempotency_key=row.idempotency_key, attempt=row.attempt
+            prep.source,
+            image_refs=urls,
+            idempotency_key=row.idempotency_key,
+            attempt=row.attempt,
+            product_type_schema=prep.ptd,
         )
         try:
             found = await _read_all_found(adapter, item)

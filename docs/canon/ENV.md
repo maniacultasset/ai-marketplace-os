@@ -130,6 +130,8 @@ ADR-0020. Off by default. The redirect URI is not a variable: the API derives it
 | `AMAZON_MARKETPLACE_ID` | `A21TJRUUN4KGV` | local .env | required | amazon.in. |
 | `AMAZON_OAUTH_REDIRECT_URI` | `http://localhost:8000/api/v1/marketplaces/amazon/callback` | local .env | required | THIS EXACT STRING goes into the Amazon developer application, along with the staging and prod forms. Changing it later means re-review. AMAZON_LWA_REDIRECT_URI is forbidden. |
 | `AMAZON_USE_SANDBOX` | `true` | local .env | required | false only in prod, after the application clears. **[S20]** `false` outside production is a boot error, and the flag picks the one allowed `AMAZON_SPAPI_ENDPOINT` host (see that row). |
+| `AMAZON_PLATFORM_REFRESH_TOKEN` | *(empty)* | Secret Manager | optional | **[DW2]** The platform-owned SP-API authorization (the client's own seller account, T53) the staff command `app.cli templates refresh` uses to fetch Amazon Product Type Definitions; never a tenant token. Read only by the CLI job (`APP_ROLE=migrate` or `shell`); outside local an `api` or `worker` with it set refuses to boot (names only). Unset: `templates refresh` exits 1 naming it. |
+| `AMAZON_PTD_LINK_HOSTS` | `.amazonaws.com` | local .env | optional | **[DW2]** Comma list of the hosts a PTD schema link may name; an entry starting with `.` is a suffix match. Every entry is a DNS name of two or more labels (never an IP literal, `localhost`, a scheme or a bare TLD such as `.com`), else a boot error. The download is `https` only, every address the host resolves to must be public, and the request connects to the checked address. Narrow it to the exact schema host after the sandbox smoke (DW2-S). |
 
 ## Flipkart
 
