@@ -163,6 +163,10 @@ def toolkit(repo_root: Path, tmp_path: Path) -> Iterator[Path]:
             # ADR-0025: prod.env runs the interim Cloudflare edge; the Armor tests here run the
             # load balancer path (EDGE_PROVIDER blank), the cloudflare tests set it back.
             text = re.sub(r"^EDGE_PROVIDER=.*$", "EDGE_PROVIDER=", text, flags=re.M)
+            # prod.env pins the cutover values (EDGE-CUTOVER step 6); the tests start blank and
+            # set them where they test the pin or the public URL.
+            text = re.sub(r"^API_PUBLIC_URL=.*$", "API_PUBLIC_URL=", text, flags=re.M)
+            text = re.sub(r"^JWT_ISSUER=.*$", "JWT_ISSUER=", text, flags=re.M)
         (target / source.name).write_text(text, encoding="utf-8")
     (target / "deploy.sh").chmod(0o755)
     yield target
