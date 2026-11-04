@@ -16,6 +16,7 @@ from typing import Any
 
 import httpx
 import pytest
+from app.core.config import get_settings
 from app.db.session import unit_of_work
 from app.repositories.imports import ImportRowRepository, RowWrite
 from app.services.imports import runner
@@ -45,18 +46,53 @@ def rows_done(jw: JobWorld, import_id: uuid.UUID) -> int:
     return count(jw.conn, "SELECT count(*) FROM import_rows WHERE import_id = %s", [import_id])
 
 
-def spawn(tmp_path: Path, *args: str) -> subprocess.Popen[str]:
-    env = {
+def worker_env() -> dict[str, str]:
+    """The worker subprocess env. It runs from `tmp_path`, so it cannot read the checkout's `.env`:
+    the storage settings this test process resolved (env or `.env`) are passed on, or a checkout
+    whose MinIO uses non-default keys fails the worker's object reads with InvalidAccessKeyId."""
+    s = get_settings()
+    return {
         "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
         "APP_ENV": "local",
         "APP_ROLE": "worker",
         "DATABASE_URL": os.environ["DATABASE_URL"],  # app_rw (the auth_db fixture)
-        "S3_ENDPOINT_URL": os.environ.get("S3_ENDPOINT_URL", "http://localhost:9000"),
+        "STORAGE_BACKEND": s.storage_backend,
+        "GCS_BUCKET_IMAGES": s.gcs_bucket_images,
+        "GCS_BUCKET_CSV": s.gcs_bucket_csv,
+        "GCS_BUCKET_SUBMISSIONS": s.gcs_bucket_submissions,
+        "S3_ENDPOINT_URL": s.s3_endpoint_url,
+        "S3_ACCESS_KEY": s.s3_access_key,
+        "S3_SECRET_KEY": s.s3_secret_key,
         "LOG_FORMAT": "json",
     }
+
+
+def test_worker_env_carries_resolved_storage_settings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Non-default storage settings in this process reach the worker subprocess."""
+    monkeypatch.chdir(tmp_path)  # no developer .env
+    monkeypatch.setenv("S3_ACCESS_KEY", "regression_access_key")
+    monkeypatch.setenv("S3_SECRET_KEY", "regression_secret_key_value")
+    monkeypatch.setenv("S3_ENDPOINT_URL", "http://localhost:9999")
+    monkeypatch.setenv("GCS_BUCKET_CSV", "regression-csv")
+    get_settings.cache_clear()
+    try:
+        env = worker_env()
+    finally:
+        get_settings.cache_clear()
+    assert (env["S3_ENDPOINT_URL"], env["S3_ACCESS_KEY"], env["S3_SECRET_KEY"]) == (
+        "http://localhost:9999",
+        "regression_access_key",
+        "regression_secret_key_value",
+    )
+    assert (env["STORAGE_BACKEND"], env["GCS_BUCKET_CSV"]) == ("minio", "regression-csv")
+
+
+def spawn(tmp_path: Path, *args: str) -> subprocess.Popen[str]:
     return subprocess.Popen(
         [sys.executable, str(RUN_IMPORT_WORKER), *args],
-        env=env,
+        env=worker_env(),
         cwd=tmp_path,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

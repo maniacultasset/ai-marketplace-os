@@ -236,6 +236,11 @@ class Settings(BaseSettings):
     amazon_marketplace_id: str = "A21TJRUUN4KGV"
     amazon_oauth_redirect_uri: str = "http://localhost:8000/api/v1/marketplaces/amazon/callback"
     amazon_use_sandbox: bool = True
+    # DW2 (T53, decision 4): the platform-owned SP-API authorization for the staff PTD refresh.
+    # Read only by `app.cli` (the migrate/shell job); an api or worker outside local refuses it.
+    amazon_platform_refresh_token: SecretStr | None = Field(default=None, repr=False)
+    # DW2 (C7): the hosts a PTD schema link may name, comma separated; ".x.y" is a suffix match.
+    amazon_ptd_link_hosts: str = ".amazonaws.com"
 
     # ---- flipkart ----
     flipkart_client_id: str | None = None
@@ -263,6 +268,7 @@ class Settings(BaseSettings):
         "mfa_grace_until",
         "amazon_app_id",
         "amazon_authorize_url",
+        "amazon_platform_refresh_token",
         "flipkart_authorize_url",
         "google_oauth_client_id",
         "google_oauth_client_secret",
@@ -506,6 +512,7 @@ def _boot_errors(s: Settings) -> list[str]:
     errors += _generation_errors(s)
     errors += _gateway_errors(s)
     errors += _spapi_errors(s)
+    errors += _ptd_errors(s)
     errors += _flipkart_errors(s)
     errors += _google_errors(s)
     return errors
@@ -600,6 +607,44 @@ def _spapi_errors(s: Settings) -> list[str]:
     if s.app_env != "local" and s.app_role in ("api", "worker"):
         errors += spapi_endpoint_errors(
             s.amazon_spapi_endpoint, use_sandbox=s.amazon_use_sandbox, app_env=s.app_env
+        )
+    return errors
+
+
+PTD_HOST_LABEL_RE: Final = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?")
+
+
+def ptd_link_host_errors(value: str) -> list[str]:
+    """DW2 (C7): every `AMAZON_PTD_LINK_HOSTS` entry is a DNS name with at least two labels (a
+    leading `.` marks a suffix), never an IP literal, `localhost`, a scheme or an empty entry, so
+    a suffix can never be a bare public TLD. Names only, never a value."""
+    entries = [part.strip().lower() for part in value.split(",")]
+    for entry in entries:
+        name = entry[1:] if entry.startswith(".") else entry
+        labels = name.split(".")
+        if (
+            not name
+            or len(labels) < 2
+            or not all(PTD_HOST_LABEL_RE.fullmatch(label) for label in labels)
+            or name == "localhost"
+            or name.endswith(".localhost")
+            or labels[-1].isdigit()
+        ):
+            return ["AMAZON_PTD_LINK_HOSTS must list DNS names of two or more labels"]
+    return []
+
+
+def _ptd_errors(s: Settings) -> list[str]:
+    """DW2 decision 4 (AC7): the platform refresh token belongs to the staff CLI job only; outside
+    local an api or a worker refuses to boot with it set (the `_mfa_errors` pattern)."""
+    errors = ptd_link_host_errors(s.amazon_ptd_link_hosts)
+    if (
+        s.app_env != "local"
+        and s.app_role in ("api", "worker")
+        and s.amazon_platform_refresh_token is not None
+    ):
+        errors.append(
+            f"APP_ROLE={s.app_role} refuses AMAZON_PLATFORM_REFRESH_TOKEN (the CLI job alone uses it)"
         )
     return errors
 

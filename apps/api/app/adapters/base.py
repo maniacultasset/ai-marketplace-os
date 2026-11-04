@@ -45,6 +45,7 @@ from pydantic import SecretStr
 ItemRole = Literal["standalone", "parent", "child"]
 ITEM_ROLES: Final = frozenset(get_args(ItemRole))
 MAX_ATTEMPTS: Final = 3
+DIGEST_BYTES: Final = 32
 _EMPTY: Final[Mapping[Any, Any]] = MappingProxyType({})
 
 
@@ -80,6 +81,32 @@ class AdapterTemplate:
 
 
 @dataclass(frozen=True)
+class ProductTypeSchema:
+    """The current Amazon Product Type Definition a listing is checked against (DW2). A light row:
+    it never holds the schema JSON (C6). `validator` is an opaque handle set only by
+    `app.adapters.amazon.schema_check.prepare()`; None means not prepared (the check then fails
+    closed with one `SCHEMA_INVALID`)."""
+
+    definition_id: UUID
+    product_type: str
+    product_type_version: str
+    requirements: str
+    enforced: bool
+    """`requirementsEnforced == "ENFORCED"`: a missing required attribute is then an error."""
+    digest: bytes
+    """sha256 of the canonical schema JSON, 32 bytes: the validator cache key."""
+    validator: object | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.product_type, str) or not self.product_type.strip():
+            raise ValueError("product_type must be a non-blank string")
+        if not isinstance(self.product_type_version, str) or not self.product_type_version.strip():
+            raise ValueError("product_type_version must be a non-blank string")
+        if not isinstance(self.digest, bytes) or len(self.digest) != DIGEST_BYTES:
+            raise ValueError("digest must be 32 bytes")
+
+
+@dataclass(frozen=True)
 class PreviewItem:
     """One item `preview()` would send (the wire `PreviewItem` once the contract has it)."""
 
@@ -110,6 +137,8 @@ class AdapterListing:
     colour_image_refs: Mapping[str, tuple[str, ...]] = field(default_factory=lambda: _EMPTY)
     """colour_key -> the image locators of that colourway (S22 C1), in slot order; a family
     whose colourways carry images fans them out to each child of the colour."""
+    product_type_schema: ProductTypeSchema | None = None
+    """DW2: the stored Amazon definition to check each item against; None = no check (AC10)."""
 
     def __post_init__(self) -> None:
         attempt = self.attempt

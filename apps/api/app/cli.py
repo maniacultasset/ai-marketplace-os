@@ -100,6 +100,46 @@ refuse any of the last 10.
 | any other failure                    | stderr | 1    |
 | bad arguments, or a password that breaks the rules | stderr | 2 |
 | slug taken, unknown or stopped tenant or user, membership exists | stderr | 4 |
+
+DW2 (T53): the Amazon Product Type Definitions tools. They run under the platform-owned SP-API
+authorization (`AMAZON_PLATFORM_REFRESH_TOKEN`, read only here; never a tenant token) and touch no
+tenant table. Every write is one migrator transaction on `ALEMBIC_DATABASE_URL` (the SQL is in
+`app/db/ptd_loads.py`), audited as `actor_type='staff'` with a NULL tenant. Output names the
+product type, version and digest prefix only: never the schema link, a token or the schema.
+
+`templates refresh --product-type T [--requirements R] --staff-email E --reason R [--dry-run
+[--save-schema PATH]]` fetches the definition and its schema (checksum verified), then stores it:
+the same digest again is `unchanged`; a new one is `stored`, and current only when the key has no
+current version yet (`stored_current`). `--dry-run` fetches only and needs no database;
+`--save-schema` writes the verified schema to a new file (mode 0600, never over an existing file
+or a link).
+
+| outcome                              | stream | exit |
+|--------------------------------------|--------|------|
+| fetched / unchanged / stored / stored_current | stdout | 0 |
+| a missing setting, any failure       | stderr | 1    |
+| bad arguments (argparse)             | stderr | 2    |
+
+`templates promote-definition --product-type T --version V [--digest PREFIX] [--requirements R]
+--staff-email E --reason R` makes a stored version current (after a `templates diff`).
+
+| outcome                              | stream | exit |
+|--------------------------------------|--------|------|
+| promoted, or already current         | stdout | 0    |
+| any failure                          | stderr | 1    |
+| bad arguments (argparse)             | stderr | 2    |
+| no such version, or the version needs `--digest` | stderr | 4 |
+
+`templates diff --product-type T [--requirements R] [--from-file PATH]` reports the believed
+Amazon wire names (the adapter's constants and `PLATFORM_TEMPLATES_PATH`) against the stored
+current definition (read-only on `DATABASE_URL`) or a saved schema file. Value-free lines.
+
+| outcome                              | stream | exit |
+|--------------------------------------|--------|------|
+| no drift                             | stdout | 0    |
+| drift (one line per drift)           | stdout | 1    |
+| `--from-file` missing, bad arguments | stderr | 2    |
+| could not compare (no stored definition, unreadable file, a failure) | stderr | 3 |
 """
 
 from __future__ import annotations
@@ -108,10 +148,11 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 import re
 import sys
 import uuid
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, TextIO
@@ -124,6 +165,8 @@ from sqlalchemy.exc import DBAPIError
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncEngine
 
+    from app.adapters.amazon.definitions import DefinitionsClient, FetchedDefinition
+    from app.core.config import Settings
     from app.db.staff_ops import NewUser
 
 from app.db.migrations import (
@@ -829,6 +872,341 @@ async def run_tenant_command(args: argparse.Namespace, stdin: TextIO) -> int:
     return EXIT_OK
 
 
+# ---- DW2: Amazon Product Type Definitions ----
+
+EXIT_DRIFT: Final = 1
+EXIT_NO_COMPARE: Final = 3
+_PRODUCT_TYPE_RE: Final = re.compile(r"[A-Z0-9_]{1,64}")
+_VERSION_RE: Final = re.compile(r"[A-Za-z0-9._-]{1,128}")
+_DIGEST_PREFIX_RE: Final = re.compile(r"[0-9a-fA-F]{4,64}")
+PTD_SETTINGS: Final = (
+    ("AMAZON_CLIENT_ID", "amazon_client_id"),
+    ("AMAZON_CLIENT_SECRET", "amazon_client_secret"),
+    ("AMAZON_PLATFORM_REFRESH_TOKEN", "amazon_platform_refresh_token"),
+)
+
+
+def _product_type(value: str) -> str:
+    if not _PRODUCT_TYPE_RE.fullmatch(value):
+        raise argparse.ArgumentTypeError("--product-type must match [A-Z0-9_]{1,64}")
+    return value
+
+
+def _ptd_version(value: str) -> str:
+    if not _VERSION_RE.fullmatch(value):
+        raise argparse.ArgumentTypeError("--version must be 1-128 of [A-Za-z0-9._-]")
+    return value
+
+
+def _digest_prefix(value: str) -> str:
+    if not _DIGEST_PREFIX_RE.fullmatch(value):
+        raise argparse.ArgumentTypeError("--digest must be 4-64 hex characters")
+    return value.lower()
+
+
+def _missing_ptd_setting(settings: Settings) -> str | None:
+    for name, attribute in PTD_SETTINGS:
+        value = getattr(settings, attribute)
+        text = value.get_secret_value() if hasattr(value, "get_secret_value") else value
+        if text is None or not str(text).strip():
+            return name
+    return None
+
+
+def build_definitions_client(settings: Settings) -> DefinitionsClient:
+    """The platform PTD client: LWA refresh under the platform token, an in-process limiter (C1),
+    an SP-API client with no seller, and the link policy from `AMAZON_PTD_LINK_HOSTS`."""
+    from app.adapters.amazon import constants as amazon
+    from app.adapters.amazon.client import SpApiClient
+    from app.adapters.amazon.definitions import (
+        DefinitionsClient,
+        IntervalLimiter,
+        LinkPolicy,
+        PlatformTokenSource,
+    )
+    from app.adapters.oauth.amazon import AmazonOAuthClient
+
+    refresh = settings.amazon_platform_refresh_token
+    if (
+        refresh is None
+        or settings.amazon_client_id is None
+        or settings.amazon_client_secret is None
+    ):
+        raise ValueError("the platform authorization is not configured")
+    oauth = AmazonOAuthClient(
+        application_id=settings.amazon_app_id or "",
+        client_id=settings.amazon_client_id,
+        client_secret=settings.amazon_client_secret,
+        authorize_base=settings.amazon_authorize_url or "",
+        token_url=settings.amazon_lwa_token_url,
+        redirect_uri=settings.amazon_oauth_redirect_uri,
+    )
+    sp = SpApiClient(
+        endpoint=settings.amazon_spapi_endpoint,
+        marketplace_id=settings.amazon_marketplace_id,
+        seller_id=None,
+        tokens=PlatformTokenSource(oauth, refresh),
+        limiter=IntervalLimiter(amazon.PTD_RATES),
+    )
+    return DefinitionsClient(
+        sp,
+        marketplace_id=settings.amazon_marketplace_id,
+        link_policy=LinkPolicy.from_setting(settings.amazon_ptd_link_hosts),
+    )
+
+
+# Tests swap this factory for one over the in-process fake (no network).
+DEFINITIONS_CLIENT: Callable[[Settings], DefinitionsClient] = build_definitions_client
+
+
+def _save_schema(path: Path, schema: Any) -> None:
+    """A new file, mode 0600; never over an existing file or through a link (L7)."""
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+    descriptor = os.open(path, flags, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        json.dump(schema, handle, ensure_ascii=False, sort_keys=True, indent=2)
+        handle.write("\n")
+
+
+def _definition_line(outcome: str, fetched: FetchedDefinition) -> str:
+    properties = fetched.schema.get("properties")
+    required = fetched.schema.get("required")
+    count = len(properties) if isinstance(properties, dict) else 0
+    needed = len(required) if isinstance(required, list) else 0
+    return (
+        f"templates refresh: {outcome} {fetched.product_type} version "
+        f"{fetched.product_type_version} digest {fetched.digest.hex()[:12]} "
+        f"properties {count} required {needed}\n"
+    )
+
+
+async def _fetch_definition(
+    settings: Settings, product_type: str, requirements: str
+) -> FetchedDefinition:
+    from app.adapters.amazon.endpoint import spapi_endpoint_errors
+
+    problems = spapi_endpoint_errors(
+        settings.amazon_spapi_endpoint,
+        use_sandbox=settings.amazon_use_sandbox,
+        app_env=settings.app_env,
+    )
+    if problems:
+        raise ValueError("AMAZON_SPAPI_ENDPOINT does not match AMAZON_USE_SANDBOX")
+    client = DEFINITIONS_CLIENT(settings)
+    try:
+        return await client.get_product_type(product_type, requirements=requirements)
+    finally:
+        await client.aclose()
+
+
+async def run_ptd_refresh(args: argparse.Namespace) -> int:
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from app.core.config import get_settings
+    from app.core.request_context import new_request_id
+    from app.db.ptd_loads import Actor, DefinitionRow, store_definition
+
+    settings = get_settings()
+    missing = _missing_ptd_setting(settings)
+    if missing is None and not args.dry_run and settings.alembic_database_url is None:
+        missing = "ALEMBIC_DATABASE_URL"
+    if missing is not None:
+        sys.stderr.write(f"templates refresh: failed ({missing} is required)\n")
+        return EXIT_FAILED
+    try:
+        fetched = await _fetch_definition(settings, args.product_type, args.requirements)
+    except Exception as exc:  # class and code only, never the message (it may name the link)
+        report = getattr(exc, "report", None)
+        code = f", {report.error_code}" if report is not None and report.error_code else ""
+        sys.stderr.write(f"templates refresh: failed ({type(exc).__name__}{code})\n")
+        return EXIT_FAILED
+    if args.dry_run:
+        if args.save_schema is not None:
+            try:
+                _save_schema(args.save_schema, fetched.schema)
+            except OSError as exc:
+                sys.stderr.write(f"templates refresh: not saved ({type(exc).__name__})\n")
+                return EXIT_FAILED
+        sys.stdout.write(_definition_line("fetched", fetched))
+        return EXIT_OK
+    row = DefinitionRow(
+        marketplace_id=fetched.marketplace_id,
+        product_type=fetched.product_type,
+        requirements=fetched.requirements,
+        locale=fetched.locale,
+        product_type_version=fetched.product_type_version,
+        requirements_enforced=fetched.requirements_enforced,
+        display_name=fetched.display_name,
+        property_groups=fetched.property_groups,
+        meta_schema_id=fetched.meta_schema_id,
+        schema=fetched.schema,
+        digest=fetched.digest,
+    )
+    actor = Actor(args.staff_email, args.reason, new_request_id())
+    engine = create_async_engine(str(settings.alembic_database_url))
+    try:
+        result = await store_definition(engine, row, actor)
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"templates refresh: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    finally:
+        await engine.dispose()
+    sys.stdout.write(_definition_line(result.outcome, fetched))
+    return EXIT_OK
+
+
+async def run_ptd_promote(args: argparse.Namespace) -> int:
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from app.core.config import get_settings
+    from app.core.request_context import new_request_id
+    from app.db.ptd_loads import Actor, promote_definition
+
+    settings = get_settings()
+    if settings.alembic_database_url is None:
+        sys.stderr.write(
+            "templates promote-definition: failed (ALEMBIC_DATABASE_URL is required)\n"
+        )
+        return EXIT_FAILED
+    from app.adapters.amazon import constants as amazon
+
+    key = {
+        "marketplace_id": settings.amazon_marketplace_id,
+        "product_type": args.product_type,
+        "requirements": args.requirements,
+        "locale": amazon.PTD_LOCALE,
+    }
+    engine = create_async_engine(settings.alembic_database_url)
+    try:
+        promoted = await promote_definition(
+            engine,
+            key=key,
+            version=args.version,
+            digest_prefix=args.digest,
+            actor=Actor(args.staff_email, args.reason, new_request_id()),
+        )
+    except LookupError:
+        sys.stderr.write(
+            "templates promote-definition: not found (no such version, or it needs --digest)\n"
+        )
+        return EXIT_NOT_ELIGIBLE
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"templates promote-definition: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    finally:
+        await engine.dispose()
+    state = "promoted" if promoted else "already current"
+    sys.stdout.write(
+        f"templates promote-definition: {state} {args.product_type} version {args.version}\n"
+    )
+    return EXIT_OK
+
+
+async def _stored_schema(settings: Settings, product_type: str, requirements: str) -> Any:
+    from app.adapters.amazon import constants as amazon
+    from app.db.session import dispose_engine, platform_scope
+    from app.repositories.product_type_definitions import ProductTypeDefinitionRepository
+
+    try:
+        async with platform_scope() as session:
+            repo = ProductTypeDefinitionRepository(session)
+            current = await repo.current(
+                marketplace_id=settings.amazon_marketplace_id,
+                product_type=product_type,
+                requirements=requirements,
+                locale=amazon.PTD_LOCALE,
+            )
+            if current is None:
+                return None
+            return await repo.schema_json(current.definition_id)
+    finally:
+        await dispose_engine()
+
+
+def _amazon_templates(product_type: str) -> list[Any]:
+    from app.db.platform_loads import load_template_file
+
+    latest: dict[str, Any] = {}
+    for entry in load_template_file(PLATFORM_TEMPLATES_PATH):
+        template = entry.template
+        if template.marketplace.value != "amazon" or entry.product_type != product_type:
+            continue
+        held = latest.get(template.category)
+        if held is None or entry.version > held.version:
+            latest[template.category] = entry
+    return [latest[k].template for k in sorted(latest)]
+
+
+async def run_ptd_diff(args: argparse.Namespace) -> int:
+    from app.adapters.amazon.definitions import SchemaInvalid, parse_schema
+    from app.adapters.amazon.drift import diff, render
+    from app.core.config import get_settings
+
+    schema: Any
+    try:
+        if args.from_file is not None:
+            schema = parse_schema(args.from_file.read_bytes())
+        else:
+            settings = get_settings()
+            if settings.database_url is None:
+                sys.stderr.write("templates diff: could not compare (DATABASE_URL is required)\n")
+                return EXIT_NO_COMPARE
+            schema = await _stored_schema(settings, args.product_type, args.requirements)
+        templates = _amazon_templates(args.product_type)
+    except SchemaInvalid:
+        sys.stderr.write("templates diff: could not compare (the file is not a JSON schema)\n")
+        return EXIT_NO_COMPARE
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"templates diff: could not compare ({_describe(exc)})\n")
+        return EXIT_NO_COMPARE
+    if schema is None:
+        sys.stderr.write(
+            f"templates diff: could not compare (no stored definition for {args.product_type})\n"
+        )
+        return EXIT_NO_COMPARE
+    drifts = diff(schema, templates, args.product_type)
+    if drifts:
+        sys.stdout.write(render(drifts) + "\n")
+    sys.stdout.write(f"templates diff: {len(drifts)} drift(s) for {args.product_type}\n")
+    return EXIT_DRIFT if drifts else EXIT_OK
+
+
+def _add_ptd(templates_commands: Any) -> None:
+    from app.adapters.amazon import constants as amazon
+
+    def requirements(parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--requirements",
+            choices=amazon.PTD_REQUIREMENTS_VALUES,
+            default=amazon.PTD_REQUIREMENTS,
+        )
+
+    refresh = templates_commands.add_parser(
+        "refresh", help="fetch and store an Amazon product type definition (DW2)"
+    )
+    refresh.add_argument("--product-type", type=_product_type, required=True)
+    requirements(refresh)
+    refresh.add_argument("--staff-email", type=_staff_email, required=True)
+    refresh.add_argument("--reason", type=_reason, required=True)
+    refresh.add_argument("--dry-run", action="store_true", help="fetch only; no database")
+    refresh.add_argument("--save-schema", type=Path, default=None, help="with --dry-run only")
+    promote = templates_commands.add_parser(
+        "promote-definition", help="make a stored definition version current (DW2)"
+    )
+    promote.add_argument("--product-type", type=_product_type, required=True)
+    promote.add_argument("--version", type=_ptd_version, required=True)
+    promote.add_argument("--digest", type=_digest_prefix, default=None)
+    requirements(promote)
+    promote.add_argument("--staff-email", type=_staff_email, required=True)
+    promote.add_argument("--reason", type=_reason, required=True)
+    drift = templates_commands.add_parser(
+        "diff", help="believed Amazon names against a stored definition (DW2)"
+    )
+    drift.add_argument("--product-type", type=_product_type, required=True)
+    requirements(drift)
+    drift.add_argument("--from-file", type=Path, default=None)
+
+
 def _add_onboarding(groups: Any) -> None:
     tenant = groups.add_parser("tenant", help="staff tenant onboarding (S16)")
     tenant_commands = tenant.add_subparsers(dest="command", required=True)
@@ -890,6 +1268,7 @@ def build_parser() -> argparse.ArgumentParser:
     templates_commands = templates.add_subparsers(dest="command", required=True)
     load = templates_commands.add_parser("load", help="load versioned category templates")
     load.add_argument("--file", type=Path, default=PLATFORM_TEMPLATES_PATH)
+    _add_ptd(templates_commands)
     rules = groups.add_parser("rules", help="the platform rules (migrator)")
     rules_commands = rules.add_subparsers(dest="command", required=True)
     rules_load = rules_commands.add_parser("load", help="load versioned platform rules")
@@ -906,8 +1285,22 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _run_ptd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
+    if args.command == "refresh":
+        if args.save_schema is not None and not args.dry_run:
+            parser.error("--save-schema needs --dry-run")
+        return asyncio.run(run_ptd_refresh(args))
+    if args.command == "promote-definition":
+        return asyncio.run(run_ptd_promote(args))
+    if args.from_file is not None and not args.from_file.is_file():
+        sys.stderr.write("templates diff: no such file\n")
+        return EXIT_NO_FILE
+    return asyncio.run(run_ptd_diff(args))
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
     if args.group in ("tenant", "user"):
         return asyncio.run(run_tenant_command(args, sys.stdin))
     if args.group == "platform":
@@ -925,6 +1318,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stderr.write("rules load: no such file\n")
             return EXIT_NO_FILE
         return asyncio.run(run_rules_load(args.file))
+    if args.group == "templates" and args.command != "load":
+        return _run_ptd(parser, args)
     if args.group == "templates":
         if not args.file.is_file():
             sys.stderr.write("templates load: no such file\n")

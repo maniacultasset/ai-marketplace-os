@@ -31,6 +31,9 @@ OUTBOUND_CLIENTS = {
     # S22 (merged after S26a): the base comes from settings and is pinned off local (T128)
     "adapters/flipkart/client.py": ("workers/adapters.py", "api_base=settings.flipkart_api_base"),
     "services/embeddings.py": ("services/embeddings.py", "OPENAI_BASE_URL"),
+    # DW2 (C7): the PTD schema link: https, a host on AMAZON_PTD_LINK_HOSTS, every resolved
+    # address public, connected by the checked address (definitions.check_link, _addresses)
+    "adapters/amazon/definitions.py": ("adapters/amazon/definitions.py", "is_public_address"),
 }
 CLIENT_CTORS = {"Client", "AsyncClient", "AsyncOpenAI"}
 MODULE_CALLS = {"get", "post", "put", "patch", "delete", "request", "stream", "head", "options"}

@@ -187,3 +187,122 @@ async def test_fake_spapi_lwa_token_is_accepted() -> None:
         token = (await client.post("/amazon/token", data=form)).json()["access_token"]
         response = await client.get(f"{BASE}/SKU", params=Q, headers=_h(token))
     assert response.status_code == 404
+
+
+# ---- DW2 T7: the Product Type Definitions routes ----
+
+PTD = "/definitions/2020-09-01/productTypes"
+PTD_Q = {
+    "marketplaceIds": "A21TJRUUN4KGV",
+    "requirements": "LISTING_PRODUCT_ONLY",
+    "locale": "en_IN",
+}
+
+
+async def _envelope(client: httpx.AsyncClient, token: str, product_type: str = "KURTA") -> Any:
+    return await client.get(f"{PTD}/{product_type}", params=PTD_Q, headers=_h(token))
+
+
+def _link_path(envelope: dict[str, Any]) -> str:
+    from urllib.parse import urlsplit
+
+    parts = urlsplit(envelope["schema"]["link"]["resource"])
+    assert parts.scheme == "https" and parts.hostname == "ptd-schemas.fake.amazonaws.com"
+    return f"{parts.path}?{parts.query}"
+
+
+async def test_fake_ptd_envelope_and_checksum(fake: Any) -> None:
+    from tests.support.fake_marketplace import ptd_checksum, ptd_fixture
+
+    client, token, _ = fake
+    reply = await _envelope(client, token)
+    assert reply.status_code == 200
+    envelope = reply.json()
+    assert set(envelope) >= {
+        "displayName",
+        "locale",
+        "marketplaceIds",
+        "metaSchema",
+        "productType",
+        "productTypeVersion",
+        "propertyGroups",
+        "requirements",
+        "requirementsEnforced",
+        "schema",
+    }
+    assert envelope["requirementsEnforced"] == "ENFORCED"
+    schema = await client.get(_link_path(envelope))
+    assert schema.status_code == 200
+    assert schema.content == ptd_fixture("KURTA.schema.json")
+    assert envelope["schema"]["checksum"] == ptd_checksum(schema.content)
+
+
+async def test_fake_ptd_us_marketplace_denied_and_tokenless_refused(fake: Any) -> None:
+    client, token, _ = fake
+    us = await client.get(
+        f"{PTD}/KURTA", params={**PTD_Q, "marketplaceIds": "ATVPDKIKX0DER"}, headers=_h(token)
+    )
+    assert us.status_code == 403
+    assert (await client.get(f"{PTD}/KURTA", params=PTD_Q)).status_code == 403
+    assert (await _envelope(client, token, "NOPE")).status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("switch", "check"),
+    [
+        ("deny", "envelope_403"),
+        ("not_enforced", "not_enforced"),
+        ("bad_checksum", "bad_checksum"),
+        ("external_ref", "external_ref"),
+        ("redirect_link", "link_302"),
+        ("oversize", "link_oversize"),
+    ],
+)
+async def test_fake_ptd_switch_applies_once(fake: Any, switch: str, check: str) -> None:
+    from tests.support.fake_marketplace import PTD_OVERSIZE, ptd_checksum
+
+    client, token, _ = fake
+    await client.post("/__control", json={"ptd": {switch: True}})
+    for round_ in (1, 2):
+        reply = await _envelope(client, token)
+        hit = round_ == 1
+        if check == "envelope_403":
+            assert (reply.status_code == 403) is hit
+            continue
+        envelope = reply.json()
+        link = await client.get(_link_path(envelope))
+        if check == "not_enforced":
+            assert (envelope["requirementsEnforced"] == "NOT_ENFORCED") is hit
+        elif check == "bad_checksum":
+            assert (envelope["schema"]["checksum"] != ptd_checksum(link.content)) is hit
+        elif check == "external_ref":
+            assert (b"schemas.example.invalid" in link.content) is hit
+        elif check == "link_302":
+            assert (link.status_code == 302) is hit
+        else:
+            assert (len(link.content) == PTD_OVERSIZE) is hit
+
+
+async def test_fake_ptd_status_list_and_reset(fake: Any) -> None:
+    client, token, app = fake
+    await client.post(
+        "/__control", json={"ptd": {"status": [429, 500], "schema": "KURTA.drift.schema.json"}}
+    )
+    assert (await _envelope(client, token)).status_code == 429
+    assert (await _envelope(client, token)).status_code == 500
+    envelope = (await _envelope(client, token)).json()
+    assert b"neckline_style" in (await client.get(_link_path(envelope))).content
+    await client.post("/__control/reset", json={"ptd": True})
+    assert app.state.fake.ptd == {} and app.state.fake.ptd_served == {}
+    envelope = (await _envelope(client, token)).json()
+    assert b"neckline_style" not in (await client.get(_link_path(envelope))).content
+
+
+async def test_fake_ptd_calls_hold_header_names_only(fake: Any) -> None:
+    client, token, app = fake
+    envelope = (await _envelope(client, token)).json()
+    await client.get(_link_path(envelope))
+    calls = [c for c in app.state.fake.calls if c.get("kind") in ("ptd", "ptd_schema")]
+    assert [c["kind"] for c in calls] == ["ptd", "ptd_schema"]
+    assert "x-amz-access-token" in calls[0]["header_names"]
+    assert token not in repr(calls)

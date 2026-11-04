@@ -100,6 +100,7 @@ MATRIX: dict[str, tuple[frozenset[str], frozenset[str], frozenset[str]]] = {
     "attribute_columns": (READ, frozenset(), frozenset()),
     "category_attributes": (READ, frozenset(), frozenset()),
     "listing_status_transitions": (READ, frozenset(), frozenset()),
+    "product_type_definitions": (READ, frozenset(), frozenset()),  # 0014 (DW2)
 }
 
 

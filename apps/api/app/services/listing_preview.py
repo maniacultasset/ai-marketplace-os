@@ -9,6 +9,8 @@ Rules Engine decides, invariant 2). One `tenant_uow` read: another tenant's list
 - A marketplace with no adapter → `MarketplaceNotSupported` (501); since S22 both have one. A
   Flipkart family previews its children only (no parent row), whatever `FLIPKART_ENABLED` says.
 - Images are opaque `image:<id>` references, never URLs.
+- DW2: an Amazon listing is also checked against the stored Product Type Definition of its
+  product type, when one is current (read in the same unit of work; `product_type_schema`).
 """
 
 from __future__ import annotations
@@ -29,6 +31,7 @@ from app.services.adapter_input import (
     canonical_listing,
     colour_image_ids,
 )
+from app.services.product_type_schema import current_schema
 
 LISTING_BUSY_REASON: Final = "listing_busy"
 
@@ -40,6 +43,11 @@ class MarketplaceNotSupported(Exception):  # noqa: N818 - a 501, not a failure o
 async def preview_listing(principal: Principal, listing_id: uuid.UUID) -> MarketplacePreview:
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
         source = await uow.listings.preview_source(listing_id)
+        schema = None
+        if source is not None and source.template is not None:
+            schema = await current_schema(
+                uow, marketplace=source.marketplace, product_type=source.template.product_type
+            )
     if source is None:
         raise NotFoundError("listing_id")
     if source.version is None or source.status == ListingStatus.GENERATING.value:
@@ -52,7 +60,10 @@ async def preview_listing(principal: Principal, listing_id: uuid.UUID) -> Market
     ids = {image.image_id for image in body.images} | colour_image_ids(source)
     refs = {image_id: f"image:{image_id}" for image_id in ids}
     adapter_listing = build_adapter_listing(
-        source, image_refs=refs, idempotency_key=f"preview:{listing_id}"
+        source,
+        image_refs=refs,
+        idempotency_key=f"preview:{listing_id}",
+        product_type_schema=schema,
     )
     result = preview(adapter_listing)
     return MarketplacePreview(

@@ -25,7 +25,7 @@ from typing import Any
 
 from mkos_schemas.listing import CanonicalListing
 
-from app.adapters.base import AdapterItem, AdapterListing, AdapterTemplate
+from app.adapters.base import AdapterItem, AdapterListing, AdapterTemplate, ProductTypeSchema
 from app.adapters.registry import family_has_parent
 from app.repositories.listings import PreviewSource
 
@@ -102,6 +102,7 @@ def build_adapter_listing(
     image_refs: Mapping[uuid.UUID, str],
     idempotency_key: str,
     attempt: int = 1,
+    product_type_schema: ProductTypeSchema | None = None,
 ) -> AdapterListing:
     pinned = source.template
     template = (
@@ -124,4 +125,5 @@ def build_adapter_listing(
             for key, ids in approved_colour_images(source).items()
             if (refs := tuple(image_refs[i] for i in ids if i in image_refs))
         },
+        product_type_schema=product_type_schema,
     )

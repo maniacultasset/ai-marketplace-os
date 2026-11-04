@@ -41,6 +41,7 @@ PLATFORM_READERS = frozenset(
         "CategoryTemplateRepository",
         "DictionaryRevisionRepository",
         "ErrorMapRepository",
+        "ProductTypeDefinitionRepository",
     }
 )
 

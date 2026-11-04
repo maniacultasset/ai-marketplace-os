@@ -35,6 +35,8 @@ dependencies = [
   "openai==3.19.1",
   # S4 (ADR-0018): the Cloud KMS key wrapper, imported only by app/adapters/kms.py.
   "google-cloud-kms==3.18.0",
+  # DW2 (decision 5): PTD schema check, imported only by app.adapters.amazon.schema_check.
+  "jsonschema-rs==0.57.1",
 ]
 
 [tool.uv.sources]

@@ -305,7 +305,7 @@ def clean_tenant_db(superuser_conn: Conn) -> None:
     try:
         superuser_conn.execute(
             "TRUNCATE tenants, users, category_templates, rules, marketplace_error_map, "
-            "login_flows RESTART IDENTITY CASCADE"
+            "login_flows, product_type_definitions RESTART IDENTITY CASCADE"
         )
     finally:
         superuser_conn.execute("RESET session_replication_role")

@@ -69,3 +69,49 @@ async def test_preview_source_colours_other_tenant_invisible(
     theirs = world.rows["listings"][b]
     async with tenant_uow(a) as uow:
         assert await uow.listings.preview_source(theirs) is None
+
+
+async def test_product_type_definition_is_global_by_design(
+    iso_settings: None, world: World, clean_module_admin_conn: Conn
+) -> None:
+    """DW2 T10 (AC13): the stored Amazon definition is platform-global: under app_rw each tenant
+    reads the same current row, the read names no tenant, and neither tenant can write it."""
+    import json
+
+    from app.adapters.amazon import constants as amazon
+    from app.repositories.uow import tenant_uow
+    from sqlalchemy import event
+    from sqlalchemy.engine import Engine
+
+    digest = bytes(range(32))
+    row = clean_module_admin_conn.execute(
+        "INSERT INTO product_type_definitions (marketplace, marketplace_id, product_type, "
+        "requirements, locale, product_type_version, requirements_enforced, property_groups, "
+        "schema_json, schema_digest, fetched_at, is_current) VALUES ('amazon', 'A21TJRUUN4KGV', "
+        "'KURTA', %s, %s, 'UISO1', 'ENFORCED', '{}'::jsonb, %s::jsonb, %s, now(), true) "
+        "RETURNING id",
+        [amazon.PTD_REQUIREMENTS, amazon.PTD_LOCALE, json.dumps({"type": "object"}), digest],
+    ).fetchone()
+    assert row is not None
+    seen: list[str] = []
+
+    def capture(conn: object, cursor: object, statement: str, *args: object) -> None:
+        seen.append(statement)
+
+    key = {
+        "marketplace_id": "A21TJRUUN4KGV",
+        "product_type": "KURTA",
+        "requirements": amazon.PTD_REQUIREMENTS,
+        "locale": amazon.PTD_LOCALE,
+    }
+    event.listen(Engine, "before_cursor_execute", capture)
+    try:
+        found = []
+        for tenant in world.tenants:
+            async with tenant_uow(tenant) as uow:
+                found.append(await uow.ptd.current(**key))
+    finally:
+        event.remove(Engine, "before_cursor_execute", capture)
+    assert [f.definition_id if f else None for f in found] == [row[0], row[0]]
+    reads = [s for s in seen if "product_type_definitions" in s]
+    assert reads and all("tenant_id" not in s for s in reads)

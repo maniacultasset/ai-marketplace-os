@@ -81,7 +81,8 @@ async def app_engine() -> AsyncIterator[AsyncEngine]:
 # admin login, test databases only) skips user triggers for its one statement.
 CLEAN_SQL = (
     "SET session_replication_role = replica; "
-    "TRUNCATE tenants, users, category_templates, rules RESTART IDENTITY CASCADE; "
+    "TRUNCATE tenants, users, category_templates, rules, product_type_definitions "
+    "RESTART IDENTITY CASCADE; "
     "RESET session_replication_role"
 )
 

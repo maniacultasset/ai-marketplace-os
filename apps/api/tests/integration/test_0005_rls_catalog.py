@@ -60,6 +60,7 @@ NO_RLS = frozenset(
         "attribute_columns",
         "category_attributes",
         "listing_status_transitions",
+        "product_type_definitions",
         "rate_limit_counters",
         "alembic_version",
     }

@@ -36,6 +36,13 @@ ALLOWLIST: dict[str, set[str]] = {
     "marketplace_error_map": {"enabled"},
     "brand_document": set(),
     "user": set(),
+    "product_type_definition": {
+        "marketplace_id",
+        "product_type",
+        "requirements",
+        "locale",
+        "product_type_version",
+    },
 }
 AUDIT_SQL = "SELECT audit(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 

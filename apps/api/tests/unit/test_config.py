@@ -832,3 +832,68 @@ def test_config_git_sha_optional_migrate_shell(
 ) -> None:
     env = {"APP_ENV": "staging", "APP_ROLE": role, "ALEMBIC_DATABASE_URL": LOCAL_URL}
     assert boot(monkeypatch, **env).git_sha == "dev"
+
+
+# ---- DW2 (T2): the platform refresh token and the PTD link host list ----
+
+PLATFORM_TOKEN = "Atzr|Zq9platform-refresh-token"
+
+
+def test_platform_refresh_token_never_rendered(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    loaded = boot(
+        monkeypatch, APP_ENV="local", APP_ROLE="shell", AMAZON_PLATFORM_REFRESH_TOKEN=PLATFORM_TOKEN
+    )
+    assert loaded.amazon_platform_refresh_token is not None
+    assert loaded.amazon_platform_refresh_token.get_secret_value() == PLATFORM_TOKEN
+    rendered = repr(loaded) + str(loaded) + loaded.model_dump_json()
+    assert PLATFORM_TOKEN not in rendered
+    assert "Zq9" not in rendered
+
+
+@pytest.mark.parametrize(
+    "hosts",
+    [
+        "127.0.0.1",
+        "localhost",
+        "::1",
+        "",
+        ".",
+        ".com",
+        "com",
+        ".in",
+        "https://x.amazonaws.com",
+        ".amazonaws.com,",
+        "[::1]",
+        "x.localhost",
+    ],
+)
+def test_ptd_link_hosts_refused(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, hosts: str
+) -> None:
+    message = abort(monkeypatch, APP_ENV="local", APP_ROLE="shell", AMAZON_PTD_LINK_HOSTS=hosts)
+    assert "AMAZON_PTD_LINK_HOSTS" in message
+    if hosts.strip(".,"):
+        assert hosts not in message
+
+
+def test_ptd_link_hosts_accepted(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    loaded = boot(
+        monkeypatch,
+        APP_ENV="local",
+        APP_ROLE="shell",
+        AMAZON_PTD_LINK_HOSTS=".amazonaws.com,schemas.example.com",
+    )
+    assert loaded.amazon_ptd_link_hosts == ".amazonaws.com,schemas.example.com"
+    monkeypatch.delenv("AMAZON_PTD_LINK_HOSTS")
+    assert boot(monkeypatch, APP_ENV="local", APP_ROLE="shell").amazon_ptd_link_hosts == (
+        ".amazonaws.com"
+    )
+
+
+def test_blank_platform_refresh_token_is_unset(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    loaded = boot(monkeypatch, APP_ENV="local", APP_ROLE="shell", AMAZON_PLATFORM_REFRESH_TOKEN="")
+    assert loaded.amazon_platform_refresh_token is None
