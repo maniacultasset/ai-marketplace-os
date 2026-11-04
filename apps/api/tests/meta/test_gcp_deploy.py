@@ -71,9 +71,11 @@ def toolkit(repo_root: Path, tmp_path: Path) -> Iterator[Path]:
             continue
         text = source.read_text(encoding="utf-8")
         if source.suffix == ".env":
-            text = text.replace("__FILL_ME__", ORIGIN).replace(
-                "API_PUBLIC_URL=\n", f"API_PUBLIC_URL={API_URL}\n"
-            )
+            text = text.replace("__FILL_ME__", ORIGIN)
+            # prod.env pins the cutover values (EDGE-CUTOVER step 6); the copy uses the test URL
+            # and an unpinned issuer, as the tests expect.
+            text = re.sub(r"^API_PUBLIC_URL=.*$", f"API_PUBLIC_URL={API_URL}", text, flags=re.M)
+            text = re.sub(r"^JWT_ISSUER=.*$", "JWT_ISSUER=", text, flags=re.M)
             # Google sign-in starts off in the copy; the Google tests switch it on themselves.
             text = re.sub(
                 r"^GOOGLE_OAUTH_ENABLED=.*$", "GOOGLE_OAUTH_ENABLED=false", text, flags=re.M
