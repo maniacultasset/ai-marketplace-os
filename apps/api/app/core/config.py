@@ -157,6 +157,9 @@ class Settings(BaseSettings):
     admin_staff_emails: str = ""
     admin_local_email: str = "dev@local"
     port: int = Field(default=8000, ge=1, le=65535)
+    # ADR-0025: the Cloudflare Worker's origin secret; `enforce` answers 403 to any other caller
+    origin_auth: Literal["off", "enforce"] = "off"
+    edge_origin_secret: SecretStr | None = Field(default=None, repr=False)
 
     # ---- database (the pool is per process) ----
     database_url: str | None = Field(default=None, pattern=_PSYCOPG_URL, repr=False)
@@ -266,6 +269,7 @@ class Settings(BaseSettings):
         "flipkart_authorize_url",
         "google_oauth_client_id",
         "google_oauth_client_secret",
+        "edge_origin_secret",
         mode="before",
     )
     @classmethod
@@ -296,6 +300,17 @@ class Settings(BaseSettings):
         never drift from the origin the browser is on (the dashboard proxies `/api/*`). It is the
         exact string registered on the OAuth client in the Google Cloud console."""
         return f"{self.dashboard_base_url}{self.api_v1_prefix}{GOOGLE_CALLBACK_PATH}"
+
+    def edge_origin_secrets(self) -> tuple[bytes, ...]:
+        """The accepted Worker origin secrets (ADR-0025): the current value, then the previous one
+        during a rotation, separated by one space. Empty when unset or malformed, so a value the
+        boot guard would refuse never vouches for a caller, even under `ORIGIN_AUTH=off`."""
+        if self.edge_origin_secret is None:
+            return ()
+        raw = self.edge_origin_secret.get_secret_value()
+        if _edge_secret_errors(raw):
+            return ()
+        return tuple(part.encode("ascii") for part in raw.split(" "))
 
     @field_validator("embedding_dimensions", mode="before")
     @classmethod
@@ -328,6 +343,37 @@ def _is_weak_secret(secret: str) -> bool:
     """Whitespace anywhere (a blank, padded or mangled Secret Manager value) or too short.
     Measured on the raw value: `min_length` counts the padding, `.strip()` would hide it."""
     return any(char.isspace() for char in secret) or len(secret) < SECRET_MIN_LENGTH
+
+
+EDGE_SECRET_MAX_VALUES: Final = 2  # current, then previous during a rotation (ADR-0025 D6)
+
+
+def _edge_secret_errors(raw: str) -> list[str]:
+    """EDGE_ORIGIN_SECRET's shape: one or two values split by exactly one space, each printable
+    ASCII (it rides an HTTP header), free of whitespace and 32+ characters (`setup` generates 64
+    hex characters). Names only, never a value."""
+    parts = raw.split(" ")
+    if len(parts) > EDGE_SECRET_MAX_VALUES or any(not part for part in parts):
+        return ["EDGE_ORIGIN_SECRET holds one value, or two separated by one space"]
+    errors: list[str] = []
+    if any(_is_weak_secret(part) for part in parts):
+        errors.append(
+            "refuses a weak EDGE_ORIGIN_SECRET "
+            f"(whitespace, or under {SECRET_MIN_LENGTH} characters)"
+        )
+    if not all(part.isascii() and part.isprintable() for part in parts):
+        errors.append("EDGE_ORIGIN_SECRET must be ASCII (it is sent as an HTTP header)")
+    return errors
+
+
+def _edge_errors(s: Settings) -> list[str]:
+    """ADR-0025: an api under `ORIGIN_AUTH=enforce` needs a well-formed Worker origin secret, in
+    every APP_ENV (a weak value would let anyone past the guard). Names only, never a value."""
+    if s.app_role != "api" or s.origin_auth != "enforce":
+        return []
+    if s.edge_origin_secret is None:
+        return ["ORIGIN_AUTH=enforce requires EDGE_ORIGIN_SECRET"]
+    return _edge_secret_errors(s.edge_origin_secret.get_secret_value())
 
 
 def _is_loopback_host(host: str) -> bool:
@@ -508,6 +554,7 @@ def _boot_errors(s: Settings) -> list[str]:
     errors += _spapi_errors(s)
     errors += _flipkart_errors(s)
     errors += _google_errors(s)
+    errors += _edge_errors(s)
     return errors
 
 

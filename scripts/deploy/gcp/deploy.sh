@@ -15,7 +15,8 @@
 #   smoke       GET /healthz and /readyz on the service URL
 #   tenant      create | add-member | set-password | make-admin | unlock | reset-mfa (staff CLI job)
 #   status      service URL, revisions, job runs, secret names
-#   edge        setup | rules | enforce | lock-ingress | unlock-ingress | alerts | cors | status (prod; needs EDGE_DOMAIN)
+#   edge        setup | rules | enforce | lock-ingress | unlock-ingress | alerts | cors | status (prod; needs EDGE_DOMAIN;
+#               EDGE_PROVIDER=cloudflare keeps only cors and status, ADR-0025)
 #
 # Every subcommand describes before it creates, so a rerun is safe. Each gcloud command is printed
 # before it runs; --dry-run prints them and runs none (its only gcloud call is a local `--help`
@@ -77,10 +78,41 @@ INGRESS="${INGRESS-all}"
 EDGE_ENFORCE="${EDGE_ENFORCE-}"
 JWT_ISSUER="${JWT_ISSUER-}"
 ALERT_EMAIL="${ALERT_EMAIL-}"
-# Only an environment with an edge domain gets the load balancer and monitoring APIs, so staging
-# never gets an auto-created default VPC.
+# ADR-0025: the interim edge. Blank or armor: the ADR-0022 load balancer path, unchanged.
+# cloudflare: a Cloudflare Worker in front of run.app (docs/runbooks/EDGE-CLOUDFLARE.md); the api
+# gets the Worker's origin secret, and ORIGIN_AUTH=enforce makes it refuse every other caller.
+EDGE_PROVIDER="${EDGE_PROVIDER-}"
+ORIGIN_AUTH="${ORIGIN_AUTH-off}"
+ORIGIN_HEADER_NAME="x-kuinn-origin-auth"
+ORIGIN_SECRET="EDGE_ORIGIN_SECRET"
+# Refused before any gcloud call, for every subcommand.
+check_edge_provider() {
+  case "$EDGE_PROVIDER" in
+    "" | armor | cloudflare) ;;
+    *) die "EDGE_PROVIDER must be blank, armor or cloudflare, not '$EDGE_PROVIDER' (in $ENV_NAME.env)" ;;
+  esac
+  case "$ORIGIN_AUTH" in
+    off | enforce) ;;
+    *) die "ORIGIN_AUTH must be off or enforce, not '$ORIGIN_AUTH' (in $ENV_NAME.env)" ;;
+  esac
+  if [ "$EDGE_PROVIDER" = "cloudflare" ]; then
+    [ -n "$EDGE_DOMAIN" ] || die "EDGE_PROVIDER=cloudflare needs EDGE_DOMAIN (in $ENV_NAME.env)"
+    [ "$INGRESS" = "all" ] ||
+      die "EDGE_PROVIDER=cloudflare needs INGRESS=all: a locked ingress would cut Cloudflare off (in $ENV_NAME.env)"
+  elif [ "$ORIGIN_AUTH" = "enforce" ]; then
+    die "ORIGIN_AUTH=enforce needs EDGE_PROVIDER=cloudflare (in $ENV_NAME.env)"
+  fi
+}
+check_edge_provider
+cloudflare() { [ "$EDGE_PROVIDER" = "cloudflare" ]; }
+origin_enforced() { cloudflare && [ "$ORIGIN_AUTH" = "enforce" ]; }
+# Only an environment with an edge domain on the load balancer gets the load balancer and
+# monitoring APIs, so staging (and the Cloudflare edge) never gets an auto-created default VPC.
 EDGE_APIS="compute.googleapis.com monitoring.googleapis.com"
-[ -z "$EDGE_DOMAIN" ] || REQUIRED_APIS="$REQUIRED_APIS $EDGE_APIS"
+[ -z "$EDGE_DOMAIN" ] || cloudflare || REQUIRED_APIS="$REQUIRED_APIS $EDGE_APIS"
+# The api alone reads the Worker's origin secret, bound in both ORIGIN_AUTH modes (off still uses
+# it to trust the Worker's client-IP header).
+! cloudflare || API_SECRETS="$API_SECRETS $ORIGIN_SECRET"
 # Process env, not env-file keys: how often and how far apart a smoke retries.
 SMOKE_TRIES="${SMOKE_TRIES:-10}"
 SMOKE_SLEEP="${SMOKE_SLEEP:-6}"
@@ -663,6 +695,8 @@ setup_secrets() {
   generate_secret MIGRATOR_PASSWORD 24
   dsn_secret DATABASE_URL app_rw APP_RW_PASSWORD
   dsn_secret ALEMBIC_DATABASE_URL migrator MIGRATOR_PASSWORD
+  # ADR-0025: the Worker's origin secret (64 hex characters), kept once it has a version
+  ! cloudflare || generate_secret "$ORIGIN_SECRET" 32
   local name
   for name in $USER_SECRETS; do ensure_secret "$name"; done
   for name in $API_SECRETS; do grant_secret "$name" "$SA_API"; done
@@ -899,6 +933,8 @@ app_env() {
     FLIPKART_OAUTH_REDIRECT_URI "$url/api/v1/marketplaces/flipkart/callback" \
     APP_NAME "marketplace-os-$role" OTEL_SERVICE_NAME "marketplace-os-$role"
   [ "$role" != "api" ] || printf 'JWT_ISSUER\t%s\n' "${JWT_ISSUER:-$url}"
+  # ADR-0025: the origin guard's switch, on the api only
+  [ "$role" != "api" ] || printf 'ORIGIN_AUTH\t%s\n' "$ORIGIN_AUTH"
   # ADR-0024: the gateway, provider and model, on the worker only (the one role that calls a model)
   if [ "$role" = "worker" ]; then
     printf 'LLM_GATEWAY\t%s\nLLM_PROVIDER\t%s\n' "$LLM_GATEWAY" "$LLM_PROVIDER"
@@ -1003,8 +1039,17 @@ deploy_api() {
     if [ "$DRY_RUN" -eq 0 ]; then
       smoke "$(tag_url "$tag")" || die "revision $tag failed smoke; traffic stays on the previous revision"
     fi
+    # ADR-0025: under enforce the smoke above wants 403 (the revision carries the guard); this one
+    # wants 401 with the origin secret, so the revision accepts the Secret Manager value.
+    if [ "$DRY_RUN" -eq 0 ] && origin_enforced; then
+      origin_smoke "$tag" || die "revision $tag refused the $ORIGIN_SECRET value; traffic stays on the previous revision"
+    fi
     gc run services update-traffic "$API_SERVICE" --region="$REGION" --to-latest
     drop_revision_tags
+    if origin_enforced; then
+      smoke "https://$EDGE_DOMAIN" ||
+        die "edge smoke failed; check the Worker and zone (docs/runbooks/EDGE-CLOUDFLARE.md). Traffic is on the new revision: to roll back, set ORIGIN_AUTH=off in $ENV_NAME.env and release"
+    fi
   else
     gc "${args[@]}"
     # JWT_ISSUER and the OAuth redirect URIs must be the URL the service actually got.
@@ -1020,6 +1065,25 @@ deploy_api() {
       fi
     fi
   fi
+}
+
+# TAG: the tagged revision smoked with the Worker's origin secret (ADR-0025). The value is read
+# from Secret Manager into a local, sent only as the curl header and never printed (the smoke shows
+# `<redacted>`). The first of two space-separated values (a rotation) is the current one.
+origin_smoke() {
+  local origin url
+  url="$(tag_url "$1")" || return 1
+  origin="$(gq secrets versions access latest --secret="$ORIGIN_SECRET")" || {
+    say "could not read $ORIGIN_SECRET"
+    return 1
+  }
+  origin="${origin%% *}"
+  [ -n "$origin" ] || { say "$ORIGIN_SECRET is empty"; return 1; }
+  if ! smoke "$url" "$ORIGIN_HEADER_NAME: $origin"; then
+    origin=""
+    return 1
+  fi
+  origin=""
 }
 
 # The Knative YAML for `gcloud run worker-pools replace`, used when this SDK cannot load
@@ -1151,6 +1215,19 @@ google_guard() {
   say "google guard: OK (GOOGLE_OAUTH_CLIENT_SECRET)"
 }
 
+# ADR-0025: with EDGE_PROVIDER=cloudflare the api mounts EDGE_ORIGIN_SECRET, and Cloud Run refuses
+# a secret reference with no version mid-release, so the deploy refuses first.
+origin_guard() {
+  cloudflare || return 0
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "origin guard: skipped (dry run)"
+    return 0
+  fi
+  secret_has_version "$ORIGIN_SECRET" ||
+    die "secret $ORIGIN_SECRET has no value in $PROJECT: run scripts/deploy/gcp/deploy.sh $ENV_NAME setup first"
+  say "origin guard: OK ($ORIGIN_SECRET, ORIGIN_AUTH=$ORIGIN_AUTH)"
+}
+
 # With AMAZON_APP_ID set, the api and the worker mount AMAZON_CLIENT_SECRET, and Cloud Run refuses
 # a secret reference with no version mid-release, so the deploy refuses first.
 amazon_guard() {
@@ -1196,6 +1273,7 @@ cmd_deploy() {
   kms_guard
   setup_guard
   google_guard
+  origin_guard
   amazon_guard
   model_key_guard
   image="$(image_ref)"
@@ -1227,6 +1305,10 @@ smoke() {
   # and the edge's Armor path rule denies it, so there liveness is an API route that must answer
   # 401 without a token.
   case "$url" in *.run.app) live="/api/v1/auth/me" want="401" ;; esac
+  # ADR-0025: under enforce, run.app without the Worker's secret must be refused by the guard.
+  case "$url" in
+    *.run.app) [ -n "$header" ] || ! origin_enforced || want="403" ;;
+  esac
   if [ -n "$EDGE_DOMAIN" ] && [ "$host" = "$EDGE_DOMAIN" ]; then
     live="/api/v1/auth/me" want="401"
   fi
@@ -1271,6 +1353,7 @@ cmd_release() {
   kms_guard
   setup_guard
   google_guard
+  origin_guard
   amazon_guard
   model_key_guard
   cmd_build
@@ -1997,10 +2080,52 @@ edge_status() {
   fi
 }
 
+# ADR-0025: the Cloudflare edge, read only. The ingress, the edge answer (401 and a cf-ray
+# header) and, under enforce, run.app refused (403).
+edge_status_cloudflare() {
+  local code run_url want="401" dump="$WORK/edge-headers"
+  gq run services describe "$API_SERVICE" --region="$REGION" \
+    --format='value(metadata.annotations."run.googleapis.com/ingress")' || true
+  show curl -sS -o /dev/null -D "<headers>" -w '%{http_code}' "https://$EDGE_DOMAIN/api/v1/auth/me"
+  [ "$ORIGIN_AUTH" != "enforce" ] || want="403"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "edge serving: unknown (dry run)"
+    return 0
+  fi
+  : >"$dump"
+  code="$(curl -sS --max-time 30 -o /dev/null -D "$dump" -w '%{http_code}' "https://$EDGE_DOMAIN/api/v1/auth/me" || true)"
+  if [ "$code" = "401" ] && grep -qi '^cf-ray:' "$dump"; then
+    say "edge serving: yes (a 401 from https://$EDGE_DOMAIN through Cloudflare)"
+  else
+    say "edge serving: no ('$code'$(grep -qi '^cf-ray:' "$dump" || printf ', no cf-ray header'))"
+  fi
+  if run_url="$(service_url)" && [ -n "$run_url" ]; then
+    show curl -sS -o /dev/null -w '%{http_code}' "$run_url/api/v1/auth/me"
+    code="$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' "$run_url/api/v1/auth/me" || true)"
+    if [ "$code" = "$want" ]; then
+      say "run.app direct: $code as expected (ORIGIN_AUTH=$ORIGIN_AUTH)"
+    else
+      say "run.app direct: '$code', want $want (ORIGIN_AUTH=$ORIGIN_AUTH)"
+    fi
+  else
+    say "run.app direct: unknown (no service URL)"
+  fi
+}
+
 cmd_edge() {
   [ ${#REST[@]} -ge 1 ] || usage
   local sub="${REST[0]}"
   [ -n "$EDGE_DOMAIN" ] || die "edge needs EDGE_DOMAIN (scripts/deploy/gcp/$ENV_NAME.env); staging has no domain"
+  if cloudflare; then
+    case "$sub" in
+      setup | rules | enforce | lock-ingress | unlock-ingress | alerts)
+        die "edge $sub: EDGE_PROVIDER=cloudflare: see docs/runbooks/EDGE-CLOUDFLARE.md" ;;
+      cors) check_filled; bucket_cors ;;
+      status) edge_status_cloudflare ;;
+      *) usage ;;
+    esac
+    return 0
+  fi
   case "$sub" in
     setup) edge_setup ;;
     rules) edge_rules rules ;;

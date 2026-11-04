@@ -160,6 +160,9 @@ def toolkit(repo_root: Path, tmp_path: Path) -> Iterator[Path]:
             text = re.sub(
                 r"^GOOGLE_OAUTH_ENABLED=.*$", "GOOGLE_OAUTH_ENABLED=false", text, flags=re.M
             )
+            # ADR-0025: prod.env runs the interim Cloudflare edge; the Armor tests here run the
+            # load balancer path (EDGE_PROVIDER blank), the cloudflare tests set it back.
+            text = re.sub(r"^EDGE_PROVIDER=.*$", "EDGE_PROVIDER=", text, flags=re.M)
         (target / source.name).write_text(text, encoding="utf-8")
     (target / "deploy.sh").chmod(0o755)
     yield target
@@ -1714,3 +1717,300 @@ def test_live_deploy_updates_the_maintenance_trigger(toolkit: Path, tmp_path: Pa
         "run jobs deploy aimos-maintenance"
     )
     assert live.index("scheduler jobs create") == -1
+
+
+# ---- ADR-0025 (EDGE-CF T3): EDGE_PROVIDER=cloudflare, the interim edge ----
+
+ORIGIN_VALUE = "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b"
+ORIGIN_HEADER = f"x-kuinn-origin-auth: {ORIGIN_VALUE}"
+CF_REFUSED = ("setup", "rules", "enforce", "lock-ingress", "unlock-ingress", "alerts")
+HEX64 = re.compile(r"[0-9a-f]{64}")
+
+
+def cloudflare(toolkit: Path, auth: str = "enforce") -> None:
+    set_env(toolkit, "prod", EDGE_PROVIDER="cloudflare", ORIGIN_AUTH=auth)
+
+
+def _env_blocks(output: str) -> dict[str, dict[str, str]]:
+    """The env files of a dry-run deploy, by APP_ROLE."""
+    found: dict[str, dict[str, str]] = {}
+    for body in blocks(output, "env file"):
+        loaded = yaml.safe_load(body)
+        found[str(loaded["APP_ROLE"])] = {str(k): str(v) for k, v in loaded.items()}
+    return found
+
+
+def test_cloudflare_dry_run_binds_origin_secret_and_env(toolkit: Path, tmp_path: Path) -> None:
+    cloudflare(toolkit)
+    set_env(toolkit, "prod", WORKER_ENABLED="true", PIPELINE_REF="a" * 40)
+    result = run_dry(toolkit, tmp_path, "prod", "deploy")
+    assert result.returncode == 0, result.stderr
+    deploy = next(
+        line for line in result.stdout.splitlines() if line.startswith("+ gcloud run deploy ")
+    )
+    assert "EDGE_ORIGIN_SECRET=EDGE_ORIGIN_SECRET:latest" in deploy
+    assert "--ingress=all " in deploy
+    envs = _env_blocks(result.stdout)
+    assert envs["api"]["ORIGIN_AUTH"] == "enforce"
+    assert "ORIGIN_AUTH" not in envs["worker"]
+    worker = [line for line in gcloud_lines(result.stdout) if "worker-pools" in line]
+    assert worker and not [line for line in worker if "EDGE_ORIGIN_SECRET" in line]
+
+
+def test_cloudflare_off_still_binds_the_secret(toolkit: Path, tmp_path: Path) -> None:
+    # off uses the secret to trust the Worker's client-IP header (AC12)
+    cloudflare(toolkit, "off")
+    out = run_dry(toolkit, tmp_path, "prod", "deploy").stdout
+    assert "EDGE_ORIGIN_SECRET=EDGE_ORIGIN_SECRET:latest" in out
+    assert _env_blocks(out)["api"]["ORIGIN_AUTH"] == "off"
+
+
+def test_cloudflare_never_enables_compute_or_monitoring(toolkit: Path, tmp_path: Path) -> None:
+    armor = run_dry(toolkit, tmp_path, "prod", "setup").stdout
+    assert "compute.googleapis.com" in armor  # the sanity baseline: the Armor path enables it
+    cloudflare(toolkit)
+    out = run_dry(toolkit, tmp_path, "prod", "setup").stdout
+    assert "compute.googleapis.com" not in out
+    assert "monitoring.googleapis.com" not in out
+
+
+def test_cloudflare_refuses_locked_ingress(toolkit: Path, tmp_path: Path) -> None:
+    cloudflare(toolkit)
+    edge_ready(toolkit)
+    for cmd in ("deploy", "release", "setup"):
+        result = run_dry(toolkit, tmp_path, "prod", cmd)
+        assert result.returncode != 0
+        assert "would cut Cloudflare off" in result.stderr
+        assert gcloud_lines(result.stdout) == []
+
+
+@pytest.mark.parametrize(
+    ("keys", "message"),
+    [
+        ({"EDGE_PROVIDER": "cf"}, "EDGE_PROVIDER must be blank, armor or cloudflare"),
+        (
+            {"EDGE_PROVIDER": "cloudflare", "ORIGIN_AUTH": "on"},
+            "ORIGIN_AUTH must be off or enforce",
+        ),
+        ({"EDGE_PROVIDER": "armor", "ORIGIN_AUTH": "enforce"}, "needs EDGE_PROVIDER=cloudflare"),
+        ({"EDGE_PROVIDER": "", "ORIGIN_AUTH": "enforce"}, "needs EDGE_PROVIDER=cloudflare"),
+        (
+            {"EDGE_PROVIDER": "cloudflare", "EDGE_DOMAIN": ""},
+            "EDGE_PROVIDER=cloudflare needs EDGE_DOMAIN",
+        ),
+    ],
+)
+def test_cloudflare_refuses_bad_values(
+    toolkit: Path, tmp_path: Path, keys: dict[str, str], message: str
+) -> None:
+    set_env(toolkit, "prod", **keys)
+    for cmd in ("deploy", "status"):
+        result = run_dry(toolkit, tmp_path, "prod", cmd)
+        assert result.returncode != 0
+        assert message in result.stderr
+        assert gcloud_lines(result.stdout) == []
+
+
+@pytest.mark.parametrize("sub", CF_REFUSED)
+def test_cloudflare_edge_subcommands_refused(toolkit: Path, tmp_path: Path, sub: str) -> None:
+    cloudflare(toolkit)
+    result = run_dry(toolkit, tmp_path, "prod", "edge", sub)
+    assert result.returncode != 0
+    assert "docs/runbooks/EDGE-CLOUDFLARE.md" in result.stderr
+    assert gcloud_lines(result.stdout) == []
+
+
+def test_cloudflare_edge_status_and_cors_run(toolkit: Path, tmp_path: Path) -> None:
+    cloudflare(toolkit)
+    cors = run_dry(toolkit, tmp_path, "prod", "edge", "cors")
+    assert cors.returncode == 0, cors.stderr
+    assert [x for x in gcloud_lines(cors.stdout) if "--cors-file=" in x]
+    status = run_dry(toolkit, tmp_path, "prod", "edge", "status")
+    assert status.returncode == 0, status.stderr
+    assert "security-policies" not in status.stdout + status.stderr
+    assert f"{EDGE}/api/v1/auth/me" in status.stdout
+
+
+@pytest.mark.parametrize("auth", ["off", "enforce"])
+def test_cloudflare_edge_status_live(toolkit: Path, tmp_path: Path, auth: str) -> None:
+    cloudflare(toolkit, auth)
+    want = "403" if auth == "enforce" else "401"
+    live = run_live(
+        toolkit,
+        tmp_path,
+        "prod",
+        "edge",
+        "status",
+        responses=[{"match": "value(status.url)", "stdout": RUN_APP + "\n"}],
+        curl=[
+            {"url": f"{EDGE}/api/v1/auth/me", "code": "401", "headers": "cf-ray: 8f00-BOM\r\n"},
+            {"url": f"{RUN_APP}/api/v1/auth/me", "code": want},
+        ],
+    )
+    assert live.result.returncode == 0, live.out
+    assert "edge serving: yes" in live.out
+    assert f"run.app direct: {want} as expected" in live.out
+    assert all(" describe " in f" {c} " for c in live.calls), live.calls
+
+
+def test_cloudflare_edge_status_without_cf_ray(toolkit: Path, tmp_path: Path) -> None:
+    # a 401 straight from the origin (DNS not on Cloudflare yet) is not "serving through the edge"
+    cloudflare(toolkit)
+    live = run_live(
+        toolkit,
+        tmp_path,
+        "prod",
+        "edge",
+        "status",
+        responses=[{"match": "value(status.url)", "stdout": RUN_APP + "\n"}],
+        curl=[
+            {
+                "url": f"{EDGE}/api/v1/auth/me",
+                "code": "401",
+                "headers": "server: Google Frontend\r\n",
+            },
+            {"url": f"{RUN_APP}/api/v1/auth/me", "code": "401"},
+        ],
+    )
+    assert "edge serving: no" in live.out and "no cf-ray header" in live.out
+    assert "run.app direct: '401', want 403" in live.out
+
+
+def test_cloudflare_setup_generates_origin_secret(toolkit: Path, tmp_path: Path) -> None:
+    cloudflare(toolkit)
+    result = run_dry(toolkit, tmp_path, "prod", "setup")
+    assert result.returncode == 0, result.stderr
+    out = result.stdout
+    assert "openssl rand -hex 32 | gcloud secrets versions add EDGE_ORIGIN_SECRET" in out
+    grants = [
+        line for line in gcloud_lines(out) if "add-iam-policy-binding EDGE_ORIGIN_SECRET " in line
+    ]
+    assert len(grants) == 1
+    assert "aimos-api@" in grants[0]
+    for other in ("aimos-worker@", "aimos-ops@", "aimos-maint@", "aimos-migrate@"):
+        assert other not in grants[0]
+    assert not HEX64.search(out + result.stderr)
+
+
+def test_cloudflare_setup_absent_in_armor_mode(toolkit: Path, tmp_path: Path) -> None:
+    out = run_dry(toolkit, tmp_path, "prod", "setup").stdout
+    assert "EDGE_ORIGIN_SECRET" not in out
+
+
+def _cf_deploy(
+    toolkit: Path, tmp_path: Path, *, tag_plain: str, tag_origin: str, edge: str
+) -> Live:
+    """A live `prod deploy` of an existing service under ORIGIN_AUTH=enforce: the tag smoke
+    without the header answers TAG_PLAIN, with the header TAG_ORIGIN, and the edge EDGE."""
+    cloudflare(toolkit)
+    responses: list[dict[str, Any]] = [
+        {
+            "match": "secrets versions access latest --secret=EDGE_ORIGIN_SECRET",
+            "stdout": ORIGIN_VALUE,
+        },
+        {"match": ["secrets versions list EDGE_ORIGIN_SECRET"], "stdout": "1\n"},
+        *existing_service(service_doc(tags={"sha-0123456789ab": TAG_URL})),
+    ]
+    curl: list[dict[str, Any]] = [
+        {"url": f"{TAG_URL}/api/v1/auth/me", "code": tag_origin, "header": ORIGIN_HEADER},
+        {"url": f"{TAG_URL}/api/v1/auth/me", "code": tag_plain, "no_header": True},
+        {"url": f"{TAG_URL}/readyz", "body": OK_BODY},
+        {"url": f"{EDGE}/api/v1/auth/me", "code": edge},
+        {"url": f"{EDGE}/readyz", "body": OK_BODY},
+        {"url": f"{RUN_APP}/api/v1/auth/me", "code": "403", "no_header": True},
+        {"url": f"{RUN_APP}/readyz", "body": OK_BODY},
+    ]
+    return run_live(toolkit, tmp_path, "prod", "deploy", responses=responses, curl=curl)
+
+
+def test_cloudflare_smoke_wants_403_on_run_app_then_401_on_edge(
+    toolkit: Path, tmp_path: Path
+) -> None:
+    ok = _cf_deploy(toolkit, tmp_path, tag_plain="403", tag_origin="401", edge="401")
+    assert ok.result.returncode == 0, ok.out
+    shift = ok.index("update-traffic", "--to-latest")
+    assert shift > ok.index("run deploy aimos-api")
+    assert ok.index("secrets versions access latest --secret=EDGE_ORIGIN_SECRET") < shift
+    tag_curls = [c for c in ok.curls if TAG_URL in c]
+    assert any(ORIGIN_HEADER in c for c in tag_curls)
+    assert any(c.endswith(f"{EDGE}/api/v1/auth/me") for c in ok.curls)
+    assert any(c.endswith(f"{RUN_APP}/api/v1/auth/me") for c in ok.curls)
+
+
+@pytest.mark.parametrize(
+    ("tag_plain", "tag_origin", "message"),
+    [
+        ("401", "401", "revision sha-0123456789ab failed smoke"),  # a revision without the guard
+        ("403", "403", "refused the EDGE_ORIGIN_SECRET value"),  # the secret does not match
+    ],
+)
+def test_cloudflare_tag_smoke_failure_keeps_traffic(
+    toolkit: Path, tmp_path: Path, tag_plain: str, tag_origin: str, message: str
+) -> None:
+    live = _cf_deploy(toolkit, tmp_path, tag_plain=tag_plain, tag_origin=tag_origin, edge="401")
+    assert live.result.returncode != 0
+    assert message in live.out and "traffic stays on the previous revision" in live.out
+    assert live.index("update-traffic", "--to-latest") == -1
+
+
+def test_cloudflare_edge_smoke_failure_names_rollback(toolkit: Path, tmp_path: Path) -> None:
+    live = _cf_deploy(toolkit, tmp_path, tag_plain="403", tag_origin="401", edge="502")
+    assert live.result.returncode != 0
+    assert "edge smoke failed" in live.out and "EDGE-CLOUDFLARE.md" in live.out
+    assert "ORIGIN_AUTH=off" in live.out
+    assert live.index("update-traffic", "--to-latest") >= 0
+
+
+def test_cloudflare_deploy_refuses_missing_origin_secret(toolkit: Path, tmp_path: Path) -> None:
+    cloudflare(toolkit, "off")
+    live = run_live(
+        toolkit,
+        tmp_path,
+        "prod",
+        "deploy",
+        responses=existing_service(service_doc(tags={"sha-0123456789ab": TAG_URL})),
+    )
+    assert live.result.returncode != 0
+    assert "secret EDGE_ORIGIN_SECRET has no value" in live.out
+    assert live.index("run deploy aimos-api") == -1
+
+
+def test_cloudflare_smoke_header_never_printed(toolkit: Path, tmp_path: Path) -> None:
+    live = _cf_deploy(toolkit, tmp_path, tag_plain="403", tag_origin="401", edge="401")
+    assert live.result.returncode == 0, live.out
+    assert ORIGIN_VALUE not in live.out
+    assert "x-kuinn-origin-auth: <redacted>" in live.out.replace("\\", "")
+    for name in ("gcloud.log", "gcloud.state", "curl.log"):
+        (tmp_path / name).unlink(missing_ok=True)
+    # a dry run reads no secret (it never smokes a tag) and prints no value
+    dry = run_dry(toolkit, tmp_path, "prod", "deploy")
+    assert dry.returncode == 0, dry.stderr
+    assert "secrets versions access" not in dry.stdout + dry.stderr
+    assert not HEX64.search(dry.stdout + dry.stderr)
+
+
+def _normalised(result: subprocess.CompletedProcess[str]) -> str:
+    text = f"rc={result.returncode}\n{result.stdout}\n{result.stderr}"
+    return re.sub(r"aimos-deploy\.[A-Za-z0-9]+", "aimos-deploy.X", text)
+
+
+@pytest.mark.parametrize("args", [("release",), ("edge", "setup"), ("setup",), ("deploy",)])
+def test_armor_mode_unchanged(toolkit: Path, tmp_path: Path, args: tuple[str, ...]) -> None:
+    blank = _normalised(run_dry(toolkit, tmp_path, "prod", *args))
+    set_env(toolkit, "prod", EDGE_PROVIDER="armor")
+    armor = _normalised(run_dry(toolkit, tmp_path, "prod", *args))
+    assert blank == armor
+    assert "EDGE_ORIGIN_SECRET" not in blank
+
+
+def test_cloudflare_bash32(toolkit: Path, tmp_path: Path) -> None:
+    version = subprocess.run(
+        ["/bin/bash", "-c", "echo $BASH_VERSION"], capture_output=True, text=True, check=False
+    ).stdout
+    if not version.startswith("3.2"):
+        pytest.skip("/bin/bash is not Bash 3.2")
+    cloudflare(toolkit)
+    for args in (("deploy",), ("edge", "status"), ("smoke",)):
+        result = run_dry(toolkit, tmp_path, "prod", *args, interpreter="/bin/bash")
+        assert result.returncode == 0, result.stderr
+        assert "unbound variable" not in result.stderr
