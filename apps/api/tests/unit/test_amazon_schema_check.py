@@ -268,7 +268,7 @@ async def test_nan_is_refused_upstream_and_fails_closed_here() -> None:
     with pytest.raises(ValidationError):
         CanonicalListing.model_validate(body.model_dump())
     # `_number` passes a float through, so an unvalidated NaN does reach the payload: the check
-    # reports one SCHEMA_INVALID on the field and never crashes (DEVIATIONS.md, T5-15).
+    # reports one SCHEMA_INVALID on the field and never crashes (T5-15).
     _, errors = built(amazon_item(body), await ready(kurta()))
     (error,) = errors
     assert (error.field, error.error_code) == (

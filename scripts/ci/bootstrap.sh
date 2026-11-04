@@ -215,14 +215,7 @@ scripts/e2e/walking_skeleton.sh "http://127.0.0.1:${api_port}"
 # start and stop the image as APP_ROLE=worker on the compose network (as app_rw, MinIO by service
 # name) and run `templates load` through the image's shell role as migrator, with the flow's
 # templates file mounted read-only. No other worker runs against this stack meanwhile.
-# The worker gets the MinIO keys the API container reads from .env (by name, never on argv), so a
-# checkout whose .env keys differ from the Settings defaults runs the same legs as CI's copy.
-for s3_key in S3_ACCESS_KEY S3_SECRET_KEY; do
-  s3_value="$(env_url "$s3_key")"
-  if [ -n "$s3_value" ]; then export "$s3_key=$s3_value"; fi
-done
-unset s3_key s3_value
-export WORKER_START="docker run -d --name '$import_worker' --network '$network' -e APP_ENV=local -e APP_ROLE=worker -e LOG_FORMAT=json -e DATABASE_URL='$app_dsn' -e S3_ENDPOINT_URL=http://minio:9000 -e S3_ACCESS_KEY -e S3_SECRET_KEY '$image' >/dev/null"
+export WORKER_START="docker run -d --name '$import_worker' --network '$network' -e APP_ENV=local -e APP_ROLE=worker -e LOG_FORMAT=json -e DATABASE_URL='$app_dsn' -e S3_ENDPOINT_URL=http://minio:9000 '$image' >/dev/null"
 export WORKER_STOP="docker stop --time 10 '$import_worker' >/dev/null && docker rm -f '$import_worker' >/dev/null"
 export TEMPLATES_LOAD="docker run --rm --network '$network' -e APP_ENV=local -e APP_ROLE=shell -e ALEMBIC_DATABASE_URL='$migrator_dsn' -v \"\$1\":/tmp/templates.json:ro '$image' -m app.cli templates load --file /tmp/templates.json"
 scripts/ci/reset_rate_limits.sh "http://127.0.0.1:${api_port}"
