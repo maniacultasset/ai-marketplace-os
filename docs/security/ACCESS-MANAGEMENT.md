@@ -38,7 +38,7 @@ on user accounts go through the audited staff commands only (`docs/runbooks/MFA-
 | Vercel (dashboard hosting) | Not checked (no access) | Named members only, 2FA on each, Pro plan for commercial use | **Owner to confirm** |
 | Amazon Solution Provider Portal | To be created | Named users only, each passes Amazon's identity check; MFA on the Amazon account | Client |
 | Flipkart Partner Dashboard | To be created | Third-party application only; never a seller's self-access keys | Client |
-| Kuinn production | Named users; one shared test login is still used for production smoke checks | Retire the shared login; give each tester a named account | **Owner action** |
+| Kuinn production | Named users only. The former shared test login is assigned to one person, Mukul Jasoria (client director), from 2026-11-04; the engineering team no longer uses it and tests with its own named accounts | Keep one named owner per account | Done 2026-11-04 |
 
 Commands for the owner (run once; this repository never runs them):
 
@@ -87,7 +87,9 @@ Every quarter (January, April, July, October) the engineering lead and the clien
 
 | Person (name, role) | System | Role granted | Approved by | Granted | Training done | Revoked |
 |---|---|---|---|---|---|---|
-| | | | | | | |
+| Mukul Jasoria, client director | Kuinn production (former shared test login) | As held today, sole user | Client director | 2026-11-04 | | |
+| Amisha Jasoria, IMPOC | Incident response (INCIDENT-RESPONSE.md) | Incident contact | Client director | 2026-11-04 | | |
+| Naresh Jasoria, backup IMPOC | Incident response (INCIDENT-RESPONSE.md) | Backup incident contact | Client director | 2026-11-04 | | |
 
 ## Leavers and role changes (within 24 hours)
 

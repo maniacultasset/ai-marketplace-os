@@ -114,6 +114,6 @@ Closed (UTC):
 | Date | What | Outcome |
 |---|---|---|
 | 2026-10-28 | Plan written | First version; IMPOC to be named; approval pending |
-| 2026-11-04 | IMPOC and backup named | Amisha Jasoria (IMPOC), Naresh Jasoria (backup); director approval pending |
+| 2026-11-04 | IMPOC and backup named; plan approved | Amisha Jasoria (IMPOC), Naresh Jasoria (backup); approved by the client director (confirmed to the engineering lead, 2026-11-04) |
 | By 2027-01-31 | Tabletop exercise (type 1, a leaked LWA client secret) | |
 | 2027-04-28 | Six-month review | |
