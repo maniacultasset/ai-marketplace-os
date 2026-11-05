@@ -31,6 +31,7 @@ SUBCOMMANDS = (
     "release",
     "smoke",
     "tenant",
+    "templates",
     "status",
     "edge",
 )
@@ -1941,3 +1942,150 @@ def test_release_runs_the_model_key_guard_before_building(repo_root: Path) -> No
     deploy = script[script.index("cmd_deploy() {") :]
     deploy = deploy[: deploy.index("\n}\n")]
     assert deploy.index("model_key_guard") < deploy.index("deploy_api")
+
+
+# ---- DW2: the PTD job (Amazon product type definitions in prod) ----
+
+
+def _run_fail(toolkit: Path, tmp_path: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    result = _run(toolkit, tmp_path, *args)
+    assert result.returncode == 1, result.stdout + result.stderr
+    return result
+
+
+PTD_SECRET_NAMES = ["ALEMBIC_DATABASE_URL", "AMAZON_CLIENT_SECRET", "AMAZON_PLATFORM_REFRESH_TOKEN"]
+
+
+def _ptd_deploy(out: str) -> str:
+    return next(line for line in out.splitlines() if "run jobs deploy aimos-ptd" in line)
+
+
+def _set_env_vars(command_line: str) -> dict[str, str]:
+    match = re.search(r"--set-env-vars=\S*\^\|\^(\S+)", command_line.replace("\\", ""))
+    assert match is not None, command_line
+    return dict(pair.split("=", 1) for pair in match.group(1).split("|"))
+
+
+def test_templates_refresh_runs_its_own_job_with_the_amazon_settings(
+    toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _amazon_on(toolkit, "prod")
+    _set_env(toolkit, "prod", AMAZON_USE_SANDBOX="false")
+    out = _run(
+        toolkit, tmp_path, "prod", "templates", "refresh", "--product-type", "KURTA",
+        "--staff-email", "s@b.test", "--reason", "first-load", "--dry-run", "--sha", SHA,
+    ).stdout  # fmt: skip
+    job = _ptd_deploy(out)
+    # only this job mounts the platform token, next to the LWA secret and the migrator URL
+    assert _secret_names(job) == PTD_SECRET_NAMES
+    # its own identity: secret access is per identity, so the shared ops one never gets the token
+    assert "--service-account=aimos-ptd@" in job
+    env = _set_env_vars(job)
+    assert env["APP_ROLE"] == "shell" and env["APP_ENV"] == "production"
+    assert env["AMAZON_APP_ID"] == AMAZON_APP and env["AMAZON_CLIENT_ID"] == AMAZON_CLIENT
+    assert env["AMAZON_USE_SANDBOX"] == "false"
+    assert env["AMAZON_SPAPI_ENDPOINT"] == "https://sellingpartnerapi-eu.amazon.com"
+    assert env["AMAZON_OAUTH_REDIRECT_URI"] == f"{API_URL}/api/v1/marketplaces/amazon/callback"
+    args = job.replace("\\", "")
+    assert (
+        "--args=^|^-m|app.cli|templates|refresh|--product-type=KURTA|--staff-email=s@b.test"
+        "|--reason=first-load" in args
+    )
+    # the PTD identity reads its three secrets; no other identity gets the platform token
+    for name in PTD_SECRET_NAMES:
+        assert any(
+            f"secrets add-iam-policy-binding {name} " in line and "aimos-ptd@" in line
+            for line in out.splitlines()
+        ), name
+    token_grants = [
+        line
+        for line in out.splitlines()
+        if "secrets add-iam-policy-binding AMAZON_PLATFORM_REFRESH_TOKEN " in line
+    ]
+    assert token_grants and all("aimos-ptd@" in line for line in token_grants)
+    assert "roles/cloudsql.client" in out
+    assert "gcloud run jobs execute aimos-ptd" in out
+    # the job's settings boot as the shell role in production
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("ALEMBIC_DATABASE_URL", SECRET_VALUES["DATABASE_URL"])
+    monkeypatch.setenv("AMAZON_CLIENT_SECRET", SECRET_VALUES["AMAZON_CLIENT_SECRET"])
+    monkeypatch.setenv("AMAZON_PLATFORM_REFRESH_TOKEN", "test-only-platform-refresh-" + "9" * 8)
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    settings = get_settings()
+    from app.cli import _missing_ptd_setting
+
+    assert _missing_ptd_setting(settings) is None
+
+
+def test_templates_promote_flattens_its_flags(toolkit: Path, tmp_path: Path) -> None:
+    _amazon_on(toolkit, "prod")
+    out = _run(
+        toolkit, tmp_path, "prod", "templates", "promote-definition", "--product-type", "KURTA",
+        "--version", "U1a2", "--digest", "abcd12", "--staff-email", "s@b.test", "--reason", "ok",
+        "--dry-run", "--sha", SHA,
+    ).stdout  # fmt: skip
+    args = _ptd_deploy(out).replace("\\", "")
+    assert (
+        "|templates|promote-definition|--product-type=KURTA|--version=U1a2|--digest=abcd12"
+        "|--staff-email=s@b.test|--reason=ok" in args
+    )
+
+
+def test_templates_refuses_when_the_amazon_app_is_off(toolkit: Path, tmp_path: Path) -> None:
+    result = _run_fail(
+        toolkit, tmp_path, "staging", "templates", "refresh", "--product-type", "KURTA",
+        "--staff-email", "s@b.test", "--reason", "x", "--dry-run", "--sha", SHA,
+    )  # fmt: skip
+    assert "templates needs the Amazon app" in result.stderr
+    assert "aimos-ptd" not in result.stdout
+
+
+@pytest.mark.parametrize("action", ["diff", "load", "drop"])
+def test_templates_refuses_other_actions(toolkit: Path, tmp_path: Path, action: str) -> None:
+    _amazon_on(toolkit, "prod")
+    result = _run_fail(toolkit, tmp_path, "prod", "templates", action, "--dry-run", "--sha", SHA)
+    assert f"unknown templates action '{action}'" in result.stderr
+
+
+def test_templates_refuses_a_separator_in_an_argument(toolkit: Path, tmp_path: Path) -> None:
+    _amazon_on(toolkit, "prod")
+    result = _run_fail(
+        toolkit, tmp_path, "prod", "templates", "refresh", "--product-type", "KURTA",
+        "--staff-email", "s@b.test", "--reason", "a|b", "--dry-run", "--sha", SHA,
+    )  # fmt: skip
+    assert "may not contain '|'" in result.stderr
+
+
+def test_templates_keeps_a_comma_in_a_reason(toolkit: Path, tmp_path: Path) -> None:
+    _amazon_on(toolkit, "prod")
+    out = _run(
+        toolkit, tmp_path, "prod", "templates", "refresh", "--product-type", "KURTA",
+        "--staff-email", "s@b.test", "--reason", "first load, KURTA", "--dry-run", "--sha", SHA,
+    ).stdout  # fmt: skip
+    assert "|--reason=first load, KURTA" in _ptd_deploy(out).replace("\\", "")
+
+
+def test_usage_prints_every_subcommand_line(repo_root: Path) -> None:
+    script = (repo_root / DEPLOY / "deploy.sh").read_text(encoding="utf-8").splitlines()
+    match = re.search(r"sed -n '5,(\d+)p'", "\n".join(script))
+    assert match is not None
+    last = int(match.group(1))
+    # the header comment block ends right after the last subcommand line
+    assert script[last - 1].startswith("#") and not script[last].startswith("#   ")
+    assert script[last].strip() in ("#", "")
+
+
+def test_cli_quiets_the_http_client_loggers() -> None:
+    import logging
+
+    from app.cli import quiet_http_clients
+    from app.core.logging import _HTTP_CLIENT_LOGGERS
+
+    for name in _HTTP_CLIENT_LOGGERS:
+        logging.getLogger(name).setLevel(logging.NOTSET)
+    quiet_http_clients()
+    for name in _HTTP_CLIENT_LOGGERS:
+        assert logging.getLogger(name).getEffectiveLevel() >= logging.WARNING, name

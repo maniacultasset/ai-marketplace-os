@@ -25,6 +25,16 @@ current definition; an update publish is not blocked by it.
 `--dry-run [--save-schema PATH]` fetches without a database and saves the verified schema to a new
 0600 file, for `templates diff --from-file PATH`.
 
+## In production (deploy toolkit)
+
+1. Once: authorise the Kuinn app on the company's own seller account (Solution Provider Portal ->
+   the app -> Authorize, a self-authorization) and add the refresh token it shows as
+   `AMAZON_PLATFORM_REFRESH_TOKEN` with the `read -s` command `templates` prints. Never paste it
+   in a chat or a file.
+2. `scripts/deploy/gcp/deploy.sh prod templates refresh --product-type KURTA --staff-email <you>
+   --reason "<why>"`, then `templates promote-definition ...` as in step 3 above. The job
+   `aimos-ptd` is the only place the platform token is mounted.
+
 ## DW2-S (sandbox) and DW2-P (production)
 
 - DW2-S: `scripts/smoke/amazon_ptd_sandbox.sh` (manual, never CI) fetches KURTA from the sandbox

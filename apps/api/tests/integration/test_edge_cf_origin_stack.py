@@ -140,14 +140,16 @@ async def test_forged_client_ip_without_secret_keys_on_the_peer(
 async def test_one_edge_ip_exhausted_leaves_another_free(edge_api: Factory, auth_db: Conn) -> None:
     api = edge_api("enforce", AUTH_LOGIN_RATE_LIMIT_PER_MIN="2")
     statuses = []
-    for _ in range(4):
+    # The limit counts per clock minute. Six tries split over at most two minutes put at least
+    # three in one of them, so one is refused even when the minute rolls over mid-loop.
+    for _ in range(6):
         response = await api.post(
             LOGIN,
             json={"email": "victim@example.com", "password": "nope-nope-nope"},
             headers={**ORIGIN, "x-kuinn-client-ip": "198.51.100.41"},
         )
         statuses.append(response.status_code)
-    assert statuses[-1] == 429, statuses
+    assert 429 in statuses, statuses
     other = await api.post(
         LOGIN,
         json={"email": "bystander@example.com", "password": "nope-nope-nope"},

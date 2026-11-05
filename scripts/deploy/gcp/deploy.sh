@@ -14,6 +14,7 @@
 #   release     build, migrate, deploy
 #   smoke       GET /healthz and /readyz on the service URL
 #   tenant      create | add-member | set-password | make-admin | unlock | reset-mfa (staff CLI job)
+#   templates   refresh | promote-definition: Amazon product type definitions (DW2; PTD job)
 #   status      service URL, revisions, job runs, secret names
 #   edge        setup | rules | enforce | lock-ingress | unlock-ingress | alerts | cors | status (prod; needs EDGE_DOMAIN;
 #               EDGE_PROVIDER=cloudflare keeps only cors and status, ADR-0025)
@@ -44,7 +45,7 @@ MAINT_SECRETS="DATABASE_URL ALEMBIC_DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY"
 PW_MOUNT="/secrets/initial-password/value"
 
 usage() {
-  sed -n '5,18p' "$0" | sed 's/^# \{0,1\}//' >&2
+  sed -n '5,20p' "$0" | sed 's/^# \{0,1\}//' >&2
   exit 2
 }
 
@@ -128,6 +129,14 @@ KMS_MFA_KEY="${KMS_MFA_KEY:-mfa-secret-key}"
 # its runtime and scheduler identities and its Cloud Scheduler trigger. An env file older than
 # these keys gets the defaults.
 MAINT_JOB="${MAINT_JOB:-aimos-maintenance}"
+# DW2 (docs/runbooks/PTD-REFRESH.md): the one-off job that fetches Amazon product type definitions
+# with the platform-owned SP-API authorization. Its own job, so the platform refresh token is
+# mounted nowhere else (the api and the worker refuse to boot with it).
+PTD_JOB="${PTD_JOB:-aimos-ptd}"
+# Its own runtime identity: secret access is granted per identity, not per job, so the platform
+# token on the shared ops identity would be readable by every staff job.
+SA_PTD="${SA_PTD:-aimos-ptd}"
+PTD_TOKEN_SECRET="AMAZON_PLATFORM_REFRESH_TOKEN"
 SA_MAINT="${SA_MAINT:-aimos-maint}"
 SA_SCHED="${SA_SCHED:-aimos-sched}"
 MAINT_SCHEDULE="${MAINT_SCHEDULE:-0 3 * * *}"
@@ -1524,6 +1533,70 @@ cmd_tenant() {
   esac
 }
 
+# ---- templates (DW2: Amazon product type definitions) ----
+# `templates refresh --product-type T --staff-email E --reason R` and `templates promote-definition
+# --product-type T --version V [--digest D] --staff-email E --reason R` run `python -m app.cli
+# templates ...` in PTD_JOB. That job gets the Amazon app's public settings, the LWA client secret
+# and the platform refresh token (a self-authorization of the Kuinn app, added by the owner), and
+# the migrator URL the CLI writes with, under its own identity SA_PTD. Only while AMAZON_APP_ID is set.
+cmd_templates() {
+  [ ${#REST[@]} -ge 1 ] || die "usage: templates refresh --product-type T --staff-email E --reason R | promote-definition --product-type T --version V [--digest D] --staff-email E --reason R"
+  local action="${REST[0]}" image args arg secrets env name missing=0
+  case "$action" in
+    refresh | promote-definition) ;;
+    *) die "unknown templates action '$action' (refresh | promote-definition)" ;;
+  esac
+  [ -n "$AMAZON_APP_ID" ] || die "templates needs the Amazon app: set AMAZON_APP_ID in $ENV_NAME.env"
+  gq iam service-accounts describe "$(sa_email "$SA_PTD")" --format='value(email)' >/dev/null ||
+    gc iam service-accounts create "$SA_PTD" --display-name="aimos PTD refresh job"
+  retry gc projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$(sa_email "$SA_PTD")" \
+    --role=roles/cloudsql.client --condition=None --format=none
+  grant_secret ALEMBIC_DATABASE_URL "$SA_PTD"
+  for name in AMAZON_CLIENT_SECRET "$PTD_TOKEN_SECRET"; do
+    ensure_secret "$name"
+    if [ "$DRY_RUN" -eq 0 ] && ! secret_has_version "$name"; then
+      missing=1
+      say "secret $name has no value. Add it in your own terminal (the value is never echoed):"
+      printf "  bash -c 'read -rsp \"%s: \" v; echo; printf %%s \"\$v\" | gcloud secrets versions add %s --data-file=- --project=%s'\n" \
+        "$name" "$name" "$PROJECT"
+    fi
+    grant_secret "$name" "$SA_PTD"
+  done
+  [ "$missing" -eq 0 ] || die "templates stops here: add the secret above, then rerun"
+  image="$(image_ref)"
+  args="-m|app.cli|templates|$action"
+  # gcloud refuses a repeated --args value, so `--flag value` pairs travel as `--flag=value`.
+  local -a rest
+  rest=("${REST[@]}")
+  rest=("${rest[@]:1}")
+  set -- ${rest[@]+"${rest[@]}"}
+  while [ $# -gt 0 ]; do
+    arg="$1"
+    shift
+    case "$arg" in
+      --*=*) ;;
+      --*) if [ $# -gt 0 ] && case "$1" in --*) false ;; *) true ;; esac; then arg="$arg=$1"; shift; fi ;;
+    esac
+    case "$arg" in *"|"*) die "an argument may not contain '|'" ;; esac
+    args="$args|$arg"
+  done
+  env="APP_ENV=$APP_ENV|APP_ROLE=shell|LOG_FORMAT=json"
+  env="$env|AMAZON_APP_ID=$AMAZON_APP_ID|AMAZON_CLIENT_ID=$AMAZON_CLIENT_ID"
+  env="$env|AMAZON_AUTHORIZE_URL=$AMAZON_AUTHORIZE_URL|AMAZON_USE_SANDBOX=$AMAZON_USE_SANDBOX"
+  env="$env|AMAZON_SPAPI_ENDPOINT=$AMAZON_SPAPI_ENDPOINT"
+  env="$env|AMAZON_OAUTH_REDIRECT_URI=$(api_url)/api/v1/marketplaces/amazon/callback"
+  secrets="ALEMBIC_DATABASE_URL=ALEMBIC_DATABASE_URL:latest"
+  secrets="$secrets,AMAZON_CLIENT_SECRET=AMAZON_CLIENT_SECRET:latest"
+  secrets="$secrets,$PTD_TOKEN_SECRET=$PTD_TOKEN_SECRET:latest"
+  gc run jobs deploy "$PTD_JOB" --image="$image" --region="$REGION" \
+    --service-account="$(sa_email "$SA_PTD")" --set-cloudsql-instances="$CONN" \
+    --set-env-vars="^|^$env" --set-secrets="$secrets" \
+    --args="^|^$args" --tasks=1 --max-retries=0 --task-timeout=300s --cpu=1 --memory=1Gi \
+    --labels="$LABELS"
+  run_job "$PTD_JOB"
+  say "templates $action done: the job log names the product type, version and digest prefix only"
+}
+
 # ---- edge (DPP-2) ----
 # The API edge (ADR-0022; docs/runbooks/EDGE-CUTOVER.md): a global external Application Load
 # Balancer for EDGE_DOMAIN with a Google-managed certificate and an SSL policy MODERN / TLS 1.2,
@@ -2149,7 +2222,7 @@ cmd_status() {
   gq run revisions list --service="$API_SERVICE" --region="$REGION" --limit=5 \
     --format='table(metadata.name,status.conditions[0].status,metadata.creationTimestamp)' || true
   gq run worker-pools describe "$WORKER_POOL" --region="$REGION" --format='value(name)' || true
-  for job in "$DB_INIT_JOB" "$MIGRATE_JOB" "$OPS_JOB" "$MAINT_JOB"; do
+  for job in "$DB_INIT_JOB" "$MIGRATE_JOB" "$OPS_JOB" "$MAINT_JOB" "$PTD_JOB"; do
     gq run jobs executions list --job="$job" --region="$REGION" --limit=3 \
       --format='table(metadata.name,status.succeededCount,status.failedCount,status.completionTime)' || true
   done
@@ -2167,6 +2240,7 @@ case "$CMD" in
   release) cmd_preflight; cmd_release ;;
   smoke) cmd_smoke ;;
   tenant) cmd_tenant ;;
+  templates) cmd_templates ;;
   status) cmd_status ;;
   edge) cmd_edge ;;
   *) usage ;;

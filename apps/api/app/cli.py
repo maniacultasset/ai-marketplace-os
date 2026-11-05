@@ -1336,8 +1336,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     return run_migrate(alembic_config())
 
 
+def quiet_http_clients() -> None:
+    """The HTTP libraries log every request line at INFO, URL and query included: for a PTD
+    refresh that is the pre-signed schema link with its signature (definitions.py: never the
+    link). The CLI writes its own one-line outcome, so they say nothing below WARNING."""
+    from app.core.logging import _HTTP_CLIENT_LOGGERS
+
+    for name in _HTTP_CLIENT_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)
+
+
 if __name__ == "__main__":
     logging.basicConfig(
         stream=sys.stdout, level=logging.INFO, format="%(levelname)s %(name)s %(message)s"
     )
+    quiet_http_clients()
     raise SystemExit(main())
