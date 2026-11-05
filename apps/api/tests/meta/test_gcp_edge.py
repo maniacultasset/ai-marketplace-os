@@ -167,6 +167,8 @@ def toolkit(repo_root: Path, tmp_path: Path) -> Iterator[Path]:
             # set them where they test the pin or the public URL.
             text = re.sub(r"^API_PUBLIC_URL=.*$", "API_PUBLIC_URL=", text, flags=re.M)
             text = re.sub(r"^JWT_ISSUER=.*$", "JWT_ISSUER=", text, flags=re.M)
+            # prod.env enforces the origin guard; the copy starts off and the tests set it.
+            text = re.sub(r"^ORIGIN_AUTH=.*$", "ORIGIN_AUTH=off", text, flags=re.M)
         (target / source.name).write_text(text, encoding="utf-8")
     (target / "deploy.sh").chmod(0o755)
     yield target

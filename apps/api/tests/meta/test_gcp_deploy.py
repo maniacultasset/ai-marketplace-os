@@ -82,6 +82,8 @@ def toolkit(repo_root: Path, tmp_path: Path) -> Iterator[Path]:
             )
             # The Amazon app starts off in the copy too; the Amazon tests set AMAZON_APP_ID.
             text = re.sub(r"^AMAZON_APP_ID=.*$", "AMAZON_APP_ID=", text, flags=re.M)
+            # prod.env enforces the origin guard; the copy starts off, as the tests expect.
+            text = re.sub(r"^ORIGIN_AUTH=.*$", "ORIGIN_AUTH=off", text, flags=re.M)
         (target / source.name).write_text(text, encoding="utf-8")
     (target / "deploy.sh").chmod(0o755)
     yield target
