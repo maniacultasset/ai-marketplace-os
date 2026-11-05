@@ -169,6 +169,10 @@ def toolkit(repo_root: Path, tmp_path: Path) -> Iterator[Path]:
             text = re.sub(r"^JWT_ISSUER=.*$", "JWT_ISSUER=", text, flags=re.M)
             # prod.env enforces the origin guard; the copy starts off and the tests set it.
             text = re.sub(r"^ORIGIN_AUTH=.*$", "ORIGIN_AUTH=off", text, flags=re.M)
+            # The Amazon app is covered by test_gcp_deploy; keep it off in the edge copy.
+            text = re.sub(r"^AMAZON_APP_ID=.*$", "AMAZON_APP_ID=", text, flags=re.M)
+            text = re.sub(r"^AMAZON_CLIENT_ID=.*$", "AMAZON_CLIENT_ID=", text, flags=re.M)
+            text = re.sub(r"^AMAZON_USE_SANDBOX=.*$", "AMAZON_USE_SANDBOX=true", text, flags=re.M)
         (target / source.name).write_text(text, encoding="utf-8")
     (target / "deploy.sh").chmod(0o755)
     yield target

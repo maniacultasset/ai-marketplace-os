@@ -82,6 +82,8 @@ def toolkit(repo_root: Path, tmp_path: Path) -> Iterator[Path]:
             )
             # The Amazon app starts off in the copy too; the Amazon tests set AMAZON_APP_ID.
             text = re.sub(r"^AMAZON_APP_ID=.*$", "AMAZON_APP_ID=", text, flags=re.M)
+            text = re.sub(r"^AMAZON_CLIENT_ID=.*$", "AMAZON_CLIENT_ID=", text, flags=re.M)
+            text = re.sub(r"^AMAZON_USE_SANDBOX=.*$", "AMAZON_USE_SANDBOX=true", text, flags=re.M)
             # prod.env enforces the origin guard; the copy starts off, as the tests expect.
             text = re.sub(r"^ORIGIN_AUTH=.*$", "ORIGIN_AUTH=off", text, flags=re.M)
         (target / source.name).write_text(text, encoding="utf-8")
@@ -495,7 +497,9 @@ def test_env_files_hold_no_secret(repo_root: Path, env_name: str) -> None:
     values = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
     assert values["REGION"] == "asia-south1"
     assert values["KMS_KEYRING"] == "marketplace-os" and values["KMS_KEY"] == "oauth-token-key"
-    assert values["FLIPKART_ENABLED"] == "false" and values["AMAZON_USE_SANDBOX"] == "true"
+    # prod left the sandbox once the Amazon app cleared (2026-11-05); staging stays on it.
+    sandbox = {"staging": "true", "prod": "false"}[env_name]
+    assert values["FLIPKART_ENABLED"] == "false" and values["AMAZON_USE_SANDBOX"] == sandbox
     # The placeholder until the dashboard is hosted, then the committed https origins (runbook).
     for name in ("ALLOWED_ORIGINS", "DASHBOARD_BASE_URL"):
         for origin in values[name].split(","):
@@ -1142,15 +1146,27 @@ def _amazon_on(toolkit: Path, env_name: str) -> None:
     _set_env(toolkit, env_name, AMAZON_APP_ID=AMAZON_APP, AMAZON_CLIENT_ID=AMAZON_CLIENT)
 
 
-@pytest.mark.parametrize("env_name", ["staging", "prod"])
-def test_env_files_ship_the_amazon_app_off(repo_root: Path, env_name: str) -> None:
-    text = (repo_root / DEPLOY / f"{env_name}.env").read_text(encoding="utf-8")
+def test_staging_env_ships_the_amazon_app_off(repo_root: Path) -> None:
+    text = (repo_root / DEPLOY / "staging.env").read_text(encoding="utf-8")
     values = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
     assert values["AMAZON_APP_ID"] == "" and values["AMAZON_CLIENT_ID"] == ""
     # a draft app consents only with version=beta (docs/EXTERNAL-SETUP.md)
     assert values["AMAZON_AUTHORIZE_URL"] == AMAZON_CONSENT
     assert values["AMAZON_USE_SANDBOX"] == "true"
     assert "AMAZON_CLIENT_SECRET" not in values
+
+
+def test_prod_env_ships_the_registered_amazon_app(repo_root: Path) -> None:
+    """The app cleared on 2026-11-05: prod names it, keeps the beta consent while it is a draft,
+    talks to the production SP-API host, and never carries the client secret."""
+    text = (repo_root / DEPLOY / "prod.env").read_text(encoding="utf-8")
+    values = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
+    assert re.fullmatch(r"amzn1\.sp\.solution\.[0-9a-f-]{36}", values["AMAZON_APP_ID"])
+    assert re.fullmatch(r"amzn1\.application-oa2-client\.[0-9a-f]{32}", values["AMAZON_CLIENT_ID"])
+    assert values["AMAZON_AUTHORIZE_URL"] == AMAZON_CONSENT
+    assert values["AMAZON_USE_SANDBOX"] == "false"
+    assert "AMAZON_CLIENT_SECRET" not in values
+    assert "amzn1.oa2-cs" not in text
 
 
 @pytest.mark.parametrize("env_name", ["staging", "prod"])
