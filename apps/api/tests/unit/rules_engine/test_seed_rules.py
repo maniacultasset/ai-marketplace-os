@@ -194,3 +194,82 @@ def test_rules_seed_hidden_terms_devanagari_counts_bytes_not_chars() -> None:
 def test_rules_seed_hidden_terms_no_flipkart_byte_rule(category: str) -> None:
     item = _listing(CATEGORY_PRODUCT[category], "flipkart")
     assert _byte_errors(_with_hidden(item, ["a" * 251])) == []
+
+
+# ---- contact details and markup: no URL, email, phone number or HTML tag in listing text ----
+#
+# One platform `*` banned_terms row (pack `contact`, match `regex`) per seed RuleSet. A hit is a
+# BANNED_TERM error, so the correction loop rewrites the text and a residual hit ends `blocked`.
+
+CONTACT_RULE_IDS = {f"5eed0000-0000-4000-8000-000{m}000{c}0008" for m in (1, 2) for c in (1, 2, 3)}
+CONTACT_HITS = (
+    "Order direct at www.brand.in",
+    "See https://example.org/kurta",
+    "Visit brandstore.com for more",
+    "Mail sales@brand.co.in today",
+    "WhatsApp +91 98765 43210",
+    "Call 9876543210 to order",
+    "Call 98765-43210 to order",
+    "Toll free 1800-123-4567",
+    "Soft cotton<br>easy care",
+    "<b>Pure</b> cotton",
+)
+CONTACT_CLEAN = (
+    "Pure cotton. In the box: 1 kurta, 1 dupatta",
+    "Size 3XL, 100% cotton, 110 cm length",
+    "A 1.5 m cable, e.g. for bedside tables",
+    "EAN 8901234567890, model 2024",
+    "Fits a 38-40 inch chest; weight < 1 kg",
+)
+
+
+def _with_text(item: CanonicalListing, path: str, text: str) -> CanonicalListing:
+    content, keywords = item.content, item.keywords
+    if path == "content.title":
+        content = content.model_copy(update={"title": f"{content.title} {text}"})
+    elif path == "content.bullets[0]":
+        content = content.model_copy(update={"bullets": [text, *content.bullets[1:]]})
+    elif path == "content.description":
+        content = content.model_copy(update={"description": text})
+    elif path == "keywords.search_terms[0]":
+        keywords = keywords.model_copy(update={"search_terms": [text]})
+    else:
+        keywords = keywords.model_copy(update={"hidden_terms": [text]})
+    return item.model_copy(update={"content": content, "keywords": keywords})
+
+
+def _contact_errors(item: CanonicalListing) -> list[Any]:
+    return [e for e in _run(item).errors if str(e.rule_id) in CONTACT_RULE_IDS]
+
+
+CONTACT_PATHS = (
+    "content.title",
+    "content.bullets[0]",
+    "content.description",
+    "keywords.search_terms[0]",
+    "keywords.hidden_terms[0]",
+)
+
+
+@pytest.mark.parametrize("marketplace", MARKETPLACES)
+@pytest.mark.parametrize("product", PRODUCTS)
+@pytest.mark.parametrize("path", CONTACT_PATHS)
+def test_rules_seed_contact_details_blocked(product: str, marketplace: str, path: str) -> None:
+    base = _listing(product, marketplace)
+    assert _contact_errors(base) == []
+    for text in CONTACT_HITS:
+        errors = _contact_errors(_with_text(base, path, text))
+        assert [e.field for e in errors] == [path], text
+        (error,) = errors
+        assert error.error_code.value == "BANNED_TERM"
+        assert error.severity.value == "error"
+        assert error.retry_class is not None and error.retry_class.value == "ai_correct"
+        assert error.suggestion
+
+
+@pytest.mark.parametrize("marketplace", MARKETPLACES)
+@pytest.mark.parametrize("path", CONTACT_PATHS)
+def test_rules_seed_contact_details_spare_ordinary_text(marketplace: str, path: str) -> None:
+    base = _listing("kurta_002", marketplace)
+    for text in CONTACT_CLEAN:
+        assert _contact_errors(_with_text(base, path, text)) == [], text

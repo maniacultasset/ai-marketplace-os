@@ -91,6 +91,11 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
   contracts keep the pipeline free of `app`, web, DB and queue packages, and only `app.workers` may
   import it. The deploy image swaps the stub for the AI team's `mkos-pipeline` at a pinned commit
   when `PIPELINE_REF` is set (ADR-0024, answers T104). **Open:** **T1** (Python 3.13).
+- The prompt notice is not the only guard against injected brand or product text: every seed
+  RuleSet holds a platform `*` `banned_terms` row (pack `contact`, `match: regex`) that makes a
+  web address, email address, Indian phone number or HTML tag in the title, bullets, description
+  or keywords a `BANNED_TERM` error, so the correction loop rewrites it and a residual hit ends
+  `blocked` (`packages/schemas/fixtures/rules.seed.json`, loaded by `rules load`).
 
 Source: CANON.md "The AI seam"; CANON-ADDENDUM.md §21; ADR-0012 §Decision 3; ADR-0013 §Decision 5;
 EXECUTION-PLAN.md §6.2.

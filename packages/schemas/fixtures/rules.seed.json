@@ -229,6 +229,46 @@
         }
       },
       {
+        "id": "5eed0000-0000-4000-8000-000100010008",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "*",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "Listing text on Amazon must not hold a web address, email address, phone number or HTML tag.",
+          "suggestion": "Remove the link, contact detail or markup. Buyers reach the seller through Amazon only.",
+          "error_code": "BANNED_TERM",
+          "pack": "contact",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "contact details, links and markup",
+            "retrieved_on": null
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "banned_terms",
+          "terms": [
+            "https?://",
+            "\\bwww\\.",
+            "\\b[a-z0-9-]+\\.(com|in|net|org|co|io|shop|store|biz|info)\\b",
+            "[a-z0-9._%+-]+@[a-z0-9-]+\\.[a-z]",
+            "\\+91[\\s-]?\\d",
+            "\\b[6-9]\\d{9}\\b",
+            "\\b[6-9]\\d{4}[\\s-]\\d{5}\\b",
+            "\\b1800[\\s-]?\\d{3}[\\s-]?\\d{4}\\b",
+            "</?[a-z][^<>]*>"
+          ],
+          "match": "regex",
+          "case_sensitive": false
+        }
+      },
+      {
         "id": "5eed0000-0000-4000-8000-000701000001",
         "tenant_id": null,
         "marketplace": "amazon",
@@ -708,6 +748,46 @@
           "limit": 250,
           "unit": "bytes"
         }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100020008",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "home_decor_lamps",
+        "field": "*",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "Listing text on Amazon must not hold a web address, email address, phone number or HTML tag.",
+          "suggestion": "Remove the link, contact detail or markup. Buyers reach the seller through Amazon only.",
+          "error_code": "BANNED_TERM",
+          "pack": "contact",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "contact details, links and markup",
+            "retrieved_on": null
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "banned_terms",
+          "terms": [
+            "https?://",
+            "\\bwww\\.",
+            "\\b[a-z0-9-]+\\.(com|in|net|org|co|io|shop|store|biz|info)\\b",
+            "[a-z0-9._%+-]+@[a-z0-9-]+\\.[a-z]",
+            "\\+91[\\s-]?\\d",
+            "\\b[6-9]\\d{9}\\b",
+            "\\b[6-9]\\d{4}[\\s-]\\d{5}\\b",
+            "\\b1800[\\s-]?\\d{3}[\\s-]?\\d{4}\\b",
+            "</?[a-z][^<>]*>"
+          ],
+          "match": "regex",
+          "case_sensitive": false
+        }
       }
     ],
     "rules_version": 0,
@@ -940,6 +1020,46 @@
           "type": "max_length",
           "limit": 150,
           "unit": "chars"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200010008",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "*",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "Listing text on Flipkart must not hold a web address, email address, phone number or HTML tag.",
+          "suggestion": "Remove the link, contact detail or markup. Buyers reach the seller through Flipkart only.",
+          "error_code": "BANNED_TERM",
+          "pack": "contact",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "contact details, links and markup",
+            "retrieved_on": null
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "banned_terms",
+          "terms": [
+            "https?://",
+            "\\bwww\\.",
+            "\\b[a-z0-9-]+\\.(com|in|net|org|co|io|shop|store|biz|info)\\b",
+            "[a-z0-9._%+-]+@[a-z0-9-]+\\.[a-z]",
+            "\\+91[\\s-]?\\d",
+            "\\b[6-9]\\d{9}\\b",
+            "\\b[6-9]\\d{4}[\\s-]\\d{5}\\b",
+            "\\b1800[\\s-]?\\d{3}[\\s-]?\\d{4}\\b",
+            "</?[a-z][^<>]*>"
+          ],
+          "match": "regex",
+          "case_sensitive": false
         }
       },
       {
@@ -1462,6 +1582,46 @@
           "limit": 150,
           "unit": "chars"
         }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200020008",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "home_decor_lamps",
+        "field": "*",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "Listing text on Flipkart must not hold a web address, email address, phone number or HTML tag.",
+          "suggestion": "Remove the link, contact detail or markup. Buyers reach the seller through Flipkart only.",
+          "error_code": "BANNED_TERM",
+          "pack": "contact",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "contact details, links and markup",
+            "retrieved_on": null
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "banned_terms",
+          "terms": [
+            "https?://",
+            "\\bwww\\.",
+            "\\b[a-z0-9-]+\\.(com|in|net|org|co|io|shop|store|biz|info)\\b",
+            "[a-z0-9._%+-]+@[a-z0-9-]+\\.[a-z]",
+            "\\+91[\\s-]?\\d",
+            "\\b[6-9]\\d{9}\\b",
+            "\\b[6-9]\\d{4}[\\s-]\\d{5}\\b",
+            "\\b1800[\\s-]?\\d{3}[\\s-]?\\d{4}\\b",
+            "</?[a-z][^<>]*>"
+          ],
+          "match": "regex",
+          "case_sensitive": false
+        }
       }
     ],
     "rules_version": 0,
@@ -1695,6 +1855,46 @@
           "limit": 250,
           "unit": "bytes"
         }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100030008",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "tshirts",
+        "field": "*",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "Listing text on Amazon must not hold a web address, email address, phone number or HTML tag.",
+          "suggestion": "Remove the link, contact detail or markup. Buyers reach the seller through Amazon only.",
+          "error_code": "BANNED_TERM",
+          "pack": "contact",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "contact details, links and markup",
+            "retrieved_on": null
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "banned_terms",
+          "terms": [
+            "https?://",
+            "\\bwww\\.",
+            "\\b[a-z0-9-]+\\.(com|in|net|org|co|io|shop|store|biz|info)\\b",
+            "[a-z0-9._%+-]+@[a-z0-9-]+\\.[a-z]",
+            "\\+91[\\s-]?\\d",
+            "\\b[6-9]\\d{9}\\b",
+            "\\b[6-9]\\d{4}[\\s-]\\d{5}\\b",
+            "\\b1800[\\s-]?\\d{3}[\\s-]?\\d{4}\\b",
+            "</?[a-z][^<>]*>"
+          ],
+          "match": "regex",
+          "case_sensitive": false
+        }
       }
     ],
     "rules_version": 0,
@@ -1898,6 +2098,46 @@
           "type": "required_attribute",
           "attribute": "fabric_type",
           "allowed_values": null
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000200030008",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": "tshirts",
+        "field": "*",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "Listing text on Flipkart must not hold a web address, email address, phone number or HTML tag.",
+          "suggestion": "Remove the link, contact detail or markup. Buyers reach the seller through Flipkart only.",
+          "error_code": "BANNED_TERM",
+          "pack": "contact",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart listing quality guidelines",
+            "url": null,
+            "section": "contact details, links and markup",
+            "retrieved_on": null
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "banned_terms",
+          "terms": [
+            "https?://",
+            "\\bwww\\.",
+            "\\b[a-z0-9-]+\\.(com|in|net|org|co|io|shop|store|biz|info)\\b",
+            "[a-z0-9._%+-]+@[a-z0-9-]+\\.[a-z]",
+            "\\+91[\\s-]?\\d",
+            "\\b[6-9]\\d{9}\\b",
+            "\\b[6-9]\\d{4}[\\s-]\\d{5}\\b",
+            "\\b1800[\\s-]?\\d{3}[\\s-]?\\d{4}\\b",
+            "</?[a-z][^<>]*>"
+          ],
+          "match": "regex",
+          "case_sensitive": false
         }
       }
     ],
