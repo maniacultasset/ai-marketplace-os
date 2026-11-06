@@ -4,15 +4,13 @@ let three accepted PATCHes build a 701-chunk profile that the `brand_embed` job 
 
 from __future__ import annotations
 
-import uuid
-
 import httpx
 import pytest
 
 from .auth_support import PREFIX
 from .brand_support import FakeEmbedder, chunk_rows
 from .conftest import LOCAL_HOSTS
-from .jobs_support import JobWorld, as_member, count, jobs_db
+from .jobs_support import JobWorld, as_member, claim_profile_embed_job, count, jobs_db
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
 __all__ = ["jobs_db"]
@@ -51,9 +49,8 @@ async def _embed_profile(jw: JobWorld, monkeypatch: pytest.MonkeyPatch) -> list[
 
     monkeypatch.setattr(brand_embed, "embedder", lambda: FakeEmbedder())
     acme = jw.tenant("acme")
-    ctx = JobContext(
-        uuid.uuid4(), acme, JobKind.BRAND_EMBED, "req-cap", {"source": "brand_profile"}, 1
-    )
+    job = claim_profile_embed_job(jw.conn, acme)
+    ctx = JobContext(job, acme, JobKind.BRAND_EMBED, "req-cap", {"source": "brand_profile"}, 1)
     await brand_embed.run_brand_embed(ctx)
     return [r for r in chunk_rows(jw.conn, acme) if r["source_type"] == "brand_profile"]
 
