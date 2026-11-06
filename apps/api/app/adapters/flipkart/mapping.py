@@ -53,6 +53,7 @@ from app.adapters.base import (
     PreviewItem,
 )
 from app.adapters.flipkart import constants as c
+from app.services.rules_engine.text import submitted_keywords
 
 UNSAFE_SKUS: Final = frozenset({".", ".."})
 UNSAFE_SKU_CHARS: Final = frozenset({",", "/"})
@@ -206,16 +207,9 @@ def _attribute_entries(
 
 
 def keywords_value(listing: AdapterListing) -> str:
-    """Both keyword lists as one value: deduplicated (normalized), first spelling kept."""
-    body = listing.listing
-    seen: set[str] = set()
-    terms: list[str] = []
-    for term in [*body.keywords.search_terms, *body.keywords.hidden_terms]:
-        key = normalize(term)
-        if key and key not in seen:
-            seen.add(key)
-            terms.append(term.strip())
-    return " ".join(terms)
+    """Both keyword lists as one value: deduplicated (normalized), first spelling kept. The
+    Rules Engine's own joined value, so what is sent is what was checked."""
+    return submitted_keywords(listing.listing.keywords)
 
 
 def _unsupported(template: CategoryTemplate, key: str) -> bool:

@@ -228,6 +228,8 @@ class Settings(BaseSettings):
     llm_max_correction_attempts: int = 3
     llm_daily_budget_usd: float = Field(default=12.0, allow_inf_nan=False)
     llm_tenant_daily_budget_usd: float = Field(default=2.5, allow_inf_nan=False)
+    # the most `listing_generate` jobs one tenant may hold queued or running (enqueue-time cap)
+    generation_live_jobs_per_tenant: int = Field(default=10, ge=1, le=200)
 
     # ---- amazon: the redirect URI is the exact string filed in the application ----
     amazon_app_id: str | None = None

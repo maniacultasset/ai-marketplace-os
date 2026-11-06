@@ -15,7 +15,7 @@ import pytest
 from .auth_support import PREFIX
 from .brand_support import FakeEmbedder, chunk_rows
 from .conftest import LOCAL_HOSTS
-from .jobs_support import JobWorld, as_member, count, jobs_db
+from .jobs_support import JobWorld, as_member, claim_profile_embed_job, count, jobs_db
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
 __all__ = ["jobs_db"]
@@ -91,9 +91,8 @@ async def test_over_cap_stored_profile_voice_patch_under_cap_lands_and_embeds(
     assert _profile_jobs(jobs_db) == 1
     monkeypatch.setattr(brand_embed, "embedder", lambda: FakeEmbedder())
     acme = jobs_db.tenant("acme")
-    ctx = JobContext(
-        uuid.uuid4(), acme, JobKind.BRAND_EMBED, "req-r2", {"source": "brand_profile"}, 1
-    )
+    job = claim_profile_embed_job(jobs_db.conn, acme)
+    ctx = JobContext(job, acme, JobKind.BRAND_EMBED, "req-r2", {"source": "brand_profile"}, 1)
     await brand_embed.run_brand_embed(ctx)
     rows = [r for r in chunk_rows(jobs_db.conn, acme) if r["source_type"] == "brand_profile"]
     assert len(rows) == 600

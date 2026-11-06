@@ -69,9 +69,13 @@ async def test_update_audit_failure_rolls_back(
 
 
 async def test_update_audit_changed_keys_only(products_world: World, auth_db: Conn) -> None:
-    (name,) = auth_db.execute("SELECT name FROM tenants WHERE id = %s", [products_world.tenant("acme")]).fetchone()  # type: ignore[misc]
+    (name,) = auth_db.execute(
+        "SELECT name FROM tenants WHERE id = %s", [products_world.tenant("acme")]
+    ).fetchone()  # type: ignore[misc]
     await _update(products_world, {"name": name, "tone": "Warm."})
-    before, after = auth_db.execute("SELECT before, after FROM audit_log WHERE action = 'tenant.profile_updated'").fetchone()  # type: ignore[misc]
+    before, after = auth_db.execute(
+        "SELECT before, after FROM audit_log WHERE action = 'tenant.profile_updated'"
+    ).fetchone()  # type: ignore[misc]
     assert before == {"tone": None} and after == {"tone": "Warm."}
 
 
@@ -120,7 +124,7 @@ async def test_update_coalesce_race_claim_before_commit(
         with psycopg.connect(url, autocommit=True) as conn:
             conn.execute("SELECT set_config('app.tenant_id', %s, false)", [str(acme)])
             conn.execute(
-                "UPDATE job_runs SET status = 'running', started_at = now(), lease_expires_at = now() + interval '1 hour' WHERE id = %s AND status = 'queued'",
+                "UPDATE job_runs SET status = 'running', attempt = attempt + 1, started_at = now(), lease_expires_at = now() + interval '1 hour' WHERE id = %s AND status = 'queued'",
                 [job_id],
             )
             # What the claim sees once its UPDATE returns: the PATCH's commit, if it waited.

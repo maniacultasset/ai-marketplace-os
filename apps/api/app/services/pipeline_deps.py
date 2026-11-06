@@ -31,7 +31,10 @@ Ports:
 - `emit_node_event`: `started` writes `job_runs.node` on the running job (never
   `listings.status`) and opens span `pipeline.<node>` (attributes `job_id`, `tenant_id`, `node`
   only); `ok`/`failed` ends it with that status. `close_spans()` ends any left open. `detail` is
-  only logged, redacted and cut to 2 KiB, never a span attribute.
+  only logged, redacted and cut to 2 KiB, never a span attribute. The started stages also tell
+  the worker whether the run reached a model (`model_stage_reached`): a run that only loaded its
+  context and retrieved brand chunks made no generation call, so a failure there gives the
+  budget reservation back (the query embeds meter themselves).
 """
 
 from __future__ import annotations
@@ -81,6 +84,9 @@ PURPOSES: Final = ("generation", "vision", "embedding")
 NODE_STATUSES: Final = frozenset({"started", "ok", "failed"})
 Purpose = Literal["generation", "vision", "embedding"]
 MAX_RULES_CALLS: Final = 3
+# The stages before any generation call: their only model spend is the query embed, which writes
+# its own `agent_runs` row.
+PRE_MODEL_STAGES: Final = frozenset({PipelineStage.LOAD_CONTEXT, PipelineStage.RETRIEVE_BRAND})
 TRACER_NAME: Final = "app"
 _tracer: trace.Tracer = trace.get_tracer(TRACER_NAME)
 
@@ -101,12 +107,15 @@ class RulesCall:
 
 
 class SeamPortError(Exception):
-    """A port call the backend refuses. The message holds the code and the field name only."""
+    """A port call the backend refuses. The message holds the code and the field name only.
+    `retryable` is true only for a failure that may pass on a new try (an embeddings 429, 5xx or
+    timeout); a missing key, a missing embedder or a refused call is not, whatever its code."""
 
-    def __init__(self, code: ErrorCode, field: str) -> None:
+    def __init__(self, code: ErrorCode, field: str, *, retryable: bool = False) -> None:
         super().__init__(f"{code.value} at {field}")
         self.code = code
         self.field = field
+        self.retryable = retryable
 
 
 def _secret(value: str | None) -> SecretStr | None:
@@ -203,6 +212,7 @@ class BackendPipelineDeps:
         "_rules",
         "_rules_calls",
         "_spans",
+        "_stages",
         "_tenant_id",
         "_user_id",
         "_validate_calls",
@@ -235,6 +245,7 @@ class BackendPipelineDeps:
         self._validate_calls = 0
         self._rules_calls: list[RulesCall] = []
         self._spans: dict[str, Span] = {}
+        self._stages: set[PipelineStage] = set()
 
     def __repr__(self) -> str:
         return f"BackendPipelineDeps(tenant_id={self._tenant_id}, job_id={self._job_id})"
@@ -255,6 +266,12 @@ class BackendPipelineDeps:
     def rules_calls(self) -> tuple[RulesCall, ...]:
         """The engine runs of calls 1..3, in order (read-only)."""
         return tuple(self._rules_calls)
+
+    @property
+    def model_stage_reached(self) -> bool:
+        """True once a stage past `PRE_MODEL_STAGES` has started. Also True when no stage was
+        reported at all: nothing is known then, so a model call is assumed."""
+        return not self._stages or not self._stages <= PRE_MODEL_STAGES
 
     @property
     def validate_calls(self) -> int:
@@ -302,7 +319,7 @@ class BackendPipelineDeps:
                 request_id=current_request_id() or new_request_id(),
             )
         except EmbeddingFailed as exc:
-            raise SeamPortError(exc.code, "embedding") from None
+            raise SeamPortError(exc.code, "embedding", retryable=exc.retryable) from None
         wanted = None if types is None else cast(list[BrandChunkType], list(types))
         async with tenant_uow(self._tenant_id, user_id=self._user_id) as uow:
             return await uow.brand_chunks.search(vector, k, wanted)
@@ -391,6 +408,8 @@ class BackendPipelineDeps:
             raise ValueError("node must be a PipelineStage") from None
         if status not in NODE_STATUSES:
             raise ValueError("status must be started, ok or failed")
+        if status == "started":
+            self._stages.add(stage)
         shown = None
         if detail is not None:
             text = json.dumps(redact(detail), default=str, ensure_ascii=False, sort_keys=True)

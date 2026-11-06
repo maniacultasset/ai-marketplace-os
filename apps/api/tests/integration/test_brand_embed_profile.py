@@ -12,6 +12,7 @@ from psycopg.types.json import Jsonb
 from .auth_support import World
 from .brand_support import Conn, FakeEmbedder, agent_rows, chunk_rows
 from .conftest import LOCAL_HOSTS
+from .jobs_support import running_profile_embed_job
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
 MODEL = "text-embedding-3-small"
@@ -45,13 +46,14 @@ def _voice(
     )
 
 
-async def _run(tenant: uuid.UUID) -> Any:
+async def _run(conn: Conn, tenant: uuid.UUID) -> Any:
     from app.services.brand_embed import run_brand_embed
     from app.workers.registry import JobContext
     from mkos_schemas.enums import JobKind
 
+    job = running_profile_embed_job(conn, tenant)
     ctx = JobContext(
-        uuid.uuid4(), tenant, JobKind.BRAND_EMBED, "req-profile", {"source": "brand_profile"}, 1
+        job, tenant, JobKind.BRAND_EMBED, "req-profile", {"source": "brand_profile"}, 1
     )
     return await run_brand_embed(ctx)
 
@@ -67,7 +69,7 @@ async def test_profile_chunks_types_and_text(
         guidelines=["Never claim best.", "Name the fabric."],
         glossary={"kurta outfit": "kurta set"},
     )
-    await _run(acme)
+    await _run(auth_db, acme)
     rows = chunk_rows(auth_db, acme)
     assert [(r["type"], r["text"], r["chunk_index"]) for r in rows] == [
         ("tone_rule", "Never claim best.", 0),
@@ -85,9 +87,9 @@ async def test_profile_reembed_incremental(
 ) -> None:
     acme = products_world.tenant("acme")
     _voice(auth_db, acme, guidelines=["One.", "Two.", "Three."])
-    await _run(acme)
+    await _run(auth_db, acme)
     _voice(auth_db, acme, guidelines=["One.", "Deux.", "Three."])
-    await _run(acme)
+    await _run(auth_db, acme)
     assert fake.calls[-1] == ["Deux."]
     assert [r["text"] for r in chunk_rows(auth_db, acme)] == ["One.", "Deux.", "Three."]
     assert "Two." in [r["text"] for r in chunk_rows(auth_db, acme, active=False)]
@@ -98,8 +100,8 @@ async def test_profile_rerun_no_calls(
 ) -> None:
     acme = products_world.tenant("acme")
     _voice(auth_db, acme, guidelines=["One."])
-    await _run(acme)
-    outcome = await _run(acme)
+    await _run(auth_db, acme)
+    outcome = await _run(auth_db, acme)
     assert outcome.result["unchanged"] is True and len(fake.calls) == 1
     assert len(agent_rows(auth_db, acme)) == 1
 
@@ -109,7 +111,9 @@ async def test_profile_jobs_serialised(
 ) -> None:
     acme = products_world.tenant("acme")
     _voice(auth_db, acme, guidelines=["One.", "Two."], glossary={"a": "b"})
-    results = await asyncio.gather(_run(acme), _run(acme), _run(acme), return_exceptions=True)
+    results = await asyncio.gather(
+        _run(auth_db, acme), _run(auth_db, acme), _run(auth_db, acme), return_exceptions=True
+    )
     assert not [r for r in results if isinstance(r, BaseException)]
     assert [r["text"] for r in chunk_rows(auth_db, acme)] == ["One.", "Two.", "Say 'b' not 'a'."]
 
@@ -128,7 +132,7 @@ async def test_profile_superseded_rechunks_from_new_values(
         return batch
 
     fake.embed = embed_then_change  # type: ignore[method-assign]
-    await _run(acme)
+    await _run(auth_db, acme)
     assert [r["text"] for r in chunk_rows(auth_db, acme)] == ["New."]
 
 
@@ -148,7 +152,7 @@ async def test_profile_superseded_three_times_retryable(
 
     fake.embed = embed_then_change  # type: ignore[method-assign]
     with pytest.raises(RetryableJobError):
-        await _run(acme)
+        await _run(auth_db, acme)
     assert chunk_rows(auth_db, acme) == []
 
 
@@ -157,9 +161,9 @@ async def test_profile_cleared_deactivates_all(
 ) -> None:
     acme = products_world.tenant("acme")
     _voice(auth_db, acme, guidelines=["One."], glossary={"a": "b"})
-    await _run(acme)
+    await _run(auth_db, acme)
     _voice(auth_db, acme)
-    await _run(acme)
+    await _run(auth_db, acme)
     assert chunk_rows(auth_db, acme) == []
 
 
@@ -171,7 +175,7 @@ async def test_profile_search_finds_glossary(
 
     acme = products_world.tenant("acme")
     _voice(auth_db, acme, guidelines=["Name the fabric."], glossary={"kurta outfit": "kurta set"})
-    await _run(acme)
+    await _run(auth_db, acme)
     query = (await HashEmbedder(MODEL).embed(["kurta set"])).vectors[0]
     async with tenant_uow(acme) as uow:
         found = await uow.brand_chunks.search(query, 5, ["glossary"])
@@ -198,7 +202,7 @@ async def test_profile_patch_on_seeded_tenant_leaves_one_active_set(
             embedding_model=MODEL,
         )
     _voice(auth_db, acme, guidelines=["Own."])
-    await _run(acme)
+    await _run(auth_db, acme)
     rows = chunk_rows(auth_db, acme)
     assert [(r["source_id"], r["text"]) for r in rows] == [(acme, "Own.")]
     assert {r["source_id"] for r in chunk_rows(auth_db, acme, active=False)} == {seeded}
@@ -211,10 +215,10 @@ async def test_profile_body_rechecks_chunks(
 
     acme = products_world.tenant("acme")
     _voice(auth_db, acme, guidelines=["Good."])
-    await _run(acme)
+    await _run(auth_db, acme)
     _voice(auth_db, acme, guidelines=["Token: Atzr|" + "IwEBIA1b2c3d4e5f6g7h8i9j0"])
     with pytest.raises(JobFailed) as info:
-        await _run(acme)
+        await _run(auth_db, acme)
     assert (
         info.value.report.error_code is not None
         and info.value.report.error_code.value == "VALIDATION_FAILED"

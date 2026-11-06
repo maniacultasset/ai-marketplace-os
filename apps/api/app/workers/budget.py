@@ -11,9 +11,14 @@
 4. `cost_reserved_usd = GENERATION_RESERVATION_USD` on the claimed attempt (fenced);
 5. the commit, which releases both locks.
 
+A `brand_embed` job reserves the same way before each paid embedding call, with `amount` the
+call's upper-bound cost (`app.services.brand_embed.reservation_usd`), and `release` settles it to
+zero once the call's `agent_runs` row holds the real spend.
+
 A reservation that would take either sum past its cap raises `BudgetRefused(scope)`. A timeout or
-a crash leaves the reservation counted (DATABASE.md:998); the terminal write zeroes it only when
-the job's own `agent_runs` replace it (CP10).
+a crash leaves the reservation counted (DATABASE.md:998); the terminal write zeroes it when the
+job's own `agent_runs` replace it (CP10), or when the job failed before any model stage
+(`app/workers/generation.py` steps 2 and 5).
 """
 
 from __future__ import annotations
@@ -65,3 +70,10 @@ async def reserve(
             log.info("budget.refused", scope="global", job_id=str(job_id), tenant_id=str(tenant_id))
             raise BudgetRefused("global")
         return await JobRunRepository(session, tenant_id).reserve_cost(job_id, attempt, amount)
+
+
+async def release(tenant_id: UUID, job_id: UUID, attempt: int) -> bool:
+    """Settle the claimed attempt's reservation to zero (its `agent_runs` now hold the spend);
+    False when the fence no longer holds."""
+    async with unit_of_work(tenant_id) as session:
+        return await JobRunRepository(session, tenant_id).reserve_cost(job_id, attempt, Decimal(0))

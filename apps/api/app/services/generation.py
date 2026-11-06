@@ -17,6 +17,11 @@ batch of one), each in its own SAVEPOINT, in order:
    `{"user_instructions"}` only, D3), deferred in the same transaction;
 6. the move `created → generating` (event `generate`, the user as actor).
 
+`accept_generate` and `accept_regenerate` run, after the budget pre-check, the per-tenant live
+cap: at most `GENERATION_LIVE_JOBS_PER_TENANT` `listing_generate` jobs `queued|running`, counted
+under the tenant's enqueue lock, else 429 `RATE_LIMITED` (`enforce_live_generate_cap`). Claiming
+stays FIFO on the shared `default` queue; the cap bounds what one brand can put ahead of others.
+
 `request_regeneration(...)` (T10): under the listing lock, `generating` → 409 `LISTING_BUSY`,
 paused/archived → 409, `created` → 409 `INVALID_STATUS_TRANSITION`; otherwise the job, then the
 `regenerate_requested` decision on the current version (NULL when there is none) naming the job,
@@ -38,7 +43,8 @@ from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import JobKind, JobState, Marketplace
 from mkos_schemas.jobs import GenerateListingRequest
 
-from app.core.errors import ConflictError, DomainError, InputError, NotFoundError
+from app.core.config import get_settings
+from app.core.errors import ConflictError, DomainError, InputError, LimitError, NotFoundError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.core.text import has_control_char
@@ -230,6 +236,18 @@ async def request_regeneration(
     return await _regenerate_locked(uow, principal, http_key, listing, instructions)
 
 
+async def enforce_live_generate_cap(uow: TenantUnitOfWork) -> None:
+    """At most `GENERATION_LIVE_JOBS_PER_TENANT` `listing_generate` jobs `queued|running` per
+    tenant, counted under the tenant's enqueue lock: past it, 429 `RATE_LIMITED`. One brand
+    cannot fill the shared `default` queue (4 slots, FIFO) and starve every other brand."""
+    await uow.job_runs.lock_generate_enqueue()
+    if (
+        await uow.job_runs.count_live_generations()
+        >= get_settings().generation_live_jobs_per_tenant
+    ):
+        raise LimitError("live generations per tenant")
+
+
 async def accept_generate(
     principal: Principal, key: str, path: str, body: GenerateListingRequest
 ) -> dict[str, Any]:
@@ -242,6 +260,7 @@ async def accept_generate(
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = repositories_on(session, principal.tenant_id)
         await precheck(uow, datetime.now(UTC))
+        await enforce_live_generate_cap(uow)
         [result] = await request_generation(
             uow,
             principal,
@@ -279,6 +298,7 @@ async def accept_regenerate(
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = repositories_on(session, principal.tenant_id)
         await precheck(uow, datetime.now(UTC))
+        await enforce_live_generate_cap(uow)
         accepted = await request_regeneration(uow, principal, key, listing_id, instructions)
         return 202, accepted_body(accepted)
 

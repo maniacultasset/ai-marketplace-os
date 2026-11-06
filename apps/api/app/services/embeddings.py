@@ -24,7 +24,9 @@ and metering, without renaming anything here.
 - Under `LLM_GATEWAY=openrouter` (ADR-0024) `OpenAIEmbedder` calls the pinned
   `OPENROUTER_BASE_URL` (OpenAI-compatible `/embeddings`) and sends `openai/<EMBEDDING_MODEL>`.
   Its `model` stays `EMBEDDING_MODEL`: the vectors are the same model's, so stored brand chunks,
-  retrieval, `agent_runs.model_used` and the price do not depend on the gateway.
+  retrieval, `agent_runs.model_used` and the price do not depend on the gateway. Every
+  OpenRouter request also sends `provider: {"data_collection": "deny"}`, so brand text reaches
+  only providers that neither keep nor train on it (the generation calls send the same).
 - `embed_texts` / `embed_query`: the only callers of `Embedder.embed` (invariant 7). Each call of
   at most `MAX_INPUTS_PER_CALL` inputs writes exactly one `agent_runs` row, success or failure,
   with a sha256 digest of the inputs and never their text.
@@ -181,8 +183,12 @@ class OpenAIEmbedder:
             raise EmbedderUnavailable
         self.model = settings.embedding_model
         base_url, self._request_model = OPENAI_BASE_URL, self.model
+        self._extra_body: dict[str, Any] | None = None
         if settings.llm_gateway == "openrouter":
             base_url, self._request_model = OPENROUTER_BASE_URL, gateway_openai_model(self.model)
+            # Route brand text only to providers that neither keep nor train on it, as the
+            # generation calls do; a provider set that cannot honour it fails the call closed.
+            self._extra_body = {"provider": {"data_collection": "deny"}}
         # base_url is one of two pinned constants so an OPENAI_BASE_URL in the environment can
         # never redirect brand text; max_retries=0 so the SDK never hides a call (CP8). The SDK's
         # own client reads HTTPS_PROXY/SSL_CERT_FILE and follows redirects, so the key's client
@@ -205,7 +211,10 @@ class OpenAIEmbedder:
     async def embed(self, texts: Sequence[str]) -> EmbeddingBatch:
         try:
             response = await self._client.embeddings.create(
-                model=self._request_model, input=list(texts), encoding_format="float"
+                model=self._request_model,
+                input=list(texts),
+                encoding_format="float",
+                extra_body=self._extra_body,
             )
         except openai.APITimeoutError:
             raise EmbeddingFailed(

@@ -27,6 +27,18 @@ REQUIRED = {
 }
 
 
+BULLETS = [
+    "Soft cotton for breathable comfort",
+    "Relaxed silhouette with a straight hem",
+    "Set includes full-length kurta and matching palazzo with elasticated waist",
+    "Machine washable at 30 degrees C",
+    "Available in sizes XS through XXL with a detailed size guide",
+]
+BLURB = "A relaxed cotton kurta set for everyday wear."
+TERMS = ["cotton kurta", "ethnic wear women", "block print suit"]
+HIDDEN = ["cotton kurta set", "indigo kurta"]
+
+
 def _ruleset(category: str, marketplace: str = "amazon") -> RuleSet:
     from app.cli import RULES_SEED_PATH
 
@@ -70,12 +82,19 @@ def _listings(
     attributes |= {k: draw(st.sampled_from(vocab[k])) for k in optional}
     title = draw(st.text(st.characters(categories=["L", "N", "Zs"]), min_size=20, max_size=150))
     base = listing()
+    # the fixture's copy claims "organic" and "handloom" with no backing fact, which the seed
+    # claim rows refuse; the drawn listings keep the fixture's shape with claim-free copy
+    content = base.content.model_copy(
+        update={"title": title.strip() or "Kurta set", "bullets": BULLETS, "description": BLURB}
+    )
+    keywords = base.keywords.model_copy(update={"search_terms": TERMS, "hidden_terms": HIDDEN})
     body = base.model_copy(
         update={
             "category": category,
             "marketplace": marketplace,
             "attributes": attributes,
-            "content": base.content.model_copy(update={"title": title.strip() or "Kurta set"}),
+            "content": content,
+            "keywords": keywords,
         }
     )
     return category, CanonicalListing.model_validate(body.model_dump())

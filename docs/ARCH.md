@@ -91,6 +91,61 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
   contracts keep the pipeline free of `app`, web, DB and queue packages, and only `app.workers` may
   import it. The deploy image swaps the stub for the AI team's `mkos-pipeline` at a pinned commit
   when `PIPELINE_REF` is set (ADR-0024, answers T104). **Open:** **T1** (Python 3.13).
+- The prompt notice is not the only guard against injected brand or product text: every seed
+  RuleSet holds a platform `*` `banned_terms` row (pack `contact`, `match: regex`) that makes a
+  web address, email address, Indian phone number or HTML tag in the title, bullets, description
+  or keywords a `BANNED_TERM` error, so the correction loop rewrites it and a residual hit ends
+  `blocked` (`packages/schemas/fixtures/rules.seed.json`, loaded by `rules load`). It covers
+  `wa.me` and the common short links, and mobiles whole, split 5+5 or 3-3-4, with a `+91`, `91`
+  or `0` prefix. A bare
+  domain needs a lowercase TLD not followed by a hyphen, so a sentence joined without a space
+  (`wear.Co-ord`, `ft.In stock`) is not a hit; the price is that an all-caps `BRAND.IN` is only
+  caught with a `www.` or `https://`. HTML is a known tag name, so `S<M>L` passes. Every `*`
+  `banned_terms` row also reads the keywords as the adapters send them: search then hidden terms,
+  deduplicated, joined by one space (`submitted_keywords` in `rules_engine/text.py`, the one
+  helper Amazon's `generic_keyword` and Flipkart's `keywords` use), so a number or phrase split
+  across terms (`98765`, `43210`) is a hit on `keywords.search_terms`. Since the seller picks
+  every break point there, a `regex` row also reads that value with the spaces, dots and dashes
+  between digits dropped (`merge_digit_groups`), so `987`, `654`, `3210` is one mobile. That
+  item is added only when no single term already tripped the row; the `*` claim rows read the
+  joined value the same way (`water`, `proof`).
+- Before any term or rule regex is matched (`normalise`, `match_text` in
+  `rules_engine/text.py`) the text is NFKC-normalised, invisible format characters (soft hyphen,
+  zero-width space and joiners, direction marks, word joiner, BOM) are dropped and Unicode dashes
+  read as `-`; for `word` and `substring` terms a `-` also reads as a space, so one term covers
+  `hand loom` and `hand-loom`. The listing text itself is never changed.
+- Invented claims are the Rules Engine's to stop too, whatever the pipeline does: every seed
+  RuleSet holds three platform `*` `claim_requires_attribute` rows (`UNSUPPORTED_CLAIM`, severity
+  error). Certification words (`organic`, `GOTS`, `certified`, `OEKO-TEX`, fair trade) need
+  `certifications`, as do eco friendly claims; performance words (waterproof, water-resistant,
+  water repellent, anti-bacterial, antimicrobial, anti-fungal, odour resistant, UV protection or
+  protected, hypoallergenic, fireproof, flame retardant) need
+  `performance_claims`; hand-process words (handmade, handcrafted, handloom, handwoven, hand
+  embroidered, hand block printed, hand painted, hand knitted, hand stitched) need a
+  `construction` naming one of them. When the product's facts are given (generation and
+  validate), the backing attribute must be among those facts: a listing attribute the model
+  wrote cannot back a claim on its own.
+- A generation that fails before any model stage (the context load or the brand retrieval) gives
+  its budget reservation back, and a transient model or embedding failure (rate limit, provider
+  down, timeout) is a retryable `MODEL_UNAVAILABLE` rather than `GENERATION_FAILED`; the job is
+  not retried (`max_attempts=1`), the seller regenerates (`app/workers/generation.py`). Each
+  agent is judged by its last run, so a 429 that recovered on the retry does not hide a later
+  deterministic failure, and a missing key or embedder or a refused embeddings call (401, 400,
+  bad shape) is not transient: it stays `INTERNAL_ERROR`.
+- Brand embeds pay out of the same daily caps as generation: before each paid embedding call a
+  `brand_embed` job reserves the call's upper-bound cost against the tenant and platform caps
+  (the generation lock order, `app/workers/budget.py`) and settles it to zero once the call is
+  metered, so a large or repeatedly re-uploaded document cannot push the platform cap over
+  unchecked; over a cap the job fails `BUDGET_EXCEEDED` and the document `failed`. A stale
+  attempt the fence has moved past reserves nothing and makes no call (`INTERNAL_ERROR`, the
+  write dropped), as in generation.
+- One brand cannot flood the shared `default` queue (4 slots, FIFO, also running imports, image
+  checks and brand embeds): generate and regenerate refuse with 429 `RATE_LIMITED` once the
+  tenant holds `GENERATION_LIVE_JOBS_PER_TENANT` (default 10) `listing_generate` jobs `queued`
+  or `running`, counted under a per-tenant advisory lock (`enforce_live_generate_cap`). Claiming
+  itself stays FIFO: a per-tenant procrastinate queueing lock would cap each brand at one running
+  generation, which needs the lock threaded through every defer path (`policy.lock_for`); it is
+  left for a product decision.
 
 Source: CANON.md "The AI seam"; CANON-ADDENDUM.md §21; ADR-0012 §Decision 3; ADR-0013 §Decision 5;
 EXECUTION-PLAN.md §6.2.

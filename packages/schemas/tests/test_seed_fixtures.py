@@ -12,6 +12,7 @@ from typing import Any
 
 from mkos_schemas.rules import (
     BannedTerms,
+    ClaimRequiresAttribute,
     ImageRequirement,
     MaxLength,
     RequiredAttribute,
@@ -107,7 +108,7 @@ def test_rules_seed_star_banned_terms_each_ruleset() -> None:
     """S14a D12: one `*` banned_terms row per RuleSet, the scaffold list verbatim, in its own
     marketplace's wording and citation (CODE-PLAN L4)."""
     for rule_set in _load():
-        star = [r for r in rule_set.rules if r.field == "*"]
+        star = [r for r in rule_set.rules if r.field == "*" and r.rule_def.pack == "core"]
         assert len(star) == 1, rule_set.category
         definition = star[0].rule_def
         assert isinstance(definition, BannedTerms)
@@ -178,7 +179,7 @@ def test_rules_seed_tshirts_rulesets_present() -> None:
     scopes = _by_scope()
     for marketplace, title_max in (("amazon", 200), ("flipkart", 150)):
         rule_set = scopes[(marketplace, "tshirts")]
-        rows = {(r.field, r.rule_def.type): r for r in rule_set.rules}
+        rows = {(r.field, r.rule_def.type): r for r in rule_set.rules if r.rule_def.pack == "core"}
         assert rows[("content.title", "max_length")].rule_def.limit == title_max  # type: ignore[union-attr]
         assert rows[("content.title", "max_length")].version == 1
         assert rows[("content.title", "min_length")].rule_def.limit == 5  # type: ignore[union-attr]
@@ -278,8 +279,8 @@ BYTE_RULE_IDS = {
 APPAREL_RULES_SHA256 = "8a6f6bd465dbb3b049c9e5cc741e4fe49f17349e60ab71d044db700e2507baa0"
 
 
-def test_rules_seed_count_54() -> None:
-    assert sum(len(s.rules) for s in _load()) == 54
+def test_rules_seed_count_78() -> None:
+    assert sum(len(s.rules) for s in _load()) == 78
 
 
 def test_rules_seed_hidden_terms_byte_rule_amazon_only() -> None:
@@ -314,13 +315,14 @@ def test_rules_seed_hidden_terms_byte_rule_amazon_only() -> None:
 
 
 def test_rules_seed_apparel_unchanged_but_the_byte_rows() -> None:
-    """Kurta and tshirts keep every pre-A2 row exactly; only the byte rows are new.
+    """Kurta and tshirts keep every pre-A2 row exactly; only the byte, contact and claim rows are
+    new.
 
     The 1.2.0 `gate` key (null on every seed row) is the additive default and is left out of the
     digest; a seed row that sets a gate changes the digest.
     """
     raw = json.loads(SEED.read_text(encoding="utf-8"))
-    new_ids = set(BYTE_RULE_IDS.values())
+    new_ids = set(BYTE_RULE_IDS.values()) | CONTACT_RULE_IDS | CLAIM_RULE_IDS
 
     def pre_gate(rule: dict[str, Any]) -> dict[str, Any]:
         rule_def = dict(rule["rule_def"])
@@ -335,3 +337,74 @@ def test_rules_seed_apparel_unchanged_but_the_byte_rows() -> None:
     ]
     digest = hashlib.sha256(json.dumps(apparel, sort_keys=True).encode()).hexdigest()
     assert digest == APPAREL_RULES_SHA256
+
+
+# ---- contact details and markup: one platform `*` regex row per RuleSet (pack `contact`) ----
+
+CONTACT_RULE_IDS = {f"5eed0000-0000-4000-8000-000{m}000{c}0008" for m in (1, 2) for c in (1, 2, 3)}
+
+
+def test_rules_seed_contact_details_row_each_ruleset() -> None:
+    """URLs, email addresses, phone numbers and HTML tags are BANNED_TERM errors in every
+    RuleSet: one `*` banned_terms row with `match: regex`, in its own marketplace's wording."""
+    found: set[str] = set()
+    for rule_set in _load():
+        (row,) = [r for r in rule_set.rules if r.rule_def.pack == "contact"]
+        found.add(str(row.id))
+        definition = row.rule_def
+        assert isinstance(definition, BannedTerms)
+        assert (row.field, row.category, row.tenant_id) == ("*", rule_set.category, None)
+        assert (row.severity.value, row.version, row.enabled) == ("error", 1, True)
+        assert definition.error_code.value == "BANNED_TERM"
+        assert (definition.match, definition.case_sensitive) == ("regex", False)
+        assert definition.suggestion and definition.policy_ref is not None
+        name = "Flipkart" if _is_flipkart(rule_set) else "Amazon"
+        assert definition.policy_ref.source == f"{rule_set.marketplace.value}_policy"
+        assert name in definition.message and name in (definition.suggestion or "")
+        other = "Amazon" if name == "Flipkart" else "Flipkart"
+        assert other not in definition.message and other not in (definition.suggestion or "")
+    assert found == CONTACT_RULE_IDS
+
+
+# ---- claims needing proof: three platform `*` claim_requires_attribute rows per RuleSet ----
+
+CLAIM_RULE_IDS = {
+    f"5eed0000-0000-4000-8000-000{m}000{c}00{n}"
+    for m in (1, 2)
+    for c in (1, 2, 3)
+    for n in ("09", "10", "11")
+}
+CLAIM_BACKING = {
+    "claim_certification": ("certifications", {"organic", "gots", "certified", "oeko-tex"}),
+    "claim_performance": ("performance_claims", {"waterproof", "anti-bacterial", "antimicrobial"}),
+    "claim_handmade": ("construction", {"handmade", "handcrafted", "handloom"}),
+}
+
+
+def test_rules_seed_claim_rows_each_ruleset() -> None:
+    """Certification, performance and handmade claims need a backing fact in every RuleSet:
+    UNSUPPORTED_CLAIM errors, in the marketplace's own wording and citation."""
+    found: set[str] = set()
+    for rule_set in _load():
+        rows = {r.rule_def.pack: r for r in rule_set.rules if r.rule_def.pack in CLAIM_BACKING}
+        assert set(rows) == set(CLAIM_BACKING), rule_set.category
+        name = "Flipkart" if _is_flipkart(rule_set) else "Amazon"
+        for pack, row in rows.items():
+            found.add(str(row.id))
+            definition = row.rule_def
+            assert isinstance(definition, ClaimRequiresAttribute)
+            attribute, terms = CLAIM_BACKING[pack]
+            assert definition.requires.attribute == attribute
+            assert terms <= set(definition.terms)
+            assert (definition.match, definition.error_code.value) == ("word", "UNSUPPORTED_CLAIM")
+            assert (row.field, row.severity.value, row.version, row.tenant_id) == (
+                "*",
+                "error",
+                1,
+                None,
+            )
+            assert row.category == rule_set.category and row.enabled
+            assert definition.policy_ref is not None and definition.suggestion
+            assert definition.policy_ref.source == f"{rule_set.marketplace.value}_policy"
+            assert name in definition.message
+    assert found == CLAIM_RULE_IDS

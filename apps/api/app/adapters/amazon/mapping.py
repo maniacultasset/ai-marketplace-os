@@ -59,6 +59,7 @@ from app.adapters.base import (
     PreviewItem,
     submitted_fields,
 )
+from app.services.rules_engine.text import submitted_keywords
 
 DEFAULT_MARKETPLACE_ID: Final = "A21TJRUUN4KGV"
 UNSAFE_SKUS: Final = frozenset({".", ".."})
@@ -213,14 +214,8 @@ def _attribute_entries(
 
 
 def _keywords(listing: CanonicalListing) -> str:
-    seen: set[str] = set()
-    terms: list[str] = []
-    for term in [*listing.keywords.search_terms, *listing.keywords.hidden_terms]:
-        key = normalize(term)
-        if key and key not in seen:
-            seen.add(key)
-            terms.append(term.strip())
-    return " ".join(terms)
+    """The Rules Engine's own joined keyword value, so what is sent is what was checked."""
+    return submitted_keywords(listing.keywords)
 
 
 def _unsupported(template: CategoryTemplate, key: str) -> bool:

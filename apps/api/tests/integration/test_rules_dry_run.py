@@ -337,8 +337,8 @@ async def test_rules_dry_run_wrong_role(
 async def test_rules_dry_run_wrong_tenant(
     api: httpx.AsyncClient, dry_world: World, auth_db: Conn
 ) -> None:
-    add_rule(auth_db, banned(["handloom"]), tenant_id=dry_world.tenant("acme"))
-    title = "Handloom cotton kurta set"
+    add_rule(auth_db, banned(["chikankari"]), tenant_id=dry_world.tenant("acme"))
+    title = "Chikankari cotton kurta set"
     acme = await api.post(DRY_RUN, json=draft(title), headers=_as(dry_world))
     bharat = await api.post(DRY_RUN, json=draft(title), headers=_as(dry_world, slug="bharat"))
     assert ("BANNED_TERM", "content.title") in _codes(acme.json())

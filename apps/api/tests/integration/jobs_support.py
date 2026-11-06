@@ -92,6 +92,51 @@ def insert_job(conn: Conn, tenant_id: uuid.UUID, **columns: Any) -> uuid.UUID:
     return row[0]  # type: ignore[no-any-return]
 
 
+LEASE_FAR_FUTURE = "2099-01-01T00:00:00Z"
+
+
+def claim_job(conn: Conn, job_id: uuid.UUID, *, attempt: int = 1) -> uuid.UUID:
+    """Mark a job `running` on `attempt` with a live lease, as the worker's claim does, so a
+    body run directly (outside `run_job`) holds the fence its budget reservation checks."""
+    conn.execute(
+        "UPDATE job_runs SET status = 'running', attempt = %s, started_at = now(), "
+        "lease_expires_at = %s WHERE id = %s",
+        [attempt, LEASE_FAR_FUTURE, job_id],
+    )
+    return job_id
+
+
+def running_profile_embed_job(conn: Conn, tenant_id: uuid.UUID) -> uuid.UUID:
+    """A claimed attempt-1 `brand_embed` job for the tenant's voice profile, shaped as
+    `tenants.update_profile` enqueues it."""
+    return insert_job(
+        conn,
+        tenant_id,
+        kind="brand_embed",
+        entity_type="brand_document",
+        entity_id=tenant_id,
+        payload_json={"source": "brand_profile"},
+        status="running",
+        attempt=1,
+        started_at="2026-10-05T00:00:00Z",
+        lease_expires_at=LEASE_FAR_FUTURE,
+    )
+
+
+def claim_profile_embed_job(conn: Conn, tenant_id: uuid.UUID) -> uuid.UUID:
+    """Claim the tenant's queued profile `brand_embed` job (the one a PATCH enqueued) as the
+    worker would; a new claimed one when none is queued."""
+    row = conn.execute(
+        "SELECT id FROM job_runs WHERE tenant_id = %s AND kind = 'brand_embed' "
+        "AND payload_json->>'source' = 'brand_profile' AND status = 'queued' "
+        "ORDER BY queued_at DESC LIMIT 1",
+        [tenant_id],
+    ).fetchone()
+    if row is None:
+        return running_profile_embed_job(conn, tenant_id)
+    return claim_job(conn, row[0])
+
+
 def job_row(conn: Conn, job_id: uuid.UUID) -> dict[str, Any]:
     cur = conn.execute("SELECT * FROM job_runs WHERE id = %s", [job_id])
     names = [d.name for d in cur.description or ()]

@@ -49,7 +49,9 @@ from .text import (
     iter_slots,
     lookup,
     measure,
+    merge_digit_groups,
     scalar_equal,
+    submitted_keywords_slot,
 )
 
 
@@ -136,11 +138,43 @@ def _banned_terms(rule: Rule, ctx: Ctx) -> list[Draft]:
             memo=ctx.memo,
         )
 
+    def joined_hit(text: str) -> tuple[str, ...]:
+        # The joining spaces are the seller's break points, so a regex row also reads the
+        # value with digit groups merged: a number split at any point is one run of digits.
+        if rule_def.match != "regex":
+            return hit(text)
+        found = set(hit(text)) | set(hit(merge_digit_groups(text)))
+        return tuple(t for t in rule_def.terms if t in found)
+
     slots = iter_slots(ctx.listing, rule.field, kind="text")
-    return [
+    out = [
         _draft(rule, path, text, value=text, term=", ".join(found))
         for path, text, found in _grouped_hits(slots, hit, rule_def.terms)
     ]
+    out += _joined_keywords(rule, ctx, out, joined_hit)
+    return out
+
+
+def _joined_keywords(
+    rule: Rule,
+    ctx: Ctx,
+    out: Sequence[Draft],
+    hit: Callable[[str], tuple[str, ...]],
+    /,
+    **ph: str,
+) -> list[Draft]:
+    """A `*` row also reads the keywords as the adapters send them, one space-joined value, so
+    a phrase or number split across terms is caught; reported only when no single term already
+    tripped the rule, so a hit is never counted twice. ``ph`` are the placeholders besides
+    ``term``."""
+    joined = submitted_keywords_slot(ctx.listing) if rule.field == "*" else None
+    if joined is None or any(d.field.startswith("keywords.") for d in out):
+        return []
+    path, text = joined
+    found = hit(text)
+    if not found:
+        return []
+    return [_draft(rule, path, text, value=text, term=", ".join(found), **ph)]
 
 
 def _value_in(value: object, allowed: Sequence[str]) -> bool:
@@ -150,15 +184,28 @@ def _value_in(value: object, allowed: Sequence[str]) -> bool:
     return fold(str(value)) in folded
 
 
+def _backs(value: object, any_of: Sequence[str] | None) -> bool:
+    if not is_present(value):
+        return False
+    if any_of is None:
+        return True
+    wanted = {fold(v) for v in any_of}
+    values = value if isinstance(value, list) else [value]
+    return any(fold(str(v)) in wanted for v in values)
+
+
 def _claim(rule: Rule, ctx: Ctx) -> list[Draft]:
+    """A claim term needs its attribute on the listing and, when the product's facts are given
+    (generation, validate), among those facts too: a listing attribute the model wrote is not
+    a fact, so it cannot back a certification or performance claim on its own."""
     rule_def = cast("ClaimRequiresAttribute", rule.rule_def)
     requires = rule_def.requires
     found, value = ctx.lookup(f"attributes.{requires.attribute}")
-    supported = found and is_present(value)
-    if supported and requires.any_of is not None:
-        wanted = {fold(v) for v in requires.any_of}
-        values = value if isinstance(value, list) else [value]
-        supported = any(fold(str(v)) in wanted for v in values)
+    supported = found and _backs(value, requires.any_of)
+    if supported and ctx.product is not None:
+        facts = ctx.product.get("attributes")
+        fact = facts.get(requires.attribute) if isinstance(facts, Mapping) else None
+        supported = _backs(fact, requires.any_of)
     if supported:
         return []
 
@@ -168,10 +215,12 @@ def _claim(rule: Rule, ctx: Ctx) -> list[Draft]:
         )
 
     slots = iter_slots(ctx.listing, rule.field, kind="text")
-    return [
+    out = [
         _draft(rule, path, text, value=text, term=", ".join(terms), attribute=requires.attribute)
         for path, text, terms in _grouped_hits(slots, hit, rule_def.terms)
     ]
+    out += _joined_keywords(rule, ctx, out, hit, attribute=requires.attribute)
+    return out
 
 
 # ---- attributes (T7) --------------------------------------------------------------------------

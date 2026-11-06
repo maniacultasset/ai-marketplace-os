@@ -87,6 +87,27 @@ def test_amazon_mapping_keywords_merged_dedup() -> None:
     ]
 
 
+@pytest.mark.parametrize(
+    ("search", "hidden"),
+    [
+        (["kurta", "Cotton Set"], ["KURTA", "indigo"]),
+        (["98765", " 43210 "], ["\uff4b\uff55\uff52\uff54\uff41", "kurta"]),
+        ([], ["only hidden"]),
+    ],
+)
+def test_amazon_mapping_keywords_are_the_rules_engine_value(
+    search: list[str], hidden: list[str]
+) -> None:
+    """The value sent is exactly the joined string the Rules Engine checks (one shared helper)."""
+    from app.services.rules_engine.text import submitted_keywords
+
+    keywords = listing().keywords.model_copy(
+        update={"search_terms": search, "hidden_terms": hidden}
+    )
+    attrs = _attrs(amazon_item(listing().model_copy(update={"keywords": keywords})))
+    assert attrs["generic_keyword"][0]["value"] == submitted_keywords(keywords)
+
+
 def _images(n: int) -> list[ImageRef]:
     return [
         ImageRef(image_id=uuid.uuid4(), slot="main" if i == 0 else "secondary", position=i)

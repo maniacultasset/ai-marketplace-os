@@ -13,7 +13,7 @@ import pytest
 from .auth_support import PREFIX
 from .brand_support import GUIDE, FakeEmbedder, MemoryStore, agent_rows, chunk_rows, doc_row
 from .conftest import LOCAL_HOSTS
-from .jobs_support import JobWorld, as_member, job_row, jobs_db, reset_queue
+from .jobs_support import JobWorld, as_member, claim_job, job_row, jobs_db, reset_queue
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
 __all__ = ["jobs_db"]
@@ -118,6 +118,7 @@ async def test_duplicate_concurrent_body_runs_one_active_set(
     job = await _upload(api, jobs_db, "owner@acme.test")
     acme = jobs_db.tenant("acme")
     payload = job_row(jobs_db.conn, job)["payload_json"]
+    claim_job(jobs_db.conn, job)  # the reaped lease's first attempt, still running
     ctx = JobContext(job, acme, JobKind.BRAND_EMBED, "req-dup", payload, 1)
     results = await asyncio.gather(
         run_brand_embed(ctx), run_brand_embed(ctx), return_exceptions=True

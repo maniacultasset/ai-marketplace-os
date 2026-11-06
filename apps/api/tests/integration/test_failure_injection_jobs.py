@@ -5,7 +5,8 @@ Idempotency-Key twice is one job and one marketplace write; two publish jobs on 
 one write; a worker that dies after the write is reaped and reads before it retries; a pipeline
 timeout or a malformed pipeline result stores no version; a truncated image is `CORRUPT` and
 blocks the approval; a terminated DB backend mid-job is retried (3-attempt kinds) or fails once
-(generation, `max_attempts` 1) with the reservation kept.
+(generation, `max_attempts` 1; during the brand retrieval, before any model stage, so the
+reservation is released).
 """
 
 from __future__ import annotations
@@ -287,8 +288,9 @@ async def test_failure_injection_pg_terminate_backend_generation_fails_once(
 ) -> None:
     """After the pipeline's `retrieve_brand_chunks`, a port statement is running when the test
     terminates its backend. Generation has max_attempts 1: the job ends `failed` with one
-    ErrorReport, no version, attempt 1, and the reservation kept (S18 CP10); no stub agent-run
-    row is written for the crashed call (DATABASE open #19)."""
+    ErrorReport, no version, attempt 1; no stub agent-run row is written for the crashed call
+    (DATABASE open #19). No model stage had started (only the context load and the brand
+    retrieval), so the reservation is released rather than kept."""
     from app.db.session import get_engine
     from app.services import pipeline_deps
     from sqlalchemy import text
@@ -316,7 +318,7 @@ async def test_failure_injection_pg_terminate_backend_generation_fails_once(
     assert (job[0], job[4]) == ("failed", "INTERNAL_ERROR"), job
     assert job[1] is not None and job[1]["status"] == "failed"
     assert job[3] == 1
-    assert job[2] is not None and job[2] > 0  # the reservation is kept, not zeroed
+    assert job[2] == 0  # no model stage started: the reservation is released
     assert _versions(gen_world, accepted.listing_id) == 0
     row = gen_world.listing(accepted.listing_id)
     assert (row["status"], row["status_reason"]) == ("failed", "generation_failed")

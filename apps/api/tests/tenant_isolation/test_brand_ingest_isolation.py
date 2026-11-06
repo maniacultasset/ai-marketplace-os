@@ -12,6 +12,7 @@ import psycopg
 import pytest
 from tests.integration.auth_support import World, build_world
 from tests.integration.brand_support import MemoryStore, finish_jobs, principal
+from tests.integration.jobs_support import claim_job
 
 pytestmark = pytest.mark.usefixtures("iso_settings")
 Conn = psycopg.Connection[tuple[object, ...]]
@@ -52,6 +53,7 @@ async def _ingest(world: World, slug: str, chunk_type: str, text: str) -> uuid.U
         job = await uow.job_runs.get_by_id(job_id)
         assert job is not None
         payload: dict[str, Any] = dict(job.payload_json or {})
+    claim_job(world.conn, job_id)
     ctx = JobContext(job_id, world.tenant(slug), JobKind.BRAND_EMBED, "req-iso", payload, 1)
     await run_brand_embed(ctx)
     finish_jobs(world.conn, "succeeded")  # the body ran outside the wrapper: close the job

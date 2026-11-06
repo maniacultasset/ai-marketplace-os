@@ -77,7 +77,9 @@
      `LLM_PROVIDER` and `LLM_MODEL_DEFAULT` (an OpenRouter model id such as
      `deepseek/deepseek-chat`). Vision and embedding name their OpenAI model as `openai/<model>`.
      The backend's own embedder calls OpenRouter's `/embeddings` with `openai/<EMBEDDING_MODEL>`,
-     1536 dimensions, `max_retries=0`, and reads `usage.prompt_tokens` as before.
+     1536 dimensions, `max_retries=0`, and reads `usage.prompt_tokens` as before. Each request
+     sends `provider: {"data_collection": "deny"}`, as the generation calls do, so brand text is
+     routed only to providers that neither keep nor train on it.
      Brand chunks, retrieval, `agent_runs.model_used` and the price keep the OpenAI id
      (`text-embedding-3-small`): the vectors are the same model's, so switching the gateway needs no
      re-embed, and the cost is still recorded at $0.02 per million tokens.

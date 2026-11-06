@@ -62,6 +62,27 @@ def test_flipkart_mapping_keywords_merged_dedup() -> None:
     assert _values(_attrs(fk_item(body)), "keywords") == ["Cotton Kurta kurta"]
 
 
+@pytest.mark.parametrize(
+    ("search", "hidden"),
+    [
+        (["Cotton Kurta", "kurta"], ["cotton kurta"]),
+        (["98765", " 43210 "], ["\uff4b\uff55\uff52\uff54\uff41", "kurta"]),
+        ([], ["only hidden"]),
+    ],
+)
+def test_flipkart_mapping_keywords_are_the_rules_engine_value(
+    search: list[str], hidden: list[str]
+) -> None:
+    """The value sent is exactly the joined string the Rules Engine checks (one shared helper)."""
+    from app.services.rules_engine.text import submitted_keywords
+
+    keywords = listing().keywords.model_copy(
+        update={"search_terms": search, "hidden_terms": hidden}
+    )
+    body = listing().model_copy(update={"keywords": keywords})
+    assert _values(_attrs(fk_item(body)), "keywords") == [submitted_keywords(keywords)]
+
+
 def test_flipkart_mapping_images_capped_rest_skipped() -> None:
     from app.adapters.flipkart.mapping import family_payloads
 

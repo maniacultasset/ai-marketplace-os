@@ -15,7 +15,9 @@ from app.services.rules_engine.text import (
     is_present,
     iter_slots,
     lookup,
+    match_text,
     measure,
+    merge_digit_groups,
     normalise,
 )
 from mkos_schemas.paths import FIELD_PATH_PATTERNS, RULE_FIELD_EXTRAS
@@ -44,6 +46,41 @@ def test_normalise_collapses_tabs_newlines_nbsp() -> None:
 def test_normalise_empty_and_blank() -> None:
     assert normalise("", case_sensitive=False) == ""
     assert normalise(" \t\n ", case_sensitive=False) == ""
+
+
+@pytest.mark.parametrize(
+    "text", ["be\u200bst", "b\u00adest", "be\u2060st", "\ufeffbest", "be\u200dst", "be\u200est"]
+)
+def test_normalise_drops_invisible_format_characters(text: str) -> None:
+    assert normalise(text, case_sensitive=False) == "best"
+    assert find_terms(text, ["best"], match="word", case_sensitive=False) == ("best",)
+
+
+@pytest.mark.parametrize("dash", ["-", "\u2010", "\u2011", "\u2013", "\u2014", "\u2212"])
+def test_normalise_reads_dashes_as_a_space(dash: str) -> None:
+    assert normalise(f"Hand{dash}Loom", case_sensitive=False) == "hand loom"
+    assert find_terms(f"Hand{dash}loom", ["hand-loom"], match="word", case_sensitive=False)
+    assert find_terms(f"hand{dash}loom", ["hand loom"], match="substring", case_sensitive=True)
+
+
+def test_match_text_folds_dashes_for_regex_rows() -> None:
+    assert match_text("98765\u201343210") == "98765-43210"
+    pattern = [r"[6-9][0-9]{4}-[0-9]{5}"]
+    assert find_terms("98765\u2013432\u200b10", pattern, match="regex", case_sensitive=False)
+
+
+@pytest.mark.parametrize(
+    ("text", "merged"),
+    [
+        ("call 987 654 3210", "call 9876543210"),
+        ("9876543 210", "9876543210"),
+        ("98-76.54  32\u201310", "9876543210"),
+        ("size 38 pack", "size 38 pack"),
+        ("a - b", "a - b"),
+    ],
+)
+def test_merge_digit_groups(text: str, merged: str) -> None:
+    assert merge_digit_groups(text) == merged
 
 
 def test_measure_chars_counts_code_points() -> None:
