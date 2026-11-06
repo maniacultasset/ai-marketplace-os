@@ -1924,6 +1924,18 @@ export interface components {
             /** Text Path */
             text_path: string;
         };
+        /** ColourwayOut */
+        ColourwayOut: {
+            /** Colour */
+            colour: string;
+            /** Colour Sku */
+            colour_sku?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
         /**
          * ConnectConfirmRequest
          * @description The handle the callback put in `?pending=`; only the user who started the flow, in the
@@ -2052,6 +2064,13 @@ export interface components {
          * @enum {string}
          */
         ErrorSource: "schema" | "rules_engine" | "vision_model" | "ai_model" | "amazon_adapter" | "flipkart_adapter" | "system";
+        /** FibreOut */
+        FibreOut: {
+            /** Fibre */
+            fibre: string;
+            /** Percent */
+            percent: number;
+        };
         /** FieldResult */
         FieldResult: {
             error?: components["schemas"]["ErrorItem"] | null;
@@ -2370,6 +2389,15 @@ export interface components {
          * @enum {string}
          */
         ImageSlot: "main" | "secondary" | "lifestyle" | "size_chart" | "packaging_label";
+        /** ImageUploadIn */
+        ImageUploadIn: {
+            slot: components["schemas"]["ImageSlot"];
+            /**
+             * Storage Key
+             * @description An object key under the caller's tenant prefix, never a URL: ASCII letters, digits and `._/-`, no `..`, no `//`, no leading or trailing `/`.
+             */
+            storage_key: string;
+        };
         /** ImportAccepted */
         ImportAccepted: {
             /**
@@ -3060,6 +3088,72 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
+        /** PartyIn */
+        PartyIn: {
+            /** Address Line1 */
+            address_line1: string;
+            /** Address Line2 */
+            address_line2?: string | null;
+            /** City */
+            city: string;
+            /**
+             * Country Code
+             * @default IN
+             * @constant
+             */
+            country_code: "IN";
+            /** Email */
+            email?: string | null;
+            /** Gstin */
+            gstin?: string | null;
+            /** Legal Name */
+            legal_name: string;
+            /** Phone */
+            phone?: string | null;
+            /**
+             * Postal Code
+             * @description Indian PIN code.
+             */
+            postal_code: string;
+            /**
+             * State Code
+             * @description ISO 3166-2:IN code without the `IN-` prefix (36 codes in use since 2020).
+             */
+            state_code: string;
+        };
+        /** PartyOut */
+        PartyOut: {
+            /** Address Line1 */
+            address_line1?: string | null;
+            /** Address Line2 */
+            address_line2?: string | null;
+            /** City */
+            city?: string | null;
+            /**
+             * Country Code
+             * @default IN
+             */
+            country_code: string;
+            /** Gstin */
+            gstin?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Inherited
+             * @description True when the party comes from the brand default.
+             * @default false
+             */
+            inherited: boolean;
+            /** Legal Name */
+            legal_name?: string | null;
+            /** Postal Code */
+            postal_code?: string | null;
+            /** State Code */
+            state_code?: string | null;
+        };
         /** PasswordChangeRequest */
         PasswordChangeRequest: {
             /**
@@ -3126,15 +3220,51 @@ export interface components {
             };
             /** Category */
             category: string;
+            /**
+             * Id
+             * @description The product id minted by `POST /images/upload-url`; needs `image_uploads`.
+             */
+            id?: string | null;
+            /** Image Uploads */
+            image_uploads?: components["schemas"]["ImageUploadIn"][];
             /** Images */
             images?: string[];
+            /** @description Only when it differs from the brand default. */
+            manufacturer?: components["schemas"]["PartyIn"] | null;
+            /** Mrp */
+            mrp?: string | null;
+            /** Selling Price */
+            selling_price?: string | null;
+            size_chart?: components["schemas"]["SizeChart"] | null;
             /**
              * Sku
              * @description 1-64 characters, no whitespace and no `]` (T72; unique per brand).
              */
             sku: string;
+            /** Style Number */
+            style_number?: string | null;
             /** Title */
             title: string;
+        };
+        /** ProductImageOut */
+        ProductImageOut: {
+            /** Colourway Id */
+            colourway_id?: string | null;
+            /**
+             * Compliance Status
+             * @enum {string}
+             */
+            compliance_status: "pending" | "passed" | "failed";
+            /**
+             * Image Id
+             * Format: uuid
+             */
+            image_id: string;
+            /** Position */
+            position: number;
+            slot: components["schemas"]["ImageSlot"];
+            /** Status */
+            status: string;
         };
         /** ProductOut */
         ProductOut: {
@@ -3144,20 +3274,43 @@ export interface components {
             };
             /** Category */
             category: string;
+            /** Colourways */
+            colourways?: components["schemas"]["ColourwayOut"][];
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
+            /** Currency */
+            currency?: string | null;
+            /** Fiber Composition */
+            fiber_composition?: components["schemas"]["FibreOut"][] | null;
             /**
              * Id
              * Format: uuid
              */
             id: string;
+            /** Image Details */
+            image_details?: components["schemas"]["ProductImageOut"][];
             /** Images */
             images?: string[];
+            /** @description The effective manufacturer (own, style or brand default); null on lists. */
+            manufacturer?: components["schemas"]["PartyOut"] | null;
+            /**
+             * Mrp
+             * @example 1299.00
+             */
+            mrp?: string | null;
             /** Parent Product Id */
             parent_product_id?: string | null;
+            /**
+             * Selling Price
+             * @example 999.00
+             */
+            selling_price?: string | null;
+            size_chart?: components["schemas"]["SizeChart"] | null;
+            /** Size Chart Url */
+            size_chart_url?: string | null;
             /**
              * Sku
              * @description 1-64 characters, no whitespace and no `]` (T72; unique per brand).
@@ -3168,6 +3321,8 @@ export interface components {
              * @enum {string}
              */
             status: "draft" | "active";
+            /** Style Number */
+            style_number?: string | null;
             /** Title */
             title: string;
             /**
@@ -3430,6 +3585,40 @@ export interface components {
              * Format: password
              */
             password: string;
+        };
+        /** SizeChart */
+        SizeChart: {
+            /**
+             * Basis
+             * @enum {string}
+             */
+            basis: "garment" | "body";
+            /** Rows */
+            rows: components["schemas"]["SizeChartRow"][];
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "cm" | "in";
+        };
+        /** SizeChartRow */
+        SizeChartRow: {
+            /** Chest */
+            chest?: number | null;
+            /** Hip */
+            hip?: number | null;
+            /** Inseam */
+            inseam?: number | null;
+            /** Length */
+            length?: number | null;
+            /** Shoulder */
+            shoulder?: number | null;
+            /** Size */
+            size: string;
+            /** Sleeve */
+            sleeve?: number | null;
+            /** Waist */
+            waist?: number | null;
         };
         /**
          * StepUpOut

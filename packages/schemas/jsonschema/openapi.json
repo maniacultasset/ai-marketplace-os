@@ -807,6 +807,36 @@
         "title": "Claim",
         "type": "object"
       },
+      "ColourwayOut": {
+        "properties": {
+          "colour": {
+            "title": "Colour",
+            "type": "string"
+          },
+          "colour_sku": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Colour Sku"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "colour"
+        ],
+        "title": "ColourwayOut",
+        "type": "object"
+      },
       "ConnectConfirmRequest": {
         "additionalProperties": false,
         "description": "The handle the callback put in `?pending=`; only the user who started the flow, in the\ntenant that started it, can confirm it.",
@@ -1294,6 +1324,24 @@
         ],
         "title": "ErrorSource",
         "type": "string"
+      },
+      "FibreOut": {
+        "properties": {
+          "fibre": {
+            "title": "Fibre",
+            "type": "string"
+          },
+          "percent": {
+            "title": "Percent",
+            "type": "number"
+          }
+        },
+        "required": [
+          "fibre",
+          "percent"
+        ],
+        "title": "FibreOut",
+        "type": "object"
       },
       "FieldResult": {
         "properties": {
@@ -2066,6 +2114,28 @@
         ],
         "title": "ImageSlot",
         "type": "string"
+      },
+      "ImageUploadIn": {
+        "additionalProperties": false,
+        "properties": {
+          "slot": {
+            "$ref": "#/components/schemas/ImageSlot"
+          },
+          "storage_key": {
+            "description": "An object key under the caller's tenant prefix, never a URL: ASCII letters, digits and `._/-`, no `..`, no `//`, no leading or trailing `/`.",
+            "maxLength": 512,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+            "title": "Storage Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "storage_key",
+          "slot"
+        ],
+        "title": "ImageUploadIn",
+        "type": "object"
       },
       "ImportAccepted": {
         "properties": {
@@ -4005,6 +4075,208 @@
         "title": "PageInfo",
         "type": "object"
       },
+      "PartyIn": {
+        "additionalProperties": false,
+        "properties": {
+          "address_line1": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Address Line1",
+            "type": "string"
+          },
+          "address_line2": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Line2"
+          },
+          "city": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "City",
+            "type": "string"
+          },
+          "country_code": {
+            "const": "IN",
+            "default": "IN",
+            "title": "Country Code",
+            "type": "string"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 254,
+                "pattern": "^[^@\\s]+@[^@\\s]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "gstin": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gstin"
+          },
+          "legal_name": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Legal Name",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "pattern": "^[+]?[0-9][0-9 -]{5,19}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "postal_code": {
+            "description": "Indian PIN code.",
+            "pattern": "^[1-9][0-9]{5}$",
+            "title": "Postal Code",
+            "type": "string"
+          },
+          "state_code": {
+            "description": "ISO 3166-2:IN code without the `IN-` prefix (36 codes in use since 2020).",
+            "pattern": "^[A-Z]{2}$",
+            "title": "State Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "legal_name",
+          "address_line1",
+          "city",
+          "state_code",
+          "postal_code"
+        ],
+        "title": "PartyIn",
+        "type": "object"
+      },
+      "PartyOut": {
+        "properties": {
+          "address_line1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Line1"
+          },
+          "address_line2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Line2"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "country_code": {
+            "default": "IN",
+            "title": "Country Code",
+            "type": "string"
+          },
+          "gstin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gstin"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "inherited": {
+            "default": false,
+            "description": "True when the party comes from the brand default.",
+            "title": "Inherited",
+            "type": "boolean"
+          },
+          "legal_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legal Name"
+          },
+          "postal_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Postal Code"
+          },
+          "state_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Code"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "PartyOut",
+        "type": "object"
+      },
       "PasswordChangeRequest": {
         "additionalProperties": false,
         "properties": {
@@ -4152,6 +4424,27 @@
             "title": "Category",
             "type": "string"
           },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The product id minted by `POST /images/upload-url`; needs `image_uploads`.",
+            "title": "Id"
+          },
+          "image_uploads": {
+            "items": {
+              "$ref": "#/components/schemas/ImageUploadIn"
+            },
+            "maxItems": 20,
+            "title": "Image Uploads",
+            "type": "array"
+          },
           "images": {
             "items": {
               "description": "An object key under the caller's tenant prefix, never a URL: ASCII letters, digits and `._/-`, no `..`, no `//`, no leading or trailing `/`.",
@@ -4164,11 +4457,77 @@
             "title": "Images",
             "type": "array"
           },
+          "manufacturer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartyIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only when it differs from the brand default."
+          },
+          "mrp": {
+            "anyOf": [
+              {
+                "description": "INR as a decimal string, above 0, at most 2 decimals.",
+                "examples": [
+                  "1299.00"
+                ],
+                "pattern": "^(0|[1-9][0-9]{0,9})(\\.[0-9]{1,2})?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mrp"
+          },
+          "selling_price": {
+            "anyOf": [
+              {
+                "description": "INR as a decimal string, above 0, at most 2 decimals.",
+                "examples": [
+                  "1299.00"
+                ],
+                "pattern": "^(0|[1-9][0-9]{0,9})(\\.[0-9]{1,2})?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selling Price"
+          },
+          "size_chart": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SizeChart"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "sku": {
             "description": "1-64 characters, no whitespace and no `]` (T72; unique per brand).",
             "pattern": "^[^\\]\\s]{1,64}$",
             "title": "Sku",
             "type": "string"
+          },
+          "style_number": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style Number"
           },
           "title": {
             "maxLength": 500,
@@ -4183,6 +4542,56 @@
           "category"
         ],
         "title": "ProductCreate",
+        "type": "object"
+      },
+      "ProductImageOut": {
+        "properties": {
+          "colourway_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Colourway Id"
+          },
+          "compliance_status": {
+            "enum": [
+              "pending",
+              "passed",
+              "failed"
+            ],
+            "title": "Compliance Status",
+            "type": "string"
+          },
+          "image_id": {
+            "format": "uuid",
+            "title": "Image Id",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "slot": {
+            "$ref": "#/components/schemas/ImageSlot"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_id",
+          "slot",
+          "position",
+          "status",
+          "compliance_status"
+        ],
+        "title": "ProductImageOut",
         "type": "object"
       },
       "ProductOut": {
@@ -4213,15 +4622,54 @@
             "title": "Category",
             "type": "string"
           },
+          "colourways": {
+            "items": {
+              "$ref": "#/components/schemas/ColourwayOut"
+            },
+            "title": "Colourways",
+            "type": "array"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
             "type": "string"
           },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "fiber_composition": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FibreOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fiber Composition"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "image_details": {
+            "items": {
+              "$ref": "#/components/schemas/ProductImageOut"
+            },
+            "title": "Image Details",
+            "type": "array"
           },
           "images": {
             "items": {
@@ -4234,6 +4682,31 @@
             "title": "Images",
             "type": "array"
           },
+          "manufacturer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartyOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The effective manufacturer (own, style or brand default); null on lists."
+          },
+          "mrp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "1299.00"
+            ],
+            "title": "Mrp"
+          },
           "parent_product_id": {
             "anyOf": [
               {
@@ -4245,6 +4718,41 @@
               }
             ],
             "title": "Parent Product Id"
+          },
+          "selling_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "999.00"
+            ],
+            "title": "Selling Price"
+          },
+          "size_chart": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SizeChart"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "size_chart_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Chart Url"
           },
           "sku": {
             "description": "1-64 characters, no whitespace and no `]` (T72; unique per brand).",
@@ -4259,6 +4767,17 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "style_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style Number"
           },
           "title": {
             "maxLength": 500,
@@ -4982,6 +5501,150 @@
           "password"
         ],
         "title": "SignupStatusRequest",
+        "type": "object"
+      },
+      "SizeChart": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "enum": [
+              "garment",
+              "body"
+            ],
+            "title": "Basis",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/SizeChartRow"
+            },
+            "maxItems": 40,
+            "minItems": 1,
+            "title": "Rows",
+            "type": "array"
+          },
+          "unit": {
+            "enum": [
+              "cm",
+              "in"
+            ],
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit",
+          "basis",
+          "rows"
+        ],
+        "title": "SizeChart",
+        "type": "object"
+      },
+      "SizeChartRow": {
+        "additionalProperties": false,
+        "properties": {
+          "chest": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 500.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chest"
+          },
+          "hip": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 500.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hip"
+          },
+          "inseam": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 500.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inseam"
+          },
+          "length": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 500.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length"
+          },
+          "shoulder": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 500.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shoulder"
+          },
+          "size": {
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Size",
+            "type": "string"
+          },
+          "sleeve": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 500.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleeve"
+          },
+          "waist": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 500.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waist"
+          }
+        },
+        "required": [
+          "size"
+        ],
+        "title": "SizeChartRow",
         "type": "object"
       },
       "StepUpOut": {
