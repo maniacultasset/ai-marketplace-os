@@ -35,6 +35,7 @@ from app.api.v1.surface import OPS, route
 from app.core.errors import ConflictError
 from app.core.rbac import Principal
 from app.services import product_edit, products
+from app.services.images import CreateUpload
 from app.services.imports import upload
 from app.services.intake_values import PartyInput
 
@@ -139,6 +140,10 @@ async def products_create(
             selling_price=None if body.selling_price is None else Decimal(body.selling_price),
             manufacturer=None if body.manufacturer is None else party_input(body.manufacturer),
             size_chart=None if body.size_chart is None else size_chart_dict(body.size_chart),
+            id=body.id,
+            image_uploads=tuple(
+                CreateUpload(storage_key=u.storage_key, slot=u.slot) for u in body.image_uploads
+            ),
         ),
     )
     response.headers["ETag"] = view.etag

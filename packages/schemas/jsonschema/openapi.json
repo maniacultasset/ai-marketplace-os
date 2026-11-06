@@ -6678,6 +6678,12 @@
             "title": "Headers",
             "type": "object"
           },
+          "product_id": {
+            "description": "The product the key belongs to (minted when omitted).",
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
           "storage_key": {
             "description": "An object key under the caller's tenant prefix, never a URL: ASCII letters, digits and `._/-`, no `..`, no `//`, no leading or trailing `/`.",
             "maxLength": 512,
@@ -6696,7 +6702,8 @@
         "required": [
           "upload_url",
           "storage_key",
-          "expires_at"
+          "expires_at",
+          "product_id"
         ],
         "title": "UploadUrlOut",
         "type": "object"
@@ -6720,16 +6727,23 @@
             "type": "string"
           },
           "product_id": {
-            "format": "uuid",
-            "title": "Product Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Omit to mint a product id for a product not created yet (SI1): send it back as `id` with `image_uploads` on `POST /products`.",
+            "title": "Product Id"
           },
           "slot": {
             "$ref": "#/components/schemas/ImageSlot"
           }
         },
         "required": [
-          "product_id",
           "slot",
           "content_type",
           "bytes"
@@ -18122,6 +18136,7 @@
                   "headers": {
                     "Content-Type": "image/jpeg"
                   },
+                  "product_id": "0b1c2d3e-0000-4000-8000-000000000101",
                   "storage_key": "t/0b1c2d3e-0000-4000-8000-000000000001/img/0b1c2d3e-0000-4000-8000-000000000101/main.jpg",
                   "upload_url": "http://localhost:9000/marketplace-images/t/example?X-Amz-Signature=ex"
                 },

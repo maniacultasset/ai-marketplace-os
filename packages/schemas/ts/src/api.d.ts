@@ -4026,6 +4026,12 @@ export interface components {
                 [key: string]: string;
             };
             /**
+             * Product Id
+             * Format: uuid
+             * @description The product the key belongs to (minted when omitted).
+             */
+            product_id: string;
+            /**
              * Storage Key
              * @description An object key under the caller's tenant prefix, never a URL: ASCII letters, digits and `._/-`, no `..`, no `//`, no leading or trailing `/`.
              */
@@ -4044,9 +4050,9 @@ export interface components {
             content_type: "image/jpeg" | "image/png" | "image/webp";
             /**
              * Product Id
-             * Format: uuid
+             * @description Omit to mint a product id for a product not created yet (SI1): send it back as `id` with `image_uploads` on `POST /products`.
              */
-            product_id: string;
+            product_id?: string | null;
             slot: components["schemas"]["ImageSlot"];
         };
         /** ValidateRequest */
@@ -14838,6 +14844,7 @@ export interface operations {
                      *       "headers": {
                      *         "Content-Type": "image/jpeg"
                      *       },
+                     *       "product_id": "0b1c2d3e-0000-4000-8000-000000000101",
                      *       "storage_key": "t/0b1c2d3e-0000-4000-8000-000000000001/img/0b1c2d3e-0000-4000-8000-000000000101/main.jpg",
                      *       "upload_url": "http://localhost:9000/marketplace-images/t/example?X-Amz-Signature=ex"
                      *     }

@@ -32,13 +32,14 @@ from typing import Any, Final, Literal
 
 from mkos_schemas.codes import ErrorCode
 
-from app.core.errors import InputError, NotFoundError
+from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.rbac import Principal
 from app.repositories.images import ImageDetail
 from app.repositories.parties import PartyFields
 from app.repositories.product_facts import manufacturer_inherited
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.repositories.variants import ColourwayRow
+from app.services.images import CreateUpload, check_create_uploads, register_on_create
 from app.services.intake_values import PartyInput, check_price_le_mrp
 from app.services.product_facts import (
     SIZE_CHART_KEY,
@@ -59,6 +60,7 @@ __all__ = [
     "product_etag",
 ]
 
+PRODUCT_PK: Final = "pk_products"
 PRODUCT_ETAG_NS: Final = uuid.UUID("5d0f0b43-2a4e-4c55-9d47-6a3f3a1c8e21")
 SIZE_CHART_UNITS: Final = frozenset({"cm", "in"})
 SIZE_CHART_BASES: Final = frozenset({"garment", "body"})
@@ -86,6 +88,8 @@ class NewProduct:
     selling_price: Decimal | None = None
     manufacturer: PartyInput | None = None
     size_chart: Mapping[str, Any] | None = None
+    id: uuid.UUID | None = None
+    image_uploads: tuple[CreateUpload, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -310,6 +314,11 @@ async def create_product(principal: Principal, cmd: NewProduct) -> ProductView:
     if cmd.images:
         raise NotFoundError("images[0]")
     check_price_le_mrp(cmd.selling_price, cmd.mrp)
+    if bool(cmd.image_uploads) != (cmd.id is not None):
+        raise InputError(ErrorCode.VALIDATION_FAILED, "image_uploads")
+    checked = []
+    if cmd.id is not None:  # CP8: every key is checked before the transaction
+        checked = await check_create_uploads(principal, cmd.id, cmd.image_uploads)
     now = datetime.now(UTC)
     column_fact = seller_column_fact(now=now)
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
@@ -320,14 +329,23 @@ async def create_product(principal: Principal, cmd: NewProduct) -> ProductView:
                 raise InputError(ErrorCode.VALIDATION_FAILED, "size_chart")
             facts[SIZE_CHART_KEY] = size_chart_fact(cmd.size_chart, now=now)
         provenance = seller_provenance(now=now)
-        row = await uow.products.create(
-            sku=cmd.sku,
-            title=cmd.title,
-            category=cmd.category,
-            attributes=facts,
-            provenance=provenance,
-            created_by=principal.user_id,
-        )
+        try:
+            row = await uow.products.create(
+                sku=cmd.sku,
+                title=cmd.title,
+                category=cmd.category,
+                attributes=facts,
+                provenance=provenance,
+                created_by=principal.user_id,
+                id=cmd.id,
+            )
+        except ConflictError as exc:
+            # CP8: a live or soft-deleted product (any tenant) already holds the minted id
+            if cmd.id is not None and exc.constraint == PRODUCT_PK:
+                raise NotFoundError("image_uploads[0]") from None
+            raise
+        if checked:
+            await register_on_create(uow, principal, row.id, checked)
         typed: dict[str, Any] = {
             "style_number": cmd.style_number,
             "mrp": cmd.mrp,

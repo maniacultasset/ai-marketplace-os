@@ -55,6 +55,15 @@ class UploadUrl:
     storage_key: str
     expires_at: datetime
     headers: dict[str, str]
+    product_id: uuid.UUID
+
+
+@dataclass(frozen=True, slots=True)
+class CreateUpload:
+    """One `image_uploads[i]` of a product create (SI1 D3, CP8)."""
+
+    storage_key: str
+    slot: ImageSlot
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,10 +97,21 @@ async def _check_product(
 
 
 async def mint_upload_url(
-    principal: Principal, *, product_id: uuid.UUID, slot: ImageSlot, content_type: str, size: int
+    principal: Principal,
+    *,
+    product_id: uuid.UUID | None,
+    slot: ImageSlot,
+    content_type: str,
+    size: int,
 ) -> UploadUrl:
-    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
-        await _check_product(uow.images, uow.products, product_id, slot)
+    """With no `product_id` (SI1 D3) a fresh product id is minted and returned, with no DB read
+    or write: the product is created later by `POST /products` with `id` and `image_uploads`.
+    A new product is standalone, so a size chart is allowed."""
+    if product_id is None:
+        product_id = uuid.uuid4()
+    else:
+        async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+            await _check_product(uow.images, uow.products, product_id, slot)
     image_id = uuid.uuid4()
     key = image_object_key(principal.tenant_id, product_id, image_id)
     url = await get_storage().presign_put(
@@ -107,6 +127,7 @@ async def mint_upload_url(
         storage_key=key,
         expires_at=datetime.now(UTC) + timedelta(seconds=UPLOAD_URL_TTL_S),
         headers={"Content-Type": content_type, "If-None-Match": "*"},
+        product_id=product_id,
     )
 
 
@@ -136,9 +157,10 @@ def accepted_body(image_id: uuid.UUID, job_id: uuid.UUID, status: str = "queued"
     }
 
 
-async def enforce_live_image_cap(images: ImageRepository) -> None:
-    """At most `LIVE_IMAGE_JOB_CAP` image jobs `queued|running` per tenant (PLAN D15(a))."""
-    if await images.count_live_image_jobs() >= LIVE_IMAGE_JOB_CAP:
+async def enforce_live_image_cap(images: ImageRepository, *, adding: int = 1) -> None:
+    """At most `LIVE_IMAGE_JOB_CAP` image jobs `queued|running` per tenant (PLAN D15(a)),
+    counting the `adding` jobs this call is about to enqueue (CP8; `adding=1` is `>= cap`)."""
+    if await images.count_live_image_jobs() + adding > LIVE_IMAGE_JOB_CAP:
         raise LimitError("live image jobs per tenant")
 
 
@@ -227,7 +249,9 @@ async def _register(
             position = 0
         else:
             position = await uow.images.next_position(form.product_id, form.colourway_id, form.slot)
-        row = await uow.images.create(
+        job_id = await _insert_image_and_job(
+            uow,
+            principal,
             NewImage(
                 id=image_id,
                 product_id=form.product_id,
@@ -236,28 +260,10 @@ async def _register(
                 slot=form.slot,
                 bytes=size,
                 position=position,
-            )
+            ),
+            field="storage_key",
         )
-        if row is None:  # unreachable under the product lock: the D8 lookup ran first
-            raise InputError(ErrorCode.VALIDATION_FAILED, "storage_key")
-        enqueued = await uow.job_runs.enqueue(
-            EnqueueSpec(
-                kind=JobKind.IMAGE_COMPLIANCE,
-                entity_type="image",
-                entity_id=image_id,
-                created_by=principal.user_id,
-                payload={"image_id": str(image_id)},
-                lock=IMAGE_JOB_LOCK,
-            )
-        )
-        await _audit(
-            uow,
-            principal,
-            "image.uploaded",
-            image_id,
-            after={"slot": ImageSlot(form.slot).value, "status": "uploaded"},
-        )
-        return 202, accepted_body(image_id, enqueued.job.id)
+        return 202, accepted_body(image_id, job_id)
 
     _status, body = await idempotent(principal, idem_key, "POST", UPLOAD_PATH, payload, handler)
     log.info(
@@ -267,6 +273,110 @@ async def _register(
         job_id=body.get("job_id"),
     )
     return body
+
+
+async def _insert_image_and_job(
+    uow: TenantUnitOfWork, principal: Principal, new: NewImage, *, field: str
+) -> uuid.UUID:
+    """The image row, its `image_compliance` job and the `image.uploaded` audit row; the job id.
+    A key already registered (the row insert found a conflict) is 422 at `field`."""
+    row = await uow.images.create(new)
+    if row is None:  # unreachable under the product lock: the key lookup ran first
+        raise InputError(ErrorCode.VALIDATION_FAILED, field)
+    enqueued = await uow.job_runs.enqueue(
+        EnqueueSpec(
+            kind=JobKind.IMAGE_COMPLIANCE,
+            entity_type="image",
+            entity_id=new.id,
+            created_by=principal.user_id,
+            payload={"image_id": str(new.id)},
+            lock=IMAGE_JOB_LOCK,
+        )
+    )
+    await _audit(
+        uow,
+        principal,
+        "image.uploaded",
+        new.id,
+        after={"slot": ImageSlot(new.slot).value, "status": "uploaded"},
+    )
+    return enqueued.job.id
+
+
+# ---- SI1 T14: images at product create (PLAN D3, CP8) ----
+
+
+@dataclass(frozen=True, slots=True)
+class CheckedUpload:
+    upload: CreateUpload
+    image_id: uuid.UUID
+    size: int
+
+
+async def check_create_uploads(
+    principal: Principal, product_id: uuid.UUID, uploads: tuple[CreateUpload, ...]
+) -> list[CheckedUpload]:
+    """Before any transaction: each key parses to (caller tenant, `product_id`), its object
+    exists, is at most 10 MiB and is inside the register window. A foreign key, a missing
+    object and a key under another id answer the same 404 `image_uploads[i]` (no oracle)."""
+    if sum(1 for u in uploads if u.slot is ImageSlot.MAIN) > 1:
+        raise InputError(ErrorCode.VALIDATION_FAILED, "image_uploads")
+    if len({u.storage_key for u in uploads}) != len(uploads):
+        raise InputError(ErrorCode.VALIDATION_FAILED, "image_uploads")
+    checked: list[CheckedUpload] = []
+    for i, upload in enumerate(uploads):
+        parsed = parse_image_key(upload.storage_key)
+        if parsed is None:
+            raise InputError(ErrorCode.VALIDATION_FAILED, f"image_uploads[{i}].storage_key")
+        if parsed.tenant_id != principal.tenant_id or parsed.product_id != product_id:
+            raise NotFoundError(f"image_uploads[{i}]")
+        head = await get_storage().head(images_bucket(), upload.storage_key)
+        if head is None:
+            raise NotFoundError(f"image_uploads[{i}]")
+        if head.size > MAX_IMAGE_BYTES:
+            raise ImageTooLargeError("image")
+        if head.last_modified < datetime.now(UTC) - REGISTER_WINDOW:
+            raise InputError(ErrorCode.VALIDATION_FAILED, f"image_uploads[{i}].storage_key")
+        checked.append(CheckedUpload(upload=upload, image_id=parsed.image_id, size=head.size))
+    return checked
+
+
+async def register_on_create(
+    uow: TenantUnitOfWork,
+    principal: Principal,
+    product_id: uuid.UUID,
+    checked: list[CheckedUpload],
+) -> None:
+    """In the create transaction, in `_register`'s lock order: no key registered already
+    (404), the live-job cap counting these jobs (429, CP8), then one row, job and audit each."""
+    await uow.images.lock_tenant_image_jobs()
+    await uow.images.lock_product_images(product_id)
+    keys = [c.upload.storage_key for c in checked]
+    taken = await uow.images.registered_keys(keys)
+    for i, key in enumerate(keys):
+        if key in taken:
+            raise NotFoundError(f"image_uploads[{i}]")
+    await enforce_live_image_cap(uow.images, adding=len(checked))
+    for i, item in enumerate(checked):
+        slot = item.upload.slot
+        if slot is ImageSlot.MAIN:
+            position = 0
+        else:
+            position = await uow.images.next_position(product_id, None, slot)
+        await _insert_image_and_job(
+            uow,
+            principal,
+            NewImage(
+                id=item.image_id,
+                product_id=product_id,
+                colourway_id=None,
+                storage_key=item.upload.storage_key,
+                slot=slot,
+                bytes=item.size,
+                position=position,
+            ),
+            field=f"image_uploads[{i}]",
+        )
 
 
 def _uow_on(session: Any, tenant: uuid.UUID) -> TenantUnitOfWork:

@@ -562,7 +562,8 @@ _ROWS: Final[tuple[Operation, ...]] = (
               action=A.SETTINGS_MANAGE),
     # ---- products (S12, S13) ----
     Operation("products_create", "POST", "/products", 201, ProductOut, "products",
-              "Create one product", "S12", has_body=True, body_ids=("images",),
+              "Create one product", "S12", has_body=True,
+              body_ids=("images", "image_uploads[].storage_key"),
               conflict_code=E.SKU_CONFLICT, etag=True,
               extra_codes=MappingProxyType({422: (E.UNKNOWN_FACT_KEY,)}), action=A.PRODUCT_IMPORT),
     Operation("products_list", "GET", "/products", 200, ProductPage, "products",

@@ -49,6 +49,7 @@ async def images_upload_url(body: UploadUrlRequest, principal: CurrentPrincipal)
         storage_key=minted.storage_key,
         expires_at=minted.expires_at,
         headers=minted.headers,
+        product_id=minted.product_id,
     )
 
 

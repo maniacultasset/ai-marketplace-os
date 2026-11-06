@@ -689,6 +689,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "storage_key": f"t/{TENANT}/img/{PRODUCT_1}/main.jpg",
             "expires_at": T1,
             "headers": {"Content-Type": "image/jpeg"},
+            "product_id": PRODUCT_1,
         },
         "images_upload": {
             "image_id": IMAGE,

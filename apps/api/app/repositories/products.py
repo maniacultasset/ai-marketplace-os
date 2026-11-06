@@ -171,6 +171,7 @@ class ProductRepository(TenantScopedRepository[Product]):
         attributes: Mapping[str, Any],
         provenance: Mapping[str, Any],
         created_by: uuid.UUID | None,
+        id: uuid.UUID | None = None,
     ) -> Product:
         product = Product(
             sku=sku,
@@ -180,6 +181,8 @@ class ProductRepository(TenantScopedRepository[Product]):
             provenance=dict(provenance),
             created_by=created_by,
         )
+        if id is not None:  # SI1 D3: the id minted by the upload URL
+            product.id = id
         added = await self.add(product)
         # server defaults (`status`, `created_at`, `updated_at`) are read back with the row
         await self.db.refresh(added)
