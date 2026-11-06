@@ -1,6 +1,6 @@
 """SI1 tester round 1: property and fuzz tests on the pure seller-intake seams (AC2, AC3, AC9,
-AC11, AC19). They hold on the current tree; the failures found are under
-`docs/plans/si1-seller-intake/repro/`."""
+AC11, AC19). They hold on the current tree; the failures they found have regression tests in
+the unit and integration suites."""
 
 from __future__ import annotations
 
