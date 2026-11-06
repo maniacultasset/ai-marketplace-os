@@ -68,6 +68,40 @@ def test_png_keeps_png_and_drops_text() -> None:
     assert not _open(found.clean).text  # type: ignore[attr-defined]
 
 
+def _transparent_png(mode: str) -> bytes:
+    """600x600 with a transparent background (index/value 0) and an opaque centre square."""
+    if mode == "P":
+        img = Image.new("P", (600, 600), 0)
+        img.putpalette([0, 0, 0, 255, 0, 0] + [0] * 762)
+        img.paste(1, (200, 200, 400, 400))
+        transparency: Any = 0
+    elif mode == "RGB":
+        img = Image.new("RGB", (600, 600), (0, 0, 0))
+        img.paste((255, 0, 0), (200, 200, 400, 400))
+        transparency = (0, 0, 0)
+    else:
+        img = Image.new("L", (600, 600), 0)
+        img.paste(128, (200, 200, 400, 400))
+        transparency = 0
+    buf = io.BytesIO()
+    img.save(buf, format="PNG", transparency=transparency)
+    return buf.getvalue()
+
+
+@pytest.mark.parametrize("mode", ["P", "RGB", "L"])
+def test_png_transparency_key_kept(mode: str) -> None:
+    """Round 1 repro: a tRNS-keyed PNG keeps its transparent background in the clean copy and
+    lands on white in the vision copy, never opaque black."""
+    found = derive(_transparent_png(mode))
+    assert found is not None
+    assert found.clean_mime == "image/png"
+    clean = _open(found.clean)
+    assert clean.convert("RGBA").getpixel((0, 0))[3] == 0  # type: ignore[index]
+    assert clean.convert("RGBA").getpixel((300, 300))[3] == 255  # type: ignore[index]
+    assert b"tEXt" not in found.clean
+    assert _open(found.vision).convert("RGB").getpixel((0, 0)) == (255, 255, 255)
+
+
 def test_webp_rgba_becomes_jpeg_on_white() -> None:
     found = derive(fx.webp_rgba())
     assert found is not None

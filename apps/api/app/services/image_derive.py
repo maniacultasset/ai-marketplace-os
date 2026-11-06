@@ -74,7 +74,10 @@ def _png(img: Image.Image, icc: bytes | None) -> bytes:
 
 def _fresh(img: Image.Image) -> Image.Image:
     """A copy of the pixels with an empty `info`, so no EXIF, XMP, comment or text chunk of the
-    source can reach an encoder's defaults."""
+    source can reach an encoder's defaults. A `transparency` key (a PNG tRNS chunk) is first
+    turned into a real alpha channel, so clearing `info` never makes the background opaque."""
+    if "transparency" in img.info:
+        img = img.convert("LA" if img.mode in ("L", "LA") else "RGBA")
     copy = img.copy()
     copy.info = {}
     return copy
