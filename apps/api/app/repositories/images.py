@@ -27,8 +27,10 @@ from mkos_schemas.images import ImageReport
 from sqlalchemy import case, cast, func, literal, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import IntegrityError
 
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
+from app.db.integrity import to_conflict
 from app.db.models.catalog import ProductColourway
 from app.db.models.catalog_assets import Image
 from app.db.models.ops import JobRun
@@ -285,6 +287,74 @@ class ImageRepository(TenantScopedRepository[Image]):
         )
         written = (await self.db.execute(stmt)).scalar_one_or_none()
         return None if written is None else status
+
+    # ---- SI1 T19/T21: the public copy (CP16) ----
+
+    async def set_public_id(self, image_id: UUID, public_id: str) -> str | None:
+        """Name a live row's public copy once: the stored name (this one, or the one a racing
+        publish wrote), or None when the row is deleted. A name taken by another row raises
+        the unique violation (`images_public_id_uq`) for the caller's retry."""
+        self._own_session()
+        iid = _uuid("image_id", image_id)
+        stmt = self._scoped_write(
+            update(Image)
+            .where(
+                Image.id == iid,
+                Image.public_id.is_(None),
+                Image.deleted_at.is_(None),
+                self._tenant_criterion(include_platform=False),
+            )
+            .values(public_id=public_id)
+            .returning(Image.public_id)
+        )
+        try:
+            written: str | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        except IntegrityError as exc:
+            raise to_conflict(exc) from exc
+        if written is not None:
+            return written
+        found = (
+            await self.db.execute(
+                self._select()
+                .where(Image.id == iid)
+                .with_only_columns(Image.public_id, Image.deleted_at)
+            )
+        ).one_or_none()
+        if found is None or found[1] is not None:
+            return None
+        stored: str | None = found[0]
+        return stored
+
+    async def mark_public_written(self, image_id: UUID, public_id: str) -> bool | None:
+        """Record that the public object exists (whatever `deleted_at` is, CP16): True when the
+        row turned out deleted, False when live, None when the name does not match."""
+        self._own_session()
+        stmt = self._scoped_write(
+            update(Image)
+            .where(
+                Image.id == _uuid("image_id", image_id),
+                Image.public_id == public_id,
+                self._tenant_criterion(include_platform=False),
+            )
+            .values(public_written_at=func.now())
+            .returning(Image.deleted_at.is_not(None))
+        )
+        deleted: bool | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        return deleted
+
+    async def clear_public_written(self, image_id: UUID) -> None:
+        """The public object is gone again (the post-PUT delete of a deleted row, CP16)."""
+        self._own_session()
+        await self.db.execute(
+            self._scoped_write(
+                update(Image)
+                .where(
+                    Image.id == _uuid("image_id", image_id),
+                    self._tenant_criterion(include_platform=False),
+                )
+                .values(public_written_at=None)
+            )
+        )
 
     # ---- reads ----
 

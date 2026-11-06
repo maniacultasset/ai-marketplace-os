@@ -15,6 +15,7 @@ import pytest
 from mkos_schemas.codes import ErrorCode
 
 from .conftest import LOCAL_HOSTS
+from .public_images_support import public_hosting, put_clean
 from .publish_support import (
     PubWorld,
     approved,
@@ -28,8 +29,9 @@ from .publish_support import (
 from .review_support import OPERATOR, OWNER, REVIEWER, Made, generated
 from .test_approve_image_gate import _image, _report, _store, _with_images
 
-pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
-__all__ = ["pub"]
+# SI1 (ADR-0026): images publish through public copies, so every test here has hosting on
+pytestmark = [pytest.mark.allow_hosts(LOCAL_HOSTS), pytest.mark.usefixtures("public_hosting")]
+__all__ = ["pub", "public_hosting"]
 RL = ("Throttled", "Request was throttled", ErrorCode.RATE_LIMITED)
 
 
@@ -49,6 +51,8 @@ async def _approved_with_image(pw: PubWorld, data: bytes) -> tuple[Made, uuid.UU
     digest = hashlib.sha256(data).hexdigest()
     await _store(world, "acme", image, _report(image))
     world.conn.execute("UPDATE images SET content_hash = %s WHERE id = %s", [digest, image])
+    product_id = world.scalar("SELECT product_id FROM images WHERE id = %s", [image])
+    await put_clean(world.tenant("acme"), product_id, image, data, world.conn)
     made = _with_images(world, made, [image])
     principal = world.principal(REVIEWER)
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
@@ -69,11 +73,11 @@ async def _run_quiet(job_id: Any) -> None:
         assert type(exc).__name__ == "RetryLater", exc
 
 
-async def test_publish_image_pinned_sends_signed_url_snapshot_has_none(
-    api: httpx.AsyncClient, pub: PubWorld
+async def test_publish_image_pinned_sends_public_url_snapshot_has_none(
+    api: httpx.AsyncClient, pub: PubWorld, public_hosting: str
 ) -> None:
-    """D5, D9, AC14: matching bytes publish; the adapter gets a signed GET URL, the stored
-    snapshot names `image:<id>@<hash>` only (no URL, no signature)."""
+    """D5, D9, AC14 (SI1: a stable public URL, never a signed one): matching bytes publish; the
+    stored snapshot names `image:<id>@<hash>` only (no URL, no signature)."""
     from app.adapters.storage import get_storage, submissions_bucket
 
     data = b"\xff\xd8\xff" + uuid.uuid4().bytes * 64
@@ -89,8 +93,8 @@ async def test_publish_image_pinned_sends_signed_url_snapshot_has_none(
     await publish_and_run(api, pub, made)
     assert pub.listing(made.listing_id)["status"] == "published"
     urls = dict(seen[0].image_refs)
-    assert set(urls) == {image} and urls[image].startswith("http"), urls
-    assert "Signature" in urls[image], urls[image][:200]
+    assert set(urls) == {image} and urls[image].startswith(public_hosting + "/"), urls
+    assert "Signature" not in urls[image] and urls[image].endswith(".jpg"), urls[image][:200]
     (sub,) = pub.submissions(made.listing_id)
     snapshot = (await get_storage().get(submissions_bucket(), sub["payload_storage_key"])).decode()
     digest = hashlib.sha256(data).hexdigest()
