@@ -256,13 +256,14 @@
           "terms": [
             "https?://",
             "\\bwww\\.",
-            "\\b[a-z0-9-]+\\.(com|in|net|org|co|io|shop|store|biz|info)\\b",
+            "\\b(wa\\.me|bit\\.ly|tinyurl\\.com|goo\\.gl|t\\.co)/",
+            "\\b[a-z0-9-]+\\.(?-i:(com|in|net|org|co|io|me|ly|shop|store|biz|info))([^a-z0-9-]|$)",
             "[a-z0-9._%+-]+@[a-z0-9-]+\\.[a-z]",
             "\\+91[\\s-]?\\d",
-            "\\b[6-9]\\d{9}\\b",
-            "\\b[6-9]\\d{4}[\\s-]\\d{5}\\b",
+            "(^|[^0-9])(0|91)?[6-9][0-9]{9}([^0-9]|$)",
+            "(^|[^0-9])(0|91)?[6-9][0-9]{4}[\\s-][0-9]{5}([^0-9]|$)",
             "\\b1800[\\s-]?\\d{3}[\\s-]?\\d{4}\\b",
-            "</?[a-z][^<>]*>"
+            "</?(a|b|i|u|p|br|hr|li|ul|ol|em|strong|span|div|h[1-6]|img|script|style|iframe|table|tr|td|font|sup|sub)([\\s/][^<>]*)?>"
           ],
           "match": "regex",
           "case_sensitive": false
@@ -777,13 +778,14 @@
           "terms": [
             "https?://",
             "\\bwww\\.",
-            "\\b[a-z0-9-]+\\.(com|in|net|org|co|io|shop|store|biz|info)\\b",
+            "\\b(wa\\.me|bit\\.ly|tinyurl\\.com|goo\\.gl|t\\.co)/",
+            "\\b[a-z0-9-]+\\.(?-i:(com|in|net|org|co|io|me|ly|shop|store|biz|info))([^a-z0-9-]|$)",
             "[a-z0-9._%+-]+@[a-z0-9-]+\\.[a-z]",
             "\\+91[\\s-]?\\d",
-            "\\b[6-9]\\d{9}\\b",
-            "\\b[6-9]\\d{4}[\\s-]\\d{5}\\b",
+            "(^|[^0-9])(0|91)?[6-9][0-9]{9}([^0-9]|$)",
+            "(^|[^0-9])(0|91)?[6-9][0-9]{4}[\\s-][0-9]{5}([^0-9]|$)",
             "\\b1800[\\s-]?\\d{3}[\\s-]?\\d{4}\\b",
-            "</?[a-z][^<>]*>"
+            "</?(a|b|i|u|p|br|hr|li|ul|ol|em|strong|span|div|h[1-6]|img|script|style|iframe|table|tr|td|font|sup|sub)([\\s/][^<>]*)?>"
           ],
           "match": "regex",
           "case_sensitive": false
@@ -1050,13 +1052,14 @@
           "terms": [
             "https?://",
             "\\bwww\\.",
-            "\\b[a-z0-9-]+\\.(com|in|net|org|co|io|shop|store|biz|info)\\b",
+            "\\b(wa\\.me|bit\\.ly|tinyurl\\.com|goo\\.gl|t\\.co)/",
+            "\\b[a-z0-9-]+\\.(?-i:(com|in|net|org|co|io|me|ly|shop|store|biz|info))([^a-z0-9-]|$)",
             "[a-z0-9._%+-]+@[a-z0-9-]+\\.[a-z]",
             "\\+91[\\s-]?\\d",
-            "\\b[6-9]\\d{9}\\b",
-            "\\b[6-9]\\d{4}[\\s-]\\d{5}\\b",
+            "(^|[^0-9])(0|91)?[6-9][0-9]{9}([^0-9]|$)",
+            "(^|[^0-9])(0|91)?[6-9][0-9]{4}[\\s-][0-9]{5}([^0-9]|$)",
             "\\b1800[\\s-]?\\d{3}[\\s-]?\\d{4}\\b",
-            "</?[a-z][^<>]*>"
+            "</?(a|b|i|u|p|br|hr|li|ul|ol|em|strong|span|div|h[1-6]|img|script|style|iframe|table|tr|td|font|sup|sub)([\\s/][^<>]*)?>"
           ],
           "match": "regex",
           "case_sensitive": false
@@ -1611,13 +1614,14 @@
           "terms": [
             "https?://",
             "\\bwww\\.",
-            "\\b[a-z0-9-]+\\.(com|in|net|org|co|io|shop|store|biz|info)\\b",
+            "\\b(wa\\.me|bit\\.ly|tinyurl\\.com|goo\\.gl|t\\.co)/",
+            "\\b[a-z0-9-]+\\.(?-i:(com|in|net|org|co|io|me|ly|shop|store|biz|info))([^a-z0-9-]|$)",
             "[a-z0-9._%+-]+@[a-z0-9-]+\\.[a-z]",
             "\\+91[\\s-]?\\d",
-            "\\b[6-9]\\d{9}\\b",
-            "\\b[6-9]\\d{4}[\\s-]\\d{5}\\b",
+            "(^|[^0-9])(0|91)?[6-9][0-9]{9}([^0-9]|$)",
+            "(^|[^0-9])(0|91)?[6-9][0-9]{4}[\\s-][0-9]{5}([^0-9]|$)",
             "\\b1800[\\s-]?\\d{3}[\\s-]?\\d{4}\\b",
-            "</?[a-z][^<>]*>"
+            "</?(a|b|i|u|p|br|hr|li|ul|ol|em|strong|span|div|h[1-6]|img|script|style|iframe|table|tr|td|font|sup|sub)([\\s/][^<>]*)?>"
           ],
           "match": "regex",
           "case_sensitive": false
@@ -1884,13 +1888,14 @@
           "terms": [
             "https?://",
             "\\bwww\\.",
-            "\\b[a-z0-9-]+\\.(com|in|net|org|co|io|shop|store|biz|info)\\b",
+            "\\b(wa\\.me|bit\\.ly|tinyurl\\.com|goo\\.gl|t\\.co)/",
+            "\\b[a-z0-9-]+\\.(?-i:(com|in|net|org|co|io|me|ly|shop|store|biz|info))([^a-z0-9-]|$)",
             "[a-z0-9._%+-]+@[a-z0-9-]+\\.[a-z]",
             "\\+91[\\s-]?\\d",
-            "\\b[6-9]\\d{9}\\b",
-            "\\b[6-9]\\d{4}[\\s-]\\d{5}\\b",
+            "(^|[^0-9])(0|91)?[6-9][0-9]{9}([^0-9]|$)",
+            "(^|[^0-9])(0|91)?[6-9][0-9]{4}[\\s-][0-9]{5}([^0-9]|$)",
             "\\b1800[\\s-]?\\d{3}[\\s-]?\\d{4}\\b",
-            "</?[a-z][^<>]*>"
+            "</?(a|b|i|u|p|br|hr|li|ul|ol|em|strong|span|div|h[1-6]|img|script|style|iframe|table|tr|td|font|sup|sub)([\\s/][^<>]*)?>"
           ],
           "match": "regex",
           "case_sensitive": false
@@ -2128,13 +2133,14 @@
           "terms": [
             "https?://",
             "\\bwww\\.",
-            "\\b[a-z0-9-]+\\.(com|in|net|org|co|io|shop|store|biz|info)\\b",
+            "\\b(wa\\.me|bit\\.ly|tinyurl\\.com|goo\\.gl|t\\.co)/",
+            "\\b[a-z0-9-]+\\.(?-i:(com|in|net|org|co|io|me|ly|shop|store|biz|info))([^a-z0-9-]|$)",
             "[a-z0-9._%+-]+@[a-z0-9-]+\\.[a-z]",
             "\\+91[\\s-]?\\d",
-            "\\b[6-9]\\d{9}\\b",
-            "\\b[6-9]\\d{4}[\\s-]\\d{5}\\b",
+            "(^|[^0-9])(0|91)?[6-9][0-9]{9}([^0-9]|$)",
+            "(^|[^0-9])(0|91)?[6-9][0-9]{4}[\\s-][0-9]{5}([^0-9]|$)",
             "\\b1800[\\s-]?\\d{3}[\\s-]?\\d{4}\\b",
-            "</?[a-z][^<>]*>"
+            "</?(a|b|i|u|p|br|hr|li|ul|ol|em|strong|span|div|h[1-6]|img|script|style|iframe|table|tr|td|font|sup|sub)([\\s/][^<>]*)?>"
           ],
           "match": "regex",
           "case_sensitive": false

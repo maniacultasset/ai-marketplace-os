@@ -95,7 +95,11 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
   RuleSet holds a platform `*` `banned_terms` row (pack `contact`, `match: regex`) that makes a
   web address, email address, Indian phone number or HTML tag in the title, bullets, description
   or keywords a `BANNED_TERM` error, so the correction loop rewrites it and a residual hit ends
-  `blocked` (`packages/schemas/fixtures/rules.seed.json`, loaded by `rules load`).
+  `blocked` (`packages/schemas/fixtures/rules.seed.json`, loaded by `rules load`). It covers
+  `wa.me` and the common short links, and mobiles with a `+91`, `91` or `0` prefix. A bare
+  domain needs a lowercase TLD not followed by a hyphen, so a sentence joined without a space
+  (`wear.Co-ord`, `ft.In stock`) is not a hit; the price is that an all-caps `BRAND.IN` is only
+  caught with a `www.` or `https://`. HTML is a known tag name, so `S<M>L` passes.
 - A generation that fails before any model stage (the context load or the brand retrieval) gives
   its budget reservation back, and a transient model or embedding failure (rate limit, provider
   down, timeout) is a retryable `MODEL_UNAVAILABLE` rather than `GENERATION_FAILED`; the job is

@@ -213,6 +213,16 @@ CONTACT_HITS = (
     "Toll free 1800-123-4567",
     "Soft cotton<br>easy care",
     "<b>Pure</b> cotton",
+    "WhatsApp wa.me/919876543210",
+    "Chat on WA.ME/919876543210",
+    "Order at bit.ly/kurta",
+    "Shop tinyurl.com/kurta",
+    "Find us at Brand.me",
+    "WhatsApp 919876543210",
+    "Call 09876543210 to order",
+    "Call 098765 43210 to order",
+    "Line one<br/>line two",
+    "<a href='x'>Shop</a>",
 )
 CONTACT_CLEAN = (
     "Pure cotton. In the box: 1 kurta, 1 dupatta",
@@ -220,6 +230,11 @@ CONTACT_CLEAN = (
     "A 1.5 m cable, e.g. for bedside tables",
     "EAN 8901234567890, model 2024",
     "Fits a 38-40 inch chest; weight < 1 kg",
+    "Festive wear.Co-ord set",
+    "Festive wear.co-ord set",
+    "Fits 5.5 ft.In stock",
+    "Pack of 3 (S<M>L)",
+    "GTIN 08901234567890",
 )
 
 
