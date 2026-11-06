@@ -4,31 +4,22 @@
   `vision.jpg`) in the private bucket and, with a `public_id`, the public copy. A missing object
   counts as deleted. True when all are gone; a store failure is False (the daily step retries).
   The private original is not touched (it has its own lifecycle).
-- `purge_public_images(session, storage, tenant_id)` (T22, CP9) deletes every public copy of a
-  tenant before a tenant purge.
+- The tenant purge step (T22, CP9) is `app.db.image_purge.purge_public_images` (raw SQL as the
+  migrator).
 """
 
 from __future__ import annotations
 
 import uuid
-from typing import Any, Final
+from typing import Any
 
 from app.adapters.storage import StorageUnavailable, images_bucket, images_public_bucket
 from app.core.logging import get_logger
-from app.services.image_keys import DERIVED_NAMES, derived_key, parse_image_key
-from app.services.public_images import EXTENSIONS
+from app.services.image_keys import DERIVED_NAMES, derived_key, parse_image_key, public_names
 
 __all__ = ["delete_image_objects", "public_names"]
 
 log = get_logger(__name__)
-PUBLIC_SUFFIXES: Final = tuple(EXTENSIONS.values())
-
-
-def public_names(public_id: str, mime: str | None) -> list[str]:
-    """The public object's name; both when the type is no longer known (a tombstone)."""
-    if mime in EXTENSIONS:
-        return [f"{public_id}.{EXTENSIONS[mime]}"]
-    return [f"{public_id}.{suffix}" for suffix in PUBLIC_SUFFIXES]
 
 
 async def delete_image_objects(storage: Any, tenant_id: uuid.UUID, row: Any) -> bool:

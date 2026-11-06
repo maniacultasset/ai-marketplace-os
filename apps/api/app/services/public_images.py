@@ -44,7 +44,12 @@ from app.core.config import get_settings
 from app.core.errors import ConflictError
 from app.core.logging import get_logger
 from app.repositories.uow import tenant_uow
-from app.services.image_keys import CLEAN_NAMES, derived_key, parse_image_key
+from app.services.image_keys import (
+    CLEAN_NAMES,
+    PUBLIC_EXTENSIONS,
+    derived_key,
+    parse_image_key,
+)
 from app.services.publish_outcome import refusal_report
 from app.workers.errors import JobFailed, RetryableJobError
 
@@ -61,7 +66,7 @@ __all__ = [
 log = get_logger(__name__)
 CLEAN_MAX_BYTES: Final = 10 * 1024 * 1024
 PUBLIC_CACHE_CONTROL: Final = "public, max-age=31536000, s-maxage=86400, immutable"
-EXTENSIONS: Final = {"image/jpeg": "jpg", "image/png": "png"}
+EXTENSIONS: Final = PUBLIC_EXTENSIONS
 PUBLIC_ID_UNIQUE: Final = "images_public_id_uq"
 
 

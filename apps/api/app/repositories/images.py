@@ -366,6 +366,33 @@ class ImageRepository(TenantScopedRepository[Image]):
         )
         return (await self.db.execute(stmt)).scalar_one_or_none() is not None
 
+    async def deleted_with_objects(self, limit: int) -> builtins.list[Image]:
+        """Soft-deleted rows whose derived or public objects may still exist (the daily step)."""
+        stmt = (
+            self._select()
+            .where(
+                Image.deleted_at.is_not(None),
+                (Image.public_written_at.is_not(None)) | (Image.clean_content_hash.is_not(None)),
+            )
+            .order_by(Image.deleted_at, Image.id)
+            .limit(limit)
+        )
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
+    async def live_without_derivatives(self) -> builtins.list[UUID]:
+        """Live images checked (passed or failed) but with no clean copy (`images derive`)."""
+        stmt = (
+            self._select()
+            .where(
+                Image.deleted_at.is_(None),
+                Image.clean_content_hash.is_(None),
+                Image.compliance_status.in_(("passed", "failed")),
+            )
+            .with_only_columns(Image.id)
+            .order_by(Image.created_at, Image.id)
+        )
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
     async def get_any(self, image_id: UUID) -> Image | None:
         """The row, deleted or not (the after-commit object removal reads it)."""
         stmt = self._select().where(Image.id == _uuid("image_id", image_id))

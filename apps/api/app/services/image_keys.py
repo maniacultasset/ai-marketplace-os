@@ -79,3 +79,15 @@ def parse_derived_key(key: str) -> DerivedKey | None:
         return None
     tenant, product, image, name = found.groups()
     return DerivedKey(UUID(tenant), UUID(product), UUID(image), name)  # type: ignore[arg-type]
+
+
+# ---- SI1 T19-T22: the public copy's object name (ADR-0026) ----
+
+PUBLIC_EXTENSIONS: Final[dict[str, str]] = {"image/jpeg": "jpg", "image/png": "png"}
+
+
+def public_names(public_id: str, mime: str | None) -> list[str]:
+    """The public object's name; both when the type is no longer known (a tombstone)."""
+    if mime in PUBLIC_EXTENSIONS:
+        return [f"{public_id}.{PUBLIC_EXTENSIONS[mime]}"]
+    return [f"{public_id}.{suffix}" for suffix in PUBLIC_EXTENSIONS.values()]
