@@ -121,16 +121,18 @@ async def test_embed_failure_still_settles_the_reservation(
     assert [e[0] for e in seams] == ["reserve", "embed", "release"]
 
 
-async def test_embed_fenced_out_still_checked_not_settled(
+async def test_embed_fenced_out_makes_no_call(
     seams: list[tuple[Any, ...]], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A duplicate delivery whose row a newer attempt owns: the caps were still checked under
-    the locks before the call; there is no reservation of its own to settle."""
+    """A stale attempt whose row a newer attempt owns reserves nothing, so it must not make the
+    paid call either (as generation): it fails INTERNAL_ERROR and the wrapper drops the write."""
 
     async def fenced(*args: Any, **kwargs: Any) -> bool:
         seams.append(("reserve",))
         return False
 
     monkeypatch.setattr(budget, "reserve", fenced)
-    await brand_embed._embed(Model(), _drafts("x"), _ctx())
-    assert [e[0] for e in seams] == ["reserve", "embed"]
+    with pytest.raises(JobFailed) as caught:
+        await brand_embed._embed(Model(), _drafts("x"), _ctx())
+    assert caught.value.report.error_code is ErrorCode.INTERNAL_ERROR
+    assert [e[0] for e in seams] == ["reserve"]

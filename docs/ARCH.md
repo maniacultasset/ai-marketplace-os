@@ -126,7 +126,9 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
   `brand_embed` job reserves the call's upper-bound cost against the tenant and platform caps
   (the generation lock order, `app/workers/budget.py`) and settles it to zero once the call is
   metered, so a large or repeatedly re-uploaded document cannot push the platform cap over
-  unchecked; over a cap the job fails `BUDGET_EXCEEDED` and the document `failed`.
+  unchecked; over a cap the job fails `BUDGET_EXCEEDED` and the document `failed`. A stale
+  attempt the fence has moved past reserves nothing and makes no call (`INTERNAL_ERROR`, the
+  write dropped), as in generation.
 - One brand cannot flood the shared `default` queue (4 slots, FIFO, also running imports, image
   checks and brand embeds): generate and regenerate refuse with 429 `RATE_LIMITED` once the
   tenant holds `GENERATION_LIVE_JOBS_PER_TENANT` (default 10) `listing_generate` jobs `queued`

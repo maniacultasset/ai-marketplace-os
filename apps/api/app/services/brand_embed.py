@@ -120,7 +120,9 @@ async def _embed(
     """The only paid call of the job. Before it, the tenant and platform daily caps
     (`budget.reserve`, the generation lock order) with the call's upper-bound cost reserved on
     the attempt; after it, the reservation settled to zero, the `agent_runs` rows holding the
-    real spend. A refusal is `JobFailed(BUDGET_EXCEEDED)` and no call is made."""
+    real spend. A refusal is `JobFailed(BUDGET_EXCEEDED)` and no call is made; a stale attempt
+    the fence has moved past reserves nothing, so it makes no call either
+    (`JobFailed(INTERNAL_ERROR)`, the wrapper drops its write), as generation does."""
     texts = [d.text for d in drafts]
     tenant, job, attempt = ctx.tenant_id, ctx.job_run_id, ctx.attempt
     try:
@@ -131,6 +133,8 @@ async def _embed(
         raise _failed(
             ErrorCode.BUDGET_EXCEEDED, "The daily AI budget is used up.", ctx, ErrorSource.SYSTEM
         ) from None
+    if not reserved:  # the fence moved: a newer attempt owns the row
+        raise _failed(ErrorCode.INTERNAL_ERROR, "brand embed failed", ctx, ErrorSource.SYSTEM)
     try:
         batches = await embed_texts(
             model, texts, tenant_id=tenant, job_id=job, attempt=attempt, request_id=ctx.request_id
@@ -140,8 +144,7 @@ async def _embed(
             raise RetryableJobError(exc.code) from None
         raise _failed(exc.code, "the embedding call failed", ctx, ErrorSource.AI_MODEL) from None
     finally:
-        if reserved:  # fenced out (a newer attempt owns the row): checked, nothing to settle
-            await budget.release(tenant, job, attempt)
+        await budget.release(tenant, job, attempt)
     return [vector for batch in batches for vector in batch.vectors]
 
 
