@@ -213,6 +213,22 @@ async def test_openrouter_embedder_request_shape() -> None:
     assert all(len(v) == DIMS for v in batch.vectors)
 
 
+async def test_openrouter_embedder_denies_data_collection() -> None:
+    """Brand text goes only to providers that neither keep nor train on it, as the generation
+    calls ask: every OpenRouter embedding request carries `provider.data_collection = deny`."""
+    script = Script(lambda r: httpx2.Response(200, json=_ok(json.loads(r.content)["input"])))
+    await _router_embedder(script).embed(["brand guide text"])
+    (request,) = script.requests
+    assert json.loads(request.content)["provider"] == {"data_collection": "deny"}
+
+
+async def test_direct_embedder_sends_no_provider_preference() -> None:
+    """OpenAI's own API takes no OpenRouter `provider` object."""
+    script = Script(lambda r: httpx2.Response(200, json=_ok(json.loads(r.content)["input"])))
+    await _embedder(script).embed(["x"])
+    assert "provider" not in json.loads(script.requests[0].content)
+
+
 def test_default_http_client_ignores_proxy_env_and_redirects(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
