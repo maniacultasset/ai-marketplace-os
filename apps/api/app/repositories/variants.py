@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import uuid
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy import cast, func, literal, literal_column, text, tuple_
@@ -29,8 +30,45 @@ def _own(repo: TenantScopedRepository[Any]) -> None:
         raise CrossTenantQueryError("a variant write for another tenant's unit of work")
 
 
+@dataclass(frozen=True, slots=True)
+class ColourwayRow:
+    id: uuid.UUID
+    colour: str
+    colour_sku: str | None
+
+
+def _colour(attributes: Any, key: str) -> str:
+    fact = attributes.get("color") if isinstance(attributes, Mapping) else None
+    value = fact.get("value") if isinstance(fact, Mapping) else None
+    return value if isinstance(value, str) and value else key
+
+
 class ColourwayRepository(TenantScopedRepository[ProductColourway]):
     model = ProductColourway
+
+    async def colourways_of(self, style_id: uuid.UUID) -> list[ColourwayRow]:
+        """The live colourways of `style_id` in position order, with the seller's colour text
+        (SI1 D1c, so a per-colour upload can name its colourway)."""
+        stmt = (
+            self._select()
+            .where(
+                ProductColourway.style_product_id == style_id,
+                ProductColourway.deleted_at.is_(None),
+            )
+            .with_only_columns(
+                ProductColourway.id,
+                ProductColourway.attributes,
+                ProductColourway.colour_key,
+                ProductColourway.colour_sku,
+            )
+            .order_by(ProductColourway.position, ProductColourway.id)
+        )
+        return [
+            ColourwayRow(
+                id=row.id, colour=_colour(row.attributes, row.colour_key), colour_sku=row.colour_sku
+            )
+            for row in (await self.db.execute(stmt)).all()
+        ]
 
     async def upsert(
         self, style_id: uuid.UUID, colour_fact: Mapping[str, Any], position: int

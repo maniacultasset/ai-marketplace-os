@@ -1401,7 +1401,8 @@ export interface paths {
         };
         /**
          * Read one product
-         * @description Read one product. Another brand's id is 404, never 403.
+         * @description Read one product with its `ETag` (send it back as `If-Match` on PATCH). Another brand's id
+         *     is 404, never 403.
          */
         get: operations["products_get"];
         put?: never;
@@ -25661,6 +25662,11 @@ export interface operations {
             /** @description Successful Response */
             201: {
                 headers: {
+                    /**
+                     * @description The current version (of the profile or the listing), a quoted UUID. Send it back as `If-Match` on the next PATCH.
+                     * @example "5f0c7c1e-8d2b-5a4e-9b6f-3c2d1e0f9a8b"
+                     */
+                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -26428,6 +26434,11 @@ export interface operations {
             /** @description Successful Response */
             200: {
                 headers: {
+                    /**
+                     * @description The current version (of the profile or the listing), a quoted UUID. Send it back as `If-Match` on the next PATCH.
+                     * @example "5f0c7c1e-8d2b-5a4e-9b6f-3c2d1e0f9a8b"
+                     */
+                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {

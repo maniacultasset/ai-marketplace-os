@@ -175,6 +175,15 @@ class BrandProfileRepository(TenantScopedRepository[BrandProfile]):
         )
         return (await self.db.execute(stmt)).first() is not None
 
+    async def default_manufacturer(self) -> uuid.UUID | None:
+        """The brand default manufacturer's party id, or None (no row or none set)."""
+        found: uuid.UUID | None = (
+            await self.db.execute(
+                self._select().with_only_columns(BrandProfile.default_manufacturer_party_id)
+            )
+        ).scalar_one_or_none()
+        return found
+
     async def get_for_update(self) -> BrandProfile:
         """This tenant's profile row, locked (call `ensure` first)."""
         row: BrandProfile = (await self.db.execute(self._select().with_for_update())).scalar_one()

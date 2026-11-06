@@ -154,3 +154,127 @@ async def test_products_get_tid_without_membership(
     missing = await api.get(f"{PRODUCTS}/{bharat.json()['id']}")
     assert without_correlation(response.json()) == without_correlation(missing.json())
     assert "S12-BH" not in response.text
+
+
+# ---- SI1 T10 (AC1, D1c): the read model and the ETag ----
+
+
+def _get(api: httpx.AsyncClient, world: World, product_id: Any) -> Any:
+    return api.get(f"{PRODUCTS}/{product_id}", headers=bearer_for(world, "operator@acme.test"))
+
+
+async def test_products_get_reads_intake_fields_and_etag(
+    api: httpx.AsyncClient, products_world: World
+) -> None:
+    from app.services.products import product_etag
+
+    from . import factories as f
+
+    acme = products_world.tenant("acme")
+    conn = products_world.conn
+    maker = f.party(
+        conn, acme, address_line1="12 MG Road", city="Bengaluru", state_code="KA",
+        postal_code="560001", email="care@acme.example", phone="+91 80 1234 5678",
+    )  # fmt: skip
+    product_id = f.product(
+        conn,
+        acme,
+        style_number="ST-9",
+        mrp="1299.00",
+        selling_price="999.50",
+        manufacturer_party_id=maker,
+        attributes={
+            "fiber_composition": f.fact(
+                value="60% Cotton, 40% Polyester",
+                normalized=[{"fibre": "cotton", "percent": 60}, {"fibre": "polyester", "percent": 40}],
+            ),
+            "size_measurements": {
+                "normalized": {"unit": "cm", "basis": "garment", "rows": [{"size": "M", "chest": 101}]},
+                "source": "seller",
+                "captured_via": "api",
+                "updated_at": "2026-11-06T00:00:00Z",
+            },
+            "size_chart_url": f.fact(value="https://cdn.example.com/chart.png"),
+        },
+        provenance={
+            "title": f.fact(), "category": f.fact(), "style_number": f.fact(), "mrp": f.fact(),
+            "selling_price": f.fact(), "manufacturer": f.fact(),
+        },
+    )  # fmt: skip
+    response = await _get(api, products_world, product_id)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert (body["style_number"], body["mrp"], body["selling_price"], body["currency"]) == (
+        "ST-9",
+        "1299.00",
+        "999.50",
+        "INR",
+    )
+    assert body["fiber_composition"] == [
+        {"fibre": "cotton", "percent": 60},
+        {"fibre": "polyester", "percent": 40},
+    ]
+    assert body["size_chart"] == {
+        "unit": "cm",
+        "basis": "garment",
+        "rows": [{"size": "M", "chest": 101}],
+    }
+    assert body["size_chart_url"] == "https://cdn.example.com/chart.png"
+    assert body["manufacturer"]["city"] == "Bengaluru"
+    assert body["manufacturer"]["inherited"] is False
+    assert "email" not in body["manufacturer"] and "phone" not in body["manufacturer"]
+    row = conn.execute("SELECT updated_at FROM products WHERE id = %s", [product_id]).fetchone()
+    assert row is not None
+    assert response.headers["ETag"] == product_etag(product_id, row[0])
+
+
+async def test_products_get_malformed_composition_reads_none(
+    api: httpx.AsyncClient, products_world: World
+) -> None:
+    from . import factories as f
+
+    acme = products_world.tenant("acme")
+    product_id = f.product(
+        products_world.conn,
+        acme,
+        attributes={"fiber_composition": f.fact(value="x", normalized={"not": "a list"})},
+    )
+    response = await _get(api, products_world, product_id)
+    assert response.status_code == 200, response.text
+    assert response.json()["fiber_composition"] is None
+
+
+async def test_colourways_only_own_style(api: httpx.AsyncClient, products_world: World) -> None:
+    from . import factories as f
+
+    acme = products_world.tenant("acme")
+    conn = products_world.conn
+    style = f.product(conn, acme, "style")
+    other = f.product(conn, acme, "style")
+    mine = f.colourway(conn, acme, style)
+    f.colourway(conn, acme, other)
+    body = (await _get(api, products_world, style)).json()
+    assert [c["id"] for c in body["colourways"]] == [str(mine)]
+    standalone = f.product(conn, acme)
+    assert (await _get(api, products_world, standalone)).json()["colourways"] == []
+
+
+async def test_manufacturer_inherited_from_brand_default(
+    api: httpx.AsyncClient, products_world: World
+) -> None:
+    from . import factories as f
+
+    acme = products_world.tenant("acme")
+    conn = products_world.conn
+    default = f.party(conn, acme, legal_name="Brand Default Pvt Ltd")
+    conn.execute("DELETE FROM brand_profiles WHERE tenant_id = %s", [acme])
+    f.brand_profile(
+        conn,
+        acme,
+        default_manufacturer_party_id=default,
+        provenance={"manufacturer": f.fact(value=None)},
+    )
+    plain = f.product(conn, acme)
+    body = (await _get(api, products_world, plain)).json()
+    assert body["manufacturer"]["legal_name"] == "Brand Default Pvt Ltd"
+    assert body["manufacturer"]["inherited"] is True

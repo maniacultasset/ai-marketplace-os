@@ -55,6 +55,16 @@ class NewImage:
 
 
 @dataclass(frozen=True, slots=True)
+class ImageDetail:
+    image_id: UUID
+    slot: str
+    colourway_id: UUID | None
+    position: int
+    status: str
+    compliance_status: str
+
+
+@dataclass(frozen=True, slots=True)
 class ImageMeta:
     mime_type: str
     width_px: int
@@ -303,6 +313,35 @@ class ImageRepository(TenantScopedRepository[Image]):
         for product_id, key in (await self.db.execute(stmt)).all():
             found[product_id].append(key)
         return found
+
+    async def details_for_product(self, product_id: UUID) -> builtins.list[ImageDetail]:
+        """The product's live images (a style's own and its colourways'), in CP7 order."""
+        pid = _uuid("product_id", product_id)
+        slot_rank = case(SLOT_ORDER, value=Image.slot, else_=len(SLOT_ORDER))
+        stmt = (
+            self._select()
+            .where(Image.product_id == pid, Image.deleted_at.is_(None))
+            .with_only_columns(
+                Image.id,
+                Image.slot,
+                Image.colourway_id,
+                Image.position,
+                Image.status,
+                Image.compliance_status,
+            )
+            .order_by(slot_rank, Image.position, Image.created_at, Image.id)
+        )
+        return [
+            ImageDetail(
+                image_id=row.id,
+                slot=row.slot,
+                colourway_id=row.colourway_id,
+                position=row.position,
+                status=row.status,
+                compliance_status=row.compliance_status,
+            )
+            for row in (await self.db.execute(stmt)).all()
+        ]
 
     async def registered_keys(self, keys: Sequence[str]) -> set[str]:
         """The keys among `keys` that have a row of this tenant (deleted rows count)."""

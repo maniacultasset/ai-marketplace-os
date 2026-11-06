@@ -97,6 +97,17 @@ PRODUCT_FIELDS = frozenset(
         "parent_product_id",
         "created_at",
         "updated_at",
+        # SI1 D1c
+        "style_number",
+        "mrp",
+        "selling_price",
+        "currency",
+        "fiber_composition",
+        "size_chart",
+        "size_chart_url",
+        "manufacturer",
+        "image_details",
+        "colourways",
     }
 )
 OTHER_SECRET = "s12_not_the_ci_secret_at_least_32_characters"

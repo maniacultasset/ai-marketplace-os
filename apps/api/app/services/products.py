@@ -10,6 +10,11 @@
 - `get_product` / `list_products`: the caller's tenant only; another tenant's id reads as missing.
   `images` holds the product's live image keys in slot order (S17b CP7), one query per page;
   `images` on create stays 404 (S17b D11: images arrive through `/images/upload`).
+- SI1 D1c: a read also carries the intake fields (style number, money as 2-decimal strings,
+  the fibre list, the size chart table, the size chart URL), the image details, a style's
+  colourways and, on a single read, the effective manufacturer (own, else the style's, else the
+  brand default, with `inherited`). `product_etag` is the version a PATCH sends back. `_view`
+  stays total over stored rows: a malformed stored value reads as None, never an error.
 
 Tenant and actor come only from the principal.
 """
@@ -22,16 +27,38 @@ import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Literal
+from decimal import Decimal
+from typing import Any, Final, Literal
 
 from mkos_schemas.codes import ErrorCode
 
 from app.core.errors import InputError, NotFoundError
 from app.core.rbac import Principal
-from app.repositories.uow import tenant_uow
+from app.repositories.images import ImageDetail
+from app.repositories.product_facts import manufacturer_inherited
+from app.repositories.uow import TenantUnitOfWork, tenant_uow
+from app.repositories.variants import ColourwayRow
 from app.services.product_facts import AttributeValue, build_attributes, seller_provenance
 
-__all__ = ["NewProduct", "ProductView", "create_product", "get_product", "list_products"]
+__all__ = [
+    "NewProduct",
+    "PartyView",
+    "ProductView",
+    "create_product",
+    "get_product",
+    "list_products",
+    "product_etag",
+]
+
+PRODUCT_ETAG_NS: Final = uuid.UUID("5d0f0b43-2a4e-4c55-9d47-6a3f3a1c8e21")
+SIZE_CHART_UNITS: Final = frozenset({"cm", "in"})
+SIZE_CHART_BASES: Final = frozenset({"garment", "body"})
+
+
+def product_etag(product_id: uuid.UUID, updated_at: datetime) -> str:
+    """The product's version, a quoted UUID (the `tenants.etag` form)."""
+    return f'"{uuid.uuid5(PRODUCT_ETAG_NS, f"{product_id}:{updated_at.isoformat()}")}"'
+
 
 _NUL = "\x00"
 FlatValue = str | bool | int | float
@@ -48,6 +75,20 @@ class NewProduct:
 
 
 @dataclass(frozen=True, slots=True)
+class PartyView:
+    id: uuid.UUID
+    legal_name: str | None
+    address_line1: str | None
+    address_line2: str | None
+    city: str | None
+    state_code: str | None
+    postal_code: str | None
+    country_code: str
+    gstin: str | None
+    inherited: bool
+
+
+@dataclass(frozen=True, slots=True)
 class ProductView:
     id: uuid.UUID
     sku: str
@@ -59,6 +100,89 @@ class ProductView:
     parent_product_id: uuid.UUID | None
     created_at: datetime
     updated_at: datetime
+    style_number: str | None = None
+    mrp: str | None = None
+    selling_price: str | None = None
+    currency: str | None = None
+    fiber_composition: list[dict[str, Any]] | None = None
+    size_chart: dict[str, Any] | None = None
+    size_chart_url: str | None = None
+    manufacturer: PartyView | None = None
+    image_details: tuple[ImageDetail, ...] = ()
+    colourways: tuple[ColourwayRow, ...] = ()
+    etag: str = ""
+
+
+def _money(value: Any) -> str | None:
+    return format(value, ".2f") if isinstance(value, Decimal) else None
+
+
+def _normalized(facts: Mapping[str, Any], key: str) -> Any:
+    fact = facts.get(key)
+    return fact.get("normalized") if isinstance(fact, Mapping) else None
+
+
+def _fibres(facts: Mapping[str, Any]) -> list[dict[str, Any]] | None:
+    stored = _normalized(facts, "fiber_composition")
+    if not isinstance(stored, list) or not stored:
+        return None
+    out: list[dict[str, Any]] = []
+    for item in stored:
+        if not isinstance(item, Mapping):
+            return None
+        fibre, percent = item.get("fibre"), item.get("percent")
+        if not isinstance(fibre, str) or isinstance(percent, bool):
+            return None
+        if not isinstance(percent, int | float) or not math.isfinite(percent):
+            return None
+        out.append({"fibre": fibre, "percent": percent})
+    return out
+
+
+def _size_chart(facts: Mapping[str, Any]) -> dict[str, Any] | None:
+    stored = _normalized(facts, "size_measurements")
+    if not isinstance(stored, Mapping):
+        return None
+    rows = stored.get("rows")
+    if stored.get("unit") not in SIZE_CHART_UNITS or stored.get("basis") not in SIZE_CHART_BASES:
+        return None
+    if not isinstance(rows, list) or not rows:
+        return None
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, Mapping) or not isinstance(row.get("size"), str):
+            return None
+        kept: dict[str, Any] = {"size": row["size"]}
+        for key, value in row.items():
+            if key == "size":
+                continue
+            ok = isinstance(value, int | float) and not isinstance(value, bool)
+            if not ok or not math.isfinite(value):
+                return None
+            kept[key] = value
+        out.append(kept)
+    return {"unit": stored["unit"], "basis": stored["basis"], "rows": out}
+
+
+def _text_value(facts: Mapping[str, Any], key: str) -> str | None:
+    fact = facts.get(key)
+    value = fact.get("value") if isinstance(fact, Mapping) else None
+    return value if isinstance(value, str) else None
+
+
+def _party_view(party: Any, *, inherited: bool) -> PartyView:
+    return PartyView(
+        id=party.id,
+        legal_name=party.legal_name,
+        address_line1=party.address_line1,
+        address_line2=party.address_line2,
+        city=party.city,
+        state_code=party.state_code,
+        postal_code=party.postal_code,
+        country_code=party.country_code,
+        gstin=party.gstin,
+        inherited=inherited,
+    )
 
 
 def _flat(fact: Any) -> FlatValue | None:
@@ -73,10 +197,19 @@ def _flat(fact: Any) -> FlatValue | None:
     return flat if isinstance(flat, str | bool | int | float) else None
 
 
-def _view(row: Any, images: list[str] | None = None) -> ProductView:
+def _view(
+    row: Any,
+    images: list[str] | None = None,
+    *,
+    details: tuple[ImageDetail, ...] = (),
+    party: PartyView | None = None,
+    colourways: tuple[ColourwayRow, ...] = (),
+) -> ProductView:
     """Total over every row the DB CHECKs accept: nothing here re-applies input rules. `images`
     are the product's live image keys in slot order (S17b CP7)."""
     facts: Mapping[str, Any] = row.attributes or {}
+    if not isinstance(facts, Mapping):
+        facts = {}
     flat = {key: _flat(fact) for key, fact in facts.items()}
     return ProductView(
         id=row.id,
@@ -90,7 +223,40 @@ def _view(row: Any, images: list[str] | None = None) -> ProductView:
         parent_product_id=row.parent_product_id,
         created_at=row.created_at,
         updated_at=row.updated_at,
+        style_number=row.style_number,
+        mrp=_money(row.mrp),
+        selling_price=_money(row.selling_price),
+        currency=row.currency,
+        fiber_composition=_fibres(facts),
+        size_chart=_size_chart(facts),
+        size_chart_url=_text_value(facts, "size_chart_url"),
+        manufacturer=party,
+        image_details=details,
+        colourways=colourways,
+        etag=product_etag(row.id, row.updated_at),
     )
+
+
+async def _full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
+    """A single read: the image details, a style's colourways and the effective manufacturer
+    (own → style → brand default)."""
+    style = None
+    if row.parent_product_id is not None:
+        style = await uow.products.get_by_id(row.parent_product_id)
+    party_id = row.manufacturer_party_id
+    if party_id is None and style is not None:
+        party_id = style.manufacturer_party_id
+    inherited = manufacturer_inherited(row, style)
+    if party_id is None:
+        party_id = await uow.brand_profiles.default_manufacturer()
+    party_row = None if party_id is None else await uow.parties.get(party_id)
+    party = None if party_row is None else _party_view(party_row, inherited=inherited)
+    keys = await uow.images.live_keys_for_products([row.id])
+    details = tuple(await uow.images.details_for_product(row.id))
+    colourways: tuple[ColourwayRow, ...] = ()
+    if row.variation_theme is not None and row.parent_product_id is None:
+        colourways = tuple(await uow.colourways.colourways_of(row.id))
+    return _view(row, keys[row.id], details=details, party=party, colourways=colourways)
 
 
 def _refuse_nul(cmd: NewProduct) -> None:
@@ -138,8 +304,7 @@ async def get_product(principal: Principal, product_id: uuid.UUID) -> ProductVie
         row = await uow.products.get_by_id(product_id)
         if row is None:
             raise NotFoundError("product_id")
-        keys = await uow.images.live_keys_for_products([row.id])
-        return _view(row, keys[row.id])
+        return await _full_view(uow, row)
 
 
 async def list_products(

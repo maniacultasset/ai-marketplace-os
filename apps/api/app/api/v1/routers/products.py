@@ -6,18 +6,29 @@ report in the envelope's `error_report`."""
 
 from __future__ import annotations
 
-from typing import Annotated
+from dataclasses import asdict
+from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Request, Response, UploadFile
 from fastapi import Path as PathParam
 from mkos_schemas.codes import ErrorCode
 
 from app.api.errors import ApiError
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import IdempotencyKey, get_current_principal
+from app.api.v1.schemas.brand_profile import PartyOut
 from app.api.v1.schemas.imports import ImportAccepted
-from app.api.v1.schemas.products import ProductCreate, ProductOut, ProductPage
+from app.api.v1.schemas.products import (
+    ColourwayOut,
+    FibreOut,
+    ProductCreate,
+    ProductImageOut,
+    ProductOut,
+    ProductPage,
+    SizeChart,
+    SizeChartRow,
+)
 from app.api.v1.surface import OPS, route
 from app.core.errors import ConflictError
 from app.core.rbac import Principal
@@ -28,11 +39,56 @@ router = APIRouter()
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 
 
+def _party(view: products.PartyView | None) -> PartyOut | None:
+    if view is None:
+        return None
+    return PartyOut.model_construct(
+        id=view.id,
+        legal_name=view.legal_name,
+        address_line1=view.address_line1,
+        address_line2=view.address_line2,
+        city=view.city,
+        state_code=view.state_code,
+        postal_code=view.postal_code,
+        country_code=view.country_code,
+        gstin=view.gstin,
+        inherited=view.inherited,
+    )
+
+
+def _chart(chart: dict[str, Any] | None) -> SizeChart | None:
+    if chart is None:
+        return None
+    rows = chart["rows"]
+    assert isinstance(rows, list)  # noqa: S101 - the service built it
+    return SizeChart.model_construct(
+        unit=chart["unit"],
+        basis=chart["basis"],
+        rows=[SizeChartRow.model_construct(**row) for row in rows],
+    )
+
+
 def _out(view: products.ProductView) -> ProductOut:
     """A DB-sourced row is built, not validated: the DB CHECKs are the read-side truth, and
     `ProductOut`'s input patterns (`Sku`, the non-blank title, the slug) must not turn one stored row
     into a 500 for the whole tenant list. The service already keeps `attributes` to wire scalars."""
+    fibres = view.fiber_composition
     return ProductOut.model_construct(
+        style_number=view.style_number,
+        mrp=view.mrp,
+        selling_price=view.selling_price,
+        currency=view.currency,
+        fiber_composition=(
+            None if fibres is None else [FibreOut.model_construct(**f) for f in fibres]
+        ),
+        size_chart=_chart(view.size_chart),
+        size_chart_url=view.size_chart_url,
+        manufacturer=_party(view.manufacturer),
+        image_details=[ProductImageOut.model_construct(**asdict(d)) for d in view.image_details],
+        colourways=[
+            ColourwayOut.model_construct(id=c.id, colour=c.colour, colour_sku=c.colour_sku)
+            for c in view.colourways
+        ],
         id=view.id,
         sku=view.sku,
         title=view.title,
@@ -47,7 +103,9 @@ def _out(view: products.ProductView) -> ProductOut:
 
 
 @route(router, OPS["products_create"])
-async def products_create(body: ProductCreate, principal: CurrentPrincipal) -> ProductOut:
+async def products_create(
+    body: ProductCreate, principal: CurrentPrincipal, response: Response
+) -> ProductOut:
     """Create one product. The SKU is unique per brand (409 SKU_CONFLICT); an unknown attribute
     key is 422 UNKNOWN_FACT_KEY."""
     view = await products.create_product(
@@ -60,6 +118,7 @@ async def products_create(body: ProductCreate, principal: CurrentPrincipal) -> P
             attributes=dict(body.attributes),
         ),
     )
+    response.headers["ETag"] = view.etag
     return _out(view)
 
 
@@ -103,7 +162,10 @@ async def products_bulk(
 
 @route(router, OPS["products_get"])
 async def products_get(
-    product_id: Annotated[UUID, PathParam()], principal: CurrentPrincipal
+    product_id: Annotated[UUID, PathParam()], principal: CurrentPrincipal, response: Response
 ) -> ProductOut:
-    """Read one product. Another brand's id is 404, never 403."""
-    return _out(await products.get_product(principal, product_id))
+    """Read one product with its `ETag` (send it back as `If-Match` on PATCH). Another brand's id
+    is 404, never 403."""
+    view = await products.get_product(principal, product_id)
+    response.headers["ETag"] = view.etag
+    return _out(view)
