@@ -2,10 +2,12 @@
 
 - `order_for_listing(rows)` (pure): the `CanonicalListing.images` the backend pins on every saved
   version, replacing what the pipeline returned. Order: the style's main, the style's other
-  images by slot (`secondary`, `lifestyle`, `size_chart`) then position, then each colourway's
-  main (colourways by position, then id), then the rest of each colourway's images. Every live
-  image in a publishable slot counts, whatever its compliance status (CP5: the approve image
-  gate then blocks a pending or failed one). `packaging_label` is never publishable. Cut at 20.
+  images by slot (`secondary`, `lifestyle`, `size_chart`) then position, then every colourway's
+  main (colourways by position, then id), then the other colourway images (colourways in the
+  same order, then slot and position), so the cut never drops a colourway's main for another's
+  extras. Every live image in a publishable slot counts, whatever its compliance status (CP5:
+  the approve image gate then blocks a pending or failed one). `packaging_label` is never
+  publishable. Cut at 20.
 - `pick_context(rows)` (pure): up to 6 publishable images in the same order plus the newest
   `packaging_label`, only those with a clean derivative.
 - `load_context_images(storage, tenant_id, picked)`: each picked image's `vision.jpg`, as a
@@ -45,18 +47,19 @@ LABEL: Final = ImageSlot.PACKAGING_LABEL.value
 
 
 def _key(row: ListingImageRow) -> tuple[Any, ...]:
-    own = row.colourway_id is None
-    colourway = (
-        (0, 0, "")
-        if own
-        else (
-            1,
-            row.colourway_position if row.colourway_position is not None else 10_000,
-            str(row.colourway_id),
-        )
-    )
+    """Decision 19: phase 0 the style's own images, phase 1 each colourway's main, phase 2 the
+    other colourway images; inside a phase colourways by position then id, then slot, position,
+    age and id."""
+    if row.colourway_id is None:
+        phase, colourway_pos, colourway_id = 0, 0, ""
+    else:
+        phase = 1 if row.slot == "main" else 2
+        colourway_pos = row.colourway_position if row.colourway_position is not None else 10_000
+        colourway_id = str(row.colourway_id)
     return (
-        *colourway,
+        phase,
+        colourway_pos,
+        colourway_id,
         SLOT_RANK.get(row.slot, 99),
         row.position,
         row.created_at,

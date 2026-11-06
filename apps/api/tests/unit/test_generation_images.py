@@ -62,8 +62,8 @@ def test_decision_19_order_with_two_colourways() -> None:
         life.image_id,
         chart.image_id,
         red_main.image_id,
-        red_second.image_id,
         blue_main.image_id,
+        red_second.image_id,
     ]
     assert [r.position for r in refs] == list(range(8))
     assert ImageSlot.PACKAGING_LABEL not in {r.slot for r in refs}
@@ -73,6 +73,28 @@ def test_cut_at_twenty() -> None:
     rows = [row("main")] + [row("secondary", position=i) for i in range(24)]
     refs = order_for_listing(rows)
     assert len(refs) == 20 and refs[0].slot is ImageSlot.MAIN
+
+
+def test_cap_keeps_every_colourway_main() -> None:
+    """Decision 19 (round 1 repro): every colourway's main comes before any colourway's other
+    images, so the 20 cap never drops a later colourway's main for an earlier one's extras."""
+    rows = [row("main")] + [row("secondary", position=i) for i in range(5)]
+    rows += [row("main", colourway=RED, cw_pos=0)]
+    rows += [row("secondary", colourway=RED, cw_pos=0, position=i) for i in range(1, 15)]
+    blue_main = row("main", colourway=BLUE, cw_pos=1)
+    rows.append(blue_main)
+    refs = order_for_listing(rows)
+    assert len(refs) == 20
+    assert [r.image_id for r in refs].index(blue_main.image_id) == 7
+
+
+def test_context_follows_the_listing_order() -> None:
+    red_main, red_sec = row("main", colourway=RED, cw_pos=0), row(
+        "secondary", colourway=RED, cw_pos=0, position=1
+    )
+    blue_main = row("main", colourway=BLUE, cw_pos=1)
+    picked = pick_context([red_sec, blue_main, red_main])
+    assert [p.image_id for p in picked] == [red_main.image_id, blue_main.image_id, red_sec.image_id]
 
 
 def test_pending_or_failed_images_still_listed() -> None:
