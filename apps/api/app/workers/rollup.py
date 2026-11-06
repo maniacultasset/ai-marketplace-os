@@ -35,7 +35,6 @@ from decimal import Decimal
 from typing import Final
 from uuid import UUID
 
-from mkos_schemas.enums import JobKind
 from sqlalchemy import Date, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
@@ -46,6 +45,7 @@ from app.db.models.ops import JobRun
 from app.db.models.runs import AgentRun
 from app.db.models.tenancy import Tenant
 from app.db.session import platform_scope
+from app.repositories.budget import RESERVING_KINDS
 
 COST_WINDOW: Final = timedelta(days=30)
 MONEY: Final = Decimal("0.000001")
@@ -177,7 +177,7 @@ async def cost_per_published_listing(session: AsyncSession, now: datetime) -> Co
 async def spend_today(
     session: AsyncSession, now: datetime, *, default_cap: Decimal | None = None
 ) -> SpendToday:
-    """Today's (UTC day of `started_at`) spend and `listing_generate` reservations per tenant, and
+    """Today's (UTC day of `started_at`) spend and reservations (`RESERVING_KINDS`) per tenant, and
     each such tenant's cap: its `llm_daily_budget_usd`, else `default_cap` (default: the
     `LLM_TENANT_DAILY_BUDGET_USD` setting). The kill switch's sums (`tenant_state`, `global_state`).
     """
@@ -192,7 +192,7 @@ async def spend_today(
     reserved_stmt = (
         select(JobRun.tenant_id, func.sum(JobRun.cost_reserved_usd))
         .where(
-            JobRun.kind == JobKind.LISTING_GENERATE.value,
+            JobRun.kind.in_(RESERVING_KINDS),
             JobRun.started_at >= start,
             JobRun.started_at < end,
         )

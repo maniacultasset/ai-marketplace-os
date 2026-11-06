@@ -122,6 +122,11 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
   agent is judged by its last run, so a 429 that recovered on the retry does not hide a later
   deterministic failure, and a missing key or embedder or a refused embeddings call (401, 400,
   bad shape) is not transient: it stays `INTERNAL_ERROR`.
+- Brand embeds pay out of the same daily caps as generation: before each paid embedding call a
+  `brand_embed` job reserves the call's upper-bound cost against the tenant and platform caps
+  (the generation lock order, `app/workers/budget.py`) and settles it to zero once the call is
+  metered, so a large or repeatedly re-uploaded document cannot push the platform cap over
+  unchecked; over a cap the job fails `BUDGET_EXCEEDED` and the document `failed`.
 - One brand cannot flood the shared `default` queue (4 slots, FIFO, also running imports, image
   checks and brand embeds): generate and regenerate refuse with 429 `RATE_LIMITED` once the
   tenant holds `GENERATION_LIVE_JOBS_PER_TENANT` (default 10) `listing_generate` jobs `queued`

@@ -15,6 +15,12 @@ Document (`{"source": "brand_document", "document_id", "chunk_type"}`):
 7. `mark_ready(chunk_count = active chunks)`.
 A retryable `EmbeddingFailed` is `RetryableJobError`; any other is `JobFailed` (source `ai_model`).
 
+Every paid call (`_embed`: a document batch, or the profile's missing set) first passes the same
+tenant and platform daily caps as generation, reserving the call's upper-bound cost on the
+attempt (`app.workers.budget.reserve`), and settles the reservation to zero after the call is
+metered. Over a cap the job fails with `BUDGET_EXCEEDED` (source `system`, not retried) and no
+call is made; a document job's terminal hook marks the document `failed`.
+
 Profile (`{"source": "brand_profile"}`): read the voice fields, `chunk_profile` + `check_chunks`
 (voice text written by any path is checked again), stop if the active profile set is already
 exactly these drafts, reuse stored vectors by hash, embed the rest, then in one transaction under
@@ -32,6 +38,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from decimal import Decimal
 from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
@@ -40,6 +47,7 @@ from mkos_schemas.errors import ErrorItem, ErrorReport
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.core.model_prices import embedding_cost_usd
 from app.db.models.ops import JobRun
 from app.repositories.brand_chunks import BrandChunkRepository, NewChunk
 from app.repositories.brand_documents import BrandDocumentRepository
@@ -61,6 +69,7 @@ from app.services.embeddings import (
     embed_texts,
     get_embedder,
 )
+from app.workers import budget
 from app.workers.errors import JobFailed, RetryableJobError
 from app.workers.registry import JobContext, Outcome
 
@@ -71,6 +80,7 @@ PROFILE: Final = "brand_profile"
 PROFILE_PASSES: Final = 3
 FAILED_STATES: Final = frozenset({"failed", "dead_letter", "cancelled"})
 _CHUNK_TYPES: Final = frozenset({"tone_rule", "glossary", "compliance"})  # CP4
+MIN_RESERVATION_USD: Final = Decimal("0.000001")
 
 
 def embedder() -> Embedder:
@@ -97,22 +107,41 @@ def _failed(code: ErrorCode, message: str, ctx: JobContext, source: ErrorSource)
     return JobFailed(_report(code, message, ctx, source))
 
 
+def reservation_usd(model: str, texts: Sequence[str]) -> Decimal:
+    """The upper-bound cost of embedding `texts`: a byte-level BPE gives at most one token per
+    UTF-8 byte, priced at the model's list price; never zero, so a tenant at its cap is refused."""
+    tokens = sum(len(text.encode("utf-8")) for text in texts)
+    return max(embedding_cost_usd(model, tokens), MIN_RESERVATION_USD)
+
+
 async def _embed(
     model: Embedder, drafts: Sequence[ChunkDraft], ctx: JobContext
 ) -> list[list[float]]:
+    """The only paid call of the job. Before it, the tenant and platform daily caps
+    (`budget.reserve`, the generation lock order) with the call's upper-bound cost reserved on
+    the attempt; after it, the reservation settled to zero, the `agent_runs` rows holding the
+    real spend. A refusal is `JobFailed(BUDGET_EXCEEDED)` and no call is made."""
+    texts = [d.text for d in drafts]
+    tenant, job, attempt = ctx.tenant_id, ctx.job_run_id, ctx.attempt
+    try:
+        reserved = await budget.reserve(
+            tenant, job, attempt, amount=reservation_usd(model.model, texts)
+        )
+    except budget.BudgetRefused:
+        raise _failed(
+            ErrorCode.BUDGET_EXCEEDED, "The daily AI budget is used up.", ctx, ErrorSource.SYSTEM
+        ) from None
     try:
         batches = await embed_texts(
-            model,
-            [d.text for d in drafts],
-            tenant_id=ctx.tenant_id,
-            job_id=ctx.job_run_id,
-            attempt=ctx.attempt,
-            request_id=ctx.request_id,
+            model, texts, tenant_id=tenant, job_id=job, attempt=attempt, request_id=ctx.request_id
         )
     except EmbeddingFailed as exc:
         if exc.retryable:
             raise RetryableJobError(exc.code) from None
         raise _failed(exc.code, "the embedding call failed", ctx, ErrorSource.AI_MODEL) from None
+    finally:
+        if reserved:  # fenced out (a newer attempt owns the row): checked, nothing to settle
+            await budget.release(tenant, job, attempt)
     return [vector for batch in batches for vector in batch.vectors]
 
 

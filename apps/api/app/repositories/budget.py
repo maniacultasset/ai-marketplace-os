@@ -1,7 +1,8 @@
 """The AI budget reads and locks (DATABASE.md:993-998; ENV.md:90-91; S18 T6, T7, D10).
 
 A budget day is the UTC day of `started_at`. A tenant has spent `SUM(agent_runs.cost_usd)` that
-day and holds `SUM(job_runs.cost_reserved_usd)` over its `listing_generate` jobs claimed that day;
+day and holds `SUM(job_runs.cost_reserved_usd)` over its `listing_generate` and `brand_embed` jobs
+(`RESERVING_KINDS`) claimed that day;
 its cap is `tenants.llm_daily_budget_usd`, else the `LLM_TENANT_DAILY_BUDGET_USD` default the
 caller passes. `global_state(platform_session, day)` is the same sum over every tenant, read in the
 read-only platform session (the caller owns it; CANON-ADDENDUM.md:181).
@@ -28,6 +29,8 @@ from app.db.models.tenancy import Tenant
 from app.repositories.base import TenantScopedRepository
 
 GLOBAL_LOCK_KEY: Final = "budget:global"
+# the job kinds that hold a budget reservation while they make paid model calls
+RESERVING_KINDS: Final = (JobKind.LISTING_GENERATE.value, JobKind.BRAND_EMBED.value)
 ZERO: Final = Decimal("0")
 
 
@@ -73,7 +76,7 @@ class BudgetRepository(TenantScopedRepository[AgentRun]):
             _Jobs(self.db, self.tenant_id)
             ._select()
             .where(
-                JobRun.kind == JobKind.LISTING_GENERATE.value,
+                JobRun.kind.in_(RESERVING_KINDS),
                 JobRun.started_at >= start,
                 JobRun.started_at < end,
             )
@@ -112,7 +115,7 @@ async def global_state(platform_session: Any, day: date, *, cap: Decimal) -> Bud
         AgentRun.started_at >= start, AgentRun.started_at < end
     )
     reserved = select(func.coalesce(func.sum(JobRun.cost_reserved_usd), ZERO)).where(
-        JobRun.kind == JobKind.LISTING_GENERATE.value,
+        JobRun.kind.in_(RESERVING_KINDS),
         JobRun.started_at >= start,
         JobRun.started_at < end,
     )
