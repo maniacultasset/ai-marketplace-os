@@ -499,7 +499,7 @@ class _Writer:
             sub_category=row.sub_category,
             product_type=row.product_type,
             gender=row.gender,
-            source_image_urls=row.image_urls,
+            source_image_urls=row.image_urls,  # empty keeps the stored URLs (KEEP_WHEN_EMPTY)
             **family,
         )
 
@@ -533,7 +533,17 @@ class _Writer:
         if row.package_weight_g is not None:
             await w.set_typed(product_id, "package_weight_g", row.package_weight_g, f.provenance())
         for key, value in sorted(row.attributes.items()):
+            if key == "fiber_composition" and row.fiber_fibres:
+                # SI1 D9(a): the seller's text and the parsed fibres
+                await w.set_attribute(product_id, key, f.fact(value, list(row.fiber_fibres)))
+                continue
             await w.set_attribute(product_id, key, f.fact(value))
+        if row.style_number is not None:
+            if level == "variant":  # style-owned (`ck_products_style_owned`)
+                raise InputError(ErrorCode.FACT_LEVEL_INVALID, "style_number")
+            await w.set_typed(product_id, "style_number", row.style_number, f.provenance())
+        if row.size_chart_url is not None and level in ("standalone", "style"):
+            await w.set_attribute(product_id, "size_chart_url", f.fact(row.size_chart_url))
         if level in ("standalone", "style") and row.size_system is not None:
             await w.set_attribute(product_id, "size_system", f.fact(row.size_system))
         if level == "standalone":

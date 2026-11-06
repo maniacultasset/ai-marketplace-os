@@ -160,6 +160,7 @@ def test_row_model_alias_matches_after_lowercase() -> None:
         "price_inr",
         "weight_grams",
         "package_weight_g",
+        "fabric_composition",  # SI1 D9(a)
     }
 
 
@@ -210,3 +211,22 @@ def test_check_header_never_raises(columns: list[str]) -> None:
         assert message
     if problems:
         header_report(problems)
+
+
+# ---- SI1 T23 (D9; decision 14) ----
+
+
+def test_fabric_composition_header_is_fiber_composition() -> None:
+    assert row_key(normalize_header("Fabric_Composition")) == "fiber_composition"
+
+
+def test_style_number_extension_column_known() -> None:
+    assert row_key("style_number") == "style_number"
+    assert check_header(["seller_sku", "product_name", "category", "style_number"]) == []
+
+
+def test_fabric_and_fiber_composition_together_is_a_duplicate() -> None:
+    problems = check_header(
+        ["seller_sku", "product_name", "category", "fabric_composition", "fiber_composition"]
+    )
+    assert [code for code, _ in problems] == [ErrorCode.HEADER_DUPLICATE_COLUMN]

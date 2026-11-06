@@ -16,7 +16,8 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func, literal, literal_column, tuple_
+from sqlalchemy import case, cast, func, literal, literal_column, tuple_
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
@@ -39,6 +40,8 @@ UPSERT_COLUMNS = (
     "source_image_urls",
 )
 KEEP_WHEN_BLANK = frozenset({"brand_name", "sub_category", "product_type", "gender"})
+# SI1 D9(e): an import row with no media cell keeps the stored URLs (an empty list is "absent")
+KEEP_WHEN_EMPTY = frozenset({"source_image_urls"})
 # column → its provenance key (the same pairs `attribute_columns` holds)
 UPSERT_FACT_KEYS = {
     "title": "title",
@@ -240,11 +243,16 @@ class ProductRepository(TenantScopedRepository[Product]):
         table = Product.__table__
         columns = (*UPSERT_COLUMNS, "size_run")
         # a blank optional cell keeps the stored value (blank means absent, not "clear it")
+        empty = cast(literal("[]"), JSONB)
         new_values = {
             name: (
                 func.coalesce(stmt.excluded[name], table.c[name])
                 if name in KEEP_WHEN_BLANK
-                else stmt.excluded[name]
+                else (
+                    case((stmt.excluded[name] == empty, table.c[name]), else_=stmt.excluded[name])
+                    if name in KEEP_WHEN_EMPTY
+                    else stmt.excluded[name]
+                )
             )
             for name in columns
         }

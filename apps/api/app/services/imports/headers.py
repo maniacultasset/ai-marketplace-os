@@ -123,6 +123,8 @@ ALIASES: Final[Mapping[str, str]] = MappingProxyType(
         "price_inr": "selling_price",
         "weight_grams": GRAMS_COLUMN,
         "package_weight_g": GRAMS_COLUMN,
+        # SI1 D9(a): the client's spelling of the A.6 column
+        "fabric_composition": "fiber_composition",
     }
 )
 """Alias header → the row model's key. Both grams aliases name A.6 `package_weight` in bare
@@ -149,7 +151,10 @@ IGNORED_WITH_WARNING: Final[frozenset[str]] = frozenset(
     }
 )
 
-_KNOWN: Final = frozenset(A6_COLUMNS)
+EXTENSION_COLUMNS: Final = ("style_number",)
+"""SI1 decision 14: columns beyond A.6 the import reads (the FE family CSV and the client form)."""
+
+_KNOWN: Final = frozenset(A6_COLUMNS) | frozenset(EXTENSION_COLUMNS)
 
 
 def normalize_header(raw: str) -> str:

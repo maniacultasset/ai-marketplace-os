@@ -88,9 +88,8 @@ def test_row_model_short_row_blank_not_none() -> None:
 
 
 def test_row_model_json_looking_cell_is_plain_text() -> None:
-    cell = '{"fibre": "cotton", "percent": 100, "__proto__": 1}'
-    row = ok(fiber_composition=cell, fit='["a"]')
-    assert row.attributes["fiber_composition"] == cell
+    row = ok(fiber_composition="100% cotton", fit='["a"]')
+    assert row.attributes["fiber_composition"] == "100% cotton"
     assert row.attributes["fit"] == '["a"]'
 
 
@@ -220,14 +219,17 @@ def test_row_model_errors_file_row_schema_no_value() -> None:
         assert canary not in item.message and canary.lower() not in item.message
 
 
-def test_row_model_requires_one_image() -> None:
+def test_row_model_image_optional_with_a_warning() -> None:
+    """SI1 D9(d): a row without an image URL imports; a standalone or style row is warned."""
     for cells in ({"main_image": ""}, {"main_image": "  ", "additional_images": ""}):
-        assert ErrorCode.REQUIRED_FIELD_MISSING in codes(run(**cells))
-    no_cell = validate_row(normalize_row({k: v for k, v in GOOD.items() if k != "main_image"}))
-    assert codes(no_cell) == [ErrorCode.REQUIRED_FIELD_MISSING]
-    assert "main_image" in no_cell.errors[0].message
+        result = run(**cells)
+        assert result.errors == [] and result.row is not None
+        assert [w.error_code for w in result.warnings] == [ErrorCode.REQUIRED_FIELD_MISSING]
+        assert "upload images in the product form" in result.warnings[0].message
+    child = run(main_image="", parent_style_id="STYLE-1")
+    assert child.errors == [] and child.warnings == []
     http_only = run(main_image="http://cdn.example.com/a.jpg")
-    assert ErrorCode.REQUIRED_FIELD_MISSING in codes(http_only)
+    assert codes(http_only) == [ErrorCode.PATTERN_MISMATCH]
     row = ok(main_image="", additional_images="https://cdn.example.com/b.jpg")
     assert row.image_urls == ("https://cdn.example.com/b.jpg",)
 
@@ -358,3 +360,34 @@ def test_valid_row_fits_db_columns(
     result = run(**cells)
     if result.row is not None:
         assert _fits_db(result.row)
+
+
+# ---- SI1 T23 (D9) ----
+
+
+def test_row_model_composition_parsed() -> None:
+    row = ok(fiber_composition="60% Cotton, 40% Polyester")
+    assert row.fiber_fibres == (
+        {"fibre": "cotton", "percent": 60},
+        {"fibre": "polyester", "percent": 40},
+    )
+
+
+@pytest.mark.parametrize("cell", ["90% cotton", "60% a, 40% A", "cotton"])
+def test_row_model_bad_composition_is_a_row_error(cell: str) -> None:
+    result = run(fiber_composition=cell)
+    assert codes(result) == [ErrorCode.VALUE_NOT_ALLOWED]
+    assert "add up to 100" in result.errors[0].message
+
+
+def test_row_model_style_number_and_size_chart_url() -> None:
+    row = ok(style_number="ST-9", size_chart="https://cdn.example.com/chart.png")
+    assert row.style_number == "ST-9"
+    assert row.size_chart_url == "https://cdn.example.com/chart.png"
+    assert codes(run(style_number="S" * 65)) == [ErrorCode.FIELD_TOO_LONG]
+    assert codes(run(size_chart="http://cdn.example.com/chart.png")) == [ErrorCode.PATTERN_MISMATCH]
+
+
+def test_row_model_fabric_composition_header() -> None:
+    result = validate_row(normalize_row({**GOOD, "fabric_composition": "100% linen"}))
+    assert result.row is not None and result.row.attributes["fiber_composition"] == "100% linen"
