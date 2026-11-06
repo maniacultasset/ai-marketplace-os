@@ -161,15 +161,28 @@ def _value_in(value: object, allowed: Sequence[str]) -> bool:
     return fold(str(value)) in folded
 
 
+def _backs(value: object, any_of: Sequence[str] | None) -> bool:
+    if not is_present(value):
+        return False
+    if any_of is None:
+        return True
+    wanted = {fold(v) for v in any_of}
+    values = value if isinstance(value, list) else [value]
+    return any(fold(str(v)) in wanted for v in values)
+
+
 def _claim(rule: Rule, ctx: Ctx) -> list[Draft]:
+    """A claim term needs its attribute on the listing and, when the product's facts are given
+    (generation, validate), among those facts too: a listing attribute the model wrote is not
+    a fact, so it cannot back a certification or performance claim on its own."""
     rule_def = cast("ClaimRequiresAttribute", rule.rule_def)
     requires = rule_def.requires
     found, value = ctx.lookup(f"attributes.{requires.attribute}")
-    supported = found and is_present(value)
-    if supported and requires.any_of is not None:
-        wanted = {fold(v) for v in requires.any_of}
-        values = value if isinstance(value, list) else [value]
-        supported = any(fold(str(v)) in wanted for v in values)
+    supported = found and _backs(value, requires.any_of)
+    if supported and ctx.product is not None:
+        facts = ctx.product.get("attributes")
+        fact = facts.get(requires.attribute) if isinstance(facts, Mapping) else None
+        supported = _backs(fact, requires.any_of)
     if supported:
         return []
 

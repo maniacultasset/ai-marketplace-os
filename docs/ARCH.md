@@ -105,6 +105,16 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
   helper Amazon's `generic_keyword` and Flipkart's `keywords` use), so a number or phrase split
   across terms (`98765`, `43210`) is a hit on `keywords.search_terms`. That item is added only
   when no single term already tripped the row.
+- Invented claims are the Rules Engine's to stop too, whatever the pipeline does: every seed
+  RuleSet holds three platform `*` `claim_requires_attribute` rows (`UNSUPPORTED_CLAIM`, severity
+  error). Certification words (`organic`, `GOTS`, `certified`, `OEKO-TEX`, fair trade) need
+  `certifications`; performance words (waterproof, water-resistant, anti-bacterial,
+  antimicrobial, anti-fungal, odour resistant, UV protection, fireproof, flame retardant) need
+  `performance_claims`; hand-process words (handmade, handcrafted, handloom, handwoven, hand
+  embroidered, hand block printed, hand painted, hand knitted, hand stitched) need a
+  `construction` naming one of them. When the product's facts are given (generation and
+  validate), the backing attribute must be among those facts: a listing attribute the model
+  wrote cannot back a claim on its own.
 - A generation that fails before any model stage (the context load or the brand retrieval) gives
   its budget reservation back, and a transient model or embedding failure (rate limit, provider
   down, timeout) is a retryable `MODEL_UNAVAILABLE` rather than `GENERATION_FAILED`; the job is

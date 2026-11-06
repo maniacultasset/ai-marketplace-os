@@ -334,3 +334,118 @@ def test_rules_seed_contact_split_keywords_spare_ordinary_terms(marketplace: str
         update={"search_terms": ["kurta set", "size 38", "pack of 3"], "hidden_terms": ["110 cm"]}
     )
     assert _contact_errors(base.model_copy(update={"keywords": keywords})) == []
+
+
+# ---- claims: certification, performance and handmade claims need a backing fact ----
+#
+# Platform `*` claim_requires_attribute rows (UNSUPPORTED_CLAIM, severity error) per seed RuleSet:
+# the product rule "never invent certifications or performance claims" is enforced by the final
+# arbiter even with a stub or replacement pipeline. Backing: `certifications` for certification
+# claims, `performance_claims` for performance claims, `construction` naming the hand process.
+CLAIM_PACKS = ("claim_certification", "claim_performance", "claim_handmade")
+CLAIM_CASES = (
+    ("Organic cotton kurta", "claim_certification"),
+    ("GOTS certified fabric", "claim_certification"),
+    ("Certified safe dyes", "claim_certification"),
+    ("OEKO-TEX tested", "claim_certification"),
+    ("Waterproof finish", "claim_performance"),
+    ("Water-resistant shade", "claim_performance"),
+    ("Anti-bacterial lining", "claim_performance"),
+    ("Antimicrobial fabric", "claim_performance"),
+    ("Handmade by artisans", "claim_handmade"),
+    ("Hand-crafted brass", "claim_handmade"),
+    ("Pure handloom weave", "claim_handmade"),
+)
+CLAIM_CLEAN = (
+    "Hand wash separately in cold water",
+    "Inorganic pigment print",
+    "Handle with care",
+    "Water-based print, machine wash",
+)
+BACKING: dict[str, dict[str, Any]] = {
+    "claim_certification": {"certifications": ["GOTS"]},
+    "claim_performance": {"performance_claims": ["water resistant"]},
+    "claim_handmade": {"construction": "handmade"},
+}
+CLAIM_PATHS = ("content.title", "content.bullets[0]", "content.description")
+
+
+def _claim_errors(
+    item: CanonicalListing, product: dict[str, Any] | None = None
+) -> list[tuple[str, str | None]]:
+    """(field, pack) of each UNSUPPORTED_CLAIM item."""
+    resolved = _resolved(item.marketplace.value, item.category)
+    packs = {r.id: r.rule_def.pack for r in resolved.rules}
+    report = evaluate(item, resolved, product=product)
+    return [
+        (e.field, packs.get(e.rule_id) if e.rule_id else None)
+        for e in report.errors
+        if e.error_code.value == "UNSUPPORTED_CLAIM"
+    ]
+
+
+@pytest.mark.parametrize("marketplace", MARKETPLACES)
+@pytest.mark.parametrize("category", list(CATEGORY_PRODUCT))
+def test_rules_seed_claim_rows_each_ruleset(marketplace: str, category: str) -> None:
+    rows = [r for r in _seed()[(marketplace, category)].rules if r.rule_def.pack in CLAIM_PACKS]
+    assert sorted(r.rule_def.pack for r in rows) == sorted(CLAIM_PACKS)
+    for row in rows:
+        assert row.field == "*" and row.tenant_id is None and row.severity.value == "error"
+        assert row.rule_def.type == "claim_requires_attribute"
+        assert row.rule_def.error_code.value == "UNSUPPORTED_CLAIM"
+        assert row.rule_def.policy_ref is not None and row.rule_def.suggestion
+
+
+@pytest.mark.parametrize("marketplace", MARKETPLACES)
+@pytest.mark.parametrize("path", CLAIM_PATHS)
+def test_rules_seed_unbacked_claims_blocked(marketplace: str, path: str) -> None:
+    for category, product in CATEGORY_PRODUCT.items():
+        base = _listing(product, marketplace)
+        assert _claim_errors(base) == [], category
+        for text, pack in CLAIM_CASES:
+            item = _with_text(base, path, text)
+            assert _claim_errors(item) == [(path, pack)], (category, text)
+            rep = _run(item)
+            assert rep.status == "failed"
+            (error,) = [e for e in rep.errors if e.error_code.value == "UNSUPPORTED_CLAIM"]
+            assert error.retry_class is not None and error.retry_class.value == "ai_correct"
+
+
+@pytest.mark.parametrize("marketplace", MARKETPLACES)
+def test_rules_seed_backed_claims_pass(marketplace: str) -> None:
+    """The backing fact on the product (and the listing) lets the claim stand."""
+    for product in CATEGORY_PRODUCT.values():
+        base = _listing(product, marketplace)
+        for text, pack in CLAIM_CASES:
+            item = _with_text(base, "content.description", text)
+            backed = item.model_copy(update={"attributes": {**item.attributes, **BACKING[pack]}})
+            facts = {"attributes": dict(BACKING[pack])}
+            assert _claim_errors(backed, facts) == [], text
+
+
+@pytest.mark.parametrize("marketplace", MARKETPLACES)
+def test_rules_seed_claim_backing_must_be_a_product_fact(marketplace: str) -> None:
+    """A listing attribute the model wrote is not a fact: with the product's facts at hand, the
+    claim needs the attribute among them."""
+    base = _listing("kurta_002", marketplace)
+    item = _with_text(base, "content.title", "GOTS certified")
+    attributes = {**item.attributes, "certifications": ["GOTS"]}
+    invented = item.model_copy(update={"attributes": attributes})
+    assert _claim_errors(invented, {"attributes": {}}) == [("content.title", "claim_certification")]
+    assert _claim_errors(invented, {"attributes": {"certifications": ["GOTS"]}}) == []
+
+
+@pytest.mark.parametrize("marketplace", MARKETPLACES)
+def test_rules_seed_handmade_needs_a_hand_process(marketplace: str) -> None:
+    item = _with_text(_listing("kurta_002", marketplace), "content.title", "Handmade")
+    machine = {"construction": "machine stitched"}
+    other = item.model_copy(update={"attributes": {**item.attributes, **machine}})
+    assert _claim_errors(other, {"attributes": machine}) == [("content.title", "claim_handmade")]
+
+
+@pytest.mark.parametrize("marketplace", MARKETPLACES)
+@pytest.mark.parametrize("path", CLAIM_PATHS)
+def test_rules_seed_claims_spare_ordinary_text(marketplace: str, path: str) -> None:
+    base = _listing("kurta_002", marketplace)
+    for text in CLAIM_CLEAN:
+        assert _claim_errors(_with_text(base, path, text)) == [], text

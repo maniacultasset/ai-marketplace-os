@@ -12,6 +12,7 @@ from typing import Any
 
 from mkos_schemas.rules import (
     BannedTerms,
+    ClaimRequiresAttribute,
     ImageRequirement,
     MaxLength,
     RequiredAttribute,
@@ -278,8 +279,8 @@ BYTE_RULE_IDS = {
 APPAREL_RULES_SHA256 = "8a6f6bd465dbb3b049c9e5cc741e4fe49f17349e60ab71d044db700e2507baa0"
 
 
-def test_rules_seed_count_60() -> None:
-    assert sum(len(s.rules) for s in _load()) == 60
+def test_rules_seed_count_78() -> None:
+    assert sum(len(s.rules) for s in _load()) == 78
 
 
 def test_rules_seed_hidden_terms_byte_rule_amazon_only() -> None:
@@ -314,13 +315,14 @@ def test_rules_seed_hidden_terms_byte_rule_amazon_only() -> None:
 
 
 def test_rules_seed_apparel_unchanged_but_the_byte_rows() -> None:
-    """Kurta and tshirts keep every pre-A2 row exactly; only the byte and contact rows are new.
+    """Kurta and tshirts keep every pre-A2 row exactly; only the byte, contact and claim rows are
+    new.
 
     The 1.2.0 `gate` key (null on every seed row) is the additive default and is left out of the
     digest; a seed row that sets a gate changes the digest.
     """
     raw = json.loads(SEED.read_text(encoding="utf-8"))
-    new_ids = set(BYTE_RULE_IDS.values()) | CONTACT_RULE_IDS
+    new_ids = set(BYTE_RULE_IDS.values()) | CONTACT_RULE_IDS | CLAIM_RULE_IDS
 
     def pre_gate(rule: dict[str, Any]) -> dict[str, Any]:
         rule_def = dict(rule["rule_def"])
@@ -362,3 +364,47 @@ def test_rules_seed_contact_details_row_each_ruleset() -> None:
         other = "Amazon" if name == "Flipkart" else "Flipkart"
         assert other not in definition.message and other not in (definition.suggestion or "")
     assert found == CONTACT_RULE_IDS
+
+
+# ---- claims needing proof: three platform `*` claim_requires_attribute rows per RuleSet ----
+
+CLAIM_RULE_IDS = {
+    f"5eed0000-0000-4000-8000-000{m}000{c}00{n}"
+    for m in (1, 2)
+    for c in (1, 2, 3)
+    for n in ("09", "10", "11")
+}
+CLAIM_BACKING = {
+    "claim_certification": ("certifications", {"organic", "gots", "certified", "oeko-tex"}),
+    "claim_performance": ("performance_claims", {"waterproof", "anti-bacterial", "antimicrobial"}),
+    "claim_handmade": ("construction", {"handmade", "handcrafted", "handloom"}),
+}
+
+
+def test_rules_seed_claim_rows_each_ruleset() -> None:
+    """Certification, performance and handmade claims need a backing fact in every RuleSet:
+    UNSUPPORTED_CLAIM errors, in the marketplace's own wording and citation."""
+    found: set[str] = set()
+    for rule_set in _load():
+        rows = {r.rule_def.pack: r for r in rule_set.rules if r.rule_def.pack in CLAIM_BACKING}
+        assert set(rows) == set(CLAIM_BACKING), rule_set.category
+        name = "Flipkart" if _is_flipkart(rule_set) else "Amazon"
+        for pack, row in rows.items():
+            found.add(str(row.id))
+            definition = row.rule_def
+            assert isinstance(definition, ClaimRequiresAttribute)
+            attribute, terms = CLAIM_BACKING[pack]
+            assert definition.requires.attribute == attribute
+            assert terms <= set(definition.terms)
+            assert (definition.match, definition.error_code.value) == ("word", "UNSUPPORTED_CLAIM")
+            assert (row.field, row.severity.value, row.version, row.tenant_id) == (
+                "*",
+                "error",
+                1,
+                None,
+            )
+            assert row.category == rule_set.category and row.enabled
+            assert definition.policy_ref is not None and definition.suggestion
+            assert definition.policy_ref.source == f"{rule_set.marketplace.value}_policy"
+            assert name in definition.message
+    assert found == CLAIM_RULE_IDS
