@@ -15,12 +15,16 @@ from pydantic import ValidationError
 
 from app.api.errors import ApiError, domain_api_error
 from app.api.pagination import PageInfo, PageParams, encode_cursor
-from app.api.v1.deps import IdempotencyKey, get_current_principal
+from app.api.v1.deps import IdempotencyKey, IfMatch, get_current_principal
+from app.api.v1.routers.products import party_out
 from app.api.v1.schemas.brand import BrandDocumentOut, BrandDocumentPage, UploadChunkType
+from app.api.v1.schemas.brand_profile import BrandProfileIn, BrandProfileOut
 from app.api.v1.surface import OPS, route
 from app.core.errors import InputError
 from app.core.rbac import Principal
 from app.services import brand_documents as documents
+from app.services import brand_profile
+from app.services.intake_values import PartyInput
 
 router = APIRouter()
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
@@ -92,3 +96,33 @@ async def brand_documents_delete(document_id: UUID, principal: CurrentPrincipal)
     an unknown id and an already deleted one are the same 404."""
     await documents.delete_document(principal, document_id)
     return Response(status_code=204)
+
+
+def _profile_out(view: brand_profile.BrandProfileView) -> BrandProfileOut:
+    return BrandProfileOut.model_construct(
+        default_manufacturer=party_out(view.default_manufacturer), updated_at=view.updated_at
+    )
+
+
+@route(router, OPS["brand_profile_get"])
+async def brand_profile_get(principal: CurrentPrincipal, response: Response) -> BrandProfileOut:
+    """The brand profile (the default manufacturer every product inherits), with its `ETag`. A
+    brand that never saved one reads as the empty profile."""
+    view = await brand_profile.get_brand_profile(principal)
+    response.headers["ETag"] = view.etag
+    return _profile_out(view)
+
+
+@route(router, OPS["brand_profile_update"])
+async def brand_profile_update(
+    body: BrandProfileIn, if_match: IfMatch, principal: CurrentPrincipal, response: Response
+) -> BrandProfileOut:
+    """Set or clear the default manufacturer (owner, admin). `If-Match` is the `ETag` from GET
+    (409 STALE_VERSION when stale); an absent field is unchanged, `null` clears."""
+    fields: dict[str, PartyInput | None] = {}
+    if "default_manufacturer" in body.model_fields_set:
+        party = body.default_manufacturer
+        fields["default_manufacturer"] = None if party is None else PartyInput(**party.model_dump())
+    view = await brand_profile.update_brand_profile(principal, fields, if_match)
+    response.headers["ETag"] = view.etag
+    return _profile_out(view)

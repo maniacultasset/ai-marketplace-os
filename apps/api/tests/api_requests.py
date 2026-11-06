@@ -42,6 +42,9 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
     "auth_password_change": {"current_password": "pw", "new_password": COMPLIANT_PASSWORD},
     "members_patch": {"role": "operator"},
     "tenants_me_update": {"tone": "Warm and plain."},
+    # SI1
+    "products_update": {"title": "Organic Cotton Kurta"},
+    "brand_profile_update": {"default_manufacturer": None},
     "products_create": {"sku": "FAB-1", "title": "Kurta"},
     "listings_generate": {"product_id": ID, "marketplace": "amazon"},
     "listings_validate": {"listing_id": ID},
@@ -81,7 +84,10 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
     },
 }
 # Ops whose every body field is optional: `{}` is valid, so break a field instead.
-_INVALID_JSON: dict[str, dict[str, Any]] = {"auth_mfa_totp_enroll": {"current_password": ""}}
+_INVALID_JSON: dict[str, dict[str, Any]] = {
+    "auth_mfa_totp_enroll": {"current_password": ""},
+    "brand_profile_update": {"default_manufacturer": {"legal_name": ""}},
+}
 _FORM_OPS = {"brand_documents_upload", "products_bulk", "images_upload"}
 _QUERY: dict[str, dict[str, str]] = {
     "marketplaces_callback": {"code": "auth-code", "state": "st_0123456789"},

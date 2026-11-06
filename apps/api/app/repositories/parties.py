@@ -88,6 +88,13 @@ class BusinessPartyRepository(TenantScopedRepository[BusinessParty]):
     async def match_or_create(
         self, fields: PartyFields, *, update_on_match: bool = False
     ) -> uuid.UUID:
+        party, _wrote = await self.match_or_create_wrote(fields, update_on_match=update_on_match)
+        return party
+
+    async def match_or_create_wrote(
+        self, fields: PartyFields, *, update_on_match: bool = False
+    ) -> tuple[uuid.UUID, bool]:
+        """`match_or_create`, plus whether a row was inserted or changed."""
         self._check_uow()
         stmt = pg_insert(BusinessParty).values(
             tenant_id=self.tenant_id,
@@ -123,7 +130,7 @@ class BusinessPartyRepository(TenantScopedRepository[BusinessParty]):
         ).returning(table.c.id)
         party: uuid.UUID | None = (await self.db.execute(upsert)).scalar_one_or_none()
         if party is not None:
-            return party
+            return party, True
         # a match that changes nothing: the row is left untouched, so read its id
         found: uuid.UUID = (
             await self.db.execute(
@@ -135,7 +142,7 @@ class BusinessPartyRepository(TenantScopedRepository[BusinessParty]):
                 .with_only_columns(BusinessParty.id)
             )
         ).scalar_one()
-        return found
+        return found, False
 
     async def get(self, party_id: uuid.UUID) -> BusinessParty | None:
         """A live party of this tenant, or None."""
@@ -175,6 +182,11 @@ class BrandProfileRepository(TenantScopedRepository[BrandProfile]):
         )
         return (await self.db.execute(stmt)).first() is not None
 
+    async def get(self) -> BrandProfile | None:
+        """This tenant's profile row, or None (a tenant may lack it)."""
+        row: BrandProfile | None = (await self.db.execute(self._select())).scalar_one_or_none()
+        return row
+
     async def default_manufacturer(self) -> uuid.UUID | None:
         """The brand default manufacturer's party id, or None (no row or none set)."""
         found: uuid.UUID | None = (
@@ -188,6 +200,15 @@ class BrandProfileRepository(TenantScopedRepository[BrandProfile]):
         """This tenant's profile row, locked (call `ensure` first)."""
         row: BrandProfile = (await self.db.execute(self._select().with_for_update())).scalar_one()
         return row
+
+    async def touch(self) -> None:
+        """Bump `updated_at` (the `set_updated_at` trigger) so the profile's ETag moves."""
+        stmt = self._scoped_write(
+            update(BrandProfile)
+            .where(self._tenant_criterion(include_platform=False))
+            .values({BrandProfile.provenance: BrandProfile.provenance})
+        )
+        await self.db.execute(stmt)
 
     async def set_default_manufacturer(
         self, party_id: uuid.UUID | None, fact: Mapping[str, Any]

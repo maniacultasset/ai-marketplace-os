@@ -57,7 +57,7 @@ def size_chart_dict(chart: SizeChart) -> dict[str, Any]:
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 
 
-def _party(view: products.PartyView | None) -> PartyOut | None:
+def party_out(view: products.PartyView | None) -> PartyOut | None:
     if view is None:
         return None
     return PartyOut.model_construct(
@@ -101,7 +101,7 @@ def _out(view: products.ProductView) -> ProductOut:
         ),
         size_chart=_chart(view.size_chart),
         size_chart_url=view.size_chart_url,
-        manufacturer=_party(view.manufacturer),
+        manufacturer=party_out(view.manufacturer),
         image_details=[ProductImageOut.model_construct(**asdict(d)) for d in view.image_details],
         colourways=[
             ColourwayOut.model_construct(id=c.id, colour=c.colour, colour_sku=c.colour_sku)

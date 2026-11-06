@@ -184,7 +184,7 @@ def _text_value(facts: Mapping[str, Any], key: str) -> str | None:
     return value if isinstance(value, str) else None
 
 
-def _party_view(party: Any, *, inherited: bool) -> PartyView:
+def party_view(party: Any, *, inherited: bool) -> PartyView:
     return PartyView(
         id=party.id,
         legal_name=party.legal_name,
@@ -264,7 +264,7 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
     if party_id is None:
         party_id = await uow.brand_profiles.default_manufacturer()
     party_row = None if party_id is None else await uow.parties.get(party_id)
-    party = None if party_row is None else _party_view(party_row, inherited=inherited)
+    party = None if party_row is None else party_view(party_row, inherited=inherited)
     keys = await uow.images.live_keys_for_products([row.id])
     details = tuple(await uow.images.details_for_product(row.id))
     colourways: tuple[ColourwayRow, ...] = ()

@@ -68,6 +68,7 @@ from app.api.v1.schemas.auth import (
 )
 from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.brand import BrandDocumentPage
+from app.api.v1.schemas.brand_profile import BrandProfileOut
 from app.api.v1.schemas.google import GoogleCompleteOut, GoogleConfigOut
 from app.api.v1.schemas.images import ImageAccepted, ImageReportOut, UploadUrlOut
 from app.api.v1.schemas.imports import ImportAccepted, ImportRowPage
@@ -111,7 +112,7 @@ Case = Literal[
 CASES: Final[tuple[Case, ...]] = get_args(Case)
 ALL_ROLES: Final[frozenset[Role]] = frozenset(get_args(Role))
 NO_ROLES: Final[frozenset[Role]] = frozenset()
-Method = Literal["GET", "POST", "PATCH", "DELETE"]
+Method = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
 EXAMPLE_CORRELATION_ID: Final = "req-example-0001"
 
 E = ErrorCode
@@ -551,6 +552,14 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("brand_documents_delete", "DELETE", "/brand/documents/{document_id}", 204, None,
               "brand", "Delete a brand document and deactivate its chunks", "S16",
               path_id="document_id", action=A.SETTINGS_MANAGE),
+    # ---- brand (SI1) ----
+    Operation("brand_profile_get", "GET", "/brand-profile", 200, BrandProfileOut, "brand",
+              "The brand profile: the default manufacturer every product inherits", "SI1",
+              etag=True, action=A.TENANT_READ),
+    Operation("brand_profile_update", "PUT", "/brand-profile", 200, BrandProfileOut, "brand",
+              "Set the brand profile (If-Match: the ETag from GET)", "SI1", has_body=True,
+              if_match=True, conflict_code=E.STALE_VERSION, etag=True,
+              action=A.SETTINGS_MANAGE),
     # ---- products (S12, S13) ----
     Operation("products_create", "POST", "/products", 201, ProductOut, "products",
               "Create one product", "S12", has_body=True, body_ids=("images",),

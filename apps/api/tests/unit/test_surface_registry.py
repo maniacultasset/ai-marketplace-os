@@ -57,6 +57,9 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("brand_documents_upload", "POST", "/brand/documents"),
     ("brand_documents_list", "GET", "/brand/documents"),
     ("brand_documents_delete", "DELETE", "/brand/documents/{document_id}"),
+    # SI1: the brand profile (76 + 2)
+    ("brand_profile_get", "GET", "/brand-profile"),
+    ("brand_profile_update", "PUT", "/brand-profile"),
     ("products_create", "POST", "/products"),
     ("products_list", "GET", "/products"),
     ("products_get", "GET", "/products/{product_id}"),
@@ -113,7 +116,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 76
+    assert len(FROZEN) == 78
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -249,6 +252,7 @@ def test_idempotency_set_is_d9() -> None:
         "listings_content_patch",
         "tenants_me_update",
         "products_update",
+        "brand_profile_update",
     }
 
 
@@ -393,14 +397,15 @@ def test_login_response_is_login_result() -> None:
     assert OPS["auth_switch_tenant"].response_model is TokenResponse
 
 
-def test_76_operations() -> None:
-    assert len(OPS) == 76
+def test_78_operations() -> None:
+    assert len(OPS) == 78
 
 
 def test_error_codes_per_d2() -> None:
     conflict = {
         "products_create": (E.SKU_CONFLICT,),
         "products_update": (E.STALE_VERSION,),
+        "brand_profile_update": (E.STALE_VERSION,),
         "listings_content_patch": (E.STALE_VERSION,),
         "tenants_me_update": (E.STALE_VERSION,),
         "jobs_cancel": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
