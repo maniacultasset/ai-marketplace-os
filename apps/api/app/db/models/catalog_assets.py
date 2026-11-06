@@ -131,6 +131,13 @@ class Image(TenantScoped, Base):
             postgresql_nulls_not_distinct=True,
             postgresql_where=text("slot = 'main' AND deleted_at IS NULL"),
         ),
+        # 0015 (ADR-0026): one public name across tenants
+        Index(
+            conv("images_public_id_uq"),
+            "public_id",
+            unique=True,
+            postgresql_where=text("public_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = id_column()
@@ -154,6 +161,12 @@ class Image(TenantScoped, Base):
     height_px: Mapped[int | None] = mapped_column(Integer)
     bytes: Mapped[int | None] = mapped_column(BigInteger)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # 0015 (ADR-0026): the EXIF-free copy in the private bucket, and the public copy's name.
+    # A deleted row keeps `public_id` as a tombstone (CP16).
+    clean_content_hash: Mapped[str | None] = mapped_column(Text)
+    clean_mime_type: Mapped[str | None] = mapped_column(Text)
+    public_id: Mapped[str | None] = mapped_column(Text)
+    public_written_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
 
