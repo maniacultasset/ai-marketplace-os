@@ -87,6 +87,11 @@ def toolkit(repo_root: Path, tmp_path: Path) -> Iterator[Path]:
             text = re.sub(r"^AMAZON_USE_SANDBOX=.*$", "AMAZON_USE_SANDBOX=true", text, flags=re.M)
             # prod.env enforces the origin guard; the copy starts off, as the tests expect.
             text = re.sub(r"^ORIGIN_AUTH=.*$", "ORIGIN_AUTH=off", text, flags=re.M)
+            # prod.env pins the real pipeline with the worker on; the copy keeps the stub baseline
+            # and the pipeline tests set PIPELINE_REF themselves.
+            if source.name == "prod.env":
+                text = re.sub(r"^PIPELINE_REF=.*$", "PIPELINE_REF=", text, flags=re.M)
+                text = re.sub(r"^WORKER_ENABLED=.*$", "WORKER_ENABLED=false", text, flags=re.M)
         (target / source.name).write_text(text, encoding="utf-8")
     (target / "deploy.sh").chmod(0o755)
     yield target
@@ -1378,22 +1383,23 @@ def _worker_container(out: str) -> tuple[dict[str, str], list[str]]:
 
 
 def test_env_files_carry_the_pipeline_and_the_gateway(repo_root: Path) -> None:
-    """prod routes through OpenRouter with its worker still off; staging keeps origin's direct
-    OpenAI route and the Settings defaults (blank model and caps), so its worker is unchanged."""
+    """prod routes through OpenRouter with the worker on the pinned pipeline (v0.1.0, 2026-11-06);
+    staging keeps the stub, origin's direct OpenAI route and the Settings defaults."""
     found = {}
     for env_name in ("staging", "prod"):
         text = (repo_root / DEPLOY / f"{env_name}.env").read_text(encoding="utf-8")
         found[env_name] = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
         values = found[env_name]
-        assert values["PIPELINE_REF"] == "", env_name
         for name in (PIPELINE_KEY, "LLM_API_BASE", *MODEL_KEYS):
             assert name not in values, (env_name, name)
     prod, staging = found["prod"], found["staging"]
     assert (prod["LLM_GATEWAY"], prod["LLM_PROVIDER"]) == ("openrouter", "deepseek")
     assert prod["LLM_MODEL_DEFAULT"] == "deepseek/deepseek-chat"
     assert (prod["LLM_DAILY_BUDGET_USD"], prod["LLM_TENANT_DAILY_BUDGET_USD"]) == ("3", "1")
-    # prod's worker stays off: it would refuse the stub image (ADR-0024)
-    assert prod["WORKER_ENABLED"] == "false"
+    # prod pins a full mkos-pipeline commit (ADR-0024), so its worker runs the real pipeline
+    assert re.fullmatch(r"[0-9a-f]{40}", prod["PIPELINE_REF"])
+    assert prod["WORKER_ENABLED"] == "true"
+    assert staging["PIPELINE_REF"] == ""
     assert (staging["LLM_GATEWAY"], staging["LLM_PROVIDER"]) == ("direct", "openai")
     for name in ("LLM_MODEL_DEFAULT", "LLM_DAILY_BUDGET_USD", "LLM_TENANT_DAILY_BUDGET_USD"):
         assert staging[name] == "", name
