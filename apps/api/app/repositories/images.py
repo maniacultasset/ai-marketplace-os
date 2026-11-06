@@ -18,6 +18,7 @@ import builtins
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Final, Literal
 from uuid import UUID
 
@@ -64,6 +65,21 @@ class ImageDetail:
     position: int
     status: str
     compliance_status: str
+
+
+@dataclass(frozen=True, slots=True)
+class ListingImageRow:
+    """A live image of a product as generation orders it (SI1 T18)."""
+
+    image_id: UUID
+    product_id: UUID
+    slot: str
+    colourway_id: UUID | None
+    position: int
+    clean_content_hash: str | None
+    vision: Mapping[str, Any] | None
+    colourway_position: int | None
+    created_at: datetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -373,6 +389,53 @@ class ImageRepository(TenantScopedRepository[Image]):
             )
             for row in (await self.db.execute(stmt)).all()
         ]
+
+    async def listing_set(self, product_id: UUID) -> builtins.list[ListingImageRow]:
+        """The live images of a product (a style's own and its colourways' share `product_id`),
+        with each colourway's position for the listing order (SI1 T18). Two scoped reads."""
+        pid = _uuid("product_id", product_id)
+        stmt = (
+            self._select()
+            .where(Image.product_id == pid, Image.deleted_at.is_(None))
+            .with_only_columns(
+                Image.id,
+                Image.product_id,
+                Image.slot,
+                Image.colourway_id,
+                Image.position,
+                Image.clean_content_hash,
+                Image.metadata_,
+                Image.created_at,
+            )
+        )
+        rows = (await self.db.execute(stmt)).all()
+        colourway_ids = sorted({r[3] for r in rows if r[3] is not None})
+        positions: dict[UUID, int] = {}
+        if colourway_ids:
+            found = await self.db.execute(
+                _Colourways(self.db, self.tenant_id)
+                ._select()
+                .where(ProductColourway.id.in_(colourway_ids))
+                .with_only_columns(ProductColourway.id, ProductColourway.position)
+            )
+            positions = {cid: int(pos) for cid, pos in found.all()}
+        out: builtins.list[ListingImageRow] = []
+        for image_id, owner, slot, colourway, position, clean, metadata, created in rows:
+            vision = metadata.get("vision") if isinstance(metadata, dict) else None
+            out.append(
+                ListingImageRow(
+                    image_id=image_id,
+                    product_id=owner,
+                    slot=slot,
+                    colourway_id=colourway,
+                    position=position,
+                    clean_content_hash=clean,
+                    vision=vision if isinstance(vision, dict) else None,
+                    colourway_position=None if colourway is None else positions.get(colourway),
+                    created_at=created,
+                )
+            )
+        return out
 
     async def registered_keys(self, keys: Sequence[str]) -> set[str]:
         """The keys among `keys` that have a row of this tenant (deleted rows count)."""
