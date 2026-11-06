@@ -120,6 +120,30 @@ class ProductRepository(TenantScopedRepository[Product]):
         )
         return [(row[0], row[1]) for row in (await self.db.execute(stmt)).all()]
 
+    async def money_of(self, product_id: uuid.UUID) -> tuple[Decimal | None, Decimal | None]:
+        """The stored `(selling_price, mrp)` of a live product (a fresh read, never the session's
+        cached row: FactWriter writes these columns with Core statements)."""
+        stmt = (
+            self._select()
+            .where(Product.id == product_id, Product.deleted_at.is_(None))
+            .with_only_columns(Product.selling_price, Product.mrp)
+        )
+        found = (await self.db.execute(stmt)).one()
+        return (found[0], found[1])
+
+    async def child_money(
+        self, style_id: uuid.UUID
+    ) -> builtins.list[tuple[str, Decimal | None, Decimal | None]]:
+        """`(sku, selling_price, mrp)` of each live child of `style_id`, in SKU order (CP14 for
+        a CSV style row)."""
+        stmt = (
+            self._select()
+            .where(Product.parent_product_id == style_id, Product.deleted_at.is_(None))
+            .with_only_columns(Product.sku, Product.selling_price, Product.mrp)
+            .order_by(Product.sku)
+        )
+        return [(row[0], row[1], row[2]) for row in (await self.db.execute(stmt)).all()]
+
     async def family_of_sku(self, sku: str) -> uuid.UUID | None:
         """The stored `parent_product_id` of `sku` (soft-deleted rows included: an upsert
         revives them), or None for a new SKU or a style/standalone product."""

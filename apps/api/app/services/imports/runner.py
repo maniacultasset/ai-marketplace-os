@@ -75,6 +75,7 @@ from app.services.imports.row_model import (
     row_error,
     validate_row,
 )
+from app.services.intake_values import inherited_money_breach
 from app.services.product_facts import fact_stamp
 from app.workers.errors import JobFailed, RetryableJobError, system_report
 from app.workers.policy import POLICIES
@@ -90,6 +91,15 @@ _DIGITS: Final = re.compile(r"[^0-9]")
 
 class StaleAttempt(Exception):  # noqa: N818 - control flow: this worker lost its lease
     """The job's progress write was fenced off: a newer attempt owns the job."""
+
+
+class RowRefused(Exception):  # noqa: N818 - control flow: a check after the row's writes
+    """A row's writes broke a cross-row rule; its savepoint rolls back and the row fails with
+    `item`."""
+
+    def __init__(self, item: ErrorItem) -> None:
+        super().__init__(item.message)
+        self.item = item
 
 
 # ---- units (Q12) ----
@@ -446,6 +456,8 @@ class _Writer:
             return product_id
         except RowDbError as exc:
             await self._fail(p, [row_db_item(exc.sqlstate, exc.constraint)])
+        except RowRefused as exc:
+            await self._fail(p, [exc.item])
         except InputError as exc:
             await self._fail(
                 p,
@@ -687,6 +699,7 @@ class _Writer:
                 written = done.id
                 if style_row is not None:
                     await self._row_facts(written, identity, level="style")
+                    await self._style_money(written, live)
                 elif identity.size_system is not None:
                     await self.facts.set_attribute(
                         written, "size_system", self.run.facts.fact(identity.size_system)
@@ -715,7 +728,7 @@ class _Writer:
                 style_id = await write_style()
                 if style_row is not None and not style_row.skip:
                     await self._write_row(style_row, "imported", style_id)
-        except (RowDbError, InputError, RowCountError) as exc:
+        except (RowDbError, RowRefused, InputError, RowCountError) as exc:
             item = self._item(exc)
             for p in unit.rows:
                 if not p.skip:
@@ -743,6 +756,8 @@ class _Writer:
                 await self._fail(p, p.errors or [row_error(ErrorCode.VARIATION_INVALID, reason)])
 
     def _item(self, exc: Exception) -> ErrorItem:
+        if isinstance(exc, RowRefused):
+            return exc.item
         if isinstance(exc, RowDbError):
             return row_db_item(exc.sqlstate, exc.constraint)
         if isinstance(exc, InputError):
@@ -750,6 +765,38 @@ class _Writer:
                 exc.code, f"{column_for_field(exc.field)} was refused by the dictionary"
             )
         return row_error(ErrorCode.VALUE_NOT_ALLOWED, "the row could not be written")
+
+    async def _style_money(self, style_id: uuid.UUID, live: list[Prepared]) -> None:
+        """CP14 for a style row: each stored child that inherits one money side from the style
+        (with this file's values for a child it re-sends) must still hold price <= MRP."""
+        style_money = await self.products.money_of(style_id)
+        sent = {p.row.sku: p.row for p in live if p.row is not None}
+        for sku, price, mrp in await self.products.child_money(style_id):
+            row = sent.get(sku)
+            if row is not None:
+                price = row.selling_price if row.selling_price is not None else price
+                mrp = row.mrp if row.mrp is not None else mrp
+            side = inherited_money_breach((price, mrp), style_money)
+            if side is not None:
+                message = (
+                    "mrp is below the selling_price of a child that inherits it"
+                    if side == "mrp"
+                    else "selling_price is above the mrp of a child that inherits it"
+                )
+                raise RowRefused(row_error(ErrorCode.PRICE_ABOVE_MRP, message))
+
+    async def _child_money(self, child_id: uuid.UUID, style_id: uuid.UUID) -> None:
+        """CP14 for a child row: its own or inherited price is at most its own or inherited
+        MRP (the row CHECK compares one row only)."""
+        child = await self.products.money_of(child_id)
+        side = inherited_money_breach(child, await self.products.money_of(style_id))
+        if side is not None:
+            message = (
+                "selling_price is above the mrp it inherits from its style"
+                if side == "mrp"
+                else "selling_price inherited from its style is above mrp"
+            )
+            raise RowRefused(row_error(ErrorCode.PRICE_ABOVE_MRP, message))
 
     def _agree(self, style: ProductImportRow, live: list[Prepared]) -> None:
         """Title, brand and classification must agree across the family (DATABASE.md:971)."""
@@ -845,6 +892,7 @@ class _Writer:
                     done.id, "size", self.run.facts.fact(row.size_name, row.size_key)
                 )
             await self._row_facts(done.id, row, level="variant")
+            await self._child_money(done.id, style_id)
             await self.cells.upsert(
                 style_id,
                 colourway_ids.get(variant["color"]) if "color" in variant else None,

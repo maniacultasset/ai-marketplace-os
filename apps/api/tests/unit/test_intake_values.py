@@ -15,6 +15,7 @@ from app.services.intake_values import (
     MoneyError,
     SizeChartError,
     check_price_le_mrp,
+    inherited_money_breach,
     normalize_size_chart,
     parse_money,
 )
@@ -72,6 +73,31 @@ def test_price_one_paisa_over_mrp_refused() -> None:
         check_price_le_mrp(Decimal("999.01"), Decimal("999.00"))
     assert caught.value.code is ErrorCode.VALIDATION_FAILED
     assert caught.value.field == "selling_price"
+
+
+@pytest.mark.parametrize(
+    ("child", "style", "breach"),
+    [
+        # inherits the style's price, own MRP under it (CSV leg of AC3)
+        ((None, Decimal("500")), (Decimal("600"), Decimal("1000")), "selling_price"),
+        # own price, inherits an MRP under it
+        ((Decimal("1200"), None), (Decimal("500"), Decimal("1000")), "mrp"),
+        # inherits both sides: the style's own row CHECK covers that pair
+        ((None, None), (Decimal("1200"), Decimal("1000")), None),
+        # own both sides: the child's own row CHECK covers that pair
+        ((Decimal("1200"), Decimal("1000")), (Decimal("1"), Decimal("2")), None),
+        ((None, Decimal("600")), (Decimal("600"), Decimal("1000")), None),
+        ((Decimal("1000"), None), (None, Decimal("1000")), None),
+        ((None, Decimal("500")), (None, Decimal("1000")), None),
+        ((Decimal("1200"), None), (Decimal("1"), None), None),
+    ],
+)
+def test_inherited_money_breach(
+    child: tuple[Decimal | None, Decimal | None],
+    style: tuple[Decimal | None, Decimal | None],
+    breach: str | None,
+) -> None:
+    assert inherited_money_breach(child, style) == breach
 
 
 # ---- size chart ----

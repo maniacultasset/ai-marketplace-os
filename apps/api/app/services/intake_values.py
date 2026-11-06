@@ -26,6 +26,7 @@ __all__ = [
     "PartyInput",
     "SizeChartError",
     "check_price_le_mrp",
+    "inherited_money_breach",
     "normalize_size_chart",
     "parse_money",
 ]
@@ -86,6 +87,24 @@ def check_price_le_mrp(price: Decimal | None, mrp: Decimal | None) -> None:
     """The selling price is at most the MRP (`ck_price_le_mrp`; T37). Either side unset passes."""
     if price is not None and mrp is not None and price > mrp:
         raise InputError(ErrorCode.VALIDATION_FAILED, "selling_price")
+
+
+Money = tuple[Decimal | None, Decimal | None]
+
+
+def inherited_money_breach(child: Money, style: Money) -> str | None:
+    """The side a child's `(selling_price, mrp)` breaks when one of them is inherited from
+    `style` (CP14; the row CHECK `ck_price_le_mrp` sees one row only): `selling_price` when the
+    child inherits the price over its own MRP, `mrp` when it inherits an MRP under its own
+    price, None when the pair holds or neither side is inherited (each row's CHECK covers it)."""
+    own_price, own_mrp = child
+    if (own_price is None) == (own_mrp is None):
+        return None
+    price = own_price if own_price is not None else style[0]
+    mrp = own_mrp if own_mrp is not None else style[1]
+    if price is None or mrp is None or price <= mrp:
+        return None
+    return "selling_price" if own_price is None else "mrp"
 
 
 def _measure(value: object) -> int | float:
