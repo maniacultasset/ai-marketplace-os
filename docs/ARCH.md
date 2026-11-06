@@ -99,7 +99,10 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
 - A generation that fails before any model stage (the context load or the brand retrieval) gives
   its budget reservation back, and a transient model or embedding failure (rate limit, provider
   down, timeout) is a retryable `MODEL_UNAVAILABLE` rather than `GENERATION_FAILED`; the job is
-  not retried (`max_attempts=1`), the seller regenerates (`app/workers/generation.py`).
+  not retried (`max_attempts=1`), the seller regenerates (`app/workers/generation.py`). Each
+  agent is judged by its last run, so a 429 that recovered on the retry does not hide a later
+  deterministic failure, and a missing key or embedder or a refused embeddings call (401, 400,
+  bad shape) is not transient: it stays `INTERNAL_ERROR`.
 
 Source: CANON.md "The AI seam"; CANON-ADDENDUM.md §21; ADR-0012 §Decision 3; ADR-0013 §Decision 5;
 EXECUTION-PLAN.md §6.2.

@@ -107,12 +107,15 @@ class RulesCall:
 
 
 class SeamPortError(Exception):
-    """A port call the backend refuses. The message holds the code and the field name only."""
+    """A port call the backend refuses. The message holds the code and the field name only.
+    `retryable` is true only for a failure that may pass on a new try (an embeddings 429, 5xx or
+    timeout); a missing key, a missing embedder or a refused call is not, whatever its code."""
 
-    def __init__(self, code: ErrorCode, field: str) -> None:
+    def __init__(self, code: ErrorCode, field: str, *, retryable: bool = False) -> None:
         super().__init__(f"{code.value} at {field}")
         self.code = code
         self.field = field
+        self.retryable = retryable
 
 
 def _secret(value: str | None) -> SecretStr | None:
@@ -316,7 +319,7 @@ class BackendPipelineDeps:
                 request_id=current_request_id() or new_request_id(),
             )
         except EmbeddingFailed as exc:
-            raise SeamPortError(exc.code, "embedding") from None
+            raise SeamPortError(exc.code, "embedding", retryable=exc.retryable) from None
         wanted = None if types is None else cast(list[BrandChunkType], list(types))
         async with tenant_uow(self._tenant_id, user_id=self._user_id) as uow:
             return await uow.brand_chunks.search(vector, k, wanted)

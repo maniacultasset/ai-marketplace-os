@@ -89,7 +89,7 @@ async def test_generate_transient_embedding_failure_releases_reservation(
     from mkos_schemas.codes import ErrorCode
 
     async def down(self: Any, *_: Any, **__: Any) -> Any:
-        raise pipeline_deps.SeamPortError(ErrorCode.MODEL_UNAVAILABLE, "embedding")
+        raise pipeline_deps.SeamPortError(ErrorCode.MODEL_UNAVAILABLE, "embedding", retryable=True)
 
     monkeypatch.setattr(pipeline_deps.BackendPipelineDeps, "retrieve_brand_chunks", down)
     accepted = await _run(gen_world)

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -96,7 +97,8 @@ def test_transient_port_error(code: str) -> None:
     from app.workers.generation import is_transient_failure
     from mkos_schemas.codes import ErrorCode
 
-    assert is_transient_failure(SeamPortError(ErrorCode(code), "embedding")) is True
+    err = SeamPortError(ErrorCode(code), "embedding", retryable=True)
+    assert is_transient_failure(err) is True
 
 
 def test_transient_exception_group_needs_every_leaf_transient() -> None:
@@ -104,8 +106,8 @@ def test_transient_exception_group_needs_every_leaf_transient() -> None:
     from app.workers.generation import is_transient_failure
     from mkos_schemas.codes import ErrorCode
 
-    down = SeamPortError(ErrorCode.MODEL_UNAVAILABLE, "embedding")
-    slow = SeamPortError(ErrorCode.TIMEOUT, "embedding")
+    down = SeamPortError(ErrorCode.MODEL_UNAVAILABLE, "embedding", retryable=True)
+    slow = SeamPortError(ErrorCode.TIMEOUT, "embedding", retryable=True)
     assert is_transient_failure(ExceptionGroup("x", [down, slow])) is True
     assert is_transient_failure(ExceptionGroup("x", [down, RuntimeError("boom")])) is False
 
@@ -131,10 +133,69 @@ def test_not_transient(exc: Any) -> None:
     assert is_transient_failure(exc) is False
 
 
+def test_a_permanent_port_error_with_a_transient_code_is_not_transient() -> None:
+    """A missing key or a refused embeddings call carries MODEL_UNAVAILABLE but will repeat."""
+    from app.services.pipeline_deps import SeamPortError
+    from app.workers.generation import is_transient_failure
+    from mkos_schemas.codes import ErrorCode
+
+    assert is_transient_failure(SeamPortError(ErrorCode.MODEL_UNAVAILABLE, "content")) is False
+
+
+async def test_missing_generation_key_outside_local_is_not_retryable() -> None:
+    from app.core.config import Settings
+    from app.services.pipeline_deps import SeamPortError, _ModelConfig
+    from app.workers.generation import is_transient_failure
+
+    deps = _deps()
+    models = _ModelConfig.from_settings(
+        Settings(_env_file=None, app_env="local", database_url=LOCAL_URL)
+    )
+    deps._models = dataclasses.replace(models, app_env="staging", generation_key=None)
+    with pytest.raises(SeamPortError) as caught:
+        await deps.get_model_credentials("content")
+    assert caught.value.retryable is False
+    assert is_transient_failure(caught.value) is False
+
+
+async def test_no_embedder_is_not_retryable() -> None:
+    from app.services.pipeline_deps import SeamPortError
+    from app.workers.generation import is_transient_failure
+
+    deps = _deps()
+    with pytest.raises(SeamPortError) as caught:
+        await deps.retrieve_brand_chunks(deps._tenant_id, "kurta", 8)
+    assert caught.value.retryable is False
+    assert is_transient_failure(caught.value) is False
+
+
+@pytest.mark.parametrize(("retryable", "transient"), [(False, False), (True, True)])
+async def test_embedding_failure_keeps_its_retryable_flag(
+    monkeypatch: pytest.MonkeyPatch, retryable: bool, transient: bool
+) -> None:
+    """A 401 from the embeddings API is not retried; a 429 is."""
+    from app.services import pipeline_deps
+    from app.services.embeddings import EmbeddingFailed
+    from app.services.pipeline_deps import SeamPortError
+    from app.workers.generation import is_transient_failure
+    from mkos_schemas.codes import ErrorCode
+
+    async def refused(*_: Any, **__: Any) -> Any:
+        raise EmbeddingFailed(ErrorCode.MODEL_UNAVAILABLE, retryable=retryable, status=401)
+
+    monkeypatch.setattr(pipeline_deps, "embed_query", refused)
+    deps = _deps()
+    deps._embedder = object()
+    with pytest.raises(SeamPortError) as caught:
+        await deps.retrieve_brand_chunks(deps._tenant_id, "kurta", 8)
+    assert caught.value.retryable is retryable
+    assert is_transient_failure(caught.value) is transient
+
+
 # ---- transient agent runs of a no-version result ----
 
 
-def _record(status: str, code: str | None) -> Any:
+def _record(status: str, code: str | None, agent: str = "content") -> Any:
     from mkos_schemas.agent import AgentRunRecord
     from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
     from mkos_schemas.enums import ErrorSource, RetryClass
@@ -164,7 +225,7 @@ def _record(status: str, code: str | None) -> Any:
         id=uuid.uuid4(),
         tenant_id=uuid.uuid4(),
         request_id="req-1",
-        agent_name="content",
+        agent_name=agent,
         trigger="generate",
         status=status,
         error_report=report,
@@ -173,32 +234,68 @@ def _record(status: str, code: str | None) -> Any:
     )
 
 
-def test_runs_transient_when_every_failed_run_is_transient() -> None:
+def _block(agent: str, status: str) -> Any:
+    from mkos_schemas.jobs import AgentBlockStatus
+
+    return AgentBlockStatus(agent=agent, status=status)
+
+
+def test_runs_transient_when_every_agent_that_ended_failed_failed_transiently() -> None:
     from app.workers.generation import runs_failed_transiently
 
     runs = [
-        _record("failed", "RATE_LIMITED"),
-        _record("failed", "MODEL_UNAVAILABLE"),
-        _record("timeout", None),
-        _record("completed", None),
+        _record("completed", None, "content"),
+        _record("failed", "RATE_LIMITED", "keyword"),
+        _record("failed", "MODEL_UNAVAILABLE", "keyword"),
+        _record("timeout", None, "attribute"),
+        _record("timeout", None, "attribute"),
     ]
-    assert runs_failed_transiently(runs) is True
+    blocks = [_block("content", "ok"), _block("keyword", "failed"), _block("attribute", "failed")]
+    assert runs_failed_transiently(runs, blocks) is True
 
 
 @pytest.mark.parametrize(
-    "runs",
+    ("runs", "blocks"),
     [
-        [],
-        [_record("completed", None)],
-        [_record("failed", "RATE_LIMITED"), _record("failed", "GENERATION_FAILED")],
-        [_record("failed", None)],
-        [_record("failed", "SCHEMA_INVALID")],
+        ([], []),
+        ([_record("completed", None)], []),
+        ([_record("failed", "RATE_LIMITED"), _record("failed", "GENERATION_FAILED")], []),
+        ([_record("failed", None)], []),
+        ([_record("failed", "SCHEMA_INVALID")], []),
+        # keyword's 429 recovered on the retry; the run then failed for another reason
+        (
+            [
+                _record("failed", "RATE_LIMITED", "keyword"),
+                _record("completed", None, "keyword"),
+                _record("completed", None, "content"),
+                _record("completed", None, "attribute"),
+            ],
+            [_block("content", "ok"), _block("keyword", "ok"), _block("attribute", "ok")],
+        ),
+        # a sibling's recovered 429, then content returned an empty title (completed, failed block)
+        (
+            [
+                _record("failed", "RATE_LIMITED", "keyword"),
+                _record("completed", None, "keyword"),
+                _record("completed", None, "content"),
+            ],
+            [_block("content", "failed"), _block("keyword", "ok")],
+        ),
+        # a transient keyword failure next to a deterministic content failure
+        (
+            [
+                _record("failed", "RATE_LIMITED", "keyword"),
+                _record("failed", "RATE_LIMITED", "keyword"),
+                _record("completed", None, "content"),
+            ],
+            [_block("content", "failed"), _block("keyword", "failed")],
+        ),
     ],
 )
-def test_runs_not_transient(runs: list[Any]) -> None:
+def test_runs_not_transient(runs: list[Any], blocks: list[Any]) -> None:
     from app.workers.generation import runs_failed_transiently
 
-    assert runs_failed_transiently(runs) is False
+    assert runs_failed_transiently(runs, blocks) is False
 
 
 # ---- the report ----

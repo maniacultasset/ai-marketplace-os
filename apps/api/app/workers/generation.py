@@ -12,12 +12,14 @@ drop at deploy, T104). No session is open across the pipeline call. The steps:
    deps)` with no transaction open; `deps.close_spans()` whatever happens.
 4. `check_result` → `recheck` → `map_outcome` → `make_persist` → an `Outcome` (a version saved;
    the reservation zeroed, real spend replaces it) or a `JobFailed` (no version, the returned
-   `agent_runs` saved and replacing the reservation). When every failed agent run of a no-version
-   result failed transiently (rate limit, provider down, timeout), the report is a retryable
-   `MODEL_UNAVAILABLE`, not the seller-facing `GENERATION_FAILED`.
+   `agent_runs` saved and replacing the reservation). When every agent of a no-version result that
+   ended on a failed run ended on a transient one (rate limit, provider down, timeout), and no
+   failed block's agent ended on a completed run, the report is a retryable `MODEL_UNAVAILABLE`,
+   not the seller-facing `GENERATION_FAILED` (`runs_failed_transiently`).
 5. Any port or pipeline exception → `JobFailed` with a fixed message (the class name is logged
    only) and the recorded rules runs kept: `MODEL_UNAVAILABLE` (retryable) for a transient
-   model or embedding port failure (`is_transient_failure`), else `INTERNAL_ERROR`. The
+   model or embedding port failure (`is_transient_failure`: a transient code and `retryable`),
+   else `INTERNAL_ERROR` (a missing key or embedder, or a refused embeddings call, included). The
    reservation is zeroed when the run never reached a model stage
    (`deps.model_stage_reached`: only the context load and the brand retrieval started, whose
    query embeds write their own `agent_runs`), and kept otherwise, because the pipeline's
@@ -42,6 +44,7 @@ from mkos_schemas.agent import AgentRunRecord
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
 from mkos_schemas.enums import ErrorSource, JobKind, Marketplace, RetryClass
 from mkos_schemas.errors import ErrorItem, ErrorReport
+from mkos_schemas.jobs import AgentBlockStatus
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
@@ -72,20 +75,36 @@ TRANSIENT_MESSAGE: Final = "The AI service was briefly unavailable. Try generati
 
 
 def is_transient_failure(exc: BaseException) -> bool:
-    """A port refusal with a transient code; for an exception group, every leaf one."""
+    """A retryable port refusal with a transient code; for an exception group, every leaf one."""
     if isinstance(exc, BaseExceptionGroup):
         return all(is_transient_failure(inner) for inner in exc.exceptions)
-    return isinstance(exc, SeamPortError) and exc.code in TRANSIENT_CODES
+    return isinstance(exc, SeamPortError) and exc.retryable and exc.code in TRANSIENT_CODES
 
 
-def runs_failed_transiently(records: Iterable[AgentRunRecord]) -> bool:
-    """At least one agent run failed, and every failed one timed out or carries a transient
-    code."""
-    failed = [r for r in records if r.status in ("failed", "timeout")]
-    return bool(failed) and all(
-        r.status == "timeout"
-        or (r.error_report is not None and r.error_report.error_code in TRANSIENT_CODES)
-        for r in failed
+def _transient_record(record: AgentRunRecord) -> bool:
+    return record.status == "timeout" or (
+        record.status == "failed"
+        and record.error_report is not None
+        and record.error_report.error_code in TRANSIENT_CODES
+    )
+
+
+def runs_failed_transiently(
+    records: Iterable[AgentRunRecord], blocks: Iterable[AgentBlockStatus] = ()
+) -> bool:
+    """Decided by each agent's last run, as a recovered 429 or timeout leaves a failed run
+    behind: at least one agent ended on a failed run, every agent that ended failed ended on a
+    transient one, and no agent with a failed block ended on a completed run (its output was
+    refused, which a new try repeats)."""
+    last: dict[str, AgentRunRecord] = {}
+    for record in records:
+        last[record.agent_name] = record
+    ended_failed = [r for r in last.values() if r.status != "completed"]
+    failed_blocks = {b.agent for b in blocks if b.status == "failed"}
+    return (
+        bool(ended_failed)
+        and all(_transient_record(r) for r in ended_failed)
+        and not any(last[a].status == "completed" for a in failed_blocks if a in last)
     )
 
 
@@ -273,7 +292,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         plan = PersistPlan(
             **plan_base, move=move, rules_calls=deps.rules_calls, records=trusted.records
         )
-        transient = runs_failed_transiently(trusted.records)
+        transient = runs_failed_transiently(trusted.records, trusted.result.blocks)
         raise JobFailed(
             job_report(
                 ErrorCode.MODEL_UNAVAILABLE if transient else ErrorCode.GENERATION_FAILED,
