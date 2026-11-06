@@ -205,11 +205,14 @@ async def test_signup_existing_member_right_password_opens_a_request(
 
 
 async def test_signup_ip_rate_limited(api: httpx.AsyncClient, world: World) -> None:
-    statuses = [(await _signup(api, email=f"brand{i}@kalakar.test")).status_code for i in range(6)]
-    assert statuses[:5] == [202] * 5
-    assert statuses[5] == 429
-    limited = await _signup(api, email="brand9@kalakar.test")
-    assert limited.status_code == 429 and int(limited.headers["retry-after"]) >= 1
+    # 5 per clock minute. Eleven tries over at most two minutes put six in one of them, so one is
+    # refused even when the minute rolls over mid-loop; the first five never are.
+    responses = [await _signup(api, email=f"brand{i}@kalakar.test") for i in range(11)]
+    statuses = [r.status_code for r in responses]
+    assert statuses[:5] == [202] * 5, statuses
+    assert set(statuses) <= {202, 429} and 429 in statuses, statuses
+    limited = next(r for r in responses if r.status_code == 429)
+    assert int(limited.headers["retry-after"]) >= 1
     assert limited.json()["error"]["type"] == "RATE_LIMITED"
 
 
