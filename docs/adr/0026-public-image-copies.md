@@ -21,8 +21,12 @@ private.
 
 1. **Separate public bucket.** A second bucket (`GCS_BUCKET_IMAGES_PUBLIC`) holds only clean copies:
    decoded, EXIF orientation applied, every EXIF, XMP and comment block removed, ICC kept. It is
-   readable by anyone per object (`allUsers` object read; on MinIO a GetObject-only bucket policy)
-   and never listable.
+   readable by anyone per object and never listable. On GCS that is exactly
+   `gcloud storage buckets add-iam-policy-binding gs://<public-bucket> --member=allUsers --role=roles/storage.legacyObjectReader`
+   (object get only), with uniform bucket-level access on and public-access prevention off; never
+   grant `roles/storage.objectViewer` to `allUsers`, because it carries `storage.objects.list` and
+   would let anyone list every tenant's public names. On MinIO it is a GetObject-only bucket policy
+   (`infra/minio/public-read.json`).
 2. **What goes public.** Only an image in an approved listing version, at publish, after the
    approval, facts and image pins pass. A `packaging_label` image and an image outside the approved
    version never get a public copy.
@@ -42,10 +46,19 @@ private.
    written. A signed URL is never the fallback. Outside `APP_ENV=local` the base URL must be
    `https://`, without query, fragment or trailing slash, on a host other than the storage
    endpoint's.
-7. **Provisioning** (owner-only, before the first prod deploy that carries this change): the public
-   bucket without public-access prevention, the storage identity bound with object create, get and
-   delete, `allUsers` object read, the `images.kuinn.in` DNS record, and both settings for the api,
-   the worker and the maintenance job.
+7. **Provisioning** (owner-only, before the first prod deploy that carries this change):
+   - the public bucket, with uniform bucket-level access on and without public-access prevention;
+   - the storage identity (`SA_STORAGE`, `aimos-storage`) bound on it with
+     `gcloud storage buckets add-iam-policy-binding gs://<public-bucket> --member=serviceAccount:<aimos-storage email> --role=roles/storage.objectUser`
+     (object create, get, update and delete, no IAM changes);
+   - public read with
+     `gcloud storage buckets add-iam-policy-binding gs://<public-bucket> --member=allUsers --role=roles/storage.legacyObjectReader`;
+     never grant `roles/storage.objectViewer` to `allUsers` (it lists the bucket);
+   - the `images.kuinn.in` DNS record, and both settings for the api, the worker and the
+     maintenance job;
+   - the check: an anonymous list,
+     `curl -s -o /dev/null -w '%{http_code}' https://storage.googleapis.com/storage/v1/b/<public-bucket>/o`,
+     must print 401 or 403, and an anonymous GET of a known published object must print 200.
 
 ## Consequences
 

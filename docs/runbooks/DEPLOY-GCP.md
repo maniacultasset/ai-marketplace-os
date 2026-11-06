@@ -202,7 +202,16 @@ deletion protection, and its backups are kept after deletion (`--retain-backups-
   and `IMAGE_PUBLIC_BASE_URL` through to the api, the worker and the maintenance job when both
   are set; it does not create the bucket, its IAM or the `images.kuinn.in` DNS record (the
   owner's step). Until both are set, a publish that would send images fails closed with
-  `INTERNAL_ERROR` "image hosting is not configured".
+  `INTERNAL_ERROR` "image hosting is not configured". The owner's IAM, exactly (ADR-0026 §7):
+  - the storage identity:
+    `gcloud storage buckets add-iam-policy-binding gs://<public-bucket> --member=serviceAccount:<aimos-storage email> --role=roles/storage.objectUser`;
+  - public read:
+    `gcloud storage buckets add-iam-policy-binding gs://<public-bucket> --member=allUsers --role=roles/storage.legacyObjectReader`,
+    with uniform bucket-level access on and public-access prevention off. Never grant
+    `roles/storage.objectViewer` to `allUsers`: it carries `storage.objects.list`, so anyone could
+    list every tenant's public names;
+  - the check: `curl -s -o /dev/null -w '%{http_code}' https://storage.googleapis.com/storage/v1/b/<public-bucket>/o`
+    must print 401 or 403, and an anonymous GET of a known published object must print 200.
 - **A by-hand tenant purge needs the public copies gone first.** Run
   `python -m app.cli images unpublish --tenant <tenant_id>` (migrator) before
   `SELECT purge_tenant(...)`: the 0015 delete guard refuses the purge while any image still has a
