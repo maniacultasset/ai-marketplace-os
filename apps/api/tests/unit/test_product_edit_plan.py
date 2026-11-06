@@ -144,6 +144,60 @@ def test_style_mrp_under_child_price_refused() -> None:
     assert ok.typed_set == {"mrp": Decimal("899")}
 
 
+def test_style_price_raise_over_child_own_mrp_refused() -> None:
+    # tester repro (round 1): the child has its own MRP and inherits the style's price
+    row = _row(variation_theme="size", mrp=Decimal("1000"), selling_price=Decimal("400"))
+    error = _refused(
+        {"selling_price": Decimal("600")},
+        row=row,
+        level="style",
+        children=[(None, Decimal("500"))],
+    )
+    assert error.field == "selling_price"
+    # a child with its own price is not affected by the style's price
+    ok = _plan(
+        {"selling_price": Decimal("600")},
+        row=row,
+        level="style",
+        children=[(Decimal("450"), Decimal("500"))],
+    )
+    assert ok.typed_set == {"selling_price": Decimal("600")}
+
+
+def test_style_price_and_mrp_change_checked_against_children() -> None:
+    row = _row(variation_theme="size", mrp=Decimal("1000"), selling_price=Decimal("400"))
+    # both change: the inheriting-price child with its own MRP 500 gets price 700
+    error = _refused(
+        {"mrp": Decimal("2000"), "selling_price": Decimal("700")},
+        row=row,
+        level="style",
+        children=[(None, Decimal("500"))],
+    )
+    assert error.field == "selling_price"
+    # both change: the own-price child with no MRP falls under the new style MRP
+    error = _refused(
+        {"mrp": Decimal("800"), "selling_price": Decimal("700")},
+        row=row,
+        level="style",
+        children=[(Decimal("900"), None)],
+    )
+    assert error.field == "mrp"
+    ok = _plan(
+        {"mrp": Decimal("2000"), "selling_price": Decimal("450")},
+        row=row,
+        level="style",
+        children=[(None, Decimal("500")), (Decimal("900"), None)],
+    )
+    assert ok.typed_set == {"mrp": Decimal("2000"), "selling_price": Decimal("450")}
+
+
+def test_style_price_clear_keeps_children_checked() -> None:
+    # clearing the style MRP leaves an inheriting child without MRP: no comparison
+    row = _row(variation_theme="size", mrp=Decimal("1000"), selling_price=Decimal("400"))
+    ok = _plan({"mrp": None}, row=row, level="style", children=[(None, None)])
+    assert ok.typed_clear == ("mrp",)
+
+
 def test_manufacturer_needs_party_id() -> None:
     party = uuid.uuid4()
     change = _plan({"manufacturer": object()}, party_id=party)

@@ -356,6 +356,34 @@ async def test_style_mrp_under_child_price_refused(
     assert response.json()["error"]["details"][0]["loc"] == ["body", "mrp"]
 
 
+async def test_style_price_over_child_own_mrp_refused(
+    api: httpx.AsyncClient, products_world: World
+) -> None:
+    # round 1 fix: a style price raise loads the children and checks a child that has its own
+    # MRP but inherits the style's price (CP14)
+    style, child = await _family(
+        products_world,
+        mrp="2000.00",
+        selling_price="1000.00",
+        provenance={
+            "title": f.fact(),
+            "category": f.fact(),
+            "mrp": f.fact(),
+            "selling_price": f.fact(),
+        },
+    )
+    products_world.conn.execute(
+        "UPDATE products SET mrp = 1200, provenance = provenance || "
+        "jsonb_build_object('mrp', %s::jsonb) WHERE id = %s",
+        [json.dumps(f.fact()), child],
+    )
+    response = await _patch(api, products_world, style, {"selling_price": "1500.00"})
+    assert response.status_code == 422, response.text
+    assert response.json()["error"]["details"][0]["loc"] == ["body", "selling_price"]
+    ok = await _patch(api, products_world, style, {"selling_price": "1100.00"})
+    assert ok.status_code == 200, ok.text
+
+
 async def test_category_with_listing_refused(api: httpx.AsyncClient, products_world: World) -> None:
     created = await _create(api, products_world, "SI1-P-CAT")
     f.listing(products_world.conn, products_world.tenant("acme"), uuid.UUID(created["id"]))

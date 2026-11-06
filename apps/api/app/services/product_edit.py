@@ -13,8 +13,9 @@ so a lost-response retry is safe (invariant 10). Every write goes through `FactW
 
 Levels: a style-owned field (`style_number`, `size_chart`, an attribute outside the row's
 owner levels) on a variant is 422 `FACT_LEVEL_INVALID`. Money (CP14): a unit's own or inherited
-price is at most its own or inherited MRP; lowering a style's MRP under the price of a child
-that has no MRP of its own is 422 `mrp`.
+price is at most its own or inherited MRP. A style money change is checked against each live
+child: a child that inherits the changed price and goes over its MRP is 422 `selling_price`,
+any other child breach is 422 `mrp`.
 """
 
 from __future__ import annotations
@@ -130,16 +131,17 @@ def _plan_money(
     if price is not None and mrp is not None and price > mrp:
         changed_price = "selling_price" in typed or "selling_price" in cleared
         raise InputError(ErrorCode.VALIDATION_FAILED, "selling_price" if changed_price else "mrp")
-    if "mrp" in typed or "mrp" in cleared:
+    price_changed = "selling_price" in typed or "selling_price" in cleared
+    if price_changed or "mrp" in typed or "mrp" in cleared:
+        # a child's own value wins; a missing one inherits the style's new value
         for child_price, child_mrp in children:
-            child_effective = child_price if child_price is not None else price
-            if (
-                child_mrp is None
-                and child_effective is not None
-                and mrp is not None
-                and child_effective > mrp
-            ):
-                raise InputError(ErrorCode.VALIDATION_FAILED, "mrp")
+            child_p = child_price if child_price is not None else price
+            child_m = child_mrp if child_mrp is not None else mrp
+            if child_p is not None and child_m is not None and child_p > child_m:
+                inherits_price = child_price is None and price_changed
+                raise InputError(
+                    ErrorCode.VALIDATION_FAILED, "selling_price" if inherits_price else "mrp"
+                )
 
 
 def plan_patch(
@@ -251,7 +253,7 @@ async def update_product(
         if row.parent_product_id is not None:
             style = await uow.products.get_by_id(row.parent_product_id)
         children: list[tuple[Decimal | None, Decimal | None]] = []
-        if level == "style" and "mrp" in patch:
+        if level == "style" and ("mrp" in patch or "selling_price" in patch):
             children = await uow.products.child_prices(row.id)
         has_listing = False
         if patch.get("category") is not None and patch["category"] != row.category:
