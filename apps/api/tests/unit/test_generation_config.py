@@ -284,3 +284,21 @@ def test_direct_refusal_names_no_value(clean_env: Path, monkeypatch: pytest.Monk
     message = _refusal(monkeypatch, env)
     assert NO_DEEPSEEK_KEY in message
     assert CANARY_KEY not in message and "canary-generation-model" not in message
+
+
+# ---- the per-tenant cap on live listing_generate jobs (one brand cannot flood the queue) ----
+
+
+def test_generation_live_jobs_cap_default_10() -> None:
+    from app.core.config import Settings
+
+    assert Settings(_env_file=None, app_env="local").generation_live_jobs_per_tenant == 10
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "201"])
+def test_generation_live_jobs_cap_bounds(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
+    from app.core.config import Settings
+
+    monkeypatch.setenv("GENERATION_LIVE_JOBS_PER_TENANT", value)
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, app_env="local")

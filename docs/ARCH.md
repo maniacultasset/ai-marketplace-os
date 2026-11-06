@@ -122,6 +122,13 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
   agent is judged by its last run, so a 429 that recovered on the retry does not hide a later
   deterministic failure, and a missing key or embedder or a refused embeddings call (401, 400,
   bad shape) is not transient: it stays `INTERNAL_ERROR`.
+- One brand cannot flood the shared `default` queue (4 slots, FIFO, also running imports, image
+  checks and brand embeds): generate and regenerate refuse with 429 `RATE_LIMITED` once the
+  tenant holds `GENERATION_LIVE_JOBS_PER_TENANT` (default 10) `listing_generate` jobs `queued`
+  or `running`, counted under a per-tenant advisory lock (`enforce_live_generate_cap`). Claiming
+  itself stays FIFO: a per-tenant procrastinate queueing lock would cap each brand at one running
+  generation, which needs the lock threaded through every defer path (`policy.lock_for`); it is
+  left for a product decision.
 
 Source: CANON.md "The AI seam"; CANON-ADDENDUM.md §21; ADR-0012 §Decision 3; ADR-0013 §Decision 5;
 EXECUTION-PLAN.md §6.2.

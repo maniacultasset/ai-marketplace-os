@@ -449,6 +449,27 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         )
         return (await self.db.execute(stmt)).scalar_one_or_none() is not None
 
+    async def lock_generate_enqueue(self) -> None:
+        """The tenant's generate-enqueue advisory lock (transaction scope), so two concurrent
+        generate requests count the live jobs one after the other."""
+        self._own_session()
+        await self.db.execute(
+            select(
+                func.pg_advisory_xact_lock(
+                    func.hashtextextended(f"listing_generate:{self.tenant_id}", 0)
+                )
+            )
+        )
+
+    async def count_live_generations(self) -> int:
+        """The tenant's `listing_generate` jobs that are `queued` or `running`."""
+        stmt = (
+            self._select()
+            .where(JobRun.kind == JobKind.LISTING_GENERATE.value, JobRun.status.in_(LIVE))
+            .with_only_columns(func.count())
+        )
+        return int((await self.db.execute(stmt)).scalar_one())
+
     async def lock_brand_upload(self) -> None:
         """The tenant's brand-upload advisory lock (transaction scope; like S13 Q10)."""
         self._own_session()

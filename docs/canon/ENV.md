@@ -116,6 +116,7 @@ ADR-0020. Off by default. The redirect URI is not a variable: the API derives it
 | `LLM_MAX_CORRECTION_ATTEMPTS` | `3` | local .env | required | Enforced INSIDE the graph edge logic (invariant 9); ARQ max_tries=1 for generation so retries cannot multiply it. |
 | `LLM_DAILY_BUDGET_USD` | `12.00` | local .env | required | USD, matching agent_runs.cost_usd. The *_INR variants are deleted — no fx table exists. |
 | `LLM_TENANT_DAILY_BUDGET_USD` | `2.50` | local .env | required | Kill switch computed from SUM(cost_usd) per tenant per UTC day. |
+| `GENERATION_LIVE_JOBS_PER_TENANT` | `10` | local .env | optional | 1-200. The most `listing_generate` jobs one tenant may hold `queued` or `running`; a generate or regenerate past it is 429 `RATE_LIMITED` with `Retry-After`, nothing written or enqueued, so one brand cannot fill the shared queue and starve the others. Counted under a per-tenant advisory lock. |
 
 ## Amazon
 
