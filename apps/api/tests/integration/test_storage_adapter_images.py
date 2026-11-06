@@ -266,3 +266,15 @@ async def test_storage_unavailable_mapped(dead_store: ObjectStorage) -> None:
 def test_boto_loggers_warning_level() -> None:
     for name in ("boto3", "botocore", "s3transfer", "urllib3"):
         assert logging.getLogger(name).level == logging.WARNING, name
+
+
+async def test_put_sets_cache_control(storage: ObjectStorage) -> None:
+    """SI1 T17: `put(cache_control=...)` stores the object's `Cache-Control`."""
+    key = f"{uuid.uuid4()}/si1-cache-control"
+    value = "public, max-age=31536000, s-maxage=86400, immutable"
+    await storage.put(images_bucket(), key, b"x", "image/jpeg", cache_control=value)
+    meta = storage._client.head_object(Bucket=images_bucket(), Key=key)
+    assert meta["CacheControl"] == value
+    plain = f"{uuid.uuid4()}/si1-no-cache-control"
+    await storage.put(images_bucket(), plain, b"x", "image/jpeg")
+    assert "CacheControl" not in storage._client.head_object(Bucket=images_bucket(), Key=plain)

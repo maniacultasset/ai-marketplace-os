@@ -2,7 +2,7 @@
 
 `GET /brand-profile` reads the tenant's default manufacturer with an `ETag`; a tenant without a
 `brand_profiles` row reads as the empty profile, whose tag hashes the literal `none`.
-`PUT /brand-profile` (owner, admin) sets or clears it under `If-Match`:
+`PATCH /brand-profile` (owner, admin) sets or clears it under `If-Match`:
 
 1. `ensure()` creates the row when missing and says whether this call inserted it; the row is
    then locked.

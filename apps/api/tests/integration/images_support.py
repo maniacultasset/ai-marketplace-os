@@ -110,6 +110,8 @@ class FakeStorage:
 
     objects: dict[str, tuple[bytes, str, datetime]] = field(default_factory=dict)
     calls: list[str] = field(default_factory=list)
+    cache_control: dict[str, str | None] = field(default_factory=dict)
+    buckets: dict[str, str] = field(default_factory=dict)
     fail: Mapping[str, Exception] = field(default_factory=dict)
 
     def _call(self, name: str) -> None:
@@ -117,9 +119,19 @@ class FakeStorage:
         if name in self.fail:
             raise self.fail[name]
 
-    async def put(self, bucket: str, key: str, data: bytes, content_type: str) -> None:
+    async def put(
+        self,
+        bucket: str,
+        key: str,
+        data: bytes,
+        content_type: str,
+        *,
+        cache_control: str | None = None,
+    ) -> None:
         self._call("put")
         self.objects[key] = (data, content_type, datetime.now(UTC))
+        self.cache_control[key] = cache_control
+        self.buckets[key] = bucket
 
     async def get(self, bucket: str, key: str, *, max_bytes: int | None = None) -> bytes:
         from app.adapters.storage import StorageNotFound, StorageObjectTooLarge

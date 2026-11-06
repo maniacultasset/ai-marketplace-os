@@ -86,7 +86,11 @@ def test_bootstrap_checks_minio_init_and_both_buckets(repo_root: Path) -> None:
     match = re.search(r"buckets=\(([^)]+)\)", text)
     assert match is not None
     names = match.group(1).split()
-    assert names == canon_local_bucket_names(repo_root)
+    # SI1 (ADR-0026): the public bucket of clean copies, named in .env.example and ENV.md
+    example = (repo_root / ".env.example").read_text(encoding="utf-8")
+    public = re.search(r"^GCS_BUCKET_IMAGES_PUBLIC=(.+)$", example, re.MULTILINE)
+    assert public is not None
+    assert names == [*canon_local_bucket_names(repo_root), public.group(1)]
     assert re.search(r"run --rm --no-deps minio-init ls", text)
     for forbidden in ("--entrypoint", "S3_SECRET_KEY", "S3_ACCESS_KEY", "MC_HOST"):
         assert not any(forbidden in line for line in text.splitlines()), forbidden

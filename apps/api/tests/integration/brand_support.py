@@ -123,7 +123,15 @@ class MemoryStore:
         self.fail_delete = False
         self.puts = 0
 
-    async def put(self, bucket: str, key: str, data: bytes, content_type: str) -> None:
+    async def put(
+        self,
+        bucket: str,
+        key: str,
+        data: bytes,
+        content_type: str,
+        *,
+        cache_control: str | None = None,
+    ) -> None:
         self.puts += 1
         self.objects[(bucket, key)] = (data, content_type)
 

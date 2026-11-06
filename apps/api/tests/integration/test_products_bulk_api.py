@@ -370,7 +370,15 @@ class _HeldStorage(ObjectStorage):
         self.release = asyncio.Event()
         self.data: dict[str, bytes] = {}
 
-    async def put(self, bucket: str, key: str, data: bytes, content_type: str) -> None:
+    async def put(
+        self,
+        bucket: str,
+        key: str,
+        data: bytes,
+        content_type: str,
+        *,
+        cache_control: str | None = None,
+    ) -> None:
         self.entered.set()
         await self.release.wait()
         self.data[key] = data

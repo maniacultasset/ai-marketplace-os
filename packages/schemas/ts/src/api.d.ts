@@ -659,17 +659,17 @@ export interface paths {
          *     brand that never saved one reads as the empty profile.
          */
         get: operations["brand_profile_get"];
-        /**
-         * Set the brand profile (If-Match: the ETag from GET)
-         * @description Set or clear the default manufacturer (owner, admin). `If-Match` is the `ETag` from GET
-         *     (409 STALE_VERSION when stale); an absent field is unchanged, `null` clears.
-         */
-        put: operations["brand_profile_update"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update the brand profile (If-Match: the ETag from GET)
+         * @description Set or clear the default manufacturer (owner, admin). `If-Match` is the `ETag` from GET
+         *     (409 STALE_VERSION when stale); an absent field is unchanged, `null` clears.
+         */
+        patch: operations["brand_profile_update"];
         trace?: never;
     };
     "/api/v1/brand/documents": {

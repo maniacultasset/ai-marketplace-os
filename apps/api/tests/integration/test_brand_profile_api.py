@@ -1,4 +1,4 @@
-"""SI1 T13 (AC6, AC7, AC18): `GET`/`PUT /api/v1/brand-profile` as app_rw through the real app.
+"""SI1 T13 (AC6, AC7, AC18): `GET`/`PATCH /api/v1/brand-profile` as app_rw through the real app.
 Run in the Docker batch (`make api-tests-integration`)."""
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ async def _put(
     email: str = "owner@acme.test",
 ) -> httpx.Response:
     tag = etag if etag is not None else await _etag(api, world, email)
-    return await api.put(URL, json=body, headers={**_as(world, email), "If-Match": tag})
+    return await api.patch(URL, json=body, headers={**_as(world, email), "If-Match": tag})
 
 
 def _audits(conn: Conn) -> list[tuple[Any, ...]]:
@@ -127,7 +127,7 @@ async def test_put_validation(api: httpx.AsyncClient, fresh: World, body: dict[s
 
 @pytest.mark.endpoint("brand_profile_update", case="missing_auth")
 async def test_put_missing_auth(api: httpx.AsyncClient, fresh: World) -> None:
-    response = await api.put(
+    response = await api.patch(
         URL, json={"default_manufacturer": None}, headers={"If-Match": '"' + "0" * 36 + '"'}
     )
     assert response.status_code == 401
@@ -138,7 +138,7 @@ async def test_put_missing_auth(api: httpx.AsyncClient, fresh: World) -> None:
 @pytest.mark.endpoint("brand_profile_update", case="invalid_token", variant="wrong_typ")
 @pytest.mark.parametrize("variant", ["expired", "bad_signature", "wrong_typ"])
 async def test_put_invalid_token(api: httpx.AsyncClient, fresh: World, variant: str) -> None:
-    response = await api.put(
+    response = await api.patch(
         URL,
         json={"default_manufacturer": None},
         headers={**bad_bearer(fresh, variant, "owner@acme.test"), "If-Match": '"' + "0" * 36 + '"'},

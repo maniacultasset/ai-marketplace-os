@@ -385,3 +385,80 @@ def test_boot_flipkart_on_migrate_role_not_checked(
     env = _fk("staging", "migrate", FLIPKART_API_BASE="https://evil.example/s")
     env["ALEMBIC_DATABASE_URL"] = LOCAL_URL
     assert _boot(monkeypatch, **env) is not None
+
+
+# ---- SI1 T17 (CP1, ADR-0026): the public image settings ----
+
+PUBLIC_BUCKET = "aimos-images-public-prod"
+
+
+def _public(app_env: str, base: str | None, bucket: str | None = PUBLIC_BUCKET) -> dict[str, str]:
+    env = _env(app_env, "worker" if app_env == "staging" else "api")
+    if base is not None:
+        env["IMAGE_PUBLIC_BASE_URL"] = base
+    if bucket is not None:
+        env["GCS_BUCKET_IMAGES_PUBLIC"] = bucket
+    return env
+
+
+def test_public_url_http_refused_deployed(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    code = _refused(monkeypatch, _public("staging", "http://images.kuinn.in"))
+    assert "requires an https IMAGE_PUBLIC_BASE_URL" in code
+
+
+@pytest.mark.parametrize(
+    ("base", "message"),
+    [
+        ("https://images.kuinn.in?x=1", "must not carry a query or fragment"),
+        ("https://images.kuinn.in#f", "must not carry a query or fragment"),
+        ("https://images.kuinn.in/", "must not end with '/'"),
+        ("https://u:p@images.kuinn.in", "must not carry userinfo"),
+    ],
+)
+def test_public_url_shape_refused(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, base: str, message: str
+) -> None:
+    assert message in _refused(monkeypatch, _public("production", base))
+
+
+def test_public_settings_set_together(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    code = _refused(monkeypatch, _public("production", "https://images.kuinn.in", bucket=None))
+    assert "set together or not at all" in code
+    monkeypatch.delenv("IMAGE_PUBLIC_BASE_URL")
+    code = _refused(monkeypatch, _public("production", None))
+    assert "set together or not at all" in code
+
+
+def test_public_host_equal_to_s3_host_refused(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = _public("production", "https://storage.googleapis.com/aimos-images-public-prod")
+    env["S3_ENDPOINT_URL"] = "https://storage.googleapis.com"
+    assert "another host than S3_ENDPOINT_URL" in _refused(monkeypatch, env)
+
+
+def test_public_settings_unset_in_production_boot(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = _boot(monkeypatch, **_public("production", None, bucket=None))
+    assert getattr(settings, "image_public_base_url") is None  # noqa: B009
+
+
+def test_public_settings_good_in_production_boot(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = _boot(monkeypatch, **_public("production", "https://images.kuinn.in"))
+    assert getattr(settings, "gcs_bucket_images_public") == PUBLIC_BUCKET  # noqa: B009
+
+
+def test_public_local_http_ok(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    env = {
+        "APP_ENV": "local",
+        "APP_ROLE": "api",
+        "DATABASE_URL": LOCAL_URL,
+        "JWT_SECRET": PRIVATE_JWT,
+        "IMAGE_PUBLIC_BASE_URL": "http://localhost:9000/marketplace-images-public",
+        "GCS_BUCKET_IMAGES_PUBLIC": "marketplace-images-public",
+    }
+    settings = _boot(monkeypatch, **env)
+    assert getattr(settings, "image_public_base_url").startswith("http://localhost")  # noqa: B009

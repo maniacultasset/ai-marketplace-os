@@ -24,7 +24,15 @@ URL = f"{PREFIX}/brand/documents"
 class _DownStore:
     """A store that cannot be reached (what `get_storage()` raises on a refused connection)."""
 
-    async def put(self, bucket: str, key: str, data: bytes, content_type: str) -> None:
+    async def put(
+        self,
+        bucket: str,
+        key: str,
+        data: bytes,
+        content_type: str,
+        *,
+        cache_control: str | None = None,
+    ) -> None:
         from app.services.brand_storage import StorageUnavailable
 
         raise StorageUnavailable("the store could not be reached")

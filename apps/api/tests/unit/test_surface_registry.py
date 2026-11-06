@@ -59,7 +59,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("brand_documents_delete", "DELETE", "/brand/documents/{document_id}"),
     # SI1: the brand profile (76 + 2)
     ("brand_profile_get", "GET", "/brand-profile"),
-    ("brand_profile_update", "PUT", "/brand-profile"),
+    ("brand_profile_update", "PATCH", "/brand-profile"),
     ("products_create", "POST", "/products"),
     ("products_list", "GET", "/products"),
     ("products_get", "GET", "/products/{product_id}"),

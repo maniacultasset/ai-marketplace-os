@@ -333,7 +333,9 @@ async def test_upload_no_transaction_open_during_put(
     seen: list[int] = []
     real = store.put
 
-    async def put(bucket: str, key: str, data: bytes, content_type: str) -> None:
+    async def put(
+        bucket: str, key: str, data: bytes, content_type: str, *, cache_control: str | None = None
+    ) -> None:
         row = auth_db.execute(
             "SELECT count(*) FROM pg_stat_activity WHERE usename = 'app_rw' "
             "AND datname = current_database() AND state LIKE 'idle in transaction%'"

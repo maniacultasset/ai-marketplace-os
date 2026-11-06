@@ -16236,7 +16236,7 @@
         ],
         "x-mkos-action": "tenant:read"
       },
-      "put": {
+      "patch": {
         "description": "Set or clear the default manufacturer (owner, admin). `If-Match` is the `ETag` from GET\n(409 STALE_VERSION when stale); an absent field is unchanged, `null` clears.",
         "operationId": "brand_profile_update",
         "parameters": [
@@ -16626,7 +16626,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Set the brand profile (If-Match: the ETag from GET)",
+        "summary": "Update the brand profile (If-Match: the ETag from GET)",
         "tags": [
           "brand"
         ],
