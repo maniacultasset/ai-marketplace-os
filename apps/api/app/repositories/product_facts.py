@@ -106,7 +106,20 @@ def _party(party: BusinessParty | None) -> PartyFacts | None:
         email=party.email,
         phone=party.phone,
         gstin=party.gstin,
+        address_line1=party.address_line1,
+        address_line2=party.address_line2,
+        city=party.city,
+        state_code=party.state_code,
+        postal_code=party.postal_code,
+        country_code=party.country_code,
     )
+
+
+def manufacturer_inherited(product: Product, style: Product | None) -> bool:
+    """True when the effective manufacturer is the brand default: neither the product nor its
+    style names one (SI1 D1c `PartyOut.inherited`)."""
+    own = product.manufacturer_party_id
+    return own is None and (style is None or style.manufacturer_party_id is None)
 
 
 def _facts(

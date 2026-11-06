@@ -198,3 +198,42 @@ def test_digest_deterministic(attrs: dict[str, Any], sku: str) -> None:
     )
     assert facts_digest(one) == facts_digest(one)
     assert facts_digest(one) == facts_digest(reordered)
+
+
+# ---- SI1 T9: structured party fields stay out of the digest (CP2) ----
+
+STRUCTURED = {
+    "address_line1": "1 MG Road",
+    "address_line2": None,
+    "city": "Bengaluru",
+    "state_code": "KA",
+    "postal_code": "560001",
+    "country_code": "IN",
+}
+
+
+def test_structured_party_fields_keep_the_golden_digest() -> None:
+    """DIGEST_VECTOR was computed before SI1 for this fixture; filling the structured fields
+    must not move it, or every approval made before the deploy would fail its facts pin."""
+    party = PARTY.model_copy(update=STRUCTURED)
+    with_parts = facts(
+        compliance=Compliance(
+            country_of_origin="IN", manufacturer=party, consumer_care=PartyFacts(email="x@y.in")
+        )
+    )
+    assert facts_digest(with_parts).hex() == DIGEST_VECTOR
+
+
+def test_for_prompt_has_no_structured_address() -> None:
+    party = PARTY.model_copy(update=STRUCTURED)
+    body = for_prompt(facts(compliance=Compliance(manufacturer=party)))
+    text = _text(body)
+    for value in ("Bengaluru", "560001", "1 MG Road"):
+        assert value not in text
+
+
+def test_digest_changes_when_address_changes() -> None:
+    moved = PARTY.model_copy(update={"address": "2 MG Road, Bengaluru"})
+    assert facts_digest(facts(compliance=Compliance(manufacturer=moved))) != facts_digest(
+        facts(compliance=Compliance(manufacturer=PARTY))
+    )
