@@ -226,3 +226,16 @@ async def test_image_orphan_sweep_storage_error_does_not_stop_other_steps(
     totals = await retention_daily()
     assert totals["image_orphans"] == 0 and totals["job_runs"] == 1
     assert count(images_db.conn, "SELECT count(*) FROM job_runs WHERE id = %s", [old]) == 0
+
+
+async def test_image_orphan_sweep_keeps_derived_objects(images_db: JobWorld) -> None:
+    """SI1 T16: a derived object is never an image key, so the sweep never deletes it."""
+    from app.services.image_keys import derived_key
+
+    tenant = images_db.tenant("acme")
+    derived = derived_key(tenant, uuid.uuid4(), uuid.uuid4(), "vision.jpg")
+    orphan = orphan_key(images_db)
+    await puts([derived, orphan])
+    assert await sweep_image_orphans(LATER) == 1
+    assert await exists(derived)
+    assert not await exists(orphan)

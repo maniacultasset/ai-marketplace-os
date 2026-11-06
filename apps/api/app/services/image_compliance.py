@@ -11,8 +11,12 @@
    retried (then `dead_letter`, the row stays `pending`); a missing or oversized object fails.
 4. The checks in the killable child (`image_runner`): a hostile image is a CORRUPT report,
    never a retry; a misconfigured rule fails the job.
-5. Another short unit of work: one UPDATE writes the reports, the worst-of status, the meta
-   columns and `content_hash` = sha256 of the bytes read.
+5. SI1 T16 (CP17): when the checks could decode the image (meta present), the derive child
+   makes the `clean` and `vision` copies; with no transaction open they are PUT to the private
+   images bucket under the derived keys (`StorageUnavailable` → retry, the row stays
+   `pending`). A derive failure leaves the report as it is and stores no derivative.
+6. Another short unit of work: one UPDATE writes the reports, the worst-of status, the meta
+   columns, `content_hash` = sha256 of the bytes read and the clean copy's hash and type.
 
 No model client and no `agent_runs` row (invariant 7). Logs carry ids and the status only.
 """
@@ -36,9 +40,10 @@ from app.adapters.storage import (
     images_bucket,
 )
 from app.core.logging import get_logger
+from app.repositories.images import CleanMeta
 from app.repositories.uow import tenant_uow
 from app.services import image_runner
-from app.services.image_keys import parse_image_key
+from app.services.image_keys import CLEAN_NAMES, derived_key, parse_image_key
 from app.services.rules_loader import RuleLoadError, load_rules
 from app.workers.errors import JobFailed, RetryableJobError, system_report
 from app.workers.policy import POLICIES
@@ -102,12 +107,35 @@ async def run_image_compliance(ctx: JobContext) -> Outcome:
         data, image_id=image_id, slot=slot, rules=rules, now=datetime.now(UTC)
     )
 
+    clean = None
+    if outcome.meta is not None:  # a CORRUPT report has no meta: nothing to derive from
+        derived = await image_runner.run_derive_isolated(data, image_id=image_id)
+        if derived is not None:
+            clean_key = derived_key(
+                ctx.tenant_id, parsed.product_id, image_id, CLEAN_NAMES[derived.clean_mime]
+            )
+            vision_key = derived_key(ctx.tenant_id, parsed.product_id, image_id, "vision.jpg")
+            try:
+                await get_storage().put(
+                    images_bucket(), clean_key, derived.clean, derived.clean_mime
+                )
+                await get_storage().put(images_bucket(), vision_key, derived.vision, "image/jpeg")
+            except StorageUnavailable:
+                raise RetryableJobError(ErrorCode.INTERNAL_ERROR) from None
+            clean = CleanMeta(
+                content_hash=hashlib.sha256(derived.clean).hexdigest(),
+                mime_type=derived.clean_mime,
+                vision_w=derived.vision_w,
+                vision_h=derived.vision_h,
+            )
+
     async with tenant_uow(ctx.tenant_id) as uow:
         status = await uow.images.write_report(
             image_id,
             reports=outcome.reports,
             meta=outcome.meta,
             content_hash=hashlib.sha256(data).hexdigest(),
+            clean=clean,
         )
     if status is None:
         return Outcome("succeeded", {"skipped": "image_gone", "image_id": str(image_id)})

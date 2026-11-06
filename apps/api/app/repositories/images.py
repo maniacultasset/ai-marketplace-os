@@ -15,6 +15,7 @@ runs a check or touches the object store.
 from __future__ import annotations
 
 import builtins
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Final, Literal
@@ -22,7 +23,8 @@ from uuid import UUID
 
 from mkos_schemas.enums import ImageSlot, Marketplace
 from mkos_schemas.images import ImageReport
-from sqlalchemy import case, func, select, text, update
+from sqlalchemy import case, cast, func, literal, select, text, update
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
@@ -62,6 +64,16 @@ class ImageDetail:
     position: int
     status: str
     compliance_status: str
+
+
+@dataclass(frozen=True, slots=True)
+class CleanMeta:
+    """The stored clean derivative (SI1 T16): its sha256, its type and the vision size."""
+
+    content_hash: str
+    mime_type: str
+    vision_w: int
+    vision_h: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,17 +220,22 @@ class ImageRepository(TenantScopedRepository[Image]):
         reports: Mapping[Marketplace, ImageReport],
         meta: ImageMeta | None,
         content_hash: str,
+        clean: CleanMeta | None = None,
     ) -> ComplianceStatus | None:
         """One UPDATE of a live row: the report object keyed by marketplace (wire aliases, so
         `pass`), the worst-of `compliance_status`, the meta columns and `content_hash`. Returns
-        the status written, or None when the row is not live any more."""
+        the status written, or None when the row is not live any more.
+
+        SI1 T16: `clean` sets `clean_content_hash`, `clean_mime_type` and `metadata.vision`
+        `{w, h}`; None clears them, except on a row that already has a `public_id` (its public
+        copy was made from the stored clean copy, and `ck_images_public_needs_clean` keeps it)."""
         self._own_session()
         status = rollup(reports)
         dumped = {
             Marketplace(m).value: r.model_dump(mode="json", by_alias=True)
             for m, r in reports.items()
         }
-        values: dict[str, Any] = {
+        values: dict[Any, Any] = {
             "image_report_json": dumped,
             "compliance_status": status,
             "content_hash": content_hash,
@@ -226,6 +243,20 @@ class ImageRepository(TenantScopedRepository[Image]):
             "width_px": None if meta is None else meta.width_px,
             "height_px": None if meta is None else meta.height_px,
         }
+        if clean is not None:
+            vision = cast(literal(json.dumps({"w": clean.vision_w, "h": clean.vision_h})), JSONB)
+            values["clean_content_hash"] = clean.content_hash
+            values["clean_mime_type"] = clean.mime_type
+            values[Image.metadata_] = Image.metadata_.op("||")(
+                func.jsonb_build_object("vision", vision)
+            )
+        else:
+            published = Image.public_id.is_not(None)
+            values["clean_content_hash"] = case((published, Image.clean_content_hash), else_=None)
+            values["clean_mime_type"] = case((published, Image.clean_mime_type), else_=None)
+            values[Image.metadata_] = case(
+                (published, Image.metadata_), else_=Image.metadata_.op("-")("vision")
+            )
         stmt = self._scoped_write(
             update(Image)
             .where(
@@ -233,7 +264,7 @@ class ImageRepository(TenantScopedRepository[Image]):
                 Image.deleted_at.is_(None),
                 self._tenant_criterion(include_platform=False),
             )
-            .values(**values)
+            .values(values)
             .returning(Image.id)
         )
         written = (await self.db.execute(stmt)).scalar_one_or_none()
