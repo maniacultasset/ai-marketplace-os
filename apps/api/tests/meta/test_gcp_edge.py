@@ -169,6 +169,10 @@ def toolkit(repo_root: Path, tmp_path: Path) -> Iterator[Path]:
             text = re.sub(r"^JWT_ISSUER=.*$", "JWT_ISSUER=", text, flags=re.M)
             # prod.env enforces the origin guard; the copy starts off and the tests set it.
             text = re.sub(r"^ORIGIN_AUTH=.*$", "ORIGIN_AUTH=off", text, flags=re.M)
+            # prod.env runs the real pipeline worker; the edge copy keeps the stub baseline.
+            if source.name == "prod.env":
+                text = re.sub(r"^PIPELINE_REF=.*$", "PIPELINE_REF=", text, flags=re.M)
+                text = re.sub(r"^WORKER_ENABLED=.*$", "WORKER_ENABLED=false", text, flags=re.M)
             # The Amazon app is covered by test_gcp_deploy; keep it off in the edge copy.
             text = re.sub(r"^AMAZON_APP_ID=.*$", "AMAZON_APP_ID=", text, flags=re.M)
             text = re.sub(r"^AMAZON_CLIENT_ID=.*$", "AMAZON_CLIENT_ID=", text, flags=re.M)
