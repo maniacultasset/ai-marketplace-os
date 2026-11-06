@@ -49,9 +49,17 @@ def _listing(**over: Any) -> SimpleNamespace:
         "current_version_id": VERSION,
         "approved_version_id": VERSION,
         "marketplace_state_changed_at": None,
+        "product_id": PRODUCT,
     }
     base.update(over)
     return SimpleNamespace(**base)
+
+
+PRODUCT = uuid.UUID(int=20)
+
+
+def _facts(level: str = "standalone", mrp: str | None = "1499.00", sku: str = "SKU-1") -> Any:
+    return SimpleNamespace(level=level, sku=sku, commercial=SimpleNamespace(mrp=mrp))
 
 
 def _job(job_id: uuid.UUID = JOB, status: str = "queued") -> SimpleNamespace:
@@ -83,6 +91,9 @@ def _uow(**over: Any) -> Any:
         human_tasks=SimpleNamespace(any_applied_after=AsyncMock(return_value=False)),
         field_results=SimpleNamespace(retry_payload=AsyncMock(return_value={"title": "x"})),
         audit=SimpleNamespace(write=AsyncMock()),
+        # SI1 T20: every unit has an MRP unless a test says otherwise
+        product_facts=SimpleNamespace(resolve=AsyncMock(return_value=_facts())),
+        products=SimpleNamespace(live_child_ids=AsyncMock(return_value=[])),
     )
     for path, value in over.items():
         repo, attr = path.split("__")
@@ -830,3 +841,52 @@ async def test_publish_batch_refuses_no_items() -> None:
     with pytest.raises(ValueError) as refused:
         await svc.publish_batch(_uow(), _principal(), [], http_key="k")
     assert str(refused.value) == "a publish batch has at least one item"
+
+
+# ---- SI1 T20 (AC16; CP10): MRP required at publish ----
+
+
+async def test_plan_refuses_a_standalone_without_mrp() -> None:
+    uow = _uow(product_facts__resolve=AsyncMock(return_value=_facts(mrp=None, sku="KUR-9")))
+    with pytest.raises(svc.Refused) as caught:
+        await svc.plan_publish(uow, _listing())
+    refused = caught.value
+    assert refused.code is ErrorCode.CRITICAL_FACT_MISSING and refused.status == 409
+    assert refused.field == "facts.mrp"
+    assert refused.message == "MRP is missing for SKU KUR-9."
+    report = svc.item_report(refused.code, field=refused.field, message=refused.message)
+    assert report.errors[0].field == "facts.mrp"
+    assert "KUR-9" in report.errors[0].message
+
+
+async def test_plan_refuses_a_family_with_one_child_without_mrp() -> None:
+    children = {
+        uuid.UUID(int=31): _facts("variant"),
+        uuid.UUID(int=32): _facts("variant", None, "C-2"),
+    }
+
+    async def resolve(pid: uuid.UUID) -> Any:
+        return _facts("style", None, "STYLE") if pid == PRODUCT else children[pid]
+
+    uow = _uow(
+        product_facts__resolve=AsyncMock(side_effect=resolve),
+        products__live_child_ids=AsyncMock(return_value=list(children)),
+    )
+    with pytest.raises(svc.Refused) as caught:
+        await svc.plan_publish(uow, _listing())
+    assert caught.value.message == "MRP is missing for SKU C-2."
+    assert caught.value.field == "variants[C-2].facts.mrp"
+
+
+async def test_plan_accepts_a_family_whose_children_inherit_mrp() -> None:
+    child = uuid.UUID(int=33)
+
+    async def resolve(pid: uuid.UUID) -> Any:
+        return _facts("style") if pid == PRODUCT else _facts("variant")
+
+    uow = _uow(
+        product_facts__resolve=AsyncMock(side_effect=resolve),
+        products__live_child_ids=AsyncMock(return_value=[child]),
+    )
+    plan = await svc.plan_publish(uow, _listing())
+    assert plan.mode == "publish"

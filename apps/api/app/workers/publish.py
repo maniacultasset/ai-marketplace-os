@@ -81,6 +81,7 @@ from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.services import public_images
 from app.services.adapter_input import build_adapter_listing, canonical_listing
 from app.services.product_type_schema import current_schema
+from app.services.publish import missing_mrp
 from app.services.publish_ledger import Decision, ErrorKind, route_error, route_result
 from app.services.publish_outcome import AttemptCtx, apply_decision, refusal_report, revalidate
 from app.services.publish_rules import (
@@ -197,6 +198,10 @@ async def _read(ctx: JobContext, payload: PublishJobPayload) -> Prepared:
         if source is None or source.version is None:
             raise _fail(ErrorCode.INVALID_STATUS_TRANSITION, "the listing has no version")
         resolved = await uow.product_facts.resolve(listing.product_id)
+        # SI1 D8: a unit without MRP is never sent (the request checked it; facts can change)
+        missing = await missing_mrp(uow, listing.product_id)
+        if missing is not None:
+            raise _fail(ErrorCode.CRITICAL_FACT_MISSING, missing.message, field_path=missing.field)
         prep = Prepared(
             listing=listing,
             version_id=version,

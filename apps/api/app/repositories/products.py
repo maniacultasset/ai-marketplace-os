@@ -96,6 +96,16 @@ class ProductRepository(TenantScopedRepository[Product]):
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
+    async def live_child_ids(self, style_id: uuid.UUID) -> builtins.list[uuid.UUID]:
+        """The live children of `style_id`, in id order (SI1 T20: each is a sellable unit)."""
+        stmt = (
+            self._select()
+            .where(Product.parent_product_id == style_id, Product.deleted_at.is_(None))
+            .with_only_columns(Product.id)
+            .order_by(Product.id)
+        )
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
     async def child_prices(
         self, style_id: uuid.UUID
     ) -> builtins.list[tuple[Decimal | None, Decimal | None]]:

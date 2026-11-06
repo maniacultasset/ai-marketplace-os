@@ -193,7 +193,7 @@ bash -c "$WORKER_START" || fail "the WORKER_START hook failed"
 worker_running=1
 
 step create_product
-call POST "$api/products" "$owner" "" "{\"sku\": \"$sku\", \"title\": \"E2E Flipkart Kurta Set\", \"category\": \"$category\", \"attributes\": {\"color\": \"blue\", \"fabric_type\": \"cotton\"}}"
+call POST "$api/products" "$owner" "" "{\"sku\": \"$sku\", \"title\": \"E2E Flipkart Kurta Set\", \"category\": \"$category\", \"mrp\": \"1499.00\", \"attributes\": {\"color\": \"blue\", \"fabric_type\": \"cotton\"}}"
 expect 201
 product="$(json 'b["id"]')"
 
