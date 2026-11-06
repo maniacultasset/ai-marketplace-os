@@ -347,6 +347,11 @@ def new_storage() -> ObjectStorage:
             retries={"max_attempts": MAX_ATTEMPTS, "mode": "standard"},
             s3={"addressing_style": "path"},
             signature_version="s3v4",
+            # GCS's S3-compatible API refuses the streaming CRC checksum boto3 >=1.36 adds to
+            # PutObject by default (SignatureDoesNotMatch "Invalid argument"): checksums only
+            # where an operation requires one, which MinIO and GCS both accept.
+            request_checksum_calculation="when_required",
+            response_checksum_validation="when_required",
         ),
     )
     return ObjectStorage(client)

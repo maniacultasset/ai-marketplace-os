@@ -132,3 +132,15 @@ def test_storage_client_explicit_credentials(fresh: pytest.MonkeyPatch) -> None:
     assert seen["config"].s3 == {"addressing_style": "path"}
     assert seen["config"].connect_timeout == storage.CONNECT_TIMEOUT_S
     assert seen["config"].read_timeout == storage.READ_TIMEOUT_S
+
+
+def test_client_sends_checksums_only_when_required(fresh: pytest.MonkeyPatch) -> None:
+    """GCS's S3-compatible API refuses the default boto3 (>=1.36) streaming CRC checksum on
+    PutObject with SignatureDoesNotMatch, so the client computes and validates checksums only
+    when an operation requires them."""
+    fresh.setenv("APP_ENV", "local")
+    fresh.setenv("DATABASE_URL", "postgresql+psycopg://u:p@localhost:5432/x")
+    fresh.setenv("JWT_SECRET", "unit_only_not_a_real_secret_at_least_32_chars")
+    client = storage.new_storage()._client
+    assert client.meta.config.request_checksum_calculation == "when_required"
+    assert client.meta.config.response_checksum_validation == "when_required"
