@@ -2095,3 +2095,41 @@ def test_cli_quiets_the_http_client_loggers() -> None:
     quiet_http_clients()
     for name in _HTTP_CLIENT_LOGGERS:
         assert logging.getLogger(name).getEffectiveLevel() >= logging.WARNING, name
+
+
+# ---- SI1 (ADR-0026): the public image settings pass through only as a pair ----
+
+
+def _append_env(toolkit: Path, env_name: str, **values: str) -> None:
+    path = toolkit / f"{env_name}.env"
+    extra = "".join(f"{key}={value}\n" for key, value in values.items())
+    path.write_text(path.read_text(encoding="utf-8") + extra, encoding="utf-8")
+
+
+def test_public_image_settings_reach_every_env_file(toolkit: Path, tmp_path: Path) -> None:
+    _append_env(
+        toolkit,
+        "staging",
+        GCS_BUCKET_IMAGES_PUBLIC="aimos-images-public-staging",
+        IMAGE_PUBLIC_BASE_URL="https://images-staging.kuinn.in",
+    )
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    blocks = [yaml.safe_load(block) for block in _blocks(out, "env file")]
+    assert len(blocks) >= 2  # the api and the maintenance job (and the worker when on)
+    for env in blocks:
+        assert env["GCS_BUCKET_IMAGES_PUBLIC"] == "aimos-images-public-staging"
+        assert env["IMAGE_PUBLIC_BASE_URL"] == "https://images-staging.kuinn.in"
+
+
+@pytest.mark.parametrize(
+    "values",
+    [{}, {"GCS_BUCKET_IMAGES_PUBLIC": "aimos-images-public-staging"}],
+)
+def test_public_image_settings_absent_unless_both_set(
+    toolkit: Path, tmp_path: Path, values: dict[str, str]
+) -> None:
+    _append_env(toolkit, "staging", **values)
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    for block in _blocks(out, "env file"):
+        env = yaml.safe_load(block)
+        assert "GCS_BUCKET_IMAGES_PUBLIC" not in env and "IMAGE_PUBLIC_BASE_URL" not in env

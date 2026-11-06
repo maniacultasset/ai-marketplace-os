@@ -197,6 +197,16 @@ deletion protection, and its backups are kept after deletion (`--retain-backups-
   `grpc`), so `deploy` detects that and applies the same settings with
   `run worker-pools replace <yaml>`. A Cloud Run service is not a fallback: the worker binds no
   port (`docker-entrypoint.sh`), so a service's startup probe would fail.
+- **Public image copies (SI1, ADR-0026).** Marketplace image links are stable public URLs on an
+  EXIF-free copy, served from a public bucket. The toolkit only passes `GCS_BUCKET_IMAGES_PUBLIC`
+  and `IMAGE_PUBLIC_BASE_URL` through to the api, the worker and the maintenance job when both
+  are set; it does not create the bucket, its IAM or the `images.kuinn.in` DNS record (the
+  owner's step). Until both are set, a publish that would send images fails closed with
+  `INTERNAL_ERROR` "image hosting is not configured".
+- **A by-hand tenant purge needs the public copies gone first.** Run
+  `python -m app.cli images unpublish --tenant <tenant_id>` (migrator) before
+  `SELECT purge_tenant(...)`: the 0015 delete guard refuses the purge while any image still has a
+  public name. `seed --reset` runs the same step itself.
 - **Rotation.** A generated secret is generated only once. To rotate one, add a version
   (`openssl rand -hex 32 | tr -d '\n' | gcloud secrets versions add NAME --data-file=-`) and
   redeploy. For a DB role, also rerun `db-init`, then disable and rebuild its URL secret as in the

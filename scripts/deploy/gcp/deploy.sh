@@ -84,6 +84,11 @@ ALERT_EMAIL="${ALERT_EMAIL-}"
 # gets the Worker's origin secret, and ORIGIN_AUTH=enforce makes it refuse every other caller.
 EDGE_PROVIDER="${EDGE_PROVIDER-}"
 ORIGIN_AUTH="${ORIGIN_AUTH-off}"
+# SI1 (ADR-0026): the public image copies. Passed to the api, the worker and the maintenance job
+# only when both are set; the owner provisions the bucket, its IAM and the image domain. Unset,
+# a publish that would send images fails closed (never a signed URL).
+GCS_BUCKET_IMAGES_PUBLIC="${GCS_BUCKET_IMAGES_PUBLIC-}"
+IMAGE_PUBLIC_BASE_URL="${IMAGE_PUBLIC_BASE_URL-}"
 ORIGIN_HEADER_NAME="x-kuinn-origin-auth"
 ORIGIN_SECRET="EDGE_ORIGIN_SECRET"
 # Refused before any gcloud call, for every subcommand.
@@ -942,6 +947,10 @@ app_env() {
     FLIPKART_OAUTH_REDIRECT_URI "$url/api/v1/marketplaces/flipkart/callback" \
     APP_NAME "marketplace-os-$role" OTEL_SERVICE_NAME "marketplace-os-$role"
   [ "$role" != "api" ] || printf 'JWT_ISSUER\t%s\n' "${JWT_ISSUER:-$url}"
+  if [ -n "$GCS_BUCKET_IMAGES_PUBLIC" ] && [ -n "$IMAGE_PUBLIC_BASE_URL" ]; then
+    printf 'GCS_BUCKET_IMAGES_PUBLIC\t%s\nIMAGE_PUBLIC_BASE_URL\t%s\n' \
+      "$GCS_BUCKET_IMAGES_PUBLIC" "$IMAGE_PUBLIC_BASE_URL"
+  fi
   # ADR-0025: the origin guard's switch, on the api only
   [ "$role" != "api" ] || printf 'ORIGIN_AUTH\t%s\n' "$ORIGIN_AUTH"
   # ADR-0024: the gateway, provider and model, on the worker only (the one role that calls a model)
