@@ -7,6 +7,7 @@ report in the envelope's `error_report`."""
 from __future__ import annotations
 
 from dataclasses import asdict
+from decimal import Decimal
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -17,7 +18,7 @@ from mkos_schemas.codes import ErrorCode
 from app.api.errors import ApiError
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import IdempotencyKey, get_current_principal
-from app.api.v1.schemas.brand_profile import PartyOut
+from app.api.v1.schemas.brand_profile import PartyIn, PartyOut
 from app.api.v1.schemas.imports import ImportAccepted
 from app.api.v1.schemas.products import (
     ColourwayOut,
@@ -34,8 +35,24 @@ from app.core.errors import ConflictError
 from app.core.rbac import Principal
 from app.services import products
 from app.services.imports import upload
+from app.services.intake_values import PartyInput
 
 router = APIRouter()
+
+
+def party_input(party: PartyIn) -> PartyInput:
+    return PartyInput(**party.model_dump())
+
+
+def size_chart_dict(chart: SizeChart) -> dict[str, Any]:
+    """The wire table with absent measurements dropped (`normalize_size_chart` checks it)."""
+    return {
+        "unit": chart.unit,
+        "basis": chart.basis,
+        "rows": [row.model_dump(exclude_none=True) for row in chart.rows],
+    }
+
+
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 
 
@@ -116,6 +133,11 @@ async def products_create(
             category=body.category,
             images=tuple(body.images),
             attributes=dict(body.attributes),
+            style_number=body.style_number,
+            mrp=None if body.mrp is None else Decimal(body.mrp),
+            selling_price=None if body.selling_price is None else Decimal(body.selling_price),
+            manufacturer=None if body.manufacturer is None else party_input(body.manufacturer),
+            size_chart=None if body.size_chart is None else size_chart_dict(body.size_chart),
         ),
     )
     response.headers["ETag"] = view.etag

@@ -35,10 +35,19 @@ from mkos_schemas.codes import ErrorCode
 from app.core.errors import InputError, NotFoundError
 from app.core.rbac import Principal
 from app.repositories.images import ImageDetail
+from app.repositories.parties import PartyFields
 from app.repositories.product_facts import manufacturer_inherited
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.repositories.variants import ColourwayRow
-from app.services.product_facts import AttributeValue, build_attributes, seller_provenance
+from app.services.intake_values import PartyInput, check_price_le_mrp
+from app.services.product_facts import (
+    SIZE_CHART_KEY,
+    AttributeValue,
+    build_attributes,
+    seller_column_fact,
+    seller_provenance,
+    size_chart_fact,
+)
 
 __all__ = [
     "NewProduct",
@@ -72,6 +81,11 @@ class NewProduct:
     category: str | None
     images: tuple[str, ...]
     attributes: Mapping[str, AttributeValue]
+    style_number: str | None = None
+    mrp: Decimal | None = None
+    selling_price: Decimal | None = None
+    manufacturer: PartyInput | None = None
+    size_chart: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -267,6 +281,26 @@ def _refuse_nul(cmd: NewProduct) -> None:
     for key, value in cmd.attributes.items():
         if isinstance(value, str) and _NUL in value:
             raise InputError(ErrorCode.VALIDATION_FAILED, f"attributes.{key}")
+    if cmd.style_number is not None and _NUL in cmd.style_number:
+        raise InputError(ErrorCode.VALIDATION_FAILED, "style_number")
+    if cmd.manufacturer is not None and cmd.manufacturer.has_nul():
+        raise InputError(ErrorCode.VALIDATION_FAILED, "manufacturer")
+
+
+def party_fields(party: PartyInput, role: str = "manufacturer") -> PartyFields:
+    return PartyFields(
+        role=role,
+        legal_name=party.legal_name,
+        address_line1=party.address_line1,
+        address_line2=party.address_line2,
+        city=party.city,
+        state_code=party.state_code,
+        postal_code=party.postal_code,
+        country_code=party.country_code,
+        gstin=party.gstin,
+        email=party.email,
+        phone=party.phone,
+    )
 
 
 async def create_product(principal: Principal, cmd: NewProduct) -> ProductView:
@@ -275,18 +309,42 @@ async def create_product(principal: Principal, cmd: NewProduct) -> ProductView:
         raise InputError(ErrorCode.VALIDATION_FAILED, "category")
     if cmd.images:
         raise NotFoundError("images[0]")
+    check_price_le_mrp(cmd.selling_price, cmd.mrp)
     now = datetime.now(UTC)
+    column_fact = seller_column_fact(now=now)
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
         defs = await uow.attribute_definitions.resolve(cmd.attributes.keys())
         facts = build_attributes(cmd.attributes, defs, now=now)
+        if cmd.size_chart is not None:
+            if SIZE_CHART_KEY in facts:
+                raise InputError(ErrorCode.VALIDATION_FAILED, "size_chart")
+            facts[SIZE_CHART_KEY] = size_chart_fact(cmd.size_chart, now=now)
+        provenance = seller_provenance(now=now)
         row = await uow.products.create(
             sku=cmd.sku,
             title=cmd.title,
             category=cmd.category,
             attributes=facts,
-            provenance=seller_provenance(now=now),
+            provenance=provenance,
             created_by=principal.user_id,
         )
+        typed: dict[str, Any] = {
+            "style_number": cmd.style_number,
+            "mrp": cmd.mrp,
+            "selling_price": cmd.selling_price,
+        }
+        if cmd.manufacturer is not None:
+            # decision 16: a product route links a matching party and never rewrites it
+            typed["manufacturer_party_id"] = await uow.parties.match_or_create(
+                party_fields(cmd.manufacturer)
+            )
+        for column, value in typed.items():
+            if value is None:
+                continue
+            await uow.facts.set_typed(row.id, column, value, column_fact)
+            key = await uow.facts.column_key(column)
+            assert key is not None  # noqa: S101 - set_typed refused an unknown column
+            provenance[key] = column_fact
         await uow.audit.write(
             tenant_id=principal.tenant_id,
             actor_type="user",
@@ -294,9 +352,10 @@ async def create_product(principal: Principal, cmd: NewProduct) -> ProductView:
             action="product.created",
             entity_type="product",
             entity_id=row.id,
-            after=json.dumps({"attributes": facts}),
+            after=json.dumps({"attributes": facts, "provenance": provenance}),
         )
-        return _view(row)
+        await uow.session.refresh(row)
+        return await _full_view(uow, row)
 
 
 async def get_product(principal: Principal, product_id: uuid.UUID) -> ProductView:

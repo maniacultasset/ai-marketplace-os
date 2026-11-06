@@ -11,6 +11,7 @@ import math
 import re
 import unicodedata
 from collections.abc import Mapping
+from dataclasses import dataclass, fields
 from decimal import Decimal
 from typing import Any, Final
 
@@ -22,6 +23,7 @@ __all__ = [
     "MEASURE_KEYS",
     "MONEY_PATTERN",
     "MoneyError",
+    "PartyInput",
     "SizeChartError",
     "check_price_le_mrp",
     "normalize_size_chart",
@@ -38,6 +40,28 @@ BASES: Final = frozenset({"garment", "body"})
 MAX_ROWS: Final = 40
 MAX_SIZE_CHARS: Final = 20
 MAX_MEASURE: Final = 500
+
+
+@dataclass(frozen=True, slots=True)
+class PartyInput:
+    """A business party as the seller sends it (PLAN D2 `PartyIn`)."""
+
+    legal_name: str
+    address_line1: str
+    city: str
+    state_code: str
+    postal_code: str
+    country_code: str = "IN"
+    address_line2: str | None = None
+    gstin: str | None = None
+    email: str | None = None
+    phone: str | None = None
+
+    def has_nul(self) -> bool:
+        return any(
+            isinstance(v, str) and "\x00" in v
+            for v in (getattr(self, f.name) for f in fields(self))
+        )
 
 
 class MoneyError(ValueError):

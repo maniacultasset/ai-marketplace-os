@@ -237,7 +237,7 @@ async def test_products_create_audit_row(
     assert (entity_type, str(entity_id), before) == ("product", response.json()["id"], None)
     assert request_id == "req-s12-audit-0001"
     assert "@" not in json.dumps(after)
-    assert set(after) == {"attributes"}
+    assert set(after) == {"attributes", "provenance"}  # SI1 T11: the typed facts too
     assert set(after["attributes"]) == {"color", "fabric_type"}
     valid = _scalar(
         auth_db,
