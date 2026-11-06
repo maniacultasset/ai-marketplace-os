@@ -288,3 +288,49 @@ def test_rules_seed_contact_details_spare_ordinary_text(marketplace: str, path: 
     base = _listing("kurta_002", marketplace)
     for text in CONTACT_CLEAN:
         assert _contact_errors(_with_text(base, path, text)) == [], text
+
+
+# The adapters send both keyword lists as one space-joined value (Amazon `generic_keyword`,
+# Flipkart `keywords`), so a phone number split across terms reaches the marketplace whole. The
+# `*` contact row also reads that joined value, built by the adapters' own helper.
+SPLIT_KEYWORDS: tuple[tuple[list[str], list[str]], ...] = (
+    (["98765", "43210"], []),
+    (["kurta", "98765"], ["43210"]),
+    (["call +91"], ["9"]),
+    (["98765"], ["43210"]),
+)
+
+
+@pytest.mark.parametrize("marketplace", MARKETPLACES)
+@pytest.mark.parametrize(("search", "hidden"), SPLIT_KEYWORDS)
+def test_rules_seed_contact_split_across_keywords_blocked(
+    marketplace: str, search: list[str], hidden: list[str]
+) -> None:
+    from app.services.rules_engine.text import submitted_keywords
+
+    base = _listing("kurta_002", marketplace)
+    keywords = base.keywords.model_copy(update={"search_terms": search, "hidden_terms": hidden})
+    item = base.model_copy(update={"keywords": keywords})
+    errors = _contact_errors(item)
+    assert [e.field for e in errors] == ["keywords.search_terms"], submitted_keywords(keywords)
+    (error,) = errors
+    assert error.error_code.value == "BANNED_TERM"
+    assert error.value_submitted == submitted_keywords(keywords)
+
+
+@pytest.mark.parametrize("marketplace", MARKETPLACES)
+def test_rules_seed_contact_whole_term_reported_once(marketplace: str) -> None:
+    """A term that already holds the number gives its own item and no second, joined one."""
+    base = _listing("kurta_002", marketplace)
+    keywords = base.keywords.model_copy(update={"search_terms": ["kurta", "9876543210"]})
+    errors = _contact_errors(base.model_copy(update={"keywords": keywords}))
+    assert [e.field for e in errors] == ["keywords.search_terms[1]"]
+
+
+@pytest.mark.parametrize("marketplace", MARKETPLACES)
+def test_rules_seed_contact_split_keywords_spare_ordinary_terms(marketplace: str) -> None:
+    base = _listing("kurta_002", marketplace)
+    keywords = base.keywords.model_copy(
+        update={"search_terms": ["kurta set", "size 38", "pack of 3"], "hidden_terms": ["110 cm"]}
+    )
+    assert _contact_errors(base.model_copy(update={"keywords": keywords})) == []

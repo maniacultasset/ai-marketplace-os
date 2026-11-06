@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache, partial
 from typing import Any, Final, Literal
 
-from mkos_schemas.listing import CanonicalListing
+from mkos_schemas.listing import CanonicalListing, ListingKeywords
 from mkos_schemas.paths import resolve
 from mkos_schemas.rules import Condition, check_rule_regex
 
@@ -688,6 +688,32 @@ def _star_slots(listing: CanonicalListing) -> list[tuple[str, SlotValue]]:
         (f"keywords.hidden_terms[{i}]", t) for i, t in enumerate(listing.keywords.hidden_terms)
     ]
     return slots
+
+
+def submitted_keywords(keywords: ListingKeywords) -> str:
+    """The one backend-keyword value the adapters send (Amazon ``generic_keyword``, Flipkart
+    ``keywords``): the search then the hidden terms, each stripped, a repeat (NFKC, casefolded)
+    dropped with the first spelling kept, joined by one space. A ``*`` banned-terms rule reads
+    this exact string as well (``evaluators._banned_terms``), so a phrase or a number split
+    across terms is checked as it is sent."""
+    seen: set[str] = set()
+    terms: list[str] = []
+    for term in [*keywords.search_terms, *keywords.hidden_terms]:
+        key = unicodedata.normalize("NFKC", term).strip().casefold()
+        if key and key not in seen:
+            seen.add(key)
+            terms.append(term.strip())
+    return " ".join(terms)
+
+
+def submitted_keywords_slot(listing: CanonicalListing) -> tuple[str, str] | None:
+    """The joined keyword value and the path its item names: ``keywords.search_terms`` (the
+    hidden list when there are no search terms); None when nothing is sent."""
+    value = submitted_keywords(listing.keywords)
+    if not value:
+        return None
+    path = "keywords.search_terms" if listing.keywords.search_terms else "keywords.hidden_terms"
+    return path, value
 
 
 def _list_field(listing: CanonicalListing, name: str) -> list[str]:

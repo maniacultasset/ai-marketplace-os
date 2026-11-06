@@ -99,7 +99,12 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
   `wa.me` and the common short links, and mobiles with a `+91`, `91` or `0` prefix. A bare
   domain needs a lowercase TLD not followed by a hyphen, so a sentence joined without a space
   (`wear.Co-ord`, `ft.In stock`) is not a hit; the price is that an all-caps `BRAND.IN` is only
-  caught with a `www.` or `https://`. HTML is a known tag name, so `S<M>L` passes.
+  caught with a `www.` or `https://`. HTML is a known tag name, so `S<M>L` passes. Every `*`
+  `banned_terms` row also reads the keywords as the adapters send them: search then hidden terms,
+  deduplicated, joined by one space (`submitted_keywords` in `rules_engine/text.py`, the one
+  helper Amazon's `generic_keyword` and Flipkart's `keywords` use), so a number or phrase split
+  across terms (`98765`, `43210`) is a hit on `keywords.search_terms`. That item is added only
+  when no single term already tripped the row.
 - A generation that fails before any model stage (the context load or the brand retrieval) gives
   its budget reservation back, and a transient model or embedding failure (rate limit, provider
   down, timeout) is a retryable `MODEL_UNAVAILABLE` rather than `GENERATION_FAILED`; the job is

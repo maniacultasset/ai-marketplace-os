@@ -50,6 +50,7 @@ from .text import (
     lookup,
     measure,
     scalar_equal,
+    submitted_keywords_slot,
 )
 
 
@@ -137,10 +138,20 @@ def _banned_terms(rule: Rule, ctx: Ctx) -> list[Draft]:
         )
 
     slots = iter_slots(ctx.listing, rule.field, kind="text")
-    return [
+    out = [
         _draft(rule, path, text, value=text, term=", ".join(found))
         for path, text, found in _grouped_hits(slots, hit, rule_def.terms)
     ]
+    joined = submitted_keywords_slot(ctx.listing) if rule.field == "*" else None
+    if joined is not None and not any(d.field.startswith("keywords.") for d in out):
+        # A `*` row also reads the keywords as the adapters send them, one space-joined value,
+        # so a phrase or number split across terms is caught; reported only when no single
+        # term already tripped the rule, so a hit is never counted twice.
+        path, text = joined
+        found = hit(text)
+        if found:
+            out.append(_draft(rule, path, text, value=text, term=", ".join(found)))
+    return out
 
 
 def _value_in(value: object, allowed: Sequence[str]) -> bool:

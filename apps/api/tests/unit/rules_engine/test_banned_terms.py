@@ -118,3 +118,35 @@ def test_banned_terms_warning_does_not_fail() -> None:
     )
     assert rep.status == "passed"
     assert rep.errors[0].severity.value == "warning"
+
+
+def test_banned_terms_star_reads_the_joined_keywords() -> None:
+    """The adapters send search then hidden terms as one space-joined value, so a phrase split
+    across terms is checked as sent; it is reported once, on the keyword field."""
+    item = listing(keywords={"search_terms": ["kurta", "best"], "hidden_terms": ["seller"]})
+    errs = _errors(item, _banned(["best seller"], "*"))
+    assert [(e.field, e.value_submitted) for e in errs] == [
+        ("keywords.search_terms", "kurta best seller")
+    ]
+
+
+def test_banned_terms_star_joined_keywords_dedupe_like_the_adapters() -> None:
+    """A repeated term is sent once (case-folded), so it cannot hide or create a phrase."""
+    item = listing(keywords={"search_terms": ["best", "BEST"], "hidden_terms": ["seller"]})
+    assert [e.field for e in _errors(item, _banned(["best best"], "*"))] == []
+    assert [e.field for e in _errors(item, _banned(["best seller"], "*"))] == [
+        "keywords.search_terms"
+    ]
+
+
+def test_banned_terms_star_term_hit_not_repeated_on_the_join() -> None:
+    item = listing(keywords={"search_terms": ["best seller"], "hidden_terms": ["kurta"]})
+    assert [e.field for e in _errors(item, _banned(["best seller"], "*"))] == [
+        "keywords.search_terms[0]"
+    ]
+
+
+def test_banned_terms_named_keyword_field_reads_terms_only() -> None:
+    """Only `*` rows read the joined value; a row on one keyword list keeps per-term items."""
+    item = listing(keywords={"search_terms": ["best", "seller"]})
+    assert _errors(item, _banned(["best seller"], "keywords.search_terms")) == []
