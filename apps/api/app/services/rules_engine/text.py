@@ -53,9 +53,24 @@ class UnsafeRuleRegexError(ValueError):
 # Normalisation and measuring (D3a, D3c)
 
 
+_INVISIBLE: Final = "\u00ad\u200b\u200c\u200d\u200e\u200f\u2060\u2061\u2062\u2063\u2064\ufeff"
+_DASHES: Final = "\u2010\u2011\u2012\u2013\u2014\u2015\u2212"
+_MATCH_FOLD: Final = str.maketrans(dict.fromkeys(_DASHES, "-") | dict.fromkeys(_INVISIBLE, ""))
+
+
+def match_text(text: str) -> str:
+    """NFKC, then invisible format characters (soft hyphen, zero-width space and joiners,
+    direction marks, word joiner, BOM) dropped and Unicode dashes folded to ``-``, so
+    ``Or\u200bganic`` or ``98765\u201343210`` cannot slip past a term or a rule regex. Used
+    only to match; the text itself is never changed."""
+    return unicodedata.normalize("NFKC", text).translate(_MATCH_FOLD)
+
+
 def normalise(text: str, *, case_sensitive: bool) -> str:
-    """NFKC, casefold unless ``case_sensitive``, whitespace runs collapsed, ends stripped."""
-    folded = unicodedata.normalize("NFKC", text)
+    """``match_text``, ``-`` read as a space (so one term covers ``hand loom`` and
+    ``hand-loom``), casefold unless ``case_sensitive``, whitespace runs collapsed, ends
+    stripped."""
+    folded = match_text(text).replace("-", " ")
     if not case_sensitive:
         folded = folded.casefold()
     return " ".join(folded.split())  # split() breaks on str.isspace runs and drops the ends
@@ -154,11 +169,11 @@ class _Matcher:
 
     def find(self, text: str, memo: TextMemo) -> tuple[str, ...]:
         if self.match == "regex":
-            nfkc = unicodedata.normalize("NFKC", text)
+            folded = match_text(text)
             return tuple(
                 term
                 for term, pattern in zip(self.terms, self.patterns, strict=True)
-                if pattern.search(nfkc) is not None
+                if pattern.search(folded) is not None
             )
         norm = memo.normalise(text, case_sensitive=self.case_sensitive)
         hits: list[str] = []
@@ -704,6 +719,15 @@ def submitted_keywords(keywords: ListingKeywords) -> str:
             seen.add(key)
             terms.append(term.strip())
     return " ".join(terms)
+
+
+_DIGIT_GAP: Final = re.compile(r"(?<=\d)[\s.-]+(?=\d)")
+
+
+def merge_digit_groups(text: str) -> str:
+    """``text`` with the spaces, dots and dashes between two digits dropped, so a number split
+    at any point (``987 654 3210``, ``9876543 210``) reads as one run of digits."""
+    return _DIGIT_GAP.sub("", match_text(text))
 
 
 def submitted_keywords_slot(listing: CanonicalListing) -> tuple[str, str] | None:

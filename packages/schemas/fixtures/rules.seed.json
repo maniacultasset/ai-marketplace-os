@@ -262,6 +262,7 @@
             "\\+91[\\s-]?\\d",
             "(^|[^0-9])(0|91)?[6-9][0-9]{9}([^0-9]|$)",
             "(^|[^0-9])(0|91)?[6-9][0-9]{4}[\\s-][0-9]{5}([^0-9]|$)",
+            "(^|[^0-9])(0|91)?[6-9][0-9]{2}[\\s-][0-9]{3}[\\s-][0-9]{4}([^0-9]|$)",
             "\\b1800[\\s-]?\\d{3}[\\s-]?\\d{4}\\b",
             "</?(a|b|i|u|p|br|hr|li|ul|ol|em|strong|span|div|h[1-6]|img|script|style|iframe|table|tr|td|font|sup|sub)([\\s/][^<>]*)?>"
           ],
@@ -304,7 +305,9 @@
             "oeko-tex",
             "oeko tex",
             "fair trade",
-            "fairtrade"
+            "fairtrade",
+            "eco friendly",
+            "ecofriendly"
           ],
           "match": "word",
           "requires": {
@@ -356,6 +359,12 @@
             "odour resistant",
             "odor resistant",
             "uv protection",
+            "uv protected",
+            "uv protective",
+            "water repellent",
+            "water repellant",
+            "hypoallergenic",
+            "hypo allergenic",
             "fireproof",
             "fire-proof",
             "flame retardant",
@@ -961,6 +970,7 @@
             "\\+91[\\s-]?\\d",
             "(^|[^0-9])(0|91)?[6-9][0-9]{9}([^0-9]|$)",
             "(^|[^0-9])(0|91)?[6-9][0-9]{4}[\\s-][0-9]{5}([^0-9]|$)",
+            "(^|[^0-9])(0|91)?[6-9][0-9]{2}[\\s-][0-9]{3}[\\s-][0-9]{4}([^0-9]|$)",
             "\\b1800[\\s-]?\\d{3}[\\s-]?\\d{4}\\b",
             "</?(a|b|i|u|p|br|hr|li|ul|ol|em|strong|span|div|h[1-6]|img|script|style|iframe|table|tr|td|font|sup|sub)([\\s/][^<>]*)?>"
           ],
@@ -1003,7 +1013,9 @@
             "oeko-tex",
             "oeko tex",
             "fair trade",
-            "fairtrade"
+            "fairtrade",
+            "eco friendly",
+            "ecofriendly"
           ],
           "match": "word",
           "requires": {
@@ -1055,6 +1067,12 @@
             "odour resistant",
             "odor resistant",
             "uv protection",
+            "uv protected",
+            "uv protective",
+            "water repellent",
+            "water repellant",
+            "hypoallergenic",
+            "hypo allergenic",
             "fireproof",
             "fire-proof",
             "flame retardant",
@@ -1412,6 +1430,7 @@
             "\\+91[\\s-]?\\d",
             "(^|[^0-9])(0|91)?[6-9][0-9]{9}([^0-9]|$)",
             "(^|[^0-9])(0|91)?[6-9][0-9]{4}[\\s-][0-9]{5}([^0-9]|$)",
+            "(^|[^0-9])(0|91)?[6-9][0-9]{2}[\\s-][0-9]{3}[\\s-][0-9]{4}([^0-9]|$)",
             "\\b1800[\\s-]?\\d{3}[\\s-]?\\d{4}\\b",
             "</?(a|b|i|u|p|br|hr|li|ul|ol|em|strong|span|div|h[1-6]|img|script|style|iframe|table|tr|td|font|sup|sub)([\\s/][^<>]*)?>"
           ],
@@ -1454,7 +1473,9 @@
             "oeko-tex",
             "oeko tex",
             "fair trade",
-            "fairtrade"
+            "fairtrade",
+            "eco friendly",
+            "ecofriendly"
           ],
           "match": "word",
           "requires": {
@@ -1506,6 +1527,12 @@
             "odour resistant",
             "odor resistant",
             "uv protection",
+            "uv protected",
+            "uv protective",
+            "water repellent",
+            "water repellant",
+            "hypoallergenic",
+            "hypo allergenic",
             "fireproof",
             "fire-proof",
             "flame retardant",
@@ -2151,6 +2178,7 @@
             "\\+91[\\s-]?\\d",
             "(^|[^0-9])(0|91)?[6-9][0-9]{9}([^0-9]|$)",
             "(^|[^0-9])(0|91)?[6-9][0-9]{4}[\\s-][0-9]{5}([^0-9]|$)",
+            "(^|[^0-9])(0|91)?[6-9][0-9]{2}[\\s-][0-9]{3}[\\s-][0-9]{4}([^0-9]|$)",
             "\\b1800[\\s-]?\\d{3}[\\s-]?\\d{4}\\b",
             "</?(a|b|i|u|p|br|hr|li|ul|ol|em|strong|span|div|h[1-6]|img|script|style|iframe|table|tr|td|font|sup|sub)([\\s/][^<>]*)?>"
           ],
@@ -2193,7 +2221,9 @@
             "oeko-tex",
             "oeko tex",
             "fair trade",
-            "fairtrade"
+            "fairtrade",
+            "eco friendly",
+            "ecofriendly"
           ],
           "match": "word",
           "requires": {
@@ -2245,6 +2275,12 @@
             "odour resistant",
             "odor resistant",
             "uv protection",
+            "uv protected",
+            "uv protective",
+            "water repellent",
+            "water repellant",
+            "hypoallergenic",
+            "hypo allergenic",
             "fireproof",
             "fire-proof",
             "flame retardant",
@@ -2602,6 +2638,7 @@
             "\\+91[\\s-]?\\d",
             "(^|[^0-9])(0|91)?[6-9][0-9]{9}([^0-9]|$)",
             "(^|[^0-9])(0|91)?[6-9][0-9]{4}[\\s-][0-9]{5}([^0-9]|$)",
+            "(^|[^0-9])(0|91)?[6-9][0-9]{2}[\\s-][0-9]{3}[\\s-][0-9]{4}([^0-9]|$)",
             "\\b1800[\\s-]?\\d{3}[\\s-]?\\d{4}\\b",
             "</?(a|b|i|u|p|br|hr|li|ul|ol|em|strong|span|div|h[1-6]|img|script|style|iframe|table|tr|td|font|sup|sub)([\\s/][^<>]*)?>"
           ],
@@ -2644,7 +2681,9 @@
             "oeko-tex",
             "oeko tex",
             "fair trade",
-            "fairtrade"
+            "fairtrade",
+            "eco friendly",
+            "ecofriendly"
           ],
           "match": "word",
           "requires": {
@@ -2696,6 +2735,12 @@
             "odour resistant",
             "odor resistant",
             "uv protection",
+            "uv protected",
+            "uv protective",
+            "water repellent",
+            "water repellant",
+            "hypoallergenic",
+            "hypo allergenic",
             "fireproof",
             "fire-proof",
             "flame retardant",
@@ -3024,6 +3069,7 @@
             "\\+91[\\s-]?\\d",
             "(^|[^0-9])(0|91)?[6-9][0-9]{9}([^0-9]|$)",
             "(^|[^0-9])(0|91)?[6-9][0-9]{4}[\\s-][0-9]{5}([^0-9]|$)",
+            "(^|[^0-9])(0|91)?[6-9][0-9]{2}[\\s-][0-9]{3}[\\s-][0-9]{4}([^0-9]|$)",
             "\\b1800[\\s-]?\\d{3}[\\s-]?\\d{4}\\b",
             "</?(a|b|i|u|p|br|hr|li|ul|ol|em|strong|span|div|h[1-6]|img|script|style|iframe|table|tr|td|font|sup|sub)([\\s/][^<>]*)?>"
           ],
@@ -3066,7 +3112,9 @@
             "oeko-tex",
             "oeko tex",
             "fair trade",
-            "fairtrade"
+            "fairtrade",
+            "eco friendly",
+            "ecofriendly"
           ],
           "match": "word",
           "requires": {
@@ -3118,6 +3166,12 @@
             "odour resistant",
             "odor resistant",
             "uv protection",
+            "uv protected",
+            "uv protective",
+            "water repellent",
+            "water repellant",
+            "hypoallergenic",
+            "hypo allergenic",
             "fireproof",
             "fire-proof",
             "flame retardant",

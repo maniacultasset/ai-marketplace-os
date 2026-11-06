@@ -223,6 +223,10 @@ CONTACT_HITS = (
     "Call 098765 43210 to order",
     "Line one<br/>line two",
     "<a href='x'>Shop</a>",
+    "Call 987 654 3210 to order",
+    "Call 987-654-3210 to order",
+    "Call 98765\u201343210 to order",
+    "Call 98765\u200b43210 to order",
 )
 CONTACT_CLEAN = (
     "Pure cotton. In the box: 1 kurta, 1 dupatta",
@@ -298,6 +302,10 @@ SPLIT_KEYWORDS: tuple[tuple[list[str], list[str]], ...] = (
     (["kurta", "98765"], ["43210"]),
     (["call +91"], ["9"]),
     (["98765"], ["43210"]),
+    (["987", "654", "3210"], []),
+    (["9876543", "210"], []),
+    (["98", "76", "54", "32", "10"], []),
+    (["kurta 987-654"], ["3210"]),
 )
 
 
@@ -334,6 +342,10 @@ def test_rules_seed_contact_split_keywords_spare_ordinary_terms(marketplace: str
         update={"search_terms": ["kurta set", "size 38", "pack of 3"], "hidden_terms": ["110 cm"]}
     )
     assert _contact_errors(base.model_copy(update={"keywords": keywords})) == []
+    sizes = base.keywords.model_copy(
+        update={"search_terms": ["kurta 38 40 42", "44 46"], "hidden_terms": ["2024", "3 pc"]}
+    )
+    assert _contact_errors(base.model_copy(update={"keywords": sizes})) == []
 
 
 # ---- claims: certification, performance and handmade claims need a backing fact ----
@@ -355,12 +367,25 @@ CLAIM_CASES = (
     ("Handmade by artisans", "claim_handmade"),
     ("Hand-crafted brass", "claim_handmade"),
     ("Pure handloom weave", "claim_handmade"),
+    ("Hand-loom weave", "claim_handmade"),
+    ("Hand\u2011made by artisans", "claim_handmade"),
+    ("Odor-resistant finish", "claim_performance"),
+    ("UV-protection fabric", "claim_performance"),
+    ("UV protected shade", "claim_performance"),
+    ("Water repellent coat", "claim_performance"),
+    ("Hypoallergenic lining", "claim_performance"),
+    ("anti\u2013bacterial lining", "claim_performance"),
+    ("Or\u200bganic cotton", "claim_certification"),
+    ("Eco friendly dyes", "claim_certification"),
+    ("Eco-friendly dyes", "claim_certification"),
 )
 CLAIM_CLEAN = (
     "Hand wash separately in cold water",
     "Inorganic pigment print",
     "Handle with care",
     "Water-based print, machine wash",
+    "Hand-wash separately",
+    "Eco wash, colour fast",
 )
 BACKING: dict[str, dict[str, Any]] = {
     "claim_certification": {"certifications": ["GOTS"]},
@@ -409,6 +434,33 @@ def test_rules_seed_unbacked_claims_blocked(marketplace: str, path: str) -> None
             assert rep.status == "failed"
             (error,) = [e for e in rep.errors if e.error_code.value == "UNSUPPORTED_CLAIM"]
             assert error.retry_class is not None and error.retry_class.value == "ai_correct"
+
+
+CLAIM_SPLIT_KEYWORDS: tuple[tuple[list[str], list[str], str], ...] = (
+    (["water", "proof"], [], "claim_performance"),
+    (["kurta", "hand"], ["made"], "claim_handmade"),
+    (["fair"], ["trade"], "claim_certification"),
+)
+
+
+@pytest.mark.parametrize("marketplace", MARKETPLACES)
+@pytest.mark.parametrize(("search", "hidden", "pack"), CLAIM_SPLIT_KEYWORDS)
+def test_rules_seed_claim_split_across_keywords_blocked(
+    marketplace: str, search: list[str], hidden: list[str], pack: str
+) -> None:
+    """A claim phrase split across terms reaches the marketplace whole in the joined value."""
+    base = _listing("kurta_002", marketplace)
+    keywords = base.keywords.model_copy(update={"search_terms": search, "hidden_terms": hidden})
+    item = base.model_copy(update={"keywords": keywords})
+    assert _claim_errors(item) == [("keywords.search_terms", pack)]
+
+
+@pytest.mark.parametrize("marketplace", MARKETPLACES)
+def test_rules_seed_claim_whole_keyword_reported_once(marketplace: str) -> None:
+    base = _listing("kurta_002", marketplace)
+    keywords = base.keywords.model_copy(update={"search_terms": ["kurta", "waterproof"]})
+    item = base.model_copy(update={"keywords": keywords})
+    assert _claim_errors(item) == [("keywords.search_terms[1]", "claim_performance")]
 
 
 @pytest.mark.parametrize("marketplace", MARKETPLACES)
