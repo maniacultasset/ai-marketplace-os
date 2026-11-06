@@ -13,6 +13,7 @@ import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import func, literal, literal_column, tuple_
@@ -82,6 +83,29 @@ class ProductRepository(TenantScopedRepository[Product]):
             raise ValueError(f"id must be a UUID, got {type(id).__name__}")
         stmt = self._select().where(Product.id == id, Product.deleted_at.is_(None))
         return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def get_for_update(self, id: uuid.UUID) -> Product | None:
+        """The live row, locked for the rest of the transaction (SI1 PATCH)."""
+        if not isinstance(id, uuid.UUID):
+            raise ValueError(f"id must be a UUID, got {type(id).__name__}")
+        stmt = (
+            self._select()
+            .where(Product.id == id, Product.deleted_at.is_(None))
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def child_prices(
+        self, style_id: uuid.UUID
+    ) -> builtins.list[tuple[Decimal | None, Decimal | None]]:
+        """`(selling_price, mrp)` of each live child of `style_id` (CP14)."""
+        stmt = (
+            self._select()
+            .where(Product.parent_product_id == style_id, Product.deleted_at.is_(None))
+            .with_only_columns(Product.selling_price, Product.mrp)
+        )
+        return [(row[0], row[1]) for row in (await self.db.execute(stmt)).all()]
 
     async def family_of_sku(self, sku: str) -> uuid.UUID | None:
         """The stored `parent_product_id` of `sku` (soft-deleted rows included: an upsert

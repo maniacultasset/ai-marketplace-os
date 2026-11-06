@@ -547,6 +547,13 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             ]
         ),
         "products_get": _product(PRODUCT_1, "FAB-KURTA-001", "Organic Cotton Kurta Set"),
+        "products_update": {
+            **_product(PRODUCT_1, "FAB-KURTA-001", "Organic Cotton Kurta Set"),
+            "style_number": "KS-24",
+            "mrp": "1499.00",
+            "selling_price": "1299.00",
+            "currency": "INR",
+        },
         "products_bulk": {
             "import_id": IMPORT,
             "job_id": JOB,

@@ -60,6 +60,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("products_create", "POST", "/products"),
     ("products_list", "GET", "/products"),
     ("products_get", "GET", "/products/{product_id}"),
+    # SI1: the product edit (75 + 1)
+    ("products_update", "PATCH", "/products/{product_id}"),
     ("products_bulk", "POST", "/products/bulk"),
     ("imports_get", "GET", "/imports/{import_id}"),
     ("imports_rows", "GET", "/imports/{import_id}/rows"),
@@ -111,7 +113,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 75
+    assert len(FROZEN) == 76
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -246,6 +248,7 @@ def test_idempotency_set_is_d9() -> None:
     assert {o.op_id for o in OPS.values() if o.if_match} == {
         "listings_content_patch",
         "tenants_me_update",
+        "products_update",
     }
 
 
@@ -390,13 +393,14 @@ def test_login_response_is_login_result() -> None:
     assert OPS["auth_switch_tenant"].response_model is TokenResponse
 
 
-def test_75_operations() -> None:
-    assert len(OPS) == 75
+def test_76_operations() -> None:
+    assert len(OPS) == 76
 
 
 def test_error_codes_per_d2() -> None:
     conflict = {
         "products_create": (E.SKU_CONFLICT,),
+        "products_update": (E.STALE_VERSION,),
         "listings_content_patch": (E.STALE_VERSION,),
         "tenants_me_update": (E.STALE_VERSION,),
         "jobs_cancel": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
@@ -471,6 +475,7 @@ def test_error_codes_per_d2() -> None:
         if "validation" in c or op.op_id == "auth_google_unlink":
             extra_422 = {
                 "products_create": (E.UNKNOWN_FACT_KEY,),
+                "products_update": (E.FACT_LEVEL_INVALID, E.UNKNOWN_FACT_KEY),  # SI1 D1b
                 "products_bulk": (E.IMPORT_FAILED,),  # S13b: the file-level import report
             }
             expected_422 = (E.VALIDATION_FAILED, *extra_422.get(op.op_id, ()))
@@ -482,7 +487,7 @@ def test_error_codes_per_d2() -> None:
 def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
-        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023",
+        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id

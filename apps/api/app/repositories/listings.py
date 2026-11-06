@@ -217,6 +217,16 @@ class ListingRepository(TenantScopedRepository[Listing]):
     async def get(self, listing_id: uuid.UUID) -> Listing | None:
         return await self.get_by_id(listing_id)
 
+    async def any_for_product(self, product_id: uuid.UUID) -> bool:
+        """True when the product has a listing of any status (SI1: its category is then fixed)."""
+        stmt = (
+            self._select()
+            .where(Listing.product_id == product_id)
+            .with_only_columns(Listing.id)
+            .limit(1)
+        )
+        return (await self.db.execute(stmt)).first() is not None
+
     async def get_for_update(self, listing_id: uuid.UUID) -> Listing | None:
         stmt = (
             self._select()

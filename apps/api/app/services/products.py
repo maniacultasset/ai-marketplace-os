@@ -251,7 +251,7 @@ def _view(
     )
 
 
-async def _full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
+async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
     """A single read: the image details, a style's colourways and the effective manufacturer
     (own → style → brand default)."""
     style = None
@@ -355,7 +355,7 @@ async def create_product(principal: Principal, cmd: NewProduct) -> ProductView:
             after=json.dumps({"attributes": facts, "provenance": provenance}),
         )
         await uow.session.refresh(row)
-        return await _full_view(uow, row)
+        return await full_view(uow, row)
 
 
 async def get_product(principal: Principal, product_id: uuid.UUID) -> ProductView:
@@ -363,7 +363,7 @@ async def get_product(principal: Principal, product_id: uuid.UUID) -> ProductVie
         row = await uow.products.get_by_id(product_id)
         if row is None:
             raise NotFoundError("product_id")
-        return await _full_view(uow, row)
+        return await full_view(uow, row)
 
 
 async def list_products(

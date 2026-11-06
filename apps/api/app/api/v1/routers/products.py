@@ -17,7 +17,7 @@ from mkos_schemas.codes import ErrorCode
 
 from app.api.errors import ApiError
 from app.api.pagination import PageInfo, PageParams, encode_cursor
-from app.api.v1.deps import IdempotencyKey, get_current_principal
+from app.api.v1.deps import IdempotencyKey, IfMatch, get_current_principal
 from app.api.v1.schemas.brand_profile import PartyIn, PartyOut
 from app.api.v1.schemas.imports import ImportAccepted
 from app.api.v1.schemas.products import (
@@ -27,13 +27,14 @@ from app.api.v1.schemas.products import (
     ProductImageOut,
     ProductOut,
     ProductPage,
+    ProductPatch,
     SizeChart,
     SizeChartRow,
 )
 from app.api.v1.surface import OPS, route
 from app.core.errors import ConflictError
 from app.core.rbac import Principal
-from app.services import products
+from app.services import product_edit, products
 from app.services.imports import upload
 from app.services.intake_values import PartyInput
 
@@ -189,5 +190,41 @@ async def products_get(
     """Read one product with its `ETag` (send it back as `If-Match` on PATCH). Another brand's id
     is 404, never 403."""
     view = await products.get_product(principal, product_id)
+    response.headers["ETag"] = view.etag
+    return _out(view)
+
+
+def _patch(body: ProductPatch) -> dict[str, Any]:
+    """The fields the client sent (absent stays absent; `null` is kept), in service types."""
+    out: dict[str, Any] = {}
+    for name in body.model_fields_set:
+        value = getattr(body, name)
+        if value is None:
+            out[name] = None
+        elif name in ("mrp", "selling_price"):
+            out[name] = Decimal(value)
+        elif name == "manufacturer":
+            out[name] = party_input(value)
+        elif name == "size_chart":
+            out[name] = size_chart_dict(value)
+        elif name == "attributes":
+            out[name] = dict(value)
+        else:
+            out[name] = value
+    return out
+
+
+@route(router, OPS["products_update"])
+async def products_update(
+    product_id: Annotated[UUID, PathParam()],
+    body: ProductPatch,
+    if_match: IfMatch,
+    principal: CurrentPrincipal,
+    response: Response,
+) -> ProductOut:
+    """Edit a product. `If-Match` is the `ETag` from GET (409 STALE_VERSION when stale); a body
+    that changes nothing is 200 with the current `ETag`. `null` clears a field; `sku` is
+    immutable."""
+    view = await product_edit.update_product(principal, product_id, _patch(body), if_match)
     response.headers["ETag"] = view.etag
     return _out(view)
